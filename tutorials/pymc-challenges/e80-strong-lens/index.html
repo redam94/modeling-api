@@ -1,0 +1,6855 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit, score and share labelled multi-dimensional models — safely.">
+      
+      
+        <meta name="author" content="Matthew Reda">
+      
+      
+      
+        <link rel="prev" href="../e79-cmb-lmc-mask/">
+      
+      
+        <link rel="next" href="../e81-wind-and-activity/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>E80 Strong gravitational lens - modeling-api</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#e80-gravitational-lens-pixel-by-pixel-also-the-treehdf5-path" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="modeling-api" class="md-header__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            modeling-api
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              E80 Strong gravitational lens
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../guides/web-ui/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../reference/spec-format/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../project/licensing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="modeling-api" class="md-nav__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    modeling-api
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../getting-started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart: zero to first model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/first-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runs and executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimise-a-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../complex-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complex workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Science models from pymc-challenges
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_8" id="__nav_3_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Science models from pymc-challenges
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e07-oklahoma-earthquakes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E07 Earthquakes in Oklahoma
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e18-scottish-lip-cancer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E18 Lip cancer disease map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e19-protein-signalling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E19 Protein signalling graph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e21-law-firm-network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E21 Law-firm network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e23-phylogenetic-regression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E23 Primate phylogenetic regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e31-indian-buffet-digits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E31 Indian buffet process on digits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e50-scratch-assay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E50 Scratch assay PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e51-heat-plate-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E51 Heat plate design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e58-storm-localisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E58 STORM localisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e60-traction-force/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E60 Traction force microscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e61-turing-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E61 Turing patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e77-colour-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E77 Colour naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e79-cmb-lmc-mask/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E79 CMB behind the LMC mask
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E80 Strong gravitational lens
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E80 Strong gravitational lens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Get the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-optional-the-same-data-as-a-tree-hdf5-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Optional: the same data as a tree (HDF5 groups)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the dataset
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upload the dataset">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-tree-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The tree file
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the spec
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Build the spec">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-spec-for-the-tree-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The spec for the tree dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-did-the-model-learn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What did the model learn?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-images-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The images (Fields)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-how-much-mass-is-in-the-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 How much mass is in the ring?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Score the model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-einstein-radius-and-the-mass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The Einstein radius and the mass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-simulated-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Simulated images
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e81-wind-and-activity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E81 Wind and animal activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../concepts/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/labelled-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labelled data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines and stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/representations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Representations and summaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/bundles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bundles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/coord-plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Using the platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Expert web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/first-model-in-the-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/python-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/tree-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/choosing-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelling
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modelling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/port-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port a model in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a step or model plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bring a PyMC model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tabular models (scikit-learn, xgboost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/mmm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/time-series/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting and sequential models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/conformance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conformance corpus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/spec-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/spec-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/steps-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Steps catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/models-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots and the sanitizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/plots-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot recipes catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/run-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/gcs-shim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS shim
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI and Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/server-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web app and plot sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../reference/api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_25">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sdk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_pymc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sklearn
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/local-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local, without Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Container images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m35-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../roadmap/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/platform-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The local platform (v0.2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud and multi-tenant (v0.3)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/guided-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode and integrations (v0.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins and MCP (v0.6)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Get the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-optional-the-same-data-as-a-tree-hdf5-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Optional: the same data as a tree (HDF5 groups)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the dataset
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upload the dataset">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-tree-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The tree file
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the spec
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Build the spec">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-spec-for-the-tree-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The spec for the tree dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-did-the-model-learn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What did the model learn?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-images-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The images (Fields)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-how-much-mass-is-in-the-ring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 How much mass is in the ring?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Score the model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-einstein-radius-and-the-mass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The Einstein radius and the mass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-simulated-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Simulated images
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="e80-gravitational-lens-pixel-by-pixel-also-the-treehdf5-path">E80 gravitational lens pixel by pixel (also the tree/HDF5 path)<a class="headerlink" href="#e80-gravitational-lens-pixel-by-pixel-also-the-treehdf5-path" title="Permanent link">&para;</a></h1>
+<p>This tutorial does the main part of the pymc-challenges notebook <code>E80_strong_lensing.py</code> in the
+web app. You use the model <code>sci.strong_lens@1</code>. You do not write PyMC or JAX code. The
+tutorial also shows the tree path: the same image as a NetCDF file with HDF5 groups, with the
+PSF in its own node.</p>
+<p><strong>You need:</strong></p>
+<ul>
+<li>The platform (start it with <code>make dev</code>) and a project that you can upload datasets to. This
+  tutorial uses the project <code>astronomy</code>. If your project has a different name, change the
+  project part of each <code>dataset://</code> and <code>model://</code> reference.</li>
+<li>A local copy of pymc-challenges. The export command reads one file from its <code>data/</code>
+  directory.</li>
+<li>About 40 minutes. On a laptop, the fit took 13 minutes: 3 minutes to find the mode and
+  10 minutes to sample.</li>
+</ul>
+<h2 id="1-the-question">1. The question<a class="headerlink" href="#1-the-question" title="Permanent link">&para;</a></h2>
+<p>A massive galaxy bends the light of a more distant galaxy. When the two galaxies are almost on
+one line, the distant galaxy becomes a ring around the near galaxy: an <strong>Einstein ring</strong>. The
+radius of the ring gives the mass inside the ring, dark matter included.</p>
+<p>The notebook uses a Hubble Space Telescope image of the lens <strong>SDSS J1627-0053</strong> (ACS, filter
+F814W). The lens galaxy is at redshift 0.2076 and the ring galaxy is at redshift 0.5241. The
+notebook predicts each of the 6,561 pixels of an 81 × 81 cutout. The prediction has the light
+of the lens galaxy, the lensed source galaxy, the blur of the telescope (the PSF) and the
+noise. The notebook asks three questions:</p>
+<ol>
+<li>How much mass is inside the ring, and how sure are we? (Notebook parts C and F.)</li>
+<li>What does the source galaxy look like without the lens? (Notebook part D.)</li>
+<li>What can an image not tell us? (Notebook part E.)</li>
+</ol>
+<p>The notebook ends in this decision: <strong>report the Einstein radius and the mass inside it, with
+an error from the model choices, not from the posterior alone.</strong> The posterior gives
+θ_E = 1.2231 ± 0.0012 arcsec and M(&lt;θ_E) = 2.258 ± 0.004 × 10¹¹ solar masses. That range is
+0.1% to 0.2%. A different source model moves θ_E by two posterior sds, and the published
+models (1.21 and 1.23 arcsec) are 17 sds apart. Thus the true error is about 1% to 2%. The
+image alone does not give the slope of the mass profile or the size of the source: the
+mass-sheet degeneracy changes them and keeps the image the same.</p>
+<p><strong>What you will get</strong>, and the notebook part that each item replaces:</p>
+<table>
+<thead>
+<tr>
+<th>In the web app</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The dataset <code>astronomy/slacs_j1627_f814w</code>: the image, a noise map and a PSF from the stars</td>
+<td>Part A: the noise in each pixel and the PSF</td>
+</tr>
+<tr>
+<td>The posterior of the 23 lens, light and source parameters and the noise scale (<strong>Parameters</strong>)</td>
+<td>Part C: the posterior with NUTS</td>
+</tr>
+<tr>
+<td>The predicted image and the source without the lens (<strong>Fields</strong>)</td>
+<td>Part C, the posterior predictive check, and part D, the source with its uncertainty</td>
+</tr>
+<tr>
+<td>The residual maps and the predicted images next to the real image (<strong>Plots</strong>)</td>
+<td>Part C: the residual panels</td>
+</tr>
+<tr>
+<td><code>einstein_radius</code> and <code>einstein_mass</code> with a 90% range (<strong>Score</strong>)</td>
+<td>Part F: the mass in the ring</td>
+</tr>
+<tr>
+<td>Simulated images with noise (<strong>Score</strong>, mode Simulate)</td>
+<td>Part B: the prior predictive check, here from the posterior</td>
+</tr>
+<tr>
+<td>The derived group <code>critical_curves</code></td>
+<td>Part F: the critical curves and caustics of 60 draws</td>
+</tr>
+</tbody>
+</table>
+<p>The port does not do parts D (pixelated source) and E (mass-sheet degeneracy). See
+<a href="#10-differences-from-the-notebook">Differences from the notebook</a>.</p>
+<h2 id="2-get-the-data">2. Get the data<a class="headerlink" href="#2-get-the-data" title="Permanent link">&para;</a></h2>
+<p>The export command reads <code>slacs_j1627_f814w.npz</code> and writes a NetCDF file that the platform
+can read. It prepares the image as the notebook does:</p>
+<ul>
+<li>It cuts the 81 × 81 pixels (4.05 arcsec) around the lens.</li>
+<li>It measures the sky noise in an empty patch of the image.</li>
+<li>It makes the noise map from the sky noise and the photon counts. <code>weight</code> is
+  1 / noise².</li>
+<li>It makes the PSF from the median of the stars that are not near saturation (31 × 31).</li>
+</ul>
+<p>Run the command from the root of the modeling-api repository:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e80<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--out<span class="w"> </span>slacs_j1627.nc<span class="w"> </span>--spec<span class="w"> </span>slacs_j1627.yaml
+</span></code></pre></div>
+<p>The command writes:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>wrote slacs_j1627.nc (variables image, weight, psf on row=81, col=81, psf_row=31, psf_col=31)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>upload it as dataset astronomy/slacs_j1627_f814w and fit sci.strong_lens
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>wrote the suggested spec to slacs_j1627.yaml
+</span></code></pre></div>
+<p>The file holds one dataset:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Dims</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>row</code>, <code>col</code></td>
+<td>81, 81</td>
+<td>integer, fixed</td>
+<td>The pixels of the cutout. Row 0 is the bottom row</td>
+</tr>
+<tr>
+<td><code>psf_row</code>, <code>psf_col</code></td>
+<td>31, 31</td>
+<td>integer, fixed, −15 to 15</td>
+<td>The pixels of the PSF kernel</td>
+</tr>
+<tr>
+<td><code>image</code></td>
+<td><code>row, col</code></td>
+<td>float64, electron/s, target</td>
+<td>The HST image</td>
+</tr>
+<tr>
+<td><code>weight</code></td>
+<td><code>row, col</code></td>
+<td>float64, s²/electron², weight</td>
+<td>The inverse variance of each pixel</td>
+</tr>
+<tr>
+<td><code>psf</code></td>
+<td><code>psf_row, psf_col</code></td>
+<td>float64, constant</td>
+<td>The PSF. Its sum is 1</td>
+</tr>
+</tbody>
+</table>
+<p>The attributes of the file keep the constants of the image: <code>pixel_scale</code> 0.05 arcsec,
+<code>noise_correlation</code> 0.229, <code>sky_sd</code> 0.0059 electron/s, <code>exptime</code> 2224 s, <code>z_lens</code> 0.2076 and
+<code>z_source</code> 0.5241. The attribute <code>mapi_schema</code> gives each variable its role, so you do not map
+columns.</p>
+<div class="admonition tip">
+<p class="admonition-title">No pymc-challenges copy?</p>
+<p><code>--synthetic</code> writes a simulated lens from the model's own forward model: a 24 × 24 image
+with 0.1 arcsec pixels, a Gaussian PSF and a known Einstein radius of 0.7 arcsec. Use it
+to try the steps. The numbers in this tutorial are for the real image. For the simulated
+lens, use the settings of <code>LENS_SPEC_YAML</code> in <code>mapi_plugin_science.lens_data</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e80<span class="w"> </span>--synthetic<span class="w"> </span>--out<span class="w"> </span>lens_synthetic.nc
+</span></code></pre></div>
+</div>
+<h3 id="21-optional-the-same-data-as-a-tree-hdf5-groups">2.1 Optional: the same data as a tree (HDF5 groups)<a class="headerlink" href="#21-optional-the-same-data-as-a-tree-hdf5-groups" title="Permanent link">&para;</a></h3>
+<p>An instrument often writes the image and the PSF in different groups of one HDF5 file. The
+platform reads such a file as a <strong>tree dataset</strong>. Each group becomes a node. <code>sci.strong_lens</code>
+reads a tree: it takes the image from one node and the PSF from the node <code>/psf</code>.</p>
+<p>To make the tree file from the export, run this Python script in the same directory:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_science</span><span class="w"> </span><span class="kn">import</span> <span class="n">lens_data</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_science.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_export</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span><span class="s2">"slacs_j1627.nc"</span><span class="p">)</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">ds</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"mapi_schema"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>  <span class="c1"># the tree file gets its own tree schema</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">tree</span> <span class="o">=</span> <span class="n">lens_data</span><span class="o">.</span><span class="n">to_tree</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>  <span class="c1"># /image: image and weight; /psf: psf</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">write_export</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s2">"slacs_j1627_tree.nc"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">lens_data</span><span class="o">.</span><span class="n">LENS_TREE_SCHEMA</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The file <code>slacs_j1627_tree.nc</code> is NetCDF-4, that is HDF5 with one group for each node:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Variables</th>
+<th>Dims</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>none (the attributes only)</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>/image</code></td>
+<td><code>image</code> (target), <code>weight</code> (weight)</td>
+<td><code>row</code> 81, <code>col</code> 81</td>
+</tr>
+<tr>
+<td><code>/psf</code></td>
+<td><code>psf</code> (constant)</td>
+<td><code>psf_row</code> 31, <code>psf_col</code> 31</td>
+</tr>
+</tbody>
+</table>
+<p>Steps 3 and 4 show the plain dataset first and then the changes for the tree. The fit and the
+results are the same.</p>
+<h2 id="3-upload-the-dataset">3. Upload the dataset<a class="headerlink" href="#3-upload-the-dataset" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open <strong>Datasets</strong> in the sidebar.</li>
+<li>Click <strong>New dataset</strong>.</li>
+<li>Type <code>slacs_j1627_f814w</code> in <strong>Name</strong>. Type a description, for example "HST F814W image of
+   the lens SDSS J1627-0053, with a noise map and a PSF".</li>
+<li>Click <strong>Create dataset</strong>. The upload panel opens.</li>
+<li>Click <strong>Choose files</strong> and select <code>slacs_j1627.nc</code>.</li>
+<li>Make sure that the format is <strong>netCDF (or HDF5 written by xarray)</strong>.</li>
+<li>Click <strong>Preview structure</strong>. The panel shows <strong>Structure of the file</strong>. Make sure that it
+   shows <code>image</code> and <code>weight</code> on <code>row</code> and <code>col</code>, and <code>psf</code> on <code>psf_row</code> and <code>psf_col</code>.</li>
+<li>Optional: type a message in <strong>Version message (optional)</strong>.</li>
+<li>Click <strong>Upload and ingest</strong>.</li>
+</ol>
+<p>The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
+Schema, Coordinates, Missingness, Preview and About. On <strong>Schema</strong>, <code>image</code> has the role
+<code>target</code>, <code>weight</code> the role <code>weight</code> and <code>psf</code> the role <code>constant</code>. <strong>Missingness</strong> shows no
+missing values.</p>
+<h3 id="31-the-tree-file">3.1 The tree file<a class="headerlink" href="#31-the-tree-file" title="Permanent link">&para;</a></h3>
+<p>To upload the tree file, do the same steps with these changes:</p>
+<ol>
+<li>Type <code>slacs_j1627_tree</code> in <strong>Name</strong>.</li>
+<li>Select <code>slacs_j1627_tree.nc</code>. The format is also <strong>netCDF (or HDF5 written by xarray)</strong>.</li>
+<li>Click <strong>Preview structure</strong>. The panel shows the groups <code>/image</code> and <code>/psf</code> with their
+   arrays. A file with groups becomes a tree of nodes.</li>
+<li>Do not open "Put this file in a node of a tree (optional)". The groups of the file become
+   the nodes below <code>/</code>.</li>
+<li>Click <strong>Upload and ingest</strong>.</li>
+</ol>
+<p>The version page of a tree dataset shows the tabs Nodes, Missingness and About. <strong>Nodes</strong>
+shows <code>/</code>, <code>/image</code> and <code>/psf</code>. Click <strong>Explore this node</strong> to see one node in the Data
+Explorer.</p>
+<div class="admonition note">
+<p class="admonition-title">A raw HDF5 file</p>
+<p>An HDF5 file from an instrument (written with h5py) has arrays but no dim names. Select
+the format <strong>raw HDF5 (map the arrays)</strong> and click <strong>Upload and list the arrays</strong>. In
+<strong>Variables</strong>, give each array a name, a node and its dims: <code>image</code> and <code>weight</code> in node
+<code>/image</code> on <code>row, col</code>, <code>psf</code> in node <code>/psf</code> on <code>psf_row, psf_col</code>. Set the roles
+<code>target</code>, <code>weight</code> and <code>constant</code>. Refer to
+<a href="../../../guides/tree-data/#raw-hdf5-inspect-then-map">Tree datasets</a> for the mapping file.</p>
+</div>
+<h2 id="4-build-the-spec">4. Build the spec<a class="headerlink" href="#4-build-the-spec" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open <strong>Build</strong> and click <strong>New spec</strong>. The editor opens with the geo MMM template.</li>
+<li>Set the <strong>Editor view</strong> to <strong>YAML</strong>.</li>
+<li>Open the <strong>Insert</strong> panel on the right.</li>
+<li>Open the <strong>Datasets</strong> section and select <code>slacs_j1627_f814w</code>. The toast "Dataset set" shows.</li>
+<li>Type <code>lens</code> in the search field. Under <strong>Models</strong>, select <strong>Gravitational lens from an
+   image</strong> (<code>sci.strong_lens@^1</code>). The toast "Model set" shows.</li>
+<li>Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.</li>
+<li>Click <strong>Validate</strong>. The status shows <code>valid</code>.</li>
+<li>Click <strong>Save spec</strong>. The spec gets its name <code>slacs-j1627-lens</code> from <code>metadata.name</code>.</li>
+</ol>
+<p>This is the full spec:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelSpec</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slacs-j1627-lens</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">astronomy</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset://astronomy/slacs_j1627_f814w@latest</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.strong_lens@^1</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="nt">pixel_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="nt">subsample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="nt">lens_light_components</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="nt">external_shear</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">noise_correlation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="nt">fit_noise_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="nt">theta_e_median</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">    </span><span class="nt">theta_e_log_sd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">    </span><span class="nt">n_starts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">    </span><span class="nt">source_grid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="nt">source_half_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.45</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="nt">curve_draws</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">    </span><span class="nt">z_lens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.2076</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">    </span><span class="nt">z_source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5241</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span>
+</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train_only</span>
+</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">    </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+</span><span id="__span-4-28"><a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="w">    </span><span class="nt">tune</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">400</span>
+</span><span id="__span-4-29"><a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="w">    </span><span class="nt">draws</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+</span><span id="__span-4-30"><a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="w">    </span><span class="nt">chains</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+</span><span id="__span-4-31"><a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">    </span><span class="nt">target_accept</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-4-32"><a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="nt">outputs</span><span class="p">:</span>
+</span><span id="__span-4-33"><a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="w">  </span><span class="nt">plots</span><span class="p">:</span>
+</span><span id="__span-4-34"><a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">core.convergence</span>
+</span><span id="__span-4-35"><a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">core.posterior_forest</span>
+</span><span id="__span-4-36"><a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.image_residuals</span>
+</span><span id="__span-4-37"><a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.ppc_image_grid</span>
+</span></code></pre></div>
+<p>The settings come from the suggested spec of the export (<code>slacs_j1627.yaml</code>). The spec adds
+some defaults so that you can see them. This table tells what each setting means for this
+image:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Meaning for this question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixel_scale</code></td>
+<td>0.05</td>
+<td>The pixel size of the drizzled ACS image in arcsec. All angles (θ_E, the radii) are in arcsec</td>
+</tr>
+<tr>
+<td><code>subsample</code></td>
+<td>2</td>
+<td>The model traces 2 × 2 rays through each pixel. The ring is thin, so one ray for each pixel is too coarse</td>
+</tr>
+<tr>
+<td><code>lens_light_components</code></td>
+<td>2</td>
+<td>Two Sérsic profiles for the light of the lens galaxy, as in the notebook. The second one is a broad halo</td>
+</tr>
+<tr>
+<td><code>external_shear</code></td>
+<td>true</td>
+<td>Add the tidal pull of the galaxies near the lens. The notebook finds a shear of about 0.026</td>
+</tr>
+<tr>
+<td><code>noise_correlation</code></td>
+<td>0.2</td>
+<td>Drizzle correlates the noise of neighbour pixels. The file attribute gives 0.23. With 0, the posterior sds are about 1.4 times too small (notebook "Failure 2")</td>
+</tr>
+<tr>
+<td><code>fit_noise_scale</code></td>
+<td>true</td>
+<td>Multiply the noise map by a free factor. The notebook finds 0.885: the noise map is too large by 13%</td>
+</tr>
+<tr>
+<td><code>theta_e_median</code>, <code>theta_e_log_sd</code></td>
+<td>1.0, 0.5</td>
+<td>The log-normal prior of θ_E: 1 arcsec, times or divided by about 1.6</td>
+</tr>
+<tr>
+<td><code>n_starts</code></td>
+<td>5</td>
+<td>The starts of the search for the mode. Lens posteriors have wrong modes (notebook part C)</td>
+</tr>
+<tr>
+<td><code>source_grid</code>, <code>source_half_width</code></td>
+<td>30, 0.45</td>
+<td>The grid of the <code>source</code> output: 30 × 30 pixels over ±0.45 arcsec around the source</td>
+</tr>
+<tr>
+<td><code>curve_draws</code></td>
+<td>100</td>
+<td>The posterior draws that get a critical curve and a caustic</td>
+</tr>
+<tr>
+<td><code>z_lens</code>, <code>z_source</code></td>
+<td>0.2076, 0.5241</td>
+<td>The SLACS redshifts. With them, the model gives <code>einstein_mass</code> (flat ΛCDM, <code>h0</code> 70, <code>omega_m</code> 0.3)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>fit.mode: train_only</code> fits on all of the pixels. Without it, the validator shows the
+  warning <code>SPLIT_INVALID</code> ("There is no holdout for the evaluation").</li>
+<li><code>target_accept: 0.9</code> is the value of the notebook. At 0.8 the notebook got some divergences.</li>
+<li>The spec has no <code>evaluate</code> block. Metrics need a holdout (<code>data.split</code>), and this fit uses
+  all of the pixels. The recipe of step 8 measures the in-sample coverage.</li>
+<li>The model has no pointwise log likelihood (<code>loo_valid</code> is false), so <code>elpd_loo</code> is not
+  available.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">The plots</p>
+<p>The fit makes only the plots in <code>outputs.plots</code>. The model declares <code>core.convergence</code>,
+<code>core.posterior_forest</code> and <code>sci.field_map</code>. The spec keeps the first two and adds the two
+image checks <code>sci.image_residuals</code> and <code>sci.ppc_image_grid</code>. In the <strong>Insert</strong> panel, the
+<strong>Plots</strong> section adds a plot for you.</p>
+<p>Do not add <code>sci.field_map</code>. The fit draws that plot from the first posterior
+variable with two dims, <code>e_light</code>, and not from the image. To see the predicted image as
+a map, use the <strong>Fields</strong> section of the Model Explorer (step 6.3).</p>
+</div>
+<h3 id="41-the-spec-for-the-tree-dataset">4.1 The spec for the tree dataset<a class="headerlink" href="#41-the-spec-for-the-tree-dataset" title="Permanent link">&para;</a></h3>
+<p>For the tree dataset, change the <code>data</code> block and add one setting:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset://astronomy/slacs_j1627_tree@latest</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">nodes</span><span class="p">:</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="nv">/image</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.strong_lens@^1</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">psf_source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tree</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="c1"># ... the other settings as above</span>
+</span></code></pre></div>
+<ul>
+<li><code>data.nodes</code> selects the node <code>/image</code>. The pipeline reads <code>image</code> and <code>weight</code> from it. In
+  the <strong>Insert</strong> panel, the section <strong>Tree nodes</strong> adds a node. The toast "Node added" shows.</li>
+<li><code>psf_source: tree</code> tells the model to read the PSF from the node <code>/psf</code>. The flat input then
+  does not need <code>psf</code>.</li>
+<li>If you do not set <code>psf_source: tree</code>, the validator shows three <code>SCHEMA_INVALID</code> errors, for
+  example "the model needs variable 'psf', but the pipeline does not make it". Another
+  solution is to also select the node <code>/psf</code> in <code>data.nodes</code>.</li>
+</ul>
+<h2 id="5-fit-and-watch-the-run">5. Fit and watch the run<a class="headerlink" href="#5-fit-and-watch-the-run" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Click <strong>Fit</strong>. The app opens the run page.</li>
+<li>The badge shows <strong>Live</strong> while the run sends events.</li>
+<li>The <strong>Progress</strong> card shows the steps of the fit. The <strong>Events</strong> card shows the
+   stages of the run and, at the end, the diagnostics. The <strong>Logs</strong> card stays empty when
+   the model writes no output.</li>
+<li>When the run is done, the <strong>Result</strong> card shows <strong>Inspect
+   model://astronomy/slacs-j1627-lens@v1</strong>. Click it.</li>
+</ol>
+<p>The fit has four stages. The progress messages tell you the stage:</p>
+<ol>
+<li>"finding the mode in stages". The model fits the lens light first, with the ring masked.
+   It reads the Einstein radius off the ring in the image without the lens light. Then it
+   starts the full model from <code>n_starts</code> source positions and keeps the best. The notebook
+   does the same staged start in part C, because starts from random prior draws end in wrong
+   modes.</li>
+<li>"sampling the posterior". NUTS samples near the mode. A Laplace approximation at the mode
+   removes the strong correlations before the warm-up. That is the job of nutpie's low-rank
+   mass matrix in the notebook.</li>
+<li>"drawing the light amplitudes". The four brightness amplitudes are linear, so the fit
+   integrates them out. After the fit, each draw gets its amplitudes from their exact
+   conditional distribution.</li>
+<li>"tracing the critical curves". The model calculates the critical curve and the caustic of
+   <code>curve_draws</code> draws.</li>
+</ol>
+<p>After the fit, the run calculates the plots and the explorer views. You can also find the run
+under <strong>Runs</strong>. Filter it with the kind <code>fit</code>.</p>
+<h2 id="6-read-the-result">6. Read the result<a class="headerlink" href="#6-read-the-result" title="Permanent link">&para;</a></h2>
+<p>On the model version page, the tabs are <strong>Overview</strong>, <strong>Diagnostics</strong>, <strong>Plots</strong>, <strong>Data
+tree</strong>, <strong>Preprocessing</strong> and <strong>Provenance</strong>. Click <strong>Explore</strong> to open the Model Explorer.</p>
+<h3 id="61-can-you-trust-the-fit">6.1 Can you trust the fit?<a class="headerlink" href="#61-can-you-trust-the-fit" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Diagnostics</strong> in the Model Explorer (group "Can you trust it?").</p>
+<p>Expect these results:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Value</th>
+<th>Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RHAT</code></td>
+<td>1.009</td>
+<td>"The independent sampler runs agree with each other."</td>
+</tr>
+<tr>
+<td><code>ESS_BULK</code></td>
+<td>352</td>
+<td>"There is too little independent information about 'n_light' (about 352 effective draws). The averages are not stable."</td>
+</tr>
+<tr>
+<td><code>ESS_TAIL</code></td>
+<td>309</td>
+<td>The same message for the intervals</td>
+</tr>
+<tr>
+<td><code>DIVERGENCES</code></td>
+<td>6</td>
+<td>"The sampler had problems in 6 of 2400 steps. The results can be biased."</td>
+</tr>
+</tbody>
+</table>
+<p>These warnings agree with the notebook. The notebook had one divergence in 2,400 draws and
+an ESS of "several hundred" for the index of the second light profile, <code>n_light[2]</code>. That
+profile is at the lower limit of its index (0.5, a Gaussian). It is a broad halo of the lens
+light, and its parameters are not of interest. The parameters of the lens have a high ESS.
+If you want fewer warnings, fit with <code>tune: 1000</code> and <code>draws: 1000</code>.</p>
+<p>On the model version page, the <strong>Plots</strong> tab has <code>core.convergence</code>. Its caption names the
+parameters that did not converge: <code>n_light[2]</code> and <code>e_light[1, e1]</code>.</p>
+<h3 id="62-what-did-the-model-learn">6.2 What did the model learn?<a class="headerlink" href="#62-what-did-the-model-learn" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Parameters</strong> (group "What it learned"). The posterior has these variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>theta_E</code></td>
+<td>The Einstein radius in arcsec</td>
+</tr>
+<tr>
+<td><code>e_mass</code> (<code>e1</code>, <code>e2</code>)</td>
+<td>The ellipticity of the mass</td>
+</tr>
+<tr>
+<td><code>xy_mass</code> (<code>x</code>, <code>y</code>)</td>
+<td>The centre of the mass in arcsec, from the centre of the cutout</td>
+</tr>
+<tr>
+<td><code>shear</code> (<code>e1</code>, <code>e2</code>)</td>
+<td>The external shear</td>
+</tr>
+<tr>
+<td><code>xy_light</code>, <code>R_light</code>, <code>n_light</code>, <code>e_light</code></td>
+<td>The centre, the half-light radii, the Sérsic indices and the ellipticities of the lens light</td>
+</tr>
+<tr>
+<td><code>R_src</code>, <code>n_src</code>, <code>e_src</code>, <code>xy_src</code></td>
+<td>The half-light radius, the Sérsic index, the ellipticity and the position of the source</td>
+</tr>
+<tr>
+<td><code>noise_scale</code></td>
+<td>The factor on the noise map</td>
+</tr>
+<tr>
+<td><code>amplitude</code></td>
+<td>The brightness of each light component and of the sky</td>
+</tr>
+</tbody>
+</table>
+<p>The posterior mean and sd of the main parameters, with the notebook values:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>This fit</th>
+<th>Notebook</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>theta_E</code></td>
+<td>1.2230 ± 0.0011</td>
+<td>1.2231 ± 0.0012</td>
+<td>The Einstein radius (arcsec)</td>
+</tr>
+<tr>
+<td><code>e_mass</code> <code>e1</code></td>
+<td>−0.087 ± 0.004</td>
+<td>−0.087</td>
+<td>The mass is flat: axis ratio q ≈ 0.84</td>
+</tr>
+<tr>
+<td><code>shear</code> <code>e1</code>, <code>e2</code></td>
+<td>−0.026, 0.005</td>
+<td>about 0.026 in total</td>
+<td>A small external shear</td>
+</tr>
+<tr>
+<td><code>xy_mass</code></td>
+<td>(−0.002, −0.006)</td>
+<td>within 0.01 of the light</td>
+<td>The mass centre is on the light centre, less than a fifth of a pixel away</td>
+</tr>
+<tr>
+<td><code>R_src</code></td>
+<td>0.138 ± 0.004</td>
+<td>0.14</td>
+<td>The half-light radius of the source (arcsec)</td>
+</tr>
+<tr>
+<td><code>n_src</code></td>
+<td>0.87 ± 0.04</td>
+<td>0.87</td>
+<td>The Sérsic index of the source: almost an exponential disc</td>
+</tr>
+<tr>
+<td><code>xy_src</code> <code>y</code></td>
+<td>−0.155</td>
+<td>0.15 south</td>
+<td>The source is 0.15 arcsec south of the lens centre</td>
+</tr>
+<tr>
+<td><code>n_light[2]</code></td>
+<td>0.52 ± 0.01</td>
+<td>0.5 (at the limit)</td>
+<td>The second light profile is a broad halo</td>
+</tr>
+<tr>
+<td><code>noise_scale</code></td>
+<td>0.884 ± 0.008</td>
+<td>0.885</td>
+<td>The noise map is too large by 13%</td>
+</tr>
+</tbody>
+</table>
+<p>The model does not force the mass centre onto the light centre, but the data put it there.
+The Laplace approximation at the mode gives an sd of 0.00114 arcsec for <code>theta_E</code>. NUTS gives
+almost the same value. The fit stores it in the learned values as <code>laplace_sd_theta_E</code>.</p>
+<h3 id="63-the-images-fields">6.3 The images (Fields)<a class="headerlink" href="#63-the-images-fields" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Fields</strong> (group "What it learned"). The text says "The model has 2 outputs on a
+grid." Select the output in <strong>Output</strong>:</p>
+<ul>
+<li><code>model_image</code> is the predicted image on <code>row</code> and <code>col</code>, in a grey scale. Select
+  <strong>Statistic</strong> <strong>Mean</strong>. It must look like the HST image: the lens galaxy at the centre and
+  the ring around it. <strong>Std. dev.</strong> is small everywhere. <strong>Draws</strong> and <strong>Play the draws</strong>
+  show that the draws are almost the same.</li>
+<li><code>source</code> is the source galaxy without the lens, on the source-plane grid
+  (<code>source_row</code>, <code>source_col</code>). This is the notebook's "unlensed galaxy". <strong>Mean</strong> shows a
+  small, smooth galaxy. <strong>Mean ÷ sd</strong> shows where its shape is certain.</li>
+</ul>
+<p>Move the pointer over the map to read the values of one pixel.</p>
+<p>On the model version page, open <strong>Plots</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Plot</th>
+<th>What to look for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core.convergence</code></td>
+<td>R-hat near 1. A low ESS only for the second light profile (step 6.1)</td>
+</tr>
+<tr>
+<td><code>core.posterior_forest</code></td>
+<td>Very narrow intervals for <code>theta_E</code>, <code>xy_mass</code> and <code>e_mass</code>. Wider intervals for the source and the second light profile</td>
+</tr>
+<tr>
+<td><code>sci.image_residuals</code></td>
+<td>The real image, the mean prediction, the residual and the normalised residual. The normalised residual must look like noise with sd near 1, with no ring structure. A wrong lens leaves a pattern along the ring</td>
+</tr>
+<tr>
+<td><code>sci.ppc_image_grid</code></td>
+<td>The real image next to predicted images with noise, on one colour scale. You must not see which image is the real one</td>
+</tr>
+</tbody>
+</table>
+<p>In this fit, the caption of <code>sci.image_residuals</code> says: "The normalised residuals have an sd
+of 1.07 and 7% are outside ±2." A perfect model gives 1 and 5%. Thus the model is close, but
+it leaves a small structure. Look at the residual panel for structure along the ring. In this
+fit, about 88% of the pixels are in their 90% predictive range.</p>
+<h3 id="64-how-much-mass-is-in-the-ring">6.4 How much mass is in the ring?<a class="headerlink" href="#64-how-much-mass-is-in-the-ring" title="Permanent link">&para;</a></h3>
+<p><code>einstein_radius</code> and <code>einstein_mass</code> are outputs of a score. Do step 7 to get them. These are
+the results:</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Mean</th>
+<th>90% interval</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>einstein_radius</code> (arcsec)</td>
+<td>1.2230</td>
+<td>1.2212 to 1.2249</td>
+<td>1.2231 ± 0.0012</td>
+</tr>
+<tr>
+<td><code>einstein_mass</code> (solar masses)</td>
+<td>2.259 × 10¹¹</td>
+<td>2.252 to 2.265 × 10¹¹</td>
+<td>2.258 ± 0.004 × 10¹¹</td>
+</tr>
+</tbody>
+</table>
+<p>The published values are 1.23 arcsec (Bolton et al. 2008, with a 2% error) and 1.21 arcsec,
+2.22 × 10¹¹ solar masses (Koopmans et al. 2006). The fit is between the two. The two published
+values are 0.02 arcsec apart. That is about 17 posterior sds. Thus the posterior range is not
+the real error of θ_E.</p>
+<p><strong>The decision.</strong> Report θ_E and the mass inside it. These two numbers are robust: the
+mass-sheet degeneracy does not change them. Do not report the posterior range alone. Use an
+error of about 2% from the model choices, as the SLACS papers do. Do not use this fit for the
+slope of the mass profile or the true size of the source. One image cannot give them.</p>
+<h2 id="7-score-the-model">7. Score the model<a class="headerlink" href="#7-score-the-model" title="Permanent link">&para;</a></h2>
+<h3 id="71-the-einstein-radius-and-the-mass">7.1 The Einstein radius and the mass<a class="headerlink" href="#71-the-einstein-radius-and-the-mass" title="Permanent link">&para;</a></h3>
+<ol>
+<li>On the model version page, click <strong>Score</strong>.</li>
+<li>In <strong>What do you want to do?</strong>, select <strong>Predict</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>.
+   Then select <code>slacs_j1627_f814w</code>, the dataset of the fit.</li>
+<li>Open <strong>Advanced</strong>. Set <strong>Seed (optional)</strong> to <code>80</code>. Type
+   <code>einstein_radius, einstein_mass</code> in <strong>Variables (optional)</strong>.</li>
+<li>Click <strong>Predict</strong>.</li>
+</ol>
+<p>The <strong>Results</strong> card shows the mean and the 90% interval (<code>hdi_90</code>) of each output.</p>
+<p>This is the request that the page sends (<code>POST /v1/models/{model_id}/versions/{v}:score</code>):</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://astronomy/slacs-j1627-lens@latest"</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://astronomy/slacs_j1627_f814w@latest"</span><span class="p">,</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"einstein_radius"</span><span class="p">,</span><span class="w"> </span><span class="s2">"einstein_mass"</span><span class="p">]</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">80</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="72-simulated-images">7.2 Simulated images<a class="headerlink" href="#72-simulated-images" title="Permanent link">&para;</a></h3>
+<p><code>simulate</code> makes new images from the posterior: each draw gives an image with correlated
+noise, at the noise level of the fit.</p>
+<ol>
+<li>In <strong>What do you want to do?</strong>, select <strong>Simulate</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>.
+   Then select <code>slacs_j1627_f814w</code>, the dataset of the fit.</li>
+<li>Open <strong>Advanced</strong>. Set <strong>Quantity</strong> to <strong>Predictive</strong>.</li>
+<li>Type <code>model_image</code> in <strong>Variables (optional)</strong>. Set <strong>Draws</strong> to <code>20</code>.</li>
+<li>Click <strong>Simulate</strong>.</li>
+</ol>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://astronomy/slacs-j1627-lens@latest"</span><span class="p">,</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"simulate"</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://astronomy/slacs_j1627_f814w@latest"</span><span class="p">,</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predictive"</span><span class="p">,</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="nt">"draws"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"model_image"</span><span class="p">]</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">80</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The <strong>Results</strong> card shows the mean and the 90% interval of each pixel, and the result has 20
+simulated images. The mean is the predicted image. In this fit, the sd of the simulated
+images is about 0.011 electron/s for each pixel: the noise of the image plus the small spread
+of the posterior. Compare one simulated image with the real image. It must look like a second
+exposure of the same lens.</p>
+<ul>
+<li>To get a part of the image, add <code>"select": {"row": [40, 41, 42], "col": [40, 41, 42]}</code>.</li>
+<li><code>"kind": "predictive"</code> in a <code>predict</code> request also adds the noise.</li>
+<li>The score always uses the PSF that the fit stored. The tree dataset is not necessary to
+  score.</li>
+</ul>
+<p>If you promote the version to an endpoint, <strong>Integrations</strong> → the endpoint → <strong>Schema and Try
+it</strong> sends the same requests.</p>
+<h2 id="8-run-a-workflow-recipe">8. Run a workflow recipe<a class="headerlink" href="#8-run-a-workflow-recipe" title="Permanent link">&para;</a></h2>
+<p>The recipe <code>sci_image_model_check</code> (<strong>Image model check</strong>) is for models that predict an
+image. It fits the model,
+makes the residual maps and the image grid, does a posterior predictive check and writes a
+report.</p>
+<ol>
+<li>Set the header to <strong>Guided</strong> and open <strong>Recipes</strong>. In <strong>Expert</strong> mode, open <strong>Workflows</strong>
+   and then the <strong>Templates</strong> tab.</li>
+<li>Find the card <strong>Image model check</strong> and click <strong>Run on my data</strong>.</li>
+<li>In <strong>1. Your data</strong>, select <code>slacs_j1627_f814w</code> in <strong>Dataset</strong>.</li>
+<li>In <strong>2. What the recipe needs to know</strong>, type <code>sci.strong_lens@^1</code> in <strong>Model</strong>.</li>
+<li>Open <strong>Fine-tune (optional: the defaults are correct for most data)</strong>. Set these values:<ul>
+<li><strong>Settings</strong>: the settings of step 4 as JSON, for example
+  <code>{"pixel_scale": 0.05, "subsample": 2, "lens_light_components": 2, "noise_correlation": 0.2, "z_lens": 0.2076, "z_source": 0.5241}</code>.</li>
+<li><strong>Draws</strong> <code>600</code>, <strong>Tune</strong> <code>400</code> and <strong>Seed</strong> <code>80</code>.</li>
+<li><strong>Var</strong>: <code>model_image</code>. The model has two outputs on a grid, and the check is for the
+  image.</li>
+</ul>
+</li>
+<li>Click <strong>Run this recipe</strong>.</li>
+</ol>
+<p>The monitor of the run has the tabs <strong>Graph</strong>, <strong>Steps</strong>, <strong>Decisions</strong>, <strong>Outputs</strong> and
+<strong>Events</strong>. <strong>Outputs</strong> shows the parameter table, the two plots, the coverage of the 50% and
+90% ranges and the report.</p>
+<p>The recipe <code>bayes_workflow_audit</code> (<strong>Bayesian workflow audit</strong>) does all the checks of a
+Bayesian workflow on any model with draws: a convergence gate, the posterior predictive check,
+<code>sensitivity.prior</code> and <code>recovery.simulated</code>. Run it in the same way with the model
+<code>sci.strong_lens@^1</code>. Set <strong>Prior predictive</strong> to <code>{}</code>, because this model does not sample its
+priors. The gate needs the smallest bulk ESS at or above <strong>Min ess</strong> (400). In step 6, the bulk
+ESS of <code>n_light</code> is 352, so the default gate can stop the audit. Increase <strong>Draws</strong>, or set
+<strong>Min ess</strong> to <code>300</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The checks of <code>bayes_workflow_audit</code> that fit the model again (<code>sensitivity.prior</code> and
+<code>recovery.simulated</code>) each take as long as one fit. With 20 simulated datasets, the audit
+of the lens takes some hours. Set <strong>N sims</strong> to <code>5</code> for a first run.</p>
+</div>
+<h2 id="9-the-same-with-the-cli-and-the-python-client">9. The same with the CLI and the Python client<a class="headerlink" href="#9-the-same-with-the-cli-and-the-python-client" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mapi<span class="w"> </span>use<span class="w"> </span>&lt;tenant&gt;/astronomy
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload<span class="w"> </span>slacs_j1627.nc<span class="w"> </span>--name<span class="w"> </span>slacs_j1627_f814w
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>mapi<span class="w"> </span>check<span class="w"> </span>slacs-j1627-lens.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">     </span><span class="c1"># the server's static validation</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>mapi<span class="w"> </span>fit<span class="w"> </span>slacs-j1627-lens.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">       </span><span class="c1"># create or revise the spec, fit, follow</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>slacs-j1627-lens<span class="w"> </span>-s<span class="w"> </span>params<span class="w"> </span>-s<span class="w"> </span>diagnostics
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>lens-score.yaml<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="s">apiVersion: mapi/v1</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="s">kind: ScoreRequest</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="s">model: model://astronomy/slacs-j1627-lens@latest</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="s">mode: predict</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="s">data: dataset://astronomy/slacs_j1627_f814w@latest</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="s">output: {kind: expected, summary: [mean, hdi_90], vars: [einstein_radius, einstein_mass]}</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="s">seed: 80</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="s">EOF</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>mapi<span class="w"> </span>score<span class="w"> </span>lens-score.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--model<span class="w"> </span>&lt;model<span class="w"> </span>id&gt;<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span><span class="w"> </span>-o<span class="w"> </span>lens.zarr.zip
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>init<span class="w"> </span>sci_image_model_check<span class="w"> </span>--name<span class="w"> </span>lens-check
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>lens-check.yaml<span class="w"> </span>-m<span class="w"> </span><span class="s2">"E80 image check"</span>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>lens-check<span class="w"> </span>-i<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://astronomy/slacs_j1627_f814w@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="w">  </span>-p<span class="w"> </span><span class="nv">model</span><span class="o">=</span>sci.strong_lens@^1<span class="w"> </span>-p<span class="w"> </span><span class="nv">var</span><span class="o">=</span>model_image<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'settings={"pixel_scale": 0.05, "subsample": 2, "lens_light_components": 2, "noise_correlation": 0.2, "z_lens": 0.2076, "z_source": 0.5241}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="w">  </span>-p<span class="w"> </span><span class="nv">draws</span><span class="o">=</span><span class="m">600</span><span class="w"> </span>-p<span class="w"> </span><span class="nv">tune</span><span class="o">=</span><span class="m">400</span><span class="w"> </span>-p<span class="w"> </span><span class="nv">seed</span><span class="o">=</span><span class="m">80</span><span class="w"> </span>--watch
+</span></code></pre></div>
+<p>The tree file uploads in the same way:
+<code>mapi datasets upload slacs_j1627_tree.nc --name slacs_j1627_tree</code>. The ingest makes one
+node for each group. A local <code>mapi check spec.yaml --data &lt;file&gt;.tree.zip</code> reads the tree
+schema of a tree dataset.</p>
+<p>The CLI has no <code>models</code> command. Take the model id from the run (<code>mapi runs get &lt;run&gt;</code>)
+or from <strong>Models</strong> in the web app.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="s2">"&lt;tenant&gt;/astronomy"</span><span class="p">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">version</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="s2">"slacs_j1627.nc"</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="s2">"slacs_j1627_f814w"</span><span class="p">)</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">version</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"slacs-j1627-lens.yaml"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">spec_yaml</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">revision</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">spec_yaml</span><span class="p">)</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">revision</span><span class="o">.</span><span class="n">spec_id</span><span class="p">,</span> <span class="n">revision</span><span class="o">.</span><span class="n">revision</span><span class="p">)</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">raise_on_failure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="n">model</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">list</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"slacs-j1627-lens"</span><span class="p">)</span>
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="n">result</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">score</span><span class="p">(</span>
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    <span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="n">model</span><span class="o">.</span><span class="n">latest_version</span><span class="p">,</span>
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    <span class="p">{</span>
+</span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>        <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"model://astronomy/slacs-j1627-lens@latest"</span><span class="p">,</span>
+</span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>        <span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        <span class="s2">"data"</span><span class="p">:</span> <span class="s2">"dataset://astronomy/slacs_j1627_f814w@latest"</span><span class="p">,</span>
+</span><span id="__span-9-21"><a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>        <span class="s2">"output"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"summary"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span> <span class="s2">"hdi_90"</span><span class="p">],</span> <span class="s2">"vars"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"einstein_radius"</span><span class="p">,</span> <span class="s2">"einstein_mass"</span><span class="p">]},</span>
+</span><span id="__span-9-22"><a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>        <span class="s2">"seed"</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span>
+</span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="p">},</span>
+</span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="p">)</span>
+</span><span id="__span-9-25"><a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">tree</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span>  <span class="c1"># an xr.DataTree (needs the `xarray` extra)</span>
+</span><span id="__span-9-26"><a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">"einstein_radius"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">summary</span><span class="p">[</span><span class="s2">"einstein_mass"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>api.datasets.upload</code> also takes an <code>xr.DataTree</code>. Thus you can upload the tree of step
+2.1 without a file: <code>api.datasets.upload(tree, dataset="slacs_j1627_tree")</code>.</p>
+</div>
+</div>
+</div>
+<h2 id="10-differences-from-the-notebook">10. Differences from the notebook<a class="headerlink" href="#10-differences-from-the-notebook" title="Permanent link">&para;</a></h2>
+<p>The port keeps the forward model and the posterior of notebook part C, and the mass of part
+F. It leaves out these parts:</p>
+<ul>
+<li><strong>The tests of the deflection with automatic differentiation (part B).</strong> The package tests
+  of the plugin do the same checks.</li>
+<li><strong>The prior predictive check (part B).</strong> The model does not sample its priors. <code>simulate</code>
+  gives images from the posterior instead.</li>
+<li><strong>The failures (part C).</strong> You can do "Failure 2" again: fit with <code>noise_correlation: 0</code> and
+  compare the sd of <code>theta_E</code>. "Failure 1" (no PSF) needs a dataset with a 1 × 1 PSF.</li>
+<li><strong>The full whitening of the drizzle noise.</strong> The notebook whitens the noise in Fourier space
+  with the measured correlation. The model uses one lag-one correlation along the rows and the
+  columns.</li>
+<li><strong>The pixelated source and the Bayesian evidence (part D).</strong> The <code>source</code> output is the
+  parametric Sérsic source of each draw on a grid, not a free pixel source. Thus the model
+  does not give the second value θ_E = 1.2253 arcsec of the notebook.</li>
+<li><strong>The mass-sheet degeneracy (part E).</strong> The platform does not show it. The decision of step
+  6.4 keeps its result: use θ_E and the mass inside it, not the slope.</li>
+<li><strong>The velocity dispersion (part F).</strong> The model does not give σ_SIE (273 km/s in the
+  notebook).</li>
+<li><strong>The plots of the critical curves and the caustics.</strong> The fit stores them in the derived
+  group <code>critical_curves</code>, but no plot recipe draws them yet.</li>
+</ul>
+<p><strong>Next steps:</strong></p>
+<ul>
+<li>Fit the spec again with <code>external_shear: false</code> and compare the shape of the mass with the
+  published shear-free models (axis ratio 0.91 to 0.92).</li>
+<li>Fit another SLACS lens. Make the same three variables (<code>image</code>, <code>weight</code>, <code>psf</code>) from its
+  MAST image (notebook "Try it yourself", item 2).</li>
+<li>Read the <a href="../../../reference/models/">model reference</a> for the other science models.</li>
+<li>Read <a href="../../../guides/tree-data/">Tree datasets</a> for more about nodes, HDF5 and files with
+  several nodes.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../e79-cmb-lmc-mask/" class="md-footer__link md-footer__link--prev" aria-label="Previous: E79 CMB behind the LMC mask">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                E79 CMB behind the LMC mask
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../e81-wind-and-activity/" class="md-footer__link md-footer__link--next" aria-label="Next: E81 Wind and animal activity">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                E81 Wind and animal activity
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Documentation CC BY 4.0 · SDK Apache-2.0 · Platform AGPLv3 or commercial
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+      
+    
+  </body>
+</html>

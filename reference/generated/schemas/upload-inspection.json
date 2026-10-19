@@ -1,0 +1,230 @@
+{
+  "$defs": {
+    "InspectedArray": {
+      "description": "One array of an inspected upload (from its metadata only; no data is read).\n\n``dims_hint`` comes from the file's own dim metadata where there is some (HDF5\n``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).",
+      "examples": [
+        {
+          "attrs": {
+            "units": "counts"
+          },
+          "chunks": [
+            64,
+            64
+          ],
+          "dims_hint": null,
+          "dtype": "float32",
+          "filters": [
+            "deflate",
+            "shuffle"
+          ],
+          "path": "/observations/image",
+          "shape": [
+            64,
+            64
+          ]
+        }
+      ],
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 64,
+          "propertyNames": {
+            "maxLength": 256
+          },
+          "title": "Attrs",
+          "type": "object"
+        },
+        "chunks": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chunks"
+        },
+        "dims_hint": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dims Hint"
+        },
+        "dtype": {
+          "maxLength": 64,
+          "title": "Dtype",
+          "type": "string"
+        },
+        "filters": {
+          "items": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Filters",
+          "type": "array"
+        },
+        "path": {
+          "maxLength": 1025,
+          "title": "Path",
+          "type": "string"
+        },
+        "shape": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 64,
+          "title": "Shape",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "dtype"
+      ],
+      "title": "InspectedArray",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/upload-inspection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What an ``inspect`` run found in an upload (``inspection.json``; M4): its groups and\narrays, so a raw HDF5 file can be mapped (:class:`Hdf5Mapping`) and a NetCDF/zarr file's\ngroups previewed before ingest.",
+  "examples": [
+    {
+      "arrays": [
+        {
+          "attrs": {
+            "units": "counts"
+          },
+          "chunks": [
+            64,
+            64
+          ],
+          "dims_hint": null,
+          "dtype": "float32",
+          "filters": [
+            "deflate",
+            "shuffle"
+          ],
+          "path": "/observations/image",
+          "shape": [
+            64,
+            64
+          ]
+        },
+        {
+          "dtype": "float64",
+          "path": "/psf/kernel",
+          "shape": [
+            9,
+            9
+          ]
+        }
+      ],
+      "format": "hdf5",
+      "groups": [
+        "/",
+        "/observations",
+        "/psf"
+      ],
+      "size_bytes": 2097152,
+      "truncated": false,
+      "warnings": []
+    }
+  ],
+  "properties": {
+    "arrays": {
+      "items": {
+        "$ref": "#/$defs/InspectedArray"
+      },
+      "maxItems": 2000,
+      "title": "Arrays",
+      "type": "array"
+    },
+    "format": {
+      "enum": [
+        "csv",
+        "parquet",
+        "mff",
+        "zarr_zip",
+        "netcdf",
+        "hdf5"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "groups": {
+      "items": {
+        "maxLength": 1025,
+        "type": "string"
+      },
+      "maxItems": 10000,
+      "title": "Groups",
+      "type": "array"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "title": "Size Bytes",
+      "type": "integer"
+    },
+    "truncated": {
+      "default": false,
+      "title": "Truncated",
+      "type": "boolean"
+    },
+    "warnings": {
+      "items": {
+        "maxLength": 2000,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "size_bytes"
+  ],
+  "title": "UploadInspection",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

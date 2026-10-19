@@ -1,0 +1,6788 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit, score and share labelled multi-dimensional models — safely.">
+      
+      
+        <meta name="author" content="Matthew Reda">
+      
+      
+      
+        <link rel="prev" href="../e07-oklahoma-earthquakes/">
+      
+      
+        <link rel="next" href="../e19-protein-signalling/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>E18 Lip cancer disease map - modeling-api</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#e18-scottish-lip-cancer-disease-map-icarbym2" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="modeling-api" class="md-header__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            modeling-api
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              E18 Lip cancer disease map
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../guides/web-ui/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../reference/spec-format/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../project/licensing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="modeling-api" class="md-nav__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    modeling-api
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../getting-started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart: zero to first model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/first-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runs and executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimise-a-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../complex-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complex workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Science models from pymc-challenges
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_8" id="__nav_3_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Science models from pymc-challenges
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e07-oklahoma-earthquakes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E07 Earthquakes in Oklahoma
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E18 Lip cancer disease map
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E18 Lip cancer disease map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the dataset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the spec
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-graph-that-the-model-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The graph that the model used
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-what-the-model-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 What the model learned
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-the-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 The maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-the-decision-and-the-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 The decision and the numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e19-protein-signalling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E19 Protein signalling graph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e21-law-firm-network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E21 Law-firm network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e23-phylogenetic-regression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E23 Primate phylogenetic regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e31-indian-buffet-digits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E31 Indian buffet process on digits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e50-scratch-assay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E50 Scratch assay PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e51-heat-plate-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E51 Heat plate design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e58-storm-localisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E58 STORM localisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e60-traction-force/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E60 Traction force microscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e61-turing-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E61 Turing patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e77-colour-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E77 Colour naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e79-cmb-lmc-mask/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E79 CMB behind the LMC mask
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e80-strong-lens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E80 Strong gravitational lens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e81-wind-and-activity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E81 Wind and animal activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../concepts/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/labelled-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labelled data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines and stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/representations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Representations and summaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/bundles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bundles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/coord-plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Using the platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Expert web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/first-model-in-the-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/python-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/tree-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/choosing-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelling
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modelling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/port-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port a model in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a step or model plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bring a PyMC model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tabular models (scikit-learn, xgboost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/mmm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/time-series/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting and sequential models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/conformance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conformance corpus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/spec-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/spec-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/steps-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Steps catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/models-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots and the sanitizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/plots-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot recipes catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/run-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/gcs-shim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS shim
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI and Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/server-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web app and plot sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../reference/api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_25">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sdk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_pymc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sklearn
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/local-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local, without Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Container images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m35-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../roadmap/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/platform-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The local platform (v0.2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud and multi-tenant (v0.3)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/guided-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode and integrations (v0.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins and MCP (v0.6)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the dataset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the spec
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-the-graph-that-the-model-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 The graph that the model used
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-what-the-model-learned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 What the model learned
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-the-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 The maps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-the-decision-and-the-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 The decision and the numbers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="e18-scottish-lip-cancer-disease-map-icarbym2">E18 Scottish lip cancer disease map (ICAR/BYM2)<a class="headerlink" href="#e18-scottish-lip-cancer-disease-map-icarbym2" title="Permanent link">&para;</a></h1>
+<p>This tutorial does the main analysis of the pymc-challenges notebook
+<code>E18_areal_models_icar_bym2.py</code> in the web app. You use the model <code>sci.areal_bym2@1</code>. You do
+not write PyMC code.</p>
+<p><strong>You need:</strong></p>
+<ul>
+<li>The platform (start it with <code>make dev</code>) and a project that you can upload datasets to. This
+  tutorial uses the project <code>epidemiology</code>. If your project has a different name, change the
+  project part of each <code>dataset://</code> and <code>model://</code> reference.</li>
+<li>A local copy of pymc-challenges. The export command reads the file
+  <code>data/scotland_lip.geojson</code>.</li>
+<li>About 15 minutes. One fit takes less than one minute of sandbox time.</li>
+</ul>
+<h2 id="1-the-question">1. The question<a class="headerlink" href="#1-the-question" title="Permanent link">&para;</a></h2>
+<p>Between 1975 and 1980, 536 men in Scotland got lip cancer. For each of the 56 districts, you
+know the observed count and an expected count. The expected count is the count of the district
+if each age group had the national rate. The ratio of the two is the standardised morbidity
+ratio (SMR). The SMR is a raw estimate of the relative risk of the district.</p>
+<p>The notebook asks two questions:</p>
+<ol>
+<li><strong>Where</strong> is the risk really high, when you include the noise of small counts?</li>
+<li><strong>Does outdoor work explain the risk?</strong> <code>AFF</code> is the percentage of the workers in
+   agriculture, fishing and forestry. Lip cancer has a relation to sunlight.</li>
+</ol>
+<p>Small districts have few cases, so their SMRs have much noise. The notebook lets each district
+share its risk with its neighbours on the map. It puts graph priors on the district effects:
+the intrinsic CAR (ICAR), the proper CAR and BYM2. BYM2 is a scaled ICAR plus independent
+effects. Its parameter <code>rho</code> is the share of the variation that follows the map.</p>
+<p>The decision at the end of the notebook is this:</p>
+<ul>
+<li><strong>Do not publish the raw SMR map.</strong> Publish the BYM2 smoothed relative risk and the
+  probability that the relative risk is more than 1. In 19 districts this probability is more
+  than 0.95. These are the districts where the risk is "high and certain".</li>
+<li><strong>Use BYM2 as the default model.</strong> The graph models predict equally well, and all three
+  predict better than independent districts. BYM2 has a <code>rho</code> that you can read, and its
+  priors mean the same thing on each map.</li>
+<li><strong>Report the AFF effect as an association.</strong> Its 90% interval excludes 0 in each model. But
+  its size changes from a relative risk of 1.96 for each 10 points (independent districts) to
+  1.50 (BYM2). The size depends on what you assume about risk factors that you did not
+  measure. This is spatial confounding.</li>
+</ul>
+<p><strong>What you will get</strong>, and the notebook section that each item replaces:</p>
+<table>
+<thead>
+<tr>
+<th>In the web app</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The graph of the districts, with the island links (<strong>Plots</strong>, <code>net.graph</code>)</td>
+<td>Section 2 (the queen graph) and section 3 (the island links)</td>
+</tr>
+<tr>
+<td>The posterior of <code>b0</code>, <code>b1</code>, <code>sigma</code> and <code>rho</code> (<strong>Parameters</strong>)</td>
+<td>Section 4, the BYM2 row of the diagnostics table, and section 6</td>
+</tr>
+<tr>
+<td>The smoothed relative risk <code>rr</code> and <code>p_exceed</code>, the probability that <code>rr</code> is more than 1 (<strong>Plots</strong>, <code>sci.area_map</code>)</td>
+<td>Section 7, the three maps</td>
+</tr>
+<tr>
+<td><code>elpd_loo</code> and the Pareto k warning (<strong>Diagnostics</strong>)</td>
+<td>Section 8, the LOO table</td>
+</tr>
+<tr>
+<td>The error on 7 districts that the fit did not see (<strong>Diagnostics</strong>)</td>
+<td>Section 8, a smaller version of the 8-fold cross-validation</td>
+</tr>
+<tr>
+<td>The ladder of <code>kind</code> values, compared by <code>elpd_loo</code> (the recipe <code>sci_spatial_ladder</code>)</td>
+<td>Section 4 (the five models) and section 9 (<code>b1</code> in each model)</td>
+</tr>
+<tr>
+<td>New maps of risk and counts (<strong>Score</strong>, <strong>Simulate</strong>)</td>
+<td>Section 3, the prior predictive draws "by hand"</td>
+</tr>
+</tbody>
+</table>
+<p>Some parts of the notebook are not in the port, for example the unscaled BYM and the Moran's I
+checks of the residual effects. See <a href="#10-differences-from-the-notebook">Differences from the notebook</a>.</p>
+<h2 id="2-get-the-data">2. Get the data<a class="headerlink" href="#2-get-the-data" title="Permanent link">&para;</a></h2>
+<p>The export command reads the GeoJSON file of pymc-challenges and writes a NetCDF file that
+the platform can read. Run it from the root of the modeling-api repository:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e18<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--out<span class="w"> </span>scotland_lip.nc<span class="w"> </span>--spec<span class="w"> </span>scotland_lip.yaml
+</span></code></pre></div>
+<p>The command writes:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>wrote scotland_lip.nc (variables cases, expected, aff, adjacency, ring_x, ring_y on district=56, district_=56, vertex=51)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>upload it as dataset epidemiology/scotland_lip_cancer and fit sci.areal_bym2
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>wrote the suggested spec to scotland_lip.yaml
+</span></code></pre></div>
+<p>The file holds one dataset:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Dims</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>district</code></td>
+<td>56</td>
+<td>categorical, <code>fixed</code></td>
+<td>The district names, as in the GeoJSON file (Orkney has the name <code>Okney</code>)</td>
+</tr>
+<tr>
+<td><code>district_</code></td>
+<td>56</td>
+<td>categorical, <code>fixed</code></td>
+<td>The same districts again: the second axis of <code>adjacency</code></td>
+</tr>
+<tr>
+<td><code>vertex</code></td>
+<td>51</td>
+<td>integer, <code>fixed</code></td>
+<td>The points of the outline of each district</td>
+</tr>
+<tr>
+<td><code>cases</code></td>
+<td><code>district</code></td>
+<td>float64, target</td>
+<td>The observed cases, 1975 to 1980 (<code>CANCER</code>)</td>
+</tr>
+<tr>
+<td><code>expected</code></td>
+<td><code>district</code></td>
+<td>float64, exposure</td>
+<td>The expected cases (<code>CEXP</code>), from 1.07 to 88.66</td>
+</tr>
+<tr>
+<td><code>aff</code></td>
+<td><code>district</code></td>
+<td>float64, covariate</td>
+<td>The percentage of workers in agriculture, fishing and forestry (<code>AFF</code>)</td>
+</tr>
+<tr>
+<td><code>adjacency</code></td>
+<td><code>district, district_</code></td>
+<td>int64, constant</td>
+<td>1 when two districts touch (queen contiguity), else 0</td>
+</tr>
+<tr>
+<td><code>ring_x</code>, <code>ring_y</code></td>
+<td><code>district, vertex</code></td>
+<td>float64, constant</td>
+<td>The outline of each district in British National Grid metres. NaN fills the unused points</td>
+</tr>
+</tbody>
+</table>
+<p>The export makes the graph as the notebook does. Two districts are neighbours when their
+outlines share at least one point. The graph has 117 edges. Orkney, Shetland and the Western
+Isles have no neighbours. The model links them when it fits (step 6.1).</p>
+<p>The attribute <code>mapi_schema</code> gives each variable its role, so you do not map columns.</p>
+<div class="admonition tip">
+<p class="admonition-title">Simulated data</p>
+<p><code>--synthetic</code> writes a map of 43 square districts (one of them is an island) with counts
+from the model itself. The true values are <code>b0 = 0.1</code>, <code>b1 = 0.4</code>, <code>sigma = 0.5</code> and
+<code>rho = 0.8</code>. You do not need pymc-challenges for it.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e18<span class="w"> </span>--synthetic<span class="w"> </span>--out<span class="w"> </span>disease_map_synthetic.nc
+</span></code></pre></div>
+</div>
+<h2 id="3-upload-the-dataset">3. Upload the dataset<a class="headerlink" href="#3-upload-the-dataset" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open <strong>Datasets</strong> in the sidebar.</li>
+<li>Click <strong>New dataset</strong>.</li>
+<li>Type <code>scotland_lip_cancer</code> in <strong>Name</strong>. Type a description, for example "Male lip cancer
+   in 56 districts of Scotland, 1975 to 1980, with district outlines".</li>
+<li>Click <strong>Create dataset</strong>. The upload panel opens.</li>
+<li>Click <strong>Choose files</strong> and select <code>scotland_lip.nc</code>.</li>
+<li>Click <strong>Preview structure</strong>. The panel shows <strong>Structure of the file</strong>. Make sure that it
+   shows <code>cases</code>, <code>expected</code> and <code>aff</code> on <code>district</code>, and <code>adjacency</code> on <code>district</code> and
+   <code>district_</code>.</li>
+<li>Optional: type a message in <strong>Version message (optional)</strong>.</li>
+<li>Click <strong>Upload and ingest</strong>.</li>
+</ol>
+<p>The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
+Schema, Coordinates, Missingness, Preview and About. On <strong>Schema</strong>, <code>cases</code> has the role
+<code>target</code>, <code>expected</code> has the role <code>exposure</code> and <code>aff</code> has the role <code>covariate</code>.
+<strong>Missingness</strong> shows missing values only in <code>ring_x</code> and <code>ring_y</code>. These are the unused
+points of the shorter outlines.</p>
+<p>The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
+tree (optional)") or the HDF5 path.</p>
+<h2 id="4-build-the-spec">4. Build the spec<a class="headerlink" href="#4-build-the-spec" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open <strong>Build</strong> and click <strong>New spec</strong>. The editor opens with the geo MMM template.</li>
+<li>Set the <strong>Editor view</strong> to <strong>YAML</strong>.</li>
+<li>Open the <strong>Insert</strong> panel on the right.</li>
+<li>Open the <strong>Datasets</strong> section and select <code>scotland_lip_cancer</code>. The toast "Dataset set" shows.</li>
+<li>Type <code>areal</code> in the search field. Under <strong>Models</strong>, select <strong>Disease risk on a map of
+   areas</strong> (<code>sci.areal_bym2@^1</code>). The toast "Model set" shows.</li>
+<li>Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.</li>
+<li>Click <strong>Validate</strong>. The status shows <code>valid</code>.</li>
+<li>Click <strong>Save spec</strong>. The spec gets its name <code>scotland-lip-cancer-bym2</code> from <code>metadata.name</code>.</li>
+</ol>
+<p><img alt="The YAML editor with the saved spec scotland-lip-cancer-bym2, the status valid and the model sci.areal_bym2 in the Pipeline panel" class="mapi-shot" src="../../../assets/screenshots/science-spec-editor.png" /></p>
+<p>This is the full spec:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelSpec</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scotland-lip-cancer-bym2</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">epidemiology</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset://epidemiology/scotland_lip_cancer@latest</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">bind</span><span class="p">:</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="nt">dims</span><span class="p">:</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">      </span><span class="nt">area</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">district</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="nt">area_</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">district_</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">vars</span><span class="p">:</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">      </span><span class="nt">covariate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aff</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">  </span><span class="nt">split</span><span class="p">:</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mask_block</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="w">    </span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">area</span><span class="p p-Indicator">]</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">    </span><span class="nt">fraction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.125</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">    </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1987</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.areal_bym2@^1</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a><span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bym2</span>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="w">    </span><span class="nt">islands</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">link_nearest</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="w">    </span><span class="nt">covariate_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="w">    </span><span class="nt">center_covariate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="w">    </span><span class="nt">intercept_sd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a><span class="w">    </span><span class="nt">slope_sd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="w">    </span><span class="nt">sigma_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="w">    </span><span class="nt">rho_alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="w">    </span><span class="nt">rho_beta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a><span class="w">    </span><span class="nt">exceed_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluate_then_refit</span>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="w">    </span><span class="nt">seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1987</span>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a><span class="w">    </span><span class="nt">tune</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="w">    </span><span class="nt">draws</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a><span class="w">    </span><span class="nt">chains</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a><span class="w">    </span><span class="nt">target_accept</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a><span class="w">    </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nutpie</span>
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a><span class="nt">evaluate</span><span class="p">:</span>
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a><span class="w">  </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rmse</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mae</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">coverage_90</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">elpd_loo</span><span class="p p-Indicator">]</span>
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a><span class="nt">outputs</span><span class="p">:</span>
+</span><span id="__span-3-43"><a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a><span class="w">  </span><span class="nt">plots</span><span class="p">:</span>
+</span><span id="__span-3-44"><a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">core.convergence</span>
+</span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">core.posterior_forest</span>
+</span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.area_map</span>
+</span><span id="__span-3-47"><a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">net.graph</span>
+</span></code></pre></div>
+<p>The settings are the defaults of the model. They are also the choices of the notebook. The
+<code>--spec</code> file of the export has the short form of the same spec. This table tells what each
+setting means for the question:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Meaning for this question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>bym2</code></td>
+<td>The prior of the district effects. <code>bym2</code> is the model that the notebook recommends. Use <code>poisson</code>, <code>iid</code>, <code>icar</code> or <code>car</code> to fit the other models of the notebook (step 6.5)</td>
+</tr>
+<tr>
+<td><code>islands</code></td>
+<td><code>link_nearest</code></td>
+<td>Orkney, Shetland and the Western Isles have no neighbours. The model links each one to the district with the closest outline, as the notebook does. Without a link, the BYM2 scaling factor is not defined</td>
+</tr>
+<tr>
+<td><code>covariate_scale</code></td>
+<td>10</td>
+<td><code>b1</code> is the effect of 10 percentage points of AFF on the log relative risk, as in the notebook</td>
+</tr>
+<tr>
+<td><code>center_covariate</code></td>
+<td>true</td>
+<td>The model subtracts the mean AFF (8.66%). Thus <code>b0</code> is the log relative risk of a district with a mean AFF</td>
+</tr>
+<tr>
+<td><code>intercept_sd</code>, <code>slope_sd</code></td>
+<td>1, 1</td>
+<td>The priors <code>b0 ~ Normal(0, 1)</code> and <code>b1 ~ Normal(0, 1)</code> of the notebook</td>
+</tr>
+<tr>
+<td><code>sigma_scale</code></td>
+<td>1</td>
+<td>The prior <code>sigma ~ HalfNormal(1)</code> of the total sd of the district effects</td>
+</tr>
+<tr>
+<td><code>rho_alpha</code>, <code>rho_beta</code></td>
+<td>1, 1</td>
+<td>The prior <code>rho ~ Beta(1, 1)</code>: all shares are equally probable before the data</td>
+</tr>
+<tr>
+<td><code>exceed_threshold</code></td>
+<td>1</td>
+<td><code>p_exceed</code> is the probability that <code>rr</code> is more than 1, that is, more than the national rate</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>bind</code> gives the dataset names to the names of the model. The model calls the districts
+  <code>area</code> and the covariate <code>covariate</code>. The outputs come back with your names.</li>
+<li><code>split</code> holds out 12.5% of the districts (7 districts). The model keeps these districts in
+  the graph, but it does not use their counts. It predicts them from their neighbours. This is
+  the question "what is the risk in a district without data?" of notebook section 8.</li>
+<li><code>fit.mode: evaluate_then_refit</code> first fits without the held-out districts and calculates
+  the metrics on them. Then it fits again on all 56 districts. The parameters and the maps
+  come from the second fit.</li>
+<li><code>engine: nutpie</code> is the sampler of the notebook. <code>engine: pymc</code> gives the same result, but
+  it is slower.</li>
+<li>The model always keeps the log-likelihood of each district, so you do not need a <code>keep</code>
+  block for <code>elpd_loo</code>.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">The plots</p>
+<p>The model declares <code>core.convergence</code>, <code>core.posterior_forest</code>, <code>sci.area_map</code>,
+<code>net.graph</code> and <code>core.ridge</code>. The fit makes only the plots in <code>outputs.plots</code>.
+<code>core.ridge</code> needs the setting <code>dim</code>, and a spec cannot give settings to a plot. Without
+<code>dim</code>, the fit skips the plot with the issue <code>SCHEMA_INVALID</code>. Thus the spec does not name
+<code>core.ridge</code>.</p>
+</div>
+<h2 id="5-fit-and-watch-the-run">5. Fit and watch the run<a class="headerlink" href="#5-fit-and-watch-the-run" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Click <strong>Fit</strong>. The app opens the run page.</li>
+<li>The badge shows <strong>Live</strong> while the run sends events.</li>
+<li>The <strong>Progress</strong> card shows the progress of the sampler. The run fits two times: first
+   without the 7 held-out districts, then on all 56 districts. The <strong>Events</strong> card shows the
+   stages of the run and, at the end, the diagnostics. The <strong>Logs</strong> card stays empty when
+   the model writes no output.</li>
+<li>When the run is done, the <strong>Result</strong> card shows <strong>Inspect
+   model://epidemiology/scotland-lip-cancer-bym2@v1</strong>. Click it.</li>
+</ol>
+<p><img alt="The run page of the fit: the Progress card shows the sampler chain, the Events card shows the stages of the run" class="mapi-shot" src="../../../assets/screenshots/science-run-progress.png" /></p>
+<p>The two fits took 21 s in our test. Each fit samples <code>b0</code>, <code>b1</code>, <code>sigma</code>, <code>rho</code> and two
+effects for each district (<code>phi</code> for the ICAR part and <code>theta</code> for the independent part).</p>
+<p>You can also find the run under <strong>Runs</strong>. Filter it with the kind <code>fit</code>.</p>
+<h2 id="6-read-the-result">6. Read the result<a class="headerlink" href="#6-read-the-result" title="Permanent link">&para;</a></h2>
+<p>On the model version page, the tabs are <strong>Overview</strong>, <strong>Diagnostics</strong>, <strong>Plots</strong>, <strong>Data
+tree</strong>, <strong>Preprocessing</strong> and <strong>Provenance</strong>. Click <strong>Explore</strong> to open the Model Explorer.</p>
+<p>The outputs of this model are on the districts, not on a grid. Thus the <strong>Fields</strong> section is
+under "Does not apply". <strong>Fit vs actual</strong> and <strong>Residuals</strong> also show there, because they need
+a time dimension. The maps are in the <strong>Plots</strong> tab of the model version page.</p>
+<p>Open <strong>Overview</strong> to see the scorecard. The check "Few missing values" passes. It counts only
+the variables that contain observations. Thus it does not count the padding of the outlines
+<code>ring_x</code> and <code>ring_y</code> (and <code>adjacency</code>), because they have the role <code>constant</code>. The expert
+message names these variables.</p>
+<h3 id="61-the-graph-that-the-model-used">6.1 The graph that the model used<a class="headerlink" href="#61-the-graph-that-the-model-used" title="Permanent link">&para;</a></h3>
+<p>The model links the three islands before it fits. The bundle of the version keeps the result
+in <code>learned</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Result</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>n_components_input</code></td>
+<td>4 (the mainland and three islands)</td>
+<td>4 connected components</td>
+</tr>
+<tr>
+<td><code>islands_input</code></td>
+<td><code>Okney</code>, <code>Shetland</code>, <code>WesternIsles</code></td>
+<td>the same</td>
+</tr>
+<tr>
+<td><code>links</code></td>
+<td><code>Okney</code> to <code>Caithness</code> (28 km), <code>Shetland</code> to <code>Okney</code> (192 km), <code>WesternIsles</code> to <code>Ross-Cromarty</code> (41 km)</td>
+<td>the same links and distances</td>
+</tr>
+<tr>
+<td><code>n_edges</code></td>
+<td>120</td>
+<td>120</td>
+</tr>
+<tr>
+<td><code>scaling_factor</code></td>
+<td>0.632</td>
+<td>0.632</td>
+</tr>
+</tbody>
+</table>
+<p>The link from Shetland is 192 km long, because the GeoJSON file draws only the north part of
+Shetland. The rule still selects Orkney, as in the notebook.</p>
+<p>On the model version page, open <strong>Plots</strong> and select the plot with the title "Network of
+adjacency" (<code>net.graph</code>). It draws the 120 links at the centres of the districts, next to the
+full adjacency matrix. Look for the three long links to the islands in the north and the
+north-west.</p>
+<h3 id="62-can-you-trust-the-fit">6.2 Can you trust the fit?<a class="headerlink" href="#62-can-you-trust-the-fit" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Diagnostics</strong> in the Model Explorer (group "Can you trust it?").</p>
+<ul>
+<li>The largest R-hat is 1.006 (<code>phi</code>), the smallest bulk ESS is 588 (<code>rho</code>) and there are 0
+  divergences. The sampler has no problems.</li>
+<li><code>TREE_DEPTH</code> shows that 1 of 4000 draws hit the largest tree depth. This is information
+  only. The results are correct.</li>
+<li><code>PARETO_K_HIGH</code> is a warning: 17 of 56 districts have a Pareto k above 0.7. This is
+  expected. Each district has its own effect, so when PSIS-LOO removes the count of a
+  district, the posterior changes too much. The notebook found 24 such districts. Do not
+  quote <code>elpd_loo</code> as a precise value.</li>
+</ul>
+<p>The diagnostics also show the metrics of the 7 held-out districts (Wigtown, Badenoch,
+Inverness, Kyle-Carrick, Dumbarton, Edinburgh and East Kilbride). The model predicted their
+counts from their neighbours only:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rmse</code></td>
+<td>7.64 cases</td>
+<td>The error of the predicted counts. Edinburgh has 50.7 expected cases, so a large error in cases is possible</td>
+</tr>
+<tr>
+<td><code>mae</code></td>
+<td>4.81 cases</td>
+<td>The mean absolute error</td>
+</tr>
+<tr>
+<td><code>coverage_90</code></td>
+<td>1.00</td>
+<td>All 7 observed counts are in their 90% intervals</td>
+</tr>
+<tr>
+<td><code>elpd_loo</code></td>
+<td>−153.0</td>
+<td>PSIS-LOO of the fit on all 56 districts (notebook: −152.7)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-what-the-model-learned">6.3 What the model learned<a class="headerlink" href="#63-what-the-model-learned" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Parameters</strong> (group "What it learned"). The table shows the posterior mean and the 90%
+highest-density interval:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Mean</th>
+<th>90% interval</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>b0</code></td>
+<td>0.102</td>
+<td>0.003 to 0.206</td>
+<td>The log relative risk of a district with a mean AFF. Scotland has 11% more cases than the expected counts give</td>
+</tr>
+<tr>
+<td><code>b1</code></td>
+<td>0.406</td>
+<td>0.201 to 0.625</td>
+<td>The effect of 10 points of AFF on the log risk. <code>exp(0.41)</code> = 1.50 for each 10 points</td>
+</tr>
+<tr>
+<td><code>sigma</code></td>
+<td>0.518</td>
+<td>0.382 to 0.656</td>
+<td>The total sd of the district effects on the log scale</td>
+</tr>
+<tr>
+<td><code>rho</code></td>
+<td>0.802</td>
+<td>0.569 to 1.000</td>
+<td>The share of the district variation that follows the map</td>
+</tr>
+</tbody>
+</table>
+<p>The table also has 56 rows each for <code>rr</code>, <code>effect</code>, <code>phi</code> and <code>theta</code>.</p>
+<p>The answer to "how much of the risk follows the map?" (notebook section 6) is <code>rho</code>. Its
+median is 0.84 and its 90% interval is wide. Most of the variation after AFF is spatial. A
+district's risk is better predicted by its neighbours than by an independent quirk of the
+district. Thus there are possibly more risk factors that change smoothly over Scotland, and
+that AFF does not include.</p>
+<h3 id="64-the-maps">6.4 The maps<a class="headerlink" href="#64-the-maps" title="Permanent link">&para;</a></h3>
+<p>On the model version page, open <strong>Plots</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Plot</th>
+<th>What to look for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sampler convergence (<code>core.convergence</code>)</td>
+<td>The text says "All 228 parameters look converged."</td>
+</tr>
+<tr>
+<td>Posterior forest (<code>core.posterior_forest</code>)</td>
+<td>The intervals of step 6.3 and of each district. <code>b1</code> is clearly above 0</td>
+</tr>
+<tr>
+<td>Area map (<code>sci.area_map</code>)</td>
+<td>The title is "Area map of rr". This is the map of notebook section 7. See below</td>
+</tr>
+<tr>
+<td>Network (<code>net.graph</code>)</td>
+<td>The title is "Network of adjacency". The graph of step 6.1</td>
+</tr>
+</tbody>
+</table>
+<p>The area map has four panels for the relative risk <code>rr</code>:</p>
+<p><img alt="The area map of rr: the panels Observed smr and Mean side by side, with the SD and P(rr &gt; 1) panels below" class="mapi-shot" src="../../../assets/screenshots/science-area-map.png" /></p>
+<ul>
+<li><strong>Observed smr</strong>: the raw SMR (observed ÷ expected). The extreme colours are on the smallest
+  districts. Skye-Lochalsh has 9 cases where 1.4 were expected.</li>
+<li><strong>Mean</strong>: the smoothed relative risk. The contrast between the north-west and the central
+  belt stays, but the extremes are smaller. The two districts with zero cases (Annandale and
+  Tweeddale) are not the "healthiest" districts of Scotland on this map.</li>
+<li><strong>SD</strong>: the uncertainty. It is large on small districts.</li>
+<li><strong>P(rr &gt; 1)</strong>: the probability that <code>rr</code> is more than 1. A cross marks each district where
+  this probability is more than 95%. There are 19 crosses (notebook: 19).</li>
+</ul>
+<p>The districts with the highest smoothed risk are Skye-Lochalsh (median <code>rr</code> 4.56),
+Banff-Buchan (4.27), Orkney (3.79), Ross-Cromarty (3.22) and Sutherland (3.17). In 14
+districts, the probability that <code>rr</code> is more than 1 is less than 0.05 (notebook: 14).</p>
+<h3 id="65-the-decision-and-the-numbers">6.5 The decision and the numbers<a class="headerlink" href="#65-the-decision-and-the-numbers" title="Permanent link">&para;</a></h3>
+<p>Make the notebook's decision with these outputs:</p>
+<ol>
+<li><strong>Where is the risk high?</strong> Use the <strong>P(rr &gt; 1)</strong> panel of the area map, not the
+   <strong>Observed smr</strong> panel. Report the 19 districts with a cross. Report the smoothed map
+   (<strong>Mean</strong>) for all districts.</li>
+<li><strong>Which graph prior?</strong> Fit the same spec with <code>kind: iid</code>, <code>kind: icar</code> and <code>kind: car</code>
+   (change the setting, then save and fit each spec). Then select the versions in <strong>Models</strong>
+   and click <strong>Compare</strong>. Or run the recipe of step 8, which does these fits for you. The
+   three graph models are within about 1 elpd of each other. All three are about 11 elpd
+   better than <code>iid</code>. Thus use BYM2, because its <code>rho</code> has the same meaning on each map.</li>
+<li><strong>Does AFF explain the risk?</strong> Look at <code>b1</code> in each <code>kind</code>. With <code>iid</code>, <code>b1</code> is 0.67. With
+   the graph models, it is about 0.4. AFF has a map like the risk, so the district effects
+   take part of its effect. Report that AFF has a clear association with the risk. Do not
+   report one size of the effect as "the" effect.</li>
+</ol>
+<p>We fitted the spec above on the exported data (seed 1987, 4 chains of 1000 draws, nutpie).
+The table compares the platform with the notebook:</p>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>Notebook</th>
+<th>Platform</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>b0</code> (BYM2)</td>
+<td>0.101</td>
+<td>0.102</td>
+</tr>
+<tr>
+<td><code>b1</code> (BYM2), 5% to 95%</td>
+<td>0.19 to 0.62 (median 0.41)</td>
+<td>0.19 to 0.62 (median 0.41)</td>
+</tr>
+<tr>
+<td>Relative risk for each 10 points of AFF (BYM2)</td>
+<td>1.50</td>
+<td>1.51</td>
+</tr>
+<tr>
+<td><code>sigma</code> (BYM2)</td>
+<td>0.515</td>
+<td>0.518</td>
+</tr>
+<tr>
+<td><code>rho</code> (BYM2), median and 5% to 95%</td>
+<td>0.86, 0.52 to 0.99</td>
+<td>0.84, 0.48 to 0.99</td>
+</tr>
+<tr>
+<td>Districts with P(RR &gt; 1) &gt; 0.95</td>
+<td>19</td>
+<td>19</td>
+</tr>
+<tr>
+<td>Districts with P(RR &gt; 1) &lt; 0.05</td>
+<td>14</td>
+<td>14</td>
+</tr>
+<tr>
+<td><code>elpd_loo</code> (BYM2)</td>
+<td>−152.7</td>
+<td>−153.0</td>
+</tr>
+<tr>
+<td>Districts with Pareto k &gt; 0.7 (BYM2)</td>
+<td>24</td>
+<td>17</td>
+</tr>
+<tr>
+<td>Scaling factor of the linked graph</td>
+<td>0.632</td>
+<td>0.632</td>
+</tr>
+<tr>
+<td><code>b1</code> with <code>iid</code> and with <code>icar</code></td>
+<td>0.670 and 0.374</td>
+<td>0.673 and 0.378</td>
+</tr>
+<tr>
+<td><code>alpha</code> with <code>car</code></td>
+<td>0.958</td>
+<td>0.956</td>
+</tr>
+<tr>
+<td>Sampler (BYM2)</td>
+<td>0 divergences, R-hat up to 1.003</td>
+<td>0 divergences, R-hat up to 1.006</td>
+</tr>
+</tbody>
+</table>
+<p>Your numbers can be a little different if your sandbox has a different version of PyMC or
+nutpie.</p>
+<h2 id="7-score-the-model">7. Score the model<a class="headerlink" href="#7-score-the-model" title="Permanent link">&para;</a></h2>
+<p>A score needs the district labels. The model takes <code>expected</code> and <code>aff</code> from the fit when the
+dataset does not give them. A dataset can change them, for example to ask a "what if"
+question about AFF. A district that was not in the fit stops the score with <code>UNSEEN_LEVELS</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">No new data</p>
+<p>The page does not show <strong>No new data</strong> for this model. The model has no time dimension and
+cannot forecast, so the server refuses a request without a dataset ("the score request has
+no data"). A note under <strong>Values to score</strong> gives this reason.</p>
+</div>
+<p><strong>Predict the risk of each district:</strong></p>
+<ol>
+<li>On the model version page, click <strong>Score</strong>.</li>
+<li>In <strong>What do you want to do?</strong>, select <strong>Predict</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>. In <strong>Dataset</strong>, select
+   <code>dataset://epidemiology/scotland_lip_cancer@latest</code>.</li>
+<li>Open <strong>Advanced</strong>. Type <code>rr, p_exceed</code> in <strong>Variables (optional)</strong>. Set <strong>Seed (optional)</strong>
+   to <code>1987</code>.</li>
+<li>Click <strong>Predict</strong>.</li>
+</ol>
+<p>The <strong>Results</strong> region shows <code>rr</code> and <code>p_exceed</code> for each district, with the statistics
+<code>mean</code>, <code>hdi_90_lower</code> and <code>hdi_90_upper</code>. For Skye-Lochalsh, the mean of <code>rr</code> is 4.74, from
+2.35 to 6.82. The mean of <code>p_exceed</code> is the probability of step 6.4. It is more than 0.95 in
+19 districts.</p>
+<p>This is the request that the page sends (<code>POST /v1/models/{model_id}/versions/{v}:score</code>):</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://epidemiology/scotland-lip-cancer-bym2@latest"</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://epidemiology/scotland_lip_cancer@latest"</span><span class="p">,</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">"draws"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="nt">"units"</span><span class="p">:</span><span class="w"> </span><span class="s2">"original"</span><span class="p">,</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="nt">"names"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset"</span><span class="p">,</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"rr"</span><span class="p">,</span><span class="w"> </span><span class="s2">"p_exceed"</span><span class="p">]</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">1987</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><strong>Simulate a new map:</strong></p>
+<ol>
+<li>In <strong>What do you want to do?</strong>, select <strong>Simulate</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong> and the same dataset.</li>
+<li>In <strong>Advanced</strong>, type <code>cases, rr</code> in <strong>Variables (optional)</strong>.</li>
+<li>Click <strong>Simulate</strong>.</li>
+</ol>
+<p>For each posterior draw, the model draws a new map of district effects from the fitted
+<code>sigma</code> and <code>rho</code>, and then new counts. <code>pm.ICAR</code> cannot draw values, so the model uses its own
+ICAR sampler. This is the "prior predictive, by hand" of notebook section 3, but with the
+posterior values of <code>sigma</code> and <code>rho</code>. The new maps do not follow the observed map. The spread
+of <code>rr</code> is largest in districts with few neighbours, for example Orkney and Shetland. The sum
+of the mean counts is about 636. The request is the same as above, with <code>"mode": "simulate"</code> and
+<code>"vars": ["cases", "rr"]</code>.</p>
+<div class="admonition tip">
+<p class="admonition-title">What if no worker worked outdoors?</p>
+<p>Make a copy of the dataset with <code>aff</code> set to 0 in each district, and upload it as
+<code>scotland_lip_cancer_aff0</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_science.areal_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">AREAL_SCHEMA</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_plugin_science.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_export</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span><span class="s2">"scotland_lip.nc"</span><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">ds</span><span class="p">[</span><span class="s2">"aff"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"aff"</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.0</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">write_export</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s2">"scotland_lip_cancer_aff0.nc"</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">AREAL_SCHEMA</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Predict <code>cases</code> and <code>rr</code> on this dataset. The sum of the expected cases falls from 537 to
+386. The <code>rr</code> of Skye-Lochalsh (AFF 16%) falls from 4.74 to 2.52 (1.19 to 3.90). This is
+the BYM2 estimate of the association. Spatial confounding (step 6.5) also applies to
+this answer.</p>
+</div>
+<p><code>forecast</code> and <code>counterfactual</code> give <code>MODE_NOT_SUPPORTED</code>. <code>"kind": "predictive"</code> gives
+Poisson draws of <code>cases</code> in place of the expected counts.</p>
+<div class="admonition tip">
+<p class="admonition-title">Try it on an endpoint</p>
+<p>If you promote the version to an endpoint, open <strong>Integrations</strong>, then the endpoint, then
+the <strong>Schema and Try it</strong> tab. Paste the same request there, without the <code>model</code> field,
+and click <strong>Score</strong>.</p>
+</div>
+<h2 id="8-run-a-workflow-recipe">8. Run a workflow recipe<a class="headerlink" href="#8-run-a-workflow-recipe" title="Permanent link">&para;</a></h2>
+<p>The recipe <code>sci_spatial_ladder</code> (<strong>Disease map: which spatial model?</strong>) does notebook
+sections 4, 8 and 9 in one run:</p>
+<ul>
+<li>It fits three rungs on all the data: <code>iid</code> ("Independent areas"), <code>icar</code> ("Neighbours share
+  risk (ICAR)") and <code>bym2</code> ("Neighbours and noise (BYM2)").</li>
+<li>It ranks them by <code>elpd_loo</code> and calculates the stacking weights. It keeps the best rung.</li>
+<li>It shows the range of <code>b1</code> in the best rung. If the range does not include zero, it fits
+  the best rung again with wider and narrower priors.</li>
+<li>
+<p>It does a convergence check, draws the relative risk map (<code>sci.area_map</code>) and writes a
+  report.</p>
+</li>
+<li>
+<p>Set the header to <strong>Guided</strong> and open <strong>Recipes</strong>. In <strong>Expert</strong> mode, open <strong>Workflows</strong>
+   and then the <strong>Templates</strong> tab.</p>
+</li>
+<li>Find the card <strong>Disease map: which spatial model?</strong> and click <strong>Run on my data</strong>.</li>
+<li>In <strong>1. Your data</strong>, select <code>scotland_lip_cancer</code> in <strong>Dataset</strong>.</li>
+<li>Open <strong>Fine-tune (optional: the defaults are correct for most data)</strong>. Set <strong>Engine</strong> to
+   <code>nutpie</code>. The default <strong>Bind</strong> fits the names of the export, so do not change it.</li>
+<li>Click <strong>Run this recipe</strong>.</li>
+</ul>
+<p>The recipe has no parameters that you must set, so the page does not show "2. What the recipe
+needs to know".</p>
+<p>The app opens the monitor of the run. It has the tabs <strong>Graph</strong>, <strong>Steps</strong>, <strong>Decisions</strong>,
+<strong>Outputs</strong> and <strong>Events</strong>. The recipe took 46 s in our test.</p>
+<p><img alt="The monitor of the recipe run while it runs: the Steps tab with the three fitted rungs and the steps that wait for a worker" class="mapi-shot" src="../../../assets/screenshots/science-recipe-monitor.png" /></p>
+<p>The <strong>Outputs</strong> tab shows the report of the run. It has the comparison table, the stacking
+weights, the effect of <code>b1</code> with each prior width, the <code>elpd_loo</code> of each rung and the map of
+the best rung. The map of the recipe has no <strong>Observed smr</strong> panel.</p>
+<p><img alt="The report of the recipe on the Outputs tab: the elpd_loo of the three rungs and the relative risk map of the best rung" class="mapi-shot" src="../../../assets/screenshots/science-recipe-report.png" /></p>
+<p>We ran the recipe on the exported data with <code>engine: nutpie</code> and the other
+defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compare</code></td>
+<td>The ranking is <code>icar</code>, <code>bym2</code>, <code>iid</code>. The best <code>elpd_loo</code> is −151.8</td>
+</tr>
+<tr>
+<td><code>weights</code></td>
+<td>The stacking weight of <code>icar</code> is 1.00. The pseudo-BMA weights are 0.67 (<code>icar</code>) and 0.33 (<code>bym2</code>)</td>
+</tr>
+<tr>
+<td><code>best</code></td>
+<td>"Neighbours share risk (ICAR) has the best elpd_loo (-152) of 3 candidate(s)."</td>
+</tr>
+<tr>
+<td><code>effect</code></td>
+<td><code>b1</code> 0.379, 94% interval 0.148 to 0.625</td>
+</tr>
+<tr>
+<td><code>clear</code></td>
+<td><code>then</code>: the chains agree and the range of <code>b1</code> does not include zero</td>
+</tr>
+<tr>
+<td><code>effect_wide</code>, <code>effect_narrow</code></td>
+<td><code>b1</code> 0.379 (0.139 to 0.627) and 0.366 (0.133 to 0.585)</td>
+</tr>
+<tr>
+<td><code>converged</code></td>
+<td><code>pass</code>, R-hat 1.004</td>
+</tr>
+</tbody>
+</table>
+<p>The recipe selects <code>icar</code>, not <code>bym2</code>. The notebook also found that the ICAR has the best
+<code>elpd_loo</code> (−151.9) and that the difference to BYM2 (0.8) is less than one standard error. The
+stacking weights put all the weight on one rung when the rungs are almost equal. Thus do not
+read the selection as "BYM2 is wrong". The notebook's decision to use BYM2 comes from its
+meaning, not from a difference in elpd. The <code>b1</code> interval excludes zero with each prior width,
+so the association with AFF comes from the data, not from the priors.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The default <code>bind</code> is <code>{dims: {area: district, area_: district_}, vars: {covariate: aff}}</code>.
+If your dataset has other names, change <strong>Bind</strong> in <strong>Fine-tune</strong>. For example,
+<code>{"dims": {"area": "county", "area_": "county_"}, "vars": {"covariate": "smokers"}}</code>.</p>
+</div>
+<p>The recipe <code>bayes_workflow_audit</code> (<strong>Bayesian workflow audit</strong>) also applies to this model.
+Type <code>sci.areal_bym2@^1</code> in <strong>Model</strong>. In <strong>Fine-tune</strong>, type the <code>bind</code> above in <strong>Bind</strong>
+and <code>{}</code> in <strong>Prior predictive</strong>: the ICAR prior cannot give prior draws, and with prior draws
+the fit stops. The audit adds a posterior predictive check, a prior sensitivity check and a
+recovery check on simulated data. Its prior sensitivity check changes only prior widths with
+names such as <code>prior_sigma</code>. The prior widths of <code>sci.areal_bym2</code> have other names
+(<code>intercept_sd</code>, <code>slope_sd</code> and <code>sigma_scale</code>), so this check is <code>skipped</code>. Thus the ladder
+recipe above fits the model again with these widths itself. The recovery check simulates the
+counts from the posterior predictive of the model, so each simulated dataset has whole counts.</p>
+<h2 id="9-the-same-with-the-cli-and-the-python-client">9. The same with the CLI and the Python client<a class="headerlink" href="#9-the-same-with-the-cli-and-the-python-client" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># get the data and the suggested spec</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e18<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span>--out<span class="w"> </span>scotland_lip.nc<span class="w"> </span>--spec<span class="w"> </span>scotland_lip.yaml
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># upload, check and fit on the platform (scotland-lip-cancer-bym2.yaml is the spec of step 4)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>mapi<span class="w"> </span>use<span class="w"> </span>&lt;tenant&gt;/epidemiology
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload<span class="w"> </span>scotland_lip.nc<span class="w"> </span>--name<span class="w"> </span>scotland_lip_cancer
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>mapi<span class="w"> </span>check<span class="w"> </span>scotland-lip-cancer-bym2.yaml<span class="w"> </span>--remote<span class="w"> </span>@
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>mapi<span class="w"> </span>fit<span class="w"> </span>scotland-lip-cancer-bym2.yaml<span class="w"> </span>--remote<span class="w"> </span>@
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>scotland-lip-cancer-bym2<span class="w"> </span>-s<span class="w"> </span>params<span class="w"> </span>-s<span class="w"> </span>diagnostics
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1"># the risk of each district (step 7)</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>lip-score.yaml<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="s">apiVersion: mapi/v1</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="s">kind: ScoreRequest</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="s">model: model://epidemiology/scotland-lip-cancer-bym2@latest</span>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="s">mode: predict</span>
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="s">data: dataset://epidemiology/scotland_lip_cancer@latest</span>
+</span><span id="__span-6-20"><a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="s">output: {kind: expected, summary: [mean, hdi_90], vars: [rr, p_exceed]}</span>
+</span><span id="__span-6-21"><a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="s">seed: 1987</span>
+</span><span id="__span-6-22"><a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="s">EOF</span>
+</span><span id="__span-6-23"><a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>mapi<span class="w"> </span>score<span class="w"> </span>lip-score.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--model<span class="w"> </span>&lt;model<span class="w"> </span>id&gt;<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span><span class="w"> </span>-o<span class="w"> </span>lip.zarr.zip
+</span><span id="__span-6-24"><a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
+</span><span id="__span-6-25"><a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="c1"># the recipe (step 8)</span>
+</span><span id="__span-6-26"><a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>init<span class="w"> </span>sci_spatial_ladder<span class="w"> </span>--name<span class="w"> </span>disease-map-ladder
+</span><span id="__span-6-27"><a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>disease-map-ladder.yaml
+</span><span id="__span-6-28"><a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>disease-map-ladder<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-29"><a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="w">    </span>-i<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://epidemiology/scotland_lip_cancer@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-30"><a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="w">    </span>-p<span class="w"> </span><span class="nv">engine</span><span class="o">=</span>nutpie<span class="w"> </span>--watch
+</span><span id="__span-6-31"><a id="__codelineno-6-31" name="__codelineno-6-31" href="#__codelineno-6-31"></a><span class="nv">RUN</span><span class="o">=</span><span class="k">$(</span>mapi<span class="w"> </span>--json<span class="w"> </span>workflows<span class="w"> </span>runs<span class="w"> </span>disease-map-ladder<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.[0].run_id'</span><span class="k">)</span>
+</span><span id="__span-6-32"><a id="__codelineno-6-32" name="__codelineno-6-32" href="#__codelineno-6-32"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>compare<span class="w">    </span><span class="c1"># the rungs, best first</span>
+</span><span id="__span-6-33"><a id="__codelineno-6-33" name="__codelineno-6-33" href="#__codelineno-6-33"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>weights<span class="w">    </span><span class="c1"># the stacking weights</span>
+</span><span id="__span-6-34"><a id="__codelineno-6-34" name="__codelineno-6-34" href="#__codelineno-6-34"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>node<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN</span><span class="s2">"</span><span class="w"> </span>clear<span class="w">      </span><span class="c1"># is the effect of AFF clear?</span>
+</span></code></pre></div>
+<p>The CLI has no <code>models</code> command. Take the model id from the run (<code>mapi runs get &lt;run&gt;</code>)
+or from <strong>Models</strong> in the web app.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># MAPI_URL, the `mapi login` sign-in (or MAPI_TOKEN) and MAPI_PROJECT</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">version</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="s2">"scotland_lip.nc"</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="s2">"scotland_lip_cancer"</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">version</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"scotland-lip-cancer-bym2.yaml"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">spec_yaml</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">check</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">spec_yaml</span><span class="p">)</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"valid"</span> <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">valid</span> <span class="k">else</span> <span class="p">[(</span><span class="n">i</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">pointer</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">check</span><span class="o">.</span><span class="n">issues</span><span class="p">])</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="n">revision</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">spec_yaml</span><span class="p">)</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">revision</span><span class="o">.</span><span class="n">spec_id</span><span class="p">,</span> <span class="n">revision</span><span class="o">.</span><span class="n">revision</span><span class="p">)</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">raise_on_failure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="n">model</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">list</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"scotland-lip-cancer-bym2"</span><span class="p">)</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="n">mv</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">version</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">latest_version</span><span class="p">)</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">mv</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">mv</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="n">result</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">score</span><span class="p">(</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>    <span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>    <span class="n">mv</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>    <span class="p">{</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>        <span class="s2">"model"</span><span class="p">:</span> <span class="n">mv</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>        <span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        <span class="s2">"data"</span><span class="p">:</span> <span class="s2">"dataset://epidemiology/scotland_lip_cancer@latest"</span><span class="p">,</span>
+</span><span id="__span-7-28"><a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>        <span class="s2">"output"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-7-29"><a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>            <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-7-30"><a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>            <span class="s2">"summary"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span> <span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-7-31"><a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>            <span class="s2">"vars"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"rr"</span><span class="p">,</span> <span class="s2">"p_exceed"</span><span class="p">],</span>
+</span><span id="__span-7-32"><a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>        <span class="p">},</span>
+</span><span id="__span-7-33"><a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>        <span class="s2">"seed"</span><span class="p">:</span> <span class="mi">1987</span><span class="p">,</span>
+</span><span id="__span-7-34"><a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>    <span class="p">},</span>
+</span><span id="__span-7-35"><a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="p">)</span>
+</span><span id="__span-7-36"><a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">tree</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span>  <span class="c1"># an xr.DataTree (needs the `xarray` extra)</span>
+</span><span id="__span-7-37"><a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a><span class="n">p</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">"p_exceed"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span>
+</span><span id="__span-7-38"><a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a><span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">((</span><span class="n">p</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="s2">"districts with P(RR &gt; 1) &gt; 0.95"</span><span class="p">)</span>
+</span><span id="__span-7-39"><a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">"rr"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+</span><span id="__span-7-40"><a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>
+</span><span id="__span-7-41"><a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a><span class="n">workflow</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">template</span><span class="o">=</span><span class="s2">"sci_spatial_ladder"</span><span class="p">)</span>
+</span><span id="__span-7-42"><a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a><span class="n">wf_run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+</span><span id="__span-7-43"><a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>    <span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+</span><span id="__span-7-44"><a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>    <span class="n">inputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"dataset://epidemiology/scotland_lip_cancer@latest"</span><span class="p">},</span>
+</span><span id="__span-7-45"><a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"engine"</span><span class="p">:</span> <span class="s2">"nutpie"</span><span class="p">},</span>
+</span><span id="__span-7-46"><a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>    <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-7-47"><a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a><span class="p">)</span>
+</span><span id="__span-7-48"><a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a><span class="n">nodes</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="o">.</span><span class="n">node_id</span><span class="p">:</span> <span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">wf_run</span><span class="o">.</span><span class="n">nodes</span><span class="p">}</span>
+</span><span id="__span-7-49"><a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a><span class="nb">print</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s2">"compare"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">"ranking"</span><span class="p">])</span>  <span class="c1"># ['icar', 'bym2', 'iid']</span>
+</span><span id="__span-7-50"><a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a><span class="nb">print</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s2">"effect"</span><span class="p">]</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"b1"</span><span class="p">])</span>
+</span></code></pre></div>
+<p>To compare with the notebook, load its printed posterior means with
+<code>mapi_plugin_science.areal_data.challenges_reference()</code>.</p>
+</div>
+</div>
+</div>
+<p>The CLI and the client send the same spec and the same score request as the web app.</p>
+<h2 id="10-differences-from-the-notebook">10. Differences from the notebook<a class="headerlink" href="#10-differences-from-the-notebook" title="Permanent link">&para;</a></h2>
+<p>The port keeps the likelihood, the five priors of the district effects, the scaling factor,
+the island links and the maps of notebook sections 3 to 7. It leaves out these parts:</p>
+<ul>
+<li><strong>Other graphs (section 2).</strong> The export makes the queen graph only. In Python,
+  <code>areal_data.from_challenges(path, graph="rook")</code> makes the rook graph, and
+  <code>graph="published"</code> reads the hand-edited WinBUGS list. Write the result with
+  <code>write_export</code> and upload it as a new dataset. This is "Try it yourself" item 2 of the
+  notebook.</li>
+<li><strong>Moran's I checks (sections 2 and 4).</strong> The fit keeps Moran's I of the log SMR on the
+  linked graph (<code>learned["morans_i_log_smr"]</code>, 0.53). The notebook uses the mainland graph
+  and gets 0.50. The platform does not calculate Moran's I of the residual effects.</li>
+<li><strong>The prior correlation against distance (section 3).</strong> Not in the platform.</li>
+<li><strong>The isolated islands (failure 1).</strong> <code>islands: isolate</code> with <code>kind: icar</code> gives the "quiet"
+  failure of the notebook: the islands get no information from other districts. <code>kind: bym2</code>
+  with <code>islands: error</code> gives the "loud" failure as <code>SCHEMA_INVALID</code>, and
+  <code>islands: isolate</code> gives <code>SETTINGS_INVALID</code>.</li>
+<li><strong>The unscaled BYM (failure 3).</strong> The platform has BYM2 only. It does not have separate
+  priors on <code>sigma_phi</code> and <code>sigma_theta</code>.</li>
+<li><strong>The shrinkage plot (section 7).</strong> Not in the platform. Compare the <strong>observed</strong> and the
+  <strong>mean</strong> panels of the area map, or compare the <code>rr</code> of an <code>iid</code> fit and a <code>bym2</code> fit.</li>
+<li><strong>The 8-fold cross-validation (section 8).</strong> The platform holds out one block of 7
+  districts. To do more folds, fit the spec again with other values of <code>split.seed</code>.</li>
+<li><strong>Restricted spatial regression (section 9).</strong> Not in the platform. The notebook also does
+  not recommend it.</li>
+</ul>
+<p><strong>Next steps:</strong></p>
+<ul>
+<li>Do "Try it yourself" item 3 of the notebook: put more prior weight on <code>rho</code> near 0, for
+  example <code>rho_alpha: 1</code> and <code>rho_beta: 3</code>. Do the data still move <code>rho</code> up?</li>
+<li>Compare BYM2 with a GP on the district centres. See the
+  <a href="../e07-oklahoma-earthquakes/">E07 tutorial</a> for a GP on a grid.</li>
+<li>Read the <a href="../../../reference/models/">model reference</a> for the other science models.</li>
+<li>Read <a href="../../../guides/workflows/">Workflows</a> to change the ladder recipe.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../e07-oklahoma-earthquakes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: E07 Earthquakes in Oklahoma">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                E07 Earthquakes in Oklahoma
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../e19-protein-signalling/" class="md-footer__link md-footer__link--next" aria-label="Next: E19 Protein signalling graph">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                E19 Protein signalling graph
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Documentation CC BY 4.0 · SDK Apache-2.0 · Platform AGPLv3 or commercial
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+      
+    
+  </body>
+</html>

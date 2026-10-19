@@ -379,7 +379,9 @@
         "EXPLORE_INVALID",
         "OPTIMIZE_INFEASIBLE",
         "ACTUALS_NOT_SUPPORTED",
-        "ACTUALS_INVALID"
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -581,6 +583,28 @@
       "title": "Severity",
       "type": "string"
     },
+    "TreeSchema": {
+      "additionalProperties": false,
+      "description": "Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.\n\nEvery node's ancestors are present (an empty schema stands for a pure group), a\ndim a node shares with an ancestor has an equal spec (children align with inherited\ncoords), and no variable has the name of an ancestor's dim (the inherited coord would\nhide it).",
+      "properties": {
+        "nodes": {
+          "maxProperties": 256,
+          "minProperties": 1,
+          "patternProperties": {
+            "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$": {
+              "$ref": "#/$defs/DataSchema"
+            }
+          },
+          "title": "Nodes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "title": "TreeSchema",
+      "type": "object"
+    },
     "VarSpec": {
       "additionalProperties": false,
       "description": "A data variable: its dims (by name), dtype, role, units and missingness.",
@@ -765,6 +789,9 @@
       "ref": "dataset://default/eu_media_daily@v3",
       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
       "size_bytes": 1048576,
+      "sources": [
+        "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+      ],
       "status": "ready",
       "summary": {
         "coords": {
@@ -783,6 +810,69 @@
       },
       "tenant_id": "default",
       "version": 3
+    },
+    {
+      "created_at": "2026-10-15T09:30:00Z",
+      "data_schema": {},
+      "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+      "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "issues": [],
+      "layout": "tree",
+      "project_id": "default",
+      "ready_at": "2026-10-15T09:31:10Z",
+      "ref": "dataset://default/lens_cubes@v4",
+      "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "size_bytes": 4194304,
+      "sources": [
+        "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+        "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+      ],
+      "status": "ready",
+      "tenant_id": "default",
+      "tree_schema": {
+        "nodes": {
+          "/": {},
+          "/observations": {
+            "dims": {
+              "col": {
+                "kind": "index"
+              },
+              "row": {
+                "kind": "index"
+              }
+            },
+            "vars": {
+              "image": {
+                "dims": [
+                  "row",
+                  "col"
+                ],
+                "dtype": "float32"
+              }
+            }
+          },
+          "/psf": {
+            "dims": {
+              "pcol": {
+                "kind": "index"
+              },
+              "prow": {
+                "kind": "index"
+              }
+            },
+            "vars": {
+              "psf": {
+                "dims": [
+                  "prow",
+                  "pcol"
+                ],
+                "dtype": "float64"
+              }
+            }
+          }
+        }
+      },
+      "version": 4
     }
   ],
   "properties": {
@@ -832,6 +922,16 @@
       },
       "title": "Issues",
       "type": "array"
+    },
+    "layout": {
+      "default": "dataset",
+      "description": "M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema)",
+      "enum": [
+        "dataset",
+        "tree"
+      ],
+      "title": "Layout",
+      "type": "string"
     },
     "message": {
       "anyOf": [
@@ -916,6 +1016,18 @@
       "default": null,
       "title": "Size Bytes"
     },
+    "sources": {
+      "description": "M4: the uploads the version was built from",
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
     "status": {
       "$ref": "#/$defs/DatasetVersionStatus"
     },
@@ -934,6 +1046,18 @@
       "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
       "title": "Tenant Id",
       "type": "string"
+    },
+    "tree_schema": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TreeSchema"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the schema of a tree version"
     },
     "version": {
       "minimum": 1,

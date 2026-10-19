@@ -1,0 +1,1264 @@
+{
+  "$defs": {
+    "AssemblySource": {
+      "additionalProperties": false,
+      "description": "One upload of a multi-file dataset version (M4) and where it goes.\n\nThe upload is ingested with its own ``mapping`` into node ``node``; a file that is\nitself a tree mounts its nodes *under* ``node`` (file group ``/psf`` at node\n``/instrument`` becomes ``/instrument/psf``). Sources of the same node are combined by\n``combine`` (see :data:`CombineRule`).",
+      "examples": [
+        {
+          "combine": "concat",
+          "concat_dim": "year",
+          "concat_label": 2024,
+          "mapping": {
+            "format": "netcdf"
+          },
+          "node": "/",
+          "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+        }
+      ],
+      "properties": {
+        "combine": {
+          "default": "node",
+          "enum": [
+            "node",
+            "concat",
+            "merge"
+          ],
+          "title": "Combine",
+          "type": "string"
+        },
+        "concat_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "combine 'concat': the dim to stack on",
+          "title": "Concat Dim"
+        },
+        "concat_label": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "combine 'concat': this file's label along concat_dim",
+          "title": "Concat Label"
+        },
+        "join": {
+          "default": "exact",
+          "description": "How coords align when sources are combined",
+          "enum": [
+            "exact",
+            "inner",
+            "outer"
+          ],
+          "title": "Join",
+          "type": "string"
+        },
+        "mapping": {
+          "$ref": "#/$defs/IngestMapping"
+        },
+        "node": {
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "title": "Node",
+          "type": "string"
+        },
+        "upload_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Upload Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "upload_id",
+        "mapping"
+      ],
+      "title": "AssemblySource",
+      "type": "object"
+    },
+    "DimMapping": {
+      "additionalProperties": false,
+      "description": "A dim of the dataset, read from one column of a tabular upload.",
+      "examples": [
+        {
+          "column": "date",
+          "spec": {
+            "freq": "D",
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      ],
+      "properties": {
+        "column": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Column",
+          "type": "string"
+        },
+        "spec": {
+          "$ref": "#/$defs/DimSpec"
+        }
+      },
+      "required": [
+        "column",
+        "spec"
+      ],
+      "title": "DimMapping",
+      "type": "object"
+    },
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    },
+    "Hdf5Coord": {
+      "additionalProperties": false,
+      "description": "The coordinate of dim ``dim`` in node ``node`` of a raw HDF5 upload (M4).\n\nExactly one source: ``path`` (a 1-D HDF5 dataset holding the labels), or ``start`` with\nan optional ``step`` (a range: numbers, or a date and a pandas frequency such as\n``\"2024-01-01\"`` + ``\"W-MON\"``), or neither (an integer index ``0..n-1``). ``spec``\noverrides the inferred :class:`~mapi_spec.schema.DimSpec`.",
+      "examples": [
+        {
+          "dim": "row",
+          "spec": {
+            "kind": "float",
+            "ordered": true
+          },
+          "start": 0.0,
+          "step": 0.05
+        },
+        {
+          "dim": "date",
+          "path": "/axes/date",
+          "spec": {
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      ],
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "node": {
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "title": "Node",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "pattern": "^/[^\\x00]{1,1024}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "spec": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DimSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        }
+      },
+      "required": [
+        "dim"
+      ],
+      "title": "Hdf5Coord",
+      "type": "object"
+    },
+    "Hdf5Mapping": {
+      "additionalProperties": false,
+      "description": "How a raw HDF5 upload becomes a (tree) dataset (M4): which arrays become which\nvariables of which node, with which dims and coords. Arrays that are not mapped are\nreported in one warning, never read.",
+      "examples": [
+        {
+          "coords": [
+            {
+              "dim": "row",
+              "spec": {
+                "kind": "float",
+                "ordered": true
+              },
+              "start": 0.0,
+              "step": 0.05
+            }
+          ],
+          "vars": [
+            {
+              "dims": [
+                "row",
+                "col"
+              ],
+              "name": "image",
+              "node": "/",
+              "path": "/observations/image",
+              "units": "counts"
+            },
+            {
+              "dims": [
+                "prow",
+                "pcol"
+              ],
+              "name": "psf",
+              "node": "/psf",
+              "path": "/psf/kernel"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "$ref": "#/$defs/Hdf5Coord"
+          },
+          "maxItems": 64,
+          "title": "Coords",
+          "type": "array"
+        },
+        "vars": {
+          "items": {
+            "$ref": "#/$defs/Hdf5Var"
+          },
+          "maxItems": 1024,
+          "minItems": 1,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vars"
+      ],
+      "title": "Hdf5Mapping",
+      "type": "object"
+    },
+    "Hdf5Var": {
+      "additionalProperties": false,
+      "description": "A data variable read from one HDF5 dataset of a raw HDF5 upload (M4).\n\n``dims`` names the array's axes in order (its length must equal the array's ``ndim``;\nthe sandbox checks it). The variable is stored as ``name`` in tree node ``node``.",
+      "examples": [
+        {
+          "dims": [
+            "row",
+            "col"
+          ],
+          "name": "image",
+          "node": "/",
+          "path": "/observations/image",
+          "units": "counts"
+        }
+      ],
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Dims",
+          "type": "array"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "node": {
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "title": "Node",
+          "type": "string"
+        },
+        "path": {
+          "pattern": "^/[^\\x00]{1,1024}$",
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "path",
+        "name"
+      ],
+      "title": "Hdf5Var",
+      "type": "object"
+    },
+    "IngestMapping": {
+      "additionalProperties": false,
+      "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars`` (with groups, they rename/select per node by name). A raw ``hdf5``\nfile (M4) needs ``hdf5`` (:class:`Hdf5Mapping`) instead of ``dims``/``vars``. Parsing\nhappens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
+      "examples": [
+        {
+          "dims": {
+            "date": {
+              "column": "date",
+              "spec": {
+                "freq": "D",
+                "kind": "time",
+                "policy": "extend"
+              }
+            },
+            "market": {
+              "column": "market",
+              "spec": {
+                "kind": "categorical"
+              }
+            }
+          },
+          "format": "csv",
+          "vars": {
+            "revenue_local": {
+              "column": "revenue",
+              "role": "target",
+              "units": "local"
+            },
+            "spend_local": {
+              "column": "spend",
+              "role": "spend",
+              "units": "local"
+            }
+          }
+        },
+        {
+          "dims": {
+            "market": {
+              "column": "market",
+              "spec": {
+                "kind": "categorical"
+              }
+            },
+            "week": {
+              "column": "week",
+              "spec": {
+                "freq": "W-SUN",
+                "kind": "time",
+                "policy": "extend"
+              }
+            }
+          },
+          "format": "csv",
+          "vars": {
+            "revenue": {
+              "column": "revenue",
+              "role": "target",
+              "units": "EUR"
+            }
+          },
+          "wide": {
+            "spend": {
+              "columns": {
+                "search": "search_spend",
+                "social": "social_spend",
+                "tv": "tv_spend"
+              },
+              "dim": "channel",
+              "role": "spend",
+              "units": "EUR"
+            }
+          }
+        },
+        {
+          "format": "mff",
+          "mff": {
+            "freq": "W-MON"
+          },
+          "preset": "mff"
+        },
+        {
+          "format": "parquet",
+          "meridian": {
+            "kpi": "revenue",
+            "media": [
+              "tv_impressions"
+            ],
+            "media_channels": [
+              "tv"
+            ],
+            "media_spend": [
+              "tv_spend"
+            ]
+          },
+          "preset": "meridian"
+        },
+        {
+          "format": "hdf5",
+          "hdf5": {
+            "coords": [
+              {
+                "dim": "row",
+                "spec": {
+                  "kind": "float",
+                  "ordered": true
+                },
+                "start": 0.0,
+                "step": 0.05
+              }
+            ],
+            "vars": [
+              {
+                "dims": [
+                  "row",
+                  "col"
+                ],
+                "name": "image",
+                "node": "/",
+                "path": "/observations/image",
+                "units": "counts"
+              },
+              {
+                "dims": [
+                  "prow",
+                  "pcol"
+                ],
+                "name": "psf",
+                "node": "/psf",
+                "path": "/psf/kernel"
+              }
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "dims": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DimMapping"
+          },
+          "maxProperties": 32,
+          "title": "Dims",
+          "type": "object"
+        },
+        "format": {
+          "enum": [
+            "csv",
+            "parquet",
+            "mff",
+            "zarr_zip",
+            "netcdf",
+            "hdf5"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "hdf5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hdf5Mapping"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')"
+        },
+        "layout": {
+          "default": "dense",
+          "enum": [
+            "dense",
+            "long"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "meridian": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeridianColumns"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The meridian preset's columns"
+        },
+        "mff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MffOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Options of the mff preset"
+        },
+        "preset": {
+          "$ref": "#/$defs/IngestPreset",
+          "default": "none",
+          "description": "M3: a file contract instead of (or refined by) the column mapping"
+        },
+        "vars": {
+          "additionalProperties": {
+            "$ref": "#/$defs/VarMapping"
+          },
+          "maxProperties": 1024,
+          "title": "Vars",
+          "type": "object"
+        },
+        "wide": {
+          "additionalProperties": {
+            "$ref": "#/$defs/WideVarMapping"
+          },
+          "description": "M3: variables read from one column per label of a dim (wide tables)",
+          "maxProperties": 64,
+          "title": "Wide",
+          "type": "object"
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "title": "IngestMapping",
+      "type": "object"
+    },
+    "IngestPreset": {
+      "enum": [
+        "none",
+        "mff",
+        "meridian"
+      ],
+      "title": "IngestPreset",
+      "type": "string"
+    },
+    "MeridianColumns": {
+      "additionalProperties": false,
+      "description": "Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.\n\n``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:\nthe *i*-th column of each belongs to the *i*-th entry of ``media_channels``\n(``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether\nthe KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).",
+      "examples": [
+        {
+          "controls": [
+            "competitor_sales",
+            "sentiment"
+          ],
+          "geo": "geo",
+          "kpi": "conversions",
+          "kpi_type": "non_revenue",
+          "media": [
+            "tv_impressions",
+            "search_impressions"
+          ],
+          "media_channels": [
+            "tv",
+            "search"
+          ],
+          "media_spend": [
+            "tv_spend",
+            "search_spend"
+          ],
+          "population": "population",
+          "revenue_per_kpi": "revenue_per_conversion",
+          "time": "time"
+        }
+      ],
+      "properties": {
+        "controls": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Controls",
+          "type": "array"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "maxLength": 16,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "W",
+          "description": "Time frequency (pandas alias)",
+          "title": "Freq"
+        },
+        "frequency": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Frequency",
+          "type": "array"
+        },
+        "geo": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "geo",
+          "title": "Geo"
+        },
+        "kpi": {
+          "default": "kpi",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Kpi",
+          "type": "string"
+        },
+        "kpi_type": {
+          "default": "revenue",
+          "enum": [
+            "revenue",
+            "non_revenue"
+          ],
+          "title": "Kpi Type",
+          "type": "string"
+        },
+        "media": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Media",
+          "type": "array"
+        },
+        "media_channels": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Media Channels",
+          "type": "array"
+        },
+        "media_spend": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Media Spend",
+          "type": "array"
+        },
+        "non_media_treatments": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Non Media Treatments",
+          "type": "array"
+        },
+        "organic_media": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Organic Media",
+          "type": "array"
+        },
+        "population": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Population"
+        },
+        "reach": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Reach",
+          "type": "array"
+        },
+        "revenue_per_kpi": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revenue Per Kpi"
+        },
+        "rf_channels": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Rf Channels",
+          "type": "array"
+        },
+        "rf_spend": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Rf Spend",
+          "type": "array"
+        },
+        "time": {
+          "default": "time",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Time",
+          "type": "string"
+        }
+      },
+      "title": "MeridianColumns",
+      "type": "object"
+    },
+    "MffOptions": {
+      "additionalProperties": false,
+      "description": "The MFF (\"model feature format\") long-table preset.\n\nOne row per ``(period, geography, product, campaign, outlet, creative, variable)`` with\nthe value in ``value_column``. ``Period`` becomes the time dim; ``VariableName`` values\nbecome data variables. The rest follows mmm-framework's MFF semantics (its\n``MFFLoader``), so both read a file the same way:\n\n* ``Geography`` and ``Product`` become dims when they hold more than one level. A blank\n  label (or ``National``, ``Total``, ``All``) is the coarser level: a variable given\n  only there (national TV) is spread across the levels - equal weights, or the KPI's\n  share of each level (``allocation``; mmm-framework's defaults: geographies equally,\n  products by sales). A variable may not mix the two levels.\n* ``Campaign``, ``Outlet`` and ``Creative`` are breakdowns: rows that differ only there\n  are summed, unless the column is listed in ``split`` (then it becomes a dim).\n\n``combine`` joins several key columns into one dim (``{\"geo\": [\"Geography\", \"Product\"]}``\ngives labels such as ``US|Watches``) - a model with one panel dim can then fit a\ngeography x product panel. A combined dim is created even when it has a single label,\nso ``{\"geo\": [\"Geography\"]}`` keeps a national table's geo dim.",
+      "properties": {
+        "allocation": {
+          "additionalProperties": {
+            "enum": [
+              "equal",
+              "kpi"
+            ],
+            "type": "string"
+          },
+          "description": "v0.5: how a variable given only at the coarser level (a blank or 'National' label) is spread across the levels of a key column: equally, or by the KPI's share of each level (the variable with role 'target', or 'kpi')",
+          "title": "Allocation",
+          "type": "object"
+        },
+        "combine": {
+          "description": "M3: dim -> key columns whose labels are joined ('|') into that one dim",
+          "maxProperties": 4,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "title": "Combine",
+          "type": "object"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas offset alias; inferred when omitted",
+          "title": "Freq"
+        },
+        "key_columns": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Key column -> dim name",
+          "title": "Key Columns",
+          "type": "object"
+        },
+        "kpi": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.5: the KPI variable of 'kpi' allocation",
+          "title": "Kpi"
+        },
+        "missing": {
+          "default": "allow",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "period_column": {
+          "default": "Period",
+          "title": "Period Column",
+          "type": "string"
+        },
+        "roles": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Variable -> role",
+          "title": "Roles",
+          "type": "object"
+        },
+        "split": {
+          "description": "v0.5: breakdown key columns (Campaign, Outlet, Creative) kept as dims instead of summed",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Split",
+          "type": "array"
+        },
+        "time_dim": {
+          "default": "date",
+          "title": "Time Dim",
+          "type": "string"
+        },
+        "units": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Variable -> units",
+          "title": "Units",
+          "type": "object"
+        },
+        "value_column": {
+          "default": "VariableValue",
+          "title": "Value Column",
+          "type": "string"
+        },
+        "variable_column": {
+          "default": "VariableName",
+          "title": "Variable Column",
+          "type": "string"
+        }
+      },
+      "title": "MffOptions",
+      "type": "object"
+    },
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "VarMapping": {
+      "additionalProperties": false,
+      "description": "A data variable read from one column (dtype is inferred during ingest).",
+      "examples": [
+        {
+          "column": "revenue",
+          "role": "target",
+          "units": "EUR"
+        }
+      ],
+      "properties": {
+        "column": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Column",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "title": "VarMapping",
+      "type": "object"
+    },
+    "WideVarMapping": {
+      "additionalProperties": false,
+      "description": "One variable read from several columns, one per label of ``dim`` (a wide table).\n\n``{\"dim\": \"channel\", \"columns\": {\"tv\": \"tv_spend\", \"search\": \"search_spend\"}}`` gives a\nvariable along ``channel`` (plus the table's other dims) with coords ``tv`` and\n``search``. Several wide variables may share a dim; their labels must then agree.",
+      "examples": [
+        {
+          "columns": {
+            "search": "search_spend",
+            "social": "social_spend",
+            "tv": "tv_spend"
+          },
+          "dim": "channel",
+          "role": "spend",
+          "units": "EUR"
+        }
+      ],
+      "properties": {
+        "columns": {
+          "additionalProperties": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxProperties": 256,
+          "minProperties": 1,
+          "title": "Columns",
+          "type": "object"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "dim_spec": {
+          "$ref": "#/$defs/DimSpec"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "dim",
+        "columns"
+      ],
+      "title": "WideVarMapping",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-IngestAssembly.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A dataset version built from several uploads (M4): every source is ingested in the\nsame sandboxed run (inputs ``upload.<i>``, ``i`` = the source's index), then combined\nper node. The result is a tree dataset unless every source lands in the root.",
+  "examples": [
+    {
+      "sources": [
+        {
+          "combine": "concat",
+          "concat_dim": "year",
+          "concat_label": 2024,
+          "mapping": {
+            "format": "netcdf"
+          },
+          "node": "/",
+          "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
+        },
+        {
+          "combine": "concat",
+          "concat_dim": "year",
+          "concat_label": 2025,
+          "mapping": {
+            "format": "netcdf"
+          },
+          "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+        },
+        {
+          "mapping": {
+            "format": "netcdf"
+          },
+          "node": "/instrument",
+          "upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p2"
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/AssemblySource"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sources"
+  ],
+  "title": "IngestAssembly",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

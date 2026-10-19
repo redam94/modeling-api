@@ -186,7 +186,9 @@
         "EXPLORE_INVALID",
         "OPTIMIZE_INFEASIBLE",
         "ACTUALS_NOT_SUPPORTED",
-        "ACTUALS_INVALID"
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE"
       ],
       "title": "ErrorCode",
       "type": "string"
@@ -218,6 +220,20 @@
           "default": "mapi.explorer-index/v1",
           "title": "Format",
           "type": "string"
+        },
+        "node": {
+          "anyOf": [
+            {
+              "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M4: the node of a tree dataset explored (absent for a flat dataset)",
+          "title": "Node"
         },
         "ref": {
           "description": "dataset://\u2026 or model://\u2026",
@@ -1063,7 +1079,8 @@
         "workflow",
         "workflow_node",
         "explore",
-        "governance"
+        "governance",
+        "inspect"
       ],
       "title": "RunKind",
       "type": "string"

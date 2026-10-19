@@ -247,7 +247,7 @@
         }
       ],
       "default": null,
-      "description": "M3.5: optional About card (plots are chosen from a model, not a catalog)"
+      "description": "The plot's About card: what it shows, how to read it, what it needs"
     },
     "id": {
       "title": "Id",
@@ -276,6 +276,20 @@
       },
       "title": "Requires Representation",
       "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "maxLength": 300,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "One line on what the chart shows (the recipe's summary)",
+      "title": "Summary"
     },
     "title": {
       "maxLength": 200,

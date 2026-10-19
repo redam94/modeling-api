@@ -279,6 +279,16 @@
           "title": "Inference",
           "type": "string"
         },
+        "input": {
+          "default": "dataset",
+          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+          "enum": [
+            "dataset",
+            "tree"
+          ],
+          "title": "Input",
+          "type": "string"
+        },
         "loo_invalid_reason": {
           "anyOf": [
             {
@@ -691,6 +701,12 @@
       "additionalProperties": false,
       "description": "An output variable the model writes (e.g. ``y_hat``).",
       "properties": {
+        "circular": {
+          "default": false,
+          "description": "The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors, and the score summaries of draws use the circular mean and intervals centred on it, wrapped into [0, period)",
+          "title": "Circular",
+          "type": "boolean"
+        },
         "description": {
           "anyOf": [
             {
@@ -786,7 +802,7 @@
             }
           ],
           "default": null,
-          "description": "M3.5: optional About card (plots are chosen from a model, not a catalog)"
+          "description": "The plot's About card: what it shows, how to read it, what it needs"
         },
         "id": {
           "title": "Id",
@@ -815,6 +831,20 @@
           },
           "title": "Requires Representation",
           "type": "array"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One line on what the chart shows (the recipe's summary)",
+          "title": "Summary"
         },
         "title": {
           "maxLength": 200,

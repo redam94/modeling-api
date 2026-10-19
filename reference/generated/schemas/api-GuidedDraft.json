@@ -193,14 +193,270 @@
         "EXPLORE_INVALID",
         "OPTIMIZE_INFEASIBLE",
         "ACTUALS_NOT_SUPPORTED",
-        "ACTUALS_INVALID"
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE"
       ],
       "title": "ErrorCode",
       "type": "string"
     },
+    "Hdf5Coord": {
+      "additionalProperties": false,
+      "description": "The coordinate of dim ``dim`` in node ``node`` of a raw HDF5 upload (M4).\n\nExactly one source: ``path`` (a 1-D HDF5 dataset holding the labels), or ``start`` with\nan optional ``step`` (a range: numbers, or a date and a pandas frequency such as\n``\"2024-01-01\"`` + ``\"W-MON\"``), or neither (an integer index ``0..n-1``). ``spec``\noverrides the inferred :class:`~mapi_spec.schema.DimSpec`.",
+      "examples": [
+        {
+          "dim": "row",
+          "spec": {
+            "kind": "float",
+            "ordered": true
+          },
+          "start": 0.0,
+          "step": 0.05
+        },
+        {
+          "dim": "date",
+          "path": "/axes/date",
+          "spec": {
+            "kind": "time",
+            "policy": "extend"
+          }
+        }
+      ],
+      "properties": {
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "node": {
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "title": "Node",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "pattern": "^/[^\\x00]{1,1024}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "spec": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DimSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        }
+      },
+      "required": [
+        "dim"
+      ],
+      "title": "Hdf5Coord",
+      "type": "object"
+    },
+    "Hdf5Mapping": {
+      "additionalProperties": false,
+      "description": "How a raw HDF5 upload becomes a (tree) dataset (M4): which arrays become which\nvariables of which node, with which dims and coords. Arrays that are not mapped are\nreported in one warning, never read.",
+      "examples": [
+        {
+          "coords": [
+            {
+              "dim": "row",
+              "spec": {
+                "kind": "float",
+                "ordered": true
+              },
+              "start": 0.0,
+              "step": 0.05
+            }
+          ],
+          "vars": [
+            {
+              "dims": [
+                "row",
+                "col"
+              ],
+              "name": "image",
+              "node": "/",
+              "path": "/observations/image",
+              "units": "counts"
+            },
+            {
+              "dims": [
+                "prow",
+                "pcol"
+              ],
+              "name": "psf",
+              "node": "/psf",
+              "path": "/psf/kernel"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "coords": {
+          "items": {
+            "$ref": "#/$defs/Hdf5Coord"
+          },
+          "maxItems": 64,
+          "title": "Coords",
+          "type": "array"
+        },
+        "vars": {
+          "items": {
+            "$ref": "#/$defs/Hdf5Var"
+          },
+          "maxItems": 1024,
+          "minItems": 1,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vars"
+      ],
+      "title": "Hdf5Mapping",
+      "type": "object"
+    },
+    "Hdf5Var": {
+      "additionalProperties": false,
+      "description": "A data variable read from one HDF5 dataset of a raw HDF5 upload (M4).\n\n``dims`` names the array's axes in order (its length must equal the array's ``ndim``;\nthe sandbox checks it). The variable is stored as ``name`` in tree node ``node``.",
+      "examples": [
+        {
+          "dims": [
+            "row",
+            "col"
+          ],
+          "name": "image",
+          "node": "/",
+          "path": "/observations/image",
+          "units": "counts"
+        }
+      ],
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "dims": {
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Dims",
+          "type": "array"
+        },
+        "missing": {
+          "default": "forbid",
+          "enum": [
+            "forbid",
+            "allow",
+            "mask"
+          ],
+          "title": "Missing",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "node": {
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "title": "Node",
+          "type": "string"
+        },
+        "path": {
+          "pattern": "^/[^\\x00]{1,1024}$",
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "default": "covariate"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "path",
+        "name"
+      ],
+      "title": "Hdf5Var",
+      "type": "object"
+    },
     "IngestMapping": {
       "additionalProperties": false,
-      "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars``. Parsing happens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
+      "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars`` (with groups, they rename/select per node by name). A raw ``hdf5``\nfile (M4) needs ``hdf5`` (:class:`Hdf5Mapping`) instead of ``dims``/``vars``. Parsing\nhappens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
       "examples": [
         {
           "dims": {
@@ -293,6 +549,43 @@
             ]
           },
           "preset": "meridian"
+        },
+        {
+          "format": "hdf5",
+          "hdf5": {
+            "coords": [
+              {
+                "dim": "row",
+                "spec": {
+                  "kind": "float",
+                  "ordered": true
+                },
+                "start": 0.0,
+                "step": 0.05
+              }
+            ],
+            "vars": [
+              {
+                "dims": [
+                  "row",
+                  "col"
+                ],
+                "name": "image",
+                "node": "/",
+                "path": "/observations/image",
+                "units": "counts"
+              },
+              {
+                "dims": [
+                  "prow",
+                  "pcol"
+                ],
+                "name": "psf",
+                "node": "/psf",
+                "path": "/psf/kernel"
+              }
+            ]
+          }
         }
       ],
       "properties": {
@@ -310,10 +603,23 @@
             "parquet",
             "mff",
             "zarr_zip",
-            "netcdf"
+            "netcdf",
+            "hdf5"
           ],
           "title": "Format",
           "type": "string"
+        },
+        "hdf5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hdf5Mapping"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')"
         },
         "layout": {
           "default": "dense",

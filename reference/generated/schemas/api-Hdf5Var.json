@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "Role": {
+      "description": "What a variable means to a model.",
+      "enum": [
+        "target",
+        "covariate",
+        "media",
+        "spend",
+        "control",
+        "index",
+        "mask",
+        "constant",
+        "weight",
+        "exposure"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Hdf5Var.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A data variable read from one HDF5 dataset of a raw HDF5 upload (M4).\n\n``dims`` names the array's axes in order (its length must equal the array's ``ndim``;\nthe sandbox checks it). The variable is stored as ``name`` in tree node ``node``.",
+  "examples": [
+    {
+      "dims": [
+        "row",
+        "col"
+      ],
+      "name": "image",
+      "node": "/",
+      "path": "/observations/image",
+      "units": "counts"
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "dims": {
+      "items": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Dims",
+      "type": "array"
+    },
+    "missing": {
+      "default": "forbid",
+      "enum": [
+        "forbid",
+        "allow",
+        "mask"
+      ],
+      "title": "Missing",
+      "type": "string"
+    },
+    "name": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Name",
+      "type": "string"
+    },
+    "node": {
+      "default": "/",
+      "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+      "title": "Node",
+      "type": "string"
+    },
+    "path": {
+      "pattern": "^/[^\\x00]{1,1024}$",
+      "title": "Path",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role",
+      "default": "covariate"
+    },
+    "units": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Units"
+    }
+  },
+  "required": [
+    "path",
+    "name"
+  ],
+  "title": "Hdf5Var",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

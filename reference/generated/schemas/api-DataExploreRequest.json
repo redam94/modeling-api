@@ -87,6 +87,20 @@
       "title": "Max Series",
       "type": "integer"
     },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset to explore (default: the root, or the first node with variables)",
+      "title": "Node"
+    },
     "outlier_threshold": {
       "default": 3.5,
       "exclusiveMinimum": 0,

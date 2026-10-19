@@ -179,7 +179,8 @@
         "node",
         "check",
         "dataset",
-        "spec"
+        "spec",
+        "plot"
       ],
       "title": "AboutKind",
       "type": "string"

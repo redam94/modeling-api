@@ -338,6 +338,16 @@
           "title": "Inference",
           "type": "string"
         },
+        "input": {
+          "default": "dataset",
+          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+          "enum": [
+            "dataset",
+            "tree"
+          ],
+          "title": "Input",
+          "type": "string"
+        },
         "loo_invalid_reason": {
           "anyOf": [
             {
@@ -845,7 +855,8 @@
         "workflow",
         "workflow_node",
         "explore",
-        "governance"
+        "governance",
+        "inspect"
       ],
       "title": "RunKind",
       "type": "string"

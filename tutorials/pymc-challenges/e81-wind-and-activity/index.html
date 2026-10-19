@@ -1,0 +1,7266 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit, score and share labelled multi-dimensional models — safely.">
+      
+      
+        <meta name="author" content="Matthew Reda">
+      
+      
+      
+        <link rel="prev" href="../e80-strong-lens/">
+      
+      
+        <link rel="next" href="../../../concepts/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>E81 Wind and animal activity - modeling-api</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#e81-wind-directions-and-animal-activity-circular" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="modeling-api" class="md-header__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            modeling-api
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              E81 Wind and animal activity
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../guides/web-ui/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../reference/spec-format/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../project/licensing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="modeling-api" class="md-nav__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../../assets/logo.svg" alt="logo">
+
+    </a>
+    modeling-api
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../getting-started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart: zero to first model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/first-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runs and executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimise-a-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../complex-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complex workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Science models from pymc-challenges
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_8" id="__nav_3_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Science models from pymc-challenges
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e07-oklahoma-earthquakes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E07 Earthquakes in Oklahoma
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e18-scottish-lip-cancer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E18 Lip cancer disease map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e19-protein-signalling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E19 Protein signalling graph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e21-law-firm-network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E21 Law-firm network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e23-phylogenetic-regression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E23 Primate phylogenetic regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e31-indian-buffet-digits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E31 Indian buffet process on digits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e50-scratch-assay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E50 Scratch assay PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e51-heat-plate-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E51 Heat plate design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e58-storm-localisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E58 STORM localisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e60-traction-force/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E60 Traction force microscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e61-turing-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E61 Turing patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e77-colour-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E77 Colour naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e79-cmb-lmc-mask/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E79 CMB behind the LMC mask
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e80-strong-lens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E80 Strong gravitational lens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E81 Wind and animal activity
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E81 Wind and animal activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Get the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-wind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The wind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the datasets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Build the specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-wind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The wind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-the-coefficients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 The coefficients
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-where-does-the-wind-come-from-the-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Where does the wind come from? The fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-the-rose-and-the-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 The rose and the profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-the-mean-resultant-vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 The mean resultant vectors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#66-which-model-predicts-better" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.6 Which model predicts better?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#67-when-is-the-ocelot-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.7 When is the ocelot active?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#68-the-numbers-of-the-notebook-and-of-this-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.8 The numbers of the notebook and of this port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#69-make-the-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.9 Make the decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Score the model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-predict-the-mean-direction-of-each-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Predict: the mean direction of each block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-simulate-new-winds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Simulate: new winds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-evaluate-the-held-out-year-2023" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Evaluate: the held-out year 2023
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../concepts/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/labelled-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labelled data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines and stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/representations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Representations and summaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/bundles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bundles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/coord-plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Using the platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Expert web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/first-model-in-the-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/python-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/tree-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/choosing-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelling
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modelling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/port-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port a model in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a step or model plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bring a PyMC model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tabular models (scikit-learn, xgboost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/mmm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/time-series/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting and sequential models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/conformance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conformance corpus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/spec-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/spec-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/steps-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Steps catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/models-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots and the sanitizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/plots-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot recipes catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/run-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/gcs-shim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS shim
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI and Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/server-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web app and plot sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../reference/api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_25">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sdk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_pymc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sklearn
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/local-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local, without Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Container images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/m35-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../roadmap/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/platform-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The local platform (v0.2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud and multi-tenant (v0.3)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/guided-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode and integrations (v0.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Next: expert plugins and MCP (v0.6)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Get the data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Get the data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-wind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The wind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-upload-the-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upload the datasets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-build-the-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build the specs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Build the specs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-wind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The wind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fit-and-watch-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fit and watch the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Read the result
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Read the result">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-can-you-trust-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Can you trust the fit?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-the-coefficients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 The coefficients
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-where-does-the-wind-come-from-the-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Where does the wind come from? The fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-the-rose-and-the-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 The rose and the profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-the-mean-resultant-vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 The mean resultant vectors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#66-which-model-predicts-better" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.6 Which model predicts better?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#67-when-is-the-ocelot-active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.7 When is the ocelot active?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#68-the-numbers-of-the-notebook-and-of-this-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.8 The numbers of the notebook and of this port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#69-make-the-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.9 Make the decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-score-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Score the model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Score the model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-predict-the-mean-direction-of-each-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Predict: the mean direction of each block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-simulate-new-winds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Simulate: new winds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-evaluate-the-held-out-year-2023" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Evaluate: the held-out year 2023
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-the-camera-traps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 The camera traps
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-run-a-workflow-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Run a workflow recipe
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-the-same-with-the-cli-and-the-python-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. The same with the CLI and the Python client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-differences-from-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Differences from the notebook
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="e81-wind-directions-and-animal-activity-circular">E81 wind directions and animal activity (circular)<a class="headerlink" href="#e81-wind-directions-and-animal-activity-circular" title="Permanent link">&para;</a></h1>
+<p>This tutorial does the work of the pymc-challenges notebook <code>E81_circular_data.py</code> in the web
+app. You use the model <code>sci.circular_regression@1</code>. You do not write PyMC code.</p>
+<p><strong>You need:</strong></p>
+<ul>
+<li>The platform (start it with <code>make dev</code>) and two projects that you can upload datasets to.
+  This tutorial uses the projects <code>meteorology</code> (the wind) and <code>ecology</code> (the camera traps). If
+  your projects have different names, change the project part of each <code>dataset://</code> and
+  <code>model://</code> reference, and <code>metadata.project</code> in the specs.</li>
+<li>A local copy of pymc-challenges. The export commands read one file each from its <code>data/</code>
+  directory.</li>
+<li>About 20 minutes. The two fits of the main path take about one minute of sandbox time
+  together.</li>
+</ul>
+<h2 id="1-the-question">1. The question<a class="headerlink" href="#1-the-question" title="Permanent link">&para;</a></h2>
+<p>Some measurements are angles. A wind blows <em>from</em> a direction between 0 and 360 degrees, and
+359 degrees is next to 1 degree. An animal walks past a camera at a time of day, and 23:59 is
+next to 00:01. An arithmetic mean or a normal likelihood on these values can give a wrong
+answer with high confidence. The notebook uses two real datasets:</p>
+<ul>
+<li><strong>Wind at Santa Barbara airport</strong> (ASOS station KSBA, 2021 to 2023). At night, cool air
+  flows down from the mountains to the sea. In the afternoon, the sea breeze blows inland. Thus
+  the direction turns through half of the compass each day, and the turn changes with the
+  season.</li>
+<li><strong>Camera traps on Barro Colorado Island</strong>, Panama (Rowcliffe et al. 2014). The ocelot hunts at
+  night. The data give the time of day of 16,282 photographs of the ocelot and five animals that
+  it can hunt.</li>
+</ul>
+<p>The notebook asks these questions:</p>
+<ol>
+<li><strong>How does the wind direction change with the hour and the season</strong>, and how sure are you?
+   (Notebook parts B and D.)</li>
+<li><strong>Which model of the direction predicts better</strong> on a year that it did not see? The models
+   are one von Mises direction for each hour and season, a projected normal and a mixture of
+   two wind regimes. (Part D, LOO and the held-out year 2023.)</li>
+<li><strong>When is the ocelot active, and how much does its day overlap with the day of each prey
+   animal?</strong> (Part E, the log-Fourier density, the overlap and the activity level.)</li>
+</ol>
+<p>The notebook ends with these decisions:</p>
+<ul>
+<li>Use the von Mises in its natural parameters (the canonical link). It has one mode, and it
+  has no seam at ±180 degrees. Do not use a uniform prior on an angle.</li>
+<li>For the wind, a mixture of two regimes predicts much better than one direction for each
+  hour. The single von Mises puts mass between the two lobes of the evening rose, where the
+  wind seldom blows.</li>
+<li>Report the overlap of two activity curves with its posterior range. The ocelot overlaps
+  least with the agouti (0.30) and most with the brocket, the spiny rat and the paca (0.66 to
+  0.75).</li>
+</ul>
+<p><strong>What you will get</strong>, and the notebook section that each item replaces:</p>
+<table>
+<thead>
+<tr>
+<th>In the web app</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The rose of the observed directions with the range of the model in each sector (<code>sci.rose</code>)</td>
+<td>Part D, the circular posterior predictive check</td>
+</tr>
+<tr>
+<td>The density of the direction in each block of three hours, with mean, sd and draws (<strong>Fields</strong>, <code>sci.field_map</code>)</td>
+<td>Part B, the rose diagrams by hour, and part D, the model roses</td>
+</tr>
+<tr>
+<td>The mean direction and the mean resultant length of each block of three hours (<strong>Score</strong>)</td>
+<td>Part D, the clock of wind arrows</td>
+</tr>
+<tr>
+<td><code>elpd_loo</code> of the 12,023 reports of 2021 and 2022 (<strong>Metrics</strong>)</td>
+<td>Part D, "Which model predicts better?"</td>
+</tr>
+<tr>
+<td>The circular holdout metrics of 2023 (<strong>Score</strong>, mode Evaluate)</td>
+<td>Part D, the held-out year</td>
+</tr>
+<tr>
+<td>The activity density of each species (<strong>Fields</strong>, <code>sci.profile_bands</code>)</td>
+<td>Part E, the log-Fourier density</td>
+</tr>
+<tr>
+<td>The overlap of each pair of species, and the activity level of each species (<strong>Fields</strong> and <strong>Score</strong>)</td>
+<td>Part E, the overlap and the activity level</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="#10-differences-from-the-notebook">Differences from the notebook</a> for the parts that the
+port leaves out.</p>
+<h2 id="2-get-the-data">2. Get the data<a class="headerlink" href="#2-get-the-data" title="Permanent link">&para;</a></h2>
+<p>The two datasets have different cases in the export command: <code>e81</code> for the wind and <code>e81b</code> for
+the camera traps. Run the commands from the root of the modeling-api repository.</p>
+<h3 id="21-the-wind">2.1 The wind<a class="headerlink" href="#21-the-wind" title="Permanent link">&para;</a></h3>
+<p>The export reads <code>asos_ksba_2021_2023.csv.gz</code>. It removes the calm reports, because a calm
+wind has no direction. It uses Pacific standard time (UTC − 8) all year, so that the sea breeze
+follows the sun and not the clock.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e81<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span>--out<span class="w"> </span>ksba_wind_2021_2023.nc<span class="w"> </span>--spec<span class="w"> </span>ksba_wind_2021_2023.yaml
+</span></code></pre></div>
+<p>The command writes:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>wrote ksba_wind_2021_2023.nc (variables wind_from, hour_lst, day_of_year, year on report=18049)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>upload it as dataset meteorology/ksba_wind_2021_2023 and fit sci.circular_regression
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>wrote the suggested spec to ksba_wind_2021_2023.yaml
+</span></code></pre></div>
+<p>The file holds one dataset:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Dims</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>report</code></td>
+<td>18,049</td>
+<td>integer, policy <code>extend</code></td>
+<td>The reports in time order. The 6,026 reports of 2023 are the last ones</td>
+</tr>
+<tr>
+<td><code>wind_from</code></td>
+<td><code>report</code></td>
+<td>float64, target, <code>deg</code></td>
+<td>The direction that the wind blows from, clockwise from true north. ASOS gives it in steps of 10 degrees</td>
+</tr>
+<tr>
+<td><code>hour_lst</code></td>
+<td><code>report</code></td>
+<td>float64, covariate, <code>h</code></td>
+<td>Hours since midnight, local standard time</td>
+</tr>
+<tr>
+<td><code>day_of_year</code></td>
+<td><code>report</code></td>
+<td>float64, covariate, <code>d</code></td>
+<td>Days since 1 January, with the fraction of the day</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td><code>report</code></td>
+<td>int64, constant</td>
+<td>The year of the report: 6,096 reports in 2021, 5,919 in 2022 and 6,026 in 2023</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-the-camera-traps">2.2 The camera traps<a class="headerlink" href="#22-the-camera-traps" title="Permanent link">&para;</a></h3>
+<p>The export reads <code>bci_camera_trap_times.csv</code>. It keeps the ocelot and the five prey species of
+the notebook, and it changes the time of each photograph to hours since midnight.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e81b<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span>--challenges<span class="w"> </span>&lt;path<span class="w"> </span>to<span class="w"> </span>pymc-challenges&gt;/data<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>--out<span class="w"> </span>bci_camera_traps.nc<span class="w"> </span>--spec<span class="w"> </span>bci_camera_traps.yaml
+</span></code></pre></div>
+<p>The command writes:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>wrote bci_camera_traps.nc (variables clock_time, species_idx on record=16282, species=6)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>upload it as dataset ecology/bci_camera_traps and fit sci.circular_regression
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>wrote the suggested spec to bci_camera_traps.yaml
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Dims</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>record</code></td>
+<td>16,282</td>
+<td>integer, policy <code>extend</code></td>
+<td>One photograph</td>
+</tr>
+<tr>
+<td><code>species</code></td>
+<td>6</td>
+<td>categorical, policy <code>fixed</code></td>
+<td><code>ocelot</code>, <code>agouti</code>, <code>paca</code>, <code>rat</code>, <code>brocket</code> and <code>peccary</code></td>
+</tr>
+<tr>
+<td><code>clock_time</code></td>
+<td><code>record</code></td>
+<td>float64, target, <code>h</code></td>
+<td>The time of day of the photograph, 0 to 24 hours</td>
+</tr>
+<tr>
+<td><code>species_idx</code></td>
+<td><code>record</code></td>
+<td>int64, index of <code>species</code></td>
+<td>The species of the photograph</td>
+</tr>
+</tbody>
+</table>
+<p>The attribute <code>mapi_schema</code> of each file gives each variable its role, so you do not map
+columns.</p>
+<div class="admonition tip">
+<p class="admonition-title">No pymc-challenges copy?</p>
+<p><code>--synthetic</code> writes data that the model itself simulates, with known parameters. The wind
+file has 480 reports of one year (2021). The camera-trap file has 700 records of three
+groups (<code>owl</code>, <code>lark</code> and <code>drifter</code>). Use them to try the steps. Remove the <code>split</code> line
+from the wind spec of step 4, because the synthetic file has no year 2023. The numbers in
+this tutorial are for the real data.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e81<span class="w"> </span>--synthetic<span class="w"> </span>--out<span class="w"> </span>wind.nc
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>e81b<span class="w"> </span>--synthetic<span class="w"> </span>--out<span class="w"> </span>activity.nc
+</span></code></pre></div>
+</div>
+<h2 id="3-upload-the-datasets">3. Upload the datasets<a class="headerlink" href="#3-upload-the-datasets" title="Permanent link">&para;</a></h2>
+<p>Do these steps in the project <code>meteorology</code> for the wind file. Then do them again in the
+project <code>ecology</code> for the camera-trap file.</p>
+<ol>
+<li>Open <strong>Datasets</strong> in the sidebar.</li>
+<li>Click <strong>New dataset</strong>.</li>
+<li>Type <code>ksba_wind_2021_2023</code> in <strong>Name</strong>. Type a description, for example "Hourly wind
+   directions at Santa Barbara airport, 2021 to 2023, without calms".</li>
+<li>Click <strong>Create dataset</strong>. The upload panel opens.</li>
+<li>Click <strong>Choose files</strong> and select <code>ksba_wind_2021_2023.nc</code>.</li>
+<li>Make sure that the format is <strong>netCDF (or HDF5 written by xarray)</strong>.</li>
+<li>Optional: click <strong>Preview structure</strong>. The panel shows <strong>Structure of the file</strong>. Make sure
+   that it shows four variables on <code>report</code>.</li>
+<li>Optional: type a message in <strong>Version message (optional)</strong>.</li>
+<li>Click <strong>Upload and ingest</strong>.</li>
+</ol>
+<p>For the camera traps, use the name <code>bci_camera_traps</code> and the file <code>bci_camera_traps.nc</code>.
+<strong>Structure of the file</strong> shows <code>clock_time</code> and <code>species_idx</code> on <code>record</code>, and the coordinate
+<code>species</code>.</p>
+<p>The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
+Schema, Coordinates, Missingness, Preview and About. On <strong>Schema</strong>, <code>wind_from</code> has the role
+<code>target</code> and the units <code>deg</code>. <code>clock_time</code> has the role <code>target</code> and the units <code>h</code>.</p>
+<p>Each file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
+tree (optional)") or the HDF5 path.</p>
+<h2 id="4-build-the-specs">4. Build the specs<a class="headerlink" href="#4-build-the-specs" title="Permanent link">&para;</a></h2>
+<h3 id="41-the-wind">4.1 The wind<a class="headerlink" href="#41-the-wind" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open <strong>Build</strong> and click <strong>New spec</strong>. The editor opens with the geo MMM template.</li>
+<li>Set the <strong>Editor view</strong> to <strong>YAML</strong>.</li>
+<li>Open the <strong>Insert</strong> panel on the right.</li>
+<li>Open the <strong>Datasets</strong> section and select <code>ksba_wind_2021_2023</code>. The toast "Dataset set" shows.</li>
+<li>Type <code>circular</code> in the search field. Under <strong>Models</strong>, select <strong>Directions and times of
+   day</strong> (<code>sci.circular_regression@^1</code>). The toast "Model set" shows.</li>
+<li>Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.</li>
+<li>Click <strong>Validate</strong>. The status shows <code>valid</code>.</li>
+<li>Click <strong>Save spec</strong>. The spec gets its name <code>ksba-wind-direction</code> from <code>metadata.name</code>.</li>
+</ol>
+<p>This is the full spec:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelSpec</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">ksba-wind-direction</span><span class="p p-Indicator">,</span><span class="nt"> project</span><span class="p">:</span><span class="w"> </span><span class="nv">meteorology</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset://meteorology/ksba_wind_2021_2023@latest</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">bind</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">obs</span><span class="p">:</span><span class="w"> </span><span class="nv">report</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="nv">wind_from</span><span class="p p-Indicator">,</span><span class="nt"> hour</span><span class="p">:</span><span class="w"> </span><span class="nv">hour_lst</span><span class="p p-Indicator">,</span><span class="nt"> day</span><span class="p">:</span><span class="w"> </span><span class="nv">day_of_year</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">time_holdout</span><span class="p p-Indicator">,</span><span class="nt"> dim</span><span class="p">:</span><span class="w"> </span><span class="nv">obs</span><span class="p p-Indicator">,</span><span class="nt"> last</span><span class="p">:</span><span class="w"> </span><span class="nv">6026</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.circular_regression@^1</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">von_mises</span><span class="p p-Indicator">,</span><span class="nt"> units</span><span class="p">:</span><span class="w"> </span><span class="nv">degrees</span><span class="p p-Indicator">,</span><span class="nt"> daily_harmonics</span><span class="p">:</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="nt"> annual_harmonics</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="nt">             interaction_harmonics</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">}</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">train_only</span><span class="p p-Indicator">,</span><span class="nt"> seed</span><span class="p">:</span><span class="w"> </span><span class="nv">81</span><span class="p p-Indicator">,</span><span class="nt"> tune</span><span class="p">:</span><span class="w"> </span><span class="nv">1000</span><span class="p p-Indicator">,</span><span class="nt"> draws</span><span class="p">:</span><span class="w"> </span><span class="nv">1000</span><span class="p p-Indicator">,</span><span class="nt"> chains</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> engine</span><span class="p">:</span><span class="w"> </span><span class="nv">nutpie</span><span class="p p-Indicator">,</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="nt">        keep</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">log_likelihood</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">,</span><span class="nt"> posterior_predictive</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">thin</span><span class="p">:</span><span class="w"> </span><span class="nv">20</span><span class="p p-Indicator">}}}</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="nt">evaluate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">elpd_loo</span><span class="p p-Indicator">]}</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nt">outputs</span><span class="p">:</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">  </span><span class="nt">plots</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">core.convergence</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">core.posterior_forest</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sci.rose</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sci.profile_bands</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sci.field_map</span><span class="p p-Indicator">]</span>
+</span></code></pre></div>
+<p>The model calls its row dim <code>obs</code>, the target <code>direction</code>, and the covariates <code>hour</code> and <code>day</code>.
+The <code>bind</code> block connects them to the names in the dataset.</p>
+<p>The split and the fit mode do the same as the notebook:</p>
+<ul>
+<li><code>split: {kind: time_holdout, dim: obs, last: 6026}</code> keeps the last 6,026 reports (all of
+  2023) out of the fit.</li>
+<li><code>fit.mode: train_only</code> fits on the 12,023 reports of 2021 and 2022, and it does not fit again
+  on all reports. Thus the model version is the model of the notebook, and you can score 2023
+  in step 7.</li>
+<li><code>keep.log_likelihood: true</code> keeps the log density of each report, for <code>elpd_loo</code>.</li>
+<li><code>keep.posterior_predictive: {thin: 20}</code> keeps simulated directions from 200 draws, for the
+  rose of <code>sci.rose</code>.</li>
+</ul>
+<p>The suggested spec of the export (<code>ksba_wind_2021_2023.yaml</code>) is the same spec without
+<code>sci.profile_bands</code> in the plots.</p>
+<p>The settings for this question:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>What it means here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>von_mises</code></td>
+<td>One von Mises direction for each report. The hour and the day of the year move its natural parameters <code>η = F B</code> (the canonical link). The mean direction is <code>atan2(η₂, η₁)</code> and the concentration is <code>|η|</code>. <code>regime_mixture</code> is the mixture of two regimes (section 6.5)</td>
+</tr>
+<tr>
+<td><code>units</code></td>
+<td><code>degrees</code></td>
+<td>The direction is in degrees. A turn is 360. Use <code>hours</code> for a time of day and <code>radians</code> for radians</td>
+</tr>
+<tr>
+<td><code>daily_harmonics</code></td>
+<td>3</td>
+<td>The cosine and the sine of 1, 2 and 3 cycles each day. Midnight is next to 00:01</td>
+</tr>
+<tr>
+<td><code>annual_harmonics</code></td>
+<td>2</td>
+<td>The cosine and the sine of 1 and 2 cycles each year. 31 December is next to 1 January</td>
+</tr>
+<tr>
+<td><code>interaction_harmonics</code></td>
+<td>2</td>
+<td>The first two daily harmonics times the first annual harmonic. The daily turn of the wind can change with the season. With 3, 2 and 2, the model has 19 features, the same as the notebook</td>
+</tr>
+<tr>
+<td><code>intercept_sd</code>, <code>coef_sd</code></td>
+<td>2, 1 (default)</td>
+<td>The prior sds of the intercepts and of the other coefficients, as in the notebook</td>
+</tr>
+<tr>
+<td><code>frames</code></td>
+<td>8 (default)</td>
+<td>The <code>density</code> output has one row for each block of 24 / 8 = 3 hours, as the rose diagrams of the notebook</td>
+</tr>
+<tr>
+<td><code>angle_points</code></td>
+<td>72 (default)</td>
+<td>The <code>density</code> output has 72 angles, one each 5 degrees</td>
+</tr>
+<tr>
+<td><code>rows_per_frame</code></td>
+<td>200 (default)</td>
+<td>The density of a block is the mean of the densities of up to 200 fit reports in that block</td>
+</tr>
+<tr>
+<td><code>score_draws</code></td>
+<td>400 (default)</td>
+<td>The number of posterior draws that one score uses</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Settings that do not agree</p>
+<p><strong>Validate</strong> does a check of each setting by itself. It does not compare two settings.
+For example, <code>interaction_harmonics: 4</code> with <code>daily_harmonics: 3</code> shows <code>valid</code>, but the
+run stops with <code>SETTINGS_INVALID</code>.</p>
+</div>
+<h3 id="42-the-camera-traps">4.2 The camera traps<a class="headerlink" href="#42-the-camera-traps" title="Permanent link">&para;</a></h3>
+<p>Make a second spec in the project <code>ecology</code>. Do the steps of section 4.1 with the dataset
+<code>bci_camera_traps</code> and the name <code>bci-ocelot-activity</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapi/v1</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ModelSpec</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">bci-ocelot-activity</span><span class="p p-Indicator">,</span><span class="nt"> project</span><span class="p">:</span><span class="w"> </span><span class="nv">ecology</span><span class="p p-Indicator">}</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset://ecology/bci_camera_traps@latest</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span><span class="nt">bind</span><span class="p">:</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="nt">dims</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">obs</span><span class="p">:</span><span class="w"> </span><span class="nv">record</span><span class="p p-Indicator">}</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="nt">vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="nv">clock_time</span><span class="p p-Indicator">,</span><span class="nt"> species_idx</span><span class="p">:</span><span class="w"> </span><span class="nv">species_idx</span><span class="p p-Indicator">}</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="nt">model</span><span class="p">:</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span><span class="nt">use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sci.circular_regression@^1</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">  </span><span class="nt">settings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="nv">activity</span><span class="p p-Indicator">,</span><span class="nt"> units</span><span class="p">:</span><span class="w"> </span><span class="nv">hours</span><span class="p p-Indicator">,</span><span class="nt"> group_dim</span><span class="p">:</span><span class="w"> </span><span class="nv">species</span><span class="p p-Indicator">,</span><span class="nt"> harmonics</span><span class="p">:</span><span class="w"> </span><span class="nv">16</span><span class="p p-Indicator">,</span><span class="nt"> tau_sd</span><span class="p">:</span><span class="w"> </span><span class="nv">2.0</span><span class="p p-Indicator">,</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nt">             grid_points</span><span class="p">:</span><span class="w"> </span><span class="nv">256</span><span class="p p-Indicator">}</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">  </span><span class="nt">fit</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="nv">train_only</span><span class="p p-Indicator">,</span><span class="nt"> seed</span><span class="p">:</span><span class="w"> </span><span class="nv">81</span><span class="p p-Indicator">,</span><span class="nt"> tune</span><span class="p">:</span><span class="w"> </span><span class="nv">1000</span><span class="p p-Indicator">,</span><span class="nt"> draws</span><span class="p">:</span><span class="w"> </span><span class="nv">1000</span><span class="p p-Indicator">,</span><span class="nt"> chains</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> engine</span><span class="p">:</span><span class="w"> </span><span class="nv">nutpie</span><span class="p p-Indicator">,</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="nt">        keep</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">log_likelihood</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">}}</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="nt">evaluate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">elpd_loo</span><span class="p p-Indicator">]}</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="nt">outputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">plots</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">core.convergence</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sci.field_map</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sci.profile_bands</span><span class="p p-Indicator">]}</span>
+</span></code></pre></div>
+<p>The settings for this question:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>What it means here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td><code>activity</code></td>
+<td>One log-Fourier density for each species: <code>log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z</code>. It has no components, so no labels can change places</td>
+</tr>
+<tr>
+<td><code>units</code></td>
+<td><code>hours</code></td>
+<td>The angle is a time of day. A turn is 24 hours</td>
+</tr>
+<tr>
+<td><code>group_dim</code></td>
+<td><code>species</code></td>
+<td>The dim of the groups. The index variable is <code>species_idx</code></td>
+</tr>
+<tr>
+<td><code>harmonics</code></td>
+<td>16</td>
+<td>The number of Fourier terms K, as in the notebook</td>
+</tr>
+<tr>
+<td><code>tau_sd</code></td>
+<td>2.0</td>
+<td>The prior is <code>aₖ, bₖ ~ N(0, (τ/k)²)</code> with <code>τ ~ HalfNormal(2)</code> for each species. Higher harmonics shrink more. This prior sets how smooth each curve is</td>
+</tr>
+<tr>
+<td><code>grid_points</code></td>
+<td>256</td>
+<td>The number of angles in the sum that gives <code>Z</code></td>
+</tr>
+<tr>
+<td><code>angle_points</code></td>
+<td>72 (default)</td>
+<td>The <code>density</code> output has 72 times of day, one each 20 minutes</td>
+</tr>
+</tbody>
+</table>
+<p><code>fit.mode: train_only</code> fits on all records. The spec has no split. Without this line, the
+validator shows the warning <code>SPLIT_INVALID</code> ("There is no holdout for the evaluation"). The
+suggested spec of the export (<code>bci_camera_traps.yaml</code>) does not have this line, so add it.</p>
+<p><code>engine: nutpie</code> is the sampler of the notebook. The default engine of the model is <code>pymc</code>.</p>
+<h2 id="5-fit-and-watch-the-run">5. Fit and watch the run<a class="headerlink" href="#5-fit-and-watch-the-run" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Click <strong>Fit</strong>. The app opens the run page.</li>
+<li>The badge shows <strong>Live</strong> while the run sends events.</li>
+<li>The <strong>Progress</strong> card shows the progress of the sampler. The <strong>Events</strong> card shows the
+   stages of the run and, at the end, the diagnostics. The <strong>Logs</strong> card stays empty when
+   the model writes no output.</li>
+<li>When the run is done, the <strong>Result</strong> card shows <strong>Inspect
+   model://meteorology/ksba-wind-direction@v1</strong>. Click it.</li>
+</ol>
+<p>On a laptop with nutpie, the wind fit took 45 seconds and the camera-trap fit took 21 seconds.
+After the sampler, the run calculates the pointwise log densities, the simulated directions,
+the <code>density</code> field, the plots and the explorer views.</p>
+<p>You can also find the run under <strong>Runs</strong>. Filter it with the kind <code>fit</code>.</p>
+<h2 id="6-read-the-result">6. Read the result<a class="headerlink" href="#6-read-the-result" title="Permanent link">&para;</a></h2>
+<p>On the model version page, the tabs are <strong>Overview</strong>, <strong>Diagnostics</strong>, <strong>Plots</strong>, <strong>Data
+tree</strong>, <strong>Preprocessing</strong> and <strong>Provenance</strong>. Click <strong>Explore</strong> to open the Model Explorer.
+Sections that do not apply to this model are under "Does not apply".</p>
+<h3 id="61-can-you-trust-the-fit">6.1 Can you trust the fit?<a class="headerlink" href="#61-can-you-trust-the-fit" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Diagnostics</strong> in the Model Explorer, or the plot <strong>Sampler convergence</strong> on the
+<strong>Plots</strong> tab. In the wind fit for this tutorial, there were no divergences. The largest R-hat
+was 1.003 and the smallest bulk ESS was 6,416 (of 4,000 draws). The caption says "All 614
+parameters look converged". This count includes the cells of the <code>density</code> field.</p>
+<p>In the camera-trap fit, there were no divergences. The largest R-hat was 1.010 and the
+smallest bulk ESS was 578. Both values are for the standardised coefficients <code>za</code> and <code>zb</code>.</p>
+<p>The canonical link gives one mode. Thus the four chains agree without special start values.
+The notebook shows two problems of other models that give zero divergences: a wall at ±180
+degrees from a uniform prior, and a second mode of the tan-half link. This model has neither
+problem.</p>
+<h3 id="62-the-coefficients">6.2 The coefficients<a class="headerlink" href="#62-the-coefficients" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters</strong> in the Model Explorer, and the plot <strong>Posterior forest</strong>, show the coefficients
+<code>B(feature, component)</code>. There are 19 features (<code>1</code>, <code>cos1h</code>, <code>sin1h</code>, … <code>sin2h*sin1d</code>) and
+two components, <code>eta1</code> and <code>eta2</code>. The components are the natural parameters of the von Mises.
+<code>eta1</code> points to north and <code>eta2</code> points to east. A coefficient by itself is hard to read. Use
+the mean directions of section 6.4 for the result.</p>
+<h3 id="63-where-does-the-wind-come-from-the-fields">6.3 Where does the wind come from? The fields<a class="headerlink" href="#63-where-does-the-wind-come-from-the-fields" title="Permanent link">&para;</a></h3>
+<p>Open <strong>Fields</strong> in the Model Explorer. The model has 1 output on a grid: <code>density</code>, the
+predictive density of the direction, per degree. The rows are the 8 blocks of three hours. The
+label of a block is the hour at its start (0, 3, … 21). The columns are the 72 directions, from
+0 to 355 degrees.</p>
+<ol>
+<li>Select <strong>Mean</strong> in <strong>Statistic</strong>. A bright cell is a direction that the wind often comes
+   from in that block.</li>
+<li>Select <strong>Std. dev.</strong> to see where you are not sure of the density.</li>
+<li>Select <strong>Draws</strong> and click <strong>Play the draws</strong> to see possible densities that agree with the
+   data.</li>
+<li>Move the pointer over a cell to read its values.</li>
+</ol>
+<p>The plot <strong>Field map of density</strong> on the <strong>Plots</strong> tab shows the same output as panels (mean
+and sd). Look for these features, which the notebook also finds:</p>
+<ul>
+<li><strong>Night (21:00 to 06:00).</strong> A wide band from the north-east and the east: air that flows down
+  from the mountains.</li>
+<li><strong>Afternoon (12:00 to 18:00).</strong> A narrow, bright band from the south-west (about 225
+  to 230 degrees): the sea breeze.</li>
+<li><strong>Evening (18:00 to 21:00).</strong> A flat, dark row. The wind comes from two directions in this
+  block, and one von Mises cannot show two directions.</li>
+</ul>
+<h3 id="64-the-rose-and-the-profiles">6.4 The rose and the profiles<a class="headerlink" href="#64-the-rose-and-the-profiles" title="Permanent link">&para;</a></h3>
+<p>The plot <strong>Rose of theta</strong> (<code>sci.rose</code>) shows a rose of the observed directions of 2021 and
+2022. The thick radial lines show the 90% range of the same count in data that the model
+simulated. A bar that ends outside its range shows a direction that the model gets wrong.</p>
+<div class="admonition note">
+<p class="admonition-title">The default rose is in radians, and 0 is at the right</p>
+<p>The rose reads the angles <code>theta</code> in radians from the bundle. In its default settings, 0 is
+at the right (east on a compass), and the angles go anticlockwise. Thus a wind from the
+west (270 degrees) is at the bottom, not at the left. For a compass (0 at the top,
+clockwise), use <code>sci.rose</code> with <code>clockwise: true</code> in a <code>plot.render</code> step of a workflow
+(step 8).</p>
+</div>
+<p>In the default rose (24 sectors of 15 degrees), only 4% of the bars end inside the range. Two
+causes make this number low:</p>
+<ul>
+<li>ASOS gives the direction in steps of 10 degrees. Thus a sector of 15 degrees holds one or two
+  of the reported values, and the observed bars go up and down. The simulated directions do
+  not have steps.</li>
+<li>One von Mises direction for each hour and season cannot put mass on two lobes at the same
+  time.</li>
+</ul>
+<p>With <code>bins: 12</code> (sectors of 30 degrees, as in the notebook) and <code>clockwise: true</code>, 42% of the
+bars end inside the range. This rose adds all hours together. Thus it does not show the
+misfit of each block, and it does not separate the models of section 6.6 (the mixture gives
+33%). For each block, use the <strong>Fields</strong> of section 6.3.</p>
+<p>The plot <strong>Profiles of theta</strong> (<code>sci.profile_bands</code>) shows the simulated directions along
+<code>report</code>, with the 50% and 90% bands, and the observed directions as dots. The direction is an
+angle, so a band near 0 or 360 degrees is not a good summary. Use the rose and the fields.</p>
+<h3 id="65-the-mean-resultant-vectors">6.5 The mean resultant vectors<a class="headerlink" href="#65-the-mean-resultant-vectors" title="Permanent link">&para;</a></h3>
+<p>The mean resultant vector of each block summarises the wind of that block. Its direction is
+<code>mean_direction(frame)</code>, and its length is <code>resultant_length(frame)</code>: 1 if all winds of the
+block come from one direction, near 0 if they come from all directions. Get these outputs with
+a score (step 7.1). In the fit for this tutorial, the values are:</p>
+<table>
+<thead>
+<tr>
+<th>Block (start hour)</th>
+<th><code>mean_direction</code> (degrees)</th>
+<th><code>resultant_length</code></th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>56 (52 to 60)</td>
+<td>0.39</td>
+<td>The night wind from the north-east</td>
+</tr>
+<tr>
+<td>3</td>
+<td>37 (33 to 41)</td>
+<td>0.43</td>
+<td>The night wind from the north-east</td>
+</tr>
+<tr>
+<td>6</td>
+<td>136 (132 to 139)</td>
+<td>0.39</td>
+<td>The morning wind from the south-east</td>
+</tr>
+<tr>
+<td>9</td>
+<td>190 (189 to 192)</td>
+<td>0.65</td>
+<td>The turn to the sea breeze</td>
+</tr>
+<tr>
+<td>12</td>
+<td>224 (223 to 225)</td>
+<td>0.70</td>
+<td>The sea breeze from the south-west</td>
+</tr>
+<tr>
+<td>15</td>
+<td>230 (228 to 232)</td>
+<td>0.54</td>
+<td>The sea breeze from the south-west</td>
+</tr>
+<tr>
+<td>18</td>
+<td>144 (133 to 154)</td>
+<td>0.13</td>
+<td>Two directions: the mean describes neither</td>
+</tr>
+<tr>
+<td>21</td>
+<td>72 (69 to 75)</td>
+<td>0.41</td>
+<td>The night wind from the east-north-east</td>
+</tr>
+</tbody>
+</table>
+<p>The ranges are the 90% HDI of the posterior. A short vector (block 18) does not mean that the
+air is still, because the data have no calms. It means that the direction is not predictable.
+Always read a mean direction together with its length.</p>
+<h3 id="66-which-model-predicts-better">6.6 Which model predicts better?<a class="headerlink" href="#66-which-model-predicts-better" title="Permanent link">&para;</a></h3>
+<p>The metrics are in the <strong>Metrics</strong> card of the <strong>Overview</strong> tab. <code>elpd_loo</code> scores the 12,023
+reports of 2021 and 2022, in nats.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>elpd_loo</code></td>
+<td>−17,385 (se 80, <code>p_loo</code> 38)</td>
+<td>The expected log density of a left-out report, summed over the reports. Higher is better. All Pareto k values are below 0.7</td>
+</tr>
+</tbody>
+</table>
+<p>To compare the models of the notebook, fit the spec again with each kind. Change only
+<code>metadata.name</code> and <code>settings.kind</code>, for example <code>ksba-wind-regimes</code> and <code>kind:
+regime_mixture</code>. Each fit makes a new model with its own <code>elpd_loo</code>. Compare the values only
+between fits on the same reports. On a laptop with nutpie, the mixture fit took 202 seconds.</p>
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th><code>elpd_loo</code> (this port)</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>von_mises</code></td>
+<td>−17,385</td>
+<td>−17,385</td>
+</tr>
+<tr>
+<td><code>regime_mixture</code></td>
+<td>−15,821 (se 97, <code>p_loo</code> 57)</td>
+<td>About 1,560 nats better than <code>von_mises</code></td>
+</tr>
+</tbody>
+</table>
+<p>The mixture is better by 1,565 nats. <strong>Fields</strong> of the mixture shows why. In the block that
+starts at 9, the density has two peaks, at about 150 and 225 degrees. In the block
+that starts at 18, it has two peaks, at about 120 and 265 degrees. The von Mises
+regression has one peak in each block, between the two lobes.</p>
+<div class="admonition note">
+<p class="admonition-title">The reports are not independent</p>
+<p>The reports are hourly, and the wind of one hour is like the wind of the next hour. Thus the
+standard error of <code>elpd_loo</code> is too small. The held-out year (step 7.3) is a stricter test.</p>
+</div>
+<h3 id="67-when-is-the-ocelot-active">6.7 When is the ocelot active?<a class="headerlink" href="#67-when-is-the-ocelot-active" title="Permanent link">&para;</a></h3>
+<p>Open the model version <code>bci-ocelot-activity</code>, then <strong>Explore</strong>, then <strong>Fields</strong>. The model has
+2 outputs on a grid. Select one in <strong>Output</strong>:</p>
+<ul>
+<li><code>density</code>: the activity density of each species (rows) at each time of day (columns, one
+  each 20 minutes), per hour.</li>
+<li><code>overlap</code>: the coefficient of overlap of each pair of species (rows and columns). It is the
+  area under the lower of the two densities: 1 for the same activity, 0 for animals that are
+  never active at the same time.</li>
+</ul>
+<p>The plot <strong>Profiles of density</strong> (<code>sci.profile_bands</code>) shows the density of each species along
+the day with its 50% and 90% bands. Look for these features, which the notebook also finds:</p>
+<ul>
+<li>The <strong>ocelot</strong> is mostly active at night, with a peak in the evening.</li>
+<li>The <strong>agouti</strong> is active by day, with two peaks: after dawn and before dusk.</li>
+<li>The <strong>paca</strong> and the spiny <strong>rat</strong> are active at night.</li>
+<li>The red <strong>brocket</strong> deer is active at all hours.</li>
+<li>The collared <strong>peccary</strong> is active by day, with peaks at dawn and dusk.</li>
+</ul>
+<p>In the fit for this tutorial, the overlaps of the ocelot with each prey are:</p>
+<table>
+<thead>
+<tr>
+<th>Prey</th>
+<th>Overlap with the ocelot (median)</th>
+<th>94% range</th>
+<th>Notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>agouti</td>
+<td>0.301</td>
+<td>0.257 to 0.346</td>
+<td>0.30</td>
+</tr>
+<tr>
+<td>peccary</td>
+<td>0.656</td>
+<td>0.611 to 0.699</td>
+<td>0.66</td>
+</tr>
+<tr>
+<td>paca</td>
+<td>0.664</td>
+<td>0.618 to 0.711</td>
+<td>0.66</td>
+</tr>
+<tr>
+<td>rat</td>
+<td>0.702</td>
+<td>0.655 to 0.748</td>
+<td>0.70</td>
+</tr>
+<tr>
+<td>brocket</td>
+<td>0.749</td>
+<td>0.701 to 0.795</td>
+<td>0.75</td>
+</tr>
+</tbody>
+</table>
+<h3 id="68-the-numbers-of-the-notebook-and-of-this-port">6.8 The numbers of the notebook and of this port<a class="headerlink" href="#68-the-numbers-of-the-notebook-and-of-this-port" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>Notebook</th>
+<th>This port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>elpd_loo</code>, von Mises regression, 2021 and 2022</td>
+<td>−17,385</td>
+<td>−17,385.45 (se 79.6)</td>
+</tr>
+<tr>
+<td>Mean log score of a 2023 report, von Mises regression</td>
+<td>−1.517</td>
+<td>−1.517</td>
+</tr>
+<tr>
+<td>Mean resultant length, afternoon sea breeze</td>
+<td>0.70 (observed, 12:00 to 18:00)</td>
+<td>0.70 (model, 12:00 to 15:00)</td>
+</tr>
+<tr>
+<td>Mean resultant length, evening</td>
+<td>0.12 (observed, 18:00 to 21:00)</td>
+<td>0.13 (model)</td>
+</tr>
+<tr>
+<td><code>elpd_loo</code>, mixture minus von Mises</td>
+<td>About 1,560</td>
+<td>1,565</td>
+</tr>
+<tr>
+<td>Log score of all 2023 reports, mixture minus von Mises</td>
+<td>916 ± 75</td>
+<td>917 (−8,226 against −9,143)</td>
+</tr>
+<tr>
+<td>Overlap of the ocelot and the agouti</td>
+<td>0.30</td>
+<td>0.301</td>
+</tr>
+<tr>
+<td>Overlap of the ocelot and the brocket, rat, paca and peccary</td>
+<td>0.75, 0.70, 0.66, 0.66</td>
+<td>0.749, 0.702, 0.664, 0.656</td>
+</tr>
+<tr>
+<td>Activity level of the ocelot</td>
+<td>About a third (0.26 to 0.43)</td>
+<td>0.34 (90% HDI 0.27 to 0.41)</td>
+</tr>
+<tr>
+<td>Activity level of the agouti</td>
+<td>0.262</td>
+<td>0.263</td>
+</tr>
+<tr>
+<td>Mean time and length of the agouti</td>
+<td>11:00</td>
+<td>11.0 h, 0.52</td>
+</tr>
+<tr>
+<td>Mean time and length of the peccary</td>
+<td>21:00, 0.09</td>
+<td>21.1 h, 0.10</td>
+</tr>
+</tbody>
+</table>
+<p>The mean log score of 2023 comes from <code>CircularRegressionModel().holdout_log_score</code> in Python.
+The web app does not show it (see section 10). Your numbers can be slightly different if the
+sampler or its version is different.</p>
+<h3 id="69-make-the-decisions">6.9 Make the decisions<a class="headerlink" href="#69-make-the-decisions" title="Permanent link">&para;</a></h3>
+<p>Use these outputs to make the decisions of the notebook:</p>
+<ol>
+<li><strong>The link.</strong> The model always uses the canonical link. Make sure that <strong>Diagnostics</strong> shows
+   no divergences and an R-hat of 1.01 or less. You do not need special start values.</li>
+<li><strong>One direction or two regimes.</strong> Compare <code>elpd_loo</code> of <code>von_mises</code> and <code>regime_mixture</code>
+   (section 6.6). Then compare the <strong>Fields</strong> of the two versions in the blocks that start at
+   9 and 18. The mixture is better by 1,565 nats, and it shows the two lobes. Use it to predict
+   the direction. Do not decide with <code>mae</code> or <code>coverage_90</code> of step 7.3. They are almost the
+   same for the two kinds (52.1 and 52.4 degrees, 0.87 and 0.87), because they use one point
+   for each report and do not see two lobes.</li>
+<li><strong>Report a direction with its length.</strong> Use <code>mean_direction</code> together with
+   <code>resultant_length</code> (section 6.5). Do not report a mean direction with a length below
+   about 0.2.</li>
+<li><strong>Overlap with uncertainty.</strong> Report the median and the range of <code>overlap</code> (section 6.7).
+   The ocelot overlaps least with the agouti. The ranges of the other four prey overlap each
+   other, so do not rank them.</li>
+</ol>
+<h2 id="7-score-the-model">7. Score the model<a class="headerlink" href="#7-score-the-model" title="Permanent link">&para;</a></h2>
+<h3 id="71-predict-the-mean-direction-of-each-block">7.1 Predict: the mean direction of each block<a class="headerlink" href="#71-predict-the-mean-direction-of-each-block" title="Permanent link">&para;</a></h3>
+<ol>
+<li>On the model version page of <code>ksba-wind-direction</code>, click <strong>Score</strong>.</li>
+<li>In <strong>What do you want to do?</strong>, select <strong>Predict</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>. Select <code>ksba_wind_2021_2023</code>.</li>
+<li>Open <strong>Advanced</strong>. Set <strong>Seed (optional)</strong> to <code>81</code>. Type
+   <code>direction_hat, resultant, mean_direction, resultant_length</code> in <strong>Variables (optional)</strong>.</li>
+<li>Click <strong>Predict</strong>.</li>
+</ol>
+<p>The request that the page sends (<code>POST /v1/models/{model_id}/versions/{v}:score</code>) is:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://meteorology/ksba-wind-direction@latest"</span><span class="p">,</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://meteorology/ksba_wind_2021_2023@latest"</span><span class="p">,</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"direction_hat"</span><span class="p">,</span><span class="w"> </span><span class="s2">"resultant"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mean_direction"</span><span class="p">,</span><span class="w"> </span><span class="s2">"resultant_length"</span><span class="p">]</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">81</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The result has <code>direction_hat(report)</code> and <code>resultant(report)</code>: the mean direction and the mean
+resultant length of the predictive distribution of each report. It also has
+<code>mean_direction(frame)</code> and <code>resultant_length(frame)</code> for the 8 blocks (section 6.5). The
+result also shows a warning: the dataset has directions after the fitted reports, and the
+predict mode does not use them. This is correct.</p>
+<div class="admonition note">
+<p class="admonition-title">The summary of a direction near north</p>
+<p><code>direction_hat</code> and <code>mean_direction</code> are circular outputs. Their <code>mean</code> is the circular
+mean <code>atan2(mean(sin θ), mean(cos θ))</code>, and <code>hdi_90</code> is centred on that mean. All values
+are from 0 to 360 degrees. For a report with a mean direction near north, the draws are on
+the two sides of north, and the interval can cross north. Then <code>hdi_90_lower</code> is more than
+<code>hdi_90_upper</code>: for example, from 350 to 10 degrees. In the table of <code>summary.json</code>, these
+variables have the field <code>period</code> (360).</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">No new data</p>
+<p>The page does not show <strong>No new data</strong> for this model. The model cannot forecast, so a
+request without a dataset has no forecast horizon, and the server refuses it. A note under
+<strong>Values to score</strong> gives this reason.</p>
+</div>
+<h3 id="72-simulate-new-winds">7.2 Simulate: new winds<a class="headerlink" href="#72-simulate-new-winds" title="Permanent link">&para;</a></h3>
+<p><code>simulate</code> gives one simulated direction for each report and each draw. Use it to see the
+spread of single winds around the mean direction.</p>
+<ol>
+<li>In <strong>What do you want to do?</strong>, select <strong>Simulate</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>. Select <code>ksba_wind_2021_2023</code>.</li>
+<li>Open <strong>Advanced</strong>. Set <strong>Quantity</strong> to <strong>Predictive</strong>. Set <strong>Draws</strong> to <code>20</code>.</li>
+<li>Type <code>direction_hat</code> in <strong>Variables (optional)</strong>.</li>
+<li>Click <strong>Simulate</strong>.</li>
+</ol>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://meteorology/ksba-wind-direction@latest"</span><span class="p">,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"simulate"</span><span class="p">,</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://meteorology/ksba_wind_2021_2023@latest"</span><span class="p">,</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predictive"</span><span class="p">,</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="w">    </span><span class="nt">"draws"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"direction_hat"</span><span class="p">]</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">81</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Each draw of <code>direction_hat</code> is one simulated wind, in degrees from 0 to 360. The draws spread
+much more than the mean direction of section 6.5, because a single wind varies much around the
+mean. For a forecast of the wind at an hour of a future day, make a dataset with <code>hour_lst</code> and
+<code>day_of_year</code> of that hour, and any value in <code>wind_from</code>.</p>
+<h3 id="73-evaluate-the-held-out-year-2023">7.3 Evaluate: the held-out year 2023<a class="headerlink" href="#73-evaluate-the-held-out-year-2023" title="Permanent link">&para;</a></h3>
+<p>The notebook scores the reports of 2023, which the fit did not see. To do this in the web app,
+make a dataset of the 2023 reports. Run this Python code in the directory of the exported file:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span><span class="s2">"ksba_wind_2021_2023.nc"</span><span class="p">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">report</span><span class="o">=</span><span class="n">ds</span><span class="p">[</span><span class="s2">"year"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">==</span> <span class="mi">2023</span><span class="p">)</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="s2">"ksba_wind_2023.nc"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The new file has 6,026 reports and keeps the attribute <code>mapi_schema</code>. Upload it as the dataset
+<code>ksba_wind_2023</code> (step 3). Then:</p>
+<ol>
+<li>In <strong>What do you want to do?</strong>, select <strong>Evaluate</strong>.</li>
+<li>In <strong>Values to score</strong>, select <strong>Use a dataset</strong>. Select <code>ksba_wind_2023</code>.</li>
+<li>Open <strong>Advanced</strong>. Set <strong>Quantity</strong> to <strong>Predictive</strong>.</li>
+<li>Click <strong>Evaluate</strong>.</li>
+</ol>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://meteorology/ksba-wind-direction@latest"</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"evaluate"</span><span class="p">,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://meteorology/ksba_wind_2023@latest"</span><span class="p">,</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predictive"</span><span class="p">,</span><span class="w"> </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">]},</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">81</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>direction_hat</code> is a circular output, so the metrics are circular. An error of 359 degrees
+against 1 degree is 2 degrees. In the fit for this tutorial, the metrics of 2023 are:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mae</code></td>
+<td>52.1 degrees</td>
+<td>The mean error of the circular mean of the simulated winds</td>
+</tr>
+<tr>
+<td><code>rmse</code></td>
+<td>67.0 degrees</td>
+<td>The root mean square error</td>
+</tr>
+<tr>
+<td><code>bias</code></td>
+<td>2.8 degrees</td>
+<td>The mean signed error</td>
+</tr>
+<tr>
+<td><code>coverage_90</code></td>
+<td>0.87</td>
+<td>The share of the 2023 winds inside the central 90% range of the simulated winds</td>
+</tr>
+<tr>
+<td><code>crps</code></td>
+<td>34.6 degrees</td>
+<td>The continuous ranked probability score with the arc distance. Lower is better</td>
+</tr>
+</tbody>
+</table>
+<p><code>mape</code>, <code>smape</code>, <code>wape</code> and <code>r2</code> are not defined for a circular output, and the result skips
+them.</p>
+<div class="admonition note">
+<p class="admonition-title">Use Predictive for the coverage</p>
+<p>With <strong>Expected</strong>, each draw is the mean direction of a report, not a single wind. The
+range of the mean is narrow, so <code>coverage_90</code> is only 0.06. Use <strong>Predictive</strong> to compare
+single winds with their range.</p>
+</div>
+<h3 id="74-the-camera-traps">7.4 The camera traps<a class="headerlink" href="#74-the-camera-traps" title="Permanent link">&para;</a></h3>
+<p>For the activity model, the outputs for each species are <code>activity_level(frame)</code>,
+<code>mean_direction(frame)</code> (the mean time of day), <code>resultant_length(frame)</code>, <code>density(frame,
+angle)</code> and <code>overlap(frame, frame_)</code>. Send the dataset that you fitted:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">{</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">"apiVersion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mapi/v1"</span><span class="p">,</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ScoreRequest"</span><span class="p">,</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"model://ecology/bci-ocelot-activity@latest"</span><span class="p">,</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span><span class="nt">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dataset://ecology/bci_camera_traps@latest"</span><span class="p">,</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">  </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">    </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">    </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">    </span><span class="nt">"vars"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"activity_level"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mean_direction"</span><span class="p">,</span><span class="w"> </span><span class="s2">"resultant_length"</span><span class="p">,</span><span class="w"> </span><span class="s2">"overlap"</span><span class="p">]</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">  </span><span class="nt">"seed"</span><span class="p">:</span><span class="w"> </span><span class="mi">81</span>
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>activity_level</code> is <code>1 / (2π max f)</code>, the part of the day that a species is active, if all
+animals are active at the peak of the curve. In the fit for this tutorial, the ocelot is active
+0.34 of the day (90% HDI 0.27 to 0.41), and the agouti 0.26 (0.25 to 0.28).</p>
+<ul>
+<li>The model has no <code>forecast</code> mode.</li>
+<li>A score dataset with a species that the fit did not see stops the score.</li>
+<li>A score dataset without <code>hour_lst</code> or <code>day_of_year</code> (wind) stops with
+  <code>MISSING_FUTURE_COVARIATE</code>.</li>
+</ul>
+<p>If you promote a version to an endpoint, <strong>Integrations</strong> → the endpoint → <strong>Schema and Try
+it</strong> sends the same requests.</p>
+<h2 id="8-run-a-workflow-recipe">8. Run a workflow recipe<a class="headerlink" href="#8-run-a-workflow-recipe" title="Permanent link">&para;</a></h2>
+<p>The recipe <code>bayes_workflow_audit</code> (title <strong>Bayesian workflow audit</strong>) does the checks of a
+Bayesian workflow on any model with draws. It fits the model, gates on convergence (R-hat below
+1.01 and a bulk ESS of 400 or more), makes the posterior predictive check, and runs the
+governance checks <code>sensitivity.prior</code> and <code>recovery.simulated</code>. Then it writes a report with
+the plots.</p>
+<ol>
+<li>Set the header to <strong>Guided</strong> and open <strong>Recipes</strong>. In <strong>Expert</strong> mode, open <strong>Workflows</strong>
+   and then the <strong>Templates</strong> tab.</li>
+<li>Find the card <strong>Bayesian workflow audit</strong> and click <strong>Run on my data</strong>.</li>
+<li>In <strong>1. Your data</strong>, select <code>ksba_wind_2021_2023</code> in <strong>Dataset</strong>.</li>
+<li>In <strong>2. What the recipe needs to know</strong>, type <code>sci.circular_regression@^1</code> in <strong>Model</strong>.</li>
+<li>Open <strong>Fine-tune (optional: the defaults are correct for most data)</strong>.</li>
+<li>In <strong>Settings</strong>, type the <code>settings</code> of step 4 as JSON: <code>{"kind": "von_mises", "units": "degrees",
+   "daily_harmonics": 3, "annual_harmonics": 2, "interaction_harmonics": 2}</code>.</li>
+<li>In <strong>Bind</strong>, type the <code>bind</code> of step 4 as JSON: <code>{"dims": {"obs": "report"}, "vars": {"direction":
+   "wind_from", "hour": "hour_lst", "day": "day_of_year"}}</code>.</li>
+<li>Click <strong>Run this recipe</strong>.</li>
+</ol>
+<p>The recipe can bind <code>wind_from</code> to <code>direction</code>, because the dataset has one target. It cannot
+bind <code>hour_lst</code> and <code>day_of_year</code>, because they both have the role <code>covariate</code>. Thus give the
+<code>bind</code> of step 7.</p>
+<p>The monitor of the run has the tabs <strong>Graph</strong>, <strong>Steps</strong>, <strong>Decisions</strong>, <strong>Outputs</strong> and
+<strong>Events</strong>. <strong>Decisions</strong> shows the convergence gate and the value that it read. <strong>Outputs</strong>
+shows the plots and the report. The model version link opens the Model Explorer.</p>
+<div class="admonition note">
+<p class="admonition-title">The audit fits all three years</p>
+<p>The recipe has no split. Its fit uses all 18,049 reports, so its <code>elpd_loo</code> is not on the
+same scale as the value of step 6.6.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">The checks of the audit and a circular target</p>
+<p>The model keeps prior draws of its coefficients, but not of the directions. Thus the plot
+"Prior predictive check" of the report can be empty. <code>evaluate.ppc</code> compares the simulated
+and the observed angles as numbers on a line, so read its coverage and p-value with care
+for winds near north. The checks that refit the model (<code>sensitivity.prior</code>,
+<code>recovery.simulated</code>) each take as long as one fit.</p>
+</div>
+<p>To see the rose as a compass, add a <code>plot.render</code> node in the workflow editor (click <strong>Use this
+template</strong> on the card). Give it the input <code>model: fit.model</code> and <code>with: {recipe: sci.rose,
+source: model, settings: {clockwise: true, bins: 12}}</code>.</p>
+<p>The recipes <code>sci_spatial_ladder</code>, <code>sci_network_ladder</code>, <code>sci_phylo_signal</code>,
+<code>sci_calibrate_then_design</code> and <code>sci_image_model_check</code> are for other science models. They do
+not apply to this model.</p>
+<h2 id="9-the-same-with-the-cli-and-the-python-client">9. The same with the CLI and the Python client<a class="headerlink" href="#9-the-same-with-the-cli-and-the-python-client" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mapi<span class="w"> </span>use<span class="w"> </span>&lt;tenant&gt;/meteorology
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload<span class="w"> </span>ksba_wind_2021_2023.nc<span class="w"> </span>--name<span class="w"> </span>ksba_wind_2021_2023
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>mapi<span class="w"> </span>check<span class="w"> </span>ksba-wind-direction.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">     </span><span class="c1"># the server's static validation</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>mapi<span class="w"> </span>fit<span class="w"> </span>ksba-wind-direction.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w">       </span><span class="c1"># create or revise the spec, fit, follow</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>ksba-wind-direction<span class="w"> </span>-s<span class="w"> </span>params<span class="w"> </span>-s<span class="w"> </span>diagnostics<span class="w"> </span>-s<span class="w"> </span>fields
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>winds-2023.yaml<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="s">apiVersion: mapi/v1</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="s">kind: ScoreRequest</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="s">model: model://meteorology/ksba-wind-direction@latest</span>
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="s">mode: evaluate</span>
+</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="s">data: dataset://meteorology/ksba_wind_2023@latest</span>
+</span><span id="__span-12-13"><a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="s">output: {kind: predictive, summary: [mean, hdi_90]}</span>
+</span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="s">seed: 81</span>
+</span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="s">EOF</span>
+</span><span id="__span-12-16"><a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>mapi<span class="w"> </span>score<span class="w"> </span>winds-2023.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--model<span class="w"> </span>&lt;model<span class="w"> </span>id&gt;<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span><span class="w"> </span>-o<span class="w"> </span>winds-2023.zarr.zip
+</span><span id="__span-12-17"><a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>
+</span><span id="__span-12-18"><a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>init<span class="w"> </span>bayes_workflow_audit<span class="w"> </span>--name<span class="w"> </span>ksba-wind-audit
+</span><span id="__span-12-19"><a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>apply<span class="w"> </span>ksba-wind-audit.yaml<span class="w"> </span>-m<span class="w"> </span><span class="s2">"E81 audit"</span>
+</span><span id="__span-12-20"><a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>ksba-wind-audit<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-21"><a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="w">  </span>--input<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://meteorology/ksba_wind_2021_2023@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-22"><a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="w">  </span>--param<span class="w"> </span><span class="nv">model</span><span class="o">=</span>sci.circular_regression@^1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-23"><a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a><span class="w">  </span>--param<span class="w"> </span><span class="s1">'settings={"kind": "von_mises", "units": "degrees"}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-24"><a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a><span class="w">  </span>--param<span class="w"> </span><span class="s1">'bind={"dims": {"obs": "report"}, "vars": {"direction": "wind_from", "hour": "hour_lst", "day": "day_of_year"}}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-25"><a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a><span class="w">  </span>--watch
+</span></code></pre></div>
+<p><code>ksba-wind-direction.yaml</code> is the spec of step 4.1. For the camera traps, run
+<code>mapi use &lt;tenant&gt;/ecology</code> and do the same with <code>bci_camera_traps.nc</code> and the spec of
+step 4.2. The CLI has no <code>models</code> command. Take the model id from the run (<code>mapi runs get
+&lt;run&gt;</code>) or from <strong>Models</strong> in the web app.</p>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">project</span><span class="o">=</span><span class="s2">"&lt;tenant&gt;/meteorology"</span><span class="p">)</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">version</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="s2">"ksba_wind_2021_2023.nc"</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="s2">"ksba_wind_2021_2023"</span><span class="p">)</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">version</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"ksba-wind-direction.yaml"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">spec_yaml</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">check</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">spec_yaml</span><span class="p">)</span>
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"valid"</span> <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">valid</span> <span class="k">else</span> <span class="p">[(</span><span class="n">i</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">pointer</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">check</span><span class="o">.</span><span class="n">issues</span><span class="p">])</span>
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">revision</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">specs</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">spec_yaml</span><span class="p">)</span>
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">revision</span><span class="o">.</span><span class="n">spec_id</span><span class="p">,</span> <span class="n">revision</span><span class="o">.</span><span class="n">revision</span><span class="p">)</span>
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">run</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">raise_on_failure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-13-14"><a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>
+</span><span id="__span-13-15"><a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="n">model</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">list</span><span class="p">()</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"ksba-wind-direction"</span><span class="p">)</span>
+</span><span id="__span-13-16"><a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="n">result</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">score</span><span class="p">(</span>
+</span><span id="__span-13-17"><a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    <span class="n">model</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+</span><span id="__span-13-18"><a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    <span class="n">model</span><span class="o">.</span><span class="n">latest_version</span><span class="p">,</span>
+</span><span id="__span-13-19"><a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    <span class="p">{</span>
+</span><span id="__span-13-20"><a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>        <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"model://meteorology/ksba-wind-direction@latest"</span><span class="p">,</span>
+</span><span id="__span-13-21"><a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>        <span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"predict"</span><span class="p">,</span>
+</span><span id="__span-13-22"><a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>        <span class="s2">"data"</span><span class="p">:</span> <span class="s2">"dataset://meteorology/ksba_wind_2021_2023@latest"</span><span class="p">,</span>
+</span><span id="__span-13-23"><a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        <span class="s2">"output"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-13-24"><a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>            <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"expected"</span><span class="p">,</span>
+</span><span id="__span-13-25"><a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>            <span class="s2">"summary"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span> <span class="s2">"hdi_90"</span><span class="p">],</span>
+</span><span id="__span-13-26"><a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>            <span class="s2">"vars"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"mean_direction"</span><span class="p">,</span> <span class="s2">"resultant_length"</span><span class="p">],</span>
+</span><span id="__span-13-27"><a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>        <span class="p">},</span>
+</span><span id="__span-13-28"><a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a>        <span class="s2">"seed"</span><span class="p">:</span> <span class="mi">81</span><span class="p">,</span>
+</span><span id="__span-13-29"><a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>    <span class="p">},</span>
+</span><span id="__span-13-30"><a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a><span class="p">)</span>
+</span><span id="__span-13-31"><a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">tree</span><span class="p">[</span><span class="s2">"summary"</span><span class="p">]</span>  <span class="c1"># an xr.DataTree (needs the `xarray` extra)</span>
+</span><span id="__span-13-32"><a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">"mean_direction"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span><span id="__span-13-33"><a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">"resultant_length"</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">stat</span><span class="o">=</span><span class="s2">"mean"</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span></code></pre></div>
+<p>To run the audit recipe, use <code>workflow = api.workflows.create(template="bayes_workflow_audit")</code>
+and <code>api.workflows.run(workflow.id,
+inputs={"data": "dataset://meteorology/ksba_wind_2021_2023@latest"},
+params={"model": "sci.circular_regression@^1", "settings": {...}, "bind": {...}},
+wait=True)</code> with the <code>settings</code> and the <code>bind</code> of step 4.</p>
+</div>
+</div>
+</div>
+<h2 id="10-differences-from-the-notebook">10. Differences from the notebook<a class="headerlink" href="#10-differences-from-the-notebook" title="Permanent link">&para;</a></h2>
+<p>The port keeps the circular-linear regressions of part D: von Mises with the canonical link,
+projected normal and the mixture of two regimes. It also keeps the log-Fourier activity
+densities, the overlaps and the activity levels of part E. It leaves out these parts:</p>
+<ul>
+<li><strong>The control dataset and the four distributions (part A).</strong> The port does not fit the
+  Oklahoma earthquake times, and it has no wrapped normal or wrapped Cauchy. To do a check of
+  "no daily pattern", fit <code>kind: activity</code> with one group and <code>units: hours</code>, and look for a
+  flat density.</li>
+<li><strong>The direction against the wind speed (part C).</strong> The dataset has no speed, and the model
+  has no tan-half link. The notebook shows that link only to show its two problems.</li>
+<li><strong>The log score of the held-out year.</strong> The web app gives circular holdout metrics (step
+  7.3), not the log predictive density. For the log score, use
+  <code>CircularRegressionModel().holdout_log_score(bundle.model, ds)</code> in Python.</li>
+<li><strong>The day-level standard error of the 2023 difference.</strong> Calculate it in Python from the
+  pointwise log scores.</li>
+<li><strong>The circular PIT, the clock of wind arrows and the arcs of the circular HDI (part D).</strong>
+  The web app has no plot for them. <code>mean_direction</code> and <code>resultant_length</code> (step 7.1) give
+  the values of the arrows for each block of three hours.</li>
+<li><strong>The gate of the mixture by hour and season (part D).</strong> The model does not output the
+  probability of each regime.</li>
+<li><strong>The von Mises mixtures of the activity, and their labels that change places (part E).</strong> The port uses
+  only the log-Fourier density, which has no labels. The kernel estimate and the bootstrap of
+  the R package <em>overlap</em> are not in the port.</li>
+</ul>
+<p><strong>Next steps:</strong></p>
+<ul>
+<li>Fit <code>kind: projected_normal</code> and <code>kind: regime_mixture</code>, and compare them with <code>elpd_loo</code>.</li>
+<li>Try the slower prior of the notebook exercise for the activity: a larger <code>tau_sd</code> or more
+  <code>harmonics</code>. Then compare <code>activity_level</code> of the agouti.</li>
+<li>Read the <a href="../../../reference/models/">model reference</a> for the other science models.</li>
+<li>Read <a href="../../../guides/workflows/">Workflows</a> to change the audit recipe.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../e80-strong-lens/" class="md-footer__link md-footer__link--prev" aria-label="Previous: E80 Strong gravitational lens">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                E80 Strong gravitational lens
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../../concepts/" class="md-footer__link md-footer__link--next" aria-label="Next: Concepts">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Concepts
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Documentation CC BY 4.0 · SDK Apache-2.0 · Platform AGPLv3 or commercial
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+      
+    
+  </body>
+</html>

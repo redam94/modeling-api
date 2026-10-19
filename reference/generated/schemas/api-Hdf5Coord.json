@@ -1,0 +1,198 @@
+{
+  "$defs": {
+    "DimPolicy": {
+      "description": "What may happen to a dim's coordinates at score time.",
+      "enum": [
+        "fixed",
+        "extend",
+        "new_levels"
+      ],
+      "title": "DimPolicy",
+      "type": "string"
+    },
+    "DimSpec": {
+      "additionalProperties": false,
+      "description": "A dimension and its score-time policy.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "freq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pandas-style frequency, e.g. 'W-SUN'",
+          "title": "Freq"
+        },
+        "kind": {
+          "enum": [
+            "categorical",
+            "time",
+            "integer",
+            "float",
+            "index"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_extension": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periods allowed past the fit",
+          "title": "Max Extension"
+        },
+        "new_level_strategy": {
+          "default": "error",
+          "enum": [
+            "error",
+            "hyperprior",
+            "pooled",
+            "zero"
+          ],
+          "title": "New Level Strategy",
+          "type": "string"
+        },
+        "ordered": {
+          "default": false,
+          "title": "Ordered",
+          "type": "boolean"
+        },
+        "policy": {
+          "$ref": "#/$defs/DimPolicy",
+          "default": "fixed"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "DimSpec",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-Hdf5Coord.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The coordinate of dim ``dim`` in node ``node`` of a raw HDF5 upload (M4).\n\nExactly one source: ``path`` (a 1-D HDF5 dataset holding the labels), or ``start`` with\nan optional ``step`` (a range: numbers, or a date and a pandas frequency such as\n``\"2024-01-01\"`` + ``\"W-MON\"``), or neither (an integer index ``0..n-1``). ``spec``\noverrides the inferred :class:`~mapi_spec.schema.DimSpec`.",
+  "examples": [
+    {
+      "dim": "row",
+      "spec": {
+        "kind": "float",
+        "ordered": true
+      },
+      "start": 0.0,
+      "step": 0.05
+    },
+    {
+      "dim": "date",
+      "path": "/axes/date",
+      "spec": {
+        "kind": "time",
+        "policy": "extend"
+      }
+    }
+  ],
+  "properties": {
+    "dim": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dim",
+      "type": "string"
+    },
+    "node": {
+      "default": "/",
+      "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+      "title": "Node",
+      "type": "string"
+    },
+    "path": {
+      "anyOf": [
+        {
+          "pattern": "^/[^\\x00]{1,1024}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Path"
+    },
+    "spec": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DimSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "start": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start"
+    },
+    "step": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Step"
+    }
+  },
+  "required": [
+    "dim"
+  ],
+  "title": "Hdf5Coord",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

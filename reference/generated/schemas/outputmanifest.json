@@ -106,7 +106,8 @@
         "workflow",
         "workflow_node",
         "explore",
-        "governance"
+        "governance",
+        "inspect"
       ],
       "title": "RunKind",
       "type": "string"

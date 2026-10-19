@@ -102,7 +102,9 @@
         "EXPLORE_INVALID",
         "OPTIMIZE_INFEASIBLE",
         "ACTUALS_NOT_SUPPORTED",
-        "ACTUALS_INVALID"
+        "ACTUALS_INVALID",
+        "NOT_READY",
+        "INGEST_UNSAFE_FILE"
       ],
       "title": "ErrorCode",
       "type": "string"

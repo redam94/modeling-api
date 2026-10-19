@@ -115,7 +115,8 @@
         "workflow",
         "workflow_node",
         "explore",
-        "governance"
+        "governance",
+        "inspect"
       ],
       "title": "RunKind",
       "type": "string"
@@ -450,6 +451,21 @@
       "description": "Base64 per-run HMAC-SHA256 key",
       "title": "Hmac Key",
       "type": "string"
+    },
+    "input_layouts": {
+      "description": "M4: the layout of dataset inputs that are not a plain dataset (input name -> 'tree' for a data.tree.zip); absent inputs are 'dataset'",
+      "maxProperties": 256,
+      "patternProperties": {
+        "^[a-z][a-z0-9_.\\-]{0,63}$": {
+          "enum": [
+            "dataset",
+            "tree"
+          ],
+          "type": "string"
+        }
+      },
+      "title": "Input Layouts",
+      "type": "object"
     },
     "inputs": {
       "maxProperties": 256,

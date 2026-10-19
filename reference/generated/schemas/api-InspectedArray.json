@@ -1,0 +1,126 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-InspectedArray.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One array of an inspected upload (from its metadata only; no data is read).\n\n``dims_hint`` comes from the file's own dim metadata where there is some (HDF5\n``DIMENSION_LIST``, zarr ``_ARRAY_DIMENSIONS``, NetCDF dims).",
+  "examples": [
+    {
+      "attrs": {
+        "units": "counts"
+      },
+      "chunks": [
+        64,
+        64
+      ],
+      "dims_hint": null,
+      "dtype": "float32",
+      "filters": [
+        "deflate",
+        "shuffle"
+      ],
+      "path": "/observations/image",
+      "shape": [
+        64,
+        64
+      ]
+    }
+  ],
+  "properties": {
+    "attrs": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "maxLength": 1024,
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxProperties": 64,
+      "propertyNames": {
+        "maxLength": 256
+      },
+      "title": "Attrs",
+      "type": "object"
+    },
+    "chunks": {
+      "anyOf": [
+        {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Chunks"
+    },
+    "dims_hint": {
+      "anyOf": [
+        {
+          "items": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dims Hint"
+    },
+    "dtype": {
+      "maxLength": 64,
+      "title": "Dtype",
+      "type": "string"
+    },
+    "filters": {
+      "items": {
+        "maxLength": 256,
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Filters",
+      "type": "array"
+    },
+    "path": {
+      "maxLength": 1025,
+      "title": "Path",
+      "type": "string"
+    },
+    "shape": {
+      "items": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "maxItems": 64,
+      "title": "Shape",
+      "type": "array"
+    }
+  },
+  "required": [
+    "path",
+    "dtype"
+  ],
+  "title": "InspectedArray",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -180,7 +180,7 @@
       "type": "object"
     },
     "ScoreSummaryTable": {
-      "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+      "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field).",
       "examples": [
         {
           "columns": [
@@ -210,6 +210,20 @@
           "maxItems": 256,
           "title": "Columns",
           "type": "array"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)",
+          "title": "Period"
         },
         "rows": {
           "items": {

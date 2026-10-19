@@ -281,6 +281,7 @@
         "select",
         "governance",
         "report",
+        "plot",
         "subworkflow"
       ],
       "title": "NodeKind",
