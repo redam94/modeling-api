@@ -28,7 +28,8 @@ its **Fields** section, and the `sci.*` plot recipes draw them.
 
 Each `*_data` module has the raw schema, a small example spec, a synthetic generator with the
 known truth and `from_challenges(path)`, which reads the real data file of the case study (E51
-simulates its data in the notebook: its loader rebuilds that experiment and reads no file). Set
+and E61 simulate their data in the notebook: their loaders rebuild that experiment and read no
+file). Set
 `MAPI_PYMC_CHALLENGES_DATA` to the `data/` directory of a local copy of pymc-challenges to run
 the tests that use the real files.
 

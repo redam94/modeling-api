@@ -35,8 +35,16 @@ milestone releases are tagged on `main`.
     or OU residuals.
   - `sci.circular_regression` (E81): von Mises, projected normal and regime-mixture
     regression of angles, and log-Fourier activity densities with overlaps.
-- Export cases e18, e19, e21, e23, e31, e51, e58, e61, e77, e79 and e81. A case whose
-  notebook simulates its data (E51, E61) needs no data directory.
+- Export cases e18, e19, e21, e23, e31, e51, e58, e61, e77, e79, e81 (KSBA winds) and e81b
+  (Barro Colorado camera-trap times). A case whose notebook simulates its data (E51, E61)
+  needs no data directory.
+- `OutputDecl.circular` (`mapi-spec`): an output that is an angle (a direction, a time of
+  day). The model sets a `period` attr on the scored array, and the holdout metrics use the
+  circular mean, errors wrapped to half a turn, intervals around the circular mean and an
+  arc-distance CRPS (`mape`, `smape`, `wape` and `r2` are skipped).
+  `sci.circular_regression` declares `direction_hat` circular.
+- `mapi_plugin_science._common`: the seeded generators, the quiet PyMC context, the attr
+  cleaning and the draw selection the `sci.*` modules share (one copy instead of ten).
 
 #### Changed
 - `BindingMap` rewrites the dim names in a variable's `grid` attr when it renames dims, so
@@ -45,17 +53,36 @@ milestone releases are tagged on `main`.
   chain at one given point (`pymc`, `nutpie` and the external NUTS bridges).
   `sci.ibp_features` uses it to avoid a start where all its features switch off.
 
+- The SDK harness parses the model's settings before the data is transformed or split, so a
+  cross-field settings rule (a pydantic `model_validator`) refuses the fit early.
+  `sci.storm_localisation`, `sci.graphical_model` and `sci.colour_naming` check their
+  settings-only rules there, as the phase 1 models do.
+
 #### Fixed
 - `python -m mapi_plugin_science.export --list` lists every case (a case registered after
   the `__main__` guard was missing from the command line).
+- `sci.circular_regression` evaluate metrics treated angles as numbers: draws around north
+  (350° and 10°) had a mean near 180°, and the MAE of a good fit was about that of a constant
+  guess. They are circular now (see `OutputDecl.circular`).
+- `sci.cmb_field` simulate drew the mean of each new patch from the vague 100 µK prior of the
+  fitted patch's mean; it now comes from the spectrum.
+- `sci.storm_localisation`: `render_px_nm` is at least 1 nm, and the fit refuses
+  (`SETTINGS_INVALID`) settings whose render of `score_draws` draws is over 50 million values
+  (a 0.1 nm render could ask for terabytes).
+- `score_bundle` refuses a mode the model does not support (`MODE_NOT_SUPPORTED`) before any
+  mode-specific work: a forecast of a model with text labels on the horizon dim raised an
+  untyped `UFuncTypeError`, and some models answered `ACTUALS_NOT_SUPPORTED`. A horizon along
+  text labels is `COORD_NOT_ALLOWED`.
+- `sci.graphical_model`: score data without a `cell` dim is `SCHEMA_INVALID`, not a
+  `KeyError` (`USER_CODE_ERROR`).
+- Conformance: e18_areal and e19_ggm pass at `--size full` (their score expectations fixed the
+  tiny data's district and protein counts; the hooks now check them against the data).
 
 #### Known gaps
 - `sci.turing_pattern`: the notebook-sized fit takes about 5 min and mixes slowly (r_hat
   about 1.02, bulk ESS about 180 for rho and g).
 - `sci.network_latent_space`: the latent-space fit with covariates (model c) warns at 4 × 1000
   draws (max r_hat 1.08, bulk ESS 46); it needs more draws or tuning.
-- `sci.areal_bym2`: a forecast request with a horizon on the categorical `area` dim fails in
-  the harness with a type error instead of `MODE_NOT_SUPPORTED`.
 - `sci.network_latent_space`: evaluate metrics include the diagonal (self-tie) cells.
 
 ### M5 phase 1 — Science gallery foundation

@@ -347,7 +347,8 @@ python -m mapi_plugin_science.export e50 --synthetic --out assay.nc
 ```
 
 `--challenges` is the `data/` directory of pymc-challenges. If you do not give it, the command
-uses `MAPI_PYMC_CHALLENGES_DATA`. A case without a data file (`e51`) needs neither. The suffix of `--out` sets the format:
+uses `MAPI_PYMC_CHALLENGES_DATA`. A case without a data file (`e51`, `e61`) needs neither.
+The suffix of `--out` sets the format:
 
 | Suffix | Format |
 |---|---|
@@ -376,6 +377,7 @@ the suggested spec. That spec reads the suggested dataset name
 | `e19` | `sci.graphical_model` | `sachs2005.txt`, `sachs2005_consensus.txt` | `biology/sachs_cd3cd28` |
 | `e23` | `sci.phylo_regression` | `primates301.csv`, `primates301_tree.rda` | `biology/primates301` |
 | `e81` | `sci.circular_regression` | `asos_ksba_2021_2023.csv.gz` | `meteorology/ksba_wind_2021_2023` |
+| `e81b` | `sci.circular_regression` | `bci_camera_trap_times.csv` | `ecology/bci_camera_traps` |
 
 In Python, `export_case("e07", "quakes.nc", data_dir=...)` does the same work, and
 `write_export(data, path, schema=...)` writes any dataset or tree. To add a case, add one
@@ -679,6 +681,8 @@ over the modes is valid.
 | `simulate_draws` | 4 | Nonlinear runs for each `simulate` score |
 | `simulate_dt` | auto | Time step of the spectral solver (default `min(0.025, 0.1 / (g (1 + s²)))`) |
 | `settle_time` | 300 | Time of the settled pattern in `simulate` |
+| `wavenumber_max`, `wavenumber_points` | 1.2, 120 | Largest wavenumber and points of the `growth(wavenumber)` output |
+| `a_max`, `b_max`, `supply_points` | 0.6, 3, 60 | Largest supply rates and grid points of the `turing_space(b_supply, a_supply)` output |
 | `precondition` | true | Sample near the mode with a Laplace preconditioner (the model does not change) |
 
 E61 part A has no data file: the notebook simulates its four 128 × 128 images (t = 4, 8, 12,
@@ -757,7 +761,7 @@ frames, is too large for the in-sample evaluate (see `PAYLOAD_TOO_LARGE` below).
 | `background_photons`, `background_log_sd` | unset, 0.5 | Log-normal prior of the background; unset: twice the median effective count |
 | `gradient_sd` | 0.05 | Prior sd of the background slopes (`kind: plane`) |
 | `score_draws`, `ppc_draws` | 40, 20 | Posterior draws in a score, and predictive patch draws in the bundle |
-| `render_px_nm` | 16 | Pixel size of `render` (nm) |
+| `render_px_nm` | 16 | Pixel size of `render` (nm, at least 1) |
 
 To compare `flat` and `plane` by `elpd_loo`, fit both with `fit.keep.log_likelihood: true`. The
 pointwise values are per patch pixel, and the two kinds use the same patches. The
@@ -767,7 +771,9 @@ more than 1.5.
 Typed errors:
 
 - `SETTINGS_INVALID`: only one of `offset_adu` and `scale_adu`, an even `patch_px`,
-  `min_blob_px` > `max_blob_px`, or a bad `amplitude_band`.
+  `min_blob_px` > `max_blob_px`, or a bad `amplitude_band` (refused when the settings are
+  parsed, before the data is read); a `render` of `score_draws` draws at `render_px_nm` with
+  more than 50 million values (refused at the start of the fit).
 - `SCHEMA_INVALID`: missing frames or pixels, rows or columns that are not consecutive, fewer
   than 3 frames, frames smaller than a patch, no spot above the threshold, no isolated spot, or
   frames that cannot calibrate the camera.
@@ -786,8 +792,8 @@ values as settings. The detector finds 4,192 blobs, as in the notebook. With
 of 7 nm. 200 spots take approximately one minute with nutpie (4 chains of 1,000 draws). On
 these frames, `kind: plane` has more than one mode for approximately 8 % of the spots (spots
 at the edge of the crop, or near a bright spot outside the patch). Then the chains do not
-agree. Use `flat` for these frames. The model does not do the multi-emitter selection, the Laplace fits for the full movie or the
-blink counting of the notebook.
+agree. Use `flat` for these frames. The model does not do the multi-emitter selection, the
+Laplace fits for the full movie or the blink counting of the notebook.
 
 ### `sci.ibp_features` — shared parts of small images (E31)
 
@@ -827,8 +833,8 @@ target values in the score data. Thus a held-out pixel cannot get into its own p
 
 **Start.** From the default start, some chains can go to a trap: all `pi_k` go to zero and
 the images use no features. Then no feature gets a gradient again. The `digits` start
-prevents this (the notebook does the same). The engines `pymc` and `nutpie` use the start
-point with no jitter (`EnginePlan.initvals` and `jitter=False`).
+prevents this (the notebook does the same). The engines `pymc`, `nutpie` and the external
+NUTS bridges use the start point with no jitter (`EnginePlan.initvals` and `jitter=False`).
 
 **Diagnostics.** The posterior of `A` has many modes, as in a mixture model. Chains usually
 find different features, so expect r-hat and ESS warnings for `logpi` and `sigma_A`. The
@@ -928,7 +934,7 @@ for each answer, and the hierarchical fit gives 1.92 effective categories for on
 The model stops with `SCHEMA_INVALID` when the naming has fewer than 2 or more than 40 terms,
 a chip has no CIELAB colour, or two chips have the same palette place. It stops with
 `SETTINGS_INVALID` when `kind: hierarchical` has only one speaker, or `n_random` is larger than
-the number of features. Chips that are not in the fit give `UNSEEN_LEVELS`.
+the number of features (refused when the settings are parsed). Chips that are not in the fit give `UNSEEN_LEVELS`.
 
 ### `sci.cmb_field` — the CMB sky behind a mask (E79)
 
@@ -968,7 +974,8 @@ map, plus noise with `noise_sd` for `kind: predictive`. `bandpower(bin)` (µK²)
 Gaussian posterior of `q_b = log A + tilt · log(ℓ_b / tilt_pivot)`, with the bins below
 `tilt_max_ell`. The fit keeps the mean and the sd of each pixel over all kept Gibbs draws as the
 derived group `sky_moments`. In `simulate` mode, the model makes skies of a new patch with the
-spectrum of each posterior draw, plus noise.
+spectrum of each posterior draw, plus noise. The mean of a new patch comes from the spectrum
+too (a few µK), not from the vague `mean_prior_sd` prior of the fitted patch's mean.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -983,6 +990,9 @@ spectrum of each posterior draw, plus noise.
 | `rescale` | true | Use the rescaling move |
 | `tilt_pivot`, `tilt_max_ell`, `tilt_prior_sd` | 500, 1450, 0.5 | The amplitude-and-tilt summary |
 | `field_draws` | 40 | The number of sky maps to draw for each score |
+| `n_alias` | 3 | Aliased replicas folded into the prior power of each mode |
+| `mean_prior_sd` | 100 | Prior sd of the patch mean (µK) in the fit |
+| `q_init_sd` | 0.3 | Sd of the dispersed chain starts of the log bandpowers |
 
 The model has no LOO (`loo_valid` is false), because all pixels share one latent field. To
 compare `projection: gnomonic` with `flat`, compare the bandpowers, the amplitude and the tilt.
@@ -1055,9 +1065,10 @@ the plots.
 
 The posterior also keeps `tie_prob` (float32) for the plots of the fit, and
 `constant_data/adjacency` keeps the observed matrix. The fit always keeps the log-likelihood of
-each observed pair (dim `dyad`; the pairs are in `constant_data/dyad_i` and `dyad_j`). Thus `elpd_loo` is leave-one-pair-out, and the kinds of a
-workflow ladder use the same pairs in the same order. A `mask_block` split over `[node, node_]`
-holds out random cells. A pair is out of the fit when one of its two cells is held out.
+each observed pair (dim `dyad`; the pairs are in `constant_data/dyad_i` and `dyad_j`). Thus
+`elpd_loo` is leave-one-pair-out, and the kinds of a workflow ladder use the same pairs in the
+same order. A `mask_block` split over `[node, node_]` holds out random cells. A pair is out of
+the fit when one of its two cells is held out.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -1132,9 +1143,9 @@ To compare a `dense` fit and a `neighbourhood` fit with `elpd_loo`, set
 `log_likelihood: conditional` on both. Then both values are the sum of the log densities of
 each variable given the other variables of the same sample.
 
-Typed errors: `SETTINGS_INVALID` for `log_likelihood: joint` with kind `neighbourhood`, or
-`expected_neighbours` that is not smaller than the number of other variables;
-`SCHEMA_INVALID` for missing values, a variable with no variation, fewer than two variables,
+Typed errors: `SETTINGS_INVALID` for `log_likelihood: joint` with kind `neighbourhood` (when
+the settings are parsed), or `expected_neighbours` that is not smaller than the number of other
+variables; `SCHEMA_INVALID` for score data without a `cell` dim, missing values, a variable with no variation, fewer than two variables,
 or `reference: true` without a `reference` variable; `MODE_NOT_SUPPORTED` for `simulate`,
 `evaluate` or `predictive` outputs with kind `neighbourhood`, and for `forecast` and
 `counterfactual`.
@@ -1239,14 +1250,15 @@ densities on the circle, as the E81 case study does. It has four kinds:
   `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`, with the prior `aₖ, bₖ ~ N(0, (τ/k)²)`. The
   model uses only the sums of `cos kθ` and `sin kθ` for each group.
 
-The priors of `von_mises` and `projected_normal` are N(0, `intercept_sd` = 2) on the
-intercepts and N(0, `coef_sd` = 1) on the other coefficients. `regime_mixture` does not use
-`intercept_sd`, as in the notebook. The intercept of regime r has the prior
-N(`regime_strength` (cos μᵣ, sin μᵣ), 1), with μᵣ from `regime_directions_deg`. The gate
-intercept has the prior N(0, `gate_intercept_sd` = 1.5). The other coefficients of the regimes
-and of the gate have the prior N(0, `coef_sd`). NUTS samples the coefficients. With `fit.keep.log_likelihood: true`, the bundle keeps the log density of
-each row (per radian). Thus `elpd_loo` compares the kinds on the same rows, for example in a
-workflow ladder `von_mises` → `projected_normal` → `regime_mixture`.
+The priors of `von_mises` and `projected_normal` are N(0, `intercept_sd` = 2) on the intercepts
+and N(0, `coef_sd` = 1) on the other coefficients. `regime_mixture` does not use
+`intercept_sd`, as in the notebook. The intercept of regime r has the prior N(`regime_strength`
+(cos μᵣ, sin μᵣ), 1), with μᵣ from `regime_directions_deg`. The gate intercept has the prior
+N(0, `gate_intercept_sd` = 1.5). The other coefficients of the regimes and of the gate have the
+prior N(0, `coef_sd`). NUTS samples the coefficients. With `fit.keep.log_likelihood: true`, the
+bundle keeps the log density of each row (per radian). Thus `elpd_loo` compares the kinds on
+the same rows, for example in a workflow ladder `von_mises` → `projected_normal` →
+`regime_mixture`.
 
 **Inputs.** `obs` (integer, policy `extend`, one row for each report) and the target
 `direction(obs)` in `units`. The regression kinds also need `hour(obs)` (hours since midnight,
@@ -1310,8 +1322,13 @@ the notebook does. On the 12,023 reports of 2021–2022, `elpd_loo` is −17,385
 and five species that it hunts. With `BCI_SPEC_YAML`, the overlap of the ocelot and the agouti
 is 0.30 (the notebook: 0.30).
 
-Platform holdout metrics such as `rmse` and `coverage_90` are linear. They are not correct for
-angles. Use `elpd_loo`, or `CircularRegressionModel().holdout_log_score(bundle.model, ds)` for
-the log score of held-out rows. Errors: `SCHEMA_INVALID` for a missing direction, an hour out of
+`direction_hat` is a circular output (`OutputDecl.circular`, with its `period` attr: 360, 2π
+or 24). The holdout metrics of `evaluate` are circular: the point is the circular mean of the
+draws, `mae`, `rmse` and `bias` use the error wrapped to half a turn (359° against 1° is an
+error of 2°), `coverage_<p>` and `interval_width_<p>` use central intervals of the draws around
+the circular mean (an interval may cross 0), and `crps` uses the arc distance. `mape`,
+`smape`, `wape` and `r2` are skipped. For a proper score of the whole density, use
+`elpd_loo`, or `CircularRegressionModel().holdout_log_score(bundle.model, ds)` for the log
+score of held-out rows. Errors: `SCHEMA_INVALID` for a missing direction, an hour out of
 range or a bad group index; `MISSING_FUTURE_COVARIATE` when the score data have no `hour` or
 `day`; `SETTINGS_INVALID` for more interaction harmonics than daily harmonics.
