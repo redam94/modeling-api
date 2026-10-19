@@ -5,7 +5,7 @@
 # mapi-plugin-statsmodels), with the SDK, built-in steps and plot recipes.
 # No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
 #
-#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.9.0 .
+#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.9.1 .
 #
 # See docs/operations/docker.md.
 
