@@ -205,7 +205,7 @@ All other specs run the full catalog.
 | `negative_roi_share`, `roi_max` | The `response_curves` grid at the actual spend. For each channel: the share of draws with a negative return, and the largest posterior-mean ROI |
 | `max_channel_share`, `baseline_share` | The share of a channel (or of the baseline) in the baseline plus all channels, posterior mean |
 | `prior_overlap_max` | The overlap of the prior and posterior draws of the media parameters of the model (`PyMCModel.prior_overlap_vars`, forward-sampled at fit time, at a low cost) |
-| `missing_fraction` | The numeric variables of the raw dataset |
+| `missing_fraction` | The numeric variables of the raw dataset that contain observations. The check does not count the variables with the role `constant`, `index` or `mask` (for example the padding of the outlines of a map). It also does not count the variables that the model declares in `structural_missing` (for example the cells without a sensor of `sci.heat_plate`). The expert message names the variables that the check does not count |
 | `history_years` | The time dim of the model stage, in years. This is its periods divided by the periods in a year at the frequency of the dim (or the frequency of its dates). Thus 105 days and 15 weeks both count as about 0.3 years |
 | `spend_cv_min` | The raw spend for each channel over time |
 

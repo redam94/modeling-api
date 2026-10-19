@@ -258,9 +258,10 @@ The outputs of this model are on the districts, not on a grid. Thus the **Fields
 under "Does not apply". **Fit vs actual** and **Residuals** also show there, because they need
 a time dimension. The maps are in the **Plots** tab of the model version page.
 
-The header of the version shows the badge **scorecard fail**. Open **Overview** to see why: the
-check "Few missing values" fails, because the padding of `ring_x` and `ring_y` counts as
-missing values (4,114 of 9,016). The padding is correct. The other checks pass.
+Open **Overview** to see the scorecard. The check "Few missing values" passes. It counts only
+the variables that contain observations. Thus it does not count the padding of the outlines
+`ring_x` and `ring_y` (and `adjacency`), because they have the role `constant`. The expert
+message names these variables.
 
 ### 6.1 The graph that the model used
 

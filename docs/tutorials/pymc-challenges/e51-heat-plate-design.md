@@ -230,9 +230,10 @@ You can also find the run under **Runs**. Filter it with the kind `fit`.
 On the model version page, the tabs are **Overview**, **Diagnostics**, **Plots**, **Data
 tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Model Explorer.
 
-The header of the version shows the badge **scorecard fail**. Open **Overview** to see why: the
-check "Few missing values" fails, because the cells without a thermocouple have no measured value.
-This is correct for this dataset. The other checks pass.
+Open **Overview** to see the scorecard. The check "Few missing values" passes. The cells
+without a thermocouple have no measured value, but `sci.heat_plate` declares these NaN as part
+of the design of the data (`structural_missing`). Thus the check does not count them. The
+expert message names `reading_c`.
 
 ### 6.1 Can you trust the fit?
 

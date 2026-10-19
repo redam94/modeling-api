@@ -22,7 +22,9 @@ metric                    measured on
 ``baseline_share``        baseline / (baseline + every channel), posterior mean
 ``prior_overlap_max``     overlap of prior and posterior draws (needs a ``prior`` group:
                           ``fit.prior_predictive`` or ``fit.keep.prior``)
-``missing_fraction``      the raw dataset's numeric variables
+``missing_fraction``      the raw dataset's numeric variables that hold observations: not the
+                          roles ``constant``, ``index`` and ``mask`` (geometry, lookups,
+                          masks), and not the model's ``structural_missing`` variables
 ``history_years``         the model stage's time dim: periods / periods per year (from the
                           dim's frequency, else the one its labels follow)
 ``spend_cv_min``          the raw spend per channel over time (summed over other dims)
@@ -54,13 +56,23 @@ from mapi_spec.scorecard import (
     rollup,
 )
 
-__all__ = ["GUIDED_LABEL", "fit_scorecard", "history_years", "scorecard_metrics"]
+__all__ = [
+    "GUIDED_LABEL",
+    "fit_scorecard",
+    "history_years",
+    "missing_count",
+    "model_structural_missing",
+    "scorecard_metrics",
+]
 
 GUIDED_LABEL: Final = "guided"
 """``metadata.labels`` key naming the guided template a spec was drafted from."""
 _DRAW_DIMS: Final = ("chain", "draw")
 _MAX_OVERLAP_CELLS: Final = 256
 _OVERLAP_BINS: Final = 40
+_NOT_OBSERVED: Final = frozenset({Role.CONSTANT, Role.INDEX, Role.MASK})
+"""Roles whose values are not observations: their NaN are layout (padding of an outline, a
+lookup table), not gaps in the data."""
 
 
 Measured = tuple[float, str | None]
@@ -303,17 +315,68 @@ def _numeric_vars(data: xr.Dataset) -> list[str]:
     return [str(v) for v in data.data_vars if data[v].dtype.kind in "fiub"]
 
 
+def model_structural_missing(registry: object, bundle: Bundle) -> frozenset[str]:
+    """The canonical variables the fitted model declares with NaN by design
+    (``CustomModel.structural_missing``); empty when the model or its plugin is not known."""
+    try:
+        plugin = registry.model(bundle.resolved.model.resolved)  # type: ignore[attr-defined]
+    except Exception:  # a missing plugin only means no declaration
+        return frozenset()
+    return frozenset(str(n) for n in getattr(plugin, "structural_missing", ()) or ())
+
+
+def _excluded(bundle: Bundle, structural: frozenset[str]) -> dict[str, str]:
+    """``{dataset variable: reason}`` for the variables the missing check does not count."""
+    out: dict[str, str] = {}
+    for name, var in bundle.raw_schema.vars.items():
+        if var.role in _NOT_OBSERVED:
+            out[name] = f"role {var.role.value}"
+    model = bundle.model_schema
+    binding = bundle.binding
+    if model is not None:
+        for name, var in model.vars.items():
+            if var.role in _NOT_OBSERVED:
+                out.setdefault(binding.to_dataset(name), f"role {var.role.value}")
+    for name in sorted(structural):
+        out.setdefault(binding.to_dataset(name), "missing by design of the model")
+    return out
+
+
+def missing_count(
+    bundle: Bundle, data: xr.Dataset, structural: frozenset[str] = frozenset()
+) -> tuple[int, int, dict[str, str]]:
+    """``(missing, cells, not counted)`` over the numeric variables of the raw data that hold
+    observations (see :data:`_NOT_OBSERVED` and ``structural``, canonical names)."""
+    excluded = _excluded(bundle, structural)
+    names = [n for n in _numeric_vars(data) if n not in excluded]
+    cells = sum(int(data[v].size) for v in names)
+    missing = sum(int(data[v].isnull().sum()) for v in names if data[v].dtype.kind == "f")
+    return missing, cells, {n: r for n, r in excluded.items() if n in data}
+
+
 def _data_checks(
-    bundle: Bundle, data: xr.Dataset | None, out: dict[str, Measured], why: dict[str, str]
+    bundle: Bundle,
+    data: xr.Dataset | None,
+    out: dict[str, Measured],
+    why: dict[str, str],
+    structural: frozenset[str] = frozenset(),
 ) -> None:
     if data is None:
         why["missing_fraction"] = why["spend_cv_min"] = "the raw data was not available"
     else:
-        names = _numeric_vars(data)
-        cells = sum(int(data[v].size) for v in names)
-        missing = sum(int(data[v].isnull().sum()) for v in names if data[v].dtype.kind == "f")
+        missing, cells, skipped = missing_count(bundle, data, structural)
+        note = (
+            " (not counted: " + ", ".join(f"{n} ({r})" for n, r in sorted(skipped.items())) + ")"
+            if skipped
+            else ""
+        )
         if cells:
-            out["missing_fraction"] = (missing / cells, f"{missing} of {cells} values missing")
+            out["missing_fraction"] = (
+                missing / cells,
+                f"{missing} of {cells} values missing{note}",
+            )
+        elif _numeric_vars(data):
+            why["missing_fraction"] = f"no numeric variable holds observations{note}"
         else:
             why["missing_fraction"] = "the dataset has no numeric variables"
         cv = _spend_cv(bundle, data)
@@ -385,9 +448,10 @@ def _spend_cv(bundle: Bundle, data: xr.Dataset) -> Measured | None:
 
 
 def scorecard_metrics(
-    bundle: Bundle, data: xr.Dataset | None
+    bundle: Bundle, data: xr.Dataset | None, structural_missing: frozenset[str] = frozenset()
 ) -> tuple[dict[str, Measured], dict[str, str]]:
-    """Every scorecard metric the fit can measure, and why the others cannot be."""
+    """Every scorecard metric the fit can measure, and why the others cannot be
+    (``structural_missing``: canonical variables whose NaN the missing check skips)."""
     out: dict[str, Measured] = {}
     why: dict[str, str] = {}
     with warnings.catch_warnings():
@@ -396,7 +460,7 @@ def scorecard_metrics(
         _holdout(bundle, out, why)
         _plausibility(bundle, out, why)
         _prior_overlap(bundle, out, why)
-        _data_checks(bundle, data, out, why)
+        _data_checks(bundle, data, out, why, structural_missing)
     return out, why
 
 
@@ -407,10 +471,17 @@ def _plan(labels: Mapping[str, str]) -> tuple[list[str], dict[str, CheckThreshol
     return list(template.scorecard_checks), dict(template.scorecard_thresholds)
 
 
-def fit_scorecard(bundle: Bundle, data: xr.Dataset | None = None) -> Scorecard:
-    """The scorecard of a fitted bundle (``data``: the raw dataset, for the data checks)."""
+def fit_scorecard(
+    bundle: Bundle,
+    data: xr.Dataset | None = None,
+    *,
+    structural_missing: frozenset[str] = frozenset(),
+) -> Scorecard:
+    """The scorecard of a fitted bundle (``data``: the raw dataset, for the data checks;
+    ``structural_missing``: the model's canonical variables with NaN by design, see
+    :func:`model_structural_missing`)."""
     checks, thresholds = _plan(bundle.spec.metadata.labels)
-    measured, why = scorecard_metrics(bundle, data)
+    measured, why = scorecard_metrics(bundle, data, structural_missing)
     items: list[ScorecardItem] = []
     skipped: dict[str, str] = {}
     for check_id in checks:

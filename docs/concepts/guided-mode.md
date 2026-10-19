@@ -253,7 +253,7 @@ higher is better) and the multi-class `brier` score (0 is perfect).
 
 | Check | Metric | Thresholds | What to do |
 |---|---|---|---|
-| <a id="check-data-missing"></a>`data.missing` (Few missing values) | `missing_fraction` | warn above 5%, fail above 30% | Fill the gaps in the source data, or remove the series that have gaps. |
+| <a id="check-data-missing"></a>`data.missing` (Few missing values) | `missing_fraction` | warn above 5%, fail above 30% | Fill the gaps in the source data, or remove the series that have gaps. The check counts only the variables that contain observations. Refer to [Guided modelling](../guides/guided-modelling.md#the-sanity-scorecard). |
 | <a id="check-data-history"></a>`data.history` (Enough history) | `history_years` | warn below 2 years, fail below 1 year (the `weekly_forecast` template: below 0.5) | Add more history if you have it. |
 | <a id="check-data-spend-variation"></a>`data.spend_variation` (Spend changes enough) | `spend_cv_min` | warn below 10%, fail below 2% | Add a lift test for the channel, or give its ROI in business priors. |
 

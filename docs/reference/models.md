@@ -607,7 +607,8 @@ layout. To do this, score a payload with new `run` labels and their `heater_powe
 **Inputs.** `run` (categorical, policy `new_levels`), `y` and `x` (float cell centres in cm,
 equal steps, square cells, fixed), the input `heater_power(run, y, x)` in W and the target
 `temperature(run, y, x)` in °C. Cells without a sensor have no value (NaN). The fit uses only
-the cells with a value. With `use_insulation: true`, the data also has a bool
+the cells with a value. The model declares these NaN in `structural_missing`, so the scorecard
+check `data.missing` does not count them. With `use_insulation: true`, the data also has a bool
 `insulation(y, x)`: `True` where the back face of the cell has insulation.
 
 **Outputs.** `field(run, y, x)` (a field with a frame for each run, in °C) and the scalar
