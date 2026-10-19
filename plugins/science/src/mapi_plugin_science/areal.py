@@ -630,6 +630,10 @@ class ArealBYM2Model(PyMCModel[ArealBYM2Settings]):
         if VERTEX_DIM in const.dims:
             const = const.assign_coords({VERTEX_DIM: np.arange(const.sizes[VERTEX_DIM])})
         out.groups["constant_data"] = const
+        # sci.area_map draws the observed panel from this name (a spec cannot set it)
+        for name, grp in list(out.groups.items()):
+            if name in ("posterior", "posterior_predictive") and "rr" in grp.data_vars:
+                grp["rr"].attrs["mapi_observed"] = SMR
         smr = np.log((np.where(seen, y, 0.0) + 0.5) / expected)
         out.learned.update(
             {

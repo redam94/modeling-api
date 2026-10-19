@@ -333,8 +333,22 @@ def _area_values(
     return var, group, None, stats
 
 
+OBSERVED_ATTR = "mapi_observed"
+"""Attribute of a plotted variable that names its observed counterpart (a model that keeps
+the raw estimate under another name, for example ``smr`` for ``rr``, sets it, because a
+spec cannot give settings to a plot)."""
+
+
+def _observed_hint(inp: RecipeInput, var: str, group: str) -> str | None:
+    ds = inp.root() if group == "root" else inp.find(group)
+    if ds is None or var not in ds.data_vars:
+        return None
+    hint = ds[var].attrs.get(OBSERVED_ATTR)
+    return hint if isinstance(hint, str) and hint else None
+
+
 def _area_observed(
-    inp: RecipeInput, s: AreaMapSettings, var: str, geo: _Geometry
+    inp: RecipeInput, s: AreaMapSettings, var: str, geo: _Geometry, hint: str | None = None
 ) -> tuple[str, np.ndarray] | None:
     name = s.observed or var
     obs = None
@@ -343,6 +357,10 @@ def _area_observed(
         if ds is not None and name in ds.data_vars:
             obs = ds[name]
             break
+    if obs is None and s.observed is None and hint is not None:
+        obs = _aux(inp, hint)
+        if obs is not None:
+            name = hint
     if obs is None:
         if s.observed is not None:
             obs = _aux(inp, s.observed)
@@ -406,7 +424,7 @@ def area_map(inp: RecipeInput, s: AreaMapSettings) -> Figure:
     first = s.group if s.group != "auto" else None
     geo = _geometry(inp, first)
     var, group, draws, stats = _area_values(inp, s, geo)
-    observed = _area_observed(inp, s, var, geo)
+    observed = _area_observed(inp, s, var, geo, _observed_hint(inp, var, group))
     ref_vals = draws if draws is not None else stats.get("mean")
     positive = (
         ref_vals is not None

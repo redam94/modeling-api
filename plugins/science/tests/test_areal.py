@@ -453,6 +453,18 @@ def test_the_map_and_graph_plots_render_from_the_bundle(bundle: Bundle) -> None:
     assert len(out.plots) == 2
 
 
+def test_the_area_map_of_a_fit_shows_the_observed_smr_without_plot_options(
+    bundle: Bundle,
+) -> None:
+    # a spec cannot give settings to a plot: the fit tags rr with its observed counterpart
+    assert bundle.model.groups["posterior"]["rr"].attrs["mapi_observed"] == "smr"
+    out = render_plots(bundle.to_tree(), ["sci.area_map"])
+    assert not out.issues, [i.message for i in out.issues]
+    titles = [a["text"] for a in out.plots[0].spec["layout"]["annotations"]]
+    assert titles[:2] == ["<b>Observed smr</b>", "<b>Mean</b>"]
+    assert "observed panel" in (out.plots[0].caption_plain or "")
+
+
 @pytest.mark.mapi_contract
 def test_areal_bym2_passes_the_contract_kit(registry: Registry, dataset: xr.Dataset) -> None:
     fixture = ModelFixture(

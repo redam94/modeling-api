@@ -224,6 +224,24 @@ def test_area_map_thins_large_polygons() -> None:
     assert "1 point in" in (plot.caption_plain or "")
 
 
+def test_area_map_observed_panel_from_the_attribute_of_the_variable() -> None:
+    tree = area_tree()
+    post = tree["posterior"].to_dataset()
+    const = tree["constant_data"].to_dataset()
+    raw = np.linspace(0.5, 2.0, post.sizes["area"])
+    const["raw_risk"] = xr.DataArray(raw, dims=["area"], coords={"area": const["area"].values})
+    post["risk"].attrs[sci_maps.OBSERVED_ATTR] = "raw_risk"
+    tagged = xr.DataTree.from_dict({"/posterior": post, "/constant_data": const})
+    plot = area_map.render(tagged)
+    titles = [a["text"] for a in plot.spec["layout"]["annotations"]]
+    assert titles[0] == "<b>Observed raw_risk</b>"
+    np.testing.assert_allclose(frame(plot, "areas")["observed"], raw, rtol=1e-5)
+    # an attribute that names a missing variable leaves the panel out
+    post["risk"].attrs[sci_maps.OBSERVED_ATTR] = "nope"
+    plain = area_map.render(xr.DataTree.from_dict({"/posterior": post, "/constant_data": const}))
+    assert "<b>Observed nope</b>" not in [a["text"] for a in plain.spec["layout"]["annotations"]]
+
+
 def test_area_map_errors() -> None:
     tree = area_tree()
     no_geo = xr.DataTree.from_dict({"/posterior": tree["posterior"].to_dataset()})
