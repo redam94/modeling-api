@@ -84,6 +84,18 @@ milestone releases are tagged on `main`.
 - The gate of `sci_calibrate_then_design` stopped the run with `EXPRESSION_ERROR` when R-hat
   was null (one chain). The condition now uses `coalesce`, and the recipe needs two or more
   chains.
+- The score summaries of a circular output (`OutputDecl.circular`) were calculated on a line,
+  not on the circle. For draws on the two sides of north (350 and 10 degrees), the `mean` was
+  near 180 degrees and `hdi_90` covered almost the full circle. Now the summaries of draws use
+  the circular mean, and each interval (`hdi`, `eti`) and quantile is centred on that mean. The
+  values are in `[0, period)`, so an interval with `lower` more than `upper` crosses the seam.
+  `sd` is the circular standard deviation. The difference between a scenario and its baseline
+  (`delta/summary`, `delta/draws`) is wrapped to `[-period/2, period/2)`. This is the same
+  rule as the evaluate metrics. A circular output that has no valid `period` attr, or that is
+  aggregated over a dim, keeps the summary on a line, and the result has a warning.
+- `ScoreSummaryTable` (`summary.json`) has a new field `period` for a circular output, so that
+  a reader knows that the statistics are on the circle.
+- `sci.circular_regression` also declares `mean_direction` circular, with a `period` attr.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -104,8 +116,6 @@ milestone releases are tagged on `main`.
   (`fit.keep: {log_likelihood: true}`), and the E60 spec lists `sci.field_map`, which cannot
   draw the vector output `traction`. For `sci.strong_lens`, `sci.field_map` draws `e_light`
   and not the image.
-- The `mean` and `hdi_90` of a score summary of a circular output (`sci.circular_regression`)
-  are calculated on a line, not on the circle.
 - The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
   data with missing values by design: the padding of the outlines of `sci.areal_bym2`
   (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and
