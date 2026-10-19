@@ -24,7 +24,12 @@ a graph, a network of variables, a phylogeny or angles (directions and times of 
 | `sci.circular_regression@1` | Von Mises regression with a canonical link on harmonics of the hour and the day of year, and log-Fourier activity densities (E81) | draws | predict, simulate, evaluate |
 
 Outputs that are fields declare a `grid` (`OutputDecl.grid`). The Model Explorer shows them in
-its **Fields** section, and the `sci.*` plot recipes draw them.
+its **Fields** section, and the `sci.*` plot recipes draw them. Outputs that are angles declare
+`circular` (`OutputDecl.circular`, with a `period` attr on the scored array):
+`sci.circular_regression` declares `direction_hat` and `mean_direction`. Their holdout metrics
+and score summaries are on the circle. `sci.heat_plate` lists `temperature` in
+`CustomModel.structural_missing`: the cells without a thermocouple do not count in the
+scorecard check "Few missing values" (`data.missing`).
 
 Each `*_data` module has the raw schema, a small example spec, a synthetic generator with the
 known truth and `from_challenges(path)`, which reads the real data file of the case study (E51
@@ -35,7 +40,9 @@ the tests that use the real files.
 
 `python -m mapi_plugin_science.export <case> --challenges <data dir> --out <file.nc>` writes
 the dataset of a case study to a file that you can upload (`--list` shows the cases,
-`--synthetic` writes the simulated data, `--spec` also writes the suggested spec). See
+`--synthetic` writes the simulated data, `--spec` also writes the suggested spec). The cases
+are e07, e50, e60, e80, e51, e61, e58, e31, e77, e79, e18, e21, e19, e23, e81 (KSBA winds) and
+e81b (Barro Colorado camera-trap times). E51 and E61 need no data directory. See
 "Export the data of a case study" in `docs/reference/models.md`.
 
 `docs/tutorials/pymc-challenges/` has one tutorial for each case study: export, upload, fit,

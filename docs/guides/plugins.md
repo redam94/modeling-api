@@ -43,6 +43,157 @@ gaps in observed series: the check must show them.
 `FitOutput.native` is only for safe native formats (skops, xgboost JSON, safetensors). The
 platform rejects pickle when it writes a bundle and when it reads a bundle.
 
+### Settings rules that need no data
+
+Put the rules that join two or more settings in a pydantic `model_validator` of your
+`ModelSettings` class. An example is "set `offset_adu` and `scale_adu` together" in
+`sci.storm_localisation`. The SDK parses the settings before it transforms, splits or fits the
+data. Thus a bad value stops the fit at the start with `SETTINGS_INVALID`
+(`/model/settings`). Do not put such rules in `fit`: there, they fail only after the data
+steps. Note: spec validation does a check of the JSON Schema only. It does not run the
+validator.
+
+### Outputs that are images or maps
+
+If an output is a 2-D field (an image, a map or a vector field), give it a `grid`
+(`OutputDecl.grid`):
+
+```python
+outputs = {
+    "sky": {
+        "dims": ["row", "col"],
+        "units": "uK",
+        "grid": {"y": "row", "x": "col", "origin": "lower", "colormap": "diverging"},
+    },
+}
+```
+
+| Field | What it holds |
+|---|---|
+| `y`, `x` | The dims of the rows and of the columns of the raster |
+| `frame` | Optional. A third dim, with one raster for each level (for example years) |
+| `component` | Optional. A dim of length two with the `(x, y)` parts of a vector field |
+| `origin` | `upper` (default: row 0 at the top) or `lower` |
+| `colormap` | `viridis` (default), `magma`, `cividis`, `gray` or `diverging` |
+| `log` | `true` draws log10 of the value (for counts and intensities). The default is `false`. |
+
+The dims in `grid` must be different from each other. The Model Explorer shows the output in
+its **Fields** section. The `sci.*` image recipes (`sci.field_map`, `sci.image_residuals`,
+`sci.ppc_image_grid`) find the grid in the manifest, or in a `grid` attribute of the scored
+variable. When the binding of a spec renames dims, the platform also renames them in the
+`grid` attribute.
+
+### Outputs that are angles
+
+If an output is an angle (a direction or a time of day), set `circular: true` in its
+declaration. Then, in `score`, set the attribute `period` on the array. The period is one
+full turn in the units of the output, for example `360` (degrees), `2π` (radians) or `24`
+(hours):
+
+```python
+outputs = {"direction_hat": {"dims": ["obs"], "units_of": "direction", "circular": True}}
+# in score(): the angles in [0, 360)
+pred["direction_hat"] = xr.DataArray(
+    theta, dims=("chain", "draw", "obs"), attrs={"kind": "predictive", "period": 360.0}
+)
+```
+
+The platform then calculates on the circle:
+
+- The holdout metrics use the circular mean of the draws and errors that wrap at half a turn
+  (359 against 1 is an error of -2). `crps` uses the arc distance. The intervals are centred
+  on the circular mean. The metrics `mape`, `smape`, `wape` and `r2` are skipped.
+- The score summaries of draws use the circular mean and the circular standard deviation.
+  Each value is in `[0, period)`. An interval with `lower` more than `upper` crosses the seam.
+  The summary table (`summary.json`) has the field `period`.
+- The difference between a scenario and its baseline wraps to `[-period/2, period/2)`.
+
+The circular metrics need the `draws` representation. An output without a valid `period`
+attribute, or an output aggregated over a dim, keeps the summary on a line, and the result has
+a warning.
+
+### Score modes
+
+Declare in `capabilities.score_modes` only the modes that `score` can do. The SDK refuses
+each other mode with `MODE_NOT_SUPPORTED` before it builds a forecast horizon or a payload.
+Thus `score` never gets a mode that you did not declare. Read the mode in `ctx.mode` and the
+output kind in `ctx.kind` (`expected` or `predictive`).
+
+In `simulate` mode, return new data that the model makes from its posterior: new latent values
+and the noise of the model. For example, `sci.cmb_field` draws a new patch of sky from the
+spectrum of each posterior draw, and then adds noise. In `predict` mode with
+`kind: predictive`, keep the latent values of each posterior draw and add only the noise. Set
+the attribute `kind: predictive` on such draws. The governance check `recovery.simulated`
+makes its simulated datasets from these draws.
+
+### Models that give `elpd_loo`
+
+The fit calculates `elpd_loo` and `elpd_waic` from a `log_likelihood` group, if the spec
+lists the metric in `evaluate.metrics`. Put the group in `FitOutput.groups`, next to
+`posterior`, with the same `chain` and `draw` dims. Usually, keep it when
+`cfg.keep.log_likelihood` is true. A model for comparisons can always keep it, as
+`sci.areal_bym2` does. For data of up to 10,000 points, the fit also keeps the
+pointwise values (`MetricsReport.elpd`), and the workflow node `compare.stacking` uses them.
+
+If pointwise LOO is not correct for your model, declare `loo_valid=False` and a
+`loo_invalid_reason` in `Capabilities`. An example is a model where all pixels depend on one
+latent field. The fit then skips the metric with that reason.
+
+### A model with its own sampler
+
+A `CustomModel` can run its own MCMC sampler, for example a Gibbs sampler. `sci.cmb_field`
+does this. Follow these rules:
+
+- Declare `inference="mcmc"` and `representation=Representation.DRAWS`.
+- Read `cfg.tune`, `cfg.draws`, `cfg.chains` and `cfg.seed` (use `ctx.seed` when `cfg.seed`
+  is `None`). If the spec names an `engine` that your sampler does not use, tell the user with
+  `ctx.info`.
+- Call `ctx.check_cancelled()` and `ctx.progress(fraction, message)` in the loop of the
+  sampler.
+- Return `posterior` and `sample_stats` with the dims `chain` and `draw`, and also
+  `observed_data`.
+- Override the `diagnostics(fitted, ds)` hook. Call
+  `mapi_pymc.convergence_diagnostics(posterior, sample_stats, var_names=[...])` for R-hat
+  and ESS, and add the diagnostics of your sampler. `sci.cmb_field` adds `CG_NOT_CONVERGED`.
+- Give each draw of a score its own generator, seeded from the seed of the score, the chain
+  and the draw. Then declare `deterministic_given_seed=True`.
+
+### Data for a case study (`mapi-plugin-science`)
+
+If you add a model to `mapi-plugin-science`, add an export case so that users can upload its
+data. `mapi_plugin_science.export.EXPORTS` maps a case id to an `ExportCase`. The case id is
+`e` and the notebook number (`e18`), with a letter for a second dataset of the same notebook
+(`e81b`). Add one `_register(ExportCase(...))` entry at the end of `export.py`:
+
+```python
+_register(
+    ExportCase(
+        case="e18",
+        title="Disease mapping of lip cancer in Scotland",
+        notebook="E18_areal_models_icar_bym2.py",
+        model="sci.areal_bym2",
+        files=(areal_data.CHALLENGES_FILE,),
+        loader=lambda d: areal_data.from_challenges(d / areal_data.CHALLENGES_FILE),
+        synthetic=lambda: areal_data.areal_dataset(),
+        schema=areal_data.AREAL_SCHEMA,
+        project="epidemiology",
+        dataset="scotland_lip_cancer",
+        spec=areal_data.SCOTLAND_SPEC_YAML,
+    )
+)
+```
+
+- `files` lists the files that the loader reads from the `data/` directory of
+  pymc-challenges. Use an empty tuple when the notebook simulates its data (E51, E61).
+- `synthetic` returns the simulated data of the model, in the same layout.
+- `schema` is the raw `DataSchema` of the model (a `TreeSchema` for a tree dataset).
+- `spec` is the suggested spec as YAML, or a function of the exported data that returns it.
+  Its `data.dataset` must be `dataset://<project>/<dataset>@latest`.
+
+The tests make sure that each suggested spec validates against the schema of its exported
+file. A slow test fits each spec on the simulated data. Then
+`python -m mapi_plugin_science.export --list` shows the case.
+
 ## Run the contract kit
 
 `mapi-sdk` installs a pytest plugin. Thus the fixtures are available in all test suites:

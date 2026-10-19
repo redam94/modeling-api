@@ -66,7 +66,7 @@ from mapi_plugin_science.turing import TuringPatternModel, TuringPatternSettings
 try:
     __version__ = _metadata.version("mapi-plugin-science")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.9.0"
+    __version__ = "0.9.1"
 
 PLUGINS = (
     LGCPGridModel,

@@ -32,7 +32,7 @@ files:
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.9.0
+http://127.0.0.1:8000 ok 0.9.1
 ```
 
 `Client()` finds its settings in the same sequence as the CLI:
@@ -494,6 +494,14 @@ node that failed.
 ```python
 --8<-- "client_v05.py:inspect"
 ```
+
+Since v0.9, a node can give a `plot` output (`plot.render`, `model.forecast` and
+`evaluate.residuals`). `api.workflows.node(run_id, node_id).outputs["plot"].inline` is the
+`PlotSpec` document of the plot. The server puts it through the plot sanitizer each time it
+sends it. If the plot is not safe, `inline` is `None`. The gallery also has recipes for
+Bayesian and science models, for example `sci_spatial_ladder` and `bayes_workflow_audit`. The
+[workflow cookbook](workflow-cookbook.md#disease-map-which-spatial-model) shows how to run
+each one with the client.
 
 ### Governance
 

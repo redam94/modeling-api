@@ -34,7 +34,7 @@ base image and resource class, and it selects one Job for each attempt:
 
 | | S (2 vCPU, 8 GiB) | M (4 vCPU, 16 GiB) | L (8 vCPU, 32 GiB) |
 |---|---|---|---|
-| `base-bayes` (`mmm.*`, `tabular.*`, ingest, describe) | `mapi-prod-base-bayes-s` | `mapi-prod-base-bayes-m` | `mapi-prod-base-bayes-l` |
+| `base-bayes` (`mmm.*`, `sci.*`, `tabular.*`, ingest, describe) | `mapi-prod-base-bayes-s` | `mapi-prod-base-bayes-m` | `mapi-prod-base-bayes-l` |
 | `base-ml` (`sklearn.*`) | `mapi-prod-base-ml-s` | `mapi-prod-base-ml-m` | `mapi-prod-base-ml-l` |
 | `base-forecast` (`ts.*`) | `mapi-prod-base-forecast-s` | `mapi-prod-base-forecast-m` | `mapi-prod-base-forecast-l` |
 
@@ -47,7 +47,7 @@ infrastructure must make exactly these Jobs. Each Job must have:
 - The static environment `MAPI_BOOTSTRAP_URL=gs://mapi-{env}-bootstrap/{nonce}`.
 - The deny-all network and the restricted Google APIs VIP.
 
-XL runs are for the GKE executor (M6). The dispatcher refuses XL runs for `cloudrun-jobs`.
+XL runs are for the GKE executor (planned). The dispatcher refuses XL runs for `cloudrun-jobs`.
 
 ## What one attempt looks like
 
@@ -284,7 +284,7 @@ to `internal` and `self_hosted_trusted` tenants.
 | `MAPI_CLOUDRUN_PROJECT` | — | Exec project that holds the Job inventory (necessary) |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Rule for Job ids |
-| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base (JSON) |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a plugin |
 | `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` (maximum 180) |
 | `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | Number of `429` answers in sequence before a submit fails |

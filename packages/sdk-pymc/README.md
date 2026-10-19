@@ -9,7 +9,10 @@ method, `build(ds, settings, ctx) -> pm.Model`. The platform provides everything
   - MAP and ADVI;
   - Pathfinder and numpyro/blackjax when those libraries are installed.
 
-  Every engine reports progress per chain.
+  Every engine reports progress per chain. `EnginePlan.initvals` (start values on the
+  constrained scale, by free variable name) and `EnginePlan.jitter=False` start every chain
+  at one given point (`pymc`, `nutpie` and the external NUTS bridges; MAP, ADVI and
+  Pathfinder ignore them). `sci.ibp_features` uses this.
 - **Opt-in ArviZ groups**: `prior`/`prior_predictive`, `log_likelihood` and a thinned
   `posterior_predictive`.
 - **Diagnostics**: r-hat, bulk/tail ESS, divergences and tree depth, as scorecard

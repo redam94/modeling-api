@@ -8,14 +8,24 @@ small Python plugin; the platform validates the data against an xarray schema, r
 preprocessing at score time, runs every job in an isolated sandbox, and gives analysts and data scientists a
 web UI with Vega-Lite and Plotly plots.
 
-Since v0.5 whole analyses run as versioned **workflows** (unit-root tests → differencing decisions → AR/MA
-order search → rolling-origin backtests against naive forecasts → selection), every model can be held to a
-**governance policy** before anyone uses it (it must beat itself fitted on shuffled data and give fake noise
-drivers no credit, with a second person's sign-off), and analysts get **Data and Model Explorers**, **About
-cards** with *Help me choose*, **mmm-framework** marketing-mix models with budget optimisation and twelve
-**statsmodels** time-series models. The documentation (`make docs-serve`) starts at `docs/index.md`.
+Since v0.5, whole analyses run as versioned **workflows**. An example is unit-root tests →
+differencing decisions → AR/MA order search → rolling-origin backtests against naive forecasts →
+selection. A **governance policy** can check each model before persons use it. The model must be
+better than the same model fitted on shuffled data, and it must give no credit to fake noise
+drivers. A second person signs off. Analysts get **Data and Model Explorers**, **About cards**
+with *Help me choose*, **mmm-framework** marketing-mix models with budget optimisation and twelve
+**statsmodels** time-series models. Later releases added a spec builder with a Visual view
+(v0.6), models of 2-D fields (v0.7) and tree datasets from NetCDF-4 and HDF5 files (v0.8).
 
-> Status: under active development. See [CHANGELOG.md](CHANGELOG.md).
+v0.9 adds the **science gallery**: 15 `sci.*` models from the pymc-challenges case studies, for
+images, fields, maps and graphs, and 14 new plot recipes (36 in all) for maps, networks, trees,
+polar charts and images. New workflow nodes give posterior summaries, posterior predictive
+checks, stacking weights, scores and plots in a run. Six new recipes (ten in the gallery) use
+them. Each ported case has a tutorial in `docs/tutorials/pymc-challenges/`, and
+`python -m mapi_plugin_science.export` writes the data of a case to a file that you can upload.
+The documentation (`make docs-serve`) starts at `docs/index.md`.
+
+> Status: under active development. The latest release is v0.9.1 (Science gallery docs). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 
@@ -38,7 +48,7 @@ make help         # everything else
 | `packages/gcs-shim` | Local Google Cloud Storage emulator |
 | `packages/workflows` | Workflow engine and node implementations (tests, transforms, splits, searches) |
 | `packages/cli`, `packages/client` | `mapi` CLI and Python client |
-| `plugins/*` | Built-in model plugins (MMM on mmm-framework, time series, statsmodels, tabular) |
+| `plugins/*` | Built-in model plugins (MMM on mmm-framework, time series, statsmodels, tabular, science) |
 | `conformance/` | Conformance corpus of reference models |
 | `apps/web`, `apps/plot-sandbox` | React SPA and the isolated plot renderer |
 | `docs/` | Documentation site (MkDocs Material) |

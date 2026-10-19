@@ -79,4 +79,30 @@ In `mode: counterfactual`, the platform scores a baseline and a scenario. It ret
 predictive noise of the two runs is the same draw. Thus, the delta shows the effect of the
 intervention, not the difference between two independent noise samples.
 
+## Circular outputs
+
+An angle wraps at one turn. Thus a summary on a line is not correct for an angle. For draws
+at 350 and 10 degrees, the linear mean is 180 degrees, but the correct mean is 0 degrees. A
+model can declare an output as circular (`OutputDecl.circular`, see
+[Capabilities](capabilities.md#outputs-on-a-grid-or-a-circle)). The model then sets a `period`
+attr on the scored array, for example 360 for degrees or 24 for hours.
+
+For a circular output with `draws`, the summariser uses these rules:
+
+- `mean` is the circular mean of the draws.
+- `sd` is the circular standard deviation, `sqrt(-2 ln R)`.
+- `median`, each quantile and each interval (`hdi_<p>`, `eti_<p>`) come from the deviations
+  of the draws from the circular mean. Thus each interval is centred on the circular mean.
+- Each value is in `[0, period)`. If `lower` is more than `upper`, the interval crosses the
+  seam (for example from 350 to 10 degrees).
+- In `mode: counterfactual`, `delta/` is wrapped to `[-period/2, period/2)`.
+
+The holdout metrics of a circular output use the same rules. Each table of `summary.json`
+(`ScoreSummaryTable`) for a circular output has the field `period`. Thus a reader knows that
+the statistics are on the circle.
+
+The summary stays on a line if the scored array has no valid `period` attr, or if the request
+aggregates the output over a dim. A sum of angles is not an angle. The result then has a
+warning (`CAPABILITY_UNSUPPORTED`, severity `warning`).
+
 Next: [Bundles](bundles.md).

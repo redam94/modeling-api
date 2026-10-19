@@ -1,6 +1,6 @@
 ---
 title: modeling-api
-description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
+description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, fit science models of images, fields, maps and graphs, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
 hide:
   - navigation
   - toc
@@ -13,11 +13,12 @@ hide:
 # Trustworthy models,<br>from spreadsheet to endpoint.
 
 <p>modeling-api fits Bayesian and classical models of data that has <strong>named
-dimensions</strong> (market × channel × week, store × product × day, household × trip). The
-models answer questions in the units that your business uses. An analyst uploads a spreadsheet
-and gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a
-small spec or some lines of Python and gets the same model behind a versioned endpoint. Each
-call uses the same fitted preprocessing again, exactly.</p>
+dimensions</strong> (market × channel × week, store × product × day, household × trip). It
+also fits science models of <strong>images, fields, maps and graphs</strong>. The models
+answer questions in the units that your business uses. An analyst uploads a spreadsheet and
+gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a small
+spec or some lines of Python and gets the same model behind a versioned endpoint. Each call
+uses the same fitted preprocessing again, exactly.</p>
 
 <p>Full analyses (tests, decisions, models and benchmarks) run as versioned
 <strong>workflows</strong>. A model goes live only after it is better than <strong>shuffled
@@ -25,28 +26,36 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
-[What's new in 0.5](whats-new-0.5.md){ .md-button }
+[What's new in 0.9](whats-new-0.9.md){ .md-button }
 
 </div>
 ![The modeling-api logo: a cube of labelled data](assets/logo.svg)
 </div>
 
-!!! success "v0.5: workflows, governance, explorers, mmm-framework and statsmodels"
-    **Workflows** connect these items into one versioned graph that you can schedule:
-    unit-root tests, differencing decisions, AR/MA order searches, rolling-origin backtests
-    against naive forecasts, model selection and governance. **Governance policies** apply
-    null tests to each model. The model must be better than the same model fitted on shuffled
-    results. It must also give no credit to fake noise drivers. A second person approves the
-    model, and the platform makes an evidence pack.
+!!! success "v0.9: the science gallery"
+    The science plugin now has **15 models** from the pymc-challenges case studies, for
+    images, fields, maps and graphs. **14 new plot recipes** draw maps, networks, trees,
+    polar charts, image checks and colour swatches. **New workflow nodes** give posterior
+    summaries, posterior predictive checks, stacking weights, scores and plots in a run.
+    **Six new recipes** use them, for example a ladder of spatial models and a Bayesian
+    workflow audit.
 
-    Version 0.5 also adds:
+    Each ported case has a **tutorial** that does the analysis of the notebook in the web
+    app. The **export helper** `python -m mapi_plugin_science.export` writes the data of a
+    case to a file that you can upload.
 
-    - **Data and Model Explorers**
-    - **mmm-framework** marketing-mix models with budget optimisation
-    - **twelve statsmodels** time-series models
-    - an **About card on everything**, with *Help me choose*
+    [What's new in 0.9](whats-new-0.9.md) ·
+    [The science tutorials](tutorials/pymc-challenges/index.md)
 
-    [What's new in 0.5](whats-new-0.5.md).
+!!! info "Since 0.5"
+    - **v0.6:** a spec builder. The YAML editor completes names, and a Visual view shows the
+      same spec as blocks ([Build](guides/web-ui.md#build)).
+    - **v0.7:** the first four science models. An output can be a 2-D field, and the Model
+      Explorer shows it with its uncertainty.
+    - **v0.8:** tree datasets. A NetCDF-4 or HDF5 file keeps its groups, and a version can
+      combine many files ([Tree datasets](guides/tree-data.md)).
+    - **v0.5:** workflows, governance with null tests, Data and Model Explorers,
+      mmm-framework and twelve statsmodels models ([What's new in 0.5](whats-new-0.5.md)).
 
 ## Two ways in, one model
 
@@ -77,7 +86,8 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 <p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
 
 - A PyMC model is one `build()` method. An sklearn model is one `estimator()`. Built-in
-  marketing-mix, forecasting, demand and choice models are ready to use.
+  marketing-mix, forecasting, demand and choice models are ready to use. So are 15
+  science models for images, fields, maps and graphs.
 - Steps **learn on the training data only**. At score time, the platform **replays** them
   and does not fit them again. This applies to forecasts, new markets and counterfactuals.
 - Uncertainty is a primary part of each result: draws, quantiles or intervals. Each one has
@@ -85,10 +95,12 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 - Promote a version to an **endpoint** through the scorecard gate. Copy a snippet for
   Python, TypeScript, curl, R, Apps Script or a notebook.
 - Automate the statistics with **workflows** of tests, branches, searches, backtests and
-  governance checks. Run them live from `mapi workflows run --watch` or `api.workflows`.
+  governance checks. Posterior summaries, predictive checks, stacking weights and plots are
+  nodes too. Run them live from `mapi workflows run --watch` or `api.workflows`.
 
 [:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md) ·
-[Workflow cookbook](guides/workflow-cookbook.md)
+[Workflow cookbook](guides/workflow-cookbook.md) ·
+[Science tutorials](tutorials/pymc-challenges/index.md)
 
 </div>
 </div>
@@ -101,7 +113,7 @@ changes of an expert come back to Guided mode with no loss.
 
 ```mermaid
 flowchart LR
-    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · NetCDF · HDF5"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
     Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
     I --> V
     V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
@@ -196,7 +208,78 @@ full path took **135 seconds** from upload to scenario.
 
 </div>
 
-## What's new in v0.5
+## What's new in v0.9
+
+<div class="grid cards" markdown>
+
+-   :material-atom-variant:{ .lg .middle } **15 science models**
+
+    ---
+
+    Heat equations, Turing patterns, STORM frames, small images, colour names, the CMB sky,
+    disease maps, networks, graphical models, phylogenies and angles. Each model comes from
+    a pymc-challenges case study and has tests against the real data of its notebook.
+
+    [:octicons-arrow-right-24: Scientific models](reference/models.md#scientific-models-mapi-plugin-science)
+
+-   :material-map-outline:{ .lg .middle } **Maps, networks, trees and images**
+
+    ---
+
+    14 new plot recipes, for example area maps, network graphs, phylogenies, polar roses, image residuals,
+    predictive image grids, colour swatches, power spectra, point patterns, corner plots and
+    calibration plots. The catalog now has 36 recipes.
+
+    [:octicons-arrow-right-24: The plot catalog](reference/plots.md#scientific-model-pack-sci)
+
+-   :material-graph-outline:{ .lg .middle } **The Bayesian workflow as a workflow**
+
+    ---
+
+    New nodes give posterior summaries, posterior predictive checks, stacking weights,
+    scores and plots. Six new recipes use them: model ladders, a convergence-gated audit and
+    calibrate-then-design.
+
+    [:octicons-arrow-right-24: Complex workflows](tutorials/complex-workflows.md)
+
+-   :material-school-outline:{ .lg .middle } **A tutorial for each case**
+
+    ---
+
+    Fifteen tutorials do the analysis of a notebook in the web app, with no PyMC code. The
+    export helper writes the data of the notebook to a file that you can upload.
+
+    [:octicons-arrow-right-24: pymc-challenges in the web app](tutorials/pymc-challenges/index.md)
+
+</div>
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The area map of rr: the panels Observed smr and Mean side by side, with the SD and P(rr > 1) panels below](assets/screenshots/science-area-map.png){ .mapi-shot loading=lazy }](tutorials/pymc-challenges/e18-scottish-lip-cancer.md)
+<figcaption>Disease map: the risk of each district, with its uncertainty.</figcaption>
+</figure>
+
+<figure markdown>
+[![The plot Network of tie_prob: the 71 lawyers on the latent map, coloured by office, next to the matrix of the tie probabilities](assets/screenshots/science-network-graph.png){ .mapi-shot loading=lazy }](tutorials/pymc-challenges/e21-law-firm-network.md)
+<figcaption>Networks: the ties of a law firm on a latent map.</figcaption>
+</figure>
+
+<figure markdown>
+[![The Fields section of the heat plate: the mean temperature of run cal1, with the hot spot of the test heater and the readout of one cell](assets/screenshots/science-fields-heat-plate.png){ .mapi-shot loading=lazy }](tutorials/pymc-challenges/e51-heat-plate-design.md)
+<figcaption>Fields: the temperature of a heated plate, from a heat equation.</figcaption>
+</figure>
+
+<figure markdown>
+[![The report of a sci_spatial_ladder run on the Outputs tab: the elpd_loo of each rung above the relative risk map of the best rung](assets/screenshots/science-recipe-report.png){ .mapi-shot loading=lazy }](tutorials/complex-workflows.md)
+<figcaption>Recipes: a ladder of spatial models, compared by elpd_loo, in one report.</figcaption>
+</figure>
+
+</div>
+
+[:octicons-arrow-right-24: Everything that is new in 0.9](whats-new-0.9.md)
+
+## What came in v0.5
 
 <div class="grid cards" markdown>
 
@@ -417,9 +500,18 @@ full path took **135 seconds** from upload to scenario.
 
 ## Measured, not promised
 
-We measured these values on an 8-core laptop against the full stack. The fits were real fits
-in the sandboxed runner. The v0.5 journeys used the data and settings of
-[M3.5 verification](operations/m35-verification.md):
+The v0.9 values come from fits of the real data of the pymc-challenges notebooks. We got the
+first two values in the web app on a local dev stack, with the sandboxed runner
+([E18 tutorial](tutorials/pymc-challenges/e18-scottish-lip-cancer.md)):
+
+<div class="mapi-stats" markdown>
+<div class="mapi-stat"><strong>46 s</strong><span>the sci_spatial_ladder recipe on the 56 districts of Scotland: three spatial models, the comparison, the stacking weights, two refits with other priors and the report</span></div>
+<div class="mapi-stat"><strong>−153.0</strong><span>the elpd_loo of the BYM2 disease map in the web app. The notebook gives −152.7.</span></div>
+<div class="mapi-stat"><strong>129.9</strong><span>the elpd_loo of Pagel's lambda, the model that sci_phylo_signal selects for 186 primates. The notebook gives 130.</span></div>
+</div>
+
+We measured the values below on an 8-core laptop against the full stack. The fits were real
+fits in the sandboxed runner. The v0.5 journeys used the data and settings of [M3.5 verification](operations/m35-verification.md):
 
 <div class="mapi-stats" markdown>
 <div class="mapi-stat"><strong>37–40 s</strong><span>the canonical workflow: 19 nodes from unit-root tests to governance, through the orchestrator and the sandboxed runner</span></div>

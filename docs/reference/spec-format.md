@@ -43,12 +43,12 @@ execution: {resource_class: M, timeout: 45m}
 | `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied`. A side table that is a tree dataset reads one node: `node: /fx` (v0.8) |
 | `data.nodes` | v0.8, tree datasets only. The nodes whose variables make the flat input of the pipeline: `{key: {path, vars?, prefix?}}`, a maximum of 64 entries. Refer to [Tree datasets in a spec](#tree-datasets-in-a-spec) |
 | `data.join` | v0.8, used only with `data.nodes` (a value other than `exact` without them is an error). How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
-| `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again |
+| `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again. When a dim gets a new name, the `grid` attr of each variable gets the new name too (v0.9) |
 | `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out` or `mask_block`. The split occurs at `after_step` |
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
 | `model` | The plugin `use`, its `settings` and the `fit` block |
 | `outputs` | Derived quantities, plot recipes and the number of draws that the UI keeps |
-| `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...) |
+| `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...). `elpd_loo` and `elpd_waic` need a `log_likelihood` group, for example `model.fit.keep: {log_likelihood: true}`. If not, `metrics.json` gives the reason in `skipped`. A [circular output](sdk.md#circular-outputs) gets circular metrics and skips `mape`, `smape`, `wape` and `r2` |
 | `execution` | The resource class (`S`, `M`, `L`, `XL`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest class that holds the upload. |
 
 ## Tree datasets in a spec <span class="mapi-badge">v0.8</span> { #tree-datasets-in-a-spec }
@@ -143,13 +143,27 @@ output: {kind: expected, summary: [mean, hdi_90], draws: 200}
 Before something runs, the API does a check of each score request against the fitted model.
 It finds these problems:
 
+* A mode that the model does not support (`MODE_NOT_SUPPORTED`). The runner also does this
+  check first, before all work for the mode.
+* A request without data: no `data`, no inline values, no `scenario` and no `horizon`
+  (`SCHEMA_INVALID` at `/data`, "the score request has no data").
 * Unseen levels on fixed dims (`UNSEEN_LEVELS`).
+* A horizon along a dim that is not a model dim, or that does not have the policy `extend`
+  (`COORD_NOT_ALLOWED`).
 * Horizons that are longer than the fit can support (`HORIZON_EXCEEDS_FIT`, HTTP 409). You must
   fit the model again.
 * Missing future values of covariates (`MISSING_FUTURE_COVARIATE`).
 * Gaps after the fitted range (`NON_CONTIGUOUS_EXTENSION`).
 * Summaries that the uncertainty representation of the model cannot support
   (`CAPABILITY_UNSUPPORTED`). An example is the sum of quantiles.
+
+The runner does more checks when the run starts. For example, a horizon along a dim with
+text labels gives `COORD_NOT_ALLOWED`, because text labels have no sequence.
+
+The summaries of a circular output (`OutputDecl.circular`, for example a wind direction) are
+on the circle: the circular mean, and intervals centred on it in `[0, period)`. In
+`summary.json`, the table of such an output has the field `period`. An interval with `lower`
+more than `upper` crosses the seam. Refer to [Circular outputs](sdk.md#circular-outputs).
 
 ## JSON Schemas
 

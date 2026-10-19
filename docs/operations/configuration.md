@@ -165,7 +165,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_RUNNER_COMMAND` | `mapi-runner` next to the interpreter | The command line of the supervisor (shell-quoted) for `local-process` |
 | `MAPI_EXECUTOR_WORKDIR` | `$MAPI_DATA_DIR/executions` | The scratch directory of the local executor for each run |
 | `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:<version>` | The runner image of the docker executors for runs without a mapped plugin (ingest, describe) |
-| `MAPI_DOCKER_IMAGES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to runner image (JSON), with the tag of the workspace version |
+| `MAPI_DOCKER_IMAGES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to runner image (JSON), with the tag of the workspace version |
 | `MAPI_DOCKER_NETWORK` | `none` | The network of the run containers: `container:<gcs-shim container>`, or an internal network that contains only the shim. The server refuses `none` while the bootstrap URL is HTTP |
 | `MAPI_DOCKER_NETWORK_ISOLATED` | `false` | Declare that `MAPI_DOCKER_NETWORK` is an internal network with only the shim. Then `docker-gvisor` reports enforced egress and DNS. `verified` and `public` tenants also need a recorded security-suite run in which the network probes were stopped ([docker](docker.md)) |
 | `MAPI_DOCKER_RUNTIME_GVISOR` | `runsc` | The OCI runtime of `docker-gvisor` |
@@ -212,7 +212,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | The region of the inventory |
 | `MAPI_DEFAULT_RESIDENCY` | derived | The data residency of the platform tenant, of tenants that the migrations adopt, and of tenants that you make without a residency. Default: with `cloudrun-jobs`, the multi-region of `MAPI_CLOUDRUN_REGION` (`eu` for `europe-west1`). If not, `us` |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | The rule for Job ids. It must agree with the Jobs that the infrastructure makes |
-| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | The base for runs without a mapped plugin (ingest, describe) |
 | `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | The token bucket in front of `jobs.run` for each orchestrator (maximum 180, the regional quota) |
 | `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | The number of `429` answers in sequence before a submit fails |
@@ -247,7 +247,7 @@ the server secret, you cannot use the webhook secrets. Rotate them after the cha
 | `MAPI_WORKFLOW_MAX_SCHEDULES` | `20` | The active cron schedules for each project |
 | `MAPI_WORKFLOW_MAX_TRIGGERS` | `20` | The active dataset-version triggers for each project |
 | `MAPI_WORKFLOW_NODE_TIMEOUT_S` | `1800` | The timeout of the child run of a node when the node sets no timeout |
-| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | `1048576` | The largest JSON output (tables, metrics, reports) that a node can return |
+| `MAPI_WORKFLOW_MAX_JSON_OUTPUT_BYTES` | `1048576` | The largest JSON output (tables, metrics, reports, plots) that a node can return. A larger output fails the node (`INTEGRITY_FAILURE`) |
 
 **Pub/Sub push events** (`POST /internal/events`)
 
@@ -282,7 +282,7 @@ the server secret, you cannot use the webhook secrets. Rotate them after the cha
 | `MAPI_SIGNUP_SYBIL_THRESHOLD` | `3` | The workspaces from one client address, browser or e-mail in the window. After this number, the server flags the next workspace for review. The server flags a domain at two times this number in one hour |
 | `MAPI_SIGNUP_FLAGGED_SUSPEND` | `false` | Suspend the workspace of a flagged sign-up until an operator approves it. Default: the workspace works and waits in the review queue |
 | `MAPI_SIGNUP_RETENTION_DAYS` | `30` | The server deletes unverified sign-ups, with their e-mail, after this number of days |
-| `MAPI_PUBLIC_CODE_UPLOAD_ENABLED` | `false` | Cut line B (M5): let identity-verified `public` tenants run uploaded code. Off: public tenants run only built-in models and declarative specs |
+| `MAPI_PUBLIC_CODE_UPLOAD_ENABLED` | `false` | Cut line B (planned): let identity-verified `public` tenants run uploaded code. Off: public tenants run only built-in models and declarative specs |
 
 **Tenant deletion and GDPR export (v0.4)** (refer to [Deleting data](../guides/data-deletion.md))
 

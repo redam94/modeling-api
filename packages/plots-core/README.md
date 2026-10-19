@@ -8,7 +8,7 @@ License: Apache License 2.0.
 
 ```bash
 uv add mapi-plots              # sanitizer + role/dim templates: JSON only (control plane safe)
-uv add "mapi-plots[recipes]"   # + recipe catalog, MMM pack, Altair/Plotly helpers
+uv add "mapi-plots[recipes]"   # + recipe catalog, the mmm/ml/sci/net packs, Altair/Plotly helpers
 ```
 
 ## Sanitize any plot
@@ -36,11 +36,19 @@ plot = get_recipe("core.ppc_fan").render(score_output_tree, facet="market")
 plot.caption_plain  # plain-language reading with the numbers
 ```
 
-`core.*`: data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast
-fan, fit vs actual, residuals, decomposition, model comparison, counterfactual, decision
-distribution. `mmm.*`: response curves, marginal cost, budget plans, decomposition. Both are
-registered under the `mapi.plots` entry-point group. `mapi_plots.examples.example_inputs()`
-gives synthetic inputs for every recipe.
+The bundled recipes are in five packs. Each pack is registered under the `mapi.plots`
+entry-point group (`core`, `mmm`, `ml`, `sci`, `net`):
+
+| Pack | Recipes |
+|---|---|
+| `core.*` (Vega-Lite) | data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast fan, fit vs actual, residuals, decomposition, model comparison, counterfactual, decision distribution, `core.pair` (corner plot with divergent draws), `core.ridge`, `core.rank_matrix`, `core.calibration` (PIT-ECDF or reliability diagram), `core.state_sequence` |
+| `mmm.*` | response curves, marginal cost, budget plans, decomposition, prior beliefs |
+| `ml.*` | `ml.feature_importance` |
+| `sci.*` (Plotly) | `sci.field_map`, `sci.vector_field`, `sci.profile_bands`, `sci.ensemble`, `sci.area_map`, `sci.phylogeny`, `sci.rose`, `sci.image_residuals`, `sci.ppc_image_grid`, `sci.swatches`, `sci.power_spectrum`, `sci.point_pattern` |
+| `net.*` (Plotly) | `net.graph` (a node-link drawing and an adjacency matrix of an edge variable `(..., node, node_)`) |
+
+`get_recipe(id)` finds a recipe in all the packs. `mapi_plots.examples.example_inputs()` gives
+synthetic inputs for every recipe.
 
 ## Helpers and templates
 

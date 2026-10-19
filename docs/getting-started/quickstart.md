@@ -85,7 +85,7 @@ make seed
 ```
 
 ```text
-API http://127.0.0.1:8000 is ok (version 0.9.0)
+API http://127.0.0.1:8000 is ok (version 0.9.1)
 uploading eu_media_daily (17 KiB) ...
   dataset://default/eu_media_daily@v1 ready
 uploading fx_daily (17 KiB) ...

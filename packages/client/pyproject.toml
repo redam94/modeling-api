@@ -1,6 +1,6 @@
 [project]
 name = "mapi-client"
-version = "0.9.0"
+version = "0.9.1"
 description = "Python client for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"

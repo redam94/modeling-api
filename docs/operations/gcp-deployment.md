@@ -43,7 +43,7 @@ remain after the offline M2 verification are in
 | The limits of the **in-memory filesystem** operate as planned (no ephemeral disk, exit 137 at the limit) | Scratch budgets of 3/6/12 GiB for classes S/M/L. `RESOURCE_EXHAUSTED` with a retry in the next larger class | Fits with large data move to GKE |
 | You cannot restore a **deleted bootstrap object** | The nonce in the audit log points at nothing | Terraform already sets the soft-delete window of the bootstrap bucket to 0. If you can still restore a copy, examine the bootstrap design again before launch |
 | **Quotas**: 180 `jobs.run` in each minute and 1,000 running executions in each region | The token bucket of the dispatcher (150 a minute by default) and the global limit of 700 concurrent runs | Decrease `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`. Divide the work across exec projects |
-| The **cold start** of a base image of about 2.5 GB keeps the p95 of time-to-`RUNNING` below 90 s | The M2 latency target (met offline, only against the fake backend) | Smaller images, or warm capacity (M6) |
+| The **cold start** of a base image of about 2.5 GB keeps the p95 of time-to-`RUNNING` below 90 s | The M2 latency target (met offline, only against the fake backend) | Smaller images, or warm capacity (planned) |
 | The path from the **Logging sink to Pub/Sub** carries the labels of the execution in some seconds. Pub/Sub can push to an internal-only service | Run events and progress | Runs still finish (the status of the executor decides if a run is alive), but there is no progress |
 | Cloud SQL **managed connection pooling** works in transaction mode with the driver of the server. The migrate role can grant **`BYPASSRLS`** | Row-level security for requests. The platform role for the orchestrator | Give `mapi_orchestrator` its own policy-based access (the explicit policy is already there) |
 | `run.jobs.runWithOverrides` works **without `iam.serviceAccounts.actAs`** on the execution account | The least-privilege role of the orchestrator | Grant `actAs` on that one account |
@@ -503,7 +503,7 @@ These values come from Secret Manager (references that resolve when a revision s
 | `MAPI_OIDC_CLIENT_SECRET` | api | Only when a client secret version is available |
 
 One orchestrator serves one exec pool, and an environment deploys **one** orchestrator. Runs
-go only to `control.dispatch_pool`. Until tier placement across pools (M5), keep all tenants
+go only to `control.dispatch_pool`. Until tier placement across pools (planned), keep all tenants
 on that pool. A second pool, for example a separate exec project for `public` tenants, needs
 a second orchestrator outside this module.
 

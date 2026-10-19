@@ -247,6 +247,7 @@ the string columns of these DataFrames.
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
+| `mmm.prior_beliefs` | `channel` (channel), `height` (26, the height of one channel row) |
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
 | `sci.field_map` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `y`, `x`, `frame`, `select`, `stats` ([mean, sd]; also median, z, q05, q95, draws), `n_draws` (3), `max_draws` (400), `max_cells` (40 000), `max_frames` (24), `colormap`, `log`, `origin`, `aspect` (equal \| auto), `columns` (3), `width` (760), `height` (280, one row of panels) |
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
@@ -306,6 +307,11 @@ Data for the map, tree and polar recipes:
   `geometry` group, the group of the output or the root. It draws the areas as filled
   shapes on axes with equal scales. It does not use a geographic projection or a base
   map. If the outlines have too many points, the recipe uses fewer points.
+- The **Observed** panel of `sci.area_map` reads `observed`, else the variable with the name of
+  the output in `observed_data`. If there is none, the recipe reads the variable that the
+  attr `mapi_observed` of the output names. A model sets this attr when it keeps the observed
+  value under a different name. For example, `sci.areal_bym2` keeps the raw SMR as `smr` for
+  its output `rr`.
 - `sci.phylogeny` reads the tree from `parent(node)`: the position of the parent node, or
   -1 for the root. The optional variables are `branch_length(node)` (default 1),
   `is_tip(node)` (default: the nodes that are not a parent) and `tip_label(node)`. The
@@ -390,7 +396,8 @@ can be probabilities, weights or partial correlations.
 
 The plot sandbox shows the Plotly `frames`, `sliders` and `updatemenus` of these plots. In
 dark mode, it changes the palette colours of the traces to their dark variants, the same as
-for Vega-Lite.
+for Vega-Lite. It also applies the theme to each polar subplot (`barpolar`, `scatterpolar`),
+for example in `sci.rose`.
 
 The convergence diagnostics are rank-normalised split R-hat and bulk/tail ESS (Vehtari et al.
 2021). The package calculates them with numpy. Tests make sure that the values agree exactly

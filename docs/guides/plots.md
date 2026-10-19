@@ -79,6 +79,8 @@ The **marketing-mix pack** (`mmm.*`) adds these plots:
 - The marginal cost (or the marginal ROI) for each channel
 - A comparison of budget plans
 - A channel decomposition
+- Your beliefs and the priors (`mmm.prior_beliefs`): the range that you gave for each
+  channel, next to the values that the model allows before it sees your sales
 
 The **tabular pack** (`ml.*`) adds `ml.feature_importance`. This plot shows ranked tree
 importances, or signed coefficients for linear estimators. It reads them from the groups that
@@ -108,6 +110,34 @@ draws. A recipe never adds quantiles or intervals. If a summary has an extra dim
 tells you to request an aggregated output. The recipe shows summed means without a band.
 Predicted-vs-actual plots and residual plots never need a total. Thus they compare these
 summaries cell by cell (one dot or line for each `store × sku`, with the color of the facet dim).
+
+## Find a recipe in the web app
+
+The **Plots** tab of the **Catalog** shows a card for each recipe, with an example plot made
+from synthetic data. The buttons above the cards filter the recipes by pack:
+
+- **All plots**
+- **All models** (`core.*`)
+- **Marketing mix** (`mmm.*`)
+- **Machine learning** (`ml.*`)
+- **Science** (`sci.*`)
+- **Networks** (`net.*`)
+
+A pack shows only when the catalog has a recipe of that pack. Type words in the search field to
+find a recipe by its id, title or About card. Click a card to see the About card and a larger
+example.
+
+## Plots in a workflow
+
+A workflow can draw a recipe with the node `plot.render`. Set `recipe` to the id (for example
+`sci.field_map`) and, if necessary, `settings` and `source` (`auto`, `data`, `model` or
+`predictions`, default `auto`). `model.forecast` and `evaluate.residuals` also give `plot`
+outputs. A `report.summary` can show the plots in its `plots` input. The server puts each plot
+through the sanitizer. A plot that is not safe fails its node with `PLOT_UNSAFE`. See
+[Score a model and draw plots](workflows.md#score-a-model-and-draw-plots).
+
+The plot sandbox applies the theme to polar plots (`barpolar` and `scatterpolar`), for example
+`sci.rose`.
 
 ## Bring your own chart
 
