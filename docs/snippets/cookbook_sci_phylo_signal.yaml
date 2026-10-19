@@ -1,0 +1,126 @@
+# Workflow cookbook: does an effect across species hold when the tree is in the model?
+# Four fits of sci.phylo_regression differ only in the residual correlation (no tree,
+# Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck). PSIS-LOO ranks them, stacking
+# weighs them, and the winner's slope of `focus` decides the branch.
+# (the gallery template sci_phylo_signal; validated and run by
+# conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: primate-brains, project: biology}
+params:
+  predictors: {type: array, default: [body, group_size],
+               description: The predictor variables on the species dim}
+  focus: {type: string, default: group_size,
+          description: The predictor whose slope the decision tests (one of the predictors)}
+  hdi_prob: {type: number, default: 0.94, minimum: 0.5, maximum: 0.999,
+             description: The probability inside the range of the slope}
+  draws: {type: integer, default: 1000, minimum: 10, maximum: 20000,
+          description: The posterior draws that each chain keeps}
+  tune: {type: integer, default: 1000, minimum: 10, maximum: 20000,
+         description: The tuning steps of each chain (the sampler drops them)}
+  chains: {type: integer, default: 4, minimum: 1, maximum: 16,
+           description: The number of chains (two or more give R-hat)}
+  seed: {type: integer, default: 2017, minimum: 0, maximum: 2147483647,
+         description: The random seed of the sampler}
+  bind:
+    type: object
+    default: {}
+    description: >-
+      The names of the model (dims and vars) mapped to the names in your dataset, when they
+      are different. The workflow finds the target itself when your dataset has one target.
+inputs:
+  data: {type: dataset,
+         description: "Species traits and the tree (parent, branch_length, is_tip and tip_label on the node dim)"}
+nodes:
+# 1. the same regression four times; only the residual correlation changes
+- id: iid
+  use: model.fit
+  label: No tree (independent species)
+  inputs: {data: inputs.data}
+  with:
+    model: sci.phylo_regression@^1
+    settings: {kind: iid, predictors: {$param: predictors}}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains}, seed: {$param: seed}}
+    bind: {$param: bind}
+    evaluate: {metrics: [elpd_loo]}
+- id: brownian
+  use: model.fit
+  label: Brownian motion on the tree
+  inputs: {data: inputs.data}
+  with:
+    model: sci.phylo_regression@^1
+    settings: {kind: brownian, predictors: {$param: predictors}}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains}, seed: {$param: seed}}
+    bind: {$param: bind}
+    evaluate: {metrics: [elpd_loo]}
+- id: lambda
+  use: model.fit
+  label: Pagel's lambda
+  inputs: {data: inputs.data}
+  with:
+    model: sci.phylo_regression@^1
+    settings: {kind: lambda, predictors: {$param: predictors}}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains}, seed: {$param: seed}}
+    bind: {$param: bind}
+    evaluate: {metrics: [elpd_loo]}
+- id: ou
+  use: model.fit
+  label: Ornstein-Uhlenbeck
+  inputs: {data: inputs.data}
+  with:
+    model: sci.phylo_regression@^1
+    settings: {kind: ou, predictors: {$param: predictors}}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains}, seed: {$param: seed}}
+    bind: {$param: bind}
+    evaluate: {metrics: [elpd_loo]}
+# 2. rank by elpd_loo, give the stacking weights and keep the winner
+- id: compare
+  use: compare.models
+  inputs: {candidates: [iid.metrics, brownian.metrics, lambda.metrics, ou.metrics]}
+  with: {metric: elpd_loo, direction: max}
+- id: weights
+  use: compare.stacking
+  inputs: {candidates: [iid.metrics, brownian.metrics, lambda.metrics, ou.metrics]}
+- id: best
+  use: select.best
+  inputs: {table: compare.table, models: [iid.model, brownian.model, lambda.model, ou.model]}
+  with: {metric: elpd_loo, direction: max}
+# 3. the slopes of the winner; `focus` puts one slope in the result field `focus`
+- id: slope
+  use: model.summary
+  label: Slopes of the winner
+  inputs: {model: best.model}
+  with: {vars: [slope], focus: {$param: focus}, hdi_prob: {$param: hdi_prob}}
+- id: clear
+  use: branch.if
+  label: Is the effect clear of zero?
+  with:
+    condition: nodes.slope.focus.excludes_zero
+    explain_then: >-
+      The range of the slope does not include zero. The data show an effect of the predictor
+      when the model includes the tree.
+    explain_else: >-
+      The range of the slope includes zero. The data do not show a clear effect of the
+      predictor when the model includes the tree.
+# a clear effect is reported only with a check that the winner agrees with the data
+- id: ppc
+  use: evaluate.ppc
+  label: Does the winner agree with the data?
+  when: clear.then
+  inputs: {model: best.model}
+# 4. the trait on the tree, and the report
+- id: tree
+  use: plot.render
+  label: Trait on the tree
+  inputs: {model: best.model}
+  with: {recipe: sci.phylogeny}
+- id: report
+  use: report.summary
+  inputs:
+    items: [compare.table, weights.table, slope.table]
+    metrics: [ppc.metrics]
+    model: best.model
+    plots: [tree.plot]
+  with: {title: Trait regression across species}
+outputs: {model: best.model, comparison: compare.table, weights: weights.table,
+          slopes: slope.table, tree: tree.plot, report: report.report}

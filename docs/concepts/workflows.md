@@ -228,6 +228,8 @@ outer training window, for correct tuning.
 | `var_vecm_cointegration` | A Johansen test. If the series are tied together, a VECM with the selected rank. If not, differences, a lag search and a VAR. Granger tests and a report. |
 | `mmm_governed` | Driver collinearity, the mmm-framework marketing mix model with a holdout, the governance policy, a report and an evidence pack |
 | `forecast_bakeoff` | A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again. |
+| `sci_phylo_signal` | Four fits of `sci.phylo_regression` (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck), ranked by `elpd_loo` and weighed by stacking. A branch on the slope of one predictor of the winner: does its range exclude zero? A plot of the tree and a report. |
+| `sci_calibrate_then_design` | A fit of `sci.heat_plate` with one calibration run held out. A branch on the error on that run and on R-hat. If the calibration is good enough, the predicted temperature field of a new heater layout, as a map. A report. |
 
 To make a workflow from a template, use `POST /v1/workflows` with `{"template": "<id>"}`.
 Then edit its parameters or nodes, the same as for all other workflows.

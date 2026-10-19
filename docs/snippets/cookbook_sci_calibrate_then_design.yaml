@@ -1,0 +1,111 @@
+# Workflow cookbook: calibrate a heated plate, then predict a new heater layout.
+# sci.heat_plate is fitted on the calibration runs with one run held out. The design step
+# runs only if the calibration predicts that run within `max_error` and the sampler
+# converged. The split and the plot read the bound dim names (`bind`), else the model's.
+# (the gallery template sci_calibrate_then_design; validated and run by
+# conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: heat-plate-design, project: engineering}
+params:
+  thickness_mm: {type: number, default: 5.0, minimum: 0.01, maximum: 1000,
+                 description: The thickness of the plate in mm}
+  room_temperature: {type: number, default: 20.0, minimum: -100, maximum: 1000,
+                     description: The temperature of the room in degC}
+  max_error: {type: number, default: 0.5, minimum: 0,
+              description: The largest RMSE in degC on the run held out that the design step accepts}
+  max_rhat: {type: number, default: 1.01, minimum: 1, maximum: 2,
+             description: The largest R-hat that the design step accepts}
+  draws: {type: integer, default: 1000, minimum: 10, maximum: 20000,
+          description: The posterior draws that each chain keeps}
+  tune: {type: integer, default: 1000, minimum: 10, maximum: 20000,
+         description: The tuning steps of each chain (the sampler drops them)}
+  chains: {type: integer, default: 4, minimum: 1, maximum: 16,
+           description: The number of chains (two or more give R-hat)}
+  seed: {type: integer, default: 51, minimum: 0, maximum: 2147483647,
+         description: The random seed of the sampler}
+  bind:
+    type: object
+    default: {}
+    description: >-
+      The names of the model (dims and vars) mapped to the names in your dataset, when they
+      are different. The workflow finds the target itself when your dataset has one target.
+inputs:
+  data: {type: dataset,
+         description: "The calibration runs: heater power and the thermocouple readings on the grid"}
+  layout: {type: dataset, required: false,
+           description: The new heater layouts to predict (the heater power of each new run on the same grid)}
+nodes:
+# 1. calibrate: hold out one random run, fit the others, score it, then fit all the runs
+- id: holdout
+  use: split.holdout
+  inputs: {data: inputs.data}
+  with:
+    split: {kind: leave_group_out, dim: {$expr: "coalesce(params.bind.dims.run, 'run')"},
+            n: 1, seed: {$param: seed}}
+- id: fit
+  use: model.fit
+  label: Calibrate
+  inputs: {data: inputs.data, split: holdout.plan}
+  with:
+    model: sci.heat_plate@^1
+    settings: {thickness_mm: {$param: thickness_mm}, room_temperature: {$param: room_temperature}}
+    fit: {draws: {$param: draws}, tune: {$param: tune}, chains: {$param: chains},
+          seed: {$param: seed}, mode: evaluate_then_refit, target_accept: 0.9}
+    bind: {$param: bind}
+    evaluate: {metrics: [rmse, mae, coverage_90]}
+- id: plate
+  use: model.summary
+  label: Plate parameters
+  inputs: {model: fit.model}
+  with: {vars: [k, h, h_edge, eta, sigma, spread_length]}
+- id: residuals
+  use: plot.render
+  label: Calibration residuals
+  inputs: {model: fit.model}
+  with: {recipe: sci.image_residuals}
+# 2. the gate: the error on the run held out, and convergence
+- id: good
+  use: branch.if
+  label: Is the calibration good enough?
+  with:
+    condition: nodes.fit.metrics.rmse <= params.max_error and nodes.plate.max_rhat <= params.max_rhat
+    explain_then: >-
+      The calibration predicted the run that it did not see within the error limit, and the
+      sampler converged. The workflow predicted the new layout.
+    explain_else: >-
+      The calibration did not predict the run that it did not see within the error limit, or
+      the sampler did not converge. The workflow did not predict the new layout. Add
+      calibration runs or thermocouples.
+# 3. design: the expected field of the new layout (else of the calibration runs), as a map
+- id: design
+  use: model.score
+  label: Predict the layout
+  when: good.then
+  inputs: {model: fit.model, data: [inputs.layout, inputs.data]}
+  with: {mode: predict}
+- id: field
+  use: plot.render
+  label: Field of the layout
+  when: good.then
+  inputs: {data: design.scores}
+  with:
+    recipe: sci.field_map
+    source: data
+    settings:
+      var: field
+      y: {$expr: "coalesce(params.bind.dims.y, 'y')"}
+      x: {$expr: "coalesce(params.bind.dims.x, 'x')"}
+      frame: {$expr: "coalesce(params.bind.dims.run, 'run')"}
+      origin: lower
+      colormap: magma
+- id: report
+  use: report.summary
+  inputs:
+    items: [plate.table]
+    metrics: [fit.metrics]
+    model: fit.model
+    plots: [residuals.plot, field.plot]
+  with: {title: "Calibrate a heated plate, then test a heater layout"}
+outputs: {model: fit.model, parameters: plate.table, residuals: residuals.plot,
+          design: design.scores, field: field.plot, report: report.report}

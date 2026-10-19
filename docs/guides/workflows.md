@@ -33,7 +33,7 @@ ports, parameters and result fields.
 
 ## Start from the gallery
 
-The gallery has four templates. Each template has an About card in plain language
+The gallery has six templates. Each template has an About card in plain language
 (`GET /v1/workflow-templates`):
 
 | Template | Select it when |
@@ -42,6 +42,8 @@ The gallery has four templates. Each template has an About card in plain languag
 | `var_vecm_cointegration` | Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR. |
 | `mmm_governed` | You need a marketing mix model that must pass the governance policy before a person uses it. |
 | `forecast_bakeoff` | You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds. |
+| `sci_phylo_signal` | You compare a trait across species that a tree relates. You want to know if an effect stays clear when the model includes the tree. |
+| `sci_calibrate_then_design` | You measured a heated plate in some calibration runs. You want to predict the temperature field of a new heater layout, but only if the calibration predicts a run that it did not see. |
 
 When you make a workflow from a template, the server copies the template document into your
 project as revision 1. After that, the workflow is yours and you can edit it.
@@ -531,6 +533,14 @@ sampler did not converge. The node gives a maximum of 200 entries. If there are 
 sets `truncated` and shows a warning. `max_rhat` and `min_ess` always check all the values
 of the variables in `vars` (a maximum of 20 000), also the values that the table does not
 keep. Above 20 000 values, the node shows a warning.
+
+A condition cannot build the name of an entry from a parameter. To branch on a value that a
+parameter names, set `focus` to the name of the entry (`beta[north]`) or only to its label
+(`north`). The label must belong to only one variable in `vars`. The result field `focus`
+then gives the `name`, `mean`, `sd`, `hdi_low` and `hdi_high` of that value. It also gives
+`p_positive` (the share of draws above zero) and `excludes_zero` (true if the HDI does not
+include zero). A condition reads it as `nodes.s.focus.excludes_zero`. The
+[`sci_phylo_signal` recipe](workflow-cookbook.md#trait-regression-across-species) uses it.
 
 **`evaluate.ppc`** simulates new data from the model on its fit data (the `predict` score
 mode with predictive draws) and compares the simulated data with the observed target:

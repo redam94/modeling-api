@@ -104,6 +104,185 @@ def test_the_bakeoff_recipe_keeps_a_winner_only_if_it_beats_naive() -> None:
     assert nodes["dm_ets"].result["verdict_plain"]
 
 
+# ============================================================ M5: science recipes (sci.*)
+
+_SCI_COOKBOOK = {
+    "sci_phylo_signal": "cookbook_sci_phylo_signal.yaml",
+    "sci_calibrate_then_design": "cookbook_sci_calibrate_then_design.yaml",
+}
+_TINY_FIT = {"draws": 100, "tune": 150, "chains": 2, "seed": 3}
+"""Fit sizes for the run tests (the recipes default to 4 x 1000 draws)."""
+
+
+@pytest.mark.parametrize("template_id", sorted(_SCI_COOKBOOK))
+def test_the_science_cookbook_documents_are_the_gallery_templates(template_id: str) -> None:
+    from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES
+
+    page = _doc(SNIPPETS / _SCI_COOKBOOK[template_id])
+    template = dict(WORKFLOW_TEMPLATES[template_id].document)
+    for doc in (page, template):
+        doc.pop("metadata")
+    assert page == template
+
+
+def _run_sci(name: str, inputs: dict[str, Any], params: dict[str, Any]) -> tuple[Any, Any]:
+    from mapi_spec.workflow import WorkflowRunStatus, WorkflowSpec
+    from mapi_workflows.runtime.local import LocalRunner
+    from mapi_workflows.testing import test_registry
+
+    spec = WorkflowSpec.model_validate(_doc(SNIPPETS / name))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = LocalRunner(registry=test_registry(science=True)).run(
+            spec, inputs=inputs, params={**_TINY_FIT, **params}
+        )
+    assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
+    return {n.node_id: n for n in res.nodes}, res.values
+
+
+def _phylo_data(group_size_slope: float) -> Any:
+    from mapi_plugin_science.phylo_data import PHYLO_SCHEMA, phylo_dataset
+
+    ds = phylo_dataset(
+        n_species=30, truth={"slope": {"body": 0.7, "group_size": group_size_slope}}, seed=4
+    )
+    ds.attrs["mapi_schema"] = PHYLO_SCHEMA.model_dump_json(exclude_none=True)
+    return ds
+
+
+def _sections(report: Any) -> list[tuple[str, str | None]]:
+    return [(s["kind"], s.get("node_id")) for s in report["sections"]]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("slope", "arm"), [(0.6, "then"), (0.0, "else")], ids=["clear", "not-clear"]
+)
+def test_the_phylo_recipe_ranks_the_trees_and_tests_the_slope(slope: float, arm: str) -> None:
+    from mapi_workflows.payloads import TablePayload
+
+    nodes, values = _run_sci("cookbook_sci_phylo_signal.yaml", {"data": _phylo_data(slope)}, {})
+    # four fits, ranked by elpd_loo; the data have a lambda residual, so a tree wins
+    kinds = ("iid", "brownian", "lambda", "ou")
+    elpd = {k: nodes[k].result["metrics"]["elpd_loo"] for k in kinds}
+    assert all(v is not None for v in elpd.values())
+    ranking = nodes["compare"].result["ranking"]
+    assert sorted(ranking) == sorted(kinds) and ranking[0] == max(elpd, key=elpd.__getitem__)
+    best = nodes["best"].result
+    assert best["selected"] == ranking[0] != "iid"
+    weights = nodes["weights"].result["weights"]
+    assert set(weights) == set(kinds) and abs(sum(weights.values()) - 1) < 1e-6
+    # the slope of the focus predictor, read through `focus`, decides the branch
+    focus = nodes["slope"].result["focus"]
+    assert focus["name"] == "slope[group_size]"
+    assert focus["hdi_low"] <= focus["mean"] <= focus["hdi_high"]
+    assert focus["excludes_zero"] is (focus["hdi_low"] > 0 or focus["hdi_high"] < 0)
+    assert nodes["clear"].result == {"value": arm == "then", "arm": arm}
+    assert nodes["ppc"].status.value == ("succeeded" if arm == "then" else "skipped")
+    if arm == "then":
+        assert focus["hdi_low"] > 0 and focus["p_positive"] > 0.95
+        assert nodes["ppc"].result["n_obs"] == 26  # 30 species, 4 without a trait
+    # the tree plot and the report with its sections
+    assert nodes["tree"].result["recipe"].startswith("sci.phylogeny@")
+    assert values["tree"]["kind"] == "plotly"
+    sections = _sections(values["report"])
+    for want in [("decision", "clear"), ("table", "compare"), ("table", "weights"),
+                 ("table", "slope"), ("plot", "tree")]:  # fmt: skip
+        assert want in sections, sections
+    assert (("metrics", "ppc") if arm == "then" else ("skipped", "ppc")) in sections
+    table = TablePayload.model_validate(values["slopes"])
+    assert {r["param"] for r in table.rows} == {"slope[body]", "slope[group_size]"}
+
+
+def _heat_data(*, canonical: bool = False) -> Any:
+    import json
+
+    import xarray as xr
+    from mapi_plugin_science.heat_plate_data import HEAT_SCHEMA, heat_plate_dataset
+
+    ds = heat_plate_dataset()  # 3 runs with one 10 W heater each, 12 x 6 grid, 12 sensors
+    schema = json.loads(HEAT_SCHEMA.model_dump_json(exclude_none=True))
+    if canonical:
+        names = {"y_cm": "y", "x_cm": "x", "heater_w": "heater_power",
+                 "reading_c": "temperature"}  # fmt: skip
+        ds = ds.rename(names)
+        schema["dims"] = {names.get(k, k): v for k, v in schema["dims"].items()}
+        schema["vars"] = {
+            names[k]: {**v, "dims": [names.get(d, d) for d in v["dims"]]}
+            for k, v in schema["vars"].items()
+        }
+    ds.attrs["mapi_schema"] = json.dumps(schema)
+    power = "heater_power" if canonical else "heater_w"
+    layout = xr.zeros_like(ds[power].isel(run=[0])).assign_coords(run=["design"])
+    layout[0, 1, 2] = layout[0, 4, 9] = 5.0  # two 5 W heaters
+    return ds, xr.Dataset({power: layout})
+
+
+_HEAT_BIND = {"dims": {"y": "y_cm", "x": "x_cm"},
+              "vars": {"heater_power": "heater_w", "temperature": "reading_c"}}  # fmt: skip
+
+
+@pytest.mark.slow
+def test_the_heat_plate_recipe_calibrates_then_predicts_the_layout() -> None:
+    from mapi_workflows.payloads import TablePayload
+
+    data, layout = _heat_data()
+    nodes, values = _run_sci(
+        "cookbook_sci_calibrate_then_design.yaml",
+        {"data": data, "layout": layout},
+        {"bind": _HEAT_BIND, "max_rhat": 1.5},  # tiny fits do not reach R-hat 1.01
+    )
+    assert nodes["holdout"].result["folds"][0]["test_groups"][0] in ("cal1", "cal2", "cal3")
+    metrics = nodes["fit"].result["metrics"]
+    assert metrics["rmse"] < 0.5  # the sensors read the field with 0.2 degC noise
+    plate = nodes["plate"].result["params"]
+    assert set(plate) == {"k", "h", "h_edge", "eta", "sigma", "spread_length"}
+    assert 40 < plate["k"]["mean"] < 80  # the truth is k = 60 W/m/K
+    assert nodes["good"].result == {"value": True, "arm": "then"}
+    # the expected field of the new layout (one new run), drawn as a map
+    design = values["design"].data
+    assert list(design["run"].values) == ["design"]
+    assert set(design["field"].dims) == {"chain", "draw", "run", "y_cm", "x_cm"}
+    hot = design["field"].mean(("chain", "draw")).sel(run="design")
+    assert float(hot.isel(y_cm=1, x_cm=2)) > float(hot.isel(y_cm=4, x_cm=0)) > 20.0
+    assert nodes["field"].result["recipe"].startswith("sci.field_map@")
+    assert nodes["residuals"].result["recipe"].startswith("sci.image_residuals@")
+    assert values["field"]["kind"] == values["residuals"]["kind"] == "plotly"
+    sections = _sections(values["report"])
+    for want in [("decision", "good"), ("table", "plate"), ("metrics", "fit"),
+                 ("plot", "residuals"), ("plot", "field")]:  # fmt: skip
+        assert want in sections, sections
+    assert TablePayload.model_validate(values["parameters"]).rows
+
+
+@pytest.mark.slow
+def test_the_heat_plate_recipe_with_model_names_and_no_layout() -> None:
+    data, _ = _heat_data(canonical=True)
+    nodes, values = _run_sci(
+        "cookbook_sci_calibrate_then_design.yaml", {"data": data}, {"max_rhat": 1.5}
+    )
+    # without a layout the design step predicts the calibration runs
+    assert nodes["good"].result["arm"] == "then"
+    assert list(values["design"].data["run"].values) == ["cal1", "cal2", "cal3"]
+    assert nodes["field"].status.value == "succeeded"
+
+
+@pytest.mark.slow
+def test_the_heat_plate_recipe_stops_before_the_design_when_the_error_is_too_large() -> None:
+    data, layout = _heat_data()
+    nodes, values = _run_sci(
+        "cookbook_sci_calibrate_then_design.yaml",
+        {"data": data, "layout": layout},
+        {"bind": _HEAT_BIND, "max_error": 0.01},
+    )
+    assert nodes["good"].result == {"value": False, "arm": "else"}
+    assert nodes["design"].status.value == nodes["field"].status.value == "skipped"
+    assert "design" not in values and "field" not in values
+    sections = _sections(values["report"])
+    assert ("skipped", "design") in sections and ("plot", "residuals") in sections
+    assert "Add calibration runs" in values["report"]["summary_plain"]
+
+
 def test_the_policy_file_is_a_valid_policy() -> None:
     from mapi_spec.api import GovernancePolicyCreate
 
