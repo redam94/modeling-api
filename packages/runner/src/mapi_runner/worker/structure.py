@@ -230,6 +230,8 @@ def _spatial_pair(
             and ds.sizes[x] >= 4
             and time_strength(ds, schema, y) == 0
             and time_strength(ds, schema, x) == 0
+            and not _AXIS_WORDS.search(y.lower())
+            and not _AXIS_WORDS.search(x.lower())
         ):
             return (y, x), False
     return None

@@ -225,9 +225,7 @@ def test_a_time_series_panel_is_plain_and_keeps_todays_order() -> None:
 
 
 def test_an_observation_index_is_not_time() -> None:
-    ds = xr.Dataset(
-        {"y": ("obs", np.arange(100.0))}, coords={"obs": np.arange(100)}
-    )
+    ds = xr.Dataset({"y": ("obs", np.arange(100.0))}, coords={"obs": np.arange(100)})
     schema = DataSchema.model_validate(
         {
             "dims": {"obs": {"kind": "integer", "policy": "extend"}},
