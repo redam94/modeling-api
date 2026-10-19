@@ -350,7 +350,8 @@ fitted images.
 
 1. On the model version page, click **Score**.
 2. In **What do you want to do?**, select **Predict**.
-3. In **Values to score**, select **No new data**.
+3. In **Values to score**, select **Use a dataset**.
+   Then select `e61_turing_early_images`, the dataset of the fit.
 4. Open **Advanced**. Type `p_turing, wavelength, growth` in **Variables (optional)**. Set
    **Seed (optional)** to `61`.
 5. Click **Predict**.
@@ -366,6 +367,7 @@ This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v
   "kind": "ScoreRequest",
   "model": "model://biology/e61-turing-mode-growth@latest",
   "mode": "predict",
+  "data": "dataset://biology/e61_turing_early_images@latest",
   "output": {
     "kind": "expected",
     "summary": ["mean", "hdi_90"],
@@ -381,7 +383,8 @@ This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v
 **Simulate new patterns:**
 
 1. In **What do you want to do?**, select **Simulate**.
-2. In **Values to score**, select **No new data**.
+2. In **Values to score**, select **Use a dataset**.
+   Then select `e61_turing_early_images`, the dataset of the fit.
 3. In **Advanced**, type `settled, p_turing, wavelength` in **Variables (optional)**.
 4. Click **Simulate**.
 
@@ -410,13 +413,14 @@ image. It fits the model, makes a table of the parameters with R-hat and ESS, re
 residual maps (`sci.image_residuals`) and the predictive image grid (`sci.ppc_image_grid`),
 does a predictive check, and writes a report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `sci_image_model_check` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Image model check** and click **Run on my data**.
 3. In **1. Your data**, select `e61_turing_early_images` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.turing_pattern@^1` as the model.
-5. Open **Fine-tune (optional: the defaults are correct for most data)**. Type
-   `{"box_length": 100, "k2_max": 1.5}` as `settings`. Set `tune` to `1500` and `seed` to
-   `61`. Type `t` as `frame`.
+4. In **2. What the recipe needs to know**, type `sci.turing_pattern@^1` in **Model**.
+5. Open **Fine-tune (optional: the defaults are correct for most data)**. In **Settings**,
+   type `{"box_length": 100, "k2_max": 1.5}`. Set **Tune** to `1500` and **Seed** to `61`.
+   Type `t` in **Frame**.
 6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
@@ -426,14 +430,17 @@ predicted images. If it fails, the workflow continues.
 
 !!! note
     The dataset names are the names of the model (`t`, `y`, `x` and `activator`). Thus you do
-    not need `bind`. If your images have other names, give them in `bind`, for example
-    `{"t": "minutes", "activator": "intensity"}`.
+    not need **Bind**. If your images have other names, give them in **Bind**, for example
+    `{"dims": {"t": "minutes"}, "vars": {"activator": "intensity"}}`.
 
-The recipe `bayes_workflow_audit` also applies to this model. It adds a prior predictive check,
-a convergence gate (R-hat below 1.01), a prior sensitivity check and a recovery check on
-simulated data. The gate reads `rhat_max` (default 1.01). The R-hat of step 6.1 is 1.016,
-so the gate can stop the audit. In **Fine-tune**, set `draws` to 2000, or set `rhat_max` to
-1.02. The checks that fit again each take as long as one fit.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) also applies to this model. It
+adds a prior predictive check, a convergence gate, a prior sensitivity check and a recovery
+check on simulated data. The gate needs the largest R-hat below **Rhat max** (default 1.01)
+and the smallest bulk ESS at or above **Min ess** (default 400). In step 6.1, R-hat is 1.016
+and the bulk ESS is 166, so the default gate stops the audit. In **Fine-tune**, increase
+**Draws** and **Tune**, or set **Rhat max** to `1.02` and **Min ess** to `150`. The checks
+after the gate fit the model again: two times for the prior sensitivity check and **N sims**
+times (20 by default) for the recovery check.
 
 ## 9. The same steps with the CLI and the Python client
 
@@ -457,6 +464,7 @@ so the gate can stop the audit. In **Fine-tune**, set `draws` to 2000, or set `r
     kind: ScoreRequest
     model: model://biology/e61-turing-mode-growth@latest
     mode: predict
+    data: dataset://biology/e61_turing_early_images@latest
     output: {kind: expected, summary: [mean, hdi_90], vars: [p_turing, wavelength, growth]}
     seed: 61
     EOF
@@ -504,6 +512,7 @@ so the gate can stop the audit. In **Fine-tune**, set `draws` to 2000, or set `r
         {
             "model": mv.ref,
             "mode": "predict",
+            "data": "dataset://biology/e61_turing_early_images@latest",
             "output": {
                 "kind": "expected",
                 "summary": ["mean", "hdi_90"],

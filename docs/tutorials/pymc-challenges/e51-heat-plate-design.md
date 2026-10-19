@@ -427,8 +427,8 @@ layout") does sections 2 and 3 of the notebook in one run:
 1. It holds out one calibration run and fits the other runs.
 2. It scores the run that the fit did not see, then fits all the runs again.
 3. It shows the parameters and the residual maps.
-4. A decision: is the RMSE on the hold-out run at most `max_error` (0.5 °C), and is R-hat at
-   most `max_rhat` (1.01)?
+4. A decision: is the RMSE on the hold-out run at most **Max error** (0.5 °C), and is R-hat
+   at most **Max rhat** (1.01)?
 5. If yes, it predicts the field of the new layouts and draws it with `sci.field_map`.
 6. It writes a report.
 
@@ -436,7 +436,8 @@ The recipe page sends only one dataset. Thus first run it on the calibration dat
 
 1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
    and the **Templates** tab.
-2. Find the card of `sci_calibrate_then_design` and click **Run on my data**.
+2. Find the card **Calibrate a heated plate, then test a heater layout** and click **Run on
+   my data**.
 3. In **1. Your data**, select `heat_plate_e51` in **Dataset**.
 4. Open **Fine-tune (optional: the defaults are correct for most data)**. In **Bind**, type:
 
@@ -474,9 +475,12 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 
 ### 8.2 Other recipes
 
-- `bayes_workflow_audit` does the checks of a Bayesian workflow on any model with draws. Type
-  `sci.heat_plate` as the model, the settings of step 4 as JSON and the same **Bind**. The
-  recovery check refits the model many times, so it takes longer.
+- `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian workflow
+  on any model with draws. Type `sci.heat_plate@^1` in **Model**. In **Fine-tune**, type the
+  settings of step 4 as JSON in **Settings** and the same **Bind**. The prior draws of this
+  model are on the sensors, and the observed data is on the grid. Thus the prior plot of the
+  audit fails, and the audit continues without it. The recovery check refits the model **N
+  sims** times (20 by default), so it takes much longer than one fit.
 - `sci_image_model_check` compares the predicted images with the observed image. It runs on
   this model, but the plate has readings in only 12 of 288 cells. Thus its residual maps are
   almost empty. Use `sci.image_residuals` of step 6.1.

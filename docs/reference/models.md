@@ -323,6 +323,14 @@ shows the output in two places:
 
 The runner images of `base-bayes` contain these plugins (namespace `sci`).
 
+!!! tip "Tutorials"
+    The [pymc-challenges tutorials](../tutorials/pymc-challenges/index.md) have one page for
+    each case study. Each page exports the data, fits the model in the web app, reads the
+    results, scores the model and runs a workflow recipe. The
+    [complex workflows tutorial](../tutorials/complex-workflows.md) and the
+    [workflow cookbook](../guides/workflow-cookbook.md#disease-map-which-spatial-model) show the
+    six workflow recipes for these models.
+
 !!! note "Real data"
     Each data module has a `from_challenges(path)` function. It reads the real data file of the
     case study from a local copy of pymc-challenges. To run the tests that use the real files,

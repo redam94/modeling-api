@@ -5,7 +5,7 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
-### M5 phase 3 — Workflow recipes for science models
+### M5 phase 3 — Workflow recipes and tutorials for science models
 
 #### Added
 - **`sci_spatial_ladder`** in the workflow gallery. It fits `sci.areal_bym2` with iid, ICAR and
@@ -20,17 +20,6 @@ milestone releases are tagged on `main`.
 - Two sections in the workflow cookbook, with the documents in
   `docs/snippets/cookbook_sci_{spatial,network}_ladder.yaml`. A test makes sure that each
   document is the same as its gallery template, and slow tests run the two documents.
-
-#### Known gaps
-- `governance.check` with `sensitivity.prior` cannot find the prior widths of
-  `sci.areal_bym2` (`intercept_sd`, `slope_sd`, `sigma_scale`), so the check is skipped. The
-  spatial ladder fits the model again with these widths in its place.
-- The graph check of the network ladder plots the statistics of the simulated networks only.
-  The plot does not mark the statistics of the observed network.
-
-### M5 phase 3 — Physics and biology recipes
-
-#### Added
 - **Recipe `sci_phylo_signal`** in the workflow gallery. It fits `sci.phylo_regression`
   with four residual kinds (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck),
   ranks them by `elpd_loo`, gives the stacking weights and selects the best. Then it tests
@@ -48,16 +37,6 @@ milestone releases are tagged on `main`.
 - `model.summary` has a new parameter `focus` and a result field `focus`. A condition cannot
   build an entry name from a parameter, so `focus` names one value (`beta[north]`, or only
   `north`). The result gives its mean, sd, HDI bounds, `p_positive` and `excludes_zero`.
-
-#### Fixed
-- `evaluate.ppc` failed for a model whose output has the name of its canonical target when
-  the dataset binds the target to a different name (for example `sci.phylo_regression`, with
-  `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
-  node now looks for that name.
-
-### M5 phase 3 — Workflow recipes for Bayesian models
-
-#### Added
 - **Two gallery templates** with About cards, cookbook sections
   (`docs/snippets/cookbook_<id>.yaml`) and run tests with the local runner:
   - `bayes_workflow_audit`: the checks of a careful Bayesian workflow for each model that
@@ -68,14 +47,46 @@ milestone releases are tagged on `main`.
   - `sci_image_model_check`: residual maps and a grid of predicted images next to the
     observed image for an image model (for example `sci.strong_lens` or `sci.cmb_field`),
     with the posterior predictive check and a report.
+- **Tutorials for the pymc-challenges case studies** in `docs/tutorials/pymc-challenges/`: an
+  index and one page for each of the 15 ported cases (E07, E18, E19, E21, E23, E31, E50, E51,
+  E58, E60, E61, E77, E79, E80, E81). Each page exports the data, uploads it, builds and fits
+  the spec in the web app, reads the Model Explorer, scores the model and runs the matching
+  recipe, with the CLI and the Python client as tabs. The numbers come from fits of the real
+  data. `docs/tutorials/complex-workflows.md` shows the patterns of the recipes in the
+  workflow editor: model ladders, gates, predictive checks, governance checks,
+  calibrate-then-design, plots in reports, tree datasets and sub-workflows. The pages are in
+  the navigation and have cards in the tutorials index.
+- The web mocks (`workflows.gen.json`, `explorer.gen.json`) have the ten gallery templates.
+
+#### Fixed
+- `evaluate.ppc` failed for a model whose output has the name of its canonical target when
+  the dataset binds the target to a different name (for example `sci.phylo_regression`, with
+  `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
+  node now looks for that name.
 
 #### Known gaps
+- `governance.check` with `sensitivity.prior` cannot find the prior widths of
+  `sci.areal_bym2` (`intercept_sd`, `slope_sd`, `sigma_scale`), so the check is skipped. The
+  spatial ladder fits the model again with these widths in its place.
+- The graph check of the network ladder plots the statistics of the simulated networks only.
+  The plot does not mark the statistics of the observed network.
 - `core.prior_predictive` cannot draw the prior draws of `sci.heat_plate` (the draws are on
   the sensor dim, the observed data is on the grid). Some science models (for example
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
-- `evaluate.ppc` cannot find the target of `sci.phylo_regression` in its predictions. The
-  recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
+- The recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
+- The Score page offers **No new data** for Predict and Simulate. For models without a forecast
+  horizon, the server refuses such a request ("the score request has no data"). The tutorials
+  tell users to select **Use a dataset**.
+- Some suggested specs of `mapi_plugin_science.export` need changes that the tutorials make by
+  hand: the E50 spec lists `elpd_loo` but does not keep the log-likelihood
+  (`fit.keep: {log_likelihood: true}`), and the E60 spec lists `sci.field_map`, which cannot
+  draw the vector output `traction`. For `sci.strong_lens`, `sci.field_map` draws `e_light`
+  and not the image.
+- The `mean` and `hdi_90` of a score summary of a circular output (`sci.circular_regression`)
+  are calculated on a line, not on the circle.
+- The recipes have run with the local runner only. No recipe has run end to end on a live
+  server or in a browser.
 
 ### M5 phase 2 — Science gallery models
 

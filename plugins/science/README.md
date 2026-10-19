@@ -38,6 +38,13 @@ the dataset of a case study to a file that you can upload (`--list` shows the ca
 `--synthetic` writes the simulated data, `--spec` also writes the suggested spec). See
 "Export the data of a case study" in `docs/reference/models.md`.
 
+`docs/tutorials/pymc-challenges/` has one tutorial for each case study: export, upload, fit,
+the Model Explorer, scores and the matching workflow recipe, with the CLI and the Python client.
+`docs/tutorials/complex-workflows.md` and `docs/guides/workflow-cookbook.md` show the six
+workflow recipes for these models (`sci_spatial_ladder`, `sci_network_ladder`,
+`sci_phylo_signal`, `sci_calibrate_then_design`, `bayes_workflow_audit` and
+`sci_image_model_check`).
+
 ## Tree datasets
 
 `sci.strong_lens` declares `capabilities.input = "tree"`, so it also reads a tree dataset version

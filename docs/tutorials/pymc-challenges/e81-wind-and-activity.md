@@ -677,14 +677,15 @@ Bayesian workflow on any model with draws. It fits the model, gates on convergen
 governance checks `sensitivity.prior` and `recovery.simulated`. Then it writes a report with
 the plots.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of **Bayesian workflow audit** and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Bayesian workflow audit** and click **Run on my data**.
 3. In **1. Your data**, select `ksba_wind_2021_2023` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.circular_regression@^1` as the model.
+4. In **2. What the recipe needs to know**, type `sci.circular_regression@^1` in **Model**.
 5. Open **Fine-tune (optional: the defaults are correct for most data)**.
-6. Type the `settings` of step 4 as JSON: `{"kind": "von_mises", "units": "degrees",
+6. In **Settings**, type the `settings` of step 4 as JSON: `{"kind": "von_mises", "units": "degrees",
    "daily_harmonics": 3, "annual_harmonics": 2, "interaction_harmonics": 2}`.
-7. Type the `bind` of step 4 as JSON: `{"dims": {"obs": "report"}, "vars": {"direction":
+7. In **Bind**, type the `bind` of step 4 as JSON: `{"dims": {"obs": "report"}, "vars": {"direction":
    "wind_from", "hour": "hour_lst", "day": "day_of_year"}}`.
 8. Click **Run this recipe**.
 
@@ -794,7 +795,7 @@ not apply to this model.
     and `api.workflows.run(workflow.id,
     inputs={"data": "dataset://meteorology/ksba_wind_2021_2023@latest"},
     params={"model": "sci.circular_regression@^1", "settings": {...}, "bind": {...}},
-    wait=True)` with the `settings` and the `bind` of step 8.
+    wait=True)` with the `settings` and the `bind` of step 4.
 
 ## 10. Differences from the notebook
 

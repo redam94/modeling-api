@@ -370,26 +370,32 @@ it** sends the same request.
 
 ## 8. Run a workflow recipe
 
-The recipe `bayes_workflow_audit` does the checks of a Bayesian workflow on any model with
-draws. It fits the model, gates on convergence (R-hat below 1.01), makes the posterior
-predictive check, and runs the governance checks `sensitivity.prior` and `recovery.simulated`.
-Then it writes a report with the plots.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian
+workflow on any model with draws. It fits the model with prior predictive draws. A convergence
+gate needs the largest R-hat below `rhat_max` (1.01) and the smallest bulk ESS at or above
+`min_ess` (400). Only then does it make the posterior predictive check and run the governance
+checks `sensitivity.prior` and `recovery.simulated`. Then it writes a report with the plots.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `bayes_workflow_audit` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Bayesian workflow audit** and click **Run on my data**.
 3. In **1. Your data**, select `pytfm_colony_ko04` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.traction_force` as the model. Type the
-   `settings` of step 4 as JSON. If you do not, the model uses `young_pa: 10000`, and the
-   forces are 4.9 times too small.
-5. Click **Run this recipe**.
+4. In **2. What the recipe needs to know**, type `sci.traction_force@^1` in **Model**.
+5. Open **Fine-tune**. In **Settings**, type the `settings` of step 4 as JSON:
+   `{"grid_um": 2.117341064232256, "young_pa": 49000.0, "poisson": 0.49, "young_cv": 0.0, "prior": "matern", "noise_um": 0.003, "traction_pa": 1000.0, "lengthscale_um": 20.0, "field_draws": 200, "force_mask": true}`. If you do not, the model uses `young_pa: 10000`, and the forces are 4.9 times too
+   small. Set **N sims** to `5` (see the note below).
+6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! note
-    The checks that refit the model (`sensitivity.prior`, `recovery.simulated`) each take as
-    long as one fit. With the full colony, the recipe takes about 15 minutes.
+!!! note "The audit takes a long time on the full colony"
+    The checks after the gate refit the model. `sensitivity.prior` fits it one time for each
+    value in **Prior scales** (two by default), and `recovery.simulated` fits it **N sims**
+    times (20 by default). One fit of the full colony takes from 3 minutes to more than 40
+    minutes, as a function of the load of the machine. Thus decrease **N sims** before you
+    start the audit.
 
 The image recipe `sci_image_model_check` is for models with images of a scalar field. It does
 not apply to this model.
@@ -421,12 +427,13 @@ not apply to this model.
     mapi workflows init bayes_workflow_audit --name traction-audit
     mapi workflows apply traction-audit.yaml -m "E60 audit"
     mapi workflows run traction-audit -i data=dataset://biophysics/pytfm_colony_ko04@latest \
-      -p model=sci.traction_force --watch
+      -p model=sci.traction_force@^1 -p n_sims=5 \
+      -p 'settings={"grid_um": 2.117341064232256, "young_pa": 49000.0, "poisson": 0.49, "young_cv": 0.0, "prior": "matern", "noise_um": 0.003, "traction_pa": 1000.0, "lengthscale_um": 20.0, "field_draws": 200, "force_mask": true}' \
+      --watch
     ```
 
     The CLI has no `models` command. Take the model id from the run (`mapi runs get <run>`)
-    or from **Models** in the web app. Before you run the workflow, put the settings of step 4
-    in `traction-audit.yaml`, or give them with `-p settings='{…}'`.
+    or from **Models** in the web app.
 
 === "Python"
 

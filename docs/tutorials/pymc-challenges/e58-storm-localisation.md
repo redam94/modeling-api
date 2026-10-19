@@ -487,38 +487,40 @@ compare two fits of the same frames, not as a measure of one spot.
 
 ## 8. Run a workflow recipe
 
-The recipe `sci_image_model_check` is for models that predict an image. It fits the model,
+The recipe `sci_image_model_check` (**Image model check**) is for models that predict an
+image. It fits the model,
 makes the residual maps and the image grid, does a posterior predictive check and writes a
 report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `sci_image_model_check` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Image model check** and click **Run on my data**.
 3. In **1. Your data**, select `dannhauser2022_unc13_dstorm` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.storm_localisation@^1` as the model.
+4. In **2. What the recipe needs to know**, type `sci.storm_localisation@^1` in **Model**.
 5. Open **Fine-tune (optional: the defaults are correct for most data)**. Set these values:
-    - `settings`: the settings of step 4 as JSON, for example
+    - **Settings**: the settings of step 4 as JSON, for example
       `{"pixel_nm": 127.0, "offset_adu": 457.04184713091655, "scale_adu": 13.861648333299126, "max_spots": 200}`.
-    - `draws` `1000`, `tune` `1000` and `seed` `58`.
-    - `var`: `patch_fit`. The image check is for the fitted patches, one image for each spot.
+    - **Draws** `1000`, **Tune** `1000` and **Seed** `58`.
+    - **Var**: `patch_fit`. The image check is for the fitted patches, one image for each spot.
 6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
 **Events**. **Outputs** shows the parameter table, the plots `sci.image_residuals` and
 `sci.ppc_image_grid` of `patch_fit`, and the report.
 
-The recipe `bayes_workflow_audit` does all the checks of a Bayesian workflow on any model with
-draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
-`recovery.simulated`. Run it in the same way with the model `sci.storm_localisation@^1`.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does all the checks of a
+Bayesian workflow on any model with draws: prior predictive draws, a convergence gate, the
+posterior predictive check, `sensitivity.prior` and `recovery.simulated`. Run it in the same
+way with the model `sci.storm_localisation@^1`. The gate needs the largest R-hat below
+**Rhat max** (1.01) and the smallest bulk ESS at or above **Min ess** (400). The R-hat of
+`logN` in step 6 is 1.018, so the default gate stops the audit before the checks. Increase
+**Draws** and **Tune**, or make the gate less strict.
 
 !!! warning "The posterior predictive check of a long movie"
     If a step of a recipe scores all 2,000 frames, the model refuses it with
     `PAYLOAD_TOO_LARGE`. Then run the recipe on a shorter movie. A dataset of the first 500
     frames is below the limit with `score_draws: 40`. Make it with the script of step 7 and
     `slice(0, 500)`.
-
-!!! warning "The recipes are new"
-    Do a check of the parameter names on the card of the recipe. The names in this step are
-    from the first version of the recipes.
 
 ## 9. The same with the CLI and the Python client
 
@@ -548,8 +550,8 @@ draws: a convergence gate, the posterior predictive check, `sensitivity.prior` a
     mapi workflows run storm-check \
       -i data=dataset://microscopy/dannhauser2022_unc13_dstorm@latest \
       -p model=sci.storm_localisation@^1 -p var=patch_fit \
-      -p 'settings={"pixel_nm": 127.0, "offset_adu": 457.04184713091655, "scale_adu": 13.861648333299126}' \
-      --watch
+      -p 'settings={"pixel_nm": 127.0, "offset_adu": 457.04184713091655, "scale_adu": 13.861648333299126, "max_spots": 200}' \
+      -p seed=58 --watch
     ```
 
     For a local check without the server, export the data as a zarr zip

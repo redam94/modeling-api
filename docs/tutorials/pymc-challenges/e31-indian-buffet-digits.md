@@ -414,7 +414,8 @@ The RMSE agrees.
 
 1. On the model version page, click **Score**.
 2. In **What do you want to do?**, select **Predict**.
-3. In **Values to score**, select **No new data**.
+3. In **Values to score**, select **Use a dataset**.
+   Then select `optdigits_e31`, the dataset of the fit.
 4. Open **Advanced**. Set **Seed (optional)** to `31`. Type `feature_prob, owns` in
    **Variables (optional)**.
 5. Click **Predict**.
@@ -430,6 +431,7 @@ This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v
   "kind": "ScoreRequest",
   "model": "model://vision/optdigits-ibp@latest",
   "mode": "predict",
+  "data": "dataset://vision/optdigits_e31@latest",
   "output": {
     "kind": "expected",
     "summary": ["mean", "hdi_90"],
@@ -451,6 +453,7 @@ block:
   "kind": "ScoreRequest",
   "model": "model://vision/optdigits-ibp@latest",
   "mode": "predict",
+  "data": "dataset://vision/optdigits_e31@latest",
   "select": {"digit": ["test-000", "test-001"]},
   "output": {
     "kind": "expected",
@@ -482,21 +485,23 @@ it** sends the same requests.
 
 ## 8. Run a workflow recipe
 
-The recipe `sci_image_model_check` is for models that predict an image. It fits the model,
+The recipe `sci_image_model_check` (**Image model check**) is for models that predict an
+image. It fits the model,
 makes the residual maps and the image grid, does a posterior predictive check and writes a
 report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `sci_image_model_check` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Image model check** and click **Run on my data**.
 3. In **1. Your data**, select `optdigits_e31` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.ibp_features@^1` as the model.
+4. In **2. What the recipe needs to know**, type `sci.ibp_features@^1` in **Model**.
 5. Open **Fine-tune (optional: the defaults are correct for most data)**. Set these values:
-    - `settings`: `{"n_features": 8, "noise_sd": 0.25, "shown_mask": true}`.
-    - `bind`: `{"dims": {"y": "row", "x": "col"}, "vars": {"ink": "pixels", "shown": "visible"}}`.
+    - **Settings**: `{"n_features": 8, "noise_sd": 0.25, "shown_mask": true}`.
+    - **Bind**: `{"dims": {"y": "row", "x": "col"}, "vars": {"ink": "pixels", "shown": "visible"}}`.
       Without the binding, the fit does not find `ink`.
-    - `draws` `1000`, `tune` `1000` and `seed` `2005`.
-    - `var`: `ink_hat`. `frame`: `digit`. The model has two outputs on a grid, and the check
-      is for the digits.
+    - **Draws** `1000`, **Tune** `1000` and **Seed** `2005`.
+    - **Var**: `ink_hat`. **Frame**: `digit`. The model has two outputs on a grid, and the
+      check is for the digits.
 6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
@@ -513,18 +518,14 @@ A short run of the recipe (`draws` 300, `tune` 300) gave these results:
   are too large. For this model, use `sci.image_residuals` of the fit (step 6.3). It reads the
   replicated digits with their noise.
 
-The recipe `bayes_workflow_audit` does all the checks of a Bayesian workflow on any model with
-draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does all the checks of a
+Bayesian workflow on any model with draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
 `recovery.simulated`. Run it in the same way with the model `sci.ibp_features@^1`, the same
-`settings` and `bind`, and `prior_predictive` set to `{}`. For this model, the gate stops the
-audit: the R-hat of `logpi` (2.6) is more than `rhat_max` (1.01). **Decisions** shows "R-hat
+**Settings** and **Bind**, and **Prior predictive** set to `{}`. For this model, the gate stops the
+audit: the R-hat of `logpi` (2.6) is more than **Rhat max** (1.01). **Decisions** shows "R-hat
 is too large or the effective sample size is too small, so the chains do not agree." That is
-the correct result for a posterior with many modes (step 6.1). Do not increase `rhat_max` to
+the correct result for a posterior with many modes (step 6.1). Do not increase **Rhat max** to
 pass the gate.
-
-!!! warning "The recipes are new"
-    Do a check of the parameter names on the card of the recipe. The names in this step are
-    from the first version of the recipes.
 
 ## 9. The same with the CLI and the Python client
 
@@ -542,6 +543,7 @@ pass the gate.
     kind: ScoreRequest
     model: model://vision/optdigits-ibp@latest
     mode: predict
+    data: dataset://vision/optdigits_e31@latest
     select: {digit: [test-000, test-001]}
     output: {kind: expected, summary: [mean, hdi_90], vars: [ink_hat, owns]}
     seed: 31
@@ -554,7 +556,7 @@ pass the gate.
       -p model=sci.ibp_features@^1 -p var=ink_hat -p frame=digit \
       -p 'settings={"n_features": 8, "noise_sd": 0.25, "shown_mask": true}' \
       -p 'bind={"dims": {"y": "row", "x": "col"}, "vars": {"ink": "pixels", "shown": "visible"}}' \
-      --watch
+      -p seed=2005 --watch
     ```
 
     The CLI has no `models` command. Take the model id from the run (`mapi runs get <run>`)
@@ -585,6 +587,7 @@ pass the gate.
         {
             "model": mv.ref,
             "mode": "predict",
+            "data": "dataset://vision/optdigits_e31@latest",
             "select": {"digit": ["test-000", "test-001"]},
             "output": {"summary": ["mean", "hdi_90"], "vars": ["ink_hat", "owns"]},
             "seed": 31,

@@ -476,34 +476,36 @@ it** sends the same requests.
 
 ## 8. Run a workflow recipe
 
-The recipe `bayes_workflow_audit` does the checks of a Bayesian workflow on any model with
-draws. It fits the model with a prior predictive, gates on convergence (R-hat below 1.01),
-makes the posterior predictive check, and runs the governance checks `sensitivity.prior` and
-`recovery.simulated`. Then it writes a report with the plots. The prior predictive shows the
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian
+workflow on any model with draws. It fits the model with prior predictive draws. A convergence
+gate needs the largest R-hat below `rhat_max` (1.01) and the smallest bulk ESS at or above
+`min_ess` (400). Only then does it make the posterior predictive check and run the governance
+checks `sensitivity.prior` and `recovery.simulated`. Then it writes a report with the plots. The prior predictive shows the
 point of section 3 of the notebook: a mild LKJ prior on the correlations is a prior for a dense
 graph.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `bayes_workflow_audit` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Bayesian workflow audit** and click **Run on my data**.
 3. In **1. Your data**, select `sachs_cd3cd28` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.graphical_model` as the model.
-5. Click **Run this recipe**.
+4. In **2. What the recipe needs to know**, type `sci.graphical_model@^1` in **Model**.
+5. Open **Fine-tune**. In **Settings**, type
+   `{"kind": "dense", "threshold": 0.1, "lkj_eta": 2.0, "reference": true}`. In **Bind**, type
+   `{"dims": {"var": "protein", "var_": "protein_"}, "vars": {"value": "level", "reference": "consensus"}}`.
+6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! warning "Give the recipe the binding and the settings"
-    Give the fit the `bind` and the `settings` of step 4. The recipe cannot bind the dims
-    `protein` and `protein_` to the dims `var` and `var_` of the model. If the recipe has no
-    field for the binding, click **Use this template**. In the editor, add these values to the
-    `with` block of the `model.fit` node:
-    `"bind": {"dims": {"var": "protein", "var_": "protein_"}, "vars": {"value": "level",
-    "reference": "consensus"}}` and `"settings": {"reference": true}`.
+!!! warning "Give the recipe the binding"
+    Without **Bind**, the recipe cannot bind the dims `protein` and `protein_` to the dims
+    `var` and `var_` of the model, and the fit stops.
 
 !!! note
-    The checks that refit the model (`sensitivity.prior`, `recovery.simulated`) each take as
-    long as one fit.
+    The checks after the gate refit the model. `sensitivity.prior` fits it one time for each
+    value in **Prior scales** (two by default), and `recovery.simulated` fits it **N sims**
+    times (20 by default). Thus the audit takes much longer than one fit.
 
 The recipe `sci_network_ladder` is for the latent-space network model of E21
 (`sci.network_latent_space`). It does not apply to this model. The recipes
@@ -535,13 +537,14 @@ The recipe `sci_network_ladder` is for the latent-space network model of E21
     mapi workflows init bayes_workflow_audit --name sachs-audit
     mapi workflows apply sachs-audit.yaml -m "E19 audit"
     mapi workflows run sachs-audit -i data=dataset://biology/sachs_cd3cd28@latest \
-      -p model=sci.graphical_model --watch
+      -p model=sci.graphical_model@^1 \
+      -p 'settings={"kind": "dense", "threshold": 0.1, "lkj_eta": 2.0, "reference": true}' \
+      -p 'bind={"dims": {"var": "protein", "var_": "protein_"}, "vars": {"value": "level", "reference": "consensus"}}' \
+      --watch
     ```
 
     `sachs-cd3cd28-ggm.yaml` is the spec of step 4. The CLI has no `models` command. Take the
-    model id from the run (`mapi runs get <run>`) or from **Models** in the web app. Before you
-    run the workflow, put the `bind` and the `settings` of step 4 on the `model.fit` node in
-    `sachs-audit.yaml`.
+    model id from the run (`mapi runs get <run>`) or from **Models** in the web app.
 
 === "Python"
 
@@ -586,12 +589,22 @@ The recipe `sci_network_ladder` is for the latent-space network model of E21
                 print(f"{a}-{b}: P={prob.loc[a, b]:.2f} pcor={pcor.loc[a, b]:+.2f}")
     ```
 
-    To run the audit recipe, get the template with `api.workflows.template("bayes_workflow_audit")`,
-    make a copy with `mapi_spec.workflow_templates.instantiate_template`, add the `bind` and
-    the `settings` of step 4 to the `model.fit` node, save it with `api.workflows.upsert(...)`,
-    and start it with `api.workflows.run(workflow.id,
-    inputs={"data": "dataset://biology/sachs_cd3cd28@latest"},
-    params={"model": "sci.graphical_model"}, wait=True)`.
+    To run the audit recipe:
+
+    ```python
+    workflow = api.workflows.create(template="bayes_workflow_audit")
+    run = api.workflows.run(
+        workflow.id,
+        inputs={"data": "dataset://biology/sachs_cd3cd28@latest"},
+        params={
+            "model": "sci.graphical_model@^1",
+            "settings": {"kind": "dense", "threshold": 0.1, "lkj_eta": 2.0, "reference": True},
+            "bind": {"dims": {"var": "protein", "var_": "protein_"},
+                     "vars": {"value": "level", "reference": "consensus"}},
+        },
+        wait=True,
+    )
+    ```
 
 ## 10. Differences from the notebook
 

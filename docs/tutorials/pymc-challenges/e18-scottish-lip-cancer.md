@@ -483,11 +483,12 @@ sections 4, 8 and 9 in one run:
 - It does a convergence check, draws the relative risk map (`sci.area_map`) and writes a
   report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
 2. Find the card **Disease map: which spatial model?** and click **Run on my data**.
 3. In **1. Your data**, select `scotland_lip_cancer` in **Dataset**.
-4. Open **Fine-tune (optional: the defaults are correct for most data)**. Set `engine` to
-   `nutpie`. The default `bind` fits the names of the export, so do not change it.
+4. Open **Fine-tune (optional: the defaults are correct for most data)**. Set **Engine** to
+   `nutpie`. The default **Bind** fits the names of the export, so do not change it.
 5. Click **Run this recipe**.
 
 The recipe has no parameters that you must set, so the page does not show "2. What the recipe
@@ -516,15 +517,18 @@ so the association with AFF comes from the data, not from the priors.
 
 !!! note
     The default `bind` is `{dims: {area: district, area_: district_}, vars: {covariate: aff}}`.
-    If your dataset has other names, change it in **Fine-tune**. For example,
+    If your dataset has other names, change **Bind** in **Fine-tune**. For example,
     `{"dims": {"area": "county", "area_": "county_"}, "vars": {"covariate": "smokers"}}`.
 
 The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) also applies to this model.
-Type `sci.areal_bym2@^1` as the model and the `bind` above. The audit adds a posterior
-predictive check, a prior sensitivity check and a recovery check on simulated data. Its prior
-sensitivity check changes only prior widths with names such as `prior_sigma`. The prior widths
-of `sci.areal_bym2` have other names (`intercept_sd`, `slope_sd` and `sigma_scale`). Thus the
-ladder recipe above fits the model again with these widths itself.
+Type `sci.areal_bym2@^1` in **Model**. In **Fine-tune**, type the `bind` above in **Bind**
+and `{}` in **Prior predictive**: the ICAR prior cannot give prior draws, and with prior draws
+the fit stops. The audit adds a posterior predictive check, a prior sensitivity check and a
+recovery check on simulated data. Its prior sensitivity check changes only prior widths with
+names such as `prior_sigma`. The prior widths of `sci.areal_bym2` have other names
+(`intercept_sd`, `slope_sd` and `sigma_scale`), so this check is `skipped`. Thus the ladder
+recipe above fits the model again with these widths itself. For this model, the recovery check
+can end with the status `error`. Then the branch `trusted` of the audit takes the else arm.
 
 ## 9. The same steps with the CLI and the Python client
 

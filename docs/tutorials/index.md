@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials - your first MMM in Guided mode, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
+description: Step-by-step tutorials - your first MMM in Guided mode, science models from pymc-challenges, complex workflows, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
 ---
 
 # Tutorials
@@ -75,6 +75,25 @@ The Apps Scripts run against substitutes for the services of Google.
     that are not validated.
 
     *For data scientists and reviewers.* [:octicons-arrow-right-24: Start](../guides/governance.md)
+
+-   :material-flask-outline:{ .lg .middle } **Science models from pymc-challenges**
+
+    ---
+
+    Fifteen case studies, from disease maps and networks to images, fields and directions.
+    Each page gets the data, fits the model in the web app, reads the results, scores the
+    model and runs a workflow recipe. It compares the numbers with the notebook.
+
+    *For data scientists.* [:octicons-arrow-right-24: Start](pymc-challenges/index.md)
+
+-   :material-sitemap-outline:{ .lg .middle } **Complex workflows**
+
+    ---
+
+    Build model ladders, convergence gates, posterior predictive checks, governance checks,
+    calibrate-then-design runs, plots in reports and sub-workflows in the workflow editor.
+
+    *For data scientists.* [:octicons-arrow-right-24: Start](complex-workflows.md)
 
 -   :material-magnify-scan:{ .lg .middle } **Explore your data, then choose a model** <span class="mapi-badge">v0.5</span>
 

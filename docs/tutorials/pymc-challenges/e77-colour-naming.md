@@ -438,37 +438,41 @@ it** sends the same requests.
 
 ## 8. Run a workflow recipe
 
-The recipe `bayes_workflow_audit` does the checks of a Bayesian workflow on any model with
-draws. It fits the model, gates on convergence (R-hat below 1.01), makes the posterior
-predictive check, and runs the governance checks `sensitivity.prior` and `recovery.simulated`.
-Then it writes a report with the plots.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian
+workflow on any model with draws. It fits the model with prior predictive draws and plots
+them. A convergence gate needs the largest R-hat below **Rhat max** (1.01) and the smallest
+bulk ESS at or above **Min ess** (400). Only then does it make the posterior predictive check
+and run the governance checks `sensitivity.prior` and `recovery.simulated`. Then it writes a
+report with the plots.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `bayes_workflow_audit` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Bayesian workflow audit** and click **Run on my data**.
 3. In **1. Your data**, select `wcs_nafaanra` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.colour_naming` as the model.
-5. Click **Run this recipe**.
+4. In **2. What the recipe needs to know**, type `sci.colour_naming@^1` in **Model**.
+5. Open **Fine-tune**. In **Settings**, type `{"kind": "hierarchical", "features": "cielab",
+   "new_speakers": 20}`. In **Bind**, type `{"vars": {"naming": "response", "lab_l": "cie_l",
+   "lab_a": "cie_a", "lab_b": "cie_b", "grid_row": "wcs_row", "grid_col": "wcs_col"}}`.
+6. Click **Run this recipe**.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
 !!! warning "Give the recipe the binding"
-    Give the fit the `bind` of step 4. The recipe binds `response` to `naming` automatically,
-    because the dataset has one target. It cannot bind the five chip variables, because they
-    all have the role `covariate`. If the recipe has no field for the binding, click **Use this
-    template**, and add `bind` to the `with` block of the `model.fit` node in the editor:
-    `{"vars": {"lab_l": "cie_l", "lab_a": "cie_a", "lab_b": "cie_b", "grid_row": "wcs_row",
-    "grid_col": "wcs_col"}}`.
+    Without **Bind**, the recipe binds only the target `response` to `naming`. It cannot bind
+    the five chip variables, because they all have the role `covariate`, and the fit stops.
 
-!!! warning "Give the fit enough draws"
-    Give the fit at least `tune: 1000` and `draws: 1000`. In the fit of this tutorial, the
-    largest R-hat was 1.02. Thus the gate at 1.01 can stop the audit. If it stops, increase
-    `tune` and `draws` to 2000, then run the recipe again.
+!!! warning "The default gate can stop this audit"
+    In the fit of this tutorial, the largest R-hat was 1.019 and the smallest bulk ESS was
+    278. Thus the default gate (R-hat below 1.01, bulk ESS 400 or more) takes the else arm,
+    and the recipe skips the checks after the gate. Increase **Tune** and **Draws** to `2000`
+    in **Fine-tune**, then run the recipe again.
 
 !!! note
-    The checks that refit the model (`sensitivity.prior`, `recovery.simulated`) each take as
-    long as one fit. Thus the recipe takes several times as long as one fit.
+    The checks after the gate refit the model. `sensitivity.prior` fits it one time for each
+    value in **Prior scales** (two by default), and `recovery.simulated` fits it **N sims**
+    times (20 by default). Thus the recipe takes many times as long as one fit.
 
 The recipes `sci_spatial_ladder`, `sci_network_ladder`, `sci_phylo_signal`,
 `sci_calibrate_then_design` and `sci_image_model_check` are for other science models. They do
@@ -499,13 +503,13 @@ not apply to this model.
     mapi workflows init bayes_workflow_audit --name nafaanra-audit
     mapi workflows apply nafaanra-audit.yaml -m "E77 audit"
     mapi workflows run nafaanra-audit -i data=dataset://linguistics/wcs_nafaanra@latest \
-      -p model=sci.colour_naming --watch
+      -p model=sci.colour_naming@^1 \
+      -p 'settings={"kind": "hierarchical", "features": "cielab", "new_speakers": 20}' \
+      -p 'bind={"vars": {"naming": "response", "lab_l": "cie_l", "lab_a": "cie_a", "lab_b": "cie_b", "grid_row": "wcs_row", "grid_col": "wcs_col"}}' --watch
     ```
 
     `nafaanra-colour-naming.yaml` is the spec of step 4. The CLI has no `models` command. Take
-    the model id from the run (`mapi runs get <run>`) or from **Models** in the web app. Before
-    you run the workflow, put the `bind` of step 4 on the `model.fit` node in
-    `nafaanra-audit.yaml`.
+    the model id from the run (`mapi runs get <run>`) or from **Models** in the web app.
 
 === "Python"
 
@@ -545,12 +549,34 @@ not apply to this model.
     print(summary["k_eff_language"].sel(stat="mean").values)
     ```
 
-    To run the audit recipe, get the template with `api.workflows.template("bayes_workflow_audit")`,
-    make a copy with `mapi_spec.workflow_templates.instantiate_template`, add the `bind` of
-    step 4 to the `model.fit` node, save it with `api.workflows.upsert(...)`, and start it with
-    `api.workflows.run(workflow.id,
-    inputs={"data": "dataset://linguistics/wcs_nafaanra@latest"},
-    params={"model": "sci.colour_naming"}, wait=True)`.
+    To run the audit recipe:
+
+    ```python
+    workflow = api.workflows.create(template="bayes_workflow_audit")
+    run = api.workflows.run(
+        workflow.id,
+        inputs={"data": "dataset://linguistics/wcs_nafaanra@latest"},
+        params={
+            "model": "sci.colour_naming@^1",
+            "settings": {
+                "kind": "hierarchical",
+                "features": "cielab",
+                "new_speakers": 20
+            },
+            "bind": {
+                "vars": {
+                    "naming": "response",
+                    "lab_l": "cie_l",
+                    "lab_a": "cie_a",
+                    "lab_b": "cie_b",
+                    "grid_row": "wcs_row",
+                    "grid_col": "wcs_col"
+                }
+            }
+        },
+        wait=True,
+    )
+    ```
 
 ## 10. Differences from the notebook
 

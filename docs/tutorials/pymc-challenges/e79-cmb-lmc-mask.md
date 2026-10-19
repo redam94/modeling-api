@@ -469,23 +469,25 @@ it** sends the same requests.
 
 ## 8. Run a workflow recipe
 
-The recipe `sci_image_model_check` is for models that predict an image. It fits the model,
+The recipe `sci_image_model_check` (**Image model check**) is for models that predict an
+image. It fits the model,
 makes the residual maps and the image grid, does a posterior predictive check and writes a
 report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `sci_image_model_check` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Image model check** and click **Run on my data**.
 3. In **1. Your data**, select `planck_smica_lmc` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.cmb_field@^1` as the model.
+4. In **2. What the recipe needs to know**, type `sci.cmb_field@^1` in **Model**.
 5. Open **Fine-tune (optional: the defaults are correct for most data)**. Set these values:
-    - `settings`: the settings of step 4 as JSON:
+    - **Settings**: the settings of step 4 as JSON:
       `{"pixel_arcmin": 7.5, "beam_fwhm_arcmin": 5.0, "pixel_subsamples": 8, "pixel_window": true, "projection": "gnomonic", "border": 8, "field_draws": 40}`.
-    - `draws` `64`, `tune` `16`, `chains` `4` and `seed` `79`.
-    - `var`: `sky`.
+    - **Draws** `64`, **Tune** `16`, **Chains** `4` and **Seed** `79`.
+    - **Var**: `sky`.
 6. Click **Run this recipe**.
 
 !!! warning "Set draws and tune"
-    Set `draws` and `tune` before you run the recipe. The defaults are 1000 and 1000. For
+    Set **Draws** and **Tune** before you run the recipe. The defaults are 1000 and 1000. For
     this model, that is 2,000 Gibbs iterations, about 25 times as long as the fit of step 5.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
@@ -494,25 +496,21 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 in step 6.3: the sky draws follow the data closely, so the in-sample check cannot find a
 problem with the noise model.
 
-The recipe `bayes_workflow_audit` does all the checks of a Bayesian workflow on any model with
-draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does all the checks of a
+Bayesian workflow on any model with draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
 `recovery.simulated`. Run it in the same way with the model `sci.cmb_field@^1` and these
 changes:
 
-- Set `prior_predictive` to `{}`. This model does not sample its priors.
-- Set `draws` `240` and `tune` `40`. Set `rhat_max` to `1.1` and `min_ess` to `50`. With the
+- Set **Prior predictive** to `{}`. This model does not sample its priors.
+- Set **Draws** `240` and **Tune** `40`. Set **Rhat max** to `1.1` and **Min ess** to `50`. With the
   defaults (1.01 and 400), the gate stops the audit for this model, because the Gibbs chains
   are short (step 6.1).
-- Set `n_sims` to `5` for a first run.
+- Set **N sims** to `5` for a first run.
 
 !!! note
     The checks of `bayes_workflow_audit` that fit the model again (`sensitivity.prior` and
     `recovery.simulated`) each take as long as one fit or longer. With 5 simulated datasets,
     expect the audit to take half an hour or more.
-
-!!! warning "The recipes are new"
-    Do a check of the parameter names on the card of the recipe. The names in this step are
-    from the first version of the recipes.
 
 ## 9. The same with the CLI and the Python client
 

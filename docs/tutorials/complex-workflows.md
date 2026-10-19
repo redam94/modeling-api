@@ -662,7 +662,7 @@ First, save the `sci_image_model_check` recipe as a workflow:
 1. Click **Workflows**, then the **Templates** tab.
 2. On the card **Image model check** (`sci_image_model_check`), click **Use this template**.
 3. Type `image-check` in **Workflow name**.
-4. In the parameters step, type `sci.cmb_field@^1` in `model`. This value is only the default.
+4. In the parameters step, type `sci.cmb_field@^1` in **Model**. This value is only the default.
    The parent workflow gives its own value.
 5. Do the last step of the wizard.
 
@@ -717,7 +717,7 @@ then shows the inputs and outputs of the saved workflow as its ports.
 
 ## The six recipes
 
-The gallery has six recipes that use these patterns. In Guided mode, click **Recipes** in
+The gallery has six science recipes that use these patterns. In Guided mode, click **Recipes** in
 the sidebar, then **Run on my data**. In Expert mode, open the **Templates** tab of
 **Workflows** and click **Use this template** to edit a copy.
 
@@ -732,7 +732,7 @@ the sidebar, then **Run on my data**. In Expert mode, open the **Templates** tab
 
 The recipes `bayes_workflow_audit` and `sci_image_model_check` need the parameter `model`.
 **Run on my data** asks for it. Type a model reference, for example `sci.cmb_field@^1`. Type
-the settings of the model in `settings` under **Fine-tune (optional: the defaults are
+the settings of the model in **Settings** under **Fine-tune (optional: the defaults are
 correct for most data)**.
 
 ## Next steps

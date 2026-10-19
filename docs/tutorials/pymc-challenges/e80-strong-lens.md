@@ -436,7 +436,8 @@ slope of the mass profile or the true size of the source. One image cannot give 
 
 1. On the model version page, click **Score**.
 2. In **What do you want to do?**, select **Predict**.
-3. In **Values to score**, select **No new data**.
+3. In **Values to score**, select **Use a dataset**.
+   Then select `slacs_j1627_f814w`, the dataset of the fit.
 4. Open **Advanced**. Set **Seed (optional)** to `80`. Type
    `einstein_radius, einstein_mass` in **Variables (optional)**.
 5. Click **Predict**.
@@ -451,6 +452,7 @@ This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v
   "kind": "ScoreRequest",
   "model": "model://astronomy/slacs-j1627-lens@latest",
   "mode": "predict",
+  "data": "dataset://astronomy/slacs_j1627_f814w@latest",
   "output": {
     "kind": "expected",
     "summary": ["mean", "hdi_90"],
@@ -466,7 +468,8 @@ This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v
 noise, at the noise level of the fit.
 
 1. In **What do you want to do?**, select **Simulate**.
-2. In **Values to score**, select **No new data**.
+2. In **Values to score**, select **Use a dataset**.
+   Then select `slacs_j1627_f814w`, the dataset of the fit.
 3. Open **Advanced**. Set **Quantity** to **Predictive**.
 4. Type `model_image` in **Variables (optional)**. Set **Draws** to `20`.
 5. Click **Simulate**.
@@ -477,6 +480,7 @@ noise, at the noise level of the fit.
   "kind": "ScoreRequest",
   "model": "model://astronomy/slacs-j1627-lens@latest",
   "mode": "simulate",
+  "data": "dataset://astronomy/slacs_j1627_f814w@latest",
   "output": {
     "kind": "predictive",
     "summary": ["mean", "hdi_90"],
@@ -503,19 +507,21 @@ it** sends the same requests.
 
 ## 8. Run a workflow recipe
 
-The recipe `sci_image_model_check` is for models that predict an image. It fits the model,
+The recipe `sci_image_model_check` (**Image model check**) is for models that predict an
+image. It fits the model,
 makes the residual maps and the image grid, does a posterior predictive check and writes a
 report.
 
-1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**.
-2. Find the card of `sci_image_model_check` and click **Run on my data**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Image model check** and click **Run on my data**.
 3. In **1. Your data**, select `slacs_j1627_f814w` in **Dataset**.
-4. In **2. What the recipe needs to know**, type `sci.strong_lens@^1` as the model.
+4. In **2. What the recipe needs to know**, type `sci.strong_lens@^1` in **Model**.
 5. Open **Fine-tune (optional: the defaults are correct for most data)**. Set these values:
-    - `settings`: the settings of step 4 as JSON, for example
+    - **Settings**: the settings of step 4 as JSON, for example
       `{"pixel_scale": 0.05, "subsample": 2, "lens_light_components": 2, "noise_correlation": 0.2, "z_lens": 0.2076, "z_source": 0.5241}`.
-    - `draws` `600`, `tune` `400` and `seed` `80`.
-    - `var`: `model_image`. The model has two outputs on a grid, and the check is for the
+    - **Draws** `600`, **Tune** `400` and **Seed** `80`.
+    - **Var**: `model_image`. The model has two outputs on a grid, and the check is for the
       image.
 6. Click **Run this recipe**.
 
@@ -523,19 +529,18 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 **Events**. **Outputs** shows the parameter table, the two plots, the coverage of the 50% and
 90% ranges and the report.
 
-The recipe `bayes_workflow_audit` does all the checks of a Bayesian workflow on any model with
-draws: a convergence gate, the posterior predictive check, `sensitivity.prior` and
-`recovery.simulated`. Run it in the same way with the model `sci.strong_lens@^1`. Set
-`prior_predictive` to `{}`, because this model does not sample its priors.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does all the checks of a
+Bayesian workflow on any model with draws: a convergence gate, the posterior predictive check,
+`sensitivity.prior` and `recovery.simulated`. Run it in the same way with the model
+`sci.strong_lens@^1`. Set **Prior predictive** to `{}`, because this model does not sample its
+priors. The gate needs the smallest bulk ESS at or above **Min ess** (400). In step 6, the bulk
+ESS of `n_light` is 352, so the default gate can stop the audit. Increase **Draws**, or set
+**Min ess** to `300`.
 
 !!! note
     The checks of `bayes_workflow_audit` that fit the model again (`sensitivity.prior` and
     `recovery.simulated`) each take as long as one fit. With 20 simulated datasets, the audit
-    of the lens takes some hours. Set `n_sims` to `5` for a first run.
-
-!!! warning "The recipes are new"
-    Do a check of the parameter names on the card of the recipe. The names in this step are
-    from the first version of the recipes.
+    of the lens takes some hours. Set **N sims** to `5` for a first run.
 
 ## 9. The same with the CLI and the Python client
 
@@ -553,6 +558,7 @@ draws: a convergence gate, the posterior predictive check, `sensitivity.prior` a
     kind: ScoreRequest
     model: model://astronomy/slacs-j1627-lens@latest
     mode: predict
+    data: dataset://astronomy/slacs_j1627_f814w@latest
     output: {kind: expected, summary: [mean, hdi_90], vars: [einstein_radius, einstein_mass]}
     seed: 80
     EOF
@@ -562,8 +568,8 @@ draws: a convergence gate, the posterior predictive check, `sensitivity.prior` a
     mapi workflows apply lens-check.yaml -m "E80 image check"
     mapi workflows run lens-check -i data=dataset://astronomy/slacs_j1627_f814w@latest \
       -p model=sci.strong_lens@^1 -p var=model_image \
-      -p 'settings={"pixel_scale": 0.05, "noise_correlation": 0.2, "z_lens": 0.2076, "z_source": 0.5241}' \
-      --watch
+      -p 'settings={"pixel_scale": 0.05, "subsample": 2, "lens_light_components": 2, "noise_correlation": 0.2, "z_lens": 0.2076, "z_source": 0.5241}' \
+      -p draws=600 -p tune=400 -p seed=80 --watch
     ```
 
     The tree file uploads in the same way:
@@ -596,6 +602,7 @@ draws: a convergence gate, the posterior predictive check, `sensitivity.prior` a
         {
             "model": "model://astronomy/slacs-j1627-lens@latest",
             "mode": "predict",
+            "data": "dataset://astronomy/slacs_j1627_f814w@latest",
             "output": {"summary": ["mean", "hdi_90"], "vars": ["einstein_radius", "einstein_mass"]},
             "seed": 80,
         },

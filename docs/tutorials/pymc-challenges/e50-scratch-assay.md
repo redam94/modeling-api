@@ -316,24 +316,29 @@ and `evaluate` (a dataset with new counts). It does not do `simulate` or `counte
 
 ## 8. Run the workflow recipe
 
-The recipe `bayes_workflow_audit` does the checks of a Bayesian workflow for any model in one
-run. It fits the model with a prior predictive, renders the prior predictive plot, and stops
-when R-hat is not below 1.01. Then it does a posterior predictive check, a prior sensitivity
-check and a recovery check on simulated data, and writes a report with the plots.
+The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian
+workflow for any model in one run. It fits the model with prior predictive draws and plots
+them. A convergence gate needs the largest R-hat below `rhat_max` (1.01) and the smallest bulk
+ESS at or above `min_ess` (400). Only then does it do a posterior predictive check, a prior
+sensitivity check and a recovery check on simulated data. It writes a report with the plots.
 
-1. In the sidebar, click **Recipes** (Guided mode) or **Workflows** (Expert mode).
-2. Find **bayes_workflow_audit** and click **Run on my data**.
-3. Select the dataset `scratch_assay_pc3`.
-4. Set the model to `sci.fisher_kpp@^1`. Open **Fine-tune** only to change the defaults.
-5. Start the run. The run monitor shows the tabs **Graph**, **Steps**, **Decisions**,
-   **Outputs** and **Events**.
+1. Set the header to **Guided** and open **Recipes**. In **Expert** mode, open **Workflows**
+   and then the **Templates** tab.
+2. Find the card **Bayesian workflow audit** and click **Run on my data**.
+3. In **1. Your data**, select `scratch_assay_pc3` in **Dataset**.
+4. In **2. What the recipe needs to know**, type `sci.fisher_kpp@^1` in **Model**.
+5. Open **Fine-tune**. In **Settings**, type the settings of step 4 as JSON:
+   `{"steps_per_hour": 10, "delay": true, "max_extension": 4, "diffusivity_median": 1000, "growth_median": 0.05, "capacity_mu": 122, "capacity_sigma": 15}`. In **Bind**, type `{"dims": {"t": "hours", "x": "position"}, "vars": {"count": "cells"}}`.
+6. Click **Run this recipe**. The run monitor shows the tabs **Graph**, **Steps**,
+   **Decisions**, **Outputs** and **Events**.
 
 In **Decisions**, see if the convergence gate passed. In **Outputs**, open the report.
 
 !!! note
-    `sci.fisher_kpp` is not an image model, so `sci_image_model_check` does not apply to it.
-    The recipe binds the dataset names to the model names, as the spec does. If the recipe
-    asks for a binding, give `t: hours`, `x: position` and `count: cells`.
+    Without **Bind**, the recipe cannot find the dims `t` and `x` of the model, and the fit
+    stops. Without **Settings**, the fit uses the default settings of the model, not the
+    settings of step 4. `sci.fisher_kpp` is not an image model, so `sci_image_model_check`
+    does not apply to it.
 
 ## 9. The same steps with the CLI and the Python client
 
@@ -370,7 +375,9 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
     mapi workflows init bayes_workflow_audit --name kpp-audit
     mapi workflows apply kpp-audit.yaml
     mapi workflows run kpp-audit -i data=dataset://biology/scratch_assay_pc3@latest \
-        -p model=sci.fisher_kpp@^1 --watch
+        -p model=sci.fisher_kpp@^1 \
+        -p 'settings={"steps_per_hour": 10, "delay": true, "max_extension": 4, "diffusivity_median": 1000, "growth_median": 0.05, "capacity_mu": 122, "capacity_sigma": 15}' \
+        -p 'bind={"dims": {"t": "hours", "x": "position"}, "vars": {"count": "cells"}}' --watch
     ```
 
 === "Python"

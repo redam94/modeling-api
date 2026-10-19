@@ -428,8 +428,9 @@ predictive check of the winner. The report has the tables and the plot of the tr
    **Run on my data**.
 3. In **1. Your data**, select `primates301` in **Dataset**.
 4. Optional: open **Fine-tune (optional: the defaults are correct for most data)**. The
-   defaults are correct for this dataset: `predictors` is `["body", "group_size"]`, `focus` is
-   `group_size`, `hdi_prob` is 0.94, and each fit has 4 chains of 1000 draws and the seed 2017.
+   defaults are correct for this dataset: **Predictors** is `["body", "group_size"]`, **Focus**
+   is `group_size`, **Hdi prob** is 0.94, and each fit has 4 chains of 1000 draws and the seed
+   2017.
 5. Click **Run this recipe**.
 
 The recipe binds the target `brain` to `trait` automatically, because the dataset has one
@@ -458,7 +459,9 @@ plot of the tree and the report. The model version link opens the Model Explorer
 
 The recipe `bayes_workflow_audit` also applies to this model. It adds a prior predictive
 check, a convergence gate and the governance checks `sensitivity.prior` and
-`recovery.simulated`. Type `sci.phylo_regression` as its model. The recipes
+`recovery.simulated`. Type `sci.phylo_regression@^1` in **Model**. In **Fine-tune**, type
+`{"kind": "lambda", "predictors": ["body", "group_size"]}` in **Settings** and `{}` in **Prior
+predictive**: this model keeps no prior draws, so the prior plot of the audit cannot render. The recipes
 `sci_spatial_ladder`, `sci_network_ladder`, `sci_calibrate_then_design` and
 `sci_image_model_check` are for other science models.
 
