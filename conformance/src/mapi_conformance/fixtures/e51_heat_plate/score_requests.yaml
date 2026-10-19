@@ -1,0 +1,27 @@
+# E51: the calibration runs, a new heater layout (a new run), simulated readings, typed errors.
+- name: predict_calibration
+  request: {mode: predict, output: {summary: [mean, sd, q5, q95], draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [field, spread_length]
+    sizes: {run: 3, stat: 4}
+- name: new_layout
+  request: {mode: predict}
+  payload: layout
+  expect: {vars: [field, spread_length], sizes: {run: 1}}
+- name: simulate_layout
+  request: {mode: simulate, seed: 4, output: {summary: [mean, sd]}}
+  payload: layout
+  expect: {vars: [field], sizes: {run: 1, stat: 2}}
+- name: cells_off_the_plate
+  request: {mode: predict}
+  payload: off_grid
+  expect_error: UNSEEN_LEVELS
+- name: layout_without_powers
+  request: {mode: predict}
+  payload: no_power
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: x, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED

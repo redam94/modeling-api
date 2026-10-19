@@ -59,19 +59,28 @@ SubworkflowResolver = Callable[[WorkflowRef], WorkflowSpec | None]
 
 
 def as_value(v: Any) -> Value:
-    """Workflow inputs: an ``xr.Dataset`` becomes a :class:`DatasetValue`."""
+    """Workflow inputs: an ``xr.Dataset`` becomes a :class:`DatasetValue`; an
+    ``xr.DataTree`` (a tree dataset) one whose ``data`` is its root node and whose ``tree``
+    is the tree (a model node's ``nodes`` select other nodes of it)."""
     if isinstance(v, xr.Dataset):
         return DatasetValue(data=v)
+    if isinstance(v, xr.DataTree):
+        return DatasetValue.from_tree(v)
     if isinstance(v, DatasetValue | ModelValue | dict):
         return v
     raise TypeError(f"cannot use a {type(v).__name__} as a workflow input")
 
 
+def _hash(value: DatasetValue) -> str:
+    """A tree input is identified by its whole tree (its root node may be empty)."""
+    if value.tree is not None and value.root is None:
+        return data_hash(value.tree)
+    return data_hash(value.data)
+
+
 def _ref_for(value: Value, type_: PortType) -> NodeOutputRef:
     if isinstance(value, DatasetValue):
-        return NodeOutputRef(
-            type=type_, ref=value.ref or f"local://dataset/{data_hash(value.data)}"
-        )
+        return NodeOutputRef(type=type_, ref=value.ref or f"local://dataset/{_hash(value)}")
     if isinstance(value, ModelValue):
         return NodeOutputRef(type=type_, ref=value.ref or f"local://model/{value.bundle.bundle_id}")
     return NodeOutputRef(type=type_, inline=value)
@@ -183,7 +192,7 @@ class LocalRunner:
                 continue
             v = as_value((inputs or {})[name])
             if isinstance(v, DatasetValue) and v.ref is None:
-                v.ref = f"local://inputs/{name}/{data_hash(v.data)}"
+                v.ref = f"local://inputs/{name}/{_hash(v)}"
             ref = _ref_for(v, decl.type)
             refs[name] = ref
             values[_key(ref)] = v

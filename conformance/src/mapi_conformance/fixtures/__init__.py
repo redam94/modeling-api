@@ -37,9 +37,20 @@ FIXTURES: list[str] = [
     "sm_arimax",
     "sm_vecm_macro",
     "e07_lgcp",
+    "e18_areal",
     "e50_kpp",
+    "e51_heat_plate",
     "e60_traction",
     "e80_lens",
+    "e61_turing",
+    "e58_storm",
+    "e31_ibp",
+    "e77_colour_naming",
+    "e79_cmb",
+    "e21_network",
+    "e19_ggm",
+    "e23_phylo",
+    "e81_circular",
 ]
 
 DEFERRED: dict[str, str] = {

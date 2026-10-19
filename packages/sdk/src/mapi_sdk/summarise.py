@@ -14,12 +14,21 @@ and aggregations are valid depends on the representation; the rules live in
 Summaries are returned as one variable per output with a leading ``stat`` dim whose labels
 read like ``mean``, ``hdi_90_lower``, ``hdi_90_upper``, ``q5`` ... HDIs are computed in
 numpy (narrowest window over sorted draws).
+
+**Circular outputs** (``OutputDecl.circular``, ``periods`` of :func:`summarise`): angles that
+wrap at ``period`` (one turn). Draw summaries are then taken on the circle: ``mean`` is the
+circular mean, ``sd`` the circular standard deviation ``sqrt(-2 ln R)``, and the median,
+quantiles, ETIs and HDIs come from the draws' wrapped deviations from the circular mean, so an
+interval is centred on the mean and may cross the seam. Every value is wrapped into
+``[0, period)`` (``[-period/2, period/2)`` for a difference, ``signed``); an interval with
+``lower > upper`` crosses the seam. This matches the evaluate metrics of
+:mod:`mapi_sdk.metrics`.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from statistics import NormalDist
 
 import numpy as np
@@ -36,6 +45,7 @@ from mapi_spec.capabilities import (
 from mapi_spec.errors import CapabilityError, ErrorCode
 
 __all__ = [
+    "CIRCULAR_ATTR",
     "REP_DIMS",
     "aggregate",
     "default_summary_names",
@@ -44,7 +54,11 @@ __all__ = [
     "select_draws",
     "summarise",
     "thin_index",
+    "wrap_signed",
 ]
+
+CIRCULAR_ATTR = "circular_period"
+"""Attr of a summary variable whose draw summaries were taken on a circle of this period."""
 
 REP_DIMS: dict[Representation, tuple[str, ...]] = {
     Representation.DRAWS: ("chain", "draw"),
@@ -211,6 +225,59 @@ def _draw_stats(
     raise _unsupported(Representation.DRAWS, name)  # pragma: no cover
 
 
+def wrap_signed(x: xr.DataArray, period: float) -> xr.DataArray:
+    """``x`` wrapped to ``[-period/2, period/2)`` (a signed difference of two angles)."""
+    out: xr.DataArray = (x + period / 2) % period - period / 2
+    return out
+
+
+def _circular_draw_stats(
+    da: xr.DataArray, parsed: ParsedSummary, name: str, period: float, *, signed: bool
+) -> list[tuple[str, xr.DataArray]]:
+    """:func:`_draw_stats` of an angle that wraps at ``period`` (see the module doc)."""
+    dims = ["chain", "draw"]
+    k = 2 * np.pi / period
+    cos = xr.apply_ufunc(np.cos, da * k).mean(dims, skipna=False)
+    sin = xr.apply_ufunc(np.sin, da * k).mean(dims, skipna=False)
+    centre: xr.DataArray = xr.apply_ufunc(np.arctan2, sin, cos) / k  # in [-period/2, period/2]
+    dev = wrap_signed(da - centre, period)
+
+    def put(x: xr.DataArray) -> xr.DataArray:
+        out: xr.DataArray = wrap_signed(x, period) if signed else x % period
+        return out
+
+    match parsed.kind:
+        case "mean" | "point":
+            return [(name, put(centre))]
+        case "sd":
+            r = xr.apply_ufunc(np.hypot, cos, sin).clip(1e-300, 1.0)
+            return [(name, (-2 * xr.apply_ufunc(np.log, r)) ** 0.5 / k)]
+        case "median":
+            return [(name, put(centre + dev.median(dims, skipna=False)))]
+        case "hdi":
+            assert parsed.level is not None
+            stacked = dev.stack(__s__=dims).transpose(..., "__s__")
+            lo, hi = hdi(stacked.values, parsed.level)
+            template = stacked.isel(__s__=0, drop=True).drop_vars(dims, errors="ignore")
+            return [
+                (f"{name}_lower", put(centre + template.copy(data=lo))),
+                (f"{name}_upper", put(centre + template.copy(data=hi))),
+            ]
+        case "eti":
+            assert parsed.level is not None
+            a = (1 - parsed.level) / 2
+            q = dev.quantile([a, 1 - a], dim=dims, skipna=False)
+            return [
+                (f"{name}_lower", put(centre + q.isel(quantile=0, drop=True))),
+                (f"{name}_upper", put(centre + q.isel(quantile=1, drop=True))),
+            ]
+        case "quantile":
+            assert parsed.level is not None
+            q = dev.quantile(parsed.level, dim=dims, skipna=False).drop_vars("quantile")
+            return [(name, put(centre + q))]
+    raise _unsupported(Representation.DRAWS, name)  # pragma: no cover
+
+
 def interp_quantile(da: xr.DataArray, level: float, name: str = "") -> xr.DataArray:
     """Value at quantile ``level`` from a ``quantile``-dim array (exact match within 1e-9,
     else linear interpolation; never extrapolates)."""
@@ -343,8 +410,20 @@ def default_summary_names(ds: xr.Dataset, rep: Representation) -> list[str]:
     return out or [n for n in (_quantile_name(lo),) if n is not None]
 
 
-def summarise(ds: xr.Dataset, rep: Representation, names: Sequence[str]) -> xr.Dataset:
-    """Summaries of every output variable, stacked along a leading ``stat`` dim."""
+def summarise(
+    ds: xr.Dataset,
+    rep: Representation,
+    names: Sequence[str],
+    *,
+    periods: Mapping[str, float] | None = None,
+    signed: bool = False,
+) -> xr.Dataset:
+    """Summaries of every output variable, stacked along a leading ``stat`` dim.
+
+    ``periods`` maps circular outputs to their period (one turn): their draw summaries are
+    taken on the circle and wrapped into ``[0, period)``, or ``[-period/2, period/2)`` with
+    ``signed`` (a scenario-minus-baseline difference). The summary variable then has the
+    :data:`CIRCULAR_ATTR` attr. Other representations keep the model's own summaries."""
     rules = REPRESENTATION_RULES[rep]
     parsed = []
     for name in names:
@@ -358,14 +437,27 @@ def summarise(ds: xr.Dataset, rep: Representation, names: Sequence[str]) -> xr.D
         missing = [d for d in REP_DIMS[rep] if d not in da.dims]
         if missing:
             continue  # not a representation-shaped output (e.g. a scalar diagnostic)
+        period = (periods or {}).get(str(v))
+        circular = (
+            rep is Representation.DRAWS
+            and period is not None
+            and math.isfinite(period)
+            and period > 0
+        )
         pieces: list[tuple[str, xr.DataArray]] = []
         for name, p in parsed:
-            pieces += _STATS[rep](da, p, name)
+            if circular:
+                assert period is not None
+                pieces += _circular_draw_stats(da, p, name, period, signed=signed)
+            else:
+                pieces += _STATS[rep](da, p, name)
         labels = [label for label, _ in pieces]
         stacked = xr.concat(
             [arr for _, arr in pieces], dim="stat", coords="minimal", compat="override"
         )
         stacked = stacked.assign_coords(stat=labels)
         stacked.attrs = {k: val for k, val in da.attrs.items()}
+        if circular:
+            stacked.attrs[CIRCULAR_ATTR] = period
         out[str(v)] = stacked.transpose("stat", ...)
     return xr.Dataset(out, attrs=ds.attrs)

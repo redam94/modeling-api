@@ -5,6 +5,311 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.9.0] — Science gallery — 2026-10-19
+
+This release adds eleven science models from the pymc-challenges case studies, for images,
+fields, maps and graphs (15 `sci.*` models in all), and 14 plot recipes for them: maps,
+networks, trees, polar charts, image checks, colour swatches and posterior views. New workflow
+nodes give posterior summaries, posterior predictive checks, stacking weights, score modes and
+plots inside a workflow. Six workflow recipes use them for model ladders, a convergence-gated
+Bayesian audit and calibrate-then-design. Each ported case has a tutorial that does the
+notebook analysis in the web app, and `python -m mapi_plugin_science.export` turns the
+pymc-challenges data into datasets to upload.
+
+### M5 phase 3 — Workflow recipes and tutorials for science models
+
+#### Added
+- **`sci_spatial_ladder`** in the workflow gallery. It fits `sci.areal_bym2` with iid, ICAR and
+  BYM2 area effects and compares them by `elpd_loo` and stacking weights. It keeps the best
+  model and gives the range of the covariate effect. When the chains of the best model agree
+  and the effect is clear, it fits the best model again with wider and narrower priors. It
+  draws a risk map and writes a report.
+- **`sci_network_ladder`** in the workflow gallery. It fits `sci.network_latent_space` with
+  covariates, sociality and a latent space and compares them by `elpd_loo` and stacking
+  weights. It gives the pair effects of the best model, a network plot, simulated networks
+  with their statistics and a report.
+- Two sections in the workflow cookbook, with the documents in
+  `docs/snippets/cookbook_sci_{spatial,network}_ladder.yaml`. A test makes sure that each
+  document is the same as its gallery template, and slow tests run the two documents.
+- **Recipe `sci_phylo_signal`** in the workflow gallery. It fits `sci.phylo_regression`
+  with four residual kinds (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck),
+  ranks them by `elpd_loo`, gives the stacking weights and selects the best. Then it tests
+  if the range of one slope of the winner excludes zero. A clear effect also gets a
+  predictive check. The report has the three tables and the `sci.phylogeny` plot. On the
+  186 primates of the `primates301` dataset (E23), lambda wins with an `elpd_loo` of 129.9 (the notebook gives 130).
+- **Recipe `sci_calibrate_then_design`** in the workflow gallery. It fits `sci.heat_plate`
+  with one calibration run held out, then fits all the runs again. It predicts the field of a
+  new heater layout (`model.score`, `sci.field_map`) only if the error on the run held out
+  and R-hat are in their limits. The report has the parameters, the holdout metrics and the
+  `sci.image_residuals` and `sci.field_map` plots.
+- Both recipes have a section in the workflow cookbook with the CLI and the Python client.
+  Their cookbook documents are tested against the gallery templates and run with the local
+  runner on the simulated data of the models.
+- `model.summary` has a new parameter `focus` and a result field `focus`. A condition cannot
+  build an entry name from a parameter, so `focus` names one value (`beta[north]`, or only
+  `north`). The result gives its mean, sd, HDI bounds, `p_positive` and `excludes_zero`.
+- **Two gallery templates** with About cards, cookbook sections
+  (`docs/snippets/cookbook_<id>.yaml`) and run tests with the local runner:
+  - `bayes_workflow_audit`: the checks of a careful Bayesian workflow for each model that
+    gives draws (the `model` parameter). The fit keeps prior draws for the prior plot.
+    A gate on R-hat and the effective sample size controls the posterior predictive
+    check, the prior sensitivity check and the recovery check. The report has the prior,
+    pair, predictive and estimate plots.
+  - `sci_image_model_check`: residual maps and a grid of predicted images next to the
+    observed image for an image model (for example `sci.strong_lens` or `sci.cmb_field`),
+    with the posterior predictive check and a report.
+- **Tutorials for the pymc-challenges case studies** in `docs/tutorials/pymc-challenges/`: an
+  index and one page for each of the 15 ported cases (E07, E18, E19, E21, E23, E31, E50, E51,
+  E58, E60, E61, E77, E79, E80, E81). Each page exports the data, uploads it, builds and fits
+  the spec in the web app, reads the Model Explorer, scores the model and runs the matching
+  recipe, with the CLI and the Python client as tabs. The numbers come from fits of the real
+  data. E51 and E61 use the data that their notebooks simulate. `docs/tutorials/complex-workflows.md` shows the patterns of the recipes in the
+  workflow editor: model ladders, gates, predictive checks, governance checks,
+  calibrate-then-design, plots in reports, tree datasets and sub-workflows. The pages are in
+  the navigation and have cards in the tutorials index.
+- The web mocks (`workflows.gen.json`, `explorer.gen.json`) have the ten gallery templates.
+
+#### Fixed
+- `evaluate.ppc` failed for a model whose output has the name of its canonical target when
+  the dataset binds the target to a different name (for example `sci.phylo_regression`, with
+  `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
+  node now looks for that name.
+- `sci.area_map` of a fitted `sci.areal_bym2` showed no **Observed** panel: the plot looked for
+  `rr` in the observed data, and the model keeps the raw SMR as `smr`. A spec cannot give
+  settings to a plot, so the fit now names the observed counterpart of `rr` in the attribute
+  `mapi_observed`, and the plot reads it.
+- The table of a score result on the Score page lost the cells of a grid when a dim had
+  numeric labels (for example `y_cm` and `x_cm` of `sci.heat_plate`, or the lawyer numbers of
+  `sci.network_latent_space`). The page took the numeric dims for variables and kept one row
+  for each run. The Arrow views now name their dims in the schema metadata `mapi.dims`, and
+  the page keeps these columns as keys.
+- The science tutorials: the build steps now paste the full spec over the starter template (it
+  has a pipeline, a split and MMM plots), open the closed **Datasets** section of the
+  **Insert** panel, click **Create dataset** before the upload, take the spec name from
+  `metadata.name`, and point to the **Events** card (the **Logs** card stays empty). The E18,
+  E21 and E51 tutorials and `complex-workflows.md` have eight screenshots from a live dev
+  stack (`make docs-screenshots-science`).
+- `sci_spatial_ladder` ignored its own convergence check: the branch `clear` took the then
+  arm when the chains of the best model did not agree. The branch now needs a convergence
+  check that does not fail, and the report says so.
+- The scorecard check "Few missing values" (`data.missing`) counted each NaN of the raw
+  dataset. Thus it always failed for E18 (the padding of the outlines `ring_x` and `ring_y`)
+  and E51 (the cells without a thermocouple). The check now counts only the variables that
+  contain observations. It does not count the roles `constant`, `index` and `mask`, or the
+  variables that the model declares in the new class attribute
+  `CustomModel.structural_missing` (`sci.heat_plate` declares `temperature`). The expert
+  message names the variables that the check does not count. Gaps in a target, a spend or a
+  covariate count as before, also with `missing: allow`.
+- The gate of `sci_calibrate_then_design` stopped the run with `EXPRESSION_ERROR` when R-hat
+  was null (one chain). The condition now uses `coalesce`, and the recipe needs two or more
+  chains.
+- The Score page offered **No new data** for Predict, Simulate and What if. The server refuses
+  such a request when it has no forecast horizon and no scenario dataset ("the score request
+  has no data"). The page now shows **No new data** only for Forecast, or when a scenario
+  dataset gives the values. For the other modes, a note on the page tells why the option is
+  not there. For a model that has no forecast mode, the note says that the model always needs
+  values to score.
+- Some suggested specs of `mapi_plugin_science.export` needed changes by hand:
+  - E50 lists `elpd_loo`, but the spec did not keep the log-likelihood, so the fit did not
+    calculate `elpd_loo`. The spec now has `fit.keep: {log_likelihood: true}` and the
+    `sci.profile_bands` plot.
+  - E60 listed `sci.field_map`, which cannot draw the vector output `traction`. The spec now
+    lists `sci.vector_field`. It also fits on all of the data (`mode: train_only`), with no
+    metrics.
+  - E80 listed `sci.field_map`, which draws the parameter `e_light` and not the image. The
+    spec now lists `sci.image_residuals` and `sci.ppc_image_grid`, and fits on all of the
+    pixels (`mode: train_only`).
+  - With `--synthetic`, the E77 spec held out speakers that the simulated data does not have,
+    and the E79 spec had a bandpower bin that the simulated patch is too small for. These
+    specs now fit the simulated data.
+
+  New tests make sure that each suggested spec validates against the schema of its exported
+  file. A slow test fits each spec on the simulated data with few draws and makes sure that
+  each plot of the spec shows, that a map shows an output of the model, and that the fit
+  calculates `elpd_loo` when the spec lists it.
+- The score summaries of a circular output (`OutputDecl.circular`) were calculated on a line,
+  not on the circle. For draws on the two sides of north (350 and 10 degrees), the `mean` was
+  near 180 degrees and `hdi_90` covered almost the full circle. Now the summaries of draws use
+  the circular mean, and each interval (`hdi`, `eti`) and quantile is centred on that mean. The
+  values are in `[0, period)`, so an interval with `lower` more than `upper` crosses the seam.
+  `sd` is the circular standard deviation. The difference between a scenario and its baseline
+  (`delta/summary`, `delta/draws`) is wrapped to `[-period/2, period/2)`. This is the same
+  rule as the evaluate metrics. A circular output that has no valid `period` attr, or that is
+  aggregated over a dim, keeps the summary on a line, and the result has a warning.
+- `ScoreSummaryTable` (`summary.json`) has a new field `period` for a circular output, so that
+  a reader knows that the statistics are on the circle.
+- `sci.circular_regression` also declares `mean_direction` circular, with a `period` attr.
+- `governance.check` with `recovery.simulated` gave `error` for `sci.lgcp_grid` and
+  `sci.areal_bym2`, and `skipped` for `sci.network_latent_space`. The check added residuals to
+  the fitted values, so the simulated counts were not whole numbers and the refits failed. Now
+  a Bayesian model with predictive draws simulates each dataset from its posterior predictive
+  (one posterior draw and the noise of the model). The known values are the values of that
+  draw. A count target without predictive draws gives `skipped` with the reason. A simulated
+  dataset that the model cannot fit is counted in the evidence (`failed_simulations`).
+- The governance checks found no predictions for a model whose output has the name of its
+  canonical target when the dataset binds the target to a different name (`tie` bound to
+  `cowork` in `sci.network_latent_space`). They now look for the dataset name too.
+
+#### Known gaps
+- `governance.check` with `sensitivity.prior` cannot find the prior widths of
+  `sci.areal_bym2` (`intercept_sd`, `slope_sd`, `sigma_scale`), so the check is skipped. The
+  spatial ladder fits the model again with these widths in its place.
+- The graph check of the network ladder plots the statistics of the simulated networks only.
+  The plot does not mark the statistics of the observed network.
+- `core.prior_predictive` cannot draw the prior draws of `sci.heat_plate` (the draws are on
+  the sensor dim, the observed data is on the grid). Some science models (for example
+  `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
+  failed prior plot and continues.
+- Only `sci_spatial_ladder` has run end to end on a live dev stack and in a browser. The
+  six M5 recipes run through the server orchestrator in a slow test
+  (`packages/server/tests/test_workflows_m5_templates.py`), with small fits.
+
+### M5 phase 2 — Science gallery models
+
+#### Added
+- **Eleven science models** in `mapi-plugin-science`, ported from the pymc-challenges case
+  studies. Each has an About card, a section in `docs/reference/models.md`, a conformance
+  fixture, a data export case and tests against the real data of its notebook:
+  - `sci.heat_plate` (E51): the 2-D steady heat equation of a heated plate, a finite-volume
+    system solved in the model graph; predicts the field of new heater layouts.
+  - `sci.turing_pattern` (E61 part A): Schnakenberg rates from early images of a growing
+    Turing pattern, with the exact Fourier-mode likelihood, the dispersion relation,
+    P(Turing) and simulated patterns.
+  - `sci.storm_localisation` (E58): single-molecule localisation in raw EMCCD STORM frames,
+    with camera calibration, spot detection, a batched pixel-integrated Gaussian PSF fit and
+    a super-resolved render kept in the bundle.
+  - `sci.ibp_features` (E31): latent binary features of small images (truncated Indian
+    buffet process with the patterns summed out).
+  - `sci.colour_naming` (E77): colour naming of one World Color Survey language, pooled or
+    with speaker effects.
+  - `sci.cmb_field` (E79): field-level inference of a masked CMB map with a Wandelt-Eriksen
+    Gibbs sampler (sky draws behind the mask and bandpowers).
+  - `sci.areal_bym2` (E18): disease mapping on a graph of areas with iid, ICAR, proper CAR or
+    BYM2 effects.
+  - `sci.network_latent_space` (E21): ties of a graph from pair covariates, sociality and
+    Procrustes-aligned latent positions.
+  - `sci.graphical_model` (E19): a Gaussian graphical model, dense LKJ or horseshoe
+    neighbourhood selection, with edge probabilities.
+  - `sci.phylo_regression` (E23): regression on a phylogeny with iid, Brownian, Pagel lambda
+    or OU residuals.
+  - `sci.circular_regression` (E81): von Mises, projected normal and regime-mixture
+    regression of angles, and log-Fourier activity densities with overlaps.
+- Export cases e18, e19, e21, e23, e31, e51, e58, e61, e77, e79, e81 (KSBA winds) and e81b
+  (Barro Colorado camera-trap times). A case whose notebook simulates its data (E51, E61)
+  needs no data directory.
+- `OutputDecl.circular` (`mapi-spec`): an output that is an angle (a direction, a time of
+  day). The model sets a `period` attr on the scored array, and the holdout metrics use the
+  circular mean, errors wrapped to half a turn, intervals around the circular mean and an
+  arc-distance CRPS (`mape`, `smape`, `wape` and `r2` are skipped).
+  `sci.circular_regression` declares `direction_hat` circular.
+- `mapi_plugin_science._common`: the seeded generators, the quiet PyMC context, the attr
+  cleaning and the draw selection the `sci.*` modules share (one copy instead of ten).
+
+#### Changed
+- `BindingMap` rewrites the dim names in a variable's `grid` attr when it renames dims, so
+  the `sci.*` image recipes find the grid of a score tree after a `data.bind`.
+- `EnginePlan` (`mapi-pymc`) has `initvals` and `jitter`: a plugin can start every MCMC
+  chain at one given point (`pymc`, `nutpie` and the external NUTS bridges).
+  `sci.ibp_features` uses it to avoid a start where all its features switch off.
+
+- The SDK harness parses the model's settings before the data is transformed or split, so a
+  cross-field settings rule (a pydantic `model_validator`) refuses the fit early.
+  `sci.storm_localisation`, `sci.graphical_model` and `sci.colour_naming` check their
+  settings-only rules there, as the phase 1 models do.
+
+#### Fixed
+- `python -m mapi_plugin_science.export --list` lists every case (a case registered after
+  the `__main__` guard was missing from the command line).
+- `sci.circular_regression` evaluate metrics treated angles as numbers: draws around north
+  (350° and 10°) had a mean near 180°, and the MAE of a good fit was about that of a constant
+  guess. They are circular now (see `OutputDecl.circular`).
+- `sci.cmb_field` simulate drew the mean of each new patch from the vague 100 µK prior of the
+  fitted patch's mean; it now comes from the spectrum.
+- `sci.storm_localisation`: `render_px_nm` is at least 1 nm, and the fit refuses
+  (`SETTINGS_INVALID`) settings whose render of `score_draws` draws is over 50 million values
+  (a 0.1 nm render could ask for terabytes).
+- `score_bundle` refuses a mode the model does not support (`MODE_NOT_SUPPORTED`) before any
+  mode-specific work: a forecast of a model with text labels on the horizon dim raised an
+  untyped `UFuncTypeError`, and some models answered `ACTUALS_NOT_SUPPORTED`. A horizon along
+  text labels is `COORD_NOT_ALLOWED`.
+- `sci.graphical_model`: score data without a `cell` dim is `SCHEMA_INVALID`, not a
+  `KeyError` (`USER_CODE_ERROR`).
+- Conformance: e18_areal and e19_ggm pass at `--size full` (their score expectations fixed the
+  tiny data's district and protein counts; the hooks now check them against the data).
+
+#### Known gaps
+- `sci.turing_pattern`: the notebook-sized fit takes about 5 min and mixes slowly (r_hat
+  about 1.02, bulk ESS about 180 for rho and g).
+- `sci.network_latent_space`: the latent-space fit with covariates (model c) warns at 4 × 1000
+  draws (max r_hat 1.08, bulk ESS 46); it needs more draws or tuning.
+- `sci.network_latent_space`: evaluate metrics include the diagonal (self-tie) cells.
+
+### M5 phase 1 — Science gallery foundation
+
+#### Added
+- **Core plot recipes** (`mapi_plots.recipes.extras`, Vega-Lite): `core.pair` (corner plot
+  with divergent draws), `core.ridge` (one density for each level, with HDI),
+  `core.rank_matrix` (P(rank = k) and P(row above column)), `core.calibration` (PIT-ECDF
+  difference with a simultaneous envelope, or a reliability diagram for 0/1 targets) and
+  `core.state_sequence` (observed series above the state probabilities).
+- **Science plot recipes** (Plotly): `sci.area_map` (areas as polygons with mean, sd and
+  exceedance panels), `sci.phylogeny` (a tree with tip estimates), `sci.rose` (polar rose or
+  density of angles), `sci.image_residuals`, `sci.ppc_image_grid`, `sci.swatches` (sRGB
+  colour squares, also as a map), `sci.power_spectrum` and `sci.point_pattern` (points with
+  error ellipses over a field).
+- **Network pack** `net` (entry point `mapi.plots: net`): `net.graph`, a node-link drawing
+  and an adjacency matrix of an edge variable `(…, node, node_)`. The catalog shows a
+  "Networks" filter.
+- Each new recipe has an About card, an example in `mapi_plots.examples`, a gallery image and
+  a row in `docs/reference/plots.md`.
+- The plot sandbox applies the theme to polar subplots (`barpolar`, `scatterpolar`).
+- **Workflow nodes:** `model.summary` (posterior summaries, R-hat, ESS, divergences;
+  conditions can read `nodes.s.params[...]`), `evaluate.ppc` (coverage, PIT KS distance,
+  Bayesian p-values), `compare.stacking` (stacking and pseudo-BMA+ weights from the
+  pointwise elpd that `model.fit` now keeps), `model.score` (a score mode as a dataset) and
+  `plot.render` (any catalog recipe as a `plot` output). The new node kind is `plot`.
+- `model.forecast` and `evaluate.residuals` now give their `plot` outputs.
+  `report.summary` has a `plots` input and `plot` sections. The web run view draws the plot
+  outputs of nodes and reports.
+- The SDK `MetricsReport` has an `elpd` field with the pointwise values (up to 10 000
+  points). The server reads it from the fit run of a workflow.
+- `model.fit` and `model.backtest` take `nodes` and `join`, so tree datasets work in
+  workflows. The local runner accepts `xr.DataTree` inputs.
+  `mapi_workflows.testing.science_registry()` registers the science plugin.
+- **Data export** of the science case studies: `python -m mapi_plugin_science.export <case>
+  --challenges <data dir> --out <file.nc>` (and `--list`) writes a file that you can upload.
+  Cases e07, e50, e60 and e80.
+
+#### Changed
+- `mapi-workflows[runtime]` depends on `mapi-plots[recipes]`.
+- The server puts the plot outputs of workflow nodes through the plot sanitizer when it
+  collects them (an unsafe plot fails its node with `PLOT_UNSAFE`) and again when it serves
+  node runs, run outputs and report plot sections.
+- Workflow validation resolves the `recipe` of `plot.render` against the bundled recipes and
+  the plot catalog (`REF_UNRESOLVED`).
+- `model.summary` computes `max_rhat` and `min_ess` over all the values of the selected
+  variables (up to 20 000), not only the 200 values of the table.
+- `model.score`, `model.forecast` and `plot.render` (`source: predictions`) send a tree input
+  whole and give a tree-input model the tree of that input. `plot.render` with
+  `source: data` keeps the groups of a tree input.
+
+#### Fixed
+- `sci.phylogeny` matched tips by label when a 0-based tip coord shared a label or two with
+  the node positions by chance; most tips were then empty.
+- `sci.image_residuals` with `log` divided log10 residuals by a σ in data units. The
+  normalised residual is now in data units.
+- A non-finite `elpd_loo` (a log-likelihood of `-inf`) made the fitted bundle impossible to
+  load. Such an estimate is now left out, and bundles that already hold one load.
+- The pseudo-BMA+ bootstrap of `compare.stacking` no longer holds a `(n_bootstrap, N)`
+  matrix (800 MB at the limits).
+
+#### Known gaps
+- A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window. The node shows a warning.
+- `search.grid` has no `nodes` parameter.
+- The HTML report does not show plot sections. Only the JSON report and the web run view
+  show them.
+
 ## [0.8.0] — Tree datasets — 2026-10-18
 
 This release adds datasets that are trees of groups. A NetCDF-4 or HDF5 file keeps its

@@ -149,6 +149,11 @@ zarr or Arrow reader. If a result has more than 100,000 cells, the server cuts i
             "truncated": false}
 ```
 
+A table of a circular output (an angle, for example a wind direction) has the field `period`
+(one turn, for example 360). Its statistics are on the circle: `mean` is the circular mean,
+and each interval is centred on it. All values are from 0 to `period`. An interval with
+`lower` more than `upper` crosses the seam (for example, from 350 to 10 degrees).
+
 ```bash
 api -X POST "$API/v1/endpoints/geo-mmm-prod/score" \
   -H 'Prefer: wait=60' -H 'Idempotency-Key: plan-2026-11' \

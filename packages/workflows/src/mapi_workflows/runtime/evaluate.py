@@ -5,7 +5,8 @@
   error measures as ``model.backtest`` (so ``compare.models`` compares like with like).
 * ``evaluate.metrics`` reads a backtest's or a fitted model's holdout metrics.
 * ``evaluate.residuals`` runs Ljung-Box, Jarque-Bera and a spread test (Breusch-Pagan on the
-  drivers, else ARCH-LM) on a model's in-sample residuals.
+  drivers, else ARCH-LM) on a model's in-sample residuals, and draws them over time
+  (``core.residuals_over_time``) as its ``plot`` output.
 * ``compare.diebold_mariano`` tests whether two candidates' backtest errors at one horizon
   differ, with the Harvey-Leybourne-Newbold small-sample correction.
 """
@@ -236,6 +237,12 @@ def _residuals(ctx: NodeContext) -> NodeOutcome:
         rows=rows,
         meta={"skew": clean_number(skew), "kurtosis": clean_number(kurt), "n": len(e), "lags": use},
     )
+    outputs: dict[str, Any] = {"table": table.model_dump(mode="json")}
+    from mapi_workflows.runtime.plots import residuals_plot  # plots imports the model nodes
+
+    plot, warn = residuals_plot(mv, res.scored, ctx.registry)
+    if plot is not None:
+        outputs["plot"] = plot
     return NodeOutcome(
         result={
             "white_noise": white,
@@ -245,7 +252,8 @@ def _residuals(ctx: NodeContext) -> NodeOutcome:
             "jarque_bera_p": float(jb_p),
             "spread_p": float(sp_p),
         },
-        outputs={"table": table.model_dump(mode="json")},
+        outputs=outputs,
+        warnings_plain=[warn] if warn else [],
     )
 
 

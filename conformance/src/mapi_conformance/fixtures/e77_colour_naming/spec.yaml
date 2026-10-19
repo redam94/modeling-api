@@ -1,0 +1,15 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: colour-naming-synthetic, project: linguistics, labels: {corpus: e77}}
+data:
+  dataset: dataset://linguistics/colour_naming@latest
+  bind:
+    vars: {naming: response, lab_l: cie_l, lab_a: cie_a, lab_b: cie_b,
+           grid_row: wcs_row, grid_col: wcs_col}
+  split: {kind: leave_group_out, dim: speaker, n: 3, seed: 7}
+model:
+  use: sci.colour_naming@^1
+  settings: {kind: hierarchical, features: cielab, new_speakers: 20, score_draws: 200}
+  fit: {mode: evaluate_then_refit, seed: 77, tune: 500, draws: 500, chains: 4, engine: pymc}
+evaluate: {metrics: [log_score, accuracy, accuracy_lift, brier, elpd_loo]}
+outputs: {plots: [core.convergence, core.posterior_forest, sci.swatches, sci.field_map]}

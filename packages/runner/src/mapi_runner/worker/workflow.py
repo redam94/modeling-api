@@ -11,12 +11,15 @@ objects like any run's; the orchestrator reads the sidecar.
 Model-version inputs come as three run inputs: ``in.<port>.<k>`` (the bundle),
 ``in.<port>.<k>.manifest`` (its SDK manifest) and ``in.<port>.<k>.data`` (the dataset it
 was fitted on); its ``model://`` reference is in the job's reserved ``_refs`` parameter.
+A tree dataset input (M4) is its root node with the tree kept, so a model node's ``nodes``
+can select other nodes of it.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import xarray as xr
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
 from mapi_sdk.errors import BundleError, WireFormatError
 from mapi_sdk.wire import read_datatree_zip
@@ -27,7 +30,7 @@ from mapi_spec.workflow_nodes import PortType
 from pydantic import ValidationError
 
 from mapi_runner.worker.context import WorkerContext
-from mapi_runner.worker.data import _manifest_from_tree, load_data_and_tree, load_flat_dataset
+from mapi_runner.worker.data import _manifest_from_tree, load_data_and_tree, load_dataset
 
 __all__ = ["run_workflow_node"]
 
@@ -80,7 +83,7 @@ def run_workflow_node(ctx: WorkerContext, job: WorkflowNodeJob) -> None:
         output_files,
         parse_input_name,
     )
-    from mapi_workflows.runtime.values import ModelValue, Value
+    from mapi_workflows.runtime.values import DatasetValue, ModelValue, Value
 
     ctx.state(RunnerPhase.LOAD_INPUTS, f"loading the inputs of {job.node_id}")
     refs_raw = job.params.get("_refs")
@@ -110,7 +113,11 @@ def run_workflow_node(ctx: WorkerContext, job: WorkflowNodeJob) -> None:
             )
         elif kind is PortType.DATASET or kind is None:
             ref = refs.get(name)
-            value = dataset_value(load_flat_dataset(ctx, None, name), str(ref) if ref else None)
+            raw = load_dataset(ctx, name)
+            if isinstance(raw, xr.DataTree):  # M4: the root node, with the tree kept
+                value = DatasetValue.from_tree(raw, ref=str(ref) if ref else None)
+            else:
+                value = dataset_value(raw, str(ref) if ref else None)
         else:
             raise MapiError(
                 f"input {name!r} of type {kind.value} must be inline", code=ErrorCode.SCHEMA_INVALID

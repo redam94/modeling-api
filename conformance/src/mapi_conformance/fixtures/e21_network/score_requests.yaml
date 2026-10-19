@@ -1,0 +1,27 @@
+# E21: tie probabilities of every pair, simulated graphs, a subset of nodes, typed errors.
+- name: predict_ties
+  request: {mode: predict, output: {draws: 5}}
+  payload: fit_data
+  expect:
+    groups: [summary, draws]
+    vars: [tie_prob, cowork, degree, sociality, position]
+    sizes: {latent_dim: 2}
+- name: simulate_graphs
+  request: {mode: simulate, output: {kind: predictive}}
+  payload: fit_data
+  expect: {vars: [cowork, degree, graph_stat], sizes: {statistic: 9}}
+- name: first_ten_nodes
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: first_ten
+  expect: {vars: [tie_prob], sizes: {lawyer: 10, lawyer_: 10, stat: 3}}
+- name: one_covariate
+  request: {mode: predict}
+  payload: one_covariate
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: node, periods: 2}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: homophily, multiply: 2}]}
+  payload: fit_data
+  expect_error: MODE_NOT_SUPPORTED

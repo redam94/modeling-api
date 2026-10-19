@@ -4,7 +4,8 @@
 Fits go through the SDK harness exactly like a ``fit`` run (:func:`mapi_sdk.harness.fit_spec`
 on a generated :class:`~mapi_spec.spec.ModelSpec`), forecasts through the score path
 (:func:`mapi_sdk.harness.score_bundle`), so preprocessing is replayed and every model in the
-catalog works the same way.
+catalog works the same way. ``model.forecast`` also draws its fan chart (``core.ppc_fan``) as
+its ``plot`` output (:mod:`mapi_workflows.runtime.plots`).
 
 **Derived data.** When a model node's data comes from transform nodes whose steps have a
 steps-core equivalent (``transform.steps``, ``transform.select``), the spec's pipeline
@@ -43,13 +44,20 @@ from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tree import NodeSelect
 from mapi_workflows.binding import (
     auto_bind,
     canonical_split,
     canonical_steps,
     model_input_schema,
 )
-from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, TablePayload, clean_number
+from mapi_workflows.payloads import (
+    ElpdPayload,
+    MetricsCandidate,
+    MetricsPayload,
+    TablePayload,
+    clean_number,
+)
 from mapi_workflows.runtime.data import (
     data_error,
     label_of,
@@ -59,7 +67,14 @@ from mapi_workflows.runtime.data import (
     time_dim,
     with_schema,
 )
-from mapi_workflows.runtime.values import DatasetValue, ModelValue, NodeContext, NodeOutcome
+from mapi_workflows.runtime.values import (
+    DatasetValue,
+    ModelValue,
+    NodeContext,
+    NodeOutcome,
+    score_rows,
+    scoring_tree,
+)
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document
 from pydantic import JsonValue
 
@@ -69,7 +84,9 @@ __all__ = [
     "Residuals",
     "backtest_model",
     "build_spec",
+    "elpd_of",
     "fit_burn_in",
+    "fit_input",
     "fold_metrics",
     "forecast_errors",
     "model_residuals",
@@ -152,6 +169,7 @@ def build_spec(
         )
     except ValueError as exc:
         raise MapiError(str(exc), code=ErrorCode.WORKFLOW_INVALID) from None
+    base = _selected(base, doc["data"])
     if registry is not None:
         doc["data"]["bind"] = _auto_bind(
             registry, doc["model"]["use"], doc["model"]["settings"], base, doc["data"]["bind"]
@@ -168,6 +186,41 @@ def build_spec(
             untrusted_text=str(exc)[:4000],
         ) from None
     return spec, base, warns
+
+
+def _selected(base: DatasetValue, block: Mapping[str, Any]) -> DatasetValue:
+    """``base``, or (a tree dataset with ``data.nodes``) the flat merge of those nodes."""
+    raw = block.get("nodes")
+    if not isinstance(raw, dict) or not raw:
+        return base
+    if base.tree is not None and base.root is not None:
+        raise MapiError(
+            "'nodes' selects nodes of the tree dataset itself, but the data of the node was "
+            "transformed. Connect the tree dataset, or put the transform in 'pipeline'.",
+            code=ErrorCode.WORKFLOW_INVALID,
+            pointer="/data/nodes",
+        )
+    try:
+        nodes = {str(k): NodeSelect.model_validate(v) for k, v in raw.items()}
+    except ValueError as exc:
+        raise MapiError(
+            "the 'nodes' of the model node are not valid",
+            code=ErrorCode.WORKFLOW_INVALID,
+            untrusted_text=str(exc)[:4000],
+        ) from None
+    join = block.get("join", "exact")
+    return base.select(nodes, join if join in ("inner", "outer") else "exact")
+
+
+def fit_input(base: DatasetValue) -> tuple[xr.Dataset | xr.DataTree, dict[str, Any]]:
+    """What :func:`fit_spec` gets for ``base``: the tree itself when ``base`` is a tree
+    dataset (the harness merges ``data.nodes`` and gives a tree-input model the tree), else
+    the flat data, with the tree it was selected from (``tree=``) when there is one."""
+    if base.tree is None:
+        return base.data, {}
+    if base.root is None:
+        return base.tree, {}
+    return base.data, {"tree": base.tree}
 
 
 def _auto_bind(
@@ -190,6 +243,13 @@ def _auto_bind(
 
 def _metrics_of(bundle: Bundle) -> dict[str, float | None]:
     return {k: clean_number(v) for k, v in (bundle.metrics.values or {}).items()}
+
+
+def elpd_of(bundle: Bundle) -> dict[str, ElpdPayload] | None:
+    """The bundle's elpd estimates (with pointwise values) for a metrics candidate."""
+    detail = getattr(bundle.metrics, "elpd", None) or {}
+    out = {k: ElpdPayload.model_validate(v.model_dump()) for k, v in detail.items()}
+    return out or None
 
 
 def _scorecard(bundle: Bundle) -> str:
@@ -253,7 +313,8 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
         ctx.params, dv, name=ctx.node_id, split=split, registry=_registry(ctx)
     )
     ctx.info(f"fitting {spec.model.use} on {base.ref or 'the input data'}")
-    bundle = fit_spec(spec, base.data, registry=_registry(ctx), hooks=_hooks(ctx))
+    data, extra = fit_input(base)
+    bundle = fit_spec(spec, data, registry=_registry(ctx), hooks=_hooks(ctx), **extra)
     metrics = _metrics_of(bundle)
     ref = f"local://{ctx.node_id}/{bundle.bundle_id}"
     mv = ModelValue(
@@ -262,6 +323,7 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
         ref=ref,
         model=str(spec.model.use),
         settings=dict(spec.model.settings),
+        tree=base.tree,
     )
     cand = MetricsCandidate(
         name=ctx.node_id,
@@ -270,6 +332,7 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
         model=str(ctx.params.get("model")),
         settings=dict(spec.model.settings),
         metrics=metrics,
+        elpd=elpd_of(bundle),
     )
     result: dict[str, JsonValue] = {
         "model_version": ref,
@@ -339,13 +402,20 @@ def _score_window(
     target: str,
     fold: Mapping[str, Any],
     season: int,
+    tree: xr.DataTree | None = None,
 ) -> FoldForecast:
     reg = _registry(ctx)
     t0, t1 = int(fold["train_start"]), int(fold["train_stop"])
     s0, s1 = int(fold["test_start"]), int(fold["test_stop"])
     train = data.isel({tdim: slice(t0, t1)})
     bundle = fit_spec(
-        spec, train, registry=reg, hooks=_hooks(ctx), keep_evaluation_bundle=False, hash_data=False
+        spec,
+        train,
+        registry=reg,
+        hooks=_hooks(ctx),
+        keep_evaluation_bundle=False,
+        hash_data=False,
+        tree=tree,
     )
     out_var, _canon_target, _ = _target_names(bundle)
     periods = s1 - t1
@@ -364,6 +434,7 @@ def _score_window(
         registry=reg,
         return_full=True,
         history=train,
+        tree=tree,
     )
     pred = tree["predictions"].to_dataset()
     da = pred[out_var]
@@ -396,6 +467,7 @@ def _score_masked(
     target: str,
     fold: Mapping[str, Any],
     season: int,
+    tree: xr.DataTree | None = None,
 ) -> FoldForecast:
     """k-fold: mask the test block and buffers in the target, fit, predict the block."""
     reg = _registry(ctx)
@@ -414,11 +486,17 @@ def _score_masked(
     masked[target] = tgt.where(~m)
     masked = _allow_missing(masked, target)
     bundle = fit_spec(
-        spec, masked, registry=reg, hooks=_hooks(ctx), keep_evaluation_bundle=False, hash_data=False
+        spec,
+        masked,
+        registry=reg,
+        hooks=_hooks(ctx),
+        keep_evaluation_bundle=False,
+        hash_data=False,
+        tree=tree,
     )
     out_var, _, _ = _target_names(bundle)
     tree = score_bundle(
-        bundle, _request(spec, "predict"), data=masked, registry=reg, return_full=True
+        bundle, _request(spec, "predict"), data=masked, registry=reg, return_full=True, tree=tree
     )
     pred = tree["predictions"].to_dataset()
     da = pred[out_var]
@@ -442,6 +520,7 @@ def _score_groups(
     fold: Mapping[str, Any],
     gdim: str,
     season: int,
+    tree: xr.DataTree | None = None,
 ) -> FoldForecast:
     """geo holdout: train without the held-out groups (or without their test window), then
     predict them."""
@@ -469,11 +548,17 @@ def _score_groups(
         window = slice(int(s0), int(s1) if s1 is not None else None)
         train = _allow_missing(train, target)
     bundle = fit_spec(
-        spec, train, registry=reg, hooks=_hooks(ctx), keep_evaluation_bundle=False, hash_data=False
+        spec,
+        train,
+        registry=reg,
+        hooks=_hooks(ctx),
+        keep_evaluation_bundle=False,
+        hash_data=False,
+        tree=tree,
     )
     out_var, _, _ = _target_names(bundle)
     tree = score_bundle(
-        bundle, _request(spec, "predict"), data=test, registry=reg, return_full=True
+        bundle, _request(spec, "predict"), data=test, registry=reg, return_full=True, tree=tree
     )
     pred = tree["predictions"].to_dataset()
     da = pred[out_var]
@@ -572,6 +657,8 @@ def backtest_model(
         registry=_registry(ctx),
     )
     ds = base.data
+    if base.tree is not None and base.schema is not None:  # the merged nodes' schema
+        ds = with_schema(ds, base.schema)
     schema = schema_of(base)
     tdim = time_dim(ds, schema, plan_dim(plan))
     target = target_var(ds, schema, _bound_target(ctx.params, spec))
@@ -581,6 +668,11 @@ def backtest_model(
         season = 1
     kind = _scored_kind(plan)
     folds = plan_fold_list(plan)
+    if base.tree is not None and _reads_tree(ctx, str(spec.model.use)):
+        warns.append(
+            "each fold gives the model the full tree dataset: a model that reads the target "
+            "from the tree can see the test periods."
+        )
     out: list[FoldForecast] = []
     for i, f in enumerate(folds):
         ctx.check()
@@ -588,11 +680,11 @@ def backtest_model(
             ctx.progress(i / len(folds), f"fold {i + 1} of {len(folds)}")
         if f.get("test_groups") is not None:
             gdim = str((plan.get("plan") or {}).get("dim") or "geo")
-            out.append(_score_groups(ctx, spec, ds, tdim, target, f, gdim, season))
+            out.append(_score_groups(ctx, spec, ds, tdim, target, f, gdim, season, base.tree))
         elif kind in ("blocked_kfold", "purged_kfold"):
-            out.append(_score_masked(ctx, spec, ds, tdim, target, f, season))
+            out.append(_score_masked(ctx, spec, ds, tdim, target, f, season, base.tree))
         else:
-            out.append(_score_window(ctx, spec, ds, tdim, target, f, season))
+            out.append(_score_window(ctx, spec, ds, tdim, target, f, season, base.tree))
     info = {
         "model": str(spec.model.use),
         "settings": dict(spec.model.settings),
@@ -600,6 +692,13 @@ def backtest_model(
         "dim": tdim,
     }
     return out, info, warns
+
+
+def _reads_tree(ctx: NodeContext, ref: str) -> bool:
+    try:
+        return _registry(ctx).model(ref).manifest().capabilities.input == "tree"
+    except (MapiError, KeyError, ValueError):
+        return False
 
 
 def _scored_kind(plan: Mapping[str, Any]) -> str:
@@ -771,7 +870,9 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
     if policy != "error":
         extra["future_covariates"] = policy
     reg = _registry(ctx)
-    payload = _future_rows(bundle, future.data, tdim_canon) if future is not None else None
+    payload = (
+        _future_rows(bundle, score_rows(future, bundle), tdim_canon) if future is not None else None
+    )
     try:
         req = _request(spec, "forecast", **extra)
         tree = score_bundle(
@@ -781,7 +882,7 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
             registry=reg,
             history=mv.data,
             return_full=True,
-            tree=mv.tree,
+            tree=scoring_tree(mv, future),
         )
     except MapiError:
         raise
@@ -797,9 +898,16 @@ def forecast_node(ctx: NodeContext) -> NodeOutcome:
         if have:
             summ = summ.sel(stat=have)
     fds = summ.copy()
+    outputs: dict[str, Any] = {"forecast": DatasetValue(data=fds)}
+    from mapi_workflows.runtime.plots import forecast_plot  # plots imports this module
+
+    plot, warn = forecast_plot(mv, tree, ctx.registry)
+    if plot is not None:
+        outputs["plot"] = plot
     return NodeOutcome(
         result={"total": total, "horizon": horizon, "model": mv.ref},
-        outputs={"forecast": DatasetValue(data=fds)},
+        outputs=outputs,
+        warnings_plain=[warn] if warn else [],
     )
 
 
@@ -815,6 +923,8 @@ class Residuals:
     target: str
     exog: np.ndarray | None
     exog_names: list[str]
+    scored: xr.DataTree | None = None
+    """The in-sample score result the residuals come from (for the residual plot)."""
 
 
 def fit_burn_in(bundle: Bundle) -> int:
@@ -899,6 +1009,7 @@ def model_residuals(mv: ModelValue, registry: Registry | None = None) -> Residua
         target=target,
         exog=exog[keep] if exog is not None else None,
         exog_names=exog_names,
+        scored=tree,
     )
 
 

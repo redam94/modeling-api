@@ -64,3 +64,10 @@ export function plotlyLayout(theme: Theme): Record<string, unknown> {
     legend: { font: { color: ink.muted } },
   };
 }
+
+/** Defaults for a polar subplot (`layout.polar`, `layout.polar2`, ...). */
+export function plotlyPolar(theme: Theme): Record<string, unknown> {
+  const ink = INK[theme];
+  const axis = { gridcolor: ink.grid, linecolor: ink.domain, color: ink.muted };
+  return { bgcolor: "rgba(0,0,0,0)", angularaxis: axis, radialaxis: axis };
+}

@@ -82,7 +82,7 @@ from mapi_spec.cron import check_cron, check_timezone
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity, json_pointer
 from mapi_spec.expr import Expression, parse_expression
 from mapi_spec.loader import DEFAULT_LIMITS, Limits, parse_text, spec_hash, validation_issues
-from mapi_spec.refs import DatasetRef, WorkflowRef
+from mapi_spec.refs import DatasetRef, UseRef, WorkflowRef
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import ApiVersion, Metadata
 from mapi_spec.workflow_nodes import (
@@ -599,6 +599,8 @@ def validate_workflow(
                 sub_specs[n.id] = sub
         if impl.kind is NodeKind.MODEL or impl.id == "search.grid":
             issues.extend(_check_model_ref(n, base, catalog))
+        if impl.id == "plot.render":
+            issues.extend(_check_plot_ref(n, base, catalog))
 
     # --- bindings and port types ---------------------------------------------------------
     for i, n in enumerate(spec.nodes):
@@ -820,6 +822,30 @@ def _check_model_ref(n: WorkflowNode, base: str, catalog: Catalog | None) -> lis
             ErrorCode.REF_UNRESOLVED, base + "/with/model",
             f"node {n.id!r}: no catalog model matches {ref[:80]!r}",
             action="Select a model from GET /v1/catalog/models.",
+        )]  # fmt: skip
+    return []
+
+
+def _check_plot_ref(n: WorkflowNode, base: str, catalog: Catalog | None) -> list[Issue]:
+    """``plot.render``'s ``recipe`` names a bundled recipe (one with a built-in About) or a
+    plot of the catalog. Without a catalog, plugin recipes cannot be known: no check."""
+    ref = n.with_.get("recipe")
+    if not isinstance(ref, str) or not ref or catalog is None:
+        return []
+    from mapi_spec.plot_abouts import PLOT_ABOUTS
+
+    ptr = base + "/with/recipe"
+    try:
+        found = catalog.resolve_plot(ref) if "@" in ref else None
+        rid = UseRef.parse(ref).id if "@" in ref else ref
+    except ValueError as exc:
+        return [_issue(ErrorCode.REF_UNRESOLVED, ptr, str(exc)[:300])]
+    known = rid in PLOT_ABOUTS or any(e.id == rid and not e.yanked for e in catalog.plots)
+    if found is None and not known:
+        return [_issue(
+            ErrorCode.REF_UNRESOLVED, ptr,
+            f"node {n.id!r}: no plot recipe matches {ref[:80]!r}",
+            action="Select a recipe from GET /v1/catalog/plots.",
         )]  # fmt: skip
     return []
 

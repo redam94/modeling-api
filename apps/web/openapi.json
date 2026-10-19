@@ -14093,6 +14093,7 @@
           "select",
           "governance",
           "report",
+          "plot",
           "subworkflow"
         ],
         "title": "NodeKind",
@@ -15008,6 +15009,12 @@
         "additionalProperties": false,
         "description": "An output variable the model writes (e.g. ``y_hat``).",
         "properties": {
+          "circular": {
+            "default": false,
+            "description": "The output is an angle on a circle (a direction, a time of day). The model sets a 'period' attr (one turn, in the output's units) on the scored array; holdout metrics then use the circular mean and wrapped errors, and the score summaries of draws use the circular mean and intervals centred on it, wrapped into [0, period)",
+            "title": "Circular",
+            "type": "boolean"
+          },
           "description": {
             "anyOf": [
               {
@@ -21508,7 +21515,7 @@
         "type": "object"
       },
       "ScoreSummaryTable": {
-        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.",
+        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field).",
         "examples": [
           {
             "columns": [
@@ -21538,6 +21545,19 @@
             "maxItems": 256,
             "title": "Columns",
             "type": "array"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)",
+            "title": "Period"
           },
           "rows": {
             "items": {
@@ -28064,7 +28084,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   "openapi": "3.1.0",
   "paths": {

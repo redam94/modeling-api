@@ -449,4 +449,6 @@ def entry_fit_end(fit_coords: Mapping[str, xr.Dataset], stage: str, dim: str) ->
     if coords is None or dim not in coords.coords:
         return None
     values = np.asarray(coords[dim].values)
-    return values.max() if values.size else None
+    if not values.size or values.dtype.kind not in "iufMm":
+        return None  # labels (text) have no order to take the last of
+    return values.max()

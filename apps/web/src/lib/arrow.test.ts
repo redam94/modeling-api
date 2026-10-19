@@ -3,6 +3,7 @@ import {
   Dictionary,
   Int32,
   Int64,
+  Schema,
   Table,
   tableFromArrays,
   tableToIPC,
@@ -28,6 +29,16 @@ describe("decodeArrow", () => {
       { x: null, name: "c" },
     ]);
     expect(out.truncated).toBe(false);
+    expect(out.dims).toBeUndefined();
+  });
+
+  it("reads the dim columns from the mapi.dims metadata", () => {
+    const base = tableFromArrays({ y_cm: Float64Array.from([1, 2]), field: Float64Array.from([3, 4]) });
+    const meta = new Map([["mapi.dims", JSON.stringify(["y_cm"])]]);
+    const table = new Table(new Schema(base.schema.fields, meta), base.batches);
+    expect(decodeArrow(tableToIPC(table, "stream")).dims).toEqual(["y_cm"]);
+    const bad = new Table(new Schema(base.schema.fields, new Map([["mapi.dims", "{not json"]])), base.batches);
+    expect(decodeArrow(tableToIPC(bad, "stream")).dims).toBeUndefined();
   });
 
   it("converts int64 to numbers, or to strings beyond 2^53", () => {

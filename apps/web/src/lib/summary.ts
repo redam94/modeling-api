@@ -13,8 +13,11 @@ const NUMERIC = /float|int|decimal/i;
 export function pivotStats(table: DecodedTable): DecodedTable {
   const stat = table.columns.find((c) => c.name === STAT_COLUMN && !NUMERIC.test(c.type));
   if (!stat) return table;
-  const numeric = table.columns.filter((c) => c.name !== STAT_COLUMN && NUMERIC.test(c.type));
-  const keys = table.columns.filter((c) => c.name !== STAT_COLUMN && !NUMERIC.test(c.type));
+  // a numeric dim (a grid position, a year) is a key, not a value: the view names its dims
+  const dims = new Set(table.dims ?? []);
+  const isValue = (c: { name: string; type: string }) => NUMERIC.test(c.type) && !dims.has(c.name);
+  const numeric = table.columns.filter((c) => c.name !== STAT_COLUMN && isValue(c));
+  const keys = table.columns.filter((c) => c.name !== STAT_COLUMN && !isValue(c));
   const stats: string[] = [];
   const byKey = new Map<string, Row>();
   for (const row of table.rows) {
@@ -33,7 +36,7 @@ export function pivotStats(table: DecodedTable): DecodedTable {
     ...numeric.flatMap((c) => stats.map((s) => ({ name: `${c.name}_${s}`, type: c.type }))),
   ];
   const rows = [...byKey.values()];
-  return { columns, rows, totalRows: rows.length, truncated: table.truncated };
+  return { columns, rows, totalRows: rows.length, truncated: table.truncated, ...(table.dims ? { dims: table.dims } : {}) };
 }
 
 /**

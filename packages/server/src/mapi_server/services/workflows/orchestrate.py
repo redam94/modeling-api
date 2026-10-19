@@ -35,6 +35,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
+from mapi_plots.sanitize import SanitizeError
 from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
 from mapi_spec.api import new_id
 from mapi_spec.errors import ErrorCode, MapiError, Problem, ValidationFailed
@@ -56,7 +57,7 @@ from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import DEFAULT_FIT_SEED
 from mapi_spec.storage import ObjectMeta, PreconditionFailed, dataset_prefix
-from mapi_spec.tree import TreeSchema
+from mapi_spec.tree import NodeSelect, TreeSchema
 from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.workflow import (
     NODE_RESULT_MAX_BYTES,
@@ -83,7 +84,7 @@ from mapi_workflows.binding import (
 )
 from mapi_workflows.engine import UNKNOWN, Action, CacheHit, EngineEvent, WorkflowEngine
 from mapi_workflows.orchestrator import BoundValue, evidence_pack
-from mapi_workflows.payloads import MetricsCandidate, MetricsPayload, clean_number
+from mapi_workflows.payloads import ElpdPayload, MetricsCandidate, MetricsPayload, clean_number
 from mapi_workflows.specs import MODEL_LABEL, model_spec_document, node_model_name
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
@@ -108,6 +109,7 @@ from mapi_server.services.workflows.events import append_events
 from mapi_server.services.workflows.hooks import governance_hooks
 from mapi_server.services.workflows.runs import (
     ACTIVE_STATUSES,
+    clean_plot,
     node_run_dto,
     request_cancel,
     set_parent_state,
@@ -814,7 +816,8 @@ class WorkflowOrchestrator:
         except ValueError as exc:
             raise _NodeFailure(ErrorCode.WORKFLOW_INVALID, str(exc)) from None
         snapshot = await self.ctx.catalogs.get(s)
-        if snapshot is not None and dv.data_schema:
+        data_schema = _bind_schema(dv, doc["data"])
+        if snapshot is not None and data_schema:
             with contextlib.suppress(ValueError, ValidationError):
                 entry = snapshot.catalog.resolve_model(str(doc["model"]["use"]))
                 if entry is not None:
@@ -823,7 +826,7 @@ class WorkflowOrchestrator:
                     )
                     if schema is not None:
                         doc["data"]["bind"] = auto_bind(
-                            schema, DataSchema.model_validate(dv.data_schema), doc["data"]["bind"]
+                            schema, DataSchema.model_validate(data_schema), doc["data"]["bind"]
                         )
                         doc["pipeline"] = canonical_steps(doc["pipeline"], doc["data"]["bind"])
                         if "split" in doc["data"]:
@@ -1129,13 +1132,24 @@ class WorkflowOrchestrator:
                 pinned, meta_doc = await self._register_dataset(env, row, child, port, outputs_meta)
                 outputs[port] = NodeOutputRef(type=PortType.DATASET, ref=pinned)
                 lineage[port] = meta_doc
-            elif ref.inline is not None:
-                outputs[port] = NodeOutputRef(type=ref.type, inline=ref.inline)
-            elif ref.object is not None and ref.object in outputs_meta:
-                doc = await self._read_json(outputs_meta[ref.object], cap)
-                outputs[port] = NodeOutputRef(type=ref.type, inline=doc)
             else:
-                raise _NodeFailure(ErrorCode.INTEGRITY_FAILURE, f"output {port!r} has no value")
+                if ref.inline is not None:
+                    doc = ref.inline
+                elif ref.object is not None and ref.object in outputs_meta:
+                    doc = await self._read_json(outputs_meta[ref.object], cap)
+                else:
+                    raise _NodeFailure(ErrorCode.INTEGRITY_FAILURE, f"output {port!r} has no value")
+                if ref.type is PortType.PLOT:
+                    # sandbox-written JSON: the same sanitizer as a fit's plots.json
+                    try:
+                        doc = clean_plot(doc)
+                    except SanitizeError as exc:
+                        raise _NodeFailure(
+                            ErrorCode.PLOT_UNSAFE,
+                            f"the plot output {port!r} is not safe to show",
+                            exc.detail,
+                        ) from None
+                outputs[port] = NodeOutputRef(type=ref.type, inline=doc)
         result: dict[str, JsonValue] = dict(side.result)
         if side.warnings_plain:
             result.setdefault("warnings_plain", list(side.warnings_plain))
@@ -1269,6 +1283,7 @@ class WorkflowOrchestrator:
             model=str(params.get("model")) if params.get("model") else None,
             settings=_settings_of(params),
             metrics=metrics,
+            elpd=await self._fit_elpd(env, child),
         )
         result_metrics: dict[str, JsonValue] = {k: v for k, v in metrics.items()}
         env.engine.succeeded(
@@ -1287,6 +1302,22 @@ class WorkflowOrchestrator:
                 ),
             },
         )
+
+    async def _fit_elpd(self, env: _Env, child: m.Run) -> dict[str, ElpdPayload] | None:
+        """M5: the elpd estimates (with pointwise values) the fit wrote in ``metrics.json``,
+        for ``compare.stacking``; ``None`` when there are none or they cannot be read."""
+        att = await env.session.get(m.RunAttempt, (child.id, child.attempt))
+        meta = (att.outputs or {}).get("metrics.json") if att is not None else None
+        if not isinstance(meta, dict):
+            return None
+        try:
+            doc = await self._read_json(meta, self.ctx.settings.workflow_max_json_output_bytes)
+            raw = doc.get("elpd") if isinstance(doc, dict) else None
+            if not isinstance(raw, dict) or not raw:
+                return None
+            return {str(k): ElpdPayload.model_validate(v) for k, v in raw.items()}
+        except (_NodeFailure, ValidationError, MapiError):
+            return None
 
     async def _register_dataset(
         self,
@@ -1470,3 +1501,17 @@ class WorkflowOrchestrator:
             state = RunState(child.state)
         if state.terminal:
             env.engine.cancelled(nid)
+
+
+def _bind_schema(dv: m.DatasetVersion, block: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The schema a model node's binding is completed from: the dataset's, or (a tree
+    dataset with ``data.nodes``) the schema of the merged nodes (``None`` if unknown)."""
+    nodes = block.get("nodes")
+    if not isinstance(nodes, dict) or not nodes or not dv.tree_schema:
+        return dv.data_schema
+    try:
+        tree = TreeSchema.model_validate(dv.tree_schema)
+        flat = tree.flat({str(k): NodeSelect.model_validate(v) for k, v in nodes.items()})
+    except ValueError:
+        return None
+    return flat.model_dump(mode="json", exclude_none=True)

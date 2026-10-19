@@ -260,12 +260,15 @@ def predict(
             contributions = point_estimate(pred[name], rep)
             break
     for name, src in sources.items():
-        if name not in pred:
+        # an output named like a canonical variable comes back under its dataset name
+        # (``tie`` bound to ``cowork``)
+        key = name if name in pred else bundle.binding.to_dataset(name)
+        if key not in pred:
             continue
         target = bundle.binding.to_dataset(src)
         if target in used or target not in data:
             continue
-        da = pred[name]
+        da = pred[key]
         if "component" in da.dims:
             continue
         point = point_estimate(da, rep)

@@ -12,7 +12,7 @@
 # The `docker` extra (docker-py) is included so `mapi-server worker` can drive the docker
 # executor through a mounted socket. Build from the repository root:
 #
-#   docker build -f images/server/Dockerfile -t mapi/server:0.8.0 .
+#   docker build -f images/server/Dockerfile -t mapi/server:0.9.0 .
 #
 # See docs/operations/docker.md.
 

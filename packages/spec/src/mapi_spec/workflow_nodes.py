@@ -18,12 +18,15 @@ split          ``split.holdout``, ``rolling_origin``, ``expanding_window``, ``bl
                ``purged_kfold``, ``geo_holdout``, ``nested`` (:mod:`mapi_spec.splitplan`)
 search         ``search.arma_order``, ``sarima_order``, ``var_lag_order``, ``coint_rank``,
                ``grid``
-model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``
-evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``
-compare        ``compare.models``, ``compare.diebold_mariano``
+model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``,
+               ``model.summary``, ``model.score``
+evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``,
+               ``evaluate.ppc``
+compare        ``compare.models``, ``compare.diebold_mariano``, ``compare.stacking``
 select         ``select.best``, ``select.threshold``
 governance     ``governance.policy``, ``governance.check``
 report         ``report.summary``, ``report.evidence_pack``
+plot           ``plot.render`` (any catalog plot recipe)
 branch         ``branch.if`` (a condition in :mod:`mapi_spec.expr`)
 subworkflow    ``subworkflow.run`` (another saved workflow)
 =============  ===============================================================================
@@ -105,6 +108,7 @@ class NodeKind(StrEnum):
     SELECT = "select"
     GOVERNANCE = "governance"
     REPORT = "report"
+    PLOT = "plot"
     SUBWORKFLOW = "subworkflow"
 
 
@@ -113,7 +117,14 @@ BRANCH_ARMS: Final = ("then", "else")
 """The two control outputs of a ``branch`` node (``when: <branch id>.then``)."""
 SUBWORKFLOW_NODE: Final = "subworkflow.run"
 SINK_KINDS: Final = frozenset(
-    {NodeKind.REPORT, NodeKind.GOVERNANCE, NodeKind.SELECT, NodeKind.MODEL, NodeKind.SUBWORKFLOW}
+    {
+        NodeKind.REPORT,
+        NodeKind.GOVERNANCE,
+        NodeKind.SELECT,
+        NodeKind.MODEL,
+        NodeKind.SUBWORKFLOW,
+        NodeKind.PLOT,
+    }
 )
 """Kinds whose outputs may legitimately go unused (the workflow's results)."""
 
@@ -1125,6 +1136,27 @@ _MODEL_REF = {"type": "string",
               "description": "Catalog model ref (id@range), for example ts.sarimax@^1",
               "pattern": r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+(@\S+)?$"}  # fmt: skip
 _MODEL_FIT = {"goal": ["forecast", "explain_drivers", "explain_marketing"]}
+_TREE_NODES = {
+    "type": "object",
+    "maxProperties": 64,
+    "description": "Tree datasets: the nodes merged into the model input (data.nodes: "
+    "{name: {path, vars?, prefix?}}). If not given, the node reads "
+    "the root node",
+    "additionalProperties": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+            "path": {"type": "string"},
+            "vars": {"type": "array", "items": {"type": "string"}},
+            "prefix": {"type": "string"},
+        },
+    },
+}
+_TREE_JOIN = _enum(
+    "Tree datasets: how the coords of the selected nodes align (data.join)",
+    ["exact", "inner", "outer"],
+    "exact",
+)
 
 _node("model.fit", NodeKind.MODEL, _a(
     "Fit a model",
@@ -1142,7 +1174,8 @@ _node("model.fit", NodeKind.MODEL, _a(
            "fit": {"type": "object", "description": "Fit configuration (FitConfig)"},
            "pipeline": {"type": "array", "maxItems": 64, "description": "Preprocessing steps"},
            "bind": {"type": "object", "description": "Binding to canonical names"},
-           "evaluate": {"type": "object", "description": "Evaluation block (metrics)"}},
+           "evaluate": {"type": "object", "description": "Evaluation block (metrics)"},
+           "nodes": _TREE_NODES, "join": _TREE_JOIN},
    required=["model"],
    inputs={"data": PortSpec(type=PortType.DATASET),
            "split": PortSpec(type=PortType.SPLIT_PLAN, required=False,
@@ -1170,7 +1203,8 @@ _node("model.backtest", NodeKind.MODEL, _a(
            "metrics": {"type": "array", "items": {"type": "string"},
                        "default": ["mae", "rmse", "mape", "mase"]},
            "refit": _bool("Fit again on each fold (if false, fit one time and roll forward)",
-                          True)},
+                          True),
+           "nodes": _TREE_NODES, "join": _TREE_JOIN},
    required=["model"],
    inputs={"data": PortSpec(type=PortType.DATASET), "split": PortSpec(type=PortType.SPLIT_PLAN)},
    outputs={"metrics": PortType.METRICS, "table": PortType.TABLE},
@@ -1421,6 +1455,79 @@ _node("governance.check", NodeKind.GOVERNANCE, _a(
            "value": _f("number", "The measured value")},
    runs_in="child_run")  # fmt: skip
 
+# ========================================================================== score and plot
+
+_node("model.score", NodeKind.MODEL, _a(
+    "Score a model",
+    "Uses a fitted model version to predict, simulate, forecast or test a scenario. It "
+    "gives the predictions as a dataset for the next steps.",
+    ["You want predictions or simulations of a fitted model in the workflow",
+     "A plot or a second model must use the predictions"],
+    ["You only want a forecast with a fan chart (use model.forecast)"],
+    ["A model version and, for new cases, a dataset with their inputs"],
+    ["The model can do the score mode (look at its score modes)"],
+    ["A dataset with the predictions (draws or a summary)"],
+    _I, _SEC, "Simulate 200 graphs from the fitted network model to check its fit.",
+    related=["model.forecast", "plot.render", "model.fit"],
+    fits={"goal": ["forecast", "validate_model"]},
+    expert="The node runs the score path of a score run (mapi_sdk.harness.score_bundle) with "
+    "the full representation. 'request' takes the fields of a ScoreRequest (horizon, "
+    "output, select, interventions, seed, future_covariates).",
+), params={"mode": _enum("The score mode", ["predict", "simulate", "forecast", "counterfactual"],
+                         "predict"),
+           "request": {"type": "object",
+                       "description": "More fields of the score request (horizon, output, "
+                       "select, interventions, seed, future_covariates)"},
+           "group": {"type": "string", "pattern": r"^[A-Za-z_][A-Za-z0-9_/]{0,127}$",
+                     "description": "The group of the score result to output (default: "
+                     "predictions, else summary)"}},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION),
+           "data": PortSpec(type=PortType.DATASET, required=False,
+                            description="The inputs to score (default: the fit data; for a "
+                            "forecast, the future drivers)")},
+   outputs={"scores": PortType.DATASET},
+   fields={"mode": _f("string", "The score mode that the node used"),
+           "n_vars": _f("integer", "The number of variables in the output dataset"),
+           "group": _f("string", "The group of the score result in the output"),
+           "representation": _f("string", "draws, quantiles, interval, moments or point")},
+   )  # fmt: skip
+
+_RECIPE_REF = {"type": "string",
+               "description": "Plot recipe ref (id or id@range), for example core.ppc_fan",
+               "pattern": r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+(@\S+)?$"}  # fmt: skip
+
+_node("plot.render", NodeKind.PLOT, _a(
+    "Draw a plot",
+    "Draws a plot from the plot catalog with a model or a dataset of earlier steps. The "
+    "run shows the plot, and a report can include it.",
+    ["You want a chart of a model or of predictions in the run and in the report"],
+    ["The Model Explorer already shows the chart that you need"],
+    ["A model version or a dataset that has the data the recipe needs"],
+    ["The recipe can read the data (see the About card of the recipe)"],
+    ["A plot that the run and the report show"],
+    _B, _SEC, "Draw sci.field_map of the fitted heat plate model.",
+    related=["model.score", "report.summary", "model.forecast"],
+    fits={"goal": ["validate_model", "forecast"]},
+    expert="The node renders the recipe with mapi_plots.recipes.render_plots and the "
+    "sanitizer. With 'source: auto' it tries the dataset, the model bundle and then the "
+    "in-sample predictions of the model with the observed values.",
+), params={"recipe": _RECIPE_REF,
+           "settings": {"type": "object", "description": "The settings of the recipe"},
+           "source": _enum("Where the recipe reads its data", ["auto", "data", "model",
+                                                               "predictions"], "auto"),
+           "title": {"type": "string", "maxLength": 300,
+                     "description": "The title of the plot (default: the recipe title)"}},
+   required=["recipe"],
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION, required=False,
+                             description="A model version (its bundle and predictions)"),
+           "data": PortSpec(type=PortType.DATASET, required=False,
+                            description="A dataset, for example the output of model.score")},
+   outputs={"plot": PortType.PLOT},
+   fields={"recipe": _f("string", "The recipe that drew the plot (id@version)"),
+           "kind": _f("string", "vega-lite or plotly"),
+           "source": _f("string", "data, model or predictions"),
+           "bytes": _f("integer", "The size of the plot in bytes")})  # fmt: skip
+
 # =================================================================================== report
 
 _node("report.summary", NodeKind.REPORT, _a(
@@ -1441,7 +1548,9 @@ _node("report.summary", NodeKind.REPORT, _a(
    inputs={"items": PortSpec(type=PortType.TABLE, multiple=True, required=False),
            "tests": PortSpec(type=PortType.TEST_RESULT, multiple=True, required=False),
            "metrics": PortSpec(type=PortType.METRICS, multiple=True, required=False),
-           "model": PortSpec(type=PortType.MODEL_VERSION, required=False)},
+           "model": PortSpec(type=PortType.MODEL_VERSION, required=False),
+           "plots": PortSpec(type=PortType.PLOT, multiple=True, required=False,
+                             description="Plots to include in the report")},
    outputs={"report": PortType.REPORT}, runs_in="orchestrator")  # fmt: skip
 
 _node("report.evidence_pack", NodeKind.REPORT, _a(
@@ -1507,6 +1616,130 @@ _node("subworkflow.run", NodeKind.SUBWORKFLOW, _a(
            "params": {"type": "object",
                       "description": "The parameters to give to the other workflow"}},
    required=["workflow"], inputs={}, runs_in="child_run")  # fmt: skip
+
+
+# ============================================================== M5: nodes on posterior draws
+
+_node("model.summary", NodeKind.MODEL, _a(
+    "Summarise the parameters",
+    "Gives the estimate, the spread and the credible range of each parameter of a fitted "
+    "Bayesian model, with checks that the sampler converged.",
+    ["You want to branch on a parameter, for example when its range excludes zero",
+     "You must stop when the sampler did not converge (R-hat, effective sample size)"],
+    ["Models that give only point estimates (the node needs draws)"],
+    ["A model version with posterior draws"],
+    ["The draws come from two or more chains (else R-hat is not available)"],
+    ["A table and, for each parameter, the mean, sd, HDI bounds, R-hat and bulk ESS"],
+    _I, _SEC, "slope: mean 0.42, 94% range 0.18 to 0.66, R-hat 1.00. The range excludes zero.",
+    related=["model.fit", "governance.check", "evaluate.ppc"],
+    fits={"goal": ["validate_model", "explain_drivers"]},
+    expert="Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari "
+    "et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives "
+    "the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of "
+    "several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the "
+    "values (up to 20 000). Read the values with "
+    "nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no "
+    "sample_stats. focus names one value (beta[north], or only north when one selected "
+    "variable has that label), so a condition can read nodes.<id>.focus.excludes_zero when "
+    "the label comes from a workflow parameter.",
+    refs=[("Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, "
+           "folding, and localization: an improved R-hat", None)],
+), params={"vars": _vars("The posterior variables (default: all of them)"),
+           "hdi_prob": _num("The probability inside the HDI", 0.94, 0.5, 0.999),
+           "focus": {"type": "string", "maxLength": 300,
+                     "description": "One value to give in the result field focus: its "
+                     "name in the table (beta[north]) or only its label (north)"}},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION)},
+   outputs={"table": PortType.TABLE},
+   fields={"params": _f("object", "For each parameter: mean, sd, hdi_low, hdi_high, rhat "
+                                  "and ess_bulk"),
+           "max_rhat": _f("number", "The largest R-hat of all the values, also the ones "
+                                    "the table does not keep (null if it cannot be "
+                                    "measured)"),
+           "min_ess": _f("number", "The smallest bulk effective sample size of all the "
+                                   "values"),
+           "n_divergent": _f("integer", "The number of divergent transitions (null if "
+                                        "unknown)"),
+           "n_params": _f("integer", "The number of summarised values"),
+           "truncated": _f("boolean", "True if the node kept only the first 200 values"),
+           "focus": _f("object", "The value that focus names: name, mean, sd, hdi_low, "
+                                 "hdi_high, p_positive (the share of draws above zero) and "
+                                 "excludes_zero (null without focus)")},
+   )  # fmt: skip
+
+_node("evaluate.ppc", NodeKind.EVALUATE, _a(
+    "Check the predictions against the data",
+    "Simulates new data from a fitted Bayesian model and compares it with the observed data. "
+    "It shows if the model can make data that looks like the real data.",
+    ["After each Bayesian fit, before you trust its ranges",
+     "You must stop a workflow when the model does not agree with the data"],
+    ["Models that give only point estimates or summaries (the node needs draws)"],
+    ["A model version that predicts with draws"],
+    ["The check uses the fit data, so it is optimistic (a model that overfits can pass)"],
+    ["The coverage of the 50% and 90% ranges, the PIT distance, a p-value and a verdict"],
+    _I, _SEC, "88% of the values are in the 90% range and p = 0.41 for the mean: the "
+    "check passes.",
+    related=["model.fit", "model.summary", "evaluate.metrics"],
+    fits={"goal": ["validate_model"]},
+    expert="Posterior predictive draws come from the score path (predict, output kind "
+    "predictive) on the fit data. coverage_p is the share of observations inside the "
+    "central p interval of their predictive draws; pit_ks is the Kolmogorov-Smirnov "
+    "distance of the PIT values P(y_rep < y) + 0.5 P(y_rep = y) from uniform, with the "
+    "limit 1.36 / sqrt(n) unless pit_ks_max is set; the p-value is P(T(y_rep) >= T(y)) for "
+    "T = statistic. ok needs both coverages within coverage_tolerance of nominal, the "
+    "p-value in [p_min, 1 - p_min] and pit_ks under its limit.",
+    refs=[("Gelman, Meng & Stern (1996), Posterior predictive assessment of model fitness",
+           None), ("Gabry et al. (2019), Visualization in Bayesian workflow", None)],
+), params={"statistic": _enum("The statistic of the p-value", ["mean", "sd", "max", "min"],
+                              "mean"),
+           "n_draws": _int("The number of predictive draws to use", 400, 10, 4000),
+           "p_min": _num("The smallest p-value (and 1 - p_min the largest) that passes",
+                         0.025, 0, 0.5),
+           "coverage_tolerance": _num("The largest gap between the coverage and its level "
+                                      "that passes", 0.1, 0, 0.5),
+           "pit_ks_max": _num("The largest PIT distance that passes (default: 1.36 / "
+                              "sqrt(n))", None, 0, 1)},
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION)},
+   outputs={"metrics": PortType.METRICS},
+   fields={"coverage_50": _f("number", "The share of observed values in the 50% range"),
+           "coverage_90": _f("number", "The share of observed values in the 90% range"),
+           "pit_ks": _f("number", "The distance of the PIT values from uniform (0 is best)"),
+           "p_values": _f("object", "The p-value of the statistic for each target"),
+           "ok": _f("boolean", "True if all the checks pass"),
+           "verdict_plain": _f("string", "The verdict in plain words")})  # fmt: skip
+
+_node("compare.stacking", NodeKind.COMPARE, _a(
+    "Weigh models by their predictions",
+    "Gives each candidate model a weight from how well it predicts each data point that it "
+    "did not see. A mix of the models with these weights predicts best.",
+    ["You fitted several Bayesian models of the same data and none is clearly best",
+     "You want to average the predictions of the models, not select one of them"],
+    ["The models used different data (the scores are not comparable)"],
+    ["Metrics of two or more model.fit nodes with evaluate: {metrics: [elpd_loo]}"],
+    ["All candidates are fitted on the same data points in the same order"],
+    ["A weight for each candidate, the best candidate and a table"],
+    _X, _SEC, "Weights: bym2 0.71, icar 0.29, iid 0.00.",
+    related=["compare.models", "select.best", "model.fit"],
+    fits={"goal": ["validate_model"]},
+    expert="Stacking maximises sum_i log sum_k w_k exp(elpd_loo_ik) over the simplex (Yao, "
+    "Vehtari, Simpson & Gelman 2018), from the pointwise PSIS-LOO values that model.fit "
+    "stores for data of at most 10 000 points. pseudo_bma (always reported) is pseudo-BMA+: "
+    "softmax weights averaged over a Bayesian bootstrap of the pointwise elpd. Without "
+    "pointwise values the weights are pseudo-BMA from elpd ± se (method pseudo_bma_se) or "
+    "from elpd alone (pseudo_bma), and note_plain says so.",
+    refs=[("Yao, Vehtari, Simpson & Gelman (2018), Using stacking to average Bayesian "
+           "predictive distributions", None)],
+), params={"metric": _enum("The elpd estimate to use", ["elpd_loo", "elpd_waic"], "elpd_loo"),
+           "method": _enum("The weights to give", ["stacking", "pseudo_bma_plus"], "stacking"),
+           "n_bootstrap": _int("Bootstrap draws for pseudo-BMA+", 1000, 100, 10000)},
+   inputs={"candidates": PortSpec(type=PortType.METRICS, multiple=True)},
+   outputs={"table": PortType.TABLE},
+   fields={"weights": _f("object", "The weight of each candidate (they sum to 1)"),
+           "pseudo_bma": _f("object", "The pseudo-BMA+ weight of each candidate"),
+           "best": _f("string", "The candidate with the largest weight"),
+           "method": _f("string", "stacking, pseudo_bma_plus, pseudo_bma_se or pseudo_bma"),
+           "note_plain": _f("string", "Why the node did not use stacking (null if it did)")},
+   )  # fmt: skip
 
 
 NODE_IMPLEMENTATIONS: Final[dict[str, NodeImplementation]] = {n.id: n for n in _NODES}
@@ -1672,6 +1905,19 @@ NODE_KIND_ABOUTS: Final[dict[NodeKind, About]] = {
         _NOW,
         "A one-page summary.",
         related=["report.summary"],
+    ),
+    NodeKind.PLOT: _a(
+        "Plot",
+        "Draws a plot from the plot catalog in the run, for the run view and the report.",
+        ["You want a chart in the run or in the report"],
+        ["Nobody reads the chart"],
+        ["A model version or a dataset"],
+        ["The recipe can read the data"],
+        ["A plot"],
+        _B,
+        _SEC,
+        "Draw the forecast fan chart.",
+        related=["plot.render"],
     ),
     NodeKind.SUBWORKFLOW: _a(
         "Sub-workflow",

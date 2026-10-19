@@ -148,8 +148,9 @@ model:
     noise_correlation: 0.2
     z_lens: 0.2076
     z_source: 0.5241
-  fit: {seed: 80, tune: 400, draws: 600, chains: 4, target_accept: 0.9}
-outputs: {plots: [core.convergence, core.posterior_forest, sci.field_map]}
+  fit: {mode: train_only, seed: 80, tune: 400, draws: 600, chains: 4, target_accept: 0.9}
+outputs:
+  plots: [core.convergence, core.posterior_forest, sci.image_residuals, sci.ppc_image_grid]
 """
 
 LENS_TRUTH: dict[str, Any] = {

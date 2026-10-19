@@ -1452,11 +1452,22 @@ SummaryCell = str | int | float | bool | None
 
 class ScoreSummaryTable(_Response):
     """One output variable's summary as a table: the coordinate columns (one per dim), then
-    one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text."""
+    one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
+    ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
+    circle (see the field)."""
 
     variable: str = Field(..., max_length=256)
     columns: list[str] = Field(..., max_length=256)
     rows: list[list[SummaryCell]]
+    period: float | None = Field(
+        None,
+        gt=0,
+        description="Set for a circular output (an angle that wraps at one turn, in the "
+        "output's units): the statistics are on the circle. `mean` is the circular mean, the "
+        "intervals are centred on it, and every value is in [0, period). An interval with "
+        "lower > upper crosses the seam (from 350 to 10 degrees)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = _examples(
         {

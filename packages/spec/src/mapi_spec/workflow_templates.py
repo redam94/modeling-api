@@ -16,6 +16,32 @@ id                          what it automates
 ``forecast_bakeoff``        one expanding-window backtest for SARIMAX, ETS, Theta and the
                             smooth-trend model against naive benchmarks -> compare -> select
                             the winner -> refit it -> report
+``sci_spatial_ladder``      sci.areal_bym2 with iid, ICAR and BYM2 area effects -> elpd_loo
+                            ranking, stacking weights, select -> the covariate effect
+                            (model.summary) and a convergence check -> branch on whether the
+                            chains agree and the HDI excludes zero (then refits with wider
+                            and narrower priors) -> sci.area_map -> report
+``sci_network_ladder``      sci.network_latent_space with covariates, sociality and a latent
+                            space -> elpd_loo ranking, stacking weights, select -> pair
+                            effects -> net.graph -> simulated networks (model.score) and a
+                            ridge plot of their statistics -> report
+``sci_phylo_signal``        sci.phylo_regression with iid, Brownian, Pagel's lambda and OU
+                            residuals -> elpd_loo ranking, stacking weights, select -> the
+                            winner's slope of ``focus`` (model.summary) -> branch on whether
+                            its HDI excludes zero (then a predictive check) -> sci.phylogeny
+                            -> report
+``sci_calibrate_then_design``
+                            sci.heat_plate fitted with one calibration run held out
+                            (evaluate_then_refit) -> parameter summary, sci.image_residuals ->
+                            branch on the holdout RMSE and R-hat -> model.score (predict) of
+                            the new heater layout -> sci.field_map -> report
+``bayes_workflow_audit``    any Bayesian model (``model`` parameter): fit with prior
+                            predictive draws -> prior plot -> parameter summary and a
+                            convergence gate -> predictive check, prior sensitivity and
+                            simulated recovery -> pair, predictive and estimate plots -> report
+``sci_image_model_check``   an image model (``sci.cmb_field``, ``sci.strong_lens``, …): fit ->
+                            residual maps and a predictive image grid -> predictive check ->
+                            report
 ==========================  ================================================================
 
 Templates are complete :class:`~mapi_spec.workflow.WorkflowSpec` documents that pass
@@ -450,8 +476,899 @@ FORECAST_BAKEOFF = WorkflowTemplate(
     tags=["forecast", "comparison"],
 )  # fmt: skip
 
+# ============================================================== M5: ladders of science models
+
+
+def _fit_params(seed: int) -> dict[str, Any]:
+    """The MCMC settings that every rung of a ladder shares (one value for each rung, so the
+    rungs are comparable)."""
+    return {
+        "draws": {"type": "integer", "default": 1000, "minimum": 50, "maximum": 20000,
+                  "description": "The posterior draws to keep in each chain"},
+        "tune": {"type": "integer", "default": 1000, "minimum": 50, "maximum": 20000,
+                 "description": "The warm-up steps of each chain (the sampler discards them)"},
+        "chains": {"type": "integer", "default": 4, "minimum": 2, "maximum": 16,
+                   "description": "The number of chains (two or more, for R-hat)"},
+        "target_accept": {"type": "number", "default": 0.9, "minimum": 0.6, "maximum": 0.99,
+                          "description": "The target acceptance rate of the sampler. A "
+                          "higher value gives smaller steps and fewer divergences"},
+        "engine": {"type": "string", "default": "pymc", "enum": ["pymc", "nutpie"],
+                   "description": "The sampler (nutpie is faster on large data)"},
+        "seed": {"type": "integer", "default": seed, "minimum": 0, "maximum": 2**31 - 1,
+                 "description": "The random seed of each fit"},
+    }  # fmt: skip
+
+
+_LADDER_FIT = {"mode": "train_only", "draws": _p("draws"), "tune": _p("tune"),
+               "chains": _p("chains"), "target_accept": _p("target_accept"),
+               "engine": _p("engine"), "seed": _p("seed")}  # fmt: skip
+"""Each rung fits on all the data: PSIS-LOO gives the honest score, so no holdout is lost."""
+_ELPD = {"metrics": ["elpd_loo"]}
+
+_AREAL = "sci.areal_bym2@^1"
+_AREAL_RUNGS = (("iid", "Independent areas"), ("icar", "Neighbours share risk (ICAR)"),
+                ("bym2", "Neighbours and noise (BYM2)"))  # fmt: skip
+_B1 = "nodes.effect.params.b1"
+_PRIOR_RUNGS = (("wide", "Wider priors", "params.prior_scale"),
+                ("narrow", "Narrower priors", "1 / params.prior_scale"))  # fmt: skip
+
+SCI_SPATIAL_LADDER = WorkflowTemplate(
+    id="sci_spatial_ladder",
+    about=About(
+        title="Disease map: which spatial model?",
+        summary_plain="Fits three models of disease counts on a map, from independent areas "
+        "to areas that share their risk with their neighbours. Then it compares how well "
+        "each model predicts, keeps the best one and tells you if the effect of your "
+        "covariate stays clear.",
+        use_when=["You have counts and expected counts for each area of a map, and one "
+                  "covariate",
+                  "You must know if the neighbours of an area change the answer",
+                  "You need a map of the risk with evidence that the fit is good"],
+        avoid_when=["You have the location of each case, not counts for each area",
+                    "The areas have no neighbours (all of them are islands)",
+                    "You need a fast answer (the workflow fits the model three times. When "
+                    "the effect is clear, it fits the best model two more times)"],
+        data_needs=["A count of cases and an expected count for each area",
+                    "One covariate for each area, for example a percentage",
+                    "An adjacency matrix of the areas and the outline of each area "
+                    "(python -m mapi_plugin_science.export e18 makes this dataset from the "
+                    "Scottish lip cancer data)"],
+        assumptions=["All three models use the same areas in the same order",
+                     "The covariate has the same effect in every area",
+                     "Leave-one-area-out scores (PSIS-LOO) are reliable for these data. The "
+                     "comparison table shows a warning when they are not"],
+        outputs=["A table that compares the three models (elpd_loo) and their stacking "
+                 "weights",
+                 "The best model, with the range of the covariate effect and a decision: "
+                 "clear or not clear",
+                 "Convergence evidence for the best model",
+                 "When the effect is clear, the range of the effect with wider and narrower "
+                 "priors",
+                 "A map of the relative risk and a report with the plot"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="On the 56 districts of Scotland, the effect of outdoor work on the log risk "
+        "falls from 0.67 (independent areas) to 0.40 (BYM2) per 10 points when the areas "
+        "share their risk. The workflow shows which model predicts best and if the effect "
+        "stays clear.",
+        related=["sci.areal_bym2", "compare.stacking", "model.summary", "plot.render",
+                 "select.best"],
+        references=[AboutReference(title="Riebler, Sørbye, Simpson & Rue (2016), An "
+                                   "intuitive Bayesian spatial model for disease mapping "
+                                   "that accounts for scaling", url=None),
+                    AboutReference(title="Yao, Vehtari, Simpson & Gelman (2018), Using "
+                                   "stacking to average Bayesian predictive distributions",
+                                   url=None)],
+        fits={"goal": ["validate_model", "explain_drivers"], "data_shape": ["table"],
+              "frequency": ["not_time"], "uncertainty": ["essential"]},
+        expert_notes="Poisson(E_i exp(b0 + b1 x_i + u_i)) with u iid, ICAR or BYM2 (scaled "
+        "ICAR plus iid with mixing share rho). Each rung stores the pointwise PSIS-LOO "
+        "values, so compare.stacking solves the stacking weights over the same areas. The "
+        "branch reads the convergence check and the HDI of b1 on the rung that select.best "
+        "keeps. When the check does not fail and the HDI excludes zero, that rung is fitted "
+        "again with the prior sds of b0 and b1 and the HalfNormal scale of sigma multiplied "
+        "and divided by prior_scale.",
+    ),
+    document=_doc(
+        "sci-spatial-ladder",
+        params={
+            "bind": {"type": "object",
+                     "default": {"dims": {"area": "district", "area_": "district_"},
+                                 "vars": {"covariate": "aff"}},
+                     "description": "The names in your dataset of the area dims and of the "
+                     "covariate (the default fits the e18 export)"},
+            "islands": {"type": "string", "default": "link_nearest",
+                        "enum": ["link_nearest", "isolate", "error"],
+                        "description": "What to do with areas that have no neighbours. "
+                        "link_nearest links each one to the area with the closest border"},
+            "hdi_prob": {"type": "number", "default": 0.94, "minimum": 0.5, "maximum": 0.999,
+                         "description": "The probability inside the range of each parameter"},
+            "prior_scale": {"type": "number", "default": 2.0, "minimum": 1.1, "maximum": 10,
+                            "description": "When the effect is clear, the workflow fits the "
+                            "best model again with the prior widths multiplied and divided "
+                            "by this value"},
+            **_fit_params(18),
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "Counts, expected counts, a covariate, the adjacency "
+                         "matrix and the outlines of the areas"}},
+        nodes=[
+            *({"id": kind, "use": "model.fit", "label": label,
+               "inputs": {"data": "inputs.data"},
+               "with": {"model": _AREAL, "bind": _p("bind"),
+                        "settings": {"kind": kind, "islands": _p("islands")},
+                        "fit": _LADDER_FIT, "evaluate": _ELPD}}
+              for kind, label in _AREAL_RUNGS),
+            {"id": "compare", "use": "compare.models",
+             "inputs": {"candidates": ["iid.metrics", "icar.metrics", "bym2.metrics"]},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "weights", "use": "compare.stacking", "label": "Stacking weights",
+             "inputs": {"candidates": ["iid.metrics", "icar.metrics", "bym2.metrics"]}},
+            {"id": "best", "use": "select.best",
+             "inputs": {"table": "compare.table",
+                        "models": ["iid.model", "icar.model", "bym2.model"]},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "effect", "use": "model.summary", "label": "Covariate effect",
+             "inputs": {"model": "best.model"},
+             "with": {"vars": ["b0", "b1", "sigma"], "hdi_prob": _p("hdi_prob")}},
+            {"id": "converged", "use": "governance.check", "label": "Did the chains agree?",
+             "inputs": {"model": "best.model", "data": "inputs.data"},
+             "with": {"check": "convergence"}},
+            # an effect is clear only when the chains of the best model agree
+            {"id": "clear", "use": "branch.if", "label": "Is the effect clear?",
+             "with": {"condition": "coalesce(nodes.converged.status, 'error') not in "
+                                   f"['fail', 'error'] and ({_B1}.hdi_low > 0 or "
+                                   f"{_B1}.hdi_high < 0)",
+                      "explain_then": "The chains of the best model agree, and the range of "
+                                      "the covariate effect does not include zero. The "
+                                      "covariate has a clear effect on the risk. The "
+                                      "workflow fits the best model again with wider and "
+                                      "narrower priors.",
+                      "explain_else": "The chains of the best model do not agree, or the "
+                                      "range of the covariate effect includes zero. Look at "
+                                      "the convergence evidence first. When the chains "
+                                      "agree, the data does not show a clear effect of the "
+                                      "covariate when the areas share their risk."}},
+            # a clear effect must come from the data, not from the priors: refit the best
+            # rung with the prior widths of b0, b1 and sigma multiplied and divided by
+            # prior_scale (governance.check sensitivity.prior cannot find these widths in
+            # the settings of sci.areal_bym2, so the workflow writes them out)
+            *({"id": rid, "use": "model.fit", "label": label, "when": "clear.then",
+               "inputs": {"data": "inputs.data"},
+               "with": {"model": _AREAL, "bind": _p("bind"),
+                        "settings": {"kind": _x("nodes.best.selected"),
+                                     "islands": _p("islands"), "intercept_sd": _x(width),
+                                     "slope_sd": _x(width), "sigma_scale": _x(width)},
+                        "fit": _LADDER_FIT}}
+              for rid, label, width in _PRIOR_RUNGS),
+            *({"id": f"effect_{rid}", "use": "model.summary", "label": f"{label}: effect",
+               "inputs": {"model": f"{rid}.model"}, "when": "clear.then",
+               "with": {"vars": ["b1"], "hdi_prob": _p("hdi_prob")}}
+              for rid, label, _w in _PRIOR_RUNGS),
+            {"id": "map", "use": "plot.render", "label": "Relative risk map",
+             "inputs": {"model": "best.model"},
+             "with": {"recipe": "sci.area_map", "source": "model",
+                      "settings": {"var": "rr", "stats": ["mean", "sd", "exceedance"],
+                                   "threshold": 1.0},
+                      "title": "Relative risk of each area (best model)"}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["compare.table", "weights.table", "effect.table",
+                                  "effect_wide.table", "effect_narrow.table"],
+                        "metrics": ["iid.metrics", "icar.metrics", "bym2.metrics"],
+                        "model": "best.model", "plots": ["map.plot"]},
+             "with": {"title": "Disease map: which spatial model?"}},
+        ],
+        outputs={"model": "best.model", "comparison": "compare.table",
+                 "weights": "weights.table", "effect": "effect.table", "map": "map.plot",
+                 "convergence": "converged.evidence",
+                 "report": "report.report"},
+    ),
+    tags=["science", "spatial", "comparison", "governance"],
+)  # fmt: skip
+
+_NETWORK = "sci.network_latent_space@^1"
+_NETWORK_RUNGS = (("covariates", "Pair covariates only"),
+                  ("sociality", "Covariates and activity"),
+                  ("latent_space", "Covariates, activity and a hidden map"))  # fmt: skip
+_NET_FITS = [f"{k}.metrics" for k, _ in _NETWORK_RUNGS]
+_NET_MODELS = [f"{k}.model" for k, _ in _NETWORK_RUNGS]
+
+SCI_NETWORK_LADDER = WorkflowTemplate(
+    id="sci_network_ladder",
+    about=About(
+        title="Network ties: which model?",
+        summary_plain="Fits three models of the ties in a network, from shared traits only "
+        "to a hidden map of the group. Then it keeps the model that predicts best and "
+        "simulates new networks from it, for a comparison with the statistics that you "
+        "calculate from your network.",
+        use_when=["You have a table of yes or no ties between the pairs of a group, for "
+                  "example who works with whom",
+                  "You want to know if shared traits explain the ties, or if the activity of "
+                  "each node and a hidden map are necessary",
+                  "You need simulated networks to do a check of the model fit"],
+        avoid_when=["The ties have a direction or are counts",
+                    "The network has many thousands of nodes (each model looks at every pair)",
+                    "You need a fast answer (the workflow fits the model three times)"],
+        data_needs=["A square table with 1 for a tie, 0 for no tie and an empty cell when "
+                    "you do not know",
+                    "Values for each pair, for example 1 when the two nodes are in the same "
+                    "office",
+                    "Optional: a group code for each node, for colors in the plots "
+                    "(python -m mapi_plugin_science.export e21 makes this dataset from the "
+                    "law firm data)"],
+        assumptions=["All three models use the same pairs in the same order",
+                     "Each pair has a tie or not, and the two directions are the same",
+                     "Leave-one-pair-out scores (PSIS-LOO) are reliable for these data. The "
+                     "comparison table shows a warning when they are not"],
+        outputs=["A table that compares the three models (elpd_loo) and their stacking "
+                 "weights",
+                 "The best model, with the range of each pair effect",
+                 "A plot of the network with the tie probabilities of the best model",
+                 "Statistics of simulated networks (density, transitivity and more) with "
+                 "a plot",
+                 "A report with the plots"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="On the coworker network of 71 lawyers, the hidden map predicts best "
+        "(elpd_loo -761.6, against -763.4 with activity and -894.2 with covariates only). "
+        "The simulated networks show if the model makes as many triangles as the real "
+        "network (493 triangles, a value that you calculate from the data).",
+        related=["sci.network_latent_space", "compare.stacking", "model.score",
+                 "plot.render", "model.summary"],
+        references=[AboutReference(title="Hoff, Raftery & Handcock (2002), Latent space "
+                                   "approaches to social network analysis", url=None),
+                    AboutReference(title="Lazega (2001), The Collegial Phenomenon", url=None)],
+        fits={"goal": ["validate_model", "explain_drivers"], "data_shape": ["table"],
+              "frequency": ["not_time"], "uncertainty": ["essential"]},
+        expert_notes="Bernoulli-logit dyad models: covariates (alpha + x beta), sociality "
+        "(+ s_i + s_j) and latent_space (- ||z_i - z_j||, Procrustes-aligned). The "
+        "log-likelihood is over the observed pairs i < j, so the pointwise PSIS-LOO values "
+        "of the rungs line up for stacking. model.score in simulate mode draws whole graphs "
+        "from the best rung and returns graph_stat(statistic) for each draw.",
+    ),
+    document=_doc(
+        "sci-network-ladder",
+        params={
+            "bind": {"type": "object",
+                     "default": {"dims": {"node": "lawyer", "node_": "lawyer_",
+                                          "cov": "covariate"},
+                                 "vars": {"tie": "cowork", "dyad_cov": "homophily",
+                                          "node_group": "office"}},
+                     "description": "The names in your dataset of the node dims, the tie "
+                     "table, the pair values and the group code (the default fits the e21 "
+                     "export)"},
+            "node_groups": {"type": "boolean", "default": True,
+                            "description": "The dataset has a group code for each node "
+                            "(set false and remove node_group from bind when it has not)"},
+            "latent_dims": {"type": "integer", "default": 2, "minimum": 1, "maximum": 3,
+                            "description": "The dimensions of the hidden map"},
+            "n_sims": {"type": "integer", "default": 500, "minimum": 10, "maximum": 4000,
+                       "description": "The number of networks to simulate from the best "
+                       "model"},
+            "hdi_prob": {"type": "number", "default": 0.94, "minimum": 0.5, "maximum": 0.999,
+                         "description": "The probability inside the range of each parameter"},
+            **_fit_params(21),
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "A symmetric table of ties, the pair values and "
+                         "(optional) a group code for each node"}},
+        nodes=[
+            *({"id": kind, "use": "model.fit", "label": label,
+               "inputs": {"data": "inputs.data"},
+               "with": {"model": _NETWORK, "bind": _p("bind"),
+                        "settings": {"kind": kind, "node_groups": _p("node_groups"),
+                                     "latent_dims": _p("latent_dims")},
+                        "fit": _LADDER_FIT, "evaluate": _ELPD}}
+              for kind, label in _NETWORK_RUNGS),
+            {"id": "compare", "use": "compare.models", "inputs": {"candidates": _NET_FITS},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "weights", "use": "compare.stacking", "label": "Stacking weights",
+             "inputs": {"candidates": _NET_FITS}},
+            {"id": "best", "use": "select.best",
+             "inputs": {"table": "compare.table", "models": _NET_MODELS},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "effects", "use": "model.summary", "label": "Pair effects",
+             "inputs": {"model": "best.model"},
+             "with": {"vars": ["alpha", "beta"], "hdi_prob": _p("hdi_prob")}},
+            {"id": "graph", "use": "plot.render", "label": "Network of the best model",
+             "inputs": {"model": "best.model"},
+             "with": {"recipe": "net.graph", "source": "predictions",
+                      "settings": {"var": "tie_prob", "panels": "both"},
+                      "title": "Tie probabilities of the best model"}},
+            {"id": "simulate", "use": "model.score", "label": "Simulate networks",
+             "inputs": {"model": "best.model"},
+             "with": {"mode": "simulate", "group": "draws",
+                      "request": {"output": {"vars": ["graph_stat"],
+                                             "draws": _p("n_sims")},
+                                  "seed": _p("seed")}}},
+            {"id": "ppc", "use": "plot.render", "label": "Statistics of simulated networks",
+             "inputs": {"data": "simulate.scores"},
+             "with": {"recipe": "core.ridge", "source": "data",
+                      "settings": {"var": "graph_stat", "dim": "statistic",
+                                   "select": {"statistic": ["density", "transitivity"]}},
+                      "title": "Density and transitivity of the simulated networks"}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["compare.table", "weights.table", "effects.table"],
+                        "metrics": _NET_FITS, "model": "best.model",
+                        "plots": ["graph.plot", "ppc.plot"]},
+             "with": {"title": "Network ties: which model?"}},
+        ],
+        outputs={"model": "best.model", "comparison": "compare.table",
+                 "weights": "weights.table", "effects": "effects.table",
+                 "graph": "graph.plot", "simulations": "simulate.scores",
+                 "ppc": "ppc.plot", "report": "report.report"},
+    ),
+    tags=["science", "network", "comparison"],
+)  # fmt: skip
+
+# ============================================================================ science (M5)
+
+_FIT_PARAMS: dict[str, Any] = {
+    "draws": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 20000,
+              "description": "The posterior draws that each chain keeps"},
+    "tune": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 20000,
+             "description": "The tuning steps of each chain (the sampler drops them)"},
+    "chains": {"type": "integer", "default": 4, "minimum": 1, "maximum": 16,
+               "description": "The number of chains (two or more give R-hat)"},
+    "seed": {"type": "integer", "default": 2017, "minimum": 0, "maximum": 2**31 - 1,
+             "description": "The random seed of the sampler"},
+    "bind": {"type": "object", "default": {},
+             "description": "The names of the model (dims and vars) mapped to the names in "
+                            "your dataset, when they are different. The workflow finds the "
+                            "target itself when your dataset has one target."},
+}  # fmt: skip
+_FIT = {"draws": _p("draws"), "tune": _p("tune"), "chains": _p("chains"), "seed": _p("seed")}
+
+PHYLO_MODEL = "sci.phylo_regression@^1"
+_PHYLO_KINDS: tuple[tuple[str, str], ...] = (
+    ("iid", "No tree (independent species)"),
+    ("brownian", "Brownian motion on the tree"),
+    ("lambda", "Pagel's lambda"),
+    ("ou", "Ornstein-Uhlenbeck"),
+)
+_PHYLO_FITS = [
+    {"id": kind, "use": "model.fit", "label": label, "inputs": {"data": "inputs.data"},
+     "with": {"model": PHYLO_MODEL,
+              "settings": {"kind": kind, "predictors": _p("predictors")},
+              "fit": _FIT, "bind": _p("bind"), "evaluate": {"metrics": ["elpd_loo"]}}}
+    for kind, label in _PHYLO_KINDS
+]  # fmt: skip
+_PHYLO_METRICS = [f"{kind}.metrics" for kind, _ in _PHYLO_KINDS]
+
+SCI_PHYLO_SIGNAL = WorkflowTemplate(
+    id="sci_phylo_signal",
+    about=About(
+        title="Trait regression across species, with and without the tree",
+        summary_plain="Fits the same regression of a species trait four times: once with "
+        "species as independent points and three times with a family tree that relates "
+        "them. Then it keeps the version that predicts best and tells you if the effect "
+        "that you ask about is clearly different from zero.",
+        use_when=["You compare a trait across species (or other groups with a known tree) "
+                  "and close relatives are similar",
+                  "You want to know if an effect stays clear when you include the tree in "
+                  "the model"],
+        avoid_when=["You have no tree of the species",
+                    "Fewer than about 20 species (the four versions then predict about "
+                    "equally well)"],
+        data_needs=["One row for each species: the trait to explain and one or more "
+                    "predictors, all positive (the model takes logs)",
+                    "The tree in the same dataset: parent(node), branch_length(node), "
+                    "is_tip(node) and tip_label(node), with tip labels equal to the species "
+                    "labels"],
+        assumptions=["The predictors have a linear effect on the log of the trait",
+                     "The residuals of related species are correlated as the selected "
+                     "version says (Brownian motion, Pagel's lambda or Ornstein-Uhlenbeck)"],
+        outputs=["The leave-one-out score (elpd_loo) of the four versions and their stacking "
+                 "weights",
+                 "The selected model and its slopes, with R-hat and ESS",
+                 "The decision: is the range of the effect clear of zero?",
+                 "A plot of the tree with the trait of each species", "A report"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="Brain size of 186 primates: Pagel's lambda wins (elpd 130, against 15 "
+        "without the tree). The slope of group size is 0.03, with the 94% range -0.01 to "
+        "0.07. Thus the effect is not clear of zero when the model includes the tree.",
+        related=["sci.phylo_regression", "compare.models", "compare.stacking",
+                 "model.summary", "evaluate.ppc"],
+        references=[AboutReference(title="Felsenstein (1985), Phylogenies and the "
+                                         "comparative method"),
+                    AboutReference(title="Pagel (1999), Inferring the historical patterns of "
+                                         "biological evolution")],
+        expert_notes="Four sci.phylo_regression fits that differ only in the residual "
+        "kind (iid, brownian, lambda, ou) are ranked by PSIS-LOO on the conditional "
+        "leave-one-out density of each species. select.best keeps the highest elpd_loo, and "
+        "compare.stacking gives the stacking weights. model.summary reads the slope that "
+        "focus names from the winner. The branch tests if its HDI excludes zero.",
+        fits={"goal": ["explain_drivers", "validate_model"], "data_shape": ["table"],
+              "frequency": ["not_time"], "uncertainty": ["essential", "nice"],
+              "experience": ["expert"]},
+    ),
+    document=_doc(
+        "sci-phylo-signal",
+        params={
+            "predictors": {"type": "array", "default": ["body", "group_size"],
+                           "description": "The predictor variables on the species dim"},
+            "focus": {"type": "string", "default": "group_size",
+                      "description": "The predictor whose slope the decision tests. It "
+                                     "must be one of the predictors: another name fails the "
+                                     "run after the four fits"},
+            "hdi_prob": {"type": "number", "default": 0.94, "minimum": 0.5, "maximum": 0.999,
+                         "description": "The probability inside the range of the slope"},
+            **_FIT_PARAMS,
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "Species traits and the tree (parent, branch_length, "
+                                        "is_tip and tip_label on the node dim)"}},
+        nodes=[
+            *_PHYLO_FITS,
+            {"id": "compare", "use": "compare.models",
+             "inputs": {"candidates": _PHYLO_METRICS},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "weights", "use": "compare.stacking",
+             "inputs": {"candidates": _PHYLO_METRICS}},
+            {"id": "best", "use": "select.best",
+             "inputs": {"table": "compare.table",
+                        "models": [f"{kind}.model" for kind, _ in _PHYLO_KINDS]},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "slope", "use": "model.summary", "label": "Slopes of the winner",
+             "inputs": {"model": "best.model"},
+             "with": {"vars": ["slope"], "focus": _p("focus"), "hdi_prob": _p("hdi_prob")}},
+            {"id": "clear", "use": "branch.if", "label": "Is the effect clear of zero?",
+             "with": {"condition": "nodes.slope.focus.excludes_zero",
+                      "explain_then": "The range of the slope does not include zero. The "
+                                      "data show an effect of the predictor when the model "
+                                      "includes the tree.",
+                      "explain_else": "The range of the slope includes zero. The data do "
+                                      "not show a clear effect of the predictor when the "
+                                      "model includes the tree."}},
+            # a clear effect is reported only with a check that the winner agrees with the data
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Does the winner agree with the data?",
+             "when": "clear.then", "inputs": {"model": "best.model"}},
+            {"id": "tree", "use": "plot.render", "label": "Trait on the tree",
+             "inputs": {"model": "best.model"},
+             "with": {"recipe": "sci.phylogeny"}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["compare.table", "weights.table", "slope.table"],
+                        "metrics": ["ppc.metrics"], "model": "best.model",
+                        "plots": ["tree.plot"]},
+             "with": {"title": "Trait regression across species"}},
+        ],
+        outputs={"model": "best.model", "comparison": "compare.table",
+                 "weights": "weights.table", "slopes": "slope.table", "tree": "tree.plot",
+                 "report": "report.report"},
+    ),
+    tags=["science", "bayesian", "comparison", "phylogeny"],
+)  # fmt: skip
+
+HEAT_MODEL = "sci.heat_plate@^1"
+# the split and the scores use your dataset's names: the bound names, else the model's
+_RUN = "coalesce(params.bind.dims.run, 'run')"
+_Y = "coalesce(params.bind.dims.y, 'y')"
+_X = "coalesce(params.bind.dims.x, 'x')"
+SCI_CALIBRATE_THEN_DESIGN = WorkflowTemplate(
+    id="sci_calibrate_then_design",
+    about=About(
+        title="Calibrate a heated plate, then test a heater layout",
+        summary_plain="Learns how a plate conducts and loses heat from some test runs with "
+        "thermocouples. Then it predicts the temperature of each point of the plate for a "
+        "new heater layout, but only if the calibration predicts a test run that it did not "
+        "see well enough.",
+        use_when=["You measured a plate (or a similar flat part) with one heater layout for "
+                  "each run and some thermocouples",
+                  "You want to try a new heater layout on the computer before you build it"],
+        avoid_when=["The heat does not reach a steady state in your runs",
+                    "Fewer than three calibration runs (one run is held out for the test)"],
+        data_needs=["The calibration runs: heater_power(run, y, x) in W and "
+                    "temperature(run, y, x) in degC on a regular grid, with no value where "
+                    "there is no thermocouple",
+                    "Optional: a second dataset with heater_power(run, y, x) of the new "
+                    "layouts on the same grid (without one, the workflow predicts the "
+                    "calibration runs)"],
+        assumptions=["The plate is thin and reaches a steady state (the 2-D steady heat "
+                     "equation)",
+                     "The material and the losses are the same in each run",
+                     "The temperature rise is proportional to the heater power"],
+        outputs=["The conductivity k, the face and edge losses, the heater efficiency and "
+                 "the spread length, with R-hat and ESS",
+                 "The error on the calibration run that the fit did not see",
+                 "The decision: is the calibration good enough?",
+                 "The predicted temperature of each point for the new layouts, as a map",
+                 "A report"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="Three 10 W test runs give k = 59 W/m/K and a spread length of 13 cm. The "
+        "run that the fit did not see has an error of 0.12 degC. Thus the workflow "
+        "predicts the new layout: the hottest point is 33 degC.",
+        related=["sci.heat_plate", "split.holdout", "model.summary", "model.score",
+                 "plot.render"],
+        expert_notes="sci.heat_plate solves A(theta) u = eta q on a finite-volume grid. "
+        "split.holdout leaves one random run out (leave_group_out, n = 1). model.fit fits "
+        "the other runs, scores the run held out and fits all the runs again "
+        "(evaluate_then_refit). The branch needs the holdout RMSE at or below max_error and "
+        "max R-hat at or below max_rhat. Then model.score predicts the expected field of the "
+        "layout (posterior draws of the field, without sensor noise).",
+        fits={"goal": ["fit_physics", "map_fields", "validate_model"],
+              "data_shape": ["grid"], "frequency": ["not_time"],
+              "uncertainty": ["essential", "nice"], "experience": ["expert"]},
+    ),
+    document=_doc(
+        "sci-calibrate-then-design",
+        params={
+            "thickness_mm": {"type": "number", "default": 5.0, "minimum": 0.01,
+                             "maximum": 1000,
+                             "description": "The thickness of the plate in mm"},
+            "room_temperature": {"type": "number", "default": 20.0, "minimum": -100,
+                                 "maximum": 1000,
+                                 "description": "The temperature of the room in degC"},
+            "max_error": {"type": "number", "default": 0.5, "minimum": 0,
+                          "description": "The largest RMSE in degC on the run held out "
+                                         "that the design step accepts"},
+            "max_rhat": {"type": "number", "default": 1.01, "minimum": 1, "maximum": 2,
+                         "description": "The largest R-hat that the design step accepts"},
+            **_FIT_PARAMS,
+            # the gate reads R-hat, and one chain gives no R-hat
+            "chains": {**_FIT_PARAMS["chains"], "minimum": 2},
+            "seed": {**_FIT_PARAMS["seed"], "default": 51},
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "The calibration runs: heater power and the "
+                                        "thermocouple readings on the grid"},
+                "layout": {"type": "dataset", "required": False,
+                           "description": "The new heater layouts to predict (the heater "
+                                          "power of each new run on the same grid)"}},
+        nodes=[
+            {"id": "holdout", "use": "split.holdout", "inputs": {"data": "inputs.data"},
+             "with": {"split": {"kind": "leave_group_out", "dim": _x(_RUN), "n": 1,
+                                "seed": _p("seed")}}},
+            {"id": "fit", "use": "model.fit", "label": "Calibrate",
+             "inputs": {"data": "inputs.data", "split": "holdout.plan"},
+             "with": {"model": HEAT_MODEL,
+                      "settings": {"thickness_mm": _p("thickness_mm"),
+                                   "room_temperature": _p("room_temperature")},
+                      "fit": {**_FIT, "mode": "evaluate_then_refit", "target_accept": 0.9},
+                      "bind": _p("bind"),
+                      "evaluate": {"metrics": ["rmse", "mae", "coverage_90"]}}},
+            {"id": "plate", "use": "model.summary", "label": "Plate parameters",
+             "inputs": {"model": "fit.model"},
+             "with": {"vars": ["k", "h", "h_edge", "eta", "sigma", "spread_length"]}},
+            {"id": "residuals", "use": "plot.render", "label": "Calibration residuals",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.image_residuals"}},
+            {"id": "good", "use": "branch.if", "label": "Is the calibration good enough?",
+             "with": {"condition": "coalesce(nodes.fit.metrics.rmse, 1e9) <= params.max_error "
+                                   "and coalesce(nodes.plate.max_rhat, 99) <= params.max_rhat",
+                      "explain_then": "The calibration predicted the run that it did not "
+                                      "see within the error limit, and the sampler "
+                                      "converged. The workflow predicted the new layout.",
+                      "explain_else": "The calibration did not predict the run that it did "
+                                      "not see within the error limit, or the sampler did "
+                                      "not converge. The workflow did not predict the new "
+                                      "layout. Add calibration runs or thermocouples."}},
+            {"id": "design", "use": "model.score", "label": "Predict the layout",
+             "when": "good.then",
+             "inputs": {"model": "fit.model", "data": ["inputs.layout", "inputs.data"]},
+             "with": {"mode": "predict"}},
+            {"id": "field", "use": "plot.render", "label": "Field of the layout",
+             "when": "good.then", "inputs": {"data": "design.scores"},
+             "with": {"recipe": "sci.field_map", "source": "data",
+                      "settings": {"var": "field", "y": _x(_Y), "x": _x(_X),
+                                   "frame": _x(_RUN), "origin": "lower",
+                                   "colormap": "magma"}}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["plate.table"], "metrics": ["fit.metrics"],
+                        "model": "fit.model", "plots": ["residuals.plot", "field.plot"]},
+             "with": {"title": "Calibrate a heated plate, then test a heater layout"}},
+        ],
+        outputs={"model": "fit.model", "parameters": "plate.table",
+                 "residuals": "residuals.plot", "design": "design.scores",
+                 "field": "field.plot", "report": "report.report"},
+    ),
+    tags=["science", "bayesian", "physics", "design"],
+)  # fmt: skip
+
+# ================================================================ M5: Bayesian model checks
+
+_AUDIT_FIT_PARAMS: dict[str, Any] = {
+    "draws": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 100000,
+              "description": "The posterior draws for each chain"},
+    "tune": {"type": "integer", "default": 1000, "minimum": 0, "maximum": 100000,
+             "description": "The tuning steps for each chain (the sampler drops them)"},
+    "chains": {"type": "integer", "default": 4, "minimum": 2, "maximum": 16,
+               "description": "The number of chains (two or more, so that R-hat is "
+                              "available)"},
+    "seed": {"type": "integer", "default": 1, "minimum": 0,
+             "description": "The random seed of the fit"},
+}  # fmt: skip
+_AUDIT_FIT: dict[str, Any] = {"draws": _p("draws"), "tune": _p("tune"), "chains": _p("chains"),
+                        "seed": _p("seed")}  # fmt: skip
+_MODEL_PARAMS: dict[str, Any] = {
+    "settings": {"type": "object", "default": {},
+                 "description": "The settings of the model (see its About card)"},
+    "bind": {"type": "object", "default": {},
+             "description": "The binding of the dataset names to the names of the model "
+                            "(dims and vars), as in data.bind of a model spec"},
+}  # fmt: skip
+
+
+def _or_null(param: str) -> dict[str, str]:
+    """A string parameter, or null when it is empty (the recipe then finds the value)."""
+    return _x(f"if(params.{param} == '', null, params.{param})")
+
+
+_VARS = _x("if(len(params.vars) > 0, params.vars, null)")
+"""The ``vars`` parameter, or null (all the variables) when it is empty."""
+
+
+BAYES_WORKFLOW_AUDIT = WorkflowTemplate(
+    id="bayes_workflow_audit",
+    about=About(
+        title="Bayesian workflow audit",
+        summary_plain="Fits a Bayesian model and does each check of a careful workflow: the "
+        "starting assumptions, the sampler, the predictions, the effect of the priors and "
+        "the recovery of known values. Then it writes one report with the plots.",
+        use_when=["You want to trust a Bayesian model before you use its ranges",
+                  "A reviewer asks for the standard checks of a Bayesian workflow",
+                  "You changed a model and want to do all the checks again"],
+        avoid_when=["The model gives only point estimates (the checks need draws)",
+                    "You need a result in seconds (the recovery check fits the model many "
+                    "times)"],
+        data_needs=["A dataset that the model can fit",
+                    "The model reference, its settings and, if the names are different, "
+                    "the binding of the dataset to the model"],
+        assumptions=["The model gives posterior draws and can predict the fit data",
+                     "The fit has two or more chains, so that the workflow can measure R-hat"],
+        outputs=["A fitted model version",
+                 "A table of the parameters with R-hat and the effective sample size",
+                 "The coverage of the 50% and 90% ranges, the PIT distance and a p-value",
+                 "The prior sensitivity and recovery evidence",
+                 "A report with the prior predictive, pair, predictive and estimate plots"],
+        difficulty=Difficulty.INTERMEDIATE,
+        typical_runtime=TypicalRuntime.LONG,
+        example="Radon in 85 counties: R-hat 1.00, 89% of the homes in the 90% ranges, and "
+        "priors two times wider move the floor effect by 3%. The audit passes.",
+        related=["model.fit", "model.summary", "evaluate.ppc", "plot.render",
+                 "governance.check", "sensitivity.prior", "recovery.simulated",
+                 "tabular.hierarchical_glm"],
+        references=[AboutReference(title="Gelman et al. (2020), Bayesian Workflow",
+                                   url="https://arxiv.org/abs/2011.01808"),
+                    AboutReference(title="Gabry et al. (2019), Visualization in Bayesian "
+                                   "workflow", url="https://arxiv.org/abs/1709.01449")],
+        expert_notes="The fit keeps prior_predictive.draws prior predictive draws for "
+        "core.prior_predictive (set prior_predictive to {} for a model that cannot sample "
+        "its priors, for example an ICAR prior). The branch 'converged' needs the largest R-hat "
+        "(rank-normalised split R-hat over all the posterior values, up to 20 000) under "
+        "rhat_max and the smallest bulk ESS at or over min_ess. Only then do evaluate.ppc, "
+        "sensitivity.prior (refits with the prior widths times each of prior_scales) and "
+        "recovery.simulated (n_sims refits on simulated targets, at the refit budget of the "
+        "governance run) run. The branch 'trusted' needs ppc.ok and no fail or error from "
+        "the two governance checks. A check that does not apply (skipped) does not block. "
+        "The plots use on_failure: continue, so a recipe that cannot read a model gives a "
+        "line in the report and does not stop the audit.",
+        fits={"goal": ["validate_model"], "uncertainty": ["essential"],
+              "experience": ["intermediate", "expert"]},
+    ),
+    document=_doc(
+        "bayes-workflow-audit",
+        params={
+            "model": {"type": "string", "required": True,
+                      "description": "The model to audit, for example "
+                                     "tabular.hierarchical_glm@^1 or sci.heat_plate@^1"},
+            **_MODEL_PARAMS,
+            **_AUDIT_FIT_PARAMS,
+            "prior_predictive": {"type": "object", "default": {"draws": 500},
+                                 "description": "The prior predictive draws of the fit, as "
+                                                "{draws: N}. Type {} for a model that cannot "
+                                                "sample its priors (the workflow then does "
+                                                "not draw the prior plot)"},
+            "vars": {"type": "array", "default": [],
+                     "description": "The parameters of the pair plot and the estimate "
+                                    "plot (empty: the plots select them)"},
+            "rhat_max": {"type": "number", "default": 1.01, "minimum": 1.0, "maximum": 1.5,
+                         "description": "The largest R-hat that passes"},
+            "min_ess": {"type": "number", "default": 400, "minimum": 0,
+                        "description": "The smallest bulk effective sample size that "
+                                       "passes (100 for each of 4 chains)"},
+            "statistic": {"type": "string", "default": "sd",
+                          "enum": ["mean", "sd", "max", "min"],
+                          "description": "The statistic of the predictive p-value"},
+            "prior_scales": {"type": "array", "default": [0.5, 2.0],
+                             "description": "The prior widths that the sensitivity check "
+                                            "tries, as multiples of the model priors"},
+            "n_sims": {"type": "integer", "default": 20, "minimum": 5, "maximum": 100,
+                       "description": "The simulated datasets of the recovery check (each "
+                                      "one is a fit)"},
+        },
+        inputs={"data": {"type": "dataset", "description": "The dataset that the model fits"}},
+        nodes=[
+            {"id": "fit", "use": "model.fit", "label": "Fit with prior draws",
+             "inputs": {"data": "inputs.data"},
+             "with": {"model": _p("model"), "settings": _p("settings"), "bind": _p("bind"),
+                      "fit": {**_AUDIT_FIT, "prior_predictive": _x(
+                          "if(len(params.prior_predictive) > 0, params.prior_predictive, "
+                          "null)")}}},
+            {"id": "has_prior", "use": "branch.if", "label": "Prior draws?",
+             "with": {"condition": "len(params.prior_predictive) > 0",
+                      "explain_then": "The run asked for draws from the priors, so the "
+                                      "workflow compared them with the data.",
+                      "explain_else": "The run did not ask for draws from the priors, so "
+                                      "the workflow did not draw the prior plot."}},
+            {"id": "prior_plot", "use": "plot.render", "label": "Prior predictive check",
+             "inputs": {"model": "fit.model"}, "when": "has_prior.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.prior_predictive", "source": "model"}},
+            {"id": "summary", "use": "model.summary", "label": "Parameters and convergence",
+             "inputs": {"model": "fit.model"}},
+            {"id": "pair_plot", "use": "plot.render", "label": "Pair plot",
+             "inputs": {"model": "fit.model"}, "on_failure": "continue",
+             "with": {"recipe": "core.pair", "source": "model",
+                      "settings": {"var_names": _VARS}}},
+            {"id": "converged", "use": "branch.if", "label": "Did the sampler converge?",
+             "with": {"condition": "coalesce(nodes.summary.max_rhat, 99) < params.rhat_max "
+                                   "and coalesce(nodes.summary.min_ess, 0) >= params.min_ess",
+                      "explain_then": "R-hat and the effective sample size are in their "
+                                      "limits, so the chains agree. The workflow did the "
+                                      "checks of the predictions and the priors.",
+                      "explain_else": "R-hat is too large or the effective sample size is "
+                                      "too small, so the chains do not agree. The workflow "
+                                      "stopped the audit. Fit with more draws and tuning "
+                                      "steps, or change the model."}},
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Predictions against the data",
+             "inputs": {"model": "fit.model"}, "when": "converged.then",
+             "on_failure": "continue", "with": {"statistic": _p("statistic")}},
+            {"id": "ppc_plot", "use": "plot.render", "label": "Posterior predictive check",
+             "inputs": {"model": "fit.model"}, "when": "converged.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.ppc", "source": "predictions"}},
+            {"id": "sensitivity", "use": "governance.check", "label": "Prior sensitivity",
+             "inputs": {"model": "fit.model", "data": "inputs.data"},
+             "when": "converged.then",
+             "with": {"check": "sensitivity.prior",
+                      "params": {"scales": _p("prior_scales")}}},
+            {"id": "recovery", "use": "governance.check", "label": "Recovery of known values",
+             "inputs": {"model": "fit.model", "data": "inputs.data"},
+             "when": "converged.then",
+             "with": {"check": "recovery.simulated", "params": {"n_sims": _p("n_sims")}}},
+            {"id": "trusted", "use": "branch.if", "label": "Can you trust the model?",
+             "when": "converged.then",
+             "with": {"condition": "coalesce(nodes.ppc.ok, false) and "
+                                   "nodes.sensitivity.status not in ['fail', 'error'] and "
+                                   "nodes.recovery.status not in ['fail', 'error']",
+                      "explain_then": "No check failed. The model makes data like the "
+                                      "observed data, and the prior and recovery checks "
+                                      "did not fail. Read their warnings, then use the "
+                                      "estimates.",
+                      "explain_else": "One or more checks failed. Look at the predictive "
+                                      "check, the prior sensitivity and the recovery "
+                                      "evidence before you use the estimates."}},
+            {"id": "estimates", "use": "plot.render", "label": "Estimates",
+             "inputs": {"model": "fit.model"}, "when": "trusted.then",
+             "on_failure": "continue",
+             "with": {"recipe": "core.posterior_forest", "source": "model",
+                      "settings": {"var_names": _VARS}}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["summary.table"], "metrics": ["ppc.metrics"],
+                        "plots": ["prior_plot.plot", "pair_plot.plot", "ppc_plot.plot",
+                                  "estimates.plot"],
+                        "model": "fit.model"},
+             "with": {"title": "Bayesian workflow audit"}},
+        ],
+        outputs={"model": "fit.model", "report": "report.report",
+                 "summary": "summary.table", "ppc": "ppc.metrics",
+                 "sensitivity": "sensitivity.evidence", "recovery": "recovery.evidence"},
+    ),
+    tags=["bayesian", "diagnostics", "governance"],
+)  # fmt: skip
+
+_IMAGE = {"var": _or_null("var"), "frame": _or_null("frame")}
+SCI_IMAGE_MODEL_CHECK = WorkflowTemplate(
+    id="sci_image_model_check",
+    about=About(
+        title="Image model check",
+        summary_plain="Fits a model that predicts an image and compares its predicted images "
+        "with the observed image. It shows the differences as maps and writes a report.",
+        use_when=["Your model predicts a full image, for example a sky map, a lensed galaxy "
+                  "or a pattern",
+                  "You want to see where on the image the model does not agree with the data"],
+        avoid_when=["The observed values are only at a few points (the residual maps are "
+                    "then almost empty)",
+                    "The model does not predict an image"],
+        data_needs=["An observed image with two image dims, for example y and x",
+                    "The model reference, its settings and, if the names are different, "
+                    "the binding of the dataset to the model"],
+        assumptions=["The model gives predictive draws of the image on the grid of the "
+                     "observed image",
+                     "The noise of the data is in the predictive draws or in a variable "
+                     "named sigma"],
+        outputs=["A fitted model version",
+                 "A table of the parameters with R-hat and the effective sample size",
+                 "Maps of the observed image, the mean prediction and the residuals",
+                 "The observed image next to predicted images on one colour scale",
+                 "The coverage of the 50% and 90% ranges and a report"],
+        difficulty=Difficulty.INTERMEDIATE,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="A sky map: the normalised residuals look like noise with sd 1.02, 91% of "
+        "the pixels are in the 90% ranges, and you cannot find the real map in the grid.",
+        related=["model.fit", "plot.render", "evaluate.ppc", "model.summary",
+                 "sci.cmb_field", "sci.strong_lens", "sci.turing_pattern"],
+        references=[AboutReference(title="Gabry et al. (2019), Visualization in Bayesian "
+                                   "workflow", url="https://arxiv.org/abs/1709.01449")],
+        expert_notes="Both plots read the in-sample predictions of the model (source: "
+        "predictions) with the observed target as observed_data. sci.image_residuals shows "
+        "the observed image, the mean, the residual and (obs - mean) / sqrt(sd^2 + sigma^2). "
+        "The recipe adds no sigma to posterior_predictive draws. var selects the image "
+        "variable when the model has more than one, and frame selects the dim of the slider "
+        "(for example run or t). The predictive check pools all the pixels. It needs 10 or "
+        "more predictive draws, and it does not stop the workflow when it fails.",
+        fits={"goal": ["validate_model", "map_fields", "fit_physics"],
+              "data_shape": ["grid"]},
+    ),
+    document=_doc(
+        "sci-image-model-check",
+        params={
+            "model": {"type": "string", "required": True,
+                      "description": "The image model, for example sci.cmb_field@^1"},
+            **_MODEL_PARAMS,
+            **_AUDIT_FIT_PARAMS,
+            "var": {"type": "string", "default": "",
+                    "description": "The predicted image variable (empty: the plots find it)"},
+            "frame": {"type": "string", "default": "",
+                      "description": "The dim with one image for each level, for example "
+                                     "run or t (empty: the plots find it)"},
+            "n_draws": {"type": "integer", "default": 5, "minimum": 1, "maximum": 11,
+                        "description": "The predicted images next to the observed image"},
+            "shuffle": {"type": "boolean", "default": False,
+                        "description": "Hide which panel is the observed image (the "
+                                       "caption gives the answer)"},
+            "statistic": {"type": "string", "default": "sd",
+                          "enum": ["mean", "sd", "max", "min"],
+                          "description": "The statistic of the predictive p-value"},
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "The observed image (or images) and the inputs of "
+                                        "the model"}},
+        nodes=[
+            {"id": "fit", "use": "model.fit", "inputs": {"data": "inputs.data"},
+             "with": {"model": _p("model"), "settings": _p("settings"), "bind": _p("bind"),
+                      "fit": _AUDIT_FIT}},
+            {"id": "summary", "use": "model.summary", "label": "Parameters and convergence",
+             "inputs": {"model": "fit.model"}},
+            {"id": "residuals", "use": "plot.render", "label": "Residual maps",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.image_residuals", "source": "predictions",
+                      "settings": _IMAGE}},
+            {"id": "grid", "use": "plot.render", "label": "Observed and predicted images",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.ppc_image_grid", "source": "predictions",
+                      "settings": {**_IMAGE, "n_draws": _p("n_draws"),
+                                   "shuffle": _p("shuffle")}}},
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Predictions against the data",
+             "inputs": {"model": "fit.model"}, "on_failure": "continue",
+             "with": {"statistic": _p("statistic")}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["summary.table"], "metrics": ["ppc.metrics"],
+                        "plots": ["residuals.plot", "grid.plot"], "model": "fit.model"},
+             "with": {"title": "Image model check"}},
+        ],
+        outputs={"model": "fit.model", "report": "report.report",
+                 "summary": "summary.table", "ppc": "ppc.metrics"},
+    ),
+    tags=["science", "image", "diagnostics"],
+)  # fmt: skip
+
 WORKFLOW_TEMPLATES: Final[dict[str, WorkflowTemplate]] = {
-    t.id: t for t in (TS_READINESS_ARIMAX, VAR_VECM, MMM_GOVERNED, FORECAST_BAKEOFF)
+    t.id: t
+    for t in (
+        TS_READINESS_ARIMAX,
+        VAR_VECM,
+        MMM_GOVERNED,
+        FORECAST_BAKEOFF,
+        SCI_SPATIAL_LADDER,
+        SCI_NETWORK_LADDER,
+        SCI_PHYLO_SIGNAL,
+        SCI_CALIBRATE_THEN_DESIGN,
+        BAYES_WORKFLOW_AUDIT,
+        SCI_IMAGE_MODEL_CHECK,
+    )
 }
 """The gallery (``GET /v1/workflow-templates``)."""
 

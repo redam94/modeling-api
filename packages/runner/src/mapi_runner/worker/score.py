@@ -29,6 +29,7 @@ from mapi_sdk.context import drop_context
 from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
 from mapi_sdk.models import ScoreContext
+from mapi_sdk.summarise import CIRCULAR_ATTR
 from mapi_sdk.wire import to_arrow_table, write_arrow_ipc, write_datatree_zip
 from mapi_spec._types import RESERVED_STAGE
 from mapi_spec.actuals import CONDITIONING_ATTR
@@ -116,7 +117,8 @@ def _cell(value: Any) -> Any:
 
 def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) -> dict[str, Any]:
     """The ``summary`` group (variables with a leading ``stat`` dim) as plain tables: the
-    coordinate columns, then one column per statistic; at most ``max_cells`` cells."""
+    coordinate columns, then one column per statistic; at most ``max_cells`` cells. A
+    circular output summarised on the circle carries its ``period``."""
     tables: list[dict[str, Any]] = []
     cells = 0
     truncated = False
@@ -139,7 +141,11 @@ def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) 
                 + [_cell(v) for v in values[(slice(None), *idx)]]
             )
             cells += len(dims) + len(stats)
-        tables.append({"variable": str(name), "columns": [*dims, *stats], "rows": rows})
+        table: dict[str, Any] = {"variable": str(name), "columns": [*dims, *stats], "rows": rows}
+        period = da.attrs.get(CIRCULAR_ATTR)
+        if period is not None:
+            table["period"] = float(period)
+        tables.append(table)
         if truncated:
             break
     return {"tables": tables, "truncated": truncated}

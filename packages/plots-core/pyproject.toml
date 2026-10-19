@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plots"
-version = "0.8.0"
+version = "0.9.0"
 description = "Plot recipes and the JSON-only PlotSpec sanitizer"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -32,6 +32,7 @@ core = "mapi_plots.recipes:standard_recipes"
 mmm = "mapi_plots.packs.mmm:mmm_recipes"
 ml = "mapi_plots.packs.ml:ml_recipes"
 sci = "mapi_plots.packs.sci:sci_recipes"
+net = "mapi_plots.packs.net:net_recipes"
 
 [build-system]
 requires = ["hatchling>=1.25"]

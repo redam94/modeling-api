@@ -985,7 +985,9 @@ def _first_valid(da: xr.DataArray, extra: list[str]) -> xr.DataArray:
 def to_arrow_table(obj: xr.Dataset | xr.DataArray, *, max_rows: int = 2_000_000) -> pa.Table:
     """Tidy (long) Arrow table: one column per dim coordinate plus one per variable.
 
-    Variable attrs (units, ...) are attached as JSON schema metadata under ``mapi.attrs``.
+    Variable attrs (units, ...) are attached as JSON schema metadata under ``mapi.attrs``,
+    and the names of the dim columns under ``mapi.dims`` (a reader cannot tell a numeric dim,
+    for example a grid position in cm, from a variable by its type).
     """
     ds = obj.to_dataset(name=obj.name or "value") if isinstance(obj, xr.DataArray) else obj
     ds = normalise_dataset(reset_multiindex(ds))
@@ -995,6 +997,13 @@ def to_arrow_table(obj: xr.Dataset | xr.DataArray, *, max_rows: int = 2_000_000)
     df = ds.to_dataframe() if ds.dims else pd.DataFrame({k: [ds[k].item()] for k in ds.data_vars})
     df = df.reset_index() if ds.dims else df
     table = pa.Table.from_pandas(df, preserve_index=False)
+    if ds.dims:
+        table = table.replace_schema_metadata(
+            {
+                **(table.schema.metadata or {}),
+                b"mapi.dims": json.dumps([str(d) for d in ds.dims]).encode(),
+            }
+        )
     meta = {str(k): json_safe_attrs(ds[k].attrs, str(k)) for k in ds.variables if ds[k].attrs}
     if meta or ds.attrs:
         payload = json.dumps({"vars": meta, "dataset": json_safe_attrs(ds.attrs, "dataset")})

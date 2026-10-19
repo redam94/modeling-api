@@ -22,7 +22,7 @@ export function plotPack(id: string): string {
   return id.split(".", 1)[0] ?? id;
 }
 
-const PACK_LABEL: Record<string, string> = { core: "All models", mmm: "Marketing mix", ml: "Machine learning", sci: "Science" };
+const PACK_LABEL: Record<string, string> = { core: "All models", mmm: "Marketing mix", ml: "Machine learning", sci: "Science", net: "Networks" };
 
 /** Latest non-yanked version of each recipe id, sorted by pack then title. */
 export function latestPlots(plots: readonly PlotCatalogEntry[]): PlotCatalogEntry[] {

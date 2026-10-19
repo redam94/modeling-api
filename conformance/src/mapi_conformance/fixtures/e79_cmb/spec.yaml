@@ -1,0 +1,18 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: cmb-field-synthetic, project: science, labels: {corpus: e79}}
+data:
+  dataset: dataset://science/cmb_synthetic@latest
+model:
+  use: sci.cmb_field@^1
+  settings:
+    pixel_arcmin: 7.5
+    beam_fwhm_arcmin: 5.0
+    pixel_subsamples: 1
+    pixel_window: false
+    projection: gnomonic
+    border: 8
+    field_draws: 40
+  fit: {seed: 79, tune: 16, draws: 64, chains: 4, engine: gibbs}
+evaluate: {metrics: [rmse, mae, coverage_90]}
+outputs: {plots: [core.convergence, sci.power_spectrum, sci.field_map, sci.image_residuals, sci.ppc_image_grid]}

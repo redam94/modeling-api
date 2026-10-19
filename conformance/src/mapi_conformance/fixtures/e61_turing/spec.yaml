@@ -1,0 +1,21 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: turing-mode-growth, project: biology, labels: {corpus: e61}}
+data:
+  dataset: dataset://biology/turing_early_images@latest
+  split: {kind: time_holdout, dim: t, last: 1}
+model:
+  use: sci.turing_pattern@^1
+  settings: {box_length: 100.0, k2_max: 1.5, field_draws: 40, simulate_draws: 4, settle_time: 150}
+  fit:
+    mode: evaluate_then_refit
+    seed: 61
+    tune: 1000
+    draws: 500
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true}
+evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
+outputs:
+  plots: [core.convergence, core.posterior_forest, sci.field_map, sci.ppc_image_grid,
+          sci.profile_bands]

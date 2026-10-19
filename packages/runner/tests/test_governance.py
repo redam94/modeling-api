@@ -248,3 +248,97 @@ def test_bayesian_checks_use_draws_priors_and_simulations() -> None:
     refit = env.refitter.spec(split=None)
     assert refit.model.fit.draws == 40 and refit.model.fit.tune == 40
     assert refit.model.fit.mode.value == "train_only"
+
+
+# ---------------------------------------------------------------- recovery.simulated paths
+
+
+def _known(estimate: float, draws: np.ndarray | None = None) -> list[tuple[str, dict, object]]:
+    from mapi_runner.worker.modelview import ParamEstimate
+
+    e = ParamEstimate("b_x", estimate, sd=0.1, lower=estimate - 0.2, upper=estimate + 0.2)
+    e.draws = draws
+    return [("b_x", {}, e)]
+
+
+def test_recovery_skips_a_count_target_without_predictive_draws(
+    signal: GovernanceEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fitted values plus residuals are not counts: the check says so instead of an error."""
+    from mapi_runner.worker import governance as gov
+
+    counts = signal.data.assign(y=np.rint(signal.data["y"]).astype("int64"))
+    env = GovernanceEnv(signal.bundle, counts, signal.registry, signal.refitter)
+    monkeypatch.setattr(gov, "_estimates", lambda b, **_k: _known(1.0))
+    used = env.refitter.used
+    r = measure(env, PolicyCheck(check="recovery.simulated", params={"n_sims": 5}))
+    assert r.status is CheckStatus.SKIPPED, r.message_plain
+    assert "whole numbers" in r.message_plain and "predictive draws" in r.message_plain
+    assert env.refitter.used == used
+
+
+def test_recovery_reports_simulated_data_the_model_cannot_fit(
+    signal: GovernanceEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_runner.worker import governance as gov
+    from mapi_spec.errors import MapiError
+
+    env = GovernanceEnv(signal.bundle, signal.data, signal.registry, signal.refitter)
+    monkeypatch.setattr(gov, "_estimates", lambda b, **_k: _known(1.0))
+
+    def refuse(*_a: object, **_k: object) -> object:
+        raise MapiError("the counts must be whole numbers")
+
+    monkeypatch.setattr(env.refitter, "fit", refuse)
+    r = measure(env, PolicyCheck(check="recovery.simulated", params={"n_sims": 5}))
+    assert r.status is CheckStatus.ERROR
+    assert "could not fit the simulated data (5 of 5 fits failed)" in r.message_plain
+    assert r.message_expert is not None and "whole numbers" in r.message_expert
+
+
+def test_recovery_simulates_from_predictive_draws_with_the_known_values_of_that_draw(
+    signal: GovernanceEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Bayesian model simulates with its own noise (here whole counts); the known value of
+    each parameter is the value of the posterior draw that made the data."""
+    from mapi_runner.worker import governance as gov
+    from mapi_runner.worker.modelview import Prediction
+
+    n_samples = 8
+    y = signal.data["y"]
+    draws = xr.DataArray(
+        np.broadcast_to(np.arange(n_samples, dtype=float)[:, None], (n_samples, y.size)).copy(),
+        dims=("sample", "time"),
+        coords={"time": y["time"].values},
+        attrs={"kind": "predictive"},
+    )
+    pred = Prediction(target="y", output="y", observed=y, point=y, draws=draws)
+    env = GovernanceEnv(signal.bundle, signal.data, signal.registry, signal.refitter)
+    env.kind = "bayesian"
+    seen: list[np.ndarray] = []
+    original = env.bundle
+
+    def estimates(b: object, **_k: object) -> list[tuple[str, dict, object]]:
+        # the fit: a far-away mean, and draw k has the value k; each refit: a 90% range
+        # around the draw that made its data
+        if b is original:
+            return _known(100.0, np.arange(n_samples, dtype=float))
+        return _known(float(seen[-1][0]))
+
+    def refit(data: xr.Dataset, _spec: object) -> object:
+        seen.append(np.asarray(data["y"].values))
+        return object()
+
+    def predictive(*_a: object, kind: str = "expected", **_k: object) -> list[Prediction]:
+        assert kind == "predictive"
+        return [pred]
+
+    monkeypatch.setattr(gov, "_estimates", estimates)
+    monkeypatch.setattr(gov, "predict", predictive)
+    monkeypatch.setattr(env.refitter, "fit", refit)
+    r = measure(env, PolicyCheck(check="recovery.simulated", params={"n_sims": 5}))
+    assert r.status is CheckStatus.PASS and r.value == 1.0, r.message_plain
+    assert len(seen) == 5
+    for sim in seen:  # one whole predictive draw each time, never fitted value + residual
+        assert np.all(sim == sim[0]) and sim[0] in range(n_samples)
+    assert r.message_expert is not None and "posterior predictive" in r.message_expert

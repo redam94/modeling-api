@@ -1,4 +1,4 @@
-"""About cards of the built-in plot recipes: the core, MMM, ML and science packs.
+"""About cards of the built-in plot recipes: the core, MMM, ML, science and network packs.
 
 The text is written for people who read the charts, not for people who make them: the summary
 says what the chart shows for them, the lists say when to open it, what the model or run must
@@ -768,7 +768,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Two grid dimensions, from the output's grid declaration or the settings",
         ],
         [
-            "Each cell is summarised on its own; the chart does not show how cells vary together",
+            "Each cell is summarised on its own. The chart does not show how cells vary together",
             "Large grids are averaged in blocks of cells so that the chart stays small",
         ],
         [
@@ -806,7 +806,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         ],
         [
             "The two components use the same units, so the length makes sense",
-            "Arrows show the mean vector; colours show the mean length over the draws",
+            "Arrows show the mean vector. Colours show the mean length over the draws",
         ],
         [
             "A heatmap of the mean length with arrows of the mean direction",
@@ -904,5 +904,614 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "draws. `point` is median, mean or none. `along` defaults to the time-like dim, else "
         "the grid's x. Other dims must have one level or be fixed with `select`. The median "
         "line is not itself a possible path.",
+    ),
+    # ============================================================ core: extras
+    "core.pair": _a(
+        "Pair plot",
+        "Shows the draws of each pair of model parameters as a cloud of points, with a "
+        "histogram of each parameter. Red points mark draws where the fitting method had "
+        "problems.",
+        [
+            "Sampler convergence reports divergent transitions and you want to see where they are",
+            "You want to see if two parameters trade off against each other",
+            "You want to see the shape of the fitted values, such as two peaks or a funnel",
+        ],
+        [
+            "The model has many parameters and you do not know which ones to look at",
+            "You want the ranges of many parameters at once (use Posterior forest)",
+        ],
+        [
+            "A fitted Bayesian model with draws in chains (the posterior group)",
+            "Optional: sample_stats with the divergence flags",
+        ],
+        [
+            "The chart shows the first 5 parameter values, or the ones that you pick",
+            "A random-looking cloud is good. A narrow line or a curved band is a problem for "
+            "the sampler",
+        ],
+        [
+            "A histogram of each parameter on the diagonal",
+            "A cloud of points for each pair of parameters below the diagonal",
+            "Red points for the divergent transitions",
+            "A caption with the strongest correlation and the number of divergences",
+        ],
+        _X,
+        _SEC,
+        "The cloud of beta[tv] against alpha[north] has two separate groups of points: the "
+        "two chains found different values of beta[tv]. The 3 red points are inside the "
+        "clouds, so they do not point to a funnel.",
+        related=["core.convergence", "core.posterior_forest"],
+        expert="Elements of `var_names` (default: every numeric posterior variable) are taken "
+        "in model order up to `max_params` (5; constant elements are skipped). The scatters "
+        "show up to `max_draws` (500) evenly thinned draws plus the divergent draws; the "
+        "histograms (`bins`, 20) use all draws. Each axis spans the full range of the "
+        "draws. Divergences come from sample_stats.diverging when its (chain, draw) shape "
+        "matches. The caption reports the largest |Pearson r| over all draws; above 0.8 "
+        "it suggests a reparameterisation.",
+        refs=[_GABRY, _ARVIZ],
+    ),
+    "core.ridge": _a(
+        "Ridgeline",
+        "Shows a curve of the possible values for each group, such as each school or each "
+        "region, one above the other and sorted by the average. Use it to compare many groups "
+        "at once.",
+        [
+            "Your model has one value for each group and you want to compare the groups",
+            "You want to see the shape of each range, not only its ends",
+        ],
+        [
+            "There are more than 30 groups. The chart then shows only 30 of them (raise "
+            "`max_levels` to 100, or use Posterior forest)",
+            "The variable has more than one dimension that you cannot fix to one level",
+        ],
+        [
+            "Draws of a variable with one group dimension, in the posterior, predictions or "
+            "posterior_predictive group",
+        ],
+        [
+            "Each curve is scaled to the same height, so compare widths and positions, not heights",
+            "Other dimensions have one level or are fixed with `select`",
+        ],
+        [
+            "One smoothed curve for each group, sorted by the mean",
+            "A dot for the mean and a bar for the 94% range of each group",
+            "A dashed zero line when the values cross zero",
+            "A caption with the top and bottom groups and how many neighbours overlap",
+        ],
+        _B,
+        _NOW,
+        "School A is at the top with a mean effect of 14 and school E is at the bottom with "
+        "4. The bars of most neighbouring schools overlap, so only the difference between "
+        "the top and the bottom is clear.",
+        related=["core.rank_matrix", "core.posterior_forest"],
+        expert="Gaussian KDE (Silverman bandwidth) per level on a common grid over the "
+        "0.5–99.5 % range of all draws (`points`, 100), each scaled so its peak is "
+        "`overlap` (1.6) row heights. Bars are the HDI at `hdi_prob` (0.94). Rows are "
+        "ordered by mean (`descending` puts the largest on top); above `max_levels` (30), "
+        "evenly spaced rows in that order are kept. `dim` picks the level dim when the "
+        "variable has more than one; `select` fixes the others. Up to `max_draws` (4000) "
+        "draws.",
+        refs=[_ARVIZ],
+    ),
+    "core.rank_matrix": _a(
+        "Rank matrix",
+        "Shows how likely each item is to have each place in a ranking, and how likely each "
+        "item is to be above each other item. Use it when the order of items matters more "
+        "than their values.",
+        [
+            "You want to rank teams, products, schools or regions and know how sure the ranking is",
+            "You want the chance that one item is better than another",
+        ],
+        [
+            "There are more than 30 items (raise `max_items` to 60 at most)",
+            "Ties are common and meaningful (the chart breaks ties in a fixed order)",
+        ],
+        [
+            "Draws of a variable with one item dimension, in the posterior, predictions or "
+            "posterior_predictive group",
+        ],
+        [
+            "Rank 1 is the largest value unless you set `descending: false`",
+            "Each draw gives one full ranking. The chart counts how often each place occurs",
+        ],
+        [
+            "A heatmap of the chance of each rank for each item, sorted by the expected rank",
+            "A heatmap of the chance that the row item is above the column item",
+            "Percentages in the cells when there are 12 items or fewer",
+            "A caption with the top item and how sure its place is",
+        ],
+        _I,
+        _NOW,
+        "School A is first in 49% of the draws and is above school G in 83% of them. The "
+        "middle schools have spread-out rows: their places are not certain.",
+        related=["core.ridge", "core.decision_distribution"],
+        expert="Per draw, items are ranked by value (`descending`: rank 1 = largest; ties "
+        "keep item order). P(rank = k) is the share of draws, the expected rank sorts the "
+        "rows, and P(row above column) = P(x_row > x_col) for `descending` (else <). Up to "
+        "`max_draws` (4000) draws with every item finite; `max_items` (30) items. `labels` "
+        "(auto: at most 12 items) prints the percentages.",
+    ),
+    "core.calibration": _a(
+        "Calibration",
+        "Checks if the ranges and probabilities that the model predicts agree with how often "
+        "things happen in your data. A line inside the band, or dots on the diagonal, show a "
+        "well-calibrated model.",
+        [
+            "You want a sharper check of the predicted ranges than the PIT histogram",
+            "You predict a yes/no outcome and want to know if a 70% prediction comes true "
+            "about 70% of the time",
+        ],
+        [
+            "You have no actual values to compare with",
+            "You have only a few observations (fewer than about 30)",
+        ],
+        [
+            "Predictions with draws (posterior_predictive or predictions group)",
+            "The actual values (observed_data group)",
+        ],
+        [
+            "Each actual value is compared with the draws for the same cell",
+            "For a yes/no outcome the predicted probability is the average of the draws",
+        ],
+        [
+            "For numbers: the PIT-ECDF difference with a 95% band that holds at all points "
+            "together",
+            "For yes/no outcomes: a reliability diagram with a band for each group and a "
+            "histogram of the predicted probabilities",
+            "Red points where the line or a group is outside its band",
+            "A caption with the verdict, and the Brier score for yes/no outcomes",
+        ],
+        _X,
+        _SEC,
+        "The line goes above the band near 0 and below it near 1: too many actual values are "
+        "in the tails. The predicted ranges of the model are too narrow.",
+        related=["core.ppc", "core.ppc_fan"],
+        expert="Continuous: PIT = P(ŷ < y) + ½ P(ŷ = y); the line is ECDF(z) − z on a grid of "
+        "min(max(n, 20), 200) points. The simultaneous envelope at `prob` (0.95) is "
+        "±c·sqrt(z(1−z)/n) with c the `prob` quantile of the largest standardised deviation "
+        "over the grid in `n_sim` (1000) simulated uniform samples (cumulative multinomial "
+        "counts, `seed`). Binary (auto when y ∈ {0, 1} and the draws are in [0, 1]): `bins` "
+        "(10) equal-width bins of the mean prediction; each band is the binomial range "
+        "p ± z·sqrt(p(1−p)/n_bin); the expected calibration error weights |observed − "
+        "predicted| by bin size.",
+        refs=[
+            (
+                "Säilynoja, Bürkner and Vehtari (2022), Graphical test for discrete uniformity "
+                "and its applications in goodness-of-fit evaluation and multiple sample "
+                "comparison",
+                "https://arxiv.org/abs/2103.10522",
+            ),
+            _GABRY,
+        ],
+    ),
+    "core.state_sequence": _a(
+        "State sequence",
+        "Shows your data over time above the probability of each hidden state, such as a calm "
+        "or a busy period. Use it to see when the state changes and how sure the model is.",
+        [
+            "Your model has hidden states or regimes, such as a hidden Markov model",
+            "You want to find change points in a series",
+        ],
+        [
+            "The states have no fixed labels between draws (label switching). Fix the order "
+            "in the model first",
+            "There are more than about 10 states",
+        ],
+        [
+            "State probabilities with a state and a time dimension, or draws of the state "
+            "number at each time (posterior, predictions or posterior_predictive group)",
+            "Optional: the observed series (observed_data group)",
+        ],
+        [
+            "State number 0 in one draw is the same state as number 0 in another draw",
+            "The observed series and the states use the same time points",
+        ],
+        [
+            "The observed series with each point coloured by its most likely state",
+            "Stacked areas of the probability of each state at each time",
+            "A caption with the number of changes, the share of time in each state and the "
+            "times with no clear state",
+        ],
+        _I,
+        _NOW,
+        "The volatile state has a high probability from mid-February to early March and in "
+        "late April. The large swings in the data are at the same times. At the edges of "
+        "these periods neither state reaches 80%, so the exact change dates are not certain.",
+        related=["core.ppc_fan", "sci.profile_bands"],
+        expert="With a `state_dim` (default 'state') the variable is a probability per state "
+        "and time: the mean over draws (up to `max_draws`), clipped at 0 and normalised at "
+        "each time. Without it, integer state draws are counted per time. `along` sets the "
+        "time dim, `select` fixes other dims, `observed_var` picks the series (default: the "
+        "first observed variable with the time dim). The most likely state colours the "
+        "points; up to `max_times` (2000) evenly spaced times.",
+    ),
+    "sci.area_map": _a(
+        "Area map",
+        "Shows a map of areas, such as districts, coloured by the model's estimate for each "
+        "area. Other panels show the uncertainty and how likely it is that the value is above "
+        "a limit.",
+        [
+            "The model gives one value for each area of a map, such as a disease risk",
+            "You want to find the areas where the risk is clearly high",
+            "You want to compare the smoothed estimate with the raw observed values",
+        ],
+        [
+            "The output is a value on a regular grid (use Field map)",
+            "You need a base map with roads and place names (the chart draws only the outlines)",
+        ],
+        [
+            "Draws of a per-area output in the posterior, predictions or posterior_predictive "
+            "group (a summary with mean and sd also works)",
+            "The outlines of the areas as ring_x(area, vertex) and ring_y(area, vertex)",
+            "Optional: observed values for each area and a neighbour matrix adjacency(area, area_)",
+        ],
+        [
+            "The outlines use the same units on both axes, such as metres or degrees",
+            "Holes inside an area are filled",
+            "Large outlines use fewer points so that the chart stays small",
+        ],
+        [
+            "One map panel each for the observed values, the mean and the SD",
+            "A panel with the probability that the value is above the threshold",
+            "Crosses on the areas where that probability is above 95%",
+            "Optional grey lines between neighbouring areas",
+        ],
+        _I,
+        _SEC,
+        "The observed panel of lip cancer in Scotland shows extreme values in small "
+        "districts. The mean panel is smoother. The probability panel is dark red in the north, "
+        "and crosses mark the districts where the risk is above 1 with 95% probability.",
+        related=["sci.field_map", "core.posterior_forest"],
+        expert="Statistics per area over up to `max_draws` (2000) draws: mean, median, sd "
+        "(ddof 1) and P(value > `threshold`) (`stats`; default observed, mean, sd and "
+        "exceedance). `threshold` defaults to 1 for a non-negative output (a relative risk) "
+        "and to 0 otherwise. Fills use `classes` (9) equal steps of the colour scale over "
+        "the 0.5 to 99.5% range; the colour bar and the hover show the exact value. "
+        "`log_scale` colours log10 of the value panels. Areas match the outlines by label "
+        "when both have labels, else by position. Polygons are drawn as filled scatter "
+        "shapes on equal-aspect axes, not a geographic projection.",
+    ),
+    "sci.phylogeny": _a(
+        "Phylogeny with tip estimates",
+        "Shows a family tree of species next to the model's estimate for each species. Close "
+        "relatives sit side by side, so you can see if related species have similar values.",
+        [
+            "The model gives one value for each species (or other tip) of a tree",
+            "You want to see how the estimate follows the tree",
+            "Some species have no observed value and you want to see their estimate",
+        ],
+        [
+            "The groups are not related by a tree (use Posterior forest)",
+            "The tree has thousands of tips and you need to see every one of them",
+        ],
+        [
+            "Draws of a per-tip output in the predictions, posterior_predictive or posterior group",
+            "The tree as parent(node) and branch_length(node), with optional is_tip(node) and "
+            "tip_label(node)",
+            "Optional: the observed trait for each tip (observed_data)",
+        ],
+        [
+            "Each node has one parent. A root has no parent",
+            "Tips match the output by label, else in the order of the nodes",
+            "With more tips than the limit, the chart shows evenly spaced tips",
+        ],
+        [
+            "The tree with the branch lengths along the x axis",
+            "A dot at each tip coloured by the estimate",
+            "A strip with the estimate and its 90% interval for each tip",
+            "Open circles for the observed values",
+        ],
+        _I,
+        _SEC,
+        "The tree of 16 primates puts the large apes together at the top. Their dots in the "
+        "strip are all on the right. Three species have no observed body mass, and their "
+        "intervals are a little wider than those of their relatives.",
+        related=["core.posterior_forest", "sci.profile_bands"],
+        expert="The layout is rectangular: x is the sum of branch lengths from the root, y "
+        "the order of the tips in a depth-first walk; a parent sits midway between its outer "
+        "children. `parent` holds integer positions (or node labels); -1, NaN or the node "
+        "itself marks a root, and several roots join at a common origin. The strip shows the "
+        "mean or median (`point`) and the equal-tailed `interval` (0.9). `max_tips` (400) "
+        "keeps evenly spaced tips and their ancestors.",
+    ),
+    "sci.rose": _a(
+        "Rose of angles",
+        "Shows directions or times of day on a circle. Bars show how often each direction "
+        "occurs, with the range that the model expects for each sector.",
+        [
+            "The data are angles, such as wind directions, hours of the day or days of the year",
+            "You want to check that the model gets the main directions right",
+            "The model gives a density around the circle and you want to see its shape",
+        ],
+        [
+            "The values are not on a circle (use Posterior predictive check)",
+            "You need the exact numbers for each direction (use a table)",
+        ],
+        [
+            "Observed angles (observed_data) and draws of simulated angles "
+            "(posterior_predictive), or a density over an angle dimension with draws",
+            "The units of the angles: radians, degrees, hours or days",
+        ],
+        [
+            "One turn is 2π radians, 360 degrees, 24 hours or 365.25 days (or `period`)",
+            "Sectors have equal widths",
+            "A density curve is in units per one unit of angle",
+        ],
+        [
+            "Bars for the observed count (or share) in each sector",
+            "A thick line in each sector for the 90% range of simulated data, and the median",
+            "Or a median curve with dotted 90% limits",
+            "A slider when the data have a frame dimension, such as season",
+        ],
+        _B,
+        _NOW,
+        "The rose of wind directions has a long bar to the south-west. The model's range "
+        "covers it, but the bars to the north-east end above the range: the model gives too "
+        "few winds from the north-east.",
+        related=["sci.profile_bands", "core.ppc"],
+        expert="Histogram mode: the observed angles and each of up to `max_draws` (1000) "
+        "predictive draws are counted in `bins` (24) equal sectors; the lines are equal-tailed "
+        "`interval` (0.9) quantiles of the counts per sector. `scale` share divides by the "
+        "number of angles (the default with a `frame`). Density mode (an `angle_dim` such as "
+        "angle, hour or direction): quantiles per angle; observed angles are scaled to a "
+        "density per unit. `clockwise` defaults to true (zero at the top) except for radians.",
+    ),
+    # ------------------------------------------------------------ science pack: images
+    "sci.image_residuals": _a(
+        "Image residuals",
+        "Shows the observed image, the image that the model expects and the difference "
+        "between them. A pattern in the difference shows something that the model misses.",
+        [
+            "The model makes an image or a map that you can compare with a measured one",
+            "You want to find the parts of the image that the model does not explain",
+            "You want to check that the noise in the model has the right size",
+        ],
+        [
+            "There is no observed image (use Field map)",
+            "You want to see single images from the model (use Predictive image grid)",
+        ],
+        [
+            "Draws of a gridded output in the posterior_predictive, predictions or posterior group",
+            "The observed image with the same grid (observed_data group)",
+            "Optional: the noise of the data (a sigma variable or a number)",
+        ],
+        [
+            "Each cell is compared on its own. The chart does not show how cells vary together",
+            "Large images are averaged in blocks of cells so that the chart stays small",
+        ],
+        [
+            "Heatmaps of the observed image and the model mean on one colour scale",
+            "A heatmap of the residual (observed minus mean) on a red-blue scale",
+            "A heatmap of the residual divided by the uncertainty and the noise",
+            "A histogram of these normalised residuals with the standard normal curve",
+            "A slider when the output has a frame dimension",
+        ],
+        _I,
+        _SEC,
+        "The residual of a galaxy image is grey noise except for a red spot at the bottom "
+        "right. The model has the main galaxy but not a small companion next to it. The "
+        "normalised residuals have an sd of 1.04, so the noise level is right.",
+        related=["sci.ppc_image_grid", "sci.field_map", "core.ppc"],
+        expert="Mean and sd (ddof 1) per cell over up to `max_draws` draws; residual = obs - "
+        "mean; normalised = residual / sqrt(sd² + σ²). σ² comes from `sigma` (a variable: "
+        "posterior draws are averaged as E[σ²]; or a number), read as `sigma_kind` sd, "
+        "variance or inverse_variance. Without `sigma`, a variable named sigma is used, but "
+        "only for noise-free images: draws from posterior_predictive already hold the noise. "
+        "The histogram uses all cells at full resolution, bins of 0.25 on [-4.5, 4.5] (the "
+        "tails go to the end bins). `log` colours the observed, mean and residual panels as "
+        "log10 (the residual is a log10 ratio); the normalised residual stays in data units, "
+        "as σ is.",
+        refs=[_GABRY],
+    ),
+    "sci.ppc_image_grid": _a(
+        "Predictive image grid",
+        "Shows the observed image next to a few images that the model makes. If the model "
+        "fits, it is difficult to tell which image is the real one.",
+        [
+            "You want a quick visual check that the model can make images like the data",
+            "You want to test yourself or others with a shuffled grid",
+        ],
+        [
+            "You want to locate the errors cell by cell (use Image residuals)",
+            "There is no observed image (use Field map with draws)",
+        ],
+        [
+            "Draws of a gridded output, best from the posterior_predictive group",
+            "The observed image with the same grid (observed_data group)",
+        ],
+        [
+            "The draws hold the noise of the data, so they look like real measurements",
+            "A few draws show the typical images, not the rare ones",
+        ],
+        [
+            "One heatmap of the observed image and one for each draw, on one colour scale",
+            "With shuffle, the panels are in a random order and the caption names the real one",
+            "A slider when the output has a frame dimension",
+        ],
+        _B,
+        _SEC,
+        "In a shuffled grid of six patterns, five look the same and panel D has thinner "
+        "stripes. The caption says that panel D is the real image, so the model makes "
+        "stripes that are too wide.",
+        related=["sci.image_residuals", "sci.field_map", "core.ppc"],
+        expert="`n_draws` (5) draws chosen without replacement with `seed`; `shuffle` permutes "
+        "the observed panel among them with the same seed. All panels share one value range "
+        "(0.5 to 99.5 percentile). This is the visual 'line-up' test of Buja et al. (2009) "
+        "and Gelman's graphical posterior predictive checks.",
+        refs=[_GABRY],
+    ),
+    "sci.swatches": _a(
+        "Colour swatches",
+        "Shows squares in the colours that the model gives to each item, next to the "
+        "measured colours. Squares that change from draw to draw show where the model is not "
+        "sure.",
+        [
+            "The model gives a colour for each item, such as a paint, a chip or a pixel",
+            "You want to compare model colours with measured colours by eye",
+            "The items have places on a chart, such as the colour-naming chip chart",
+        ],
+        [
+            "The output is not a colour in sRGB from 0 to 1 (convert it first)",
+            "You need exact colour differences (read the numbers instead)",
+        ],
+        [
+            "Draws of an output with an item dimension and an rgb dimension of length 3",
+            "Optional: measured colours with the same dimensions (observed_data group)",
+            "Optional: row and col coordinates on the item dimension to draw a map",
+            "Optional: a probability for each item, shown as border width or opacity",
+        ],
+        [
+            "The values are sRGB in [0, 1]. The chart clips values outside this range",
+            "The mean colour is the average in sRGB, not in a perceptual colour space",
+            "Screens show colours differently, so compare squares on the same screen",
+        ],
+        [
+            "Squares of the measured colours",
+            "Squares of the mean colour and of a few single draws",
+            "A list of items, or a map when the items have row and col coordinates",
+            "A caption with the mean distance between model and measured colours",
+        ],
+        _B,
+        _SEC,
+        "On the chip map, the mean squares match the measured squares in the light rows. "
+        "In the dark rows the draws change from green to brown, so the model is not sure of "
+        "the dark colours.",
+        related=["sci.field_map", "sci.ppc_image_grid"],
+        expert="`channel` (rgb) is the length-3 dim, reordered to r, g, b by its labels. "
+        "Colours are written as hex strings in the dataset. `arrange` auto draws a map when "
+        "`row` and `col` coords exist on the item dim (text coords become ordered ticks). "
+        "`prob` (draws are averaged) sets border width (0 to 2.5 px) or opacity "
+        "(`prob_as`) on the model panels. A list shows at most `max_items` evenly spaced "
+        "items. The distance in the caption is the Euclidean sRGB distance on a 0 to 255 "
+        "scale, not CIEDE2000.",
+    ),
+    "sci.power_spectrum": _a(
+        "Power spectrum",
+        "Shows how much signal there is at each scale or frequency, as the model sees it, "
+        "with shaded ranges and the measured points.",
+        [
+            "The model gives a spectrum in bins, such as the power of a sky map or a signal",
+            "You want to compare the spectrum with a theory curve and with the data",
+        ],
+        [
+            "The output is not binned along one dimension (use Profiles with bands)",
+            "You want single possible spectra (use Ensemble of draws)",
+        ],
+        [
+            "Draws of a binned output, with a coordinate such as multipole or frequency",
+            "Optional: observed values and their sd (observed_data group)",
+            "Optional: a theory curve in any group",
+        ],
+        [
+            "The bands show the uncertainty of each bin on its own. Bins can be correlated",
+            "A log axis hides values at or below zero",
+        ],
+        [
+            "A line for the median in each bin",
+            "Shaded 50% and 90% bands",
+            "A dashed theory curve",
+            "Dots for the observed values with error bars",
+            "A caption with the share of observed values inside the 90% band",
+        ],
+        _X,
+        _NOW,
+        "The model's spectrum of a sky patch follows the dashed theory curve at large "
+        "scales, but it is lower than the curve above multipole 1500. 75% of the observed "
+        "points are in the 90% band, so the patch has a little less power at small scales.",
+        related=["sci.profile_bands", "sci.ensemble", "sci.field_map"],
+        expert="Equal-tailed bands at `levels` (default 0.5, 0.9) and the median or mean over "
+        "up to `max_draws` draws. x is `x_coord` (default: the first numeric coord on the bin "
+        "dim, such as ell; else the bin index). `theory` is any variable along one dim "
+        "(draws give the median). Error bars are `error_var`, default `<observed>_sd`. "
+        "`log_x` and `log_y` set log axes. The recipe draws the spectrum as given; scale it "
+        "(for example to D_ell = ell(ell+1)C_ell/2π) in the model.",
+    ),
+    "sci.point_pattern": _a(
+        "Point pattern",
+        "Shows points, such as events or light sources, at their positions on a map or an "
+        "image. A ring around each point shows where its true position can be.",
+        [
+            "The model finds the positions of points, such as molecules in a microscope image",
+            "You want to see which positions are certain and which are not",
+            "You want to compare the points with an image or a map of the intensity",
+        ],
+        [
+            "The output is a value on a grid without points (use Field map)",
+            "There are more than 20 000 points (the plot shows a thinned set)",
+        ],
+        [
+            "Variables x and y with one value for each point, as draws, a score summary or "
+            "plain values",
+            "Optional: sd_x and sd_y (or radius) for each point, a group for each point, and a "
+            "gridded output for the background",
+        ],
+        [
+            "The rings come from the spread of the draws, or from the sd of each position",
+            "The background uses the same units as the positions",
+        ],
+        [
+            "A dot for each point at its mean position, coloured by group",
+            "A ring (an error ellipse) for each point that holds its true position with 90% "
+            "probability",
+            "A background image or intensity map",
+            "Open circles for the actual points, when the data has them",
+        ],
+        _I,
+        _SEC,
+        "Spots in the membrane have small rings, so their positions are clear. Two dim spots "
+        "have large, tilted rings: they could be one spot or two near spots.",
+        related=["sci.field_map", "sci.vector_field"],
+        expert="Positions are the posterior mean of `x` and `y` (or the summary's point "
+        "statistic). Ellipses use the 2 x 2 sample covariance of the draws (else `sd_x`, "
+        "`sd_y` or the summary `sd`, uncorrelated) scaled by sqrt(-2 ln(1 - `level`)), the "
+        "chi-square radius for 2 dims; a `radius` variable is drawn as a circle as given. "
+        "`field` (auto: a grid output) is drawn as the `field_stat` per cell, block-averaged "
+        "to `max_cells`. `group` draws with more than 12 levels use a colour scale.",
+    ),
+    # ============================================================ network pack
+    "net.graph": _a(
+        "Network graph",
+        "Shows a network as dots joined by lines, where thick lines are strong links. A "
+        "second panel shows every pair of nodes as a grid of colours.",
+        [
+            "The model estimates links between pairs of things, such as people or genes",
+            "You want to see groups of nodes that link to each other",
+            "You want to compare the estimated links with the known links",
+        ],
+        [
+            "There are more than 300 nodes (the drawing becomes too dense)",
+            "The links change over time (pick one time with select)",
+        ],
+        [
+            "A variable with two node dimensions, such as (node, node_): a probability, a "
+            "weight or a partial correlation, as draws, a score summary or plain values",
+            "Optional: node positions (node, latent_dim), a group for each node, and the "
+            "known or observed links",
+        ],
+        [
+            "Only links above the threshold are drawn. The grid shows all of them",
+            "Without positions, the drawing puts linked nodes near each other. Distances have "
+            "no other meaning",
+        ],
+        [
+            "A drawing of the nodes and the links above the threshold, with blue for positive "
+            "and red for negative links",
+            "Arrows when the links have a direction",
+            "A grid of the link values for every pair, ordered so that groups are together",
+            "Dotted lines and open squares for the known links",
+        ],
+        _I,
+        _SEC,
+        "The lawyers form three clusters that match their offices. Most known links are "
+        "inside an office. Lawyer L11 links to all three clusters, so it is a bridge between "
+        "the offices.",
+        related=["sci.field_map", "core.posterior_forest"],
+        expert="The edge value is the posterior mean (or the summary point). Undirected graphs "
+        "use the mean of both directions; `directed` defaults to an asymmetric matrix and "
+        "`signed` to any negative value. `threshold` defaults to 0.5 for values in [0, 1], "
+        "else 10% of the largest |value|; hover shows P(|value| > threshold) over the draws. "
+        "Positions are the posterior mean of `positions` (first two coordinates); else a "
+        "spectral layout of the normalised Laplacian refined with seeded Fruchterman-Reingold "
+        "steps. The matrix order is the Fiedler vector, within `group` levels.",
     ),
 }

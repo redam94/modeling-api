@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -90,7 +91,7 @@ from mapi_sdk.actuals import (
     required_drivers,
 )
 from mapi_sdk.binding import BindingMap
-from mapi_sdk.bundle import Bundle, MetricsReport, assert_no_pickle, new_manifest
+from mapi_sdk.bundle import Bundle, ElpdDetail, MetricsReport, assert_no_pickle, new_manifest
 from mapi_sdk.context import drop_context
 from mapi_sdk.coords import (
     CanonicalPlan,
@@ -99,7 +100,7 @@ from mapi_sdk.coords import (
     horizon_frame,
     next_label,
 )
-from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error
+from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error, raise_for_issues
 from mapi_sdk.future import fill_future_covariates, fill_future_rows
 from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
@@ -114,6 +115,7 @@ from mapi_sdk.summarise import (
     select_draws,
     summarise,
     thin_index,
+    wrap_signed,
 )
 from mapi_sdk.tree import (
     infer_tree_schema,
@@ -537,6 +539,9 @@ def fit_spec(
             given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
         ),
     )
+    # the model's own settings checks (cross-field rules the JSON schema cannot state) refuse
+    # the spec before any data is transformed, split or fitted
+    plugin.parse_settings(env.settings)
     raw = BindingMap(resolved.binding).apply(data)
 
     split = spec.data.split
@@ -638,13 +643,16 @@ def _check_recursion(rs: ResolvedSpec, split: Split, sr: SplitResult) -> None:
 
 def _add_elpd(env: _FitEnv, bundle: Bundle) -> None:
     caps = bundle.model.manifest.capabilities
+    detail: dict[str, dict[str, Any]] = {}
     values, skipped, diagnostics = elpd(
         bundle.model.groups,
         env.spec.evaluate.metrics,
         loo_valid=caps.loo_valid,
         reason=caps.loo_invalid_reason,
+        detail=detail,
     )
     bundle.metrics.values.update(values)
+    bundle.metrics.elpd.update({k: ElpdDetail.model_validate(v) for k, v in detail.items()})
     bundle.metrics.skipped.update(skipped)
     bundle.diagnostics.extend(diagnostics)
 
@@ -1047,6 +1055,41 @@ def _decompositions(fitted: Fitted) -> list[str]:
     ]
 
 
+def _circular_periods(fitted: Fitted, pred: xr.Dataset, issues: list[Issue]) -> dict[str, float]:
+    """``{output: period}`` of the circular outputs (``OutputDecl.circular``) in ``pred``,
+    whose score summaries are taken on the circle. An output without a valid ``period`` attr,
+    or one aggregated over a dim (a sum of angles is not an angle), keeps the linear summary
+    with a warning."""
+    out: dict[str, float] = {}
+    for v in pred.data_vars:
+        decl = fitted.manifest.outputs.get(str(v))
+        if decl is None or not decl.circular:
+            continue
+        attrs = pred[v].attrs
+        why = ""
+        try:
+            period = float(attrs.get("period"))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            period = math.nan
+        if not (math.isfinite(period) and period > 0):
+            why = f"the model set no valid 'period' attr ({attrs.get('period')!r})"
+        elif "aggregated" in attrs:
+            why = f"it is aggregated ({attrs['aggregated']}), so it is no longer an angle"
+        if why:
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    severity=Severity.WARNING,
+                    pointer="/output/summary",
+                    message=f"{v!r} is a circular output, but {why}; its summary is calculated "
+                    "on a line, not on the circle",
+                )
+            )
+            continue
+        out[str(v)] = period
+    return out
+
+
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:
     """Model-space in-sample residuals for Duan's smearing retransformation.
 
@@ -1221,9 +1264,15 @@ def _horizon_payload(bundle: Bundle, req: ScoreRequest) -> xr.Dataset:
         )
     model_schema = rs.model.input_schema or rs.stages.get(rs.model_stage)
     mfreq = model_schema.dims[hdim].freq if model_schema and hdim in model_schema.dims else None
-    fit_end = np.asarray(model_coords[hdim].values).max()
-    step = 1
     vals = np.asarray(model_coords[hdim].values)
+    if vals.dtype.kind not in "iufMm":
+        raise MapiError(
+            f"cannot build a horizon along {hdim!r}: its labels are not ordered numbers or dates",
+            code=ErrorCode.COORD_NOT_ALLOWED,
+            pointer="/horizon/dim",
+        )
+    fit_end = vals.max()
+    step = 1
     if vals.dtype.kind in "iu" and vals.size > 1:
         step = int(np.diff(np.sort(vals)).min())
     end = next_label(fit_end, freq=mfreq, step=step, k=req.horizon.periods)
@@ -1483,6 +1532,20 @@ def score_bundle(
     binding = bundle.binding
     plugin_cls = registry.model(f"{bundle.model.manifest.id}@{bundle.model.manifest.version}")
     plugin = plugin_cls()
+    fitted_modes = rs.model.capabilities.score_modes
+    if req.mode not in fitted_modes:
+        # refuse before any mode-specific work (a forecast's horizon and actuals assume a
+        # model that forecasts); CoordPlan.check raises the same for the API path
+        raise_for_issues(
+            [
+                Issue(
+                    code=ErrorCode.MODE_NOT_SUPPORTED,
+                    pointer="/mode",
+                    message=f"model {rs.model.resolved!r} does not support mode {req.mode!r}",
+                    context={"supported": sorted(fitted_modes)},
+                )
+            ]
+        )
     pipeline = bundle.pipeline(registry)
     pipeline.index(req.inputs_stage)
     block = bundle.spec.data
@@ -1763,7 +1826,8 @@ def score_bundle(
         if req.output.summary is not None
         else default_summary_names(pred, rep)
     )
-    groups["summary"] = summarise(pred, rep, names)
+    periods = _circular_periods(bundle.model, pred, issues)
+    groups["summary"] = summarise(pred, rep, names, periods=periods)
     if req.output.draws > 0:
         if bundle.thin is None:
             raise MapiError(
@@ -1779,12 +1843,14 @@ def score_bundle(
     if baseline is not None:
         base, _, _ = finish(baseline.pred)
         base, _ = aggregate(base, rep, _canonical_agg(req.output, binding))
-        groups["baseline/summary"] = summarise(base, rep, names)
+        groups["baseline/summary"] = summarise(base, rep, names, periods=periods)
         if rep in (Representation.DRAWS, Representation.POINT):
             delta = pred - base
             for v in delta.data_vars:
+                if str(v) in periods:  # the signed difference of two angles: -170, not 190
+                    delta[v] = wrap_signed(delta[v], periods[str(v)])
                 delta[v].attrs = {**pred[v].attrs, "delta": "scenario - baseline"}
-            groups["delta/summary"] = summarise(delta, rep, names)
+            groups["delta/summary"] = summarise(delta, rep, names, periods=periods, signed=True)
             if req.output.draws > 0 and bundle.thin is not None:
                 groups["delta/draws"] = select_draws(delta, bundle.thin, req.output.draws)
             if return_full:
@@ -1953,7 +2019,17 @@ def _score_metrics(
     for var, src in pairs:
         if var not in pred_data or src not in observed:
             continue
-        values, skipped = compute_metrics(pred_data[var], observed[src], rep, names, mask=mask)
+        decl = bundle.model.manifest.outputs.get(var)
+        period: float | None = None
+        if decl is not None and decl.circular:
+            raw: Any = pred_data[var].attrs.get("period")
+            try:
+                period = float(raw)
+            except (TypeError, ValueError):
+                period = math.nan  # compute_metrics skips every metric with the reason
+        values, skipped = compute_metrics(
+            pred_data[var], observed[src], rep, names, mask=mask, period=period
+        )
         report.values.update(values)
         report.skipped.update(skipped)
         counted = observed[src].notnull()

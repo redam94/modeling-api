@@ -92,12 +92,12 @@ test("the catalog browses every item by its About card", async ({ page }) => {
 test("the catalog shows every plot as a card with an example", async ({ page }) => {
   await page.goto("/catalog?tab=plots");
   const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
-  await expect(cards).toHaveCount(22);
+  await expect(cards).toHaveCount(36);
   // the first card's thumbnail renders in the sandbox (Vega-Lite)
   const first = page.getByTestId("plot-card").first();
   await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: /^Science/ }).click();
-  await expect(cards).toHaveCount(4);
+  await expect(cards).toHaveCount(12);
   await page.getByRole("button", { name: /^All plots/ }).click();
   await page.getByRole("searchbox", { name: "Search the plots" }).or(page.getByLabel("Search the plots")).fill("residuals");
   await page.getByTestId("plot-card").filter({ hasText: "core.residuals_over_time" }).click();

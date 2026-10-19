@@ -163,3 +163,117 @@ async def test_a_workflow_on_the_real_runner_and_shim(
     finally:
         orch.stop.set()
         await asyncio.wait_for(task, 60)
+
+
+def _panel() -> Any:
+    """``y(geo, time)`` driven by a covariate ``x`` (the layout of ``toy.bayes_linear``)."""
+    import numpy as np
+    import pandas as pd
+    import xarray as xr
+    from mapi_spec.schema import DataSchema
+
+    rng = np.random.default_rng(0)
+    t = pd.date_range("2020-01-05", periods=40, freq="W-SUN")
+    x = rng.normal(size=(2, 40))
+    y = np.array([[10.0], [12.0]]) + 1.5 * x + rng.normal(0, 1.0, size=(2, 40))
+    ds = xr.Dataset(
+        {"y": (("geo", "time"), y), "x": (("geo", "time"), x)},
+        coords={"geo": ["a", "b"], "time": t},
+    )
+    dims = ["geo", "time"]
+    ds.attrs["mapi_schema"] = DataSchema.model_validate(
+        {
+            "dims": {
+                "geo": {"kind": "categorical"},
+                "time": {"kind": "time", "policy": "extend", "freq": "W-SUN"},
+            },
+            "vars": {
+                "y": {"dims": dims, "dtype": "float64", "role": "target"},
+                "x": {"dims": dims, "dtype": "float64", "role": "covariate"},
+            },
+        }
+    ).model_dump_json(exclude_none=True)
+    return ds
+
+
+def _bayes_fit(nid: str, features: list[str]) -> dict[str, Any]:
+    return {
+        "id": nid,
+        "use": "model.fit",
+        "inputs": {"data": "inputs.data"},
+        "with": {
+            "model": "toy.bayes_linear@^1",
+            "settings": {"features": features},
+            "fit": {"draws": 200, "chains": 2, "seed": 1},
+            "evaluate": {"metrics": ["elpd_loo"]},
+        },
+    }
+
+
+LADDER = {
+    "apiVersion": "mapi/v1",
+    "kind": "Workflow",
+    "metadata": {"name": "ladder", "project": "default"},
+    "inputs": {"data": {"type": "dataset"}},
+    "nodes": [
+        _bayes_fit("plain", []),
+        _bayes_fit("driver", ["x"]),
+        {
+            "id": "weights",
+            "use": "compare.stacking",
+            "inputs": {"candidates": ["plain.metrics", "driver.metrics"]},
+        },
+        {"id": "s", "use": "model.summary", "inputs": {"model": "driver.model"}},
+        {"id": "ppc", "use": "evaluate.ppc", "inputs": {"model": "driver.model"}},
+        {
+            "id": "report",
+            "use": "report.summary",
+            "inputs": {"items": ["weights.table", "s.table"], "metrics": ["ppc.metrics"]},
+        },
+    ],
+    "outputs": {"report": "report.report"},
+}
+
+
+async def test_stacking_summary_and_ppc_on_the_real_runner(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """M5: the fit runs' pointwise elpd (``metrics.json``) reaches ``compare.stacking``."""
+    executor = LocalProcessExecutor(
+        command=[sys.executable, "-m", "mapi_runner", "--worker-registry", REGISTRY],
+        bootstrap_url_template=ctx.settings.bootstrap_url_template(),
+        workdir=ctx.settings.workdir,
+        exec_token=ctx.settings.resolved_exec_token(),
+    )
+    orch = Orchestrator(ctx, executor, use_procrastinate=False)
+    task = asyncio.create_task(orch.run())
+    try:
+        catalog = await _until(client, "/v1/catalog", lambda b: bool(b.get("models")), 300)
+        assert any(e["manifest"]["id"] == "toy.bayes_linear" for e in catalog["models"])
+        await put_dataset(ctx, "panel", _panel())
+        created = await client.post("/v1/workflows", json={"document": LADDER})
+        assert created.status_code == 201, created.text
+        started = await client.post(
+            f"/v1/workflows/{created.json()['id']}/runs",
+            json={"inputs": {"data": "dataset://default/panel@latest"}},
+        )
+        assert started.status_code == 202, started.text
+        view = await _until(
+            client,
+            f"/v1/workflow-runs/{started.json()['run_id']}",
+            lambda b: b["status"] in ("succeeded", "failed", "cancelled"),
+            900,
+        )
+        nodes = {n["node_id"]: n for n in view["nodes"]}
+        assert view["status"] == "succeeded", {
+            k: (v["status"], v.get("error")) for k, v in nodes.items()
+        }
+        w = nodes["weights"]["result"]
+        assert w["method"] == "stacking", w
+        assert w["best"] == "driver" and w["weights"]["driver"] > 0.9
+        s = nodes["s"]["result"]
+        assert s["params"]["beta[0]"]["hdi_low"] > 0 and s["max_rhat"] < 1.05
+        assert isinstance(nodes["ppc"]["result"]["ok"], bool)
+    finally:
+        orch.stop.set()
+        await asyncio.wait_for(task, 60)
