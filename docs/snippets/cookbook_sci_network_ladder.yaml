@@ -1,0 +1,160 @@
+# Workflow cookbook: which model explains the ties of a network? Fit pair covariates only,
+# + a sociality effect per node, + a latent space on the same pairs, compare them by PSIS-LOO
+# (ranking and stacking weights), keep the best one, read its pair effects, draw the network
+# and simulate whole graphs from it for a posterior predictive check of graph statistics.
+# This is the sci_network_ladder template of the gallery (a test keeps the two the same).
+# (validated and run by conformance/tests/test_docs_v05.py)
+apiVersion: mapi/v1
+kind: Workflow
+metadata: {name: coworker-ladder, project: sociology}
+params:
+  # the names of the node dims, the tie table, the pair values and the group code in your
+  # dataset (the e21 export)
+  bind:
+    type: object
+    default:
+      dims: {node: lawyer, node_: lawyer_, cov: covariate}
+      vars: {tie: cowork, dyad_cov: homophily, node_group: office}
+    description: The names in your dataset of the node dims, the tie table, the pair values and
+      the group code (the default fits the e21 export)
+  node_groups:
+    type: boolean
+    default: true
+    description: The dataset has a group code for each node (set false and remove node_group
+      from bind when it has not)
+  latent_dims: {type: integer, default: 2, minimum: 1, maximum: 3,
+                description: The dimensions of the hidden map}
+  n_sims: {type: integer, default: 500, minimum: 10, maximum: 4000,
+           description: The number of networks to simulate from the best model}
+  hdi_prob: {type: number, default: 0.94, minimum: 0.5, maximum: 0.999,
+             description: The probability inside the range of each parameter}
+  # one MCMC configuration for every rung, so the rungs are comparable
+  draws: {type: integer, default: 1000, minimum: 50, maximum: 20000,
+          description: The posterior draws to keep in each chain}
+  tune: {type: integer, default: 1000, minimum: 50, maximum: 20000,
+         description: The warm-up steps of each chain (the sampler discards them)}
+  chains: {type: integer, default: 4, minimum: 2, maximum: 16,
+           description: 'The number of chains (two or more, for R-hat)'}
+  target_accept: {type: number, default: 0.9, minimum: 0.6, maximum: 0.99,
+                  description: The target acceptance rate of the sampler. A higher value gives
+                    smaller steps and fewer divergences}
+  engine: {type: string, default: pymc, enum: [pymc, nutpie],
+           description: The sampler (nutpie is faster on large data)}
+  seed: {type: integer, default: 21, minimum: 0, maximum: 2147483647,
+         description: The random seed of each fit}
+inputs:
+  data: {type: dataset, description: 'A symmetric table of ties, the pair values and (optional) a
+      group code for each node'}
+nodes:
+# 1. Three rungs on the same observed pairs. PSIS-LOO leaves out one pair at a time.
+- id: covariates
+  use: model.fit
+  label: Pair covariates only
+  inputs: {data: inputs.data}
+  with:
+    model: sci.network_latent_space@^1
+    bind: {$param: bind}
+    settings: &rung
+      kind: covariates
+      node_groups: {$param: node_groups}
+      latent_dims: {$param: latent_dims}
+    fit: &fit
+      mode: train_only
+      draws: {$param: draws}
+      tune: {$param: tune}
+      chains: {$param: chains}
+      target_accept: {$param: target_accept}
+      engine: {$param: engine}
+      seed: {$param: seed}
+    evaluate: {metrics: [elpd_loo]}
+- id: sociality
+  use: model.fit
+  label: Covariates and activity
+  inputs: {data: inputs.data}
+  with:
+    model: sci.network_latent_space@^1
+    bind: {$param: bind}
+    settings: {<<: *rung, kind: sociality}
+    fit: *fit
+    evaluate: {metrics: [elpd_loo]}
+- id: latent_space
+  use: model.fit
+  label: Covariates, activity and a hidden map
+  inputs: {data: inputs.data}
+  with:
+    model: sci.network_latent_space@^1
+    bind: {$param: bind}
+    settings: {<<: *rung, kind: latent_space}
+    fit: *fit
+    evaluate: {metrics: [elpd_loo]}
+# 2. Rank the rungs, weigh them by stacking and keep the best one.
+- id: compare
+  use: compare.models
+  inputs: {candidates: [covariates.metrics, sociality.metrics, latent_space.metrics]}
+  with: {metric: elpd_loo, direction: max}
+- id: weights
+  use: compare.stacking
+  label: Stacking weights
+  inputs: {candidates: [covariates.metrics, sociality.metrics, latent_space.metrics]}
+- id: best
+  use: select.best
+  inputs:
+    table: compare.table
+    models: [covariates.model, sociality.model, latent_space.model]
+  with: {metric: elpd_loo, direction: max}
+# 3. The pair effects (beta[same_office], ...) and the network of the best rung.
+- id: effects
+  use: model.summary
+  label: Pair effects
+  inputs: {model: best.model}
+  with: {vars: [alpha, beta], hdi_prob: {$param: hdi_prob}}
+- id: graph
+  use: plot.render
+  label: Network of the best model
+  inputs: {model: best.model}
+  with:
+    recipe: net.graph
+    source: predictions
+    settings: {var: tie_prob, panels: both}
+    title: Tie probabilities of the best model
+# 4. Graph posterior predictive check: simulate whole networks from the best rung and
+#    plot the spread of their statistics (graph_stat has nine of them).
+- id: simulate
+  use: model.score
+  label: Simulate networks
+  inputs: {model: best.model}
+  with:
+    mode: simulate
+    group: draws    # n_sims draws, thinned evenly from the posterior
+    request:
+      output: {vars: [graph_stat], draws: {$param: n_sims}}
+      seed: {$param: seed}
+- id: ppc
+  use: plot.render
+  label: Statistics of simulated networks
+  inputs: {data: simulate.scores}
+  with:
+    recipe: core.ridge
+    source: data
+    settings:
+      var: graph_stat
+      dim: statistic
+      select: {statistic: [density, transitivity]}
+    title: Density and transitivity of the simulated networks
+- id: report
+  use: report.summary
+  inputs:
+    items: [compare.table, weights.table, effects.table]
+    metrics: [covariates.metrics, sociality.metrics, latent_space.metrics]
+    model: best.model
+    plots: [graph.plot, ppc.plot]
+  with: {title: 'Network ties: which model?'}
+outputs:
+  model: best.model
+  comparison: compare.table
+  weights: weights.table
+  effects: effects.table
+  graph: graph.plot
+  simulations: simulate.scores
+  ppc: ppc.plot
+  report: report.report

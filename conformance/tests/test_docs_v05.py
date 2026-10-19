@@ -45,7 +45,13 @@ def test_cookbook_documents_are_valid(path: Path) -> None:
     assert res.valid, [(i.pointer, i.message) for i in res.issues]
 
 
-def _run(name: str, data: Any, params: dict[str, Any]) -> Any:
+def _run(name: str, data: Any, params: dict[str, Any], *, science: bool = False) -> Any:
+    return _run_full(name, data, params, science=science)[0]
+
+
+def _run_full(
+    name: str, data: Any, params: dict[str, Any], *, science: bool = False
+) -> tuple[dict[str, Any], Any]:
     from mapi_spec.workflow import WorkflowRunStatus, WorkflowSpec
     from mapi_workflows.runtime.local import LocalRunner
     from mapi_workflows.testing import test_registry
@@ -53,9 +59,115 @@ def _run(name: str, data: Any, params: dict[str, Any]) -> Any:
     spec = WorkflowSpec.model_validate(_doc(SNIPPETS / name))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        res = LocalRunner(registry=test_registry()).run(spec, inputs={"data": data}, params=params)
+        res = LocalRunner(registry=test_registry(science=science)).run(
+            spec, inputs={"data": data}, params=params
+        )
     assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
-    return {n.node_id: n for n in res.nodes}
+    return {n.node_id: n for n in res.nodes}, res
+
+
+# ================================================================ M5: ladders of sci models
+
+_SCI_LADDERS = ("sci_spatial_ladder", "sci_network_ladder")
+_TINY_FIT = {"draws": 60, "tune": 60, "chains": 2, "seed": 3}
+"""Tiny MCMC settings for the run tests (the templates default to 4 x 1000 draws)."""
+
+
+@pytest.mark.parametrize("template", _SCI_LADDERS)
+def test_the_sci_ladder_recipes_are_the_gallery_templates(template: str) -> None:
+    """The cookbook document is the gallery template (only the name and project differ)."""
+    import json
+
+    from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES
+
+    doc = _doc(SNIPPETS / f"cookbook_{template}.yaml")
+    tpl = json.loads(json.dumps(WORKFLOW_TEMPLATES[template].document))
+    doc.pop("metadata")
+    tpl.pop("metadata")
+    assert json.loads(json.dumps(doc)) == tpl
+    defaults = {k: v.get("default") for k, v in tpl["params"].items()}
+    assert defaults["draws"] == 1000 and defaults["chains"] == 4  # real fits by default
+
+
+def _report_sections(res: Any) -> list[tuple[str, str]]:
+    report = res.values["report"]
+    assert isinstance(report, dict) and report["format"] == "mapi.report/v1"
+    for s in report["sections"]:
+        if s["kind"] == "plot":  # small plots are embedded in the report
+            assert s["plot"] is not None, s["node_id"]
+    return [(s["kind"], s["node_id"]) for s in report["sections"]]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("b1", [1.0, 0.0], ids=["clear", "unclear"])
+def test_the_spatial_ladder_ranks_the_rungs_and_checks_the_effect(b1: float) -> None:
+    from mapi_plugin_science.areal_data import areal_dataset
+
+    data = areal_dataset(n_row=4, n_col=5, truth={"b1": b1}, seed=1)
+    params = {**_TINY_FIT, "hdi_prob": 0.9 if b1 else 0.999}
+    nodes, res = _run_full("cookbook_sci_spatial_ladder.yaml", data, params, science=True)
+    rungs = ("iid", "icar", "bym2")
+    elpd = {r: nodes[r].result["metrics"]["elpd_loo"] for r in rungs}
+    assert nodes["compare"].result["best"] == max(elpd, key=lambda r: elpd[r])
+    assert nodes["compare"].result["ranking"] == sorted(rungs, key=lambda r: -elpd[r])
+    weights = nodes["weights"].result
+    assert weights["method"] == "stacking" and set(weights["weights"]) == set(rungs)
+    assert sum(weights["weights"].values()) == pytest.approx(1.0)
+    best = nodes["best"].result
+    assert best["selected"] == nodes["compare"].result["best"]
+    assert best["model_version"] == nodes[best["selected"]].result["model_version"]
+    b1_hdi = nodes["effect"].result["params"]["b1"]
+    clear = b1_hdi["hdi_low"] > 0 or b1_hdi["hdi_high"] < 0
+    assert clear is bool(b1)  # the truth decides the branch at these settings
+    assert nodes["clear"].result == {"value": clear, "arm": "then" if clear else "else"}
+    for nid in ("wide", "narrow", "effect_wide", "effect_narrow"):
+        assert nodes[nid].status.value == ("succeeded" if clear else "skipped"), nid
+    if clear:  # the refits use the kind of the winner and scaled prior widths
+        wide, narrow = nodes["wide"].params["settings"], nodes["narrow"].params["settings"]
+        assert wide["kind"] == narrow["kind"] == best["selected"]
+        assert wide["slope_sd"] == 2.0 and narrow["slope_sd"] == 0.5
+        assert nodes["effect_wide"].result["params"]["b1"]["hdi_low"] > 0
+    assert nodes["converged"].result["status"] in {"pass", "warn", "fail"}
+    plot = nodes["map"].result
+    assert plot["recipe"].startswith("sci.area_map@") and plot["kind"] == "plotly"
+    sections = _report_sections(res)
+    assert ("decision", "clear") in sections and ("plot", "map") in sections
+    tables = {n for k, n in sections if k == "table"}
+    assert tables == ({"compare", "weights", "effect", "effect_wide", "effect_narrow"}
+                      if clear else {"compare", "weights", "effect"})  # fmt: skip
+    assert set(res.outputs) >= {"model", "comparison", "weights", "map", "report"}
+
+
+@pytest.mark.slow
+def test_the_network_ladder_ranks_the_rungs_and_simulates_graphs() -> None:
+    from mapi_plugin_science.network_data import network_dataset
+
+    data = network_dataset(n_nodes=16, seed=1)
+    nodes, res = _run_full(
+        "cookbook_sci_network_ladder.yaml", data, {**_TINY_FIT, "n_sims": 20}, science=True
+    )
+    rungs = ("covariates", "sociality", "latent_space")
+    elpd = {r: nodes[r].result["metrics"]["elpd_loo"] for r in rungs}
+    assert nodes["compare"].result["ranking"] == sorted(rungs, key=lambda r: -elpd[r])
+    weights = nodes["weights"].result
+    assert weights["method"] == "stacking"
+    assert sum(weights["weights"].values()) == pytest.approx(1.0)
+    best = nodes["best"].result["selected"]
+    assert best == nodes["compare"].result["best"]
+    params = nodes["effects"].result["params"]
+    assert {"alpha", "beta[same_office]", "beta[same_practice]", "beta[years_gap]"} <= set(params)
+    assert params["beta[same_office]"]["mean"] > 0  # truth 1.8
+    assert nodes["graph"].result["recipe"].startswith("net.graph@")
+    sim = nodes["simulate"].result
+    assert sim["mode"] == "simulate" and sim["vars"] == ["graph_stat"]
+    scores = res.values["simulations"].data
+    stat = scores["graph_stat"]
+    assert "transitivity" in stat["statistic"].values
+    assert stat.size // stat.sizes["statistic"] == 20  # n_sims graphs
+    assert nodes["ppc"].result["recipe"].startswith("core.ridge@")
+    sections = _report_sections(res)
+    assert ("plot", "graph") in sections and ("plot", "ppc") in sections
+    assert {n for k, n in sections if k == "table"} == {"compare", "weights", "effects"}
 
 
 def test_the_readiness_recipe_runs_and_decides() -> None:

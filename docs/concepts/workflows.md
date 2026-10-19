@@ -228,6 +228,8 @@ outer training window, for correct tuning.
 | `var_vecm_cointegration` | A Johansen test. If the series are tied together, a VECM with the selected rank. If not, differences, a lag search and a VAR. Granger tests and a report. |
 | `mmm_governed` | Driver collinearity, the mmm-framework marketing mix model with a holdout, the governance policy, a report and an evidence pack |
 | `forecast_bakeoff` | A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again. |
+| `sci_spatial_ladder` | `sci.areal_bym2` with iid, ICAR and BYM2 area effects, compared by `elpd_loo` and stacking weights. The best model, the range of its covariate effect, fits with wider and narrower priors when the effect is clear, a convergence check, a risk map and a report. See [the cookbook](../guides/workflow-cookbook.md#disease-map-which-spatial-model). |
+| `sci_network_ladder` | `sci.network_latent_space` with covariates, sociality and a latent space, compared by `elpd_loo` and stacking weights. The pair effects of the best model, a network plot, simulated networks with their statistics and a report. See [the cookbook](../guides/workflow-cookbook.md#network-ties-which-model). |
 
 To make a workflow from a template, use `POST /v1/workflows` with `{"template": "<id>"}`.
 Then edit its parameters or nodes, the same as for all other workflows.

@@ -116,6 +116,8 @@ async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> N
         "var_vecm_cointegration",
         "mmm_governed",
         "forecast_bakeoff",
+        "sci_spatial_ladder",
+        "sci_network_ladder",
     }
     one = (await client.get("/v1/workflow-templates/ts_readiness_arimax")).json()
     assert one["about"]["difficulty"] == "beginner"
