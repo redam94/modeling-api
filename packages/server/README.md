@@ -66,6 +66,7 @@ Every variable, and how to run multi-tenant: `docs/operations/configuration.md` 
 | `mapi_server.services.finalizer` | metadata-only verification, server-side copy, signed manifests |
 | `mapi_server.services.events` | HMAC verification, `(run, attempt, seq)` dedupe, progress upsert |
 | `mapi_server.services.notify` | `NOTIFY` on commit + one `LISTEN` connection with fan-out |
+| `mapi_server.services.workflows` | saved workflows and revisions, runs that the JSON-only engine of `mapi_workflows` drives (each data node is a sandboxed child run), schedules and triggers. The `plot` outputs of nodes go through the plot sanitizer when they are collected (`PLOT_UNSAFE` fails the node) and again when they are served |
 | `mapi_server.executors` | `LocalProcessExecutor`, `DockerExecutor`, placement checks |
 | `mapi_server.storage` | store factory; `MemoryObjectStore` for tests |
 
