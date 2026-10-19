@@ -121,6 +121,23 @@ Schema, Coordinates, Missingness, Preview and About. On **Schema**, `level` has 
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Network**.
+
+- The network shows `consensus`, the graph of the 11 proteins from the literature, as a
+  matrix and as a node-link graph.
+- **Correlations** uses the 11 proteins as columns and the 853 cells as rows. Compare the
+  strong correlations with the edges of the network.
+- **Group comparison** and the time sections are in **Not for this data**. The cells are not
+  groups, and the data has no time dim.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

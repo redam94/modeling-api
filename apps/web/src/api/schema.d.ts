@@ -4918,6 +4918,20 @@ export interface components {
          *         "quality"
          *       ]
          *     }
+         * @example {
+         *       "hints": {
+         *         "angle_vars": {
+         *           "wind_from": "deg"
+         *         },
+         *         "x_dim": "col",
+         *         "y_dim": "row"
+         *       },
+         *       "sections": [
+         *         "structure",
+         *         "images",
+         *         "circular"
+         *       ]
+         *     }
          */
         DataExploreRequest: {
             /**
@@ -4938,6 +4952,8 @@ export interface components {
              * @description Dim for group comparisons
              */
             group_by?: string | null;
+            /** @description Corrections to the detected structure (image dims, node dim, angle variables) */
+            hints?: components["schemas"]["StructureHints"] | null;
             /** Kpi */
             kpi?: string | null;
             /**
@@ -4975,7 +4991,7 @@ export interface components {
              */
             prewhiten?: boolean;
             /** Sections */
-            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality")[];
+            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality" | "structure" | "images" | "profiles" | "map" | "network" | "tree" | "circular" | "points")[];
             /**
              * Time Dim
              * @description Default: the dataset's time dim
@@ -7241,10 +7257,49 @@ export interface components {
          *         },
          *         {
          *           "message_plain": "Less than two seasons of data.",
+         *           "reason": "insufficient_data",
          *           "section": "stl",
          *           "status": "skipped",
          *           "view": "ui/explore/stl.json"
          *         }
+         *       ],
+         *       "target": "dataset"
+         *     }
+         * @example {
+         *       "order": [
+         *         "overview",
+         *         "structure",
+         *         "images",
+         *         "quality",
+         *         "distributions",
+         *         "timeseries",
+         *         "missingness"
+         *       ],
+         *       "ref": "dataset://seismology/oklahoma_quakes@v1",
+         *       "sections": [
+         *         {
+         *           "section": "overview",
+         *           "view": "ui/explore/overview.json"
+         *         },
+         *         {
+         *           "section": "structure",
+         *           "view": "ui/explore/structure.json"
+         *         },
+         *         {
+         *           "section": "images",
+         *           "view": "ui/explore/images.json"
+         *         },
+         *         {
+         *           "message_plain": "Not available: the data has no polygons.",
+         *           "reason": "not_applicable",
+         *           "section": "map",
+         *           "status": "skipped",
+         *           "view": "ui/explore/map.json"
+         *         }
+         *       ],
+         *       "shapes": [
+         *         "image",
+         *         "timeseries"
          *       ],
          *       "target": "dataset"
          *     }
@@ -7262,12 +7317,22 @@ export interface components {
              */
             node?: string | null;
             /**
+             * Order
+             * @description Data Explorer: the sections in order of relevance for this data
+             */
+            order?: string[] | null;
+            /**
              * Ref
              * @description dataset://… or model://…
              */
             ref: string;
             /** Sections */
             sections?: components["schemas"]["ExplorerSectionRef"][];
+            /**
+             * Shapes
+             * @description Data Explorer: the detected data shapes, best first
+             */
+            shapes?: ("timeseries" | "sequence" | "image" | "vector_field" | "areal_map" | "points" | "network" | "tree" | "circular" | "profile" | "table")[] | null;
             /**
              * Target
              * @enum {string}
@@ -7280,6 +7345,11 @@ export interface components {
         ExplorerSectionRef: {
             /** Message Plain */
             message_plain?: string | null;
+            /**
+             * Reason
+             * @description Why a skipped section was skipped (absent in indexes written before the scientific sections: readers then list every section)
+             */
+            reason?: ("not_applicable" | "insufficient_data" | "needs_option") | null;
             /** Section */
             section: string;
             /**
@@ -15035,6 +15105,29 @@ export interface components {
             store: "database" | "object_store" | "queue" | "logs" | "webhooks";
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * StructureHints
+         * @description Corrections to the structure the Data Explorer detects (each one overrides the rule
+         *     for that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,
+         *     ``frame_dim``), the node dim of a network or tree, the time dim, and variables that are
+         *     angles or times of day with their units (``{"wind_from": "deg"}``).
+         */
+        StructureHints: {
+            /** Angle Vars */
+            angle_vars?: {
+                [key: string]: "deg" | "rad" | "h" | "d" | "month";
+            };
+            /** Frame Dim */
+            frame_dim?: string | null;
+            /** Node Dim */
+            node_dim?: string | null;
+            /** Time Dim */
+            time_dim?: string | null;
+            /** X Dim */
+            x_dim?: string | null;
+            /** Y Dim */
+            y_dim?: string | null;
         };
         /**
          * TemplateCase

@@ -5,6 +5,7 @@ sanitizer, and an explore run writes the index with skipped sections explained."
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ from mapi_spec.views import (
     DATA_SECTIONS,
     EXPLORE_INDEX,
     MODEL_SECTIONS,
+    SCIENCE_SECTIONS,
     CorrelationView,
     ExplorerIndex,
     FevdView,
@@ -104,7 +106,12 @@ def test_data_explorer_sections_validate_and_plot(facet: list[str] | None) -> No
         ds, schema, DataExploreRequest(facet_by=facet or [], prewhiten=True, max_lag=8)
     )
     assert c.time_dim == "week" and c.freq == "W-SUN" and c.period == 52 and c.kpi == "sales"
+    assert set(c.shapes.not_applicable) == set(SCIENCE_SECTIONS) - {"structure"}
     for name, f in DATA_SECTION_FUNCS.items():
+        if name in c.shapes.not_applicable:
+            with pytest.raises(SectionSkipped):
+                f(c)
+            continue
         view = f(c).model_dump(mode="json", exclude_none=True)
         json.dumps(view, allow_nan=False)
         assert _sanitized(view) >= 1, name
@@ -193,8 +200,16 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     ds, schema = _panel()
     ctx = FakeCtx(tmp_path)
     index = write_data_explorer(ctx, ds, schema, ref="dataset://p/sales@v1")  # type: ignore[arg-type]
-    assert index is not None and [s.section for s in index.sections] == list(CHEAP_SECTIONS)
-    assert all(s.status == "ok" for s in index.sections)
+    assert index is not None
+    # the ingest set: the cheap sections, structure, and every picture section as skipped
+    assert [s.section for s in index.sections] == [*CHEAP_SECTIONS, *SCIENCE_SECTIONS]
+    status = {s.section: (s.status, s.reason) for s in index.sections}
+    assert all(status[s] == ("ok", None) for s in (*CHEAP_SECTIONS, "structure"))
+    assert all(
+        status[s] == ("skipped", "not_applicable") for s in SCIENCE_SECTIONS if s != "structure"
+    )
+    assert index.shapes == ["timeseries"] and index.order is not None
+    assert index.order[:4] == ["overview", "quality", "distributions", "timeseries"]
     stored = ExplorerIndex.model_validate(ctx.written[EXPLORE_INDEX])
     assert stored.ref == "dataset://p/sales@v1"
     assert "ui/explore/overview.json" in ctx.written
@@ -209,6 +224,7 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     idx = write_sections(ctx, DATA_SECTION_FUNCS, ["overview", "stl"], c, target="dataset", ref="x")  # type: ignore[arg-type]
     assert [s.status for s in idx.sections] == ["ok", "skipped"]
     assert idx.sections[1].message_plain and "time" in idx.sections[1].message_plain
+    assert idx.sections[1].reason == "not_applicable"
 
 
 @pytest.fixture(scope="module")
@@ -358,3 +374,51 @@ def test_comparison_runs_no_significance_test_on_one_forecast_path() -> None:
     assert cmp["models"] == ["model://p/a@v1", "model://p/b@v1"]
     assert cmp["tests"] == []
     assert any("one forecast origin" in w for w in cmp["warnings_plain"])
+
+
+GOLDEN = Path(__file__).parent / "data" / "explorer_golden"
+_TIME_SECTIONS = (
+    "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
+    "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality",
+)  # fmt: skip
+
+
+def _rounded(x: Any) -> Any:
+    """Floats to 6 significant digits (BLAS differences between machines stay out)."""
+    if isinstance(x, float):
+        return float(f"{x:.6g}")
+    if isinstance(x, dict):
+        return {k: _rounded(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_rounded(v) for v in x]
+    return x
+
+
+def _all_views(ds: xr.Dataset, schema: DataSchema, req: DataExploreRequest) -> dict[str, Any]:
+    c = data_context(ds, schema, req)
+    out: dict[str, Any] = {}
+    for name in _TIME_SECTIONS:
+        try:
+            out[name] = DATA_SECTION_FUNCS[name](c).model_dump(mode="json", exclude_none=True)
+        except SectionSkipped as exc:
+            out[name] = {"skipped": str(exc)}
+    return out
+
+
+@pytest.mark.parametrize(
+    ("case", "facet"), [("panel", None), ("panel_geo", ["geo"]), ("linear", None)]
+)
+def test_time_series_views_are_unchanged(case: str, facet: list[str] | None) -> None:
+    """Regression: the scientific sections leave every view of a time-series dataset as it
+    was (golden JSON written by the explorer before they existed)."""
+    if case == "linear":
+        ds, schema = linear_data(), SCHEMA
+    else:
+        ds, schema = _panel()
+    views = _rounded(_all_views(ds, schema, DataExploreRequest(facet_by=facet or [], max_lag=8)))
+    text = json.dumps(views, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    path = GOLDEN / f"{case}.json"
+    if os.environ.get("MAPI_UPDATE_SNAPSHOTS") == "1" and not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text + "\n")
+    assert json.loads(text) == json.loads(path.read_text())

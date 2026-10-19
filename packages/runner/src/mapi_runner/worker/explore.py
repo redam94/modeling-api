@@ -5,8 +5,9 @@ document) with its Vega-Lite plots at ``ui/explore/plots/<section>.json`` (platf
 from :mod:`mapi_plots.explorer`), and ``ui/explore/index.json`` lists what was produced
 and why a section is missing (``skipped``: it does not apply; ``error``: it failed).
 
-* **ingest** writes the cheap Data Explorer sections
-  (:data:`~mapi_runner.worker.explore_data.CHEAP_SECTIONS`);
+* **ingest** writes the cheap Data Explorer sections, ``structure`` and the picture
+  sections that apply (:func:`~mapi_runner.worker.explore_data.ingest_sections`), and lists
+  every section that does not apply as ``skipped`` with ``reason: not_applicable``;
 * **fit** writes the Model Explorer's
   :data:`~mapi_runner.worker.explore_model.FIT_SECTIONS`;
 * an **explore** run computes whatever an :class:`~mapi_spec.explore.ExploreJob` asks for
@@ -35,8 +36,10 @@ from mapi_spec.jobs import (
 from mapi_spec.run import RunnerPhase
 from mapi_spec.schema import DataSchema
 from mapi_spec.views import (
+    DATA_SECTIONS,
     EXPLORE_INDEX,
     EXPLORE_PREFIX,
+    SCIENCE_SECTIONS,
     ExplorerIndex,
     ExplorerSectionRef,
     explore_view_name,
@@ -45,13 +48,14 @@ from pydantic import BaseModel
 
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.explore_data import (
-    CHEAP_SECTIONS,
     DATA_SECTION_FUNCS,
     DataContext,
     SectionSkipped,
     data_context,
+    ingest_sections,
 )
 from mapi_runner.worker.explore_model import FIT_SECTIONS, MODEL_SECTION_FUNCS, ModelContext
+from mapi_runner.worker.explore_science import INGEST_IMAGE_CELLS, image_cells, science_plots
 from mapi_runner.worker.refit import Refitter
 
 __all__ = [
@@ -90,6 +94,8 @@ def write_sections(
     dataset) and ``node`` names the node the views describe."""
     refs: list[ExplorerSectionRef] = []
     lo, hi = progress
+    data = context if isinstance(context, DataContext) else None
+    not_applicable = data.shapes.not_applicable if data is not None else {}
     for i, section in enumerate(sections):
         ctx.cancel.check()
         ctx.progress(lo + (hi - lo) * i / max(1, len(sections)), f"explorer: {section}")
@@ -98,6 +104,17 @@ def write_sections(
         if prefix != EXPLORE_PREFIX:
             name = prefix + name.removeprefix(EXPLORE_PREFIX)
             plots_name = prefix + plots_name.removeprefix(EXPLORE_PREFIX)
+        if section in not_applicable:
+            refs.append(
+                ExplorerSectionRef(
+                    section=section,
+                    view=name,
+                    status="skipped",
+                    message_plain=f"Not available: {not_applicable[section]}."[:500],
+                    reason="not_applicable",
+                )
+            )
+            continue
         try:
             view = funcs[section](context)
             body = view.model_dump(mode="json", exclude_none=True)
@@ -105,6 +122,8 @@ def write_sections(
                 body["node"] = node
             ctx.write_json(name, body)
             plots = explorer_plots(body)
+            if data is not None and section in SCIENCE_SECTIONS:
+                plots += science_plots(section, data.ds, data.shapes)
             extra: dict[str, Any] = {}
             if plots:
                 ctx.write_json(plots_name, plots)
@@ -117,6 +136,7 @@ def write_sections(
                     view=name,
                     status="skipped",
                     message_plain=f"Not available: {exc}."[:500],
+                    reason=exc.reason,
                 )
             )
         except Exception as exc:
@@ -138,6 +158,9 @@ def write_sections(
     doc: dict[str, Any] = {"target": target, "ref": ref[:512], "sections": refs}
     if node is not None:
         doc["node"] = node
+    if data is not None:
+        doc["shapes"] = data.shapes.kinds[:64]
+        doc["order"] = list(data.shapes.recommended)[:32]
     index = ExplorerIndex.model_validate(doc)
     index_name = EXPLORE_INDEX if prefix == EXPLORE_PREFIX else f"{prefix}index.json"
     ctx.write_json(index_name, index.model_dump(mode="json", exclude_none=True))
@@ -150,16 +173,32 @@ def write_data_explorer(
     schema: DataSchema | None,
     *,
     ref: str,
-    sections: Sequence[str] = CHEAP_SECTIONS,
+    sections: Sequence[str] | None = None,
     req: DataExploreRequest | None = None,
     prefix: str = EXPLORE_PREFIX,
     node: str | None = None,
 ) -> ExplorerIndex | None:
     """The Data Explorer views of a dataset (never raises: a failure is a run warning).
 
-    M4: ``prefix``/``node`` write the views of one node of a tree dataset."""
+    ``sections`` defaults to the ingest set: :func:`ingest_sections` of the detected
+    structure, plus every section that does not apply (listed as skipped, in
+    :data:`~mapi_spec.views.DATA_SECTIONS` order). M4: ``prefix``/``node`` write the views of
+    one node of a tree dataset."""
     try:
         context = data_context(ds, schema, req)
+        if sections is None:
+            wanted = set(ingest_sections(context.shapes)) | set(context.shapes.not_applicable)
+            cells = image_cells(context.shapes, ds)
+            if cells > INGEST_IMAGE_CELLS:
+                # a large movie: the ingest leaves "images" out, an explore run computes it
+                wanted.discard("images")
+                ctx.warning(
+                    "EXPLORE_DEFERRED",
+                    "the images view is computed on demand",
+                    f"the images have {cells:,} cells (the ingest computes "
+                    f"{INGEST_IMAGE_CELLS:,} or fewer). Run the deeper checks to compute it.",
+                )
+            sections = [s for s in DATA_SECTIONS if s in wanted]
         return write_sections(
             ctx,
             DATA_SECTION_FUNCS,

@@ -19,6 +19,7 @@ from mapi_spec._types import Name, StrictModel
 from mapi_spec.splitplan import SplitPlan
 from mapi_spec.tree import NodePath
 from mapi_spec.views import (
+    DATA_SECTIONS,
     MAX_EXPLORE_LAGS,
     DataSection,
     ModelSection,
@@ -42,7 +43,33 @@ __all__ = [
     "ExploreJob",
     "ModelCompareRequest",
     "ModelExploreRequest",
+    "StructureHints",
 ]
+
+
+AngleUnits = Literal["deg", "rad", "h", "d", "month"]
+
+
+class StructureHints(StrictModel):
+    """Corrections to the structure the Data Explorer detects (each one overrides the rule
+    for that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,
+    ``frame_dim``), the node dim of a network or tree, the time dim, and variables that are
+    angles or times of day with their units (``{"wind_from": "deg"}``)."""
+
+    y_dim: Name | None = None
+    x_dim: Name | None = None
+    frame_dim: Name | None = None
+    node_dim: Name | None = None
+    time_dim: Name | None = None
+    angle_vars: dict[Name, AngleUnits] = Field(default_factory=dict, max_length=64)
+
+    @model_validator(mode="after")
+    def _pair(self) -> StructureHints:
+        if (self.y_dim is None) != (self.x_dim is None):
+            raise ValueError("give both y_dim and x_dim, or neither")
+        if self.y_dim is not None and self.y_dim == self.x_dim:
+            raise ValueError("y_dim and x_dim must differ")
+        return self
 
 
 class DataExploreRequest(RequestModel):
@@ -54,7 +81,7 @@ class DataExploreRequest(RequestModel):
     """
 
     sections: list[DataSection] = Field(
-        default_factory=_all_data_sections, min_length=1, max_length=13
+        default_factory=_all_data_sections, min_length=1, max_length=len(DATA_SECTIONS)
     )
     vars: list[Name] = Field(default_factory=list, max_length=256, description="Default: all")
     kpi: Name | None = None
@@ -79,6 +106,11 @@ class DataExploreRequest(RequestModel):
         "first node with variables)",
         exclude_if=lambda v: v is None,
     )
+    hints: StructureHints | None = Field(
+        None,
+        description="Corrections to the detected structure (image dims, node dim, angle variables)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = dto_examples(
         {
@@ -86,13 +118,20 @@ class DataExploreRequest(RequestModel):
             "kpi": "revenue",
             "facet_by": ["geo"],
             "max_lag": 12,
-        }
+        },
+        {
+            "sections": ["structure", "images", "circular"],
+            "hints": {"y_dim": "row", "x_dim": "col", "angle_vars": {"wind_from": "deg"}},
+        },
     )
 
     @model_validator(mode="after")
     def _unique(self) -> DataExploreRequest:
         if len(set(self.sections)) != len(self.sections):
             raise ValueError("sections must be unique")
+        hinted = self.hints.time_dim if self.hints is not None else None
+        if hinted is not None and self.time_dim is not None and self.time_dim != hinted:
+            raise ValueError("time_dim and hints.time_dim disagree")
         return self
 
 

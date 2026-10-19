@@ -179,6 +179,24 @@ Explorer.
     `target`, `weight` and `constant`. Refer to
     [Tree datasets](../../guides/tree-data.md#raw-hdf5-inspect-then-map) for the mapping file.
 
+### 3.2 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `image` and `weight` (81 × 81 pixels) and `psf` (31 × 31 pixels). Look
+  for the arc of the lensed galaxy around the lens.
+- The statistics of each image give the fraction of saturated pixels.
+- **Correlations** compares `image` and `weight` pixel by pixel.
+- For the tree file, click **Explore this node**. The node `/image` has the two images of
+  81 × 81 pixels. The node `/psf` has the image of 31 × 31 pixels. The explorer finds the
+  sections of each node separately.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

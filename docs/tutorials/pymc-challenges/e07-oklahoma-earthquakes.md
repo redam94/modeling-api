@@ -116,6 +116,25 @@ the count 0, not a missing value.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `quakes` as a map of 9 × 12 cells. Move the frame slider to go from
+  quarter to quarter. The viewer shows 24 of the 44 quarters. The line below the map shows
+  the mean, the minimum and the maximum count of all 44 quarters.
+- **Over time** shows one series: the number of earthquakes in all cells for each quarter.
+  The explorer does not make a series for each cell.
+- The time patterns (memory, stable or wandering, trend and season) use this series.
+- **Group comparison** is in **Not for this data**. The rows and the columns of the grid are
+  not groups.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

@@ -128,6 +128,23 @@ accepts them: a missing answer leaves the likelihood.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Points**.
+
+- The chart shows the 330 chips on the grid of the survey (`wcs_col` and `wcs_row`). Each
+  chip has its colour from `cie_l`, `cie_a` and `cie_b`.
+- Set the colour to the most frequent term to see the four terms of Nafaanra on the chart.
+- Set the colour to the agreement. Low agreement shows the boundaries between the terms,
+  where the 29 speakers do not give the same answer.
+- `wcs_row` and `wcs_col` are positions. **Correlations** does not use them.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

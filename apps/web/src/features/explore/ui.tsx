@@ -28,6 +28,12 @@ export function num(v: number | null | undefined, digits = 4): string {
   return Number(v.toPrecision(digits)).toLocaleString("en", { maximumFractionDigits: 6 });
 }
 
+/** A count: every digit ("10,292"), "—" when missing. `num` rounds to 4 significant digits. */
+export function count(v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  return Math.round(v).toLocaleString("en");
+}
+
 export function pct(v: number | null | undefined, digits = 0): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   return `${fixed(digits).format(v * 100)}%`;

@@ -45,6 +45,7 @@ from mapi_server.services.runs import Scope, create_run
 from mapi_server.services.runspec import StoredRef
 
 __all__ = [
+    "EXPLORER_VERSION",
     "EXPLORE_TIMEOUT_S",
     "INDEX_MAX_BYTES",
     "exploration_parts",
@@ -55,8 +56,17 @@ __all__ = [
 ]
 
 EXPLORE_TIMEOUT_S: Final = 1800
+EXPLORER_VERSION: Final = "0.10-science.2"
+"""The version of the explorer views, hashed with each request: an explore run from before
+a change of the views (v0.10: the sections for scientific data) is not reused. Change it
+when the runner changes what a view means."""
 INDEX_MAX_BYTES: Final = 256 * 1024
 MAX_VIEW_LINKS: Final = 200
+
+
+def _explore_hash(payload: dict[str, Any]) -> str:
+    """The cache key of an explore request: the job and :data:`EXPLORER_VERSION`."""
+    return spec_hash({**payload, "explorer_version": EXPLORER_VERSION})
 
 
 async def _cached(
@@ -127,7 +137,7 @@ async def submit_dataset_explore(
     ref = f"dataset://{ds.project_id}/{ds.name}@v{dv.version}"
     job = ExploreJob(target="dataset", ref=ref, data=body)
     payload = job.model_dump(mode="json", exclude_none=True)
-    digest = spec_hash(payload)
+    digest = _explore_hash(payload)
     scope = ctx.scope
     hit = await _cached(session, scope, digest, dataset=(ds.id, dv.version), model_version_id=None)
     if hit is not None:
@@ -192,7 +202,7 @@ async def submit_model_explore(
     ref = await _model_ref(session, mv)
     job = ExploreJob(target="model", ref=ref, model=body)
     payload = job.model_dump(mode="json", exclude_none=True)
-    digest = spec_hash(payload)
+    digest = _explore_hash(payload)
     hit = await _cached(session, scope, digest, dataset=None, model_version_id=mv.id)
     if hit is not None:
         return hit, True

@@ -420,7 +420,12 @@ choosing](../concepts/about-and-choosing.md#in-the-web-app)).
 ## Explorers and budget plans <span class="mapi-badge">v0.5</span>
 
 - **Explore this version** on a dataset version opens the
-  [Data Explorer](data-explorer.md#in-the-web-app).
+  [Data Explorer](data-explorer.md#in-the-web-app). The sections that the explorer shows
+  first agree with the structure of the data. For time series, it shows the time plots and
+  the time patterns. For [scientific data](data-explorer.md#scientific-data), it shows
+  images and fields, profiles and spectra, maps, networks, trees, roses of directions and
+  times of day, and points. The sections that do not apply to the data go in the closed list
+  **Not for this data**.
 - **Explore** on a model version opens the [Model Explorer](model-explorer.md#in-the-web-app).
   It shows parameters, diagnostics, fit, residuals, contributions, response curves,
   IRF/FEVD, forecasts, backtests, governance evidence and lineage.

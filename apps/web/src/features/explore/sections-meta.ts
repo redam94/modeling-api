@@ -22,10 +22,28 @@ export const DATA_SECTION_META: Record<DataSection, SectionMeta> = {
   acf_pacf: { title: "Memory (ACF/PACF)", question: "How much does each value depend on its past values?", group: "Time patterns" },
   stationarity: { title: "Stable or wandering", question: "Does each series go back to a stable level, or does it wander?", group: "Time patterns" },
   stl: { title: "Trend and season", question: "How strong are the trend and the season?", group: "Time patterns" },
+  structure: { title: "Structure", question: "Which shapes does the data have (images, maps, networks, series)?", group: "The basics" },
+  images: { title: "Images and fields", question: "What do the images and grids of the data look like?", group: "Pictures of the data" },
+  profiles: { title: "Profiles and spectra", question: "How do the values change along an axis that is not time?", group: "Pictures of the data" },
+  map: { title: "Map", question: "Where are the values high or low, and are neighbours similar?", group: "Pictures of the data" },
+  network: { title: "Network", question: "Which nodes are connected, and how strongly?", group: "Pictures of the data" },
+  // Not a tree dataset (HDF5 groups, the node picker): a variable that holds a tree (parent, branch length).
+  tree: { title: "Tree", question: "How are the items related in the tree that the data holds (parents and branch lengths), and do near relatives have similar traits?", group: "Pictures of the data" },
+  circular: { title: "Directions and times of day", question: "Which directions or times of day occur most often?", group: "Pictures of the data" },
+  points: { title: "Points", question: "Where are the points, and what is the value at each point?", group: "Pictures of the data" },
 };
 
-/** The order of the Data Explorer's list (the basics first, quality right after the overview). */
-export const DATA_ORDER: readonly DataSection[] = ["overview", "quality", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "vif", "groups", "acf_pacf", "stationarity", "stl"];
+/** The order of the groups in the section list. */
+export const DATA_GROUPS: readonly string[] = ["The basics", "Pictures of the data", "Relationships", "Time patterns"];
+
+/** The order of the Data Explorer's list for time-series data (the basics first, quality right after the overview). */
+export const CLASSIC_ORDER: readonly DataSection[] = ["overview", "quality", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "vif", "groups", "acf_pacf", "stationarity", "stl"];
+
+/**
+ * The default order of every section: the time-series order, then the sections for scientific
+ * data. An index from v0.10 brings its own relevance order (`ExplorerIndex.order`).
+ */
+export const DATA_ORDER: readonly DataSection[] = [...CLASSIC_ORDER, "structure", "images", "profiles", "map", "network", "tree", "circular", "points"];
 
 export const MODEL_SECTION_META: Record<ModelSection, SectionMeta> = {
   params: { title: "Parameters", question: "What did the model learn, and how sure is it?", group: "What it learned" },

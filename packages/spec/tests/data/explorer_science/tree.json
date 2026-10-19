@@ -1,0 +1,85 @@
+{
+ "caption_plain": "Shows the tree with the traits of its tips.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.tree/v1",
+ "node_dim": "node",
+ "n_nodes": 5,
+ "n_tips": 3,
+ "roots": [
+  4
+ ],
+ "depth": 2.0,
+ "ultrametric": true,
+ "layout": {
+  "x": [
+   2.0,
+   2.0,
+   2.0,
+   1.0,
+   0.0
+  ],
+  "y": [
+   0.0,
+   1.0,
+   2.0,
+   0.5,
+   1.25
+  ],
+  "parent": [
+   3,
+   3,
+   4,
+   4,
+   -1
+  ],
+  "is_tip": [
+   true,
+   true,
+   true,
+   false,
+   false
+  ],
+  "label": [
+   "Homo_sapiens",
+   "Pan_troglodytes",
+   "Gorilla_gorilla",
+   null,
+   null
+  ]
+ },
+ "tips": [
+  0,
+  1,
+  2
+ ],
+ "tip_dim": "species",
+ "matched_by": "label",
+ "unmatched": 0,
+ "traits": [
+  {
+   "var": "brain",
+   "units": "cc",
+   "values": [
+    1350.0,
+    390.0,
+    500.0
+   ]
+  },
+  {
+   "var": "body",
+   "units": "g",
+   "values": [
+    62000.0,
+    45000.0,
+    null
+   ]
+  }
+ ],
+ "signal": [
+  {
+   "var": "brain",
+   "morans_i": 0.12,
+   "p_value": 0.4
+  }
+ ]
+}

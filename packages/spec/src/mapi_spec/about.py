@@ -333,7 +333,14 @@ _ROLE_PLAIN: Final = {
 
 
 def _plural(n: int, word: str) -> str:
-    return f"{n} {word}" + ("" if n == 1 else "s")
+    """``3 classes``, ``4 statuses``, ``5 boxes``, ``2 geos``; a dim name that is plural
+    already (``species``, ``cells``) keeps its form."""
+    if n == 1:
+        return f"{n} {word}"
+    low = word.lower()
+    if low.endswith(("ss", "us", "x", "z", "ch", "sh")):
+        return f"{n} {word}es"
+    return f"{n} {word}" + ("" if low.endswith("s") else "s")
 
 
 _MIDNIGHT = re.compile(r"^(\d{4}-\d{2}-\d{2})[T ]00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)?$")
@@ -380,7 +387,15 @@ def describe_dataset(
             highlights.append(f"some {unit or 'period'}s are missing along {time_name}")
     else:
         parts.append("Data")
-    groups = [(n, c) for n, c in coords.items() if n != time_name and c.kind == "categorical"]
+    # ``X_`` is the second dim of a pair (``X``, ``X_``) of a network or a neighbour matrix:
+    # the same items again, not a second group.
+    groups = [
+        (n, c)
+        for n, c in coords.items()
+        if n != time_name
+        and c.kind == "categorical"
+        and not (n.endswith("_") and n[:-1] in coords and coords[n[:-1]].size == c.size)
+    ]
     if groups:
         group_text = " and ".join(_plural(c.size, n) for n, c in groups)
         parts.append(f"for {group_text}")

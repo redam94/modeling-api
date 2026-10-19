@@ -169,6 +169,26 @@ Schema, Coordinates, Missingness, Preview and About. On **Schema**, `wind_from` 
 Each file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Directions and times of day**.
+
+- For the wind, the roses show `wind_from` (bins of 10°, north at the top, clockwise),
+  `hour_lst` (24 bins) and `day_of_year`. There is one rose for each year.
+- The heat map of `hour_lst` and `wind_from` shows the sea breeze: in the afternoon, the
+  wind comes from the sea.
+- For the camera traps, there is one rose of `clock_time` for each of the 6 species. Compare
+  the roses: some species are active at night, and other species in the day.
+- The Rayleigh test tells if the values have a preferred direction or time.
+- **Over time** and the time patterns are in **Not for this data**. `report` and `record`
+  are lists of observations, not time.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the specs
 
 ### 4.1 The wind

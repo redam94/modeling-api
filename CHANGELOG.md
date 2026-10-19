@@ -5,6 +5,104 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Data Explorer for scientific data
+
+The Data Explorer now shows graphs of scientific data, not only time series. It finds the
+structure of the data (images, profiles, maps, networks, trees, directions and points) and
+shows the sections that apply first.
+
+#### Added
+- The explorer finds the shapes of each dataset, and of each node of a tree dataset, from the
+  dims, the coords, the roles and the units. The new section **Structure** shows the shapes,
+  the role of each dim and how the explorer uses each variable.
+- Seven picture sections in the new group *Pictures of the data*:
+    - **Images and fields**: the field viewer of the Model Explorer, with the statistics of
+      each frame.
+    - **Profiles and spectra**.
+    - **Map**: areas in colour, neighbours and Moran's I.
+    - **Network**: matrix, node-link graph, degree and homophily.
+    - **Tree**: the tree with the traits and the phylogenetic signal.
+    - **Directions and times of day**: roses and the Rayleigh test.
+    - **Points**: lattice, CIE Lab colours and agreement.
+- The ingest writes `structure` and each picture section that applies. The explorer index
+  gives the new fields `reason`, `shapes` and `order`. A request takes the new field `hints`
+  to correct the structure.
+- In Expert mode, *All series* also shows the Plotly plots `sci.area_map`, `net.graph` and
+  `sci.rose`.
+- Mock datasets for eleven pymc-challenges cases and the E80 lens tree, and screenshots of
+  the new sections. `make docs-screenshots-explorers` records the profiles, the points and the
+  section list from mock mode. `make docs-screenshots-science` records the images (E58), the
+  map (E18), the network (E21), the tree (E23) and the roses (E81b) from the real exports.
+- **Images and fields**: when a few cells are much brighter than the others (E58 camera
+  frames), the colours cover 98% of the values. **Colours for the full range** shows all the
+  values. The axis of a histogram with a log count has ticks at the powers of ten.
+- **Tree**: a trait with positive values that go across two orders of magnitude or more
+  (E23 body mass) has a logarithmic axis.
+- Each pymc-challenges tutorial has a step "Explore the data". The guide
+  Explore a dataset (`docs/guides/data-explorer.md`) has a new part
+  "Scientific data".
+
+#### Changed
+- The list of sections shows only the sections that apply to the data, in the sequence that
+  agrees with the structure. The other sections go in the closed list **Not for this data**.
+  A link to one of these sections continues to open it. Versions from earlier releases keep
+  the thirteen sections.
+- A dim with `policy: extend` is time only when its coords are numbers that increase and it
+  is not a list of ids. A `week`, `month`, `quarter`, `year`, `day`, `date`, `period` or
+  `time` dim with numbers stays time (an MMM panel on the weeks 1 to 104). A list of ids is a
+  sequence when its name tells a step in time (`step`, `t`) or media or spend change along
+  it. If your data uses another list of ids as time, give `time_dim` in the request.
+- **Over time** adds or averages the cells of an image to make one series. It does not make
+  a series for each cell. The time patterns need a real time dim and 16 periods or more.
+- **Group comparison** compares only real groups. **Correlations**, **Distributions** and
+  **Unusual values** do not use geometry (borders, neighbours, tree variables, positions).
+  **Data quality** gives `SHORT_HISTORY` only for data with a time dim, and has the new
+  warnings `GEOMETRY_INVALID`, `TREE_INVALID`, `NETWORK_ASYMMETRIC`, `ANGLE_RANGE` and
+  `IMAGE_SATURATED`.
+- A request can have all 21 sections (before: 13).
+- **Map** starts with the ratio of the target and the exposure (E18 `cases` / `expected`),
+  when the data has this ratio.
+- **Unusual values** and the `OUTLIERS` check do not use an indicator (the values 0 and 1,
+  or two values that each occur in 5 % of the rows or more), or a profile or a spectrum (E79
+  `reference_dl`). One spike in a constant series continues to be an unusual value.
+- **Distributions** says "has only the values 0 and 1" for a variable with only 0 and 1.
+  **Correlations** names the largest pair when no pair has a correlation of 0.7 or more.
+- The tables of the picture sections show counts with all their digits (10,292, not 10,290).
+- The dataset About counts a pair of dims (`district`, `district_`) once, and does not add an
+  "s" to a dim name that ends in "s" ("186 species", not "186 speciess"). A name that ends
+  in "ss", "us", "x", "ch" or "sh" gets "es" ("3 classes", "3 statuses").
+
+#### Fixed
+- The upload page puts the bytes of a file once. Before, **Upload and ingest** while
+  **Preview structure** still sent the file failed with "upload failed with HTTP 412".
+- Time-series and tabular data keep the classic sections:
+    - A target named `y`, or a pair of columns such as `sales_x` and `sales_y`, is data,
+      not the positions of points. Points need names of positions and, for `x` and `y`,
+      integers, units of length or a dim of points (`site`).
+    - An MMM panel with integer geo or channel codes is not an image. **Over time** gives
+      one series for each geo and channel.
+    - `hours_open`, `months_active`, a temperature in degrees, and a latitude or a
+      longitude are not directions.
+- **Images and fields** reads a few frames at a time. A movie of 1,000 frames of 256 × 256
+  cells needs about 250 MB more memory, not 1.8 GB. The ingest leaves out the images of more
+  than 50,000,000 cells: **Run the deeper checks** calculates them.
+- `IMAGE_SATURATED` looks only for a pile-up at the limit of a detector. A heater setting
+  (E51 `heater_w`) and a noise map (E79 `noise_sd`) do not get it.
+- Moran's I of a map variable with frames uses the mean over the frames, not the first
+  frame.
+- The server does not reuse an explore run from before this release: the cache key of a
+  request includes the version of the explorer.
+- **Group comparison** does not compare the layers of a network (E21 `covariate`).
+- The roses show the bin in the units of the data when the pointer is on a bar ("13–14 h",
+  not "203°"). The plain summary of the roses does not count the rose of all the records as
+  a group.
+- The export plots of a section have different ids (three roses in E81).
+- "has only the values 0 and 1" shows only for a variable with the values 0 and 1, not for
+  any two values between 0 and 1.
+- The counts of frames, ties and dim sizes show all their digits. For a version from an
+  earlier release, the header names the views for scientific data apart from the list.
+- In **Network**, the **Colour by** picker stays when a network has no matrix.
+
 ## [0.9.1] — Science gallery docs — 2026-10-19
 
 This release updates the documentation for v0.9.0. It has no code changes.
