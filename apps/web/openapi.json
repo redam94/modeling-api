@@ -3421,6 +3421,20 @@
               "stl",
               "quality"
             ]
+          },
+          {
+            "hints": {
+              "angle_vars": {
+                "wind_from": "deg"
+              },
+              "x_dim": "col",
+              "y_dim": "row"
+            },
+            "sections": [
+              "structure",
+              "images",
+              "circular"
+            ]
           }
         ],
         "properties": {
@@ -3461,6 +3475,17 @@
             ],
             "description": "Dim for group comparisons",
             "title": "Group By"
+          },
+          "hints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructureHints"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Corrections to the detected structure (image dims, node dim, angle variables)"
           },
           "kpi": {
             "anyOf": [
@@ -3552,11 +3577,19 @@
                 "stl",
                 "vif",
                 "groups",
-                "quality"
+                "quality",
+                "structure",
+                "images",
+                "profiles",
+                "map",
+                "network",
+                "tree",
+                "circular",
+                "points"
               ],
               "type": "string"
             },
-            "maxItems": 13,
+            "maxItems": 21,
             "minItems": 1,
             "title": "Sections",
             "type": "array"
@@ -7513,10 +7546,49 @@
               },
               {
                 "message_plain": "Less than two seasons of data.",
+                "reason": "insufficient_data",
                 "section": "stl",
                 "status": "skipped",
                 "view": "ui/explore/stl.json"
               }
+            ],
+            "target": "dataset"
+          },
+          {
+            "order": [
+              "overview",
+              "structure",
+              "images",
+              "quality",
+              "distributions",
+              "timeseries",
+              "missingness"
+            ],
+            "ref": "dataset://seismology/oklahoma_quakes@v1",
+            "sections": [
+              {
+                "section": "overview",
+                "view": "ui/explore/overview.json"
+              },
+              {
+                "section": "structure",
+                "view": "ui/explore/structure.json"
+              },
+              {
+                "section": "images",
+                "view": "ui/explore/images.json"
+              },
+              {
+                "message_plain": "Not available: the data has no polygons.",
+                "reason": "not_applicable",
+                "section": "map",
+                "status": "skipped",
+                "view": "ui/explore/map.json"
+              }
+            ],
+            "shapes": [
+              "image",
+              "timeseries"
             ],
             "target": "dataset"
           }
@@ -7541,6 +7613,22 @@
             "description": "M4: the node of a tree dataset explored (absent for a flat dataset)",
             "title": "Node"
           },
+          "order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 32,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Data Explorer: the sections in order of relevance for this data",
+            "title": "Order"
+          },
           "ref": {
             "description": "dataset://… or model://…",
             "maxLength": 512,
@@ -7554,6 +7642,35 @@
             "maxItems": 32,
             "title": "Sections",
             "type": "array"
+          },
+          "shapes": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "timeseries",
+                    "sequence",
+                    "image",
+                    "vector_field",
+                    "areal_map",
+                    "points",
+                    "network",
+                    "tree",
+                    "circular",
+                    "profile",
+                    "table"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Data Explorer: the detected data shapes, best first",
+            "title": "Shapes"
           },
           "target": {
             "enum": [
@@ -7585,6 +7702,23 @@
               }
             ],
             "title": "Message Plain"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_applicable",
+                  "insufficient_data",
+                  "needs_option"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a skipped section was skipped (absent in indexes written before the scientific sections: readers then list every section)",
+            "title": "Reason"
           },
           "section": {
             "maxLength": 32,
@@ -23529,6 +23663,91 @@
           "state"
         ],
         "title": "StoreProgress",
+        "type": "object"
+      },
+      "StructureHints": {
+        "additionalProperties": false,
+        "description": "Corrections to the structure the Data Explorer detects (each one overrides the rule\nfor that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,\n``frame_dim``), the node dim of a network or tree, the time dim, and variables that are\nangles or times of day with their units (``{\"wind_from\": \"deg\"}``).",
+        "properties": {
+          "angle_vars": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "enum": [
+                  "deg",
+                  "rad",
+                  "h",
+                  "d",
+                  "month"
+                ],
+                "type": "string"
+              }
+            },
+            "title": "Angle Vars",
+            "type": "object"
+          },
+          "frame_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Dim"
+          },
+          "node_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Dim"
+          },
+          "time_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Dim"
+          },
+          "x_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X Dim"
+          },
+          "y_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Dim"
+          }
+        },
+        "title": "StructureHints",
         "type": "object"
       },
       "TemplateCase": {

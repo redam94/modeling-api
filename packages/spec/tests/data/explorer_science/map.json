@@ -1,0 +1,148 @@
+{
+ "caption_plain": "Shows each variable by area. Lines join neighbouring areas.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.map/v1",
+ "area_dim": "district",
+ "areas": [
+  "A",
+  "B",
+  "C"
+ ],
+ "rings": [
+  {
+   "area": 0,
+   "x": [
+    0.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "y": [
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "area": 1,
+   "x": [
+    1.0,
+    2.0,
+    2.0,
+    1.0,
+    1.0
+   ],
+   "y": [
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "area": 2,
+   "x": [
+    0.0,
+    2.0,
+    2.0,
+    0.0,
+    0.0
+   ],
+   "y": [
+    1.0,
+    1.0,
+    2.0,
+    2.0,
+    1.0
+   ]
+  }
+ ],
+ "decimated": false,
+ "bbox": [
+  0.0,
+  0.0,
+  2.0,
+  2.0
+ ],
+ "centroids": {
+  "x": [
+   0.5,
+   1.5,
+   1.0
+  ],
+  "y": [
+   0.5,
+   0.5,
+   1.5
+  ]
+ },
+ "layers": [
+  {
+   "var": "cases",
+   "units": "cases",
+   "role": "target",
+   "values": [
+    9.0,
+    3.0,
+    5.0
+   ],
+   "frames": [],
+   "derived_from": []
+  },
+  {
+   "var": "expected",
+   "units": "cases",
+   "role": "exposure",
+   "values": [
+    4.5,
+    3.0,
+    5.0
+   ],
+   "frames": [],
+   "derived_from": []
+  },
+  {
+   "var": "cases / expected",
+   "values": [
+    2.0,
+    1.0,
+    1.0
+   ],
+   "frames": [],
+   "derived_from": [
+    "cases",
+    "expected"
+   ]
+  }
+ ],
+ "edges": [
+  [
+   0,
+   1
+  ],
+  [
+   0,
+   2
+  ],
+  [
+   1,
+   2
+  ]
+ ],
+ "isolates": [],
+ "moran": [
+  {
+   "var": "cases",
+   "morans_i": -0.5,
+   "expected": -0.5,
+   "z": 0.0,
+   "p_value": 1.0,
+   "weights": "adjacency",
+   "permutations": 999
+  }
+ ]
+}

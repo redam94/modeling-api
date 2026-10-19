@@ -1,0 +1,227 @@
+{
+ "caption_plain": "Shows each variable on its grid. Use the slider to go through the frames.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.images/v1",
+ "fields": [
+  {
+   "output": "quakes",
+   "units": "events",
+   "facet": {},
+   "kind": "scalar",
+   "y_dim": "row",
+   "x_dim": "col",
+   "frame_dim": "quarter",
+   "height": 2,
+   "width": 3,
+   "source_height": 2,
+   "source_width": 3,
+   "downsampled": false,
+   "y_coords": [
+    0,
+    1
+   ],
+   "x_coords": [
+    0,
+    1,
+    2
+   ],
+   "colormap": "viridis",
+   "log": false,
+   "origin": "upper",
+   "encoding": "linear",
+   "n_draws": 0,
+   "frames": [
+    {
+     "label": "2009-01-01",
+     "mean": {
+      "lo": 0.0,
+      "hi": 7.0,
+      "data": "AACSJCRJtm0AANq2"
+     },
+     "draws": []
+    },
+    {
+     "label": "2009-04-01",
+     "mean": {
+      "lo": 0.0,
+      "hi": 7.0,
+      "data": "kiSSJEiSJEn///7/"
+     },
+     "draws": []
+    }
+   ],
+   "omitted_frames": 0,
+   "var": "quakes",
+   "role": "target",
+   "mask_var": "visible",
+   "mask": {
+    "lo": 0.0,
+    "hi": 1.0,
+    "data": "/v/+//7//v8AAP7/"
+   },
+   "frame_stats": {
+    "coords": [
+     "2009-01-01",
+     "2009-04-01"
+    ],
+    "mean": [
+     1.833,
+     3.0
+    ],
+    "sd": [
+     1.94,
+     2.55
+    ],
+    "min": [
+     0.0,
+     1.0
+    ],
+    "max": [
+     5.0,
+     7.0
+    ],
+    "missing_share": [
+     0.0,
+     0.1667
+    ],
+    "downsampled": false
+   },
+   "histogram": {
+    "edges": [
+     0.0,
+     2.0,
+     4.0,
+     6.0,
+     8.0
+    ],
+    "counts": [
+     5,
+     2,
+     2,
+     2
+    ]
+   },
+   "log_counts": false,
+   "stats": {
+    "min": 0.0,
+    "max": 7.0,
+    "mean": 2.36,
+    "sd": 2.29,
+    "missing_share": 0.083,
+    "saturated_share": 0.083
+   },
+   "group_by": "label",
+   "groups": [
+    {
+     "label": 0,
+     "n": 2,
+     "mean": {
+      "lo": 0.0,
+      "hi": 6.0,
+      "data": "VRWqKv9/qmoAAP7/"
+     }
+    }
+   ],
+   "components": []
+  },
+  {
+   "output": "displacement",
+   "units": "um",
+   "facet": {},
+   "kind": "vector",
+   "y_dim": "row",
+   "x_dim": "col",
+   "component_dim": "component",
+   "height": 2,
+   "width": 2,
+   "source_height": 4,
+   "source_width": 4,
+   "downsampled": true,
+   "y_coords": [
+    1,
+    3
+   ],
+   "x_coords": [
+    1,
+    3
+   ],
+   "colormap": "magma",
+   "log": false,
+   "origin": "upper",
+   "encoding": "linear",
+   "n_draws": 0,
+   "frames": [
+    {
+     "mean": {
+      "lo": 0.1,
+      "hi": 1.0,
+      "data": "AADGcXIc/v8="
+     },
+     "draws": [],
+     "arrows": {
+      "x": [
+       0.5
+      ],
+      "y": [
+       0.5
+      ],
+      "u": [
+       [
+        0.3
+       ]
+      ],
+      "v": [
+       [
+        -0.2
+       ]
+      ]
+     }
+    }
+   ],
+   "omitted_frames": 0,
+   "var": "displacement",
+   "role": "target",
+   "log_counts": false,
+   "stats": {
+    "min": 0.0,
+    "max": 1.2,
+    "mean": 0.45,
+    "sd": 0.3,
+    "missing_share": 0.0,
+    "saturated_share": 0.0
+   },
+   "groups": [],
+   "components": [
+    {
+     "label": "x",
+     "histogram": {
+      "edges": [
+       -1.0,
+       0.0,
+       1.0
+      ],
+      "counts": [
+       7,
+       9
+      ]
+     }
+    },
+    {
+     "label": "y",
+     "histogram": {
+      "edges": [
+       -1.0,
+       0.0,
+       1.0
+      ],
+      "counts": [
+       8,
+       8
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "omitted": []
+}
