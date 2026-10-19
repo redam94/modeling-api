@@ -5,9 +5,10 @@ app. You use the model `sci.network_latent_space@1`. You do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `sociology`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `sociology`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference, and `metadata.project` in the
+  spec.
 - A local copy of pymc-challenges. The export command reads two files from its `data/`
   directory.
 - About 20 minutes. Each fit takes less than one minute of sampler time.
@@ -174,8 +175,8 @@ The settings for this question:
 | `covariates` | true | Use the six shared traits in `homophily`. With `false`, the model has no traits. `kind: covariates` with `covariates: false` is the Erdős-Rényi graph (model a0). `kind: latent_space` with `covariates: false` is model c0 |
 | `node_groups` | true | The dataset has `office`. The plots colour the lawyers by office |
 | `latent_dims` | 2 (default) | The dimensions of the hidden map. The notebook uses 2 |
-| `alpha_mu`, `alpha_sigma` | -2, 2 (default) | The normal prior of the intercept. It puts the density between approximately 1% and 50% |
-| `beta_sigma` | 1 (default) | The prior sd of each trait effect. A shared trait can multiply the odds by up to approximately 7, or divide them by 7 |
+| `alpha_mu`, `alpha_sigma` | -2, 2 (default) | The normal prior of the intercept. It puts the density between about 1% and 50% |
+| `beta_sigma` | 1 (default) | The prior sd of each trait effect. A shared trait can multiply the odds by up to about 7, or divide them by 7 |
 | `sociality_scale` | 1 (default) | The half-normal scale of `sigma_s`, the sd of the sociality effects |
 | `latent_scale` | 2 (default) | The half-normal scale of `sigma_z`, the spread of the positions on the map |
 | `procrustes_iters` | 10 (default) | The passes of the Procrustes alignment after the fit |
@@ -201,7 +202,7 @@ steps and smaller steps make the fit more stable. They do not remove the problem
 4. When the run is done, the **Result** card shows **Inspect
    model://sociology/lazega-coworkers-latent-space@v1**. Click it.
 
-In our test, the fit took approximately 40 s with nutpie. After the fit, the run aligns the
+In our test, the fit took about 40 s with nutpie. After the fit, the run aligns the
 positions, calculates the tie probability of each pair for each draw, the plots and the
 explorer views.
 
@@ -217,14 +218,14 @@ tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Mode
 Open **Diagnostics** in the Model Explorer, or the plot **Sampler convergence** on the
 **Plots** tab. In our fit, 3 of the 2,000 checked parameters do not pass: `sigma_z`, `alpha` and
 one coordinate of one position. The largest R-hat is 1.015 (`sigma_z`), and the bulk ESS of
-`sigma_z` is approximately 140. There are no divergent transitions. The trait effects have
+`sigma_z` is about 140. There are no divergent transitions. The trait effects have
 R-hat below 1.003 and an ESS of more than 1,800.
 
 This agrees with the notebook. `sigma_z` is wide and mixes slowly when the traits are in the
 model, because what is left for the map is a weak signal. Trust the trait effects and the tie
 probabilities. Do not report `sigma_z` to two digits.
 
-!!! warning "Use more draws if the warning is larger"
+!!! caution "Use more draws if the warning is larger"
     If R-hat of `sigma_z` is more than 1.05, set `draws: 2000` and fit again. The sampler is
     random, so a second fit can show a larger warning than ours. With `tune: 1000`, one of our
     fits had R-hat 1.08 and 4 divergent transitions.
@@ -248,11 +249,11 @@ fit, the posterior means and the 94% HDIs are:
 
 Read the table as the notebook does:
 
-- Two lawyers in the same office have approximately e^2.5 ≈ 13 times the odds of a tie. The
-  same practice multiplies the odds by approximately 8.
+- Two lawyers in the same office have about e^2.5 ≈ 13 times the odds of a tie. The
+  same practice multiplies the odds by about 8.
 - Two partners, or two associates, work together *less* often than a partner and an associate.
   The firm works in teams of partners and associates.
-- `sigma_s` ≈ 0.9: a lawyer one sd above the average has approximately e^0.9 ≈ 2.5 times the
+- `sigma_s` ≈ 0.9: a lawyer one sd above the average has about e^0.9 ≈ 2.5 times the
   odds of a tie with anyone.
 
 The rows `sociality[<lawyer>]` give the activity of each lawyer after the traits. In our fit,
@@ -271,7 +272,7 @@ The diagonal is 0.
 3. Select **Draws** and click **Play the draws** to see possible tables that agree with the
    data.
 4. Move the pointer over a cell to read its values. For example, the pair of lawyers 15 and 28
-   has a mean of approximately 0.66, and the pair of lawyers 1 and 8 has 0.02.
+   has a mean of about 0.66, and the pair of lawyers 1 and 8 has 0.02.
 
 The lawyers are in the order of their numbers, so partners (1 to 36) are at the top and the
 left. Blocks of bright cells show the offices and the practices. The plot **Field map of
@@ -302,7 +303,7 @@ To see what the map finds without the traits (notebook model c0), fit the spec a
 - The four groups of Boston and Hartford (litigation and corporate in each office) are in four
   different areas of the map.
 - The 3 Providence corporate lawyers are near the Boston corporate lawyers.
-- `sigma_z` is approximately 2.3, not 0.9.
+- `sigma_z` is about 2.3, not 0.9.
 
 The model c0 was told nothing about the offices, but it finds them. Most of what the map finds
 alone *is* office and practice.
@@ -349,7 +350,7 @@ is better. The recipe of step 8 makes the same comparison in one run.
 The fit of c0 shows the warning `PARETO_K_HIGH`: for 7 dyads, the LOO estimate is not
 reliable. The notebook also finds such dyads for c0.
 
-The difference between c and b is approximately 2.7, and its standard error is approximately
+The difference between c and b is about 2.7, and its standard error is about
 2.6. (We calculated the standard error with ArviZ `az.compare` on the two fits. The web app
 does not show it.) A difference of about one standard error is not a real difference: the two
 models are equal. Both models are far better than model a, which has no sociality.
@@ -477,7 +478,7 @@ column are from the notebook's functions.
   real collaboration is more *closed* than the model makes.
 - The real network has one isolate (lawyer 8). The simulations have fewer.
 
-!!! warning "Send all the lawyers for graph_stat"
+!!! caution "Send all the lawyers for graph_stat"
     Send a dataset with all 71 lawyers in `lawyer` and `lawyer_`, and use **Simulate** or
     **Predictive**. Otherwise the score stops with `CAPABILITY_UNSUPPORTED`. A statistic of the
     whole graph needs the whole graph.
@@ -520,13 +521,13 @@ What to look for:
 
 - The comparison table ranks `latent_space` first, `sociality` second and `covariates` last.
 - The stacking weights put most of the weight on `latent_space`. In our fits with ArviZ, the
-  weights are approximately 0.91, 0.08 and 0.01.
+  weights are about 0.91, 0.08 and 0.01.
 - `best` selects `latent_space`, because it has the largest `elpd_loo`.
 
-!!! warning "The best rung is not always the model to report"
+!!! caution "The best rung is not always the model to report"
     `select.best` uses only the value of `elpd_loo`. It does not use the standard error of the
     difference. For the law firm, the difference between `latent_space` and `sociality` is
-    approximately one standard error (section 6.6). Read the table before you report the
+    about one standard error (section 6.6). Read the table before you report the
     effects of `best`. The notebook reports the sociality model.
 
 !!! note
@@ -632,9 +633,9 @@ What to look for:
 
 ## 10. Differences from the notebook
 
-The port keeps the models a0, a, b, c and c0 of sections 2 and 3, the Procrustes alignment,
-the latent map, the graph checks of section 5 and the leave-one-dyad-out LOO of section 6. It
-leaves out these parts:
+The port keeps the models a0, a, b, c and c0 of sections 2 and 3 and the Procrustes alignment.
+It also keeps the latent map, the graph checks of section 5 and the leave-one-dyad-out LOO of
+section 6. It leaves out these parts:
 
 - **The block models (section 4).** The port has no stochastic block model and no
   mixed-membership block model. Thus it does not give the probability that two lawyers are in

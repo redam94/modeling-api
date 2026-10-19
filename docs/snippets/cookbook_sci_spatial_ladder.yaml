@@ -1,7 +1,7 @@
 # Workflow cookbook: which spatial model for a disease map? Fit iid, ICAR and BYM2 area
 # effects on the same areas, compare them by PSIS-LOO (ranking and stacking weights), keep the
-# best one, read its covariate effect, refit it with wider and narrower priors when the effect
-# is clear, check convergence and draw the relative-risk map.
+# best one, read its covariate effect, check convergence, refit it with wider and narrower
+# priors when the chains agree and the effect is clear, and draw the relative-risk map.
 # This is the sci_spatial_ladder template of the gallery (a test keeps the two the same).
 # (validated and run by conformance/tests/test_docs_v05.py)
 apiVersion: mapi/v1
@@ -104,21 +104,26 @@ nodes:
   label: Covariate effect
   inputs: {model: best.model}
   with: {vars: [b0, b1, sigma], hdi_prob: {$param: hdi_prob}}
-- id: clear
-  use: branch.if
-  label: Is the effect clear?
-  with:
-    condition: nodes.effect.params.b1.hdi_low > 0 or nodes.effect.params.b1.hdi_high < 0
-    explain_then: The range of the covariate effect in the best model does not include zero.
-      The covariate has a clear effect on the risk. The workflow fits the best model again with
-      wider and narrower priors.
-    explain_else: The range of the covariate effect in the best model includes zero. When the
-      areas share their risk, the data does not show a clear effect of the covariate.
 - id: converged
   use: governance.check
   label: Did the chains agree?
   inputs: {model: best.model, data: inputs.data}
   with: {check: convergence}
+# an effect is clear only when the chains of the best model agree
+- id: clear
+  use: branch.if
+  label: Is the effect clear?
+  with:
+    condition: >-
+      coalesce(nodes.converged.status, 'error') not in ['fail', 'error'] and
+      (nodes.effect.params.b1.hdi_low > 0 or nodes.effect.params.b1.hdi_high < 0)
+    explain_then: The chains of the best model agree, and the range of the covariate effect
+      does not include zero. The covariate has a clear effect on the risk. The workflow fits
+      the best model again with wider and narrower priors.
+    explain_else: The chains of the best model do not agree, or the range of the covariate
+      effect includes zero. Look at the convergence evidence first. When the chains agree,
+      the data does not show a clear effect of the covariate when the areas share their
+      risk.
 # 4. A clear effect must come from the data, not from the priors: refit the best rung
 #    (kind = the id of the winner) with the prior widths x prior_scale and / prior_scale.
 - id: wide

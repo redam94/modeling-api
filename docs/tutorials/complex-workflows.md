@@ -202,10 +202,10 @@ nodes:
   use: model.fit
   inputs: {data: inputs.data}
   with:
-    model: sci.areal_bym2@^1
+    model: sci.fisher_kpp@^1
     bind: {$param: bind}
-    settings: {kind: bym2}
-    fit: {draws: 1000, tune: 1000, chains: 4, seed: 18}
+    settings: {steps_per_hour: 10, delay: true}
+    fit: {draws: 1000, tune: 1000, chains: 4, seed: 50}
 - id: s
   use: model.summary
   label: Parameters and convergence
@@ -219,7 +219,7 @@ nodes:
       nodes.s.max_rhat < params.max_rhat and nodes.s.min_ess >= params.min_ess
       and coalesce(nodes.s.n_divergent, 0) == 0
     explain_then: The chains agree. The workflow did a test of the covariate effect.
-    explain_else: The chains do not agree. Fit with more tuning steps, or change the model.
+    explain_else: The chains do not agree. Fit with more warm-up steps, or change the model.
 - id: effect
   use: branch.if
   label: Is the effect clear of zero?
@@ -348,14 +348,26 @@ Two governance checks are important for Bayesian models:
 
 Each check does more fits. Thus put them after the convergence gate.
 
+The example uses `sci.fisher_kpp` and the scratch assay of E50
+(`python -m mapi_plugin_science.export e50`). Both checks apply to this model:
+
+- `sensitivity.prior` changes the settings whose names end with `_sigma`, `prior_scale` or
+  `prior_sd`. Here it changes `capacity_sigma`.
+- `recovery.simulated` needs a model whose predictions are numbers. The cell counts are numbers.
+
+The checks do not apply to all models. On `sci.network_latent_space`, the recovery check is
+`skipped`, because a tie is yes or no. On `sci.areal_bym2`, the sensitivity check is `skipped`,
+because its prior widths have other names. Its recovery check can end with `error`, and then
+the branch `trusted` takes the else arm.
+
 ```yaml
 apiVersion: mapi/v1
 kind: Workflow
-metadata: {name: lip-cancer-governance, project: epidemiology}
+metadata: {name: scratch-assay-governance, project: biology}
 params:
   bind:
     type: object
-    default: {dims: {area: district, area_: district_}, vars: {covariate: aff}}
+    default: {dims: {t: hours, x: position}, vars: {count: cells}}
   n_sims: {type: integer, default: 20, minimum: 5, maximum: 100}
 inputs:
   data: {type: dataset}
@@ -364,10 +376,10 @@ nodes:
   use: model.fit
   inputs: {data: inputs.data}
   with:
-    model: sci.areal_bym2@^1
+    model: sci.fisher_kpp@^1
     bind: {$param: bind}
-    settings: {kind: bym2}
-    fit: {draws: 1000, tune: 1000, chains: 4, seed: 18}
+    settings: {steps_per_hour: 10, delay: true}
+    fit: {draws: 1000, tune: 1000, chains: 4, seed: 50}
 - {id: s, use: model.summary, inputs: {model: fit.model}}
 - id: converged
   use: branch.if
@@ -407,7 +419,7 @@ nodes:
 - id: report
   use: report.summary
   inputs: {items: [s.table], model: fit.model, plots: [estimates.plot]}
-  with: {title: 'Lip cancer map: governance checks'}
+  with: {title: 'Scratch assay: governance checks'}
 outputs: {sensitivity: sensitivity.evidence, recovery: recovery.evidence, report: report.report}
 ```
 
@@ -528,10 +540,10 @@ nodes:
   use: model.fit
   inputs: {data: inputs.data}
   with:
-    model: sci.areal_bym2@^1
+    model: sci.fisher_kpp@^1
     bind: {$param: bind}
-    settings: {kind: bym2}
-    fit: {draws: 1000, tune: 1000, chains: 4, seed: 18}
+    settings: {steps_per_hour: 10, delay: true}
+    fit: {draws: 1000, tune: 1000, chains: 4, seed: 50}
 - id: s
   use: model.summary
   inputs: {model: fit.model}
@@ -685,14 +697,28 @@ nodes:
   inputs: {data: inputs.cmb}
   with:
     workflow: workflow://astronomy/image-check@r1
-    params: {model: sci.cmb_field@^1, draws: 500, tune: 500}
+    params:
+      model: sci.cmb_field@^1
+      var: sky
+      settings: {pixel_arcmin: 7.5, beam_fwhm_arcmin: 5.0, pixel_subsamples: 8,
+                 pixel_window: true, projection: gnomonic, border: 8, field_draws: 40}
+      draws: 64
+      tune: 16
+      seed: 79
 - id: lens_check
   use: subworkflow.run
   label: Check the lens model
   inputs: {data: inputs.lens}
   with:
     workflow: workflow://astronomy/image-check@r1
-    params: {model: sci.strong_lens@^1, settings: {pixel_scale: 0.05}}
+    params:
+      model: sci.strong_lens@^1
+      var: model_image
+      settings: {pixel_scale: 0.05, subsample: 2, lens_light_components: 2,
+                 noise_correlation: 0.2, z_lens: 0.2076, z_source: 0.5241}
+      draws: 600
+      tune: 400
+      seed: 80
 - id: report
   use: report.summary
   inputs:
@@ -704,8 +730,12 @@ outputs: {report: report.report}
 
 Read these points:
 
-- `params` gives the parameters of the saved workflow. The parameter `model` of
-  `image-check` is required.
+- `params` gives the parameters of the saved workflow. Here, `params` overrides the default
+  of `model` (`sci.cmb_field@^1`) that you typed in the wizard.
+- The values of `var`, `settings`, `draws`, `tune` and `seed` are the values of the E79 and
+  E80 tutorials. `var` selects the output to check. The lens model has two outputs on a grid.
+  With the defaults (1000 draws and 1000 warm-up steps), the CMB check takes about 25 times as
+  long as the fit of the E79 tutorial.
 - Pin a revision (`@r1`). Then a later edit of the saved workflow does not change the parent
   without notice. `@latest` is also possible.
 - Each sub-workflow runs as a separate workflow run with its own run page. When the server
@@ -728,14 +758,14 @@ This is the monitor of a `sci_spatial_ladder` run on the dataset of the
 
 ![The monitor of a sci_spatial_ladder run while it runs: the Steps tab with the three fitted rungs and the steps that wait for a worker](../assets/screenshots/science-recipe-monitor.png){ .mapi-shot }
 
-| Recipe (card title) | Model | What it does | Patterns |
+| Recipe (card title) | Model | What it does | Sections |
 |---|---|---|---|
-| `sci_spatial_ladder` (**Disease map: which spatial model?**) | `sci.areal_bym2` | Fits iid, ICAR and BYM2 area effects. Keeps the best one by `elpd_loo`. If the covariate effect is clear, it fits the best one again with wider and narrower priors. Draws `sci.area_map`. | 2, 3, 5, 7 |
-| `sci_network_ladder` (**Network ties: which model?**) | `sci.network_latent_space` | Fits pair covariates, then sociality, then a latent space. Keeps the best one. Draws `net.graph`. Simulates networks with `model.score` for a check of graph statistics. | 2, 6, 7 |
-| `sci_phylo_signal` (**Trait regression across species, with and without the tree**) | `sci.phylo_regression` | Fits no tree, Brownian motion, Pagel's lambda and Ornstein-Uhlenbeck. Decides if the slope of one predictor is clear of zero. Draws `sci.phylogeny`. | 2, 3, 4, 7 |
-| `sci_calibrate_then_design` (**Calibrate a heated plate, then test a heater layout**) | `sci.heat_plate` | Calibrates on the runs with one run held out. If the error and R-hat are small, it predicts a new heater layout and draws `sci.field_map`. | 3, 6, 7 |
-| `bayes_workflow_audit` (**Bayesian workflow audit**) | any Bayesian model (`model` parameter) | Prior predictive plot, convergence gate, posterior predictive check, prior sensitivity, recovery of known values, a pair plot and one verdict. | 3, 4, 5, 7 |
-| `sci_image_model_check` (**Image model check**) | any image model (`model` parameter) | Residual maps, a grid of observed and predicted images and a posterior predictive check. | 4, 7, 9 |
+| `sci_spatial_ladder` (**Disease map: which spatial model?**) | `sci.areal_bym2` | Fits iid, ICAR and BYM2 area effects. Keeps the best one by `elpd_loo`. If the covariate effect is clear, it fits the best one again with wider and narrower priors. Draws `sci.area_map`. | [2](#2-a-model-ladder), [3](#3-a-convergence-gate), [5](#5-governance-checks), [7](#7-plots-in-the-run-and-in-the-report) |
+| `sci_network_ladder` (**Network ties: which model?**) | `sci.network_latent_space` | Fits pair covariates, then sociality, then a latent space. Keeps the best one. Draws `net.graph`. Simulates networks with `model.score` for a check of graph statistics. | [2](#2-a-model-ladder), [6](#6-calibrate-decide-then-simulate), [7](#7-plots-in-the-run-and-in-the-report) |
+| `sci_phylo_signal` (**Trait regression across species, with and without the tree**) | `sci.phylo_regression` | Fits no tree, Brownian motion, Pagel's lambda and Ornstein-Uhlenbeck. Decides if the slope of one predictor is clear of zero. Draws `sci.phylogeny`. | [2](#2-a-model-ladder), [3](#3-a-convergence-gate), [4](#4-a-posterior-predictive-check), [7](#7-plots-in-the-run-and-in-the-report) |
+| `sci_calibrate_then_design` (**Calibrate a heated plate, then test a heater layout**) | `sci.heat_plate` | Calibrates on the runs with one run held out. If the error and R-hat are small, it predicts a new heater layout and draws `sci.field_map`. | [3](#3-a-convergence-gate), [6](#6-calibrate-decide-then-simulate), [7](#7-plots-in-the-run-and-in-the-report) |
+| `bayes_workflow_audit` (**Bayesian workflow audit**) | any Bayesian model (`model` parameter) | Prior predictive plot, convergence gate, posterior predictive check, prior sensitivity, recovery of known values, a pair plot and one verdict. | [3](#3-a-convergence-gate), [4](#4-a-posterior-predictive-check), [5](#5-governance-checks), [7](#7-plots-in-the-run-and-in-the-report) |
+| `sci_image_model_check` (**Image model check**) | any image model (`model` parameter) | Residual maps, a grid of observed and predicted images and a posterior predictive check. | [4](#4-a-posterior-predictive-check), [7](#7-plots-in-the-run-and-in-the-report) |
 
 The recipes `bayes_workflow_audit` and `sci_image_model_check` need the parameter `model`.
 **Run on my data** asks for it. Type a model reference, for example `sci.cmb_field@^1`. Type

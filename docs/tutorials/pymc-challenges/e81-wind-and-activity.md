@@ -5,13 +5,13 @@ app. You use the model `sci.circular_regression@1`. You do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and two projects that you can upload datasets to. This
-  tutorial uses the projects `meteorology` (the wind) and `ecology` (the camera traps). If your
-  projects have different names, change the project part of each `dataset://` and `model://`
-  reference, and `metadata.project` in the specs.
+- The platform (start it with `make dev`) and two projects that you can upload datasets to.
+  This tutorial uses the projects `meteorology` (the wind) and `ecology` (the camera traps). If
+  your projects have different names, change the project part of each `dataset://` and
+  `model://` reference, and `metadata.project` in the specs.
 - A local copy of pymc-challenges. The export commands read one file each from its `data/`
   directory.
-- About 20 minutes. The two fits of the main path take approximately one minute of sandbox time
+- About 20 minutes. The two fits of the main path take about one minute of sandbox time
   together.
 
 ## 1. The question
@@ -33,9 +33,9 @@ The notebook asks these questions:
 
 1. **How does the wind direction change with the hour and the season**, and how sure are you?
    (Notebook parts B and D.)
-2. **Which model of the direction predicts better** on a year that it did not see: one von Mises
-   direction for each hour and season, a projected normal, or a mixture of two wind regimes?
-   (Part D, LOO and the held-out year 2023.)
+2. **Which model of the direction predicts better** on a year that it did not see? The models
+   are one von Mises direction for each hour and season, a projected normal and a mixture of
+   two wind regimes. (Part D, LOO and the held-out year 2023.)
 3. **When is the ocelot active, and how much does its day overlap with the day of each prey
    animal?** (Part E, the log-Fourier density, the overlap and the activity level.)
 
@@ -272,7 +272,7 @@ The settings for this question:
 
 | Setting | Value | What it means here |
 |---|---|---|
-| `kind` | `activity` | One log-Fourier density for each species: `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`. It has no components, so it has no label switching |
+| `kind` | `activity` | One log-Fourier density for each species: `log f(θ) = Σ aₖ cos kθ + bₖ sin kθ − log Z`. It has no components, so no labels can change places |
 | `units` | `hours` | The angle is a time of day. A turn is 24 hours |
 | `group_dim` | `species` | The dim of the groups. The index variable is `species_idx` |
 | `harmonics` | 16 | The number of Fourier terms K, as in the notebook |
@@ -350,7 +350,7 @@ and sd). Look for these features, which the notebook also finds:
 
 - **Night (21:00 to 06:00).** A wide band from the north-east and the east: air that flows down
   from the mountains.
-- **Afternoon (12:00 to 18:00).** A narrow, bright band from the south-west (approximately 225
+- **Afternoon (12:00 to 18:00).** A narrow, bright band from the south-west (about 225
   to 230 degrees): the sea breeze.
 - **Evening (18:00 to 21:00).** A flat, dark row. The wind comes from two directions in this
   block, and one von Mises cannot show two directions.
@@ -425,14 +425,14 @@ between fits on the same reports. On a laptop with nutpie, the mixture fit took 
 | `kind` | `elpd_loo` (this port) | Notebook |
 |---|---|---|
 | `von_mises` | −17,385 | −17,385 |
-| `regime_mixture` | −15,821 (se 97, `p_loo` 57) | Approximately 1,560 nats better than `von_mises` |
+| `regime_mixture` | −15,821 (se 97, `p_loo` 57) | About 1,560 nats better than `von_mises` |
 
 The mixture is better by 1,565 nats. **Fields** of the mixture shows why. In the block that
-starts at 9, the density has two peaks, at approximately 150 and 225 degrees. In the block
-that starts at 18, it has two peaks, at approximately 120 and 265 degrees. The von Mises
+starts at 9, the density has two peaks, at about 150 and 225 degrees. In the block
+that starts at 18, it has two peaks, at about 120 and 265 degrees. The von Mises
 regression has one peak in each block, between the two lobes.
 
-!!! warning "The reports are not independent"
+!!! note "The reports are not independent"
     The reports are hourly, and the wind of one hour is like the wind of the next hour. Thus the
     standard error of `elpd_loo` is too small. The held-out year (step 7.3) is a stricter test.
 
@@ -474,11 +474,11 @@ In the fit for this tutorial, the overlaps of the ocelot with each prey are:
 | Mean log score of a 2023 report, von Mises regression | −1.517 | −1.517 |
 | Mean resultant length, afternoon sea breeze | 0.70 (observed, 12:00 to 18:00) | 0.70 (model, 12:00 to 15:00) |
 | Mean resultant length, evening | 0.12 (observed, 18:00 to 21:00) | 0.13 (model) |
-| `elpd_loo`, mixture minus von Mises | Approximately 1,560 | 1,565 |
+| `elpd_loo`, mixture minus von Mises | About 1,560 | 1,565 |
 | Log score of all 2023 reports, mixture minus von Mises | 916 ± 75 | 917 (−8,226 against −9,143) |
 | Overlap of the ocelot and the agouti | 0.30 | 0.301 |
 | Overlap of the ocelot and the brocket, rat, paca and peccary | 0.75, 0.70, 0.66, 0.66 | 0.749, 0.702, 0.664, 0.656 |
-| Activity level of the ocelot | Approximately a third (0.26 to 0.43) | 0.34 (90% HDI 0.27 to 0.41) |
+| Activity level of the ocelot | About a third (0.26 to 0.43) | 0.34 (90% HDI 0.27 to 0.41) |
 | Activity level of the agouti | 0.262 | 0.263 |
 | Mean time and length of the agouti | 11:00 | 11.0 h, 0.52 |
 | Mean time and length of the peccary | 21:00, 0.09 | 21.1 h, 0.10 |
@@ -501,7 +501,7 @@ Use these outputs to make the decisions of the notebook:
    for each report and do not see two lobes.
 3. **Report a direction with its length.** Use `mean_direction` together with
    `resultant_length` (section 6.5). Do not report a mean direction with a length below
-   approximately 0.2.
+   about 0.2.
 4. **Overlap with uncertainty.** Report the median and the range of `overlap` (section 6.7).
    The ocelot overlaps least with the agouti. The ranges of the other four prey overlap each
    other, so do not rank them.
@@ -541,16 +541,16 @@ resultant length of the predictive distribution of each report. It also has
 result also shows a warning: the dataset has directions after the fitted reports, and the
 predict mode does not use them. This is correct.
 
-!!! warning "The summary of a direction near north"
+!!! caution "The summary of a direction near north"
     The `mean` and `hdi_90` of the summary are not circular. For a report with a mean direction
     near 0 or 360 degrees, the draws are on the two sides of north. Then the summary `mean` is
     near 180 degrees, and `hdi_90` covers almost the full circle. In the fit for this tutorial,
     538 of the 18,049 reports have this problem. For these reports, ask for draws (**Draws** in
     **Advanced**), and calculate the circular mean: `atan2(mean(sin θ), mean(cos θ))`.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the run
-    stops with the message "the score request has no data".
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts.
 
 ### 7.2 Simulate: new winds
 
@@ -698,7 +698,7 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! warning "The audit fits all three years"
+!!! note "The audit fits all three years"
     The recipe has no split. Its fit uses all 18,049 reports, so its `elpd_loo` is not on the
     same scale as the value of step 6.6.
 
@@ -800,9 +800,9 @@ not apply to this model.
 
 ## 10. Differences from the notebook
 
-The port keeps the circular-linear regressions of part D (von Mises with the canonical link,
-projected normal and the mixture of two regimes), and the log-Fourier activity densities, the
-overlaps and the activity levels of part E. It leaves out these parts:
+The port keeps the circular-linear regressions of part D: von Mises with the canonical link,
+projected normal and the mixture of two regimes. It also keeps the log-Fourier activity
+densities, the overlaps and the activity levels of part E. It leaves out these parts:
 
 - **The control dataset and the four distributions (part A).** The port does not fit the
   Oklahoma earthquake times, and it has no wrapped normal or wrapped Cauchy. To do a check of
@@ -820,7 +820,7 @@ overlaps and the activity levels of part E. It leaves out these parts:
   the values of the arrows for each block of three hours.
 - **The gate of the mixture by hour and season (part D).** The model does not output the
   probability of each regime.
-- **The von Mises mixtures of the activity and the label switching (part E).** The port uses
+- **The von Mises mixtures of the activity, and their labels that change places (part E).** The port uses
   only the log-Fourier density, which has no labels. The kernel estimate and the bootstrap of
   the R package *overlap* are not in the port.
 

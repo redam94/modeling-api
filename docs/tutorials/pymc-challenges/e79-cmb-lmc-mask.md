@@ -5,9 +5,9 @@ the web app. You use the model `sci.cmb_field@1`. You do not write NumPy or PyMC
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `astronomy`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `astronomy`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads two files from its `data/`
   directory.
 - About 30 minutes. On a laptop, the fit took about 2 minutes.
@@ -229,8 +229,9 @@ Notes about the other blocks:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows "Gibbs iteration N of 80". The **Logs** card shows the messages
-   of the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows "Gibbs iteration N of 80". The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://astronomy/planck-smica-lmc@v1**. Click it.
 
@@ -392,7 +393,7 @@ that you fitted. The model uses its grid and its noise map.
 
 1. On the model version page, click **Score**.
 2. In **What do you want to do?**, select **Predict**.
-3. In **Where the values come from**, select **Use a dataset**.
+3. In **Values to score**, select **Use a dataset**.
 4. Type or select `dataset://astronomy/planck_smica_lmc@latest` in **Dataset**.
 5. Open **Advanced**. Set **Seed (optional)** to `79`. Type
    `log_amplitude, tilt, bandpower_ratio` in **Variables (optional)**.
@@ -400,9 +401,9 @@ that you fitted. The model uses its grid and its noise map.
 
 The **Results** card shows the mean and the 90% interval (`hdi_90`) of each output.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the server
-    refuses it with "the score request has no data".
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts.
 
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
 
@@ -439,7 +440,7 @@ The data do not constrain these skies. The notebook asks the same question in pa
 real sky look like a random draw with this spectrum?
 
 1. In **What do you want to do?**, select **Simulate**.
-2. In **Where the values come from**, select **Use a dataset**, with the same dataset.
+2. In **Values to score**, select **Use a dataset**, with the same dataset.
 3. Open **Advanced**. Set **Quantity** to **Predictive**.
 4. Type `temperature_hat` in **Variables (optional)**. Set **Draws** to `8`.
 5. Click **Simulate**.
@@ -488,14 +489,14 @@ report.
     - **Var**: `sky`.
 6. Click **Run this recipe**.
 
-!!! warning "Set draws and tune"
+!!! caution "Set draws and tune"
     Set **Draws** and **Tune** before you run the recipe. The defaults are 1000 and 1000. For
     this model, that is 2,000 Gibbs iterations, about 25 times as long as the fit of step 5.
 
 The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
 **Events**. **Outputs** shows the parameter table, the two plots, the coverage of the 50% and
 90% ranges and the report. For this model, expect a coverage near 100% and the same note as
-in step 6.3: the sky draws follow the data closely, so the in-sample check cannot find a
+in step 6.3. The sky draws follow the data closely, so the in-sample check cannot find a
 problem with the noise model.
 
 The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does all the checks of a

@@ -7,9 +7,9 @@ finds the isolated spots and gives the position of each molecule with an error b
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `microscopy`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `microscopy`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads one file from its `data/`
   directory.
 - About 20 minutes. On a laptop, the fit of 200 spots took less than 2 minutes with nutpie.
@@ -238,8 +238,9 @@ this recording:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the steps of the fit. The **Logs** card shows the messages of
-   the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the steps of the fit. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://microscopy/unc13-dstorm-localisation@v1**. Click it.
 
@@ -336,7 +337,7 @@ says: "The normalised residuals have an sd of 1.07 and 6% are outside ±2." A pe
 gives 1 and 5%. Thus the flat Gaussian model is close for these isolated spots. The caption of
 `sci.point_pattern` says: "The median sd of a coordinate is 7.25."
 
-!!! warning "The Fields section"
+!!! caution "The Fields section"
     The Model Explorer section **Fields** shows the grid outputs of a model. For this model, it
     needs an in-sample score of the full movie, and the model refuses that score (the note in
     step 5). If **Fields** shows "The server cannot calculate this view for this data or
@@ -430,9 +431,9 @@ The **Results** card shows the mean and the 90% interval (`hdi_90`) of each outp
 the 200 spots. The frames of the dataset do not change these values. For example, spot 0 is at
 x = 2,386 nm (90% interval 2,379 to 2,389 nm) with 4,975 photons.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the run
-    stops with the message "the score request has no data". Do not select the full movie
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts. Do not select the full movie
     `dannhauser2022_unc13_dstorm`. The model then refuses the score with
     `PAYLOAD_TOO_LARGE`.
 
@@ -518,7 +519,7 @@ way with the model `sci.storm_localisation@^1`. The gate needs the largest R-hat
 `logN` in step 6 is 1.018, so the default gate stops the audit before the checks. Increase
 **Draws** and **Tune**, or make the gate less strict.
 
-!!! warning "The posterior predictive check of a long movie"
+!!! caution "The posterior predictive check of a long movie"
     If a step of a recipe scores all 2,000 frames, the model refuses it with
     `PAYLOAD_TOO_LARGE`. Then run the recipe on a shorter movie. A dataset of the first 500
     frames is below the limit with `score_draws: 40`. Make it with the script of step 7 and

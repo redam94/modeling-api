@@ -8,11 +8,12 @@ pymc-challenges notebook `E50_reaction_diffusion_signaling.py`.
 
 **You need:**
 
-- A running platform (`make dev`) and an account that can upload datasets and fit models.
+- The platform (start it with `make dev`) and an account that can upload datasets and fit
+  models.
 - A local copy of pymc-challenges, with its `data/` directory.
 - About 30 minutes. Each fit takes some minutes.
 
-## 1. The question and what you get
+## 1. The question
 
 The notebook fits the **Fisher-KPP** equation to cell counts:
 
@@ -37,16 +38,18 @@ The notebook ends in two decisions:
    trades off against the capacity `K` and the delay `beta`, so it is a model parameter, not a
    direct measurement of the cell cycle.
 
-You do the same work in the platform. You get these items:
+**What you will get**, and the notebook section that each item replaces:
 
-| Notebook section | In the platform |
+| In the web app | Notebook |
 |---|---|
-| 1. The scratch assay | The dataset `biology/scratch_assay_pc3`: `cells(hours, position)`, 5 × 38 counts |
-| 2. Fisher-KPP by the method of lines | `sci.fisher_kpp@1`. The model does the method of lines and the stability check |
-| 3. Two models: with and without a start-up delay | Two fits (`delay: true` and `delay: false`) and **Compare** |
-| 4. What is identified, and the invasion wave | The **Parameters** section, the posterior forest, `wave_speed`, and the **Fields** section (the kymograph) |
-| 4. The wound closing, hour by hour | A forecast past 48 h on the **Score** page |
-| 5 to 8 (morphogen gradient, FRAP, positional information) | Not in the platform. See [Differences from the notebook](#10-differences-from-the-notebook) |
+| The dataset `biology/scratch_assay_pc3`: `cells(hours, position)`, 5 × 38 counts | Section 1, the scratch assay |
+| `sci.fisher_kpp@1`. The model does the method of lines and the stability check | Section 2, Fisher-KPP by the method of lines |
+| Two fits (`delay: true` and `delay: false`) and **Compare** | Section 3, two models: with and without a start-up delay |
+| The **Parameters** section, the posterior forest, `wave_speed` and the **Fields** section (the kymograph) | Section 4, what the data identify, and the invasion wave |
+| A forecast past 48 h on the **Score** page | Section 4, the wound as it closes, hour by hour |
+
+Sections 5 to 8 (morphogen gradient, FRAP, positional information) are not in the platform.
+See [Differences from the notebook](#10-differences-from-the-notebook).
 
 ## 2. Get the data
 
@@ -107,12 +110,13 @@ The dataset is one plain array. It is not a tree, and you do not need the HDF5 p
 1. In the sidebar, click **Build**. Click **New spec**. The editor opens with the geo MMM
    template.
 2. Set the editor view to **YAML**.
-3. Open the **Insert** panel. In the search box, type `fisher`.
-4. Under **Models**, click `sci.fisher_kpp`. The toast **Model set** shows.
-5. Under **Datasets**, click `scratch_assay_pc3`. The toast **Dataset set** shows.
-6. Select all the text in the editor and paste the full spec below. Then click
+3. Open the **Insert** panel. Open the **Datasets** section and click `scratch_assay_pc3`.
+   The toast **Dataset set** shows.
+4. In the search box, type `fisher`. Under **Models**, click `sci.fisher_kpp`. The toast
+   **Model set** shows.
+5. Select all the text in the editor and paste the full spec below. Then click
    **Validate**.
-7. When the status shows `valid`, click **Save spec**.
+6. When the status shows `valid`, click **Save spec**.
 
 This is the full spec. It starts from the spec that the export command wrote. It adds the
 priors of the notebook, `keep: {log_likelihood: true}` and the `sci.profile_bands` plot:
@@ -150,13 +154,13 @@ outputs:
   plots: [core.convergence, core.posterior_forest, sci.profile_bands, sci.field_map]
 ```
 
-!!! warning "Keep the log-likelihood"
+!!! caution "Keep the log-likelihood"
     Keep `keep: {log_likelihood: true}` in the spec. The spec that the export command writes
     does not have it. Without it, the fit does not calculate `elpd_loo`, and the metrics show
     "the model did not store a log_likelihood group". You need `elpd_loo` to compare the two
     models.
 
-!!! warning "Use the name of your project"
+!!! caution "Use the name of your project"
     Change `biology` in `metadata.project` and in `data.dataset` to the name of your project.
     If you do not, the spec does not validate: the platform reads datasets only from the
     project that you work in. The **Insert** panel writes the correct `data.dataset` for you.
@@ -196,7 +200,8 @@ For the notebook's first model, save a second spec. Use the same YAML with
 2. The run page opens. The badge shows **Live** while the page gets events.
 3. Look at the **Progress** card. The fit goes through the evaluation fit (0 to 36 h), the
    score of the 48 h counts and the refit on all the data. Then the run renders the plots.
-4. Look at the **Logs** card for warnings. Click **Follow** to stay at the end of the log.
+4. Look at the **Events** card. It shows the stages of the run and, at the end, the
+   diagnostics and the warnings. The **Logs** card stays empty when the model writes no output.
 5. When the run is done, click **Inspect model://…@v1**.
 
 Do the same steps for the spec without the delay.
@@ -219,8 +224,8 @@ question:
 - **Diagnostics**: the convergence of the sampler.
 - **Fields**: the page says "The model has 1 output on a grid." The output is
   `density(hours, position)`, the expected cells in each column. Time is on the rows and
-  position is on the columns, so the map is a **kymograph**: the wound is the dark band in the
-  middle, and it becomes narrow from the bottom (0 h) to the top (48 h). Use the **Statistic**
+  position is on the columns, so the map is a **kymograph**. The wound is the dark band in the
+  middle. It becomes narrow from the bottom (0 h) to the top (48 h). Use the **Statistic**
   buttons:
     - **Mean** shows the expected density.
     - **Std. dev.** shows where the model is not sure. It is largest at the edges of the wound.
@@ -280,7 +285,7 @@ smallest bulk ESS is 783 and there are no divergences. The **Diagnostics** secti
 values. The correlations are not in the
 Model Explorer. To get them, download the bundle and use the posterior draws.
 
-## 7. Score: a forecast past 48 hours
+## 7. Score the model
 
 The notebook replays the assay between the observations. The platform continues the PDE past
 the last fitted time. It starts from the initial profile that it keeps with the model version.
@@ -316,7 +321,7 @@ and `evaluate` (a dataset with new counts). It does not do `simulate` or `counte
     the **Schema and Try it** tab. Paste the same request there, without the `model` field,
     and click **Score**.
 
-## 8. Run the workflow recipe
+## 8. Run a workflow recipe
 
 The recipe `bayes_workflow_audit` (**Bayesian workflow audit**) does the checks of a Bayesian
 workflow for any model in one run. It fits the model with prior predictive draws and plots
@@ -342,7 +347,7 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
     settings of step 4. `sci.fisher_kpp` is not an image model, so `sci_image_model_check`
     does not apply to it.
 
-## 9. The same steps with the CLI and the Python client
+## 9. The same with the CLI and the Python client
 
 === "CLI"
 
@@ -352,10 +357,17 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
         --challenges <path to pymc-challenges>/data \
         --out scratch_assay_pc3.nc --spec scratch_assay_pc3.yaml
 
-    # upload, check and fit on the platform
+    # save the full spec of step 4 as scratch-assay-pc3-kpp.yaml, then make the copy
+    # without the delay
+    sed -e 's/name: scratch-assay-pc3-kpp,/name: scratch-assay-pc3-kpp-no-delay,/' \
+        -e 's/delay: true/delay: false/' \
+        scratch-assay-pc3-kpp.yaml > scratch-assay-pc3-kpp-no-delay.yaml
+
+    # upload, check and fit the two specs on the platform
     mapi datasets upload scratch_assay_pc3.nc --name scratch_assay_pc3
-    mapi check scratch_assay_pc3.yaml --remote @
-    mapi fit scratch_assay_pc3.yaml --remote @
+    mapi check scratch-assay-pc3-kpp.yaml --remote @
+    mapi fit scratch-assay-pc3-kpp.yaml --remote @
+    mapi fit scratch-assay-pc3-kpp-no-delay.yaml --remote @
 
     # a forecast to 72 h
     cat > forecast.yaml <<'EOF'
@@ -392,14 +404,18 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
     version = api.datasets.upload("scratch_assay_pc3.nc", dataset="scratch_assay_pc3")
     print(version.ref, version.status.value)
 
-    with open("scratch_assay_pc3.yaml", encoding="utf-8") as fh:
+    # the full spec of step 4, and the same spec without the delay
+    with open("scratch-assay-pc3-kpp.yaml", encoding="utf-8") as fh:
         spec_yaml = fh.read()
-    check = api.specs.validate(spec_yaml)
-    print("valid" if check.valid else [(i.code, i.pointer) for i in check.issues])
-
-    revision = api.specs.upsert(spec_yaml)
-    run = api.runs.fit(revision.spec_id, revision.revision)
-    run = api.runs.wait(run.id, raise_on_failure=True)
+    no_delay = spec_yaml.replace(
+        "name: scratch-assay-pc3-kpp,", "name: scratch-assay-pc3-kpp-no-delay,"
+    ).replace("delay: true", "delay: false")
+    for text in (spec_yaml, no_delay):
+        check = api.specs.validate(text)
+        print("valid" if check.valid else [(i.code, i.pointer) for i in check.issues])
+        revision = api.specs.upsert(text)
+        run = api.runs.fit(revision.spec_id, revision.revision)
+        run = api.runs.wait(run.id, raise_on_failure=True)
 
     model = next(m for m in api.models.list() if m.name == "scratch-assay-pc3-kpp")
     mv = api.models.version(model.id, model.latest_version)
@@ -420,7 +436,9 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
     print(summary["density"].sel(stat="mean").round(0).values)  # (hours, position)
     ```
 
-The CLI and the client send the same spec and the same score request as the web app.
+`scratch-assay-pc3-kpp.yaml` is the full spec of step 4, not the spec that the export command
+writes. The export spec does not keep the log-likelihood, so its fit gives no `elpd_loo`. The
+CLI and the client then send the same two specs and the same score request as the web app.
 
 ## 10. Differences from the notebook
 
@@ -443,7 +461,7 @@ The CLI and the client send the same spec and the same score request as the web 
 - **The sampler.** The spec uses `nutpie`. The notebook uses `pm.sample`. The numbers agree to
   within the Monte Carlo error.
 
-## Next steps
+**Next steps:**
 
 - Do the notebook's "Try it yourself" exercise 1 in part: change the priors (for example
   `capacity_sigma`) and compare the versions. See which conclusions about `D` and `lam` stay.

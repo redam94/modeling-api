@@ -11,7 +11,8 @@ params:
   predictors: {type: array, default: [body, group_size],
                description: The predictor variables on the species dim}
   focus: {type: string, default: group_size,
-          description: The predictor whose slope the decision tests (one of the predictors)}
+          description: "The predictor whose slope the decision tests. It must be one of the
+            predictors: another name fails the run after the four fits"}
   hdi_prob: {type: number, default: 0.94, minimum: 0.5, maximum: 0.999,
              description: The probability inside the range of the slope}
   draws: {type: integer, default: 1000, minimum: 10, maximum: 20000,

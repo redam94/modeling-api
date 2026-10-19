@@ -7,9 +7,9 @@ PSF in its own node.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `astronomy`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `astronomy`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads one file from its `data/`
   directory.
 - About 40 minutes. On a laptop, the fit took 13 minutes: 3 minutes to find the mode and
@@ -177,7 +177,7 @@ Explorer.
     **Variables**, give each array a name, a node and its dims: `image` and `weight` in node
     `/image` on `row, col`, `psf` in node `/psf` on `psf_row, psf_col`. Set the roles
     `target`, `weight` and `constant`. Refer to
-    [Tree datasets](../../guides/tree-data.md#raw-hdf5-inspect-then-map) for the mapping.
+    [Tree datasets](../../guides/tree-data.md#raw-hdf5-inspect-then-map) for the mapping file.
 
 ## 4. Build the spec
 
@@ -299,8 +299,9 @@ model:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the steps of the fit. The **Logs** card shows the messages of
-   the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the steps of the fit. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://astronomy/slacs-j1627-lens@v1**. Click it.
 

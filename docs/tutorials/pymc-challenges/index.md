@@ -64,8 +64,8 @@ These recipes of the workflow gallery use the science models:
 | `sci_network_ladder` | E21 |
 | `sci_phylo_signal` | E23 |
 | `sci_calibrate_then_design` | E51 |
-| `sci_image_model_check` | Image models, for example E51, E61, E79 and E80 |
-| `bayes_workflow_audit` | All the cases |
+| `sci_image_model_check` | Image models: E31, E58, E61, E79 and E80 |
+| `bayes_workflow_audit` | All the cases (see the notes on each page) |
 
 The [complex workflows tutorial](../complex-workflows.md) tells how these recipes work and how
 to change them.
@@ -129,7 +129,7 @@ platform equivalent of each notebook concept.
 
 ## What is not ported yet
 
-The tutorials cover 15 of the 85 example notebooks. The E61 tutorial covers only part A of
+The tutorials cover 15 of the 88 notebooks (E01 to E85 and D01 to D03). The E61 tutorial covers only part A of
 its notebook. These notebooks have no science model and no tutorial:
 
 - D01 to D03 (data preparation, imperfect data, exploratory analysis).

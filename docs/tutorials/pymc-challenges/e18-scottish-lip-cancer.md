@@ -6,9 +6,9 @@ not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `epidemiology`. If your project has a different name, change the project
-  part of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `epidemiology`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads the file
   `data/scotland_lip.geojson`.
 - About 15 minutes. One fit takes less than one minute of sandbox time.
@@ -394,15 +394,15 @@ The table compares the platform with the notebook:
 Your numbers can be a little different if your sandbox has a different version of PyMC or
 nutpie.
 
-## 7. Score and simulate
+## 7. Score the model
 
 A score needs the district labels. The model takes `expected` and `aff` from the fit when the
 dataset does not give them. A dataset can change them, for example to ask a "what if"
 question about AFF. A district that was not in the fit stops the score with `UNSEEN_LEVELS`.
 
-!!! note
+!!! note "No new data"
     **No new data** does not work for this model. The model has no time dimension, so the
-    server needs a dataset. Use **Use a dataset**.
+    server refuses a request without a dataset ("the score request has no data").
 
 **Predict the risk of each district:**
 
@@ -482,7 +482,7 @@ Poisson draws of `cases` in place of the expected counts.
     the **Schema and Try it** tab. Paste the same request there, without the `model` field,
     and click **Score**.
 
-## 8. Run the workflow recipe
+## 8. Run a workflow recipe
 
 The recipe `sci_spatial_ladder` (**Disease map: which spatial model?**) does notebook
 sections 4, 8 and 9 in one run:
@@ -526,7 +526,7 @@ defaults:
 | `weights` | The stacking weight of `icar` is 1.00. The pseudo-BMA weights are 0.67 (`icar`) and 0.33 (`bym2`) |
 | `best` | "Neighbours share risk (ICAR) has the best elpd_loo (-152) of 3 candidate(s)." |
 | `effect` | `b1` 0.379, 94% interval 0.148 to 0.625 |
-| `clear` | `then`: the range of `b1` does not include zero |
+| `clear` | `then`: the chains agree and the range of `b1` does not include zero |
 | `effect_wide`, `effect_narrow` | `b1` 0.379 (0.139 to 0.627) and 0.366 (0.133 to 0.585) |
 | `converged` | `pass`, R-hat 1.004 |
 
@@ -552,7 +552,7 @@ names such as `prior_sigma`. The prior widths of `sci.areal_bym2` have other nam
 recipe above fits the model again with these widths itself. For this model, the recovery check
 can end with the status `error`. Then the branch `trusted` of the audit takes the else arm.
 
-## 9. The same steps with the CLI and the Python client
+## 9. The same with the CLI and the Python client
 
 === "CLI"
 

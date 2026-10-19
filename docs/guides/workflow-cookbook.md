@@ -354,7 +354,8 @@ the data. The area effects u are `iid`, `icar` or `bym2`. Each fit keeps the poi
 values (`evaluate: {metrics: [elpd_loo]}`), so the rungs are scored on the same areas.
 `compare.models` ranks them by `elpd_loo`. `compare.stacking` gives the stacking weights (Yao
 et al. 2018). `select.best` keeps the rung with the largest `elpd_loo`. `model.summary` gives
-the HDI of b1 (`hdi_prob`). If the HDI excludes zero, the workflow fits the winner again with
+the HDI of b1 (`hdi_prob`). `governance.check` (`convergence`) reads R-hat of the winner. If
+the check does not fail and the HDI excludes zero, the workflow fits the winner again with
 the prior widths of b0, b1 and sigma multiplied and divided by `prior_scale`.
 
 ```mermaid
@@ -362,9 +363,10 @@ flowchart LR
   D["dataset"] --> I["iid"] & C["icar"] & B["bym2"]
   I & C & B --> R["compare.models<br/>(elpd_loo)"] & W["compare.stacking"]
   R --> S["select.best"]
-  S --> E["model.summary<br/>(b1)"] --> Q{"b1 clear?"}
+  S --> E["model.summary<br/>(b1)"] & G["convergence"]
+  E & G --> Q{"chains agree and<br/>b1 clear?"}
   Q -- then --> P["refit: wider and<br/>narrower priors"]
-  S --> G["convergence"] & M["sci.area_map"]
+  S --> M["sci.area_map"]
   M & E & P --> Rep["report"]
 ```
 
@@ -461,9 +463,9 @@ print(res.node("best").result["reason_plain"])
 | `comparison` | `compare` | The rungs from the best `elpd_loo` to the worst. A difference of less than about two standard errors is not clear. |
 | `weights` | `weights` | The stacking weights. A weight near 1 shows that one rung predicts best on almost all areas. Weights that are spread show that a mix of rungs predicts better than one rung. |
 | `effect` | `effect` | The mean, the HDI, R-hat and the bulk ESS of b0, b1 and sigma in the best rung. b1 is the change in the log risk for one `covariate_scale` (10 units) of the covariate. |
-| (decision) | `clear` | `then` if the HDI of b1 excludes zero. The report gives the reason in plain words. |
+| (decision) | `clear` | `then` if the convergence check does not fail and the HDI of b1 excludes zero. The report gives the reason in plain words. |
 | (tables) | `effect_wide`, `effect_narrow` | b1 with wider and narrower priors. If the two HDIs also exclude zero, the effect comes from the data, not from the priors. |
-| `convergence` | `converged` | The largest R-hat of the best rung. A `fail` tells you to fit with more draws or more warm-up steps. |
+| `convergence` | `converged` | The largest R-hat of the best rung. A `fail` sends `clear` to the else arm. Then fit with more draws or more warm-up steps. |
 | `map` | `map` | The mean and the sd of the relative risk of each area, and the probability that it is above 1. |
 | `report` | `report` | All the tables, the decision and the map, with a summary in plain words. |
 
@@ -481,7 +483,8 @@ reasons.
 This workflow fits three models of the ties. The first model uses only the shared
 traits. The second model adds the activity of each node. The third model adds a hidden map of
 the group. The workflow keeps the model that predicts best. Then it simulates new networks
-from that model, so that you can compare them with the real network.
+from that model. The workflow does not calculate the statistics of the real network. To
+compare, calculate them from your data yourself (the E21 tutorial shows a table of them).
 
 **For the statistician.** Each rung is `sci.network_latent_space`, a Bernoulli-logit model of
 the pairs i < j. `covariates` uses alpha + x β. `sociality` adds s_i + s_j. `latent_space` also
@@ -673,13 +676,13 @@ print(nodes["compare"].result["ranking"])  # ['lambda', 'ou', 'brownian', 'iid']
 print(nodes["weights"].result["weights"])  # the stacking weight of each fit
 focus = nodes["slope"].result["focus"]
 print(focus["mean"], focus["hdi_low"], focus["hdi_high"], focus["p_positive"])
-print(nodes["clear"].result["arm"])  # "then": the range of the slope excludes zero
+print(nodes["clear"].result["arm"])  # "else": the range of the slope includes zero
 ```
 
 ### Read the outputs
 
 A local run (`LocalRunner`) of the recipe with its default settings (4 chains of 1000 draws)
-on the 301 primates of E23 took 3.3 minutes on a laptop. It gave these results:
+on the 186 primates of the `primates301` dataset (E23) took 3.3 minutes on a laptop. It gave these results:
 
 | Node | Result |
 |---|---|
@@ -905,6 +908,20 @@ governance run.
     ICAR prior) fails the fit when the run asks for prior draws. For such a model, set
     `prior_predictive` to `{}`. The branch `has_prior` then skips the prior plot.
 
+### Get the data
+
+The examples audit a hierarchical model of radon in homes. The test data of the tabular
+plugin has a simulated version: 64 homes in 8 counties, with `log_radon`, `floor` and
+`county_idx` for each home and `log_uranium` for each county. Write it to a file and upload it
+in the project `environment`:
+
+```bash
+python -c "from mapi_plugin_tabular.datasets import RADON_SCHEMA, radon_dataset; \
+ds = radon_dataset(); ds.attrs['mapi_schema'] = RADON_SCHEMA.model_dump_json(exclude_none=True); \
+ds.to_netcdf('radon_homes.nc')"
+mapi datasets upload radon_homes.nc --name radon_homes
+```
+
 ### Run it with the CLI
 
 ```bash
@@ -1001,6 +1018,19 @@ recipes cannot find them.
 --8<-- "cookbook_sci_image_model_check.yaml"
 ```
 
+### Get the data
+
+The examples use the simulated data of the E80 and E79 exports: a mock strong lens and a
+small CMB patch. Upload the lens in the project `astronomy` and the CMB patch in the project
+`science`. These are the names of the suggested specs of the two exports.
+
+```bash
+python -m mapi_plugin_science.export e80 --synthetic --out mock_lens.nc
+mapi datasets upload mock_lens.nc --name mock_lens          # in the project astronomy
+python -m mapi_plugin_science.export e79 --synthetic --out cmb_synthetic.nc
+mapi datasets upload cmb_synthetic.nc --name cmb_synthetic  # in the project science
+```
+
 ### Run it with the CLI
 
 ```bash
@@ -1014,7 +1044,7 @@ mapi workflows run lens-check \
   --watch
 RUN=$(mapi --json workflows runs lens-check -n 1 | jq -r '.[0].run_id')
 mapi workflows node "$RUN" ppc                # coverage, PIT distance and the p-value
-mapi workflows output "$RUN" residuals plot --out residuals.json   # the plot as a file
+mapi --json workflows node "$RUN" residuals | jq '.outputs.plot.inline' > residuals.json   # the plot
 ```
 
 ### Run it with the Python client

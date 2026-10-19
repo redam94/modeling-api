@@ -6,9 +6,9 @@ You do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `biophysics`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `biophysics`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads one file from its `data/`
   directory.
 - Some time for the fit. The model estimates three minutes of sandbox time. On a busy laptop,
@@ -339,9 +339,9 @@ only selects the pixels. Send the dataset that you fitted.
 
 The **Results** card shows the mean and the 90% interval (`hdi_90`) of each output.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the run
-    stops with the message "the score request has no data".
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts.
 
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
 

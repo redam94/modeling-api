@@ -69,7 +69,7 @@ def _run_full(
 # ================================================================ M5: ladders of sci models
 
 _SCI_LADDERS = ("sci_spatial_ladder", "sci_network_ladder")
-_TINY_FIT = {"draws": 60, "tune": 60, "chains": 2, "seed": 3}
+_LADDER_FIT = {"draws": 60, "tune": 60, "chains": 2, "seed": 3}
 """Tiny MCMC settings for the run tests (the templates default to 4 x 1000 draws)."""
 
 
@@ -104,7 +104,7 @@ def test_the_spatial_ladder_ranks_the_rungs_and_checks_the_effect(b1: float) -> 
     from mapi_plugin_science.areal_data import areal_dataset
 
     data = areal_dataset(n_row=4, n_col=5, truth={"b1": b1}, seed=1)
-    params = {**_TINY_FIT, "hdi_prob": 0.9 if b1 else 0.999}
+    params = {**_LADDER_FIT, "hdi_prob": 0.9 if b1 else 0.999}
     nodes, res = _run_full("cookbook_sci_spatial_ladder.yaml", data, params, science=True)
     rungs = ("iid", "icar", "bym2")
     elpd = {r: nodes[r].result["metrics"]["elpd_loo"] for r in rungs}
@@ -117,8 +117,10 @@ def test_the_spatial_ladder_ranks_the_rungs_and_checks_the_effect(b1: float) -> 
     assert best["selected"] == nodes["compare"].result["best"]
     assert best["model_version"] == nodes[best["selected"]].result["model_version"]
     b1_hdi = nodes["effect"].result["params"]["b1"]
-    clear = b1_hdi["hdi_low"] > 0 or b1_hdi["hdi_high"] < 0
-    assert clear is bool(b1)  # the truth decides the branch at these settings
+    excludes_zero = b1_hdi["hdi_low"] > 0 or b1_hdi["hdi_high"] < 0
+    assert excludes_zero is bool(b1)  # the truth decides the HDI at these settings
+    agree = nodes["converged"].result["status"] not in {"fail", "error"}
+    clear = agree and excludes_zero  # a failed convergence check sends the branch to else
     assert nodes["clear"].result == {"value": clear, "arm": "then" if clear else "else"}
     for nid in ("wide", "narrow", "effect_wide", "effect_narrow"):
         assert nodes[nid].status.value == ("succeeded" if clear else "skipped"), nid
@@ -139,12 +141,39 @@ def test_the_spatial_ladder_ranks_the_rungs_and_checks_the_effect(b1: float) -> 
 
 
 @pytest.mark.slow
+def test_the_spatial_ladder_reports_chains_that_do_not_agree() -> None:
+    """A clear HDI does not count when the convergence check of the best rung fails."""
+    from mapi_plugin_science.areal_data import areal_dataset
+
+    data = areal_dataset(n_row=4, n_col=5, truth={"b1": 1.0}, seed=1)
+    params = {"draws": 50, "tune": 50, "chains": 4, "seed": 3, "hdi_prob": 0.5}
+    nodes, res = _run_full("cookbook_sci_spatial_ladder.yaml", data, params, science=True)
+    assert nodes["converged"].result["status"] == "fail"  # 50 draws: the chains disagree
+    assert nodes["clear"].result == {"value": False, "arm": "else"}
+    for nid in ("wide", "narrow", "effect_wide", "effect_narrow"):
+        assert nodes[nid].status.value == "skipped", nid
+    report = res.values["report"]
+    decision = next(s for s in report["sections"] if s["node_id"] == "clear")
+    assert decision["status"] == "else" and "chains" in decision["text"]
+
+
+def test_the_heat_plate_recipe_needs_two_chains_for_its_gate() -> None:
+    """The gate reads R-hat, and one chain gives none: the recipe refuses chains=1."""
+    from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES
+
+    tpl = WORKFLOW_TEMPLATES["sci_calibrate_then_design"].document
+    assert tpl["params"]["chains"]["minimum"] == 2
+    condition = next(n for n in tpl["nodes"] if n["id"] == "good")["with"]["condition"]
+    assert "coalesce(nodes.plate.max_rhat" in condition  # a null R-hat fails the gate
+
+
+@pytest.mark.slow
 def test_the_network_ladder_ranks_the_rungs_and_simulates_graphs() -> None:
     from mapi_plugin_science.network_data import network_dataset
 
     data = network_dataset(n_nodes=16, seed=1)
     nodes, res = _run_full(
-        "cookbook_sci_network_ladder.yaml", data, {**_TINY_FIT, "n_sims": 20}, science=True
+        "cookbook_sci_network_ladder.yaml", data, {**_LADDER_FIT, "n_sims": 20}, science=True
     )
     rungs = ("covariates", "sociality", "latent_space")
     elpd = {r: nodes[r].result["metrics"]["elpd_loo"] for r in rungs}
@@ -222,7 +251,7 @@ _SCI_COOKBOOK = {
     "sci_phylo_signal": "cookbook_sci_phylo_signal.yaml",
     "sci_calibrate_then_design": "cookbook_sci_calibrate_then_design.yaml",
 }
-_TINY_FIT = {"draws": 100, "tune": 150, "chains": 2, "seed": 3}
+_SCI_FIT = {"draws": 100, "tune": 150, "chains": 2, "seed": 3}
 """Fit sizes for the run tests (the recipes default to 4 x 1000 draws)."""
 
 
@@ -246,7 +275,7 @@ def _run_sci(name: str, inputs: dict[str, Any], params: dict[str, Any]) -> tuple
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         res = LocalRunner(registry=test_registry(science=True)).run(
-            spec, inputs=inputs, params={**_TINY_FIT, **params}
+            spec, inputs=inputs, params={**_SCI_FIT, **params}
         )
     assert res.status is WorkflowRunStatus.SUCCEEDED, res.error
     return {n.node_id: n for n in res.nodes}, res.values
@@ -398,7 +427,7 @@ def test_the_heat_plate_recipe_stops_before_the_design_when_the_error_is_too_lar
 # ===================================================== M5: the Bayesian model-check templates
 
 _BAYES_TEMPLATES = ("bayes_workflow_audit", "sci_image_model_check")
-_TINY_FIT = {"draws": 100, "tune": 100, "chains": 2, "seed": 3}
+_BAYES_FIT = {"draws": 100, "tune": 100, "chains": 2, "seed": 3}
 """Tiny fits for the tests; the templates default to 4 x 1000 draws after 1000 tuning steps."""
 
 
@@ -431,7 +460,7 @@ def _case(data: Any, schema: Any, spec_yaml: str, **settings: Any) -> tuple[Any,
         "model": spec["model"]["use"],
         "settings": {**spec["model"].get("settings", {}), **settings},
         "bind": spec["data"].get("bind", {}),
-        **_TINY_FIT,
+        **_BAYES_FIT,
     }
     return data, params
 
@@ -700,6 +729,8 @@ def _check_cli_lines(lines: list[list[str]], *, minimum: int) -> None:
     for argv in lines:
         cmd: Any = root
         args = argv[1:]
+        while args and args[0] == "--json":  # a global option before the command
+            args.pop(0)
         while args and hasattr(cmd, "commands") and args[0] in cmd.commands:
             cmd = cmd.commands[args.pop(0)]
         assert not hasattr(cmd, "commands"), f"{' '.join(argv)}: not a command"

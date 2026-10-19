@@ -5,9 +5,9 @@ the web app. You use the model `sci.phylo_regression@1`. You do not write PyMC c
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `biology`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `biology`. If your project has a different name, change the project
+  part of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
 - A local copy of pymc-challenges. The export command reads two files from its `data/`
   directory.
 - About 20 minutes. One fit samples for about 10 seconds on a laptop. The run takes longer
@@ -367,9 +367,9 @@ good example. *Cercocebus torquatus* has 106.0 cc, but its relatives predict 88.
 102.8). Its subspecies *C. t. atys* has 94.7 cc and gets 111.1 cc (93.7 to 128.1). The
 subspecies is the heavier of the two but has the smaller brain.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the run
-    stops with the message "the score request has no data".
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts.
 
 ### 7.2 Simulate: brain volumes without the relatives
 

@@ -5,9 +5,10 @@ app. You use the model `sci.colour_naming@1`. You do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `linguistics`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `linguistics`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference, and `metadata.project` in the
+  spec.
 - A local copy of pymc-challenges. The export command reads four files from its `data/`
   directory.
 - About 15 minutes. The fit takes about four minutes of sandbox time.
@@ -24,8 +25,9 @@ The notebook asks these questions of the naming of one language:
 
 1. **Where are the boundaries between the colour terms**, and how sure are you of them?
    (Notebook parts A, B and D.)
-2. **Do the speakers agree?** Is a chip that 55% of the speakers call N a fuzzy boundary that all
-   speakers share, or a sharp boundary that each speaker puts in a different place? (Part C.)
+2. **Do the speakers agree?** 55% of the speakers call a chip N. Is this chip on a fuzzy
+   boundary that all speakers share? Or is it near a sharp boundary that each speaker puts in a
+   different place? (Part C.)
 3. **How many categories does the language really have?** (Part E, the effective number of
    categories.)
 4. **How well can you predict a new speaker?** (Part G, the held-out speakers.)
@@ -330,9 +332,9 @@ Use these outputs to make the decisions of the notebook:
 1. **CIELAB or the grid.** Fit the spec again with `kind: pooled` and each value of
    `features`. Compare `log_score` of the held-out speakers. In the fits for this tutorial,
    `cielab` scores −0.392 nats for each answer, the grid with hue as a line −0.426, and the grid
-   with hue as a circle −0.396. Hue as a line costs approximately 100 nats over the 2,970
+   with hue as a circle −0.396. Hue as a line costs about 100 nats over the 2,970
    held-out answers. Keep `cielab`. It knows that hue is a circle, and its distances are
-   approximately perceptual.
+   about perceptual.
 2. **Pooled or hierarchical.** Look at the sds of section 6.2. A large intercept sd (B) or
    large linear sds (W, N) show that the speakers do not name the same way. Use the
    hierarchical model to describe the speakers. For the share of all speakers on one chip, the
@@ -383,12 +385,12 @@ The request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`
 The result has `p_name(speaker, chip, term)`: the probability that each of the 29 speakers
 gives each term to each chip. Each fitted speaker keeps their own effects. The outputs `k_eff_speaker` and `k_eff_language` are the same
 for each speaker, because they describe the language. In this fit, `k_eff_speaker` is 1.92
-(approximately 1.87 to 1.98) and `k_eff_language` is 1.83 (approximately 1.77 to 1.90). The
+(about 1.87 to 1.98) and `k_eff_language` is 1.83 (about 1.77 to 1.90). The
 value for the language is lower because the speakers do not agree on all chips.
 
-!!! warning "Do not select No new data"
-    Select **Use a dataset**. With **No new data**, the request has no `data`, and the run
-    stops with the message "the score request has no data".
+!!! note "No new data"
+    **No new data** does not work for this model. The request then has no `data`, and the
+    server refuses it with "the score request has no data" before a run starts.
 
 ### 7.2 Simulate: new speakers
 
@@ -460,11 +462,11 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! warning "Give the recipe the binding"
+!!! caution "Give the recipe the binding"
     Without **Bind**, the recipe binds only the target `response` to `naming`. It cannot bind
     the five chip variables, because they all have the role `covariate`, and the fit stops.
 
-!!! warning "The default gate can stop this audit"
+!!! caution "The default gate can stop this audit"
     In the fit of this tutorial, the largest R-hat was 1.019 and the smallest bulk ESS was
     278. Thus the default gate (R-hat below 1.01, bulk ESS 400 or more) takes the else arm,
     and the recipe skips the checks after the gate. Increase **Tune** and **Draws** to `2000`

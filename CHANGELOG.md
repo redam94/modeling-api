@@ -10,9 +10,9 @@ milestone releases are tagged on `main`.
 #### Added
 - **`sci_spatial_ladder`** in the workflow gallery. It fits `sci.areal_bym2` with iid, ICAR and
   BYM2 area effects and compares them by `elpd_loo` and stacking weights. It keeps the best
-  model and gives the range of the covariate effect. When the effect is clear, it fits the best
-  model again with wider and narrower priors. It also does a convergence check, draws a risk
-  map and writes a report.
+  model and gives the range of the covariate effect. When the chains of the best model agree
+  and the effect is clear, it fits the best model again with wider and narrower priors. It
+  draws a risk map and writes a report.
 - **`sci_network_ladder`** in the workflow gallery. It fits `sci.network_latent_space` with
   covariates, sociality and a latent space and compares them by `elpd_loo` and stacking
   weights. It gives the pair effects of the best model, a network plot, simulated networks
@@ -25,7 +25,7 @@ milestone releases are tagged on `main`.
   ranks them by `elpd_loo`, gives the stacking weights and selects the best. Then it tests
   if the range of one slope of the winner excludes zero. A clear effect also gets a
   predictive check. The report has the three tables and the `sci.phylogeny` plot. On the
-  301 primates of E23, lambda wins with an `elpd_loo` of 129.9 (the notebook gives 130).
+  186 primates of the `primates301` dataset (E23), lambda wins with an `elpd_loo` of 129.9 (the notebook gives 130).
 - **Recipe `sci_calibrate_then_design`** in the workflow gallery. It fits `sci.heat_plate`
   with one calibration run held out, then fits all the runs again. It predicts the field of a
   new heater layout (`model.score`, `sci.field_map`) only if the error on the run held out
@@ -52,7 +52,7 @@ milestone releases are tagged on `main`.
   E58, E60, E61, E77, E79, E80, E81). Each page exports the data, uploads it, builds and fits
   the spec in the web app, reads the Model Explorer, scores the model and runs the matching
   recipe, with the CLI and the Python client as tabs. The numbers come from fits of the real
-  data. `docs/tutorials/complex-workflows.md` shows the patterns of the recipes in the
+  data. E51 and E61 use the data that their notebooks simulate. `docs/tutorials/complex-workflows.md` shows the patterns of the recipes in the
   workflow editor: model ladders, gates, predictive checks, governance checks,
   calibrate-then-design, plots in reports, tree datasets and sub-workflows. The pages are in
   the navigation and have cards in the tutorials index.
@@ -63,7 +63,6 @@ milestone releases are tagged on `main`.
   the dataset binds the target to a different name (for example `sci.phylo_regression`, with
   `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
   node now looks for that name.
-
 - `sci.area_map` of a fitted `sci.areal_bym2` showed no **Observed** panel: the plot looked for
   `rr` in the observed data, and the model keeps the raw SMR as `smr`. A spec cannot give
   settings to a plot, so the fit now names the observed counterpart of `rr` in the attribute
@@ -79,6 +78,12 @@ milestone releases are tagged on `main`.
   `metadata.name`, and point to the **Events** card (the **Logs** card stays empty). The E18,
   E21 and E51 tutorials and `complex-workflows.md` have eight screenshots from a live dev
   stack (`make docs-screenshots-science`).
+- `sci_spatial_ladder` ignored its own convergence check: the branch `clear` took the then
+  arm when the chains of the best model did not agree. The branch now needs a convergence
+  check that does not fail, and the report says so.
+- The gate of `sci_calibrate_then_design` stopped the run with `EXPRESSION_ERROR` when R-hat
+  was null (one chain). The condition now uses `coalesce`, and the recipe needs two or more
+  chains.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -106,7 +111,8 @@ milestone releases are tagged on `main`.
   (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and
   E51 tutorials tell users that this failure is correct.
 - Only `sci_spatial_ladder` has run end to end on a live dev stack and in a browser. The
-  other recipes have run with the local runner only.
+  six M5 recipes run through the server orchestrator in a slow test
+  (`packages/server/tests/test_workflows_m5_templates.py`), with small fits.
 
 ### M5 phase 2 — Science gallery models
 

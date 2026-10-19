@@ -5,12 +5,12 @@ web app. You use the model `sci.graphical_model@1`. You do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `biology`. If your project has a different name, change the project part of
-  each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `biology`. If your project has a different name, change the project
+  part of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
 - A local copy of pymc-challenges. The export command reads two files from its `data/`
   directory.
-- About 15 minutes. The fit takes approximately 1 minute of sandbox time.
+- About 15 minutes. The fit takes about 1 minute of sandbox time.
 
 ## 1. The question
 
@@ -203,7 +203,7 @@ The settings for this question:
    model://biology/sachs-cd3cd28-ggm@v1**. Click it.
 
 The run does two fits: one on the 683 training cells for the metrics of the held-out cells,
-and one on all 853 cells. On a laptop, the two fits with nutpie took approximately 40 seconds.
+and one on all 853 cells. On a laptop, the two fits with nutpie took about 40 seconds.
 
 You can also find the run under **Runs**. Filter it with the kind `fit`.
 
@@ -216,7 +216,7 @@ tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Mode
 
 Open **Diagnostics** in the Model Explorer, or the plot **Sampler convergence** on the
 **Plots** tab. In this fit, all 583 parameters look converged: the largest R-hat is 1.004, the
-smallest bulk effective sample size is approximately 2,700, and there are no divergent
+smallest bulk effective sample size is about 2,700, and there are no divergent
 transitions. The notebook reports the same values.
 
 The diagnostics also show one warning, `PARETO_K_HIGH`: one cell has a high Pareto k in
@@ -236,7 +236,7 @@ grid has the 11 molecules as rows (`protein`) and as columns (`protein_`).
    colour scale is diverging: one colour for positive values and another colour for negative
    values. The diagonal is 1.
 2. Select **Mean** in **Statistic**. Look for the cells far from zero.
-3. Select **Std. dev.**. In this fit, the sd of a partial correlation is approximately 0.03
+3. Select **Std. dev.**. In this fit, the sd of a partial correlation is about 0.03
    everywhere (`pcor_sd_mean` is 0.033). With 853 cells, the data fix each value well.
 4. In **Output**, select `edge_prob`. Select **Mean** in **Statistic**. Each cell now shows
    the edge probability `P(|ρ| > 0.1)`.
@@ -397,7 +397,7 @@ Use these outputs to make the decisions of the notebook:
 The fitted version uses all 853 cells. The dense model predicts and simulates cells. A score
 needs a dataset with the dims `cell` and `protein`. Send the dataset that you fitted.
 
-!!! warning "Use the names of the model in Variables"
+!!! caution "Use the names of the model in Variables"
     Type the names of the model in **Variables (optional)**: `pcor`, `edge_prob` and `value`.
     The result uses the names of the dataset: `value` comes back as `level`. If you type
     `level`, the score stops with `REF_UNRESOLVED`.
@@ -499,7 +499,7 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! warning "Give the recipe the binding"
+!!! caution "Give the recipe the binding"
     Without **Bind**, the recipe cannot bind the dims `protein` and `protein_` to the dims
     `var` and `var_` of the model, and the fit stops.
 

@@ -6,9 +6,10 @@ write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `engineering`. If your project has a different name, change the project
-  part of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `engineering`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference, and `metadata.project` in the
+  spec.
 - The modeling-api repository with its Python environment (`uv`). The notebook simulates its
   data, so you do not need a copy of pymc-challenges.
 - About 20 minutes. The fit takes about one minute of sandbox time.
@@ -118,7 +119,7 @@ in `cal3`. The twelve thermocouples are in the same cells in each run. The attri
 When the ingest run is done, the version page shows the tabs Schema, Coordinates,
 Missingness, Preview and About. On **Schema**, `reading_c` has the role `target` and
 `heater_w` the role `covariate`. **Missingness** shows that most cells of `reading_c` have no
-value. This is correct: a cell without a thermocouple has no reading, and the model uses only
+value. This is correct: a cell without a thermocouple has no measured value, and the model uses only
 the 36 readings.
 
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
@@ -199,7 +200,7 @@ the gradient plate:
 - `keep: {log_likelihood: true}` keeps one log-likelihood value for each reading. Thus
   `elpd_loo` is available.
 
-!!! warning "Type the bind block"
+!!! caution "Type the bind block"
     Type the `data.bind` block. If you do not, the validator shows the errors "the model needs
     dim 'y', but the pipeline does not make it" and "the model needs variable
     'heater_power', but the pipeline does not make it".
@@ -230,7 +231,7 @@ On the model version page, the tabs are **Overview**, **Diagnostics**, **Plots**
 tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Model Explorer.
 
 The header of the version shows the badge **scorecard fail**. Open **Overview** to see why: the
-check "Few missing values" fails, because the cells without a thermocouple have no reading.
+check "Few missing values" fails, because the cells without a thermocouple have no measured value.
 This is correct for this dataset. The other checks pass.
 
 ### 6.1 Can you trust the fit?
@@ -373,13 +374,13 @@ write_export(layout, "heater_layouts.nc", schema=schema)
 ```
 
 Upload `heater_layouts.nc` as the dataset `heater_layouts`, as in step 3. The new runs need
-only `heater_w`. They have no readings.
+only `heater_w`. They have no measured temperatures.
 
 ### 7.2 Predict the layouts
 
 1. On the model version page, click **Score**.
 2. In **What do you want to do?**, select **Predict**.
-3. In **Where the values come from**, select **Use a dataset**.
+3. In **Values to score**, select **Use a dataset**.
 4. In **Dataset**, select `dataset://engineering/heater_layouts@latest`.
 5. Open **Advanced**. Type `field` in **Variables (optional)**. Set **Seed (optional)** to `51`.
    To calculate the RMS error over the draws (step 9), set **Draws** to `200`.
@@ -392,8 +393,8 @@ wide. The result can show the information note `UNSEEN_LEVELS`: the two runs are
 
 !!! note "No new data"
     **No new data** does not work for this model. The model has no forecast horizon, so the
-    server refuses the request with "the score request has no data". To predict the
-    calibration runs, select the dataset `heat_plate_e51` in **Dataset**.
+    server refuses the request with "the score request has no data". The dataset
+    `heat_plate_e51` gives the predictions of the calibration runs.
 
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
 
@@ -599,8 +600,8 @@ The port keeps the physics, the priors and the calibration of notebook section 2
 gives the predicted fields that section 3 compares. It leaves out these parts:
 
 - **The search for the heater layout (section 3).** The notebook tries the 144 candidate cells
-  in the frame and adds heaters one at a time (a greedy search with constrained least squares
-  over 60 posterior draws). The platform does not search. You give the layouts, and the model
+  in the frame and adds heaters one at a time. This is a greedy search with constrained least
+  squares over 60 posterior draws. The platform does not search. You give the layouts, and the model
   predicts them. This tutorial uses the sites and the powers that the notebook found.
 - **The comparison with the plug-in design.** The notebook also designs against the posterior
   mean only and gets the same layout. To do this check, score the layout with the mean values

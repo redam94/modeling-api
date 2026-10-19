@@ -6,9 +6,10 @@ do not write PyMC code.
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `geoscience`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `geoscience`. If your project has a different name, change the
+  project part of each `dataset://` and `model://` reference, and `metadata.project` in the
+  spec.
 - A local copy of pymc-challenges. The export command reads one file from its `data/`
   directory.
 - About 15 minutes. The fit takes about four minutes of sandbox time.
@@ -50,9 +51,9 @@ other rungs.
 
 ## 2. Get the data
 
-The export command reads `oklahoma_quakes.csv`. It projects each event to km, keeps the events
-in a window of 300 km × 225 km, and counts them in cells of 25 km for each quarter from 2009 Q1
-to 2019 Q4. This is the same grid as the notebook. Run the command from the root of the
+The export command reads `oklahoma_quakes.csv`. It projects each event to km and keeps the
+events in a window of 300 km × 225 km. Then it counts them in cells of 25 km for each quarter
+from 2009 Q1 to 2019 Q4. This is the same grid as the notebook. Run the command from the root of the
 modeling-api repository:
 
 ```bash
@@ -211,7 +212,7 @@ you need a stricter result, increase `tune` and `draws` to 2000.
 
 | Parameter | Mean | 90% range | What it tells you |
 |---|---|---|---|
-| `ell` | 35 km | 29 to 41 km | The size of a cluster. The map changes over a distance of approximately one or two cells |
+| `ell` | 35 km | 29 to 41 km | The size of a cluster. The map changes over a distance of about one or two cells |
 | `sigma_g` | 0.46 | 0.33 to 0.60 | The step of the log total from one quarter to the next |
 | `eta0` | 3.5 | 2.7 to 4.3 | The amplitude of the log map in 2015 |
 | `eta_d` | 1.3 | 1.1 to 1.5 | The amplitude of the change of the map from one year to the next |
@@ -278,7 +279,7 @@ the model is good.
 | Quantity | Notebook | This port |
 |---|---|---|
 | Events in 2018 and 2019 (held out) | 208 | 208 |
-| Movement of the centre, 2011 to 2015 | Approximately 65 km west and 100 km north | 64 km west and 97 km north, 116 km (105 to 127) |
+| Movement of the centre, 2011 to 2015 | About 65 km west and 100 km north | 64 km west and 97 km north, 116 km (105 to 127) |
 | Quarterly totals of 2018 and 2019 inside the 90% band | 7 of 8 (2019 Q2 is just below) | 8 of 8 (2019 Q2, 7 events, is at the lower bound) |
 | Median forecast of the 2-year total | More than two times the 208 actual events | 613 (90% range 154 to 3,286) |
 | Held-out cell-quarters inside the 90% range | 99% | 99% |
@@ -361,7 +362,7 @@ The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outpu
 **Events**. **Decisions** shows the convergence gate and the value that it read. **Outputs**
 shows the plots and the report. The model version link opens the Model Explorer.
 
-!!! warning "The default gate stops this audit"
+!!! caution "The default gate stops this audit"
     In the fit of this tutorial, the largest R-hat was 1.024 and the smallest bulk ESS was 151.
     Thus the default gate (R-hat below 1.01, bulk ESS 400 or more) takes the else arm, and the
     recipe skips the checks after the gate. To get the checks, increase **Tune** and **Draws**

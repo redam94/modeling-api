@@ -7,14 +7,14 @@ share. It also completes the bottom half of digits from writers that it did not 
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `vision`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `vision`. If your project has a different name, change the project
+  part of each `dataset://` and `model://` reference.
 - A local copy of pymc-challenges. The export command reads two files from its `data/`
   directory.
 - About 30 minutes. On a laptop, the fit took 11 minutes with the `pymc` engine.
 
-## 1. The question and what you get
+## 1. The question
 
 A handwritten 9 has a closed loop at the top and a stroke down the right side. A 4 also has
 the stroke down the right side. The **Indian buffet process** (IBP) is a prior for this type
@@ -217,7 +217,7 @@ This table tells what each setting means for this question:
 - `keep.posterior_predictive: {thin: 100}` keeps 40 replicated sets of the 500 digits for
   `sci.ppc_image_grid` and `sci.image_residuals`.
 
-!!! warning "Do not forget `shown_mask: true`"
+!!! caution "Do not forget `shown_mask: true`"
     If you bind `shown` but leave out `shown_mask: true`, the spec is still valid. But the
     model then ignores the mask and fits the full test digits. The bottom halves are then not
     held out, and the fit does not give `learned.heldout`. If you set `shown_mask: true` and
@@ -235,8 +235,9 @@ This table tells what each setting means for this question:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the steps of the fit. The **Logs** card shows the messages of
-   the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the steps of the fit. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://vision/optdigits-ibp@v1**. Click it.
 

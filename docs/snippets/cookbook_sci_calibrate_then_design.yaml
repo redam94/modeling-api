@@ -20,7 +20,8 @@ params:
           description: The posterior draws that each chain keeps}
   tune: {type: integer, default: 1000, minimum: 10, maximum: 20000,
          description: The tuning steps of each chain (the sampler drops them)}
-  chains: {type: integer, default: 4, minimum: 1, maximum: 16,
+  # the gate reads R-hat, and one chain gives no R-hat
+  chains: {type: integer, default: 4, minimum: 2, maximum: 16,
            description: The number of chains (two or more give R-hat)}
   seed: {type: integer, default: 51, minimum: 0, maximum: 2147483647,
          description: The random seed of the sampler}
@@ -69,7 +70,9 @@ nodes:
   use: branch.if
   label: Is the calibration good enough?
   with:
-    condition: nodes.fit.metrics.rmse <= params.max_error and nodes.plate.max_rhat <= params.max_rhat
+    condition: >-
+      coalesce(nodes.fit.metrics.rmse, 1e9) <= params.max_error and
+      coalesce(nodes.plate.max_rhat, 99) <= params.max_rhat
     explain_then: >-
       The calibration predicted the run that it did not see within the error limit, and the
       sampler converged. The workflow predicted the new layout.

@@ -18,9 +18,9 @@ id                          what it automates
                             the winner -> refit it -> report
 ``sci_spatial_ladder``      sci.areal_bym2 with iid, ICAR and BYM2 area effects -> elpd_loo
                             ranking, stacking weights, select -> the covariate effect
-                            (model.summary) -> branch on whether its HDI excludes zero (then
-                            refits with wider and narrower priors) -> convergence check ->
-                            sci.area_map -> report
+                            (model.summary) and a convergence check -> branch on whether the
+                            chains agree and the HDI excludes zero (then refits with wider
+                            and narrower priors) -> sci.area_map -> report
 ``sci_network_ladder``      sci.network_latent_space with covariates, sociality and a latent
                             space -> elpd_loo ranking, stacking weights, select -> pair
                             effects -> net.graph -> simulated networks (model.score) and a
@@ -564,9 +564,10 @@ SCI_SPATIAL_LADDER = WorkflowTemplate(
         expert_notes="Poisson(E_i exp(b0 + b1 x_i + u_i)) with u iid, ICAR or BYM2 (scaled "
         "ICAR plus iid with mixing share rho). Each rung stores the pointwise PSIS-LOO "
         "values, so compare.stacking solves the stacking weights over the same areas. The "
-        "branch reads the HDI of b1 on the rung that select.best keeps. When it excludes "
-        "zero, that rung is fitted again with the prior sds of b0 and b1 and the "
-        "HalfNormal scale of sigma multiplied and divided by prior_scale.",
+        "branch reads the convergence check and the HDI of b1 on the rung that select.best "
+        "keeps. When the check does not fail and the HDI excludes zero, that rung is fitted "
+        "again with the prior sds of b0 and b1 and the HalfNormal scale of sigma multiplied "
+        "and divided by prior_scale.",
     ),
     document=_doc(
         "sci-spatial-ladder",
@@ -610,18 +611,24 @@ SCI_SPATIAL_LADDER = WorkflowTemplate(
             {"id": "effect", "use": "model.summary", "label": "Covariate effect",
              "inputs": {"model": "best.model"},
              "with": {"vars": ["b0", "b1", "sigma"], "hdi_prob": _p("hdi_prob")}},
-            {"id": "clear", "use": "branch.if", "label": "Is the effect clear?",
-             "with": {"condition": f"{_B1}.hdi_low > 0 or {_B1}.hdi_high < 0",
-                      "explain_then": "The range of the covariate effect in the best model "
-                                      "does not include zero. The covariate has a clear "
-                                      "effect on the risk. The workflow fits the best model "
-                                      "again with wider and narrower priors.",
-                      "explain_else": "The range of the covariate effect in the best model "
-                                      "includes zero. When the areas share their risk, the "
-                                      "data does not show a clear effect of the covariate."}},
             {"id": "converged", "use": "governance.check", "label": "Did the chains agree?",
              "inputs": {"model": "best.model", "data": "inputs.data"},
              "with": {"check": "convergence"}},
+            # an effect is clear only when the chains of the best model agree
+            {"id": "clear", "use": "branch.if", "label": "Is the effect clear?",
+             "with": {"condition": "coalesce(nodes.converged.status, 'error') not in "
+                                   f"['fail', 'error'] and ({_B1}.hdi_low > 0 or "
+                                   f"{_B1}.hdi_high < 0)",
+                      "explain_then": "The chains of the best model agree, and the range of "
+                                      "the covariate effect does not include zero. The "
+                                      "covariate has a clear effect on the risk. The "
+                                      "workflow fits the best model again with wider and "
+                                      "narrower priors.",
+                      "explain_else": "The chains of the best model do not agree, or the "
+                                      "range of the covariate effect includes zero. Look at "
+                                      "the convergence evidence first. When the chains "
+                                      "agree, the data does not show a clear effect of the "
+                                      "covariate when the areas share their risk."}},
             # a clear effect must come from the data, not from the priors: refit the best
             # rung with the prior widths of b0, b1 and sigma multiplied and divided by
             # prior_scale (governance.check sensitivity.prior cannot find these widths in
@@ -671,8 +678,9 @@ SCI_NETWORK_LADDER = WorkflowTemplate(
     about=About(
         title="Network ties: which model?",
         summary_plain="Fits three models of the ties in a network, from shared traits only "
-        "to a hidden map of the group. Then it compares how well each model predicts, keeps "
-        "the best one and simulates new networks to compare them with your network.",
+        "to a hidden map of the group. Then it keeps the model that predicts best and "
+        "simulates new networks from it, for a comparison with the statistics that you "
+        "calculate from your network.",
         use_when=["You have a table of yes or no ties between the pairs of a group, for "
                   "example who works with whom",
                   "You want to know if shared traits explain the ties, or if the activity of "
@@ -704,7 +712,7 @@ SCI_NETWORK_LADDER = WorkflowTemplate(
         example="On the coworker network of 71 lawyers, the hidden map predicts best "
         "(elpd_loo -761.6, against -763.4 with activity and -894.2 with covariates only). "
         "The simulated networks show if the model makes as many triangles as the real "
-        "network.",
+        "network (493 triangles, a value that you calculate from the data).",
         related=["sci.network_latent_space", "compare.stacking", "model.score",
                  "plot.render", "model.summary"],
         references=[AboutReference(title="Hoff, Raftery & Handcock (2002), Latent space "
@@ -857,7 +865,7 @@ SCI_PHYLO_SIGNAL = WorkflowTemplate(
                  "A plot of the tree with the trait of each species", "A report"],
         difficulty=Difficulty.EXPERT,
         typical_runtime=TypicalRuntime.MINUTES,
-        example="Brain size of 301 primates: Pagel's lambda wins (elpd 130, against 15 "
+        example="Brain size of 186 primates: Pagel's lambda wins (elpd 130, against 15 "
         "without the tree). The slope of group size is 0.03, with the 94% range -0.01 to "
         "0.07. Thus the effect is not clear of zero when the model includes the tree.",
         related=["sci.phylo_regression", "compare.models", "compare.stacking",
@@ -881,8 +889,9 @@ SCI_PHYLO_SIGNAL = WorkflowTemplate(
             "predictors": {"type": "array", "default": ["body", "group_size"],
                            "description": "The predictor variables on the species dim"},
             "focus": {"type": "string", "default": "group_size",
-                      "description": "The predictor whose slope the decision tests (one of "
-                                     "the predictors)"},
+                      "description": "The predictor whose slope the decision tests. It "
+                                     "must be one of the predictors: another name fails the "
+                                     "run after the four fits"},
             "hdi_prob": {"type": "number", "default": 0.94, "minimum": 0.5, "maximum": 0.999,
                          "description": "The probability inside the range of the slope"},
             **_FIT_PARAMS,
@@ -997,6 +1006,8 @@ SCI_CALIBRATE_THEN_DESIGN = WorkflowTemplate(
             "max_rhat": {"type": "number", "default": 1.01, "minimum": 1, "maximum": 2,
                          "description": "The largest R-hat that the design step accepts"},
             **_FIT_PARAMS,
+            # the gate reads R-hat, and one chain gives no R-hat
+            "chains": {**_FIT_PARAMS["chains"], "minimum": 2},
             "seed": {**_FIT_PARAMS["seed"], "default": 51},
         },
         inputs={"data": {"type": "dataset",
@@ -1024,8 +1035,8 @@ SCI_CALIBRATE_THEN_DESIGN = WorkflowTemplate(
              "inputs": {"model": "fit.model"},
              "with": {"recipe": "sci.image_residuals"}},
             {"id": "good", "use": "branch.if", "label": "Is the calibration good enough?",
-             "with": {"condition": "nodes.fit.metrics.rmse <= params.max_error and "
-                                   "nodes.plate.max_rhat <= params.max_rhat",
+             "with": {"condition": "coalesce(nodes.fit.metrics.rmse, 1e9) <= params.max_error "
+                                   "and coalesce(nodes.plate.max_rhat, 99) <= params.max_rhat",
                       "explain_then": "The calibration predicted the run that it did not "
                                       "see within the error limit, and the sampler "
                                       "converged. The workflow predicted the new layout.",

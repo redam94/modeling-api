@@ -6,9 +6,9 @@ This tutorial does part A of the pymc-challenges notebook
 
 **You need:**
 
-- A running platform (`make dev`) and a project that you can upload datasets to. This tutorial
-  uses the project `biology`. If your project has a different name, change the project part
-  of each `dataset://` and `model://` reference.
+- The platform (start it with `make dev`) and a project that you can upload datasets to. This
+  tutorial uses the project `biology`. If your project has a different name, change the project
+  part of each `dataset://` and `model://` reference.
 - The modeling-api repository. Part A of the notebook has no data file: the notebook makes its
   images with a simulation. The export command does the same simulation, so you do not need a
   copy of pymc-challenges.
@@ -218,8 +218,9 @@ for the question:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows "finding the mode" first, then the NUTS progress. The **Logs**
-   card shows the messages of the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows "finding the mode" first, then the NUTS progress. The
+   **Events** card shows the stages of the run and, at the end, the diagnostics. The **Logs**
+   card stays empty when the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://biology/e61-turing-mode-growth@v1**. Click it.
 
@@ -343,7 +344,7 @@ gives the 89% intervals, as the notebook does:
 
 Your numbers can be a little different if your sandbox has a different version of PyMC.
 
-## 7. Score and simulate
+## 7. Score the model
 
 The scores ignore the values of any dataset that you send. The predictions are given the
 fitted images.
@@ -408,7 +409,7 @@ new pattern at the times of the dataset, with camera noise.
     the **Schema and Try it** tab. Paste the same request there, without the `model` field,
     and click **Score**.
 
-## 8. Run the workflow recipe
+## 8. Run a workflow recipe
 
 The recipe `sci_image_model_check` (**Image model check**) is for models that predict an
 image. It fits the model, makes a table of the parameters with R-hat and ESS, renders the
@@ -444,7 +445,7 @@ and the bulk ESS is 166, so the default gate stops the audit. In **Fine-tune**, 
 after the gate fit the model again: two times for the prior sensitivity check and **N sims**
 times (20 by default) for the recovery check.
 
-## 9. The same steps with the CLI and the Python client
+## 9. The same with the CLI and the Python client
 
 === "CLI"
 
