@@ -1131,11 +1131,12 @@ Gives the estimate, the spread and the credible range of each parameter of a fit
 |---|---|---|---|
 | `vars` | array |  | The posterior variables (default: all of them) |
 | `hdi_prob` | number | `0.94` | The probability inside the HDI |
+| `focus` | string |  | One value to give in the result field focus: its name in the table (beta[north]) or only its label (north) |
 
-Result fields (`nodes.<id>.<field>` in conditions): `params` (object), `max_rhat` (number), `min_ess` (number), `n_divergent` (integer), `n_params` (integer), `truncated` (boolean).
+Result fields (`nodes.<id>.<field>` in conditions): `params` (object), `max_rhat` (number), `min_ess` (number), `n_divergent` (integer), `n_params` (integer), `truncated` (boolean), `focus` (object).
 
 ??? note "Expert detail"
-    Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the values (up to 20 000). Read the values with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats.
+    Rank-normalised split R-hat (the larger of bulk and tail) and bulk ESS (Vehtari et al. 2021); the HDI is the narrowest interval with hdi_prob of the draws (0.94 gives the 3% and 97% bounds). Vector parameters are flattened to name[label] (labels of several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the values (up to 20 000). Read the values with nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no sample_stats. focus names one value (beta[north], or only north when one selected variable has that label), so a condition can read nodes.<id>.focus.excludes_zero when the label comes from a workflow parameter.
 
 ## Evaluation (`evaluate`)
 

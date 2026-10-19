@@ -19,6 +19,8 @@ the [workflows guide](workflows.md#cookbook).
 | [Which forecasting model?](#forecast-bake-off) | Which of SARIMAX, ARIMA, ETS and Theta forecasts best on the same folds? Is the advantage of the winner more than chance? |
 | [Which spatial model for a disease map?](#disease-map-which-spatial-model) | Do the areas share their risk with their neighbours (iid, ICAR or BYM2)? Does the effect of the covariate stay clear in the best model, also with different priors? |
 | [Which model explains the ties of a network?](#network-ties-which-model) | Do shared traits explain the ties, or do the activity of each node and a hidden map also help? Can the best model make networks like the real network? |
+| [Does an effect across species stay when the tree is in the model?](#trait-regression-across-species) | Which correlation of relatives (none, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck) predicts best? Is the slope of the predictor clear of zero in the winner? |
+| [Can I trust a calibration to design with it?](#calibrate-then-design) | What are the material and the losses of a heated plate? Does the calibration predict a run that it did not see? What temperature field does a new heater layout give? |
 
 ## Readiness to ARIMAX
 
@@ -573,6 +575,287 @@ Compare the spread in the `ppc` plot with the statistics of your network. If the
 your network is far from the spread, the model does not make networks like yours. On the law
 firm data, the E21 notebook gets `elpd_loo` −894.2 with covariates only, −763.4 with
 sociality and −761.6 with the latent space.
+
+## Trait regression across species
+
+**In plain words.** Close relatives are similar because they share most of their history. If
+you use each species as an independent data point, an effect can look clear only because
+related species are near each other. This recipe fits the same regression four times. The
+first fit ignores the tree. The other three fits let relatives share part of their residual.
+
+The workflow keeps the fit that predicts best. Then it tells you if the effect that you ask
+about is clear of zero in that fit. It reports a clear effect only with a check that the fit
+agrees with the data.
+
+**For the statistician.** `sci.phylo_regression` regresses the log of the trait on the log of
+each predictor (standardised). The four fits differ only in the residual `kind`:
+
+- `iid`: no tree, `K = σ²I`.
+- `brownian`: Brownian motion on the tree, `K = σ²R`. `R` is the shared branch length of two
+  tips divided by the depth of the tree.
+- `lambda`: Pagel's lambda, `K = σ²(λR + (1 − λ)I)`.
+- `ou`: Ornstein-Uhlenbeck on the patristic distance.
+
+Each fit stores the leave-one-out density of each species given the other species. Thus
+`elpd_loo` compares the four kinds correctly. `compare.models` ranks them by `elpd_loo`,
+`compare.stacking` gives the stacking weights and `select.best` keeps the highest `elpd_loo`.
+`model.summary` with `focus` reads the slope of one predictor of the winner. The branch tests
+if the HDI of that slope excludes zero. Only then does `evaluate.ppc` compare the predictions
+of the winner with the observed traits.
+
+```mermaid
+flowchart LR
+  D["traits and<br/>the tree"] --> F["four fits: iid, brownian,<br/>lambda, ou (elpd_loo)"]
+  F --> C["compare +<br/>stacking weights"]
+  C --> S["select the best<br/>elpd_loo"]
+  S --> M["slopes of the winner<br/>(focus: group_size)"]
+  M --> B{"range of the slope<br/>excludes zero?"}
+  B -- then --> P["predictive check"]
+  S --> T["trait on the tree<br/>(sci.phylogeny)"]
+  B --> R["report"]
+  P --> R
+  T --> R
+```
+
+### The document
+
+```yaml
+--8<-- "cookbook_sci_phylo_signal.yaml"
+```
+
+The recipe reads one dataset. The traits are on a `species` dim. The tree is on a `node` dim:
+`parent`, `branch_length`, `is_tip` and `tip_label`. The tip labels are the labels of
+`species`. The workflow binds the target of the dataset (for example `brain`) to the `trait`
+of the model. The `predictors` are names of variables in your dataset. The `focus` is one of
+them.
+
+To try the recipe, export the E23 case study and upload it as `primates301` in the project
+`biology`:
+
+```bash
+python -m mapi_plugin_science.export e23 --challenges ~/pymc-challenges/data --out primates301.nc
+# or the simulated data of the model (you do not need pymc-challenges)
+python -m mapi_plugin_science.export e23 --synthetic --out primates301.nc
+mapi datasets upload primates301.nc --name primates301
+```
+
+### Run it with the CLI
+
+```bash
+mapi workflows init sci_phylo_signal --name primate-brains   # writes primate-brains.yaml
+mapi workflows apply primate-brains.yaml
+mapi workflows run primate-brains -i data=dataset://biology/primates301@latest \
+  -p 'predictors=["body","group_size"]' -p focus=group_size --watch
+RUN=$(mapi --json workflows runs primate-brains -n 1 | jq -r '.[0].run_id')
+mapi workflows node "$RUN" compare   # the four fits, the best elpd_loo first
+mapi workflows node "$RUN" slope     # the slopes of the winner and the focus value
+```
+
+### Run it with the Python client
+
+```python
+from pathlib import Path
+
+from mapi_client import Client
+
+api = Client()  # MAPI_URL, the `mapi login` sign-in (or MAPI_TOKEN) and MAPI_PROJECT
+workflow, revision = api.workflows.upsert(Path("primate-brains.yaml"))
+run = api.workflows.run(
+    workflow.id,
+    inputs={"data": "dataset://biology/primates301@latest"},
+    params={"predictors": ["body", "group_size"], "focus": "group_size"},
+    wait=True,
+)
+nodes = {n.node_id: n for n in run.nodes}
+print(nodes["compare"].result["ranking"])  # ['lambda', 'ou', 'brownian', 'iid']
+print(nodes["weights"].result["weights"])  # the stacking weight of each fit
+focus = nodes["slope"].result["focus"]
+print(focus["mean"], focus["hdi_low"], focus["hdi_high"], focus["p_positive"])
+print(nodes["clear"].result["arm"])  # "then": the range of the slope excludes zero
+```
+
+### Read the outputs
+
+A local run (`LocalRunner`) of the recipe with its default settings (4 chains of 1000 draws)
+on the 301 primates of E23 took 3.3 minutes on a laptop. It gave these results:
+
+| Node | Result |
+|---|---|
+| `iid`, `brownian`, `lambda`, `ou` | `elpd_loo` 15.0, 90.5, 129.9 and 91.2. The notebook gives 130 for lambda. |
+| `weights` | lambda 1.00. The other fits get no weight. |
+| `best` | "Pagel's lambda has the best elpd_loo (130) of 4 candidate(s)." |
+| `slope` | `slope[body]` 0.766 (94% range 0.710 to 0.823), as the notebook. `slope[group_size]` 0.027 (94% range −0.010 to 0.066), `p_positive` 0.91. `max_rhat` 1.001, no divergences. |
+| `clear` | The else arm: the range of the slope includes zero. `ppc` is skipped. |
+
+Read the results in this sequence:
+
+1. **The ranking.** A large gap between `iid` and the other fits shows that relatives are
+   similar. Here the tree adds 115 to `elpd_loo`.
+2. **The weights.** If one fit gets all the weight, the winner is clear. If the weight is
+   divided, more than one correlation agrees with the data. Then the slope of the winner is
+   only one of some possible answers.
+3. **The decision.** The `focus` value gives the slope, its range and `p_positive`. In E23 the
+   effect of group size is positive in 91% of the draws, but the 94% range includes zero.
+   Thus the data do not show a clear effect of group size on brain size when the model
+   includes the tree.
+4. **The plot.** The `tree` output (`sci.phylogeny`) shows the tree with the observed and the
+   predicted trait of each species. Look for clades where the predictions are far from the
+   observations.
+
+The `report` output has the decision, the three tables, the plot and the predictive check
+(when it ran).
+
+## Calibrate, then design
+
+**In plain words.** A heated plate conducts heat in its plane and loses heat through its faces
+and its edges. Some calibration runs with a known heater and some thermocouples tell how much
+heat the plate conducts and loses. The calibrated model can then predict the temperature of
+each point of the plate for a heater layout that you did not build.
+
+Before you trust such a prediction, test the calibration on a run that it did not see. This
+recipe holds out one calibration run, fits the other runs and predicts the run held out. It
+predicts the new layout only if that error is small and the sampler converged.
+
+**For the statistician.** `sci.heat_plate` solves the 2-D steady heat equation
+`A(θ) u = η q` on the finite-volume grid of the data. `θ` is the conductivity `k`, the face
+and edge loss coefficients `h` and `h_edge`, and the heater efficiency `η`. `split.holdout`
+holds out one random run (`leave_group_out`, `n: 1`). `model.fit` with
+`mode: evaluate_then_refit` fits the other runs and scores the run held out (`rmse`, `mae`,
+`coverage_90`). Then it fits all the runs again. `model.summary` gives the parameters and
+`max_rhat`. The branch needs `rmse ≤ max_error` and `max_rhat ≤ max_rhat`. The field is
+linear in the heater power, so `model.score` (`predict`) gives the posterior draws of the
+expected field of each new run. These draws have no sensor noise. `plot.render` draws them
+with `sci.field_map`, one frame for each run.
+
+```mermaid
+flowchart LR
+  D["calibration runs"] --> H["hold out<br/>one run"]
+  H --> F["fit, score the run held out,<br/>fit all runs again"]
+  F --> S["plate parameters<br/>and R-hat"]
+  F --> RES["calibration residuals<br/>(sci.image_residuals)"]
+  S --> B{"error ≤ max_error<br/>and R-hat ≤ max_rhat?"}
+  F --> B
+  L["new layout"] --> P
+  B -- then --> P["predict the field<br/>of the layout"]
+  P --> M["field map<br/>(sci.field_map)"]
+  B --> R["report"]
+  RES --> R
+  M --> R
+```
+
+### The document
+
+```yaml
+--8<-- "cookbook_sci_calibrate_then_design.yaml"
+```
+
+The recipe reads two datasets:
+
+- `data`: the calibration runs. `heater_power(run, y, x)` in W and `temperature(run, y, x)`
+  in degC on a regular grid in cm. `temperature` has no value where there is no thermocouple.
+  The `run` dim needs the policy `new_levels`, because the fit does not see the run held out.
+  Use three runs or more.
+- `layout` (optional): the new heater layouts. `heater_power(run, y, x)` on the same grid,
+  with new run labels. If you do not give a layout, the workflow predicts the calibration
+  runs.
+
+If the names in your datasets are different, give `bind`. The split and the map read the
+names of the `run`, `y` and `x` dims from `bind`. To try the recipe, export the E51 case
+study and make a layout with two 5 W heaters:
+
+```bash
+python -m mapi_plugin_science.export e51 --out heat_plate_e51.nc
+mapi datasets upload heat_plate_e51.nc --name heat_plate_e51
+```
+
+```python
+import xarray as xr
+
+cal = xr.load_dataset("heat_plate_e51.nc")  # heater_w(run, y_cm, x_cm), 3 runs, 24 x 12 grid
+power = xr.zeros_like(cal["heater_w"].isel(run=[0])).assign_coords(run=["two_heaters"])
+power[0, 3, 5] = power[0, 8, 18] = 5.0  # two 5 W heaters (row, column)
+xr.Dataset({"heater_w": power}).to_netcdf("heat_plate_layout.nc")
+```
+
+Then upload `heat_plate_layout.nc` with `mapi datasets upload heat_plate_layout.nc --name
+heat_plate_layout`.
+
+### Run it with the CLI
+
+```bash
+mapi workflows init sci_calibrate_then_design --name heat-plate-design
+mapi workflows apply heat-plate-design.yaml
+mapi workflows run heat-plate-design \
+  -i data=dataset://engineering/heat_plate_e51@latest \
+  -i layout=dataset://engineering/heat_plate_layout@latest \
+  -p 'bind={"dims": {"y": "y_cm", "x": "x_cm"}, "vars": {"heater_power": "heater_w", "temperature": "reading_c"}}' \
+  --watch
+RUN=$(mapi --json workflows runs heat-plate-design -n 1 | jq -r '.[0].run_id')
+mapi workflows node "$RUN" fit     # the error on the run held out
+mapi workflows node "$RUN" plate   # k, h, h_edge, eta, sigma and the spread length
+```
+
+### Run it with the Python client
+
+```python
+from pathlib import Path
+
+from mapi_client import Client
+
+api = Client()
+workflow, revision = api.workflows.upsert(Path("heat-plate-design.yaml"))
+run = api.workflows.run(
+    workflow.id,
+    inputs={
+        "data": "dataset://engineering/heat_plate_e51@latest",
+        "layout": "dataset://engineering/heat_plate_layout@latest",
+    },
+    params={
+        "bind": {
+            "dims": {"y": "y_cm", "x": "x_cm"},
+            "vars": {"heater_power": "heater_w", "temperature": "reading_c"},
+        }
+    },
+    wait=True,
+)
+nodes = {n.node_id: n for n in run.nodes}
+print(nodes["fit"].result["metrics"])  # rmse, mae and coverage_90 on the run held out
+print(nodes["plate"].result["params"]["k"])  # the conductivity, with its range and R-hat
+print(nodes["good"].result["arm"])  # "then": the workflow predicted the layout
+```
+
+### Read the outputs
+
+A local run (`LocalRunner`) of the recipe with its default settings (4 chains of 1000 draws,
+the `pymc` engine) on the E51 calibration and the layout above took 14 minutes on a busy
+laptop. It gave these results:
+
+| Node | Result |
+|---|---|
+| `holdout` | The fit did not see the run `cal1`. |
+| `fit` | On `cal1`: `rmse` 0.12 degC, `mae` 0.09 degC, `coverage_90` 1.0. The thermocouples have a noise of 0.2 degC. |
+| `plate` | `k` 59.2 W/m/K (94% range 53.7 to 63.9), `h` 9.05, `eta` 0.91, `sigma` 0.19 degC and `spread_length` 12.8 cm. The notebook gives 59.3, 9.07, 0.91, 0.19 and 12.9 cm. `max_rhat` 1.002, 8 divergences. |
+| `good` | The then arm: the error and R-hat are in their limits. |
+| `design`, `field` | The expected field of `two_heaters`. The hottest point is 33.3 degC, at x = 30.8 cm and y = 14.2 cm. |
+
+Read the results in this sequence:
+
+1. **The error on the run held out.** This is the error of a prediction for a heater layout
+   that the fit did not see. That is the same task as the design. An `rmse` near the noise
+   of the thermocouples shows that the calibration predicts new layouts well.
+2. **The parameters.** `k`, `h` and `eta` are strongly correlated, because a stronger heater
+   and a stronger loss can give the same readings. The range of `spread_length` is narrower
+   (1% of its value, against 5% for `k`). The data fix how far the heat spreads, and that
+   controls the field.
+3. **Convergence.** The branch reads only `max_rhat`. `n_divergent` in the `plate` result
+   shows the divergent transitions (8 here, 2 in the notebook). If there are many, set a
+   higher `target_accept` in the `fit` node.
+4. **The maps.** The `residuals` plot shows the calibration readings against the fit. The
+   `field` plot shows the mean and the sd of the predicted field, one frame for each new
+   run. A large sd far from the thermocouples shows where more sensors help.
+
+If the branch takes the else arm, the workflow skips `design` and `field`. The report tells
+you to add calibration runs or thermocouples.
 
 ## Make your own
 

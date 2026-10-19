@@ -16,6 +16,16 @@ id                          what it automates
 ``forecast_bakeoff``        one expanding-window backtest for SARIMAX, ETS, Theta and the
                             smooth-trend model against naive benchmarks -> compare -> select
                             the winner -> refit it -> report
+``sci_phylo_signal``        sci.phylo_regression with iid, Brownian, Pagel's lambda and OU
+                            residuals -> elpd_loo ranking, stacking weights, select -> the
+                            winner's slope of ``focus`` (model.summary) -> branch on whether
+                            its HDI excludes zero (then a predictive check) -> sci.phylogeny
+                            -> report
+``sci_calibrate_then_design``
+                            sci.heat_plate fitted with one calibration run held out
+                            (evaluate_then_refit) -> parameter summary, sci.image_residuals ->
+                            branch on the holdout RMSE and R-hat -> model.score (predict) of
+                            the new heater layout -> sci.field_map -> report
 ==========================  ================================================================
 
 Templates are complete :class:`~mapi_spec.workflow.WorkflowSpec` documents that pass
@@ -767,6 +777,268 @@ SCI_NETWORK_LADDER = WorkflowTemplate(
     tags=["science", "network", "comparison"],
 )  # fmt: skip
 
+# ============================================================================ science (M5)
+
+_FIT_PARAMS: dict[str, Any] = {
+    "draws": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 20000,
+              "description": "The posterior draws that each chain keeps"},
+    "tune": {"type": "integer", "default": 1000, "minimum": 10, "maximum": 20000,
+             "description": "The tuning steps of each chain (the sampler drops them)"},
+    "chains": {"type": "integer", "default": 4, "minimum": 1, "maximum": 16,
+               "description": "The number of chains (two or more give R-hat)"},
+    "seed": {"type": "integer", "default": 2017, "minimum": 0, "maximum": 2**31 - 1,
+             "description": "The random seed of the sampler"},
+    "bind": {"type": "object", "default": {},
+             "description": "The names of the model (dims and vars) mapped to the names in "
+                            "your dataset, when they are different. The workflow finds the "
+                            "target itself when your dataset has one target."},
+}  # fmt: skip
+_FIT = {"draws": _p("draws"), "tune": _p("tune"), "chains": _p("chains"), "seed": _p("seed")}
+
+PHYLO_MODEL = "sci.phylo_regression@^1"
+_PHYLO_KINDS: tuple[tuple[str, str], ...] = (
+    ("iid", "No tree (independent species)"),
+    ("brownian", "Brownian motion on the tree"),
+    ("lambda", "Pagel's lambda"),
+    ("ou", "Ornstein-Uhlenbeck"),
+)
+_PHYLO_FITS = [
+    {"id": kind, "use": "model.fit", "label": label, "inputs": {"data": "inputs.data"},
+     "with": {"model": PHYLO_MODEL,
+              "settings": {"kind": kind, "predictors": _p("predictors")},
+              "fit": _FIT, "bind": _p("bind"), "evaluate": {"metrics": ["elpd_loo"]}}}
+    for kind, label in _PHYLO_KINDS
+]  # fmt: skip
+_PHYLO_METRICS = [f"{kind}.metrics" for kind, _ in _PHYLO_KINDS]
+
+SCI_PHYLO_SIGNAL = WorkflowTemplate(
+    id="sci_phylo_signal",
+    about=About(
+        title="Trait regression across species, with and without the tree",
+        summary_plain="Fits the same regression of a species trait four times: once with "
+        "species as independent points and three times with a family tree that relates "
+        "them. Then it keeps the version that predicts best and tells you if the effect "
+        "that you ask about is clearly different from zero.",
+        use_when=["You compare a trait across species (or other groups with a known tree) "
+                  "and close relatives are similar",
+                  "You want to know if an effect stays clear when you include the tree in "
+                  "the model"],
+        avoid_when=["You have no tree of the species",
+                    "Fewer than about 20 species (the four versions then predict about "
+                    "equally well)"],
+        data_needs=["One row for each species: the trait to explain and one or more "
+                    "predictors, all positive (the model takes logs)",
+                    "The tree in the same dataset: parent(node), branch_length(node), "
+                    "is_tip(node) and tip_label(node), with tip labels equal to the species "
+                    "labels"],
+        assumptions=["The predictors have a linear effect on the log of the trait",
+                     "The residuals of related species are correlated as the selected "
+                     "version says (Brownian motion, Pagel's lambda or Ornstein-Uhlenbeck)"],
+        outputs=["The leave-one-out score (elpd_loo) of the four versions and their stacking "
+                 "weights",
+                 "The selected model and its slopes, with R-hat and ESS",
+                 "The decision: is the range of the effect clear of zero?",
+                 "A plot of the tree with the trait of each species", "A report"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="Brain size of 301 primates: Pagel's lambda wins (elpd 130, against 15 "
+        "without the tree). The slope of group size is 0.03, with the 94% range -0.01 to "
+        "0.07. Thus the effect is not clear of zero when the model includes the tree.",
+        related=["sci.phylo_regression", "compare.models", "compare.stacking",
+                 "model.summary", "evaluate.ppc"],
+        references=[AboutReference(title="Felsenstein (1985), Phylogenies and the "
+                                         "comparative method"),
+                    AboutReference(title="Pagel (1999), Inferring the historical patterns of "
+                                         "biological evolution")],
+        expert_notes="Four sci.phylo_regression fits that differ only in the residual "
+        "kind (iid, brownian, lambda, ou) are ranked by PSIS-LOO on the conditional "
+        "leave-one-out density of each species. select.best keeps the highest elpd_loo, and "
+        "compare.stacking gives the stacking weights. model.summary reads the slope that "
+        "focus names from the winner. The branch tests if its HDI excludes zero.",
+        fits={"goal": ["explain_drivers", "validate_model"], "data_shape": ["table"],
+              "frequency": ["not_time"], "uncertainty": ["essential", "nice"],
+              "experience": ["expert"]},
+    ),
+    document=_doc(
+        "sci-phylo-signal",
+        params={
+            "predictors": {"type": "array", "default": ["body", "group_size"],
+                           "description": "The predictor variables on the species dim"},
+            "focus": {"type": "string", "default": "group_size",
+                      "description": "The predictor whose slope the decision tests (one of "
+                                     "the predictors)"},
+            "hdi_prob": {"type": "number", "default": 0.94, "minimum": 0.5, "maximum": 0.999,
+                         "description": "The probability inside the range of the slope"},
+            **_FIT_PARAMS,
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "Species traits and the tree (parent, branch_length, "
+                                        "is_tip and tip_label on the node dim)"}},
+        nodes=[
+            *_PHYLO_FITS,
+            {"id": "compare", "use": "compare.models",
+             "inputs": {"candidates": _PHYLO_METRICS},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "weights", "use": "compare.stacking",
+             "inputs": {"candidates": _PHYLO_METRICS}},
+            {"id": "best", "use": "select.best",
+             "inputs": {"table": "compare.table",
+                        "models": [f"{kind}.model" for kind, _ in _PHYLO_KINDS]},
+             "with": {"metric": "elpd_loo", "direction": "max"}},
+            {"id": "slope", "use": "model.summary", "label": "Slopes of the winner",
+             "inputs": {"model": "best.model"},
+             "with": {"vars": ["slope"], "focus": _p("focus"), "hdi_prob": _p("hdi_prob")}},
+            {"id": "clear", "use": "branch.if", "label": "Is the effect clear of zero?",
+             "with": {"condition": "nodes.slope.focus.excludes_zero",
+                      "explain_then": "The range of the slope does not include zero. The "
+                                      "data show an effect of the predictor when the model "
+                                      "includes the tree.",
+                      "explain_else": "The range of the slope includes zero. The data do "
+                                      "not show a clear effect of the predictor when the "
+                                      "model includes the tree."}},
+            # a clear effect is reported only with a check that the winner agrees with the data
+            {"id": "ppc", "use": "evaluate.ppc", "label": "Does the winner agree with the data?",
+             "when": "clear.then", "inputs": {"model": "best.model"}},
+            {"id": "tree", "use": "plot.render", "label": "Trait on the tree",
+             "inputs": {"model": "best.model"},
+             "with": {"recipe": "sci.phylogeny"}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["compare.table", "weights.table", "slope.table"],
+                        "metrics": ["ppc.metrics"], "model": "best.model",
+                        "plots": ["tree.plot"]},
+             "with": {"title": "Trait regression across species"}},
+        ],
+        outputs={"model": "best.model", "comparison": "compare.table",
+                 "weights": "weights.table", "slopes": "slope.table", "tree": "tree.plot",
+                 "report": "report.report"},
+    ),
+    tags=["science", "bayesian", "comparison", "phylogeny"],
+)  # fmt: skip
+
+HEAT_MODEL = "sci.heat_plate@^1"
+# the split and the scores use your dataset's names: the bound names, else the model's
+_RUN = "coalesce(params.bind.dims.run, 'run')"
+_Y = "coalesce(params.bind.dims.y, 'y')"
+_X = "coalesce(params.bind.dims.x, 'x')"
+SCI_CALIBRATE_THEN_DESIGN = WorkflowTemplate(
+    id="sci_calibrate_then_design",
+    about=About(
+        title="Calibrate a heated plate, then test a heater layout",
+        summary_plain="Learns how a plate conducts and loses heat from some test runs with "
+        "thermocouples. Then it predicts the temperature of each point of the plate for a "
+        "new heater layout, but only if the calibration predicts a test run that it did not "
+        "see well enough.",
+        use_when=["You measured a plate (or a similar flat part) with one heater layout for "
+                  "each run and some thermocouples",
+                  "You want to try a new heater layout on the computer before you build it"],
+        avoid_when=["The heat does not reach a steady state in your runs",
+                    "Fewer than three calibration runs (one run is held out for the test)"],
+        data_needs=["The calibration runs: heater_power(run, y, x) in W and "
+                    "temperature(run, y, x) in degC on a regular grid, with no value where "
+                    "there is no thermocouple",
+                    "Optional: a second dataset with heater_power(run, y, x) of the new "
+                    "layouts on the same grid (without one, the workflow predicts the "
+                    "calibration runs)"],
+        assumptions=["The plate is thin and reaches a steady state (the 2-D steady heat "
+                     "equation)",
+                     "The material and the losses are the same in each run",
+                     "The temperature rise is proportional to the heater power"],
+        outputs=["The conductivity k, the face and edge losses, the heater efficiency and "
+                 "the spread length, with R-hat and ESS",
+                 "The error on the calibration run that the fit did not see",
+                 "The decision: is the calibration good enough?",
+                 "The predicted temperature of each point for the new layouts, as a map",
+                 "A report"],
+        difficulty=Difficulty.EXPERT,
+        typical_runtime=TypicalRuntime.MINUTES,
+        example="Three 10 W test runs give k = 59 W/m/K and a spread length of 13 cm. The "
+        "run that the fit did not see has an error of 0.12 degC. Thus the workflow "
+        "predicts the new layout: the hottest point is 33 degC.",
+        related=["sci.heat_plate", "split.holdout", "model.summary", "model.score",
+                 "plot.render"],
+        expert_notes="sci.heat_plate solves A(theta) u = eta q on a finite-volume grid. "
+        "split.holdout leaves one random run out (leave_group_out, n = 1). model.fit fits "
+        "the other runs, scores the run held out and fits all the runs again "
+        "(evaluate_then_refit). The branch needs the holdout RMSE at or below max_error and "
+        "max R-hat at or below max_rhat. Then model.score predicts the expected field of the "
+        "layout (posterior draws of the field, without sensor noise).",
+        fits={"goal": ["fit_physics", "map_fields", "validate_model"],
+              "data_shape": ["grid"], "frequency": ["not_time"],
+              "uncertainty": ["essential", "nice"], "experience": ["expert"]},
+    ),
+    document=_doc(
+        "sci-calibrate-then-design",
+        params={
+            "thickness_mm": {"type": "number", "default": 5.0, "minimum": 0.01,
+                             "maximum": 1000,
+                             "description": "The thickness of the plate in mm"},
+            "room_temperature": {"type": "number", "default": 20.0, "minimum": -100,
+                                 "maximum": 1000,
+                                 "description": "The temperature of the room in degC"},
+            "max_error": {"type": "number", "default": 0.5, "minimum": 0,
+                          "description": "The largest RMSE in degC on the run held out "
+                                         "that the design step accepts"},
+            "max_rhat": {"type": "number", "default": 1.01, "minimum": 1, "maximum": 2,
+                         "description": "The largest R-hat that the design step accepts"},
+            **_FIT_PARAMS,
+            "seed": {**_FIT_PARAMS["seed"], "default": 51},
+        },
+        inputs={"data": {"type": "dataset",
+                         "description": "The calibration runs: heater power and the "
+                                        "thermocouple readings on the grid"},
+                "layout": {"type": "dataset", "required": False,
+                           "description": "The new heater layouts to predict (the heater "
+                                          "power of each new run on the same grid)"}},
+        nodes=[
+            {"id": "holdout", "use": "split.holdout", "inputs": {"data": "inputs.data"},
+             "with": {"split": {"kind": "leave_group_out", "dim": _x(_RUN), "n": 1,
+                                "seed": _p("seed")}}},
+            {"id": "fit", "use": "model.fit", "label": "Calibrate",
+             "inputs": {"data": "inputs.data", "split": "holdout.plan"},
+             "with": {"model": HEAT_MODEL,
+                      "settings": {"thickness_mm": _p("thickness_mm"),
+                                   "room_temperature": _p("room_temperature")},
+                      "fit": {**_FIT, "mode": "evaluate_then_refit", "target_accept": 0.9},
+                      "bind": _p("bind"),
+                      "evaluate": {"metrics": ["rmse", "mae", "coverage_90"]}}},
+            {"id": "plate", "use": "model.summary", "label": "Plate parameters",
+             "inputs": {"model": "fit.model"},
+             "with": {"vars": ["k", "h", "h_edge", "eta", "sigma", "spread_length"]}},
+            {"id": "residuals", "use": "plot.render", "label": "Calibration residuals",
+             "inputs": {"model": "fit.model"},
+             "with": {"recipe": "sci.image_residuals"}},
+            {"id": "good", "use": "branch.if", "label": "Is the calibration good enough?",
+             "with": {"condition": "nodes.fit.metrics.rmse <= params.max_error and "
+                                   "nodes.plate.max_rhat <= params.max_rhat",
+                      "explain_then": "The calibration predicted the run that it did not "
+                                      "see within the error limit, and the sampler "
+                                      "converged. The workflow predicted the new layout.",
+                      "explain_else": "The calibration did not predict the run that it did "
+                                      "not see within the error limit, or the sampler did "
+                                      "not converge. The workflow did not predict the new "
+                                      "layout. Add calibration runs or thermocouples."}},
+            {"id": "design", "use": "model.score", "label": "Predict the layout",
+             "when": "good.then",
+             "inputs": {"model": "fit.model", "data": ["inputs.layout", "inputs.data"]},
+             "with": {"mode": "predict"}},
+            {"id": "field", "use": "plot.render", "label": "Field of the layout",
+             "when": "good.then", "inputs": {"data": "design.scores"},
+             "with": {"recipe": "sci.field_map", "source": "data",
+                      "settings": {"var": "field", "y": _x(_Y), "x": _x(_X),
+                                   "frame": _x(_RUN), "origin": "lower",
+                                   "colormap": "magma"}}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["plate.table"], "metrics": ["fit.metrics"],
+                        "model": "fit.model", "plots": ["residuals.plot", "field.plot"]},
+             "with": {"title": "Calibrate a heated plate, then test a heater layout"}},
+        ],
+        outputs={"model": "fit.model", "parameters": "plate.table",
+                 "residuals": "residuals.plot", "design": "design.scores",
+                 "field": "field.plot", "report": "report.report"},
+    ),
+    tags=["science", "bayesian", "physics", "design"],
+)  # fmt: skip
+
 WORKFLOW_TEMPLATES: Final[dict[str, WorkflowTemplate]] = {
     t.id: t
     for t in (
@@ -776,6 +1048,8 @@ WORKFLOW_TEMPLATES: Final[dict[str, WorkflowTemplate]] = {
         FORECAST_BAKEOFF,
         SCI_SPATIAL_LADDER,
         SCI_NETWORK_LADDER,
+        SCI_PHYLO_SIGNAL,
+        SCI_CALIBRATE_THEN_DESIGN,
     )
 }
 """The gallery (``GET /v1/workflow-templates``)."""
