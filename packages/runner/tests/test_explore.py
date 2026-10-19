@@ -5,6 +5,7 @@ sanitizer, and an explore run writes the index with skipped sections explained."
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -358,3 +359,51 @@ def test_comparison_runs_no_significance_test_on_one_forecast_path() -> None:
     assert cmp["models"] == ["model://p/a@v1", "model://p/b@v1"]
     assert cmp["tests"] == []
     assert any("one forecast origin" in w for w in cmp["warnings_plain"])
+
+
+GOLDEN = Path(__file__).parent / "data" / "explorer_golden"
+_TIME_SECTIONS = (
+    "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
+    "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality",
+)  # fmt: skip
+
+
+def _rounded(x: Any) -> Any:
+    """Floats to 6 significant digits (BLAS differences between machines stay out)."""
+    if isinstance(x, float):
+        return float(f"{x:.6g}")
+    if isinstance(x, dict):
+        return {k: _rounded(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_rounded(v) for v in x]
+    return x
+
+
+def _all_views(ds: xr.Dataset, schema: DataSchema, req: DataExploreRequest) -> dict[str, Any]:
+    c = data_context(ds, schema, req)
+    out: dict[str, Any] = {}
+    for name in _TIME_SECTIONS:
+        try:
+            out[name] = DATA_SECTION_FUNCS[name](c).model_dump(mode="json", exclude_none=True)
+        except SectionSkipped as exc:
+            out[name] = {"skipped": str(exc)}
+    return out
+
+
+@pytest.mark.parametrize(
+    ("case", "facet"), [("panel", None), ("panel_geo", ["geo"]), ("linear", None)]
+)
+def test_time_series_views_are_unchanged(case: str, facet: list[str] | None) -> None:
+    """Regression: the scientific sections leave every view of a time-series dataset as it
+    was (golden JSON written by the explorer before they existed)."""
+    if case == "linear":
+        ds, schema = linear_data(), SCHEMA
+    else:
+        ds, schema = _panel()
+    views = _rounded(_all_views(ds, schema, DataExploreRequest(facet_by=facet or [], max_lag=8)))
+    text = json.dumps(views, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    path = GOLDEN / f"{case}.json"
+    if os.environ.get("MAPI_UPDATE_SNAPSHOTS") == "1" and not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text + "\n")
+    assert json.loads(text) == json.loads(path.read_text())
