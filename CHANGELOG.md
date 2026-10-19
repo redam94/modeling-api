@@ -27,7 +27,14 @@ shows the sections that apply first.
 - In Expert mode, *All series* also shows the Plotly plots `sci.area_map`, `net.graph` and
   `sci.rose`.
 - Mock datasets for eleven pymc-challenges cases and the E80 lens tree, and screenshots of
-  the new sections (`make docs-screenshots-explorers` also records them).
+  the new sections. `make docs-screenshots-explorers` records the profiles, the points and the
+  section list from mock mode. `make docs-screenshots-science` records the images (E58), the
+  map (E18), the network (E21), the tree (E23) and the roses (E81b) from the real exports.
+- **Images and fields**: when a few cells are much brighter than the others (E58 camera
+  frames), the colours cover 98% of the values. **Colours for the full range** shows all the
+  values. The axis of a histogram with a log count has ticks at the powers of ten.
+- **Tree**: a trait with positive values that go across two orders of magnitude or more
+  (E23 body mass) has a logarithmic axis.
 - Each pymc-challenges tutorial has a step "Explore the data". The guide
   Explore a dataset (`docs/guides/data-explorer.md`) has a new part
   "Scientific data".
@@ -48,6 +55,19 @@ shows the sections that apply first.
   warnings `GEOMETRY_INVALID`, `TREE_INVALID`, `NETWORK_ASYMMETRIC`, `ANGLE_RANGE` and
   `IMAGE_SATURATED`.
 - A request can have all 21 sections (before: 13).
+- **Map** starts with the ratio of the target and the exposure (E18 `cases` / `expected`),
+  when the data has this ratio.
+- **Unusual values** and the `OUTLIERS` check do not use a variable with two values or fewer
+  (the ties of a network, an indicator), or a profile or a spectrum (E79 `reference_dl`).
+- **Distributions** says "has only the values 0 and 1" for a variable with only 0 and 1.
+  **Correlations** names the largest pair when no pair has a correlation of 0.7 or more.
+- The tables of the picture sections show counts with all their digits (10,292, not 10,290).
+- The dataset About counts a pair of dims (`district`, `district_`) once, and does not add an
+  "s" to a dim name that ends in "s" ("186 species", not "186 speciess").
+
+#### Fixed
+- The upload page puts the bytes of a file once. Before, **Upload and ingest** while
+  **Preview structure** still sent the file failed with "upload failed with HTTP 412".
 
 ## [0.9.1] — Science gallery docs — 2026-10-19
 

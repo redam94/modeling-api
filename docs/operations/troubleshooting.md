@@ -185,9 +185,10 @@ The tests of the science plugin skip
     [Science data](local-development.md#science-data).
 
 `make docs-screenshots-science` stops at an upload (`ENOENT`)
-:   The script reads `scotland_lip.nc`, `heat_plate_e51.nc` and `lazega_coworkers.nc` from
-    `.local/science`, or from the folder that `MAPI_SCIENCE_DATA` gives. Export them first
-    with `python -m mapi_plugin_science.export`.
+:   The script reads `scotland_lip.nc`, `heat_plate_e51.nc`, `lazega_coworkers.nc`,
+    `unc13_dstorm.nc`, `primates301.nc` and `bci_camera_traps.nc` from `.local/science`, or
+    from the folder that `MAPI_SCIENCE_DATA` gives. Export them first with
+    `python -m mapi_plugin_science.export`.
 
 The recipe monitor screenshot shows **Reused**
 :   `make docs-screenshots-science` ran before on the same stack. The server used the earlier

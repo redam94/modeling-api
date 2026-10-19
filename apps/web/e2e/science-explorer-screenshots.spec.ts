@@ -4,7 +4,8 @@
  * (synthetic exports of the pymc-challenges cases, ingested by the real runner). Skipped
  * unless MAPI_EXPLORER_SCREENSHOTS=1; `make docs-screenshots-explorers` runs it after
  * explorer-screenshots.spec.ts and shrinks the PNGs into
- * docs/assets/screenshots/explorer-sci-*.png:
+ * docs/assets/screenshots/explorer-sci-*.png (profiles, points and the section list; the images,
+ * map, network, tree and roses come from the real exports: scripts/docs_screenshots_science.mjs):
  *
  *   MAPI_EXPLORER_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=15173 MAPI_SMOKE_PLOTS_PORT=15174 \
  *     pnpm --filter @mapi/web exec playwright test e2e/science-explorer-screenshots.spec.ts
@@ -59,24 +60,9 @@ async function open(page: Page, dataset: string, section: string) {
 test("science explorer screenshots", async ({ page }) => {
   test.setTimeout(240_000);
 
-  // E07: a movie of counts on a grid, with the frame slider
-  await open(page, "e07", "images");
-  await shot(page, "images");
   // E79: the angular power spectrum along the multipole (log x)
   await open(page, "e79", "profiles");
   await shot(page, "profiles");
-  // E18: the districts in colour, the neighbour lines and Moran's I
-  await open(page, "e18", "map");
-  await shot(page, "map");
-  // E21: the matrix, the drawing and the degree of the co-work network
-  await open(page, "e21", "network");
-  await shot(page, "network");
-  // E23: the primate tree with the trait strips
-  await open(page, "e23", "tree");
-  await shot(page, "tree");
-  // E81b: one rose of the activity times for each species
-  await open(page, "e81b", "circular");
-  await shot(page, "circular");
   // E77: the colour chips on the survey grid
   await open(page, "e77", "points");
   await shot(page, "points");

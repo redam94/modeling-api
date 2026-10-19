@@ -300,7 +300,7 @@ docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets c
 	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
-DOCS_EXPLORER_SCI_SHOTS := explorer-sci-images,explorer-sci-profiles,explorer-sci-map,explorer-sci-network,explorer-sci-tree,explorer-sci-circular,explorer-sci-points,explorer-sci-nav
+DOCS_EXPLORER_SCI_SHOTS := explorer-sci-profiles,explorer-sci-points,explorer-sci-nav
 DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize,$(DOCS_EXPLORER_SCI_SHOTS)
 
 .PHONY: docs-screenshots-explorers
@@ -317,10 +317,11 @@ docs-screenshots-workflows: ## Recapture the v0.5 workflow and governance screen
 		$(PNPM) --filter @mapi/web exec playwright test e2e/workflow-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-workflows docs/assets/screenshots --max-kb 150 --only $(DOCS_WORKFLOW_SHOTS)
 
-DOCS_SCIENCE_SHOTS := science-upload-preview,science-spec-editor,science-run-progress,science-fields-heat-plate,science-area-map,science-network-graph,science-recipe-monitor,science-recipe-report
+DOCS_SCIENCE_EXPLORER_SHOTS := science-explorer-map,science-explorer-network,science-explorer-images,science-explorer-tree,science-explorer-circular
+DOCS_SCIENCE_SHOTS := science-upload-preview,science-spec-editor,science-run-progress,science-fields-heat-plate,science-area-map,science-network-graph,science-recipe-monitor,science-recipe-report,$(DOCS_SCIENCE_EXPLORER_SHOTS)
 
 .PHONY: docs-screenshots-science
-docs-screenshots-science: ## Recapture the science tutorial screenshots (E18, E51, E21 and a recipe) from a dev stack (see the script)
+docs-screenshots-science: ## Recapture the science tutorial screenshots (E18, E51, E21 and a recipe) and the Data Explorer on the raw exports from a dev stack (see the script)
 	node scripts/docs_screenshots_science.mjs .local/screenshots-science
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-science docs/assets/screenshots --max-kb 150 --only $(DOCS_SCIENCE_SHOTS)
 
