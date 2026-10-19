@@ -1639,11 +1639,16 @@ _node("model.summary", NodeKind.MODEL, _a(
     "several dims joined by ', '), at most 200 values; max_rhat and min_ess check all the "
     "values (up to 20 000). Read the values with "
     "nodes.<id>.params['beta[north]'].hdi_low. n_divergent is null when the model stores no "
-    "sample_stats.",
+    "sample_stats. focus names one value (beta[north], or only north when one selected "
+    "variable has that label), so a condition can read nodes.<id>.focus.excludes_zero when "
+    "the label comes from a workflow parameter.",
     refs=[("Vehtari, Gelman, Simpson, Carpenter & Bürkner (2021), Rank-normalization, "
            "folding, and localization: an improved R-hat", None)],
 ), params={"vars": _vars("The posterior variables (default: all of them)"),
-           "hdi_prob": _num("The probability inside the HDI", 0.94, 0.5, 0.999)},
+           "hdi_prob": _num("The probability inside the HDI", 0.94, 0.5, 0.999),
+           "focus": {"type": "string", "maxLength": 300,
+                     "description": "One value to give in the result field focus: its "
+                     "name in the table (beta[north]) or only its label (north)"}},
    inputs={"model": PortSpec(type=PortType.MODEL_VERSION)},
    outputs={"table": PortType.TABLE},
    fields={"params": _f("object", "For each parameter: mean, sd, hdi_low, hdi_high, rhat "
@@ -1656,7 +1661,10 @@ _node("model.summary", NodeKind.MODEL, _a(
            "n_divergent": _f("integer", "The number of divergent transitions (null if "
                                         "unknown)"),
            "n_params": _f("integer", "The number of summarised values"),
-           "truncated": _f("boolean", "True if the node kept only the first 200 values")},
+           "truncated": _f("boolean", "True if the node kept only the first 200 values"),
+           "focus": _f("object", "The value that focus names: name, mean, sd, hdi_low, "
+                                 "hdi_high, p_positive (the share of draws above zero) and "
+                                 "excludes_zero (null without focus)")},
    )  # fmt: skip
 
 _node("evaluate.ppc", NodeKind.EVALUATE, _a(

@@ -47,6 +47,7 @@ __all__ = [
     "MAX_SUMMARY_ENTRIES",
     "POSTERIOR_NODES",
     "convergence",
+    "focus_value",
     "posterior_summary",
     "ppc_checks",
     "pseudo_bma_weights",
@@ -214,6 +215,58 @@ def _posterior(mv: ModelValue, node: str) -> xr.Dataset:
     return post
 
 
+def focus_value(
+    posterior: xr.Dataset, names: Sequence[str] | None, focus: str, *, hdi_prob: float = 0.94
+) -> dict[str, JsonValue]:
+    """The summary of the one value ``focus`` names: an entry name (``beta[north]``, or a
+    scalar variable) or a label (``north``) that exactly one selected variable has, with
+    ``p_positive`` (the share of draws above zero) and ``excludes_zero``."""
+    wanted = list(names) if names else [str(v) for v in posterior.data_vars]
+    exact: list[tuple[str, np.ndarray]] = []
+    by_label: list[tuple[str, np.ndarray]] = []
+    seen: list[str] = []
+    for var in wanted:
+        if var not in posterior.data_vars:
+            continue
+        da = posterior[var]
+        if not set(_DRAW_DIMS) <= set(map(str, da.dims)) or not np.issubdtype(da.dtype, np.number):
+            continue
+        if da.size > MAX_CONVERGENCE_ENTRIES * da.sizes["chain"] * da.sizes["draw"]:
+            continue
+        for entry, x in _entries(var, da):
+            if len(seen) < 30:
+                seen.append(entry)
+            if entry == focus:
+                exact.append((entry, x))
+            elif entry.endswith(f"[{focus}]"):
+                by_label.append((entry, x))
+    found = exact or by_label
+    if len(found) != 1:
+        which = (
+            "no value" if not found else f"{len(found)} values ({', '.join(n for n, _ in found)})"
+        )
+        raise data_error(
+            f"focus {focus!r} matches {which}. Give one name of the table, for example: "
+            f"{', '.join(seen[:10])}"
+        )
+    name, x = found[0]
+    flat = x.ravel()
+    ok = flat[np.isfinite(flat)]
+    if ok.size == 0:
+        raise data_error(f"the value {name!r} has no finite draws")
+    lo, hi = _stats().hdi(ok, hdi_prob) if ok.size >= 2 else (ok[0], ok[0])
+    low, high = _num(float(lo)), _num(float(hi))
+    return {
+        "name": name,
+        "mean": _num(float(ok.mean())),
+        "sd": _num(float(ok.std(ddof=1))) if ok.size > 1 else None,
+        "hdi_low": low,
+        "hdi_high": high,
+        "p_positive": _num(float((ok > 0).mean())),
+        "excludes_zero": bool(low is not None and high is not None and (low > 0 or high < 0)),
+    }
+
+
 def _summary_node(ctx: NodeContext) -> NodeOutcome:
     mv = ctx.model("model")
     assert mv is not None
@@ -231,6 +284,12 @@ def _summary_node(ctx: NodeContext) -> NodeOutcome:
         rhats = [v["rhat"] for v in params.values() if v["rhat"] is not None]
         esss = [v["ess_bulk"] for v in params.values() if v["ess_bulk"] is not None]
         max_rhat, min_ess, complete = _max(rhats), _min(esss), True
+    raw_focus = ctx.params.get("focus")
+    focus = (
+        focus_value(post, names, raw_focus.strip(), hdi_prob=prob)
+        if isinstance(raw_focus, str) and raw_focus.strip()
+        else None
+    )
     n_div = _divergences(mv.bundle)
     cols = ["param", "mean", "sd", "hdi_low", "hdi_high", "rhat", "ess_bulk"]
     rows: list[dict[str, JsonValue]] = [{"param": k, **v} for k, v in params.items()]
@@ -266,6 +325,7 @@ def _summary_node(ctx: NodeContext) -> NodeOutcome:
         "hdi_prob": prob,
         "n_params": len(params),
         "truncated": truncated,
+        "focus": focus,
     }
     return NodeOutcome(
         result=result, outputs={"table": table.model_dump(mode="json")}, warnings_plain=warns
@@ -382,6 +442,10 @@ def _ppc_node(ctx: NodeContext) -> NodeOutcome:
     )
     pred = tree["predictions"].to_dataset()
     out_var, _, target = _target_names(bundle)
+    if out_var not in pred:
+        # the score names its outputs in the dataset's names: an output named like the
+        # canonical target it predicts (trait, bound to brain) comes back as brain
+        out_var = bundle.binding.to_dataset(out_var)
     if out_var not in pred or target not in mv.data:
         raise data_error(f"the predictions have no {out_var!r} for the target {target!r}")
     draws, observed = _draw_matrix(pred[out_var], mv.data[target], n_draws)

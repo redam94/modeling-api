@@ -208,6 +208,70 @@ def test_evaluate_ppc_refuses_models_without_draws() -> None:
     assert exc.value.code is ErrorCode.CAPABILITY_UNSUPPORTED
 
 
+def test_evaluate_ppc_finds_an_output_named_like_its_bound_target() -> None:
+    """Regression: the score names outputs in the dataset's names, so an output named like
+    the canonical target (y, bound to sales) comes back as sales. The node looked for y
+    and failed with "the predictions have no 'trait' for the target 'brain'".
+    sci.phylo_regression has such an output (trait, bound to brain)."""
+    pytest.importorskip("mapi_plugin_science")
+    from mapi_plugin_science.phylo_data import PHYLO_SCHEMA, phylo_dataset
+    from mapi_workflows.testing import test_registry
+
+    data = phylo_dataset(n_species=20, seed=4)  # 4 species have no brain value
+    data.attrs["mapi_schema"] = PHYLO_SCHEMA.model_dump_json(exclude_none=True)
+    reg = test_registry(science=True)
+    fit = run_node(
+        "model.fit",
+        {"model": "sci.phylo_regression@^1", "settings": {"kind": "iid"},
+         "fit": {"draws": 50, "tune": 50, "chains": 2, "seed": 1}},
+        data=data,
+        registry=reg,
+    )  # fmt: skip
+    mv = fit.outputs["model"]
+    assert isinstance(mv, ModelValue) and mv.bundle.binding.to_dataset("trait") == "brain"
+    out = run_node("evaluate.ppc", {"n_draws": 100}, model=mv, registry=reg)
+    assert set(out.result["p_values"]) == {"brain"}  # type: ignore[arg-type]
+    assert out.result["n_obs"] == 16
+
+
+def test_focus_value_reads_one_value_by_name_or_label() -> None:
+    from mapi_workflows.runtime.posterior import focus_value
+
+    rng = np.random.default_rng(1)
+    post = xr.Dataset(
+        {
+            "mu": (("chain", "draw"), rng.normal(size=(2, 200))),
+            "slope": (("chain", "draw", "predictor"), rng.normal(size=(2, 200, 2)) * 0.1
+                      + np.array([1.0, 0.0])),
+            "gamma": (("chain", "draw", "predictor"), rng.normal(size=(2, 200, 2))),
+        },
+        coords={"predictor": ["body", "group_size"]},
+    )  # fmt: skip
+    body = focus_value(post, ["slope"], "body", hdi_prob=0.9)
+    assert body["name"] == "slope[body]" and body["excludes_zero"] is True
+    assert body["p_positive"] == 1.0
+    assert body["hdi_low"] < body["mean"] < body["hdi_high"]  # type: ignore[operator]
+    flat = focus_value(post, ["slope"], "slope[group_size]")
+    assert flat["name"] == "slope[group_size]" and flat["excludes_zero"] is False
+    assert 0.2 < flat["p_positive"] < 0.8  # type: ignore[operator]
+    assert focus_value(post, None, "mu")["name"] == "mu"
+    # a label that two selected variables have is refused with the names to choose from
+    with pytest.raises(MapiError, match=r"2 values \(slope\[body\], gamma\[body\]\)"):
+        focus_value(post, None, "body")
+    with pytest.raises(MapiError, match="no value"):
+        focus_value(post, ["slope"], "brain")
+
+
+def test_model_summary_node_gives_the_focus_value() -> None:
+    mv = _fit(["x"]).outputs["model"]
+    out = run_node("model.summary", {"vars": ["beta", "sigma"], "focus": "0"}, model=mv)
+    focus = out.result["focus"]
+    assert isinstance(focus, dict) and focus["name"] == "beta[0]"
+    assert focus["excludes_zero"] is True and focus["p_positive"] == 1.0
+    assert focus["mean"] == pytest.approx(out.result["params"]["beta[0]"]["mean"])  # type: ignore[index,call-overload]
+    assert run_node("model.summary", {"vars": ["sigma"]}, model=mv).result["focus"] is None
+
+
 def test_model_fit_metrics_carry_pointwise_elpd() -> None:
     out = _fit(["x"])
     cand = MetricsPayload.model_validate(out.outputs["metrics"]).candidates[0]
