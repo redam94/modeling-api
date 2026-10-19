@@ -3,7 +3,7 @@
  * `fields.gen.json`): the statistic switch, the frame slider, the draw scrubber and the
  * keyboard readout. jsdom has no canvas, so the pixels themselves are tested in fields.test.ts.
  */
-import { screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +12,9 @@ import { EXTRA_MODEL_IDS } from "@/mocks/explore";
 import { createHandlers } from "@/mocks/handlers";
 import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
+
+import { FieldViewer } from "./field-viewer";
+import { scienceExample } from "./science-examples.test-helper";
 
 const server = setupServer(...createHandlers());
 beforeAll(() => {
@@ -58,5 +61,46 @@ describe("field viewer", () => {
     const vector = await screen.findByTestId("field-viewer");
     expect(within(vector).getByLabelText("Show the arrows")).toBeChecked();
     expect(within(vector).queryByRole("slider", { name: /period/ })).toBeNull();
+  });
+});
+
+describe("field viewer in data mode (images of the Data Explorer)", () => {
+  it("shows one statistic, the mask and a frame strip that follows the slider", async () => {
+    const img = scienceExample("images").fields[0]!;
+    render(<FieldViewer field={img} mode="data" mask={img.mask} maskLabel={img.mask_var} frameStats={img.frame_stats} />);
+    const viewer = screen.getByTestId("field-viewer");
+    // no statistic switch, no draws
+    expect(within(viewer).queryByRole("group", { name: "Statistic" })).toBeNull();
+    expect(within(viewer).queryByRole("button", { name: "Draws" })).toBeNull();
+    expect(within(viewer).getByText("The value of each cell in the data.")).toBeInTheDocument();
+    // the mask: drawn and switchable
+    expect(within(viewer).getByTestId("field-mask")).toBeInTheDocument();
+    const shade = within(viewer).getByLabelText("Shade the cells outside the mask (visible)");
+    expect(shade).toBeChecked();
+    // the strip marks the frame shown and moves with the slider
+    const strip = within(viewer).getByTestId("frame-strip");
+    const marker = () => within(strip).getByTestId("frame-strip-marker");
+    expect(marker()).toHaveAttribute("x1", "0");
+    const slider = within(viewer).getByRole("slider", { name: /quarter/ });
+    fireEvent.change(slider, { target: { value: "1" } });
+    expect(slider).toHaveAttribute("aria-valuetext", "quarter 2009-04-01");
+    expect(marker()).toHaveAttribute("x1", "400");
+    // the readout: "Value" and the mask of the cell (row 1, column 1 is outside the mask)
+    const map = within(viewer).getByRole("img", { name: /^Value of quakes/ });
+    map.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    const readout = within(viewer).getByTestId("field-readout");
+    expect(readout).toHaveTextContent("Value");
+    expect(readout).toHaveTextContent(/visible\s*outside/);
+    await userEvent.click(shade);
+    expect(shade).not.toBeChecked();
+  });
+
+  it("keeps the model mode unchanged when no mode is given", () => {
+    const img = scienceExample("images").fields[0]!;
+    render(<FieldViewer field={img} />);
+    expect(screen.getByRole("group", { name: "Statistic" })).toBeInTheDocument();
+    expect(screen.queryByTestId("field-mask")).toBeNull();
+    expect(screen.queryByTestId("frame-strip")).toBeNull();
   });
 });

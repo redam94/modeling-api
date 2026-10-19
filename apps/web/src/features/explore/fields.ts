@@ -235,3 +235,46 @@ export function cellAt(fx: number, fy: number, width: number, height: number, or
   const shown = Math.max(0, Math.min(height - 1, Math.floor(fy * height)));
   return { row: origin === "lower" ? height - 1 - shown : shown, col };
 }
+
+/** The most opacity of the mask shading (a cell that is never inside the mask). */
+export const MASK_ALPHA = 150;
+
+/**
+ * RGBA pixels of a mask overlay (data mode). The mask raster holds the share of frames in
+ * which each cell is inside the mask (0 or 1 without a frame dim): the cells outside it are
+ * shaded with a light/dark checker that shows on any colour map, more strongly the less often
+ * they are inside; cells always inside, and missing cells, stay transparent.
+ */
+export function paintMask(mask: ArrayLike<number>, width: number, height: number, origin: "upper" | "lower" = "upper"): Uint8ClampedArray<ArrayBuffer> {
+  const out = new Uint8ClampedArray(width * height * 4);
+  for (let r = 0; r < height; r++) {
+    const row = origin === "lower" ? height - 1 - r : r;
+    for (let c = 0; c < width; c++) {
+      const v = mask[r * width + c]!;
+      if (!Number.isFinite(v)) continue;
+      const alpha = Math.round(MASK_ALPHA * (1 - Math.max(0, Math.min(1, v))));
+      if (alpha === 0) continue;
+      const o = 4 * (row * width + c);
+      const light = (r + c) % 2 === 0 ? 255 : 0;
+      out[o] = light;
+      out[o + 1] = light;
+      out[o + 2] = light;
+      out[o + 3] = alpha;
+    }
+  }
+  return out;
+}
+
+/** "inside", "outside" or "inside in 40% of the frames" (the mask value of a cell). */
+export function maskWord(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  if (v >= 1) return "inside";
+  if (v <= 0) return "outside";
+  return `inside in ${Math.round(v * 100)}% of the frames`;
+}
+
+/** The index of a frame's label in the frame statistics (`-1` when it is not there). */
+export function frameStatIndex(coords: readonly unknown[], label: unknown): number {
+  const key = String(label);
+  return coords.findIndex((c) => String(c) === key);
+}

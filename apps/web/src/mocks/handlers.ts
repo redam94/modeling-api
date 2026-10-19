@@ -11,6 +11,7 @@ import { env } from "@/env";
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
 import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
+import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
@@ -150,6 +151,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createTenancyHandlers(state.tenancy),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
     ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
+    // v0.10: demo datasets of the Data Explorer on scientific data (the spec's example views).
+    ...createSciDemoHandlers({ artifacts: state.artifacts }),
     ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
     ...createGuidedHandlers(state),

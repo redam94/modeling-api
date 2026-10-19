@@ -1,5 +1,5 @@
 /**
- * The thirteen Data Explorer sections (M3.5), each rendered from its view: the plain reading
+ * The thirteen Data Explorer sections of M3.5, each rendered from its view: the plain reading
  * first, then pickers, an interactive plot (plot sandbox) and the statistics (open in Expert
  * mode, one click away in Guided mode).
  */
@@ -45,7 +45,8 @@ import type {
   TimeSeriesView,
   VifView,
 } from "./views";
-import { facetLabel, seriesLabel } from "./views";
+import { facetLabel, seriesLabel, type DataSection } from "./views";
+import { ShapeChips } from "./science-sections";
 
 interface P<V> {
   view: V;
@@ -54,9 +55,17 @@ interface P<V> {
 
 // ------------------------------------------------------------------------------ overview
 
-export function OverviewSection({ view, expert }: P<DataOverviewView>) {
+/** v0.10: what the explorer uses a variable for (data, geometry, mask, ...), when the view says. */
+function usedAs(v: object): string | null {
+  const u = (v as { used_as?: unknown }).used_as;
+  return typeof u === "string" ? u : null;
+}
+
+export function OverviewSection({ view, expert, onSection }: P<DataOverviewView> & { onSection?: (s: DataSection) => void }) {
   const score = qualityScoreReading(view.quality_score);
   const vars = view.vars ?? [];
+  const shapes = view.shapes ?? [];
+  const hasUsedAs = vars.some((v) => usedAs(v) !== null);
   const plot = useMemo(() => missingSharePlot(view.vars ?? []), [view.vars]);
   return (
     <>
@@ -64,6 +73,12 @@ export function OverviewSection({ view, expert }: P<DataOverviewView>) {
         <p>{view.summary_plain}</p>
         {score ? <p className="text-[13px] text-muted-foreground">{score.text}</p> : null}
       </PlainSummary>
+      {shapes.length ? (
+        <div className="grid gap-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Shapes in the data (select one to see it)</p>
+          <ShapeChips shapes={shapes} onSection={onSection} />
+        </div>
+      ) : null}
       <ViewNotes warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Dimensions and variables">
         <StatTable
@@ -85,6 +100,7 @@ export function OverviewSection({ view, expert }: P<DataOverviewView>) {
           columns={[
             { key: "name", header: "Variable", cell: (v) => <span className="font-mono text-xs">{v.name}</span> },
             { key: "role", header: "Role", cell: (v) => (v.role ? <Badge variant="outline">{v.role}</Badge> : "—") },
+            ...(hasUsedAs ? [{ key: "used_as", header: "Used as", cell: (v: (typeof vars)[number]) => (usedAs(v) && usedAs(v) !== "data" ? <Badge variant="secondary">{usedAs(v)}</Badge> : (usedAs(v) ?? "—")) }] : []),
             { key: "dims", header: "Dims", cell: (v) => <span className="font-mono text-xs text-muted-foreground">{(v.dims ?? []).join(" × ")}</span> },
             { key: "units", header: "Units", cell: (v) => v.units ?? "—" },
             { key: "missing", header: "Missing", numeric: true, cell: (v) => pct(v.missing_share ?? 0, 1) },
