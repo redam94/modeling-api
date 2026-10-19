@@ -535,11 +535,12 @@ def outlier_scores(x: Any, method: Literal["iqr", "mad", "zscore"] = "mad") -> n
     """A robust z-like score per value (NaN stays NaN): ``mad``: ``0.6745 (x - median) /
     MAD``; ``iqr``: ``(x - median) / (IQR / 1.349)``; ``zscore``: ``(x - mean) / sd``.
     Under a normal distribution all three are standard normal, so one threshold (3.5 by
-    default) means the same for each."""
+    default) means the same for each. A variable with two values or fewer (an indicator, the
+    ties of a network) has no unusual values: every score is NaN."""
     a = np.asarray(x, dtype=float).reshape(-1)
     y = a[np.isfinite(a)]
     out = np.full_like(a, np.nan)
-    if y.size < 3:
+    if y.size < 3 or np.unique(y).size <= 2:
         return out
     if method == "zscore":
         sd = float(y.std(ddof=1))

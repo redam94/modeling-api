@@ -246,7 +246,7 @@ describe("the Data Explorer on scientific data", () => {
     ["structure", "Variables and their dimensions"],
     ["images", null],
     ["profiles", "cells along position"],
-    ["map", "Map of cases"],
+    ["map", "Map of cases / expected"],
     ["network", "Ties of cowork"],
     ["tree", "Tree of node"],
     ["circular", "Rose of wind_from"],

@@ -36,6 +36,7 @@ import {
 } from "./plain";
 import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, missingSharePlot, stlPlot, xType } from "./plots";
 import { periodUnit } from "./sections-meta";
+import { count, num } from "./ui";
 import { DATA_SECTIONS, facetLabel, indexOrder, parseIndex, parseView, SCIENCE_SECTIONS, seriesLabel, skipReason, ViewFormatError, type SectionViews } from "./views";
 
 const ds = FIXTURE.dataset;
@@ -67,6 +68,14 @@ describe("views", () => {
     expect(periodUnit("W-SUN")).toBe("week");
     expect(periodUnit("MS")).toBe("month");
     expect(periodUnit(null)).toBe("period");
+  });
+});
+
+describe("number formats", () => {
+  it("shows every digit of a count (E81b: 10,292 photographs of the agouti, not 10,290)", () => {
+    expect(num(10_292)).toBe("10,290");
+    expect(count(10_292)).toBe("10,292");
+    expect(count(null)).toBe("—");
   });
 });
 
@@ -113,9 +122,17 @@ describe("plain readings (data)", () => {
   it("reads distributions, correlations, leads, stationarity, seasons and overlap", () => {
     const dist = view("distributions", ds.ingest.views.distributions);
     expect(distributionReading(dist.items![0]!).text).toMatch(/^Half of the values of revenue are between/);
+    // the ties of a network (E21 cowork) are 0 or 1: no quartiles, no tail
+    const ties = { var: "cowork", facet: {}, n: 5041, mean: 0.15, skew: 1.96, zero_share: 0.85, quantiles: { "0.25": 0, "0.5": 0, "0.75": 0 }, histogram: { edges: [0, 0.25, 0.5, 0.75, 1], counts: [4285, 0, 0, 756] } };
+    expect(distributionReading(ties as never)).toEqual({ text: "cowork has only the values 0 and 1. 15% of the values are 1.", tone: "neutral" });
+    expect(distributionReading({ ...ties, histogram: { edges: [0, 1, 2], counts: [10, 5] } }).text).toMatch(/^Half of the values/);
     const corr = view("correlation", ds.ingest.views.correlation);
     expect(correlationPairs(corr)[0]).toMatchObject({ a: "spend[social]", b: "price" });
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
+    // below 0.7: no warning, but the summary names the largest pair that the table calls "strongly" (E79)
+    const weak = { ...corr, vars: ["reference_dl", "pixel_window"], matrix: [[1, 0.658], [0.658, 1]], p_values: null } as never;
+    expect(correlationReading({ ...corr, vars: [], matrix: [] }).text).toBe("The data has no pair of numeric variables on the same dimensions to compare.");
+    expect(correlationReading(weak)).toEqual({ tone: "good", text: "No pair of variables has a correlation of 0.7 or more. The largest correlation is reference_dl and pixel_window (0.66). Thus, it is easy for a model to find the effect of each variable." });
     const ccf = view("ccf", ds.explore.views.ccf);
     expect(ccfReading(ccf).text).toContain("lead");
     // prewhitened by default (M3.5 review): the raw view's spurious "falls 7 weeks after" peak is gone

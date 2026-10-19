@@ -123,6 +123,11 @@ describe("images", () => {
     expect(fs.datasets.frames![1]).toMatchObject({ x: "2009-04-01", mean: 3, min: 1, max: 7 });
     const h = checked(countsHistogramPlot(e.histogram!, { title: "quakes", logCount: true }));
     expect(JSON.stringify(h.spec)).toContain("symlog");
+    const degree = checked(countsHistogramPlot({ edges: [1.5, 2.5, 3.5], counts: [2, 6] }, { title: "Degree" }));
+    expect((degree.spec.encoding as { x: { axis: unknown } }).x.axis).toEqual({ tickMinStep: 1, format: "d" });
+    expect((h.spec.encoding as { x: { axis?: unknown } }).x.axis).toBeUndefined();
+    const many = checked(countsHistogramPlot({ edges: [0, 1, 2], counts: [3_500_000, 12] }, { title: "frames", logCount: true }));
+    expect((many.spec.encoding as { y: { axis: { values: number[] } } }).y.axis.values).toEqual([0, 1, 10, 100, 1_000, 10_000, 100_000, 1_000_000]);
     // 5000 frames (the cap) fit the sandbox
     const n = 5000;
     const big = { coords: Array.from({ length: n }, (_, i) => i), mean: Array.from({ length: n }, () => 1), sd: [], min: [], max: [], missing_share: [] };
@@ -197,6 +202,14 @@ describe("network", () => {
     expect(links.datasets.nodes).toHaveLength(4);
     expect(links.datasets.edges).toHaveLength(4);
     expect(links.datasets.nodes![2]).toMatchObject({ label: "3", degree: 3, attr: 2 });
+    // a small network names its nodes; a large one does not
+    const marks = (p: SciPlot) => (p.spec.layer as { mark: { type: string } }[]).map((l) => l.mark.type);
+    expect(marks(links)).toEqual(["rule", "circle", "text"]);
+    // the integer office codes are groups: one colour for each office
+    const color = (p: SciPlot) => ((p.spec.layer as { encoding: { color?: { type: string } } }[])[1]!.encoding.color);
+    expect(color(links)).toMatchObject({ type: "nominal" });
+    const years = { ...e, node_attrs: { years: e.labels.map((_, i) => i + 0.5) } } as NetworkEntry;
+    expect(color(checked(nodeLinkPlot(years, "years")))).toMatchObject({ type: "quantitative" });
     expect(networkMatrixPlot({ ...e, matrix: null })).toBeNull();
   });
 
@@ -219,6 +232,7 @@ describe("network", () => {
       degree: Array.from({ length: n }, () => 10),
     };
     expect(checked(nodeLinkPlot(big)).datasets.edges).toHaveLength(3000);
+    expect((checked(nodeLinkPlot(big)).spec.layer as { mark: { type: string } }[]).map((l) => l.mark.type)).toEqual(["rule", "circle"]);
   });
 });
 
@@ -234,6 +248,11 @@ describe("tree", () => {
     expect(p.datasets.trait_1).toHaveLength(2);
     expect(p.datasets.trait_0![0]).toMatchObject({ label: "Homo_sapiens", value: 1350 });
     expect(p.spec.hconcat).toHaveLength(3);
+    // a positive trait over two orders of magnitude goes on a log axis
+    const wide = { ...v, traits: [{ var: "body", units: "g", values: [100, 5_000, 100_000] }] } as TreeView;
+    const strip = (checked(dendrogramPlot(wide, ["body"])).spec.hconcat as { encoding: { x: { scale: unknown; title: string } } }[])[1]!;
+    expect(strip.encoding.x).toMatchObject({ scale: { type: "log" }, title: "body (g), log", axis: { tickCount: 3, grid: false } });
+    expect((p.spec.hconcat as { encoding: { x: { scale: unknown } } }[])[1]!.encoding.x.scale).toEqual({ zero: false });
     // without `tips`: the tips in layout order
     const noTips = { ...v, tips: [] } as TreeView;
     expect(tipOrder(noTips)).toEqual([0, 1, 2]);

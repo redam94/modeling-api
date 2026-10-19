@@ -201,6 +201,26 @@ def test_dataset_summaries_come_from_metadata() -> None:
     assert bare.summary_generated == "Data, with 1 measure: x."
 
 
+def test_dataset_summaries_count_a_pair_of_dims_once() -> None:
+    """A network or a neighbour matrix is on (X, X_): X_ holds the same items, not a group."""
+    districts = [f"d{i}" for i in range(56)]
+    summary = DataSummary(
+        vars=["cases", "adjacency"],
+        coords={"district": CoordSummary(kind="categorical", size=56, values=districts),
+                "district_": CoordSummary(kind="categorical", size=56, values=districts)},
+    )  # fmt: skip
+    about = describe_dataset(None, summary)
+    assert about.summary_generated.startswith("Data for 56 districts, with 2 measures")
+    assert about.highlights == ["56 districts"]
+    species = DataSummary(
+        vars=["brain"],
+        coords={"species": CoordSummary(kind="categorical", size=186)},
+    )
+    assert describe_dataset(None, species).summary_generated == (
+        "Data for 186 species, with 1 measure: brain."
+    )
+
+
 def test_dataset_summaries_show_dates_without_midnight_times() -> None:
     """Ingest summarises datetime coordinates as ISO timestamps; the plain summary shows the
     date alone when the time is midnight (and keeps other times)."""

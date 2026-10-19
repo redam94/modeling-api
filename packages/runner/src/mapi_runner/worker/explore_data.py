@@ -181,6 +181,13 @@ class DataContext:
             self.time_dim == self.req.time_dim or self.shapes.time_dim == self.time_dim
         )
 
+    @property
+    def curve_vars(self) -> frozenset[str]:
+        """Variables of a profile or a spectrum (E79 ``reference_dl`` along ``multipole``):
+        each value is a point of a curve, not a sample, so a value far from the median (the
+        peak of a spectrum) is not an unusual value."""
+        return frozenset(v for shape in self.shapes.of("profile") for v in shape.vars)
+
     def reduced_dims(self) -> set[str]:
         """Dims that are reduced in a series (pixels, positions, observation ids)."""
         if self.shapes.plain:
@@ -488,7 +495,7 @@ def overview(c: DataContext) -> DataOverviewView:
         if main:
             shapes_txt = f"It holds {_shapes_phrase(ds, main)}. "
     summary = (
-        f"{len(var_rows)} variables over {shape}{period_txt}. "
+        f"{len(var_rows)} variable{'' if len(var_rows) == 1 else 's'} over {shape}{period_txt}. "
         + shapes_txt
         + (
             f"The result to explain is {c.kpi!r}. "
@@ -698,6 +705,8 @@ def outliers(c: DataContext) -> OutliersView:
     thr = c.req.outlier_threshold
     items: list[VarOutliers] = []
     for var in c.vars:
+        if var in c.curve_vars:
+            continue
         da = c.ds[var]
         a = np.asarray(da.values, dtype=float)
         scores = stats.outlier_scores(a, method)
@@ -1227,7 +1236,7 @@ def quality_warnings(
                     var=var,
                 )
             )
-        if fin.size >= 10:
+        if fin.size >= 10 and var not in c.curve_vars:
             s = stats.outlier_scores(fin, "mad")
             share = float(np.mean(np.abs(s[np.isfinite(s)]) > 5.0)) if np.isfinite(s).any() else 0.0
             if share > 0.01:

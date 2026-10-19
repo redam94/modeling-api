@@ -164,17 +164,33 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
   // show under its fields.
   const sharedProblems = placementProblems.filter((p) => p.index === null).map((p) => p.message);
 
-  /** Create the upload session of a file and put its bytes (once). */
-  const ensureUploaded = async (s: Source, index: number): Promise<string> => {
-    if (s.upload?.done) return s.upload.session.id;
-    const session =
-      s.upload?.session ??
-      (await createUpload(datasetId, { filename: cleanName(s.file.name), content_type: s.file.type || "application/octet-stream", size_bytes: s.file.size }));
-    patch(s.key, { upload: { session, done: false } });
-    setProgress({ index, p: null });
-    await putToSignedUrl(session, s.file, (p) => setProgress({ index, p }));
-    patch(s.key, { upload: { session, done: true } });
-    return session.id;
+  /**
+   * Create the upload session of a file and put its bytes (once). A second call while the
+   * bytes are on the way (Upload and ingest during Preview structure) waits for the same PUT:
+   * a second PUT to the session's URL fails with HTTP 412.
+   */
+  const inFlight = useRef(new Map<string, Promise<string>>());
+  const ensureUploaded = (s: Source, index: number): Promise<string> => {
+    if (s.upload?.done) return Promise.resolve(s.upload.session.id);
+    const pending = inFlight.current.get(s.key);
+    if (pending) return pending;
+    const put = (async () => {
+      const session =
+        s.upload?.session ??
+        (await createUpload(datasetId, { filename: cleanName(s.file.name), content_type: s.file.type || "application/octet-stream", size_bytes: s.file.size }));
+      patch(s.key, { upload: { session, done: false } });
+      setProgress({ index, p: null });
+      await putToSignedUrl(session, s.file, (p) => setProgress({ index, p }));
+      patch(s.key, { upload: { session, done: true } });
+      return session.id;
+    })();
+    inFlight.current.set(s.key, put);
+    // a failed PUT can be tried again
+    put.then(
+      () => undefined,
+      () => inFlight.current.delete(s.key),
+    );
+    return put;
   };
 
   const inspect = async (s: Source, index: number) => {

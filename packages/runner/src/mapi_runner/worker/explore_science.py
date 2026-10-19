@@ -153,6 +153,22 @@ def _histogram(values: np.ndarray, bins: int = _HIST_BINS) -> Histogram | None:
     return Histogram(edges=[float(e) for e in edges], counts=[int(k) for k in counts])
 
 
+def _count_histogram(values: np.ndarray) -> Histogram | None:
+    """A histogram of counts (the degree of the nodes of a binary network): one bar for each
+    integer, centred on it (edges at the halves), when there are at most 50 integers. Equal
+    bins of the range put two counts in one bar and none in the next (E19: degree 2 to 7)."""
+    y = np.asarray(values, dtype=float)
+    y = y[np.isfinite(y)]
+    if y.size == 0 or not np.all(y == np.round(y)):
+        return _histogram(y, bins=min(20, max(1, len(np.unique(y)))))
+    lo, hi = int(y.min()), int(y.max())
+    if hi - lo > 50:
+        return _histogram(y, bins=20)
+    edges = np.arange(lo - 0.5, hi + 1.0, 1.0)
+    counts, edges = np.histogram(y, bins=edges)
+    return Histogram(edges=[float(e) for e in edges], counts=[int(k) for k in counts])
+
+
 def _units(c: DataContext, var: str) -> str | None:
     spec = c.schema.vars.get(var) if c.schema is not None else None
     units = (spec.units if spec is not None else None) or c.ds[var].attrs.get("units")
@@ -916,7 +932,7 @@ def _network_entry(
         omitted_edges=max(0, int(ii.size) - len(edges)),
         threshold=threshold,
         degree=[float(degree_all[i]) for i in shown],
-        degree_hist=_histogram(degree_all, bins=min(20, max(1, len(np.unique(degree_all))))),
+        degree_hist=_count_histogram(degree_all),
         density=fv(min(1.0, density)) if density is not None else None,
         transitivity=fv(min(1.0, transitivity)) if transitivity is not None else None,
         reciprocity=fv(recip) if recip is not None else None,

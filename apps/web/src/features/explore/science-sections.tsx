@@ -34,7 +34,7 @@ import {
 } from "./science-plots";
 import { DATA_SECTION_META } from "./sections-meta";
 import { shapeSection, shapeWord } from "./shapes";
-import { num, pct, Picker, PlainSummary, pValue, Statistics, StatTable, ViewNotes } from "./ui";
+import { count, num, pct, Picker, PlainSummary, pValue, Statistics, StatTable, ViewNotes } from "./ui";
 import {
   seriesLabel,
   type CircularView,
@@ -303,7 +303,8 @@ export function ProfilesSection({ view, expert }: P<ProfilesView>) {
 
 export function MapSection({ view, expert }: P<MapView>) {
   const layers = useMemo(() => view.layers ?? [], [view.layers]);
-  const [layer, setLayer] = useState(0);
+  // a ratio (target / exposure, E18 cases / expected) first: the raw counts mostly show the population
+  const [layer, setLayer] = useState(() => Math.max(0, layers.findIndex((x) => (x.derived_from?.length ?? 0) > 0)));
   const [frame, setFrame] = useState(0);
   const [edges, setEdges] = useState(false);
   const l = layers[layer] ?? layers[0];
@@ -411,7 +412,7 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
         {degree ? <SciPlotView plot={degree} title={`Degree distribution of ${e.var}`} height={220} /> : null}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Network statistics">
           <dt className="text-muted-foreground">Nodes</dt>
-          <dd className="tabular">{num(e.n_nodes)}</dd>
+          <dd className="tabular">{count(e.n_nodes)}</dd>
           <dt className="text-muted-foreground">Ties</dt>
           <dd className="tabular">{num((e.edges ?? []).length + (e.omitted_edges ?? 0))}</dd>
           <dt className="text-muted-foreground">Kind</dt>
@@ -478,9 +479,9 @@ export function TreeSection({ view, expert }: P<TreeView>) {
       <Statistics expert={expert}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Tree statistics">
           <dt className="text-muted-foreground">Nodes</dt>
-          <dd className="tabular">{num(view.n_nodes)}</dd>
+          <dd className="tabular">{count(view.n_nodes)}</dd>
           <dt className="text-muted-foreground">Tips</dt>
-          <dd className="tabular">{num(view.n_tips)}</dd>
+          <dd className="tabular">{count(view.n_tips)}</dd>
           <dt className="text-muted-foreground">Roots</dt>
           <dd className="tabular">{num(view.roots?.length)}</dd>
           <dt className="text-muted-foreground">Depth</dt>
@@ -537,7 +538,7 @@ export function CircularSection({ view, expert }: P<CircularView>) {
           rowKey={(g, i) => `${str(g.label)}-${i}`}
           columns={[
             { key: "g", header: e.group_by ?? "Group", cell: (g) => str(g.label ?? "all") },
-            { key: "n", header: "n", numeric: true, cell: (g) => num(g.n) },
+            { key: "n", header: "n", numeric: true, cell: (g) => count(g.n) },
             { key: "mean", header: "Mean direction", numeric: true, cell: (g) => circularMean(e, g) ?? "—" },
             { key: "r", header: "R", numeric: true, cell: (g) => num(g.resultant_length, 3) },
             { key: "sd", header: "Circular sd", numeric: true, cell: (g) => num(g.circular_sd, 3) },
@@ -596,12 +597,12 @@ export function PointsSection({ view, expert }: P<PointsView>) {
       ) : null}
       <PlainSummary tone={reading.tone}>{reading.text}</PlainSummary>
       <SciPlotView plot={plot} title={`${view.point_dim}: ${colourLabel(colour, view)}`} height={view.lattice ? 300 : 400} />
-      {density ? <SciPlotView plot={density} title={`Density of all ${num(view.n)} points`} height={340} /> : null}
+      {density ? <SciPlotView plot={density} title={`Density of all ${count(view.n)} points`} height={340} /> : null}
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Point statistics">
           <dt className="text-muted-foreground">Points</dt>
-          <dd className="tabular">{num(view.n)}</dd>
+          <dd className="tabular">{count(view.n)}</dd>
           <dt className="text-muted-foreground">Position</dt>
           <dd className="font-mono text-xs">
             {view.x}, {view.y}
@@ -624,7 +625,7 @@ export function PointsSection({ view, expert }: P<PointsView>) {
             maxHeight="18rem"
             columns={[
               { key: "t", header: view.answers.var, cell: (r) => r.t },
-              { key: "n", header: "Points where it is the most frequent answer", numeric: true, cell: (r) => num(r.n) },
+              { key: "n", header: "Points where it is the most frequent answer", numeric: true, cell: (r) => count(r.n) },
             ]}
           />
         ) : null}

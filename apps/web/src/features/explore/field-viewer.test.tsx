@@ -14,6 +14,7 @@ import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
 
 import { FieldViewer } from "./field-viewer";
+import { encodeRaster } from "./fields";
 import { scienceExample } from "./science-examples.test-helper";
 
 const server = setupServer(...createHandlers());
@@ -94,6 +95,25 @@ describe("field viewer in data mode (images of the Data Explorer)", () => {
     expect(readout).toHaveTextContent(/visible\s*outside/);
     await userEvent.click(shade);
     expect(shade).not.toBeChecked();
+  });
+
+  it("gives the colours to 98% of the values when a few cells are much brighter (E58 camera frames)", async () => {
+    const img = scienceExample("images").fields[0]!;
+    // a 20 x 20 frame with one bright cell
+    const spots = Array.from({ length: 400 }, (_, i) => (i === 0 ? 40_000 : 1000 + (i % 7)));
+    const bright = { ...img, width: 20, height: 20, frames: [{ ...img.frames[0]!, mean: encodeRaster(spots) }] };
+    render(<FieldViewer field={bright} mode="data" />);
+    const full = screen.getByLabelText("Colours for the full range");
+    expect(full).not.toBeChecked();
+    const bar = screen.getByRole("figure", { name: /^Colour scale/ });
+    expect(bar).toHaveTextContent("98% of the values");
+    expect(bar).not.toHaveTextContent("40,000");
+    await userEvent.click(full);
+    expect(screen.getByRole("figure", { name: /^Colour scale/ })).toHaveTextContent("40,000");
+    // the image of the fixture has no such cells: no check box
+    render(<FieldViewer field={img} mode="data" />);
+    expect(screen.getAllByTestId("field-viewer")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Colours for the full range")).toHaveLength(1);
   });
 
   it("keeps the model mode unchanged when no mode is given", () => {

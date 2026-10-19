@@ -158,9 +158,19 @@ export function frameStatsPlot(fs: FrameStats, opts: { frameDim: string; title: 
 /** A histogram of precomputed bins, with a log count axis when the counts are skewed. */
 export function countsHistogramPlot(h: Histogram, opts: { title: string; logCount?: boolean }): SciPlot {
   const p = histogramPlot(h, { title: opts.title });
+  // one bar for each integer (edges at the halves, the degree of a network): integer ticks
+  if (h.edges.length > 1 && h.edges.every((e) => Math.abs(e - Math.round(e) - 0.5) < 1e-9 || Math.abs(e - Math.round(e) + 0.5) < 1e-9)) {
+    const enc = (p.spec.encoding ?? {}) as JsonObject;
+    enc.x = { ...(enc.x as JsonObject), axis: { tickMinStep: 1, format: "d" } };
+    p.spec.encoding = enc;
+  }
   if (opts.logCount) {
     const enc = (p.spec.encoding ?? {}) as JsonObject;
-    enc.y = { field: "count", type: "quantitative", title: "Count (log scale)", scale: { type: "symlog" } };
+    // ticks at the powers of ten: the default ticks of a symlog axis crowd at the top
+    const top = Math.max(1, ...h.counts);
+    const values = [0];
+    for (let t = 1; t <= top; t *= 10) values.push(t);
+    enc.y = { field: "count", type: "quantitative", title: "Count (log scale)", scale: { type: "symlog" }, axis: { values, format: ",d" } };
     p.spec.encoding = enc;
   }
   return vl(p);
@@ -378,7 +388,10 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
     if (!finite(xs[e.i]) || !finite(ys[e.i]) || !finite(xs[e.j]) || !finite(ys[e.j])) continue;
     edges.push({ x: xs[e.i]!, y: ys[e.i]!, x2: xs[e.j]!, y2: ys[e.j]!, w: finite(e.w) ? e.w : 1, sign: finite(e.w) && e.w < 0 ? "negative" : "positive" });
   }
-  const numericAttr = attrValues ? attrValues.every((v) => v === null || finite(v)) : false;
+  // an integer code with few values (E21 office 1, 2, 3) is a group, not a quantity
+  const codes = attrValues ? new Set(attrValues.filter((v) => v !== null)) : new Set();
+  const groupCodes = attrValues ? attrValues.every((v) => v === null || (finite(v) && Number.isInteger(v))) && codes.size <= 12 : false;
+  const numericAttr = attrValues ? attrValues.every((v) => v === null || finite(v)) && !groupCodes : false;
   const axis = { field: "x", type: "quantitative", axis: null, scale: { zero: false, nice: false } };
   const yaxis = { field: "y", type: "quantitative", axis: null, scale: { zero: false, nice: false } };
   const layers: JsonObject[] = [];
@@ -411,8 +424,15 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
       ],
     },
   });
+  // the names of the nodes of a small network (E19: the 11 proteins); a large one keeps them in the tooltip
+  if (nodes.length <= NODE_LABELS_MAX) {
+    layers.push({ data: { name: "nodes" }, mark: { type: "text", dy: -11, fontSize: 11 }, encoding: { x: axis, y: yaxis, text: { field: "label", type: "nominal" } } });
+  }
   return { kind: "vega-lite", datasets: { nodes, ...(edges.length ? { edges } : {}) }, spec: { height: 440, layer: layers } };
 }
+
+/** The node-link drawing names the nodes when there are this many or fewer. */
+export const NODE_LABELS_MAX = 40;
 
 // ------------------------------------------------------------------------------ tree
 
@@ -474,14 +494,19 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
     if (!rows.length) continue;
     const ds = `trait_${strips.length}`;
     datasets[ds] = rows.slice(0, MAX_SANDBOX_ROWS);
-    const title = t.units ? `${t.var} (${t.units})` : t.var;
+    // a positive trait over two orders of magnitude or more (E23 body mass: 100 g to 100 kg) on a log axis
+    const vals = rows.map((r) => r.value as number);
+    const lo = Math.min(...vals);
+    const log = lo > 0 && Math.max(...vals) / lo >= 100;
+    const title = `${t.units ? `${t.var} (${t.units})` : t.var}${log ? ", log" : ""}`;
     strips.push({
       width: 120,
       height,
       data: { name: ds },
       mark: { type: "circle", size: 36, opacity: 0.9 },
       encoding: {
-        x: { field: "value", type: "quantitative", title, scale: { zero: false } },
+        // a narrow strip: few ticks (a log axis labels every power of ten and its multiples otherwise)
+        x: { field: "value", type: "quantitative", title, scale: log ? { type: "log" } : { zero: false }, axis: log ? { tickCount: 3, format: "~s", grid: false } : { tickCount: 3 } },
         y: yEnc,
         tooltip: [{ field: "label", title: view.tip_dim ?? "Tip" }, { field: "value", title, format: ",.4~g" }],
       },

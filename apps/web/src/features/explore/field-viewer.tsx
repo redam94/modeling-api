@@ -16,7 +16,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type P
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, type ColorScale, type FieldStat } from "./fields";
+import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, ROBUST_FACTOR, robustRange, type ColorScale, type FieldStat } from "./fields";
 import { num } from "./ui";
 import type { FieldArrows, FieldEntry, FieldRaster, FrameStats } from "./views";
 
@@ -95,7 +95,7 @@ function Arrows({ arrows, width, height, origin }: { arrows: FieldArrows; width:
   );
 }
 
-function ColorBar({ scale, units, title }: { scale: ColorScale; units?: string | null | undefined; title: string }) {
+function ColorBar({ scale, units, title, clipped = false }: { scale: ColorScale; units?: string | null | undefined; title: string; clipped?: boolean }) {
   const ticks = colorTicks(scale);
   return (
     <figure className="grid gap-1" aria-label={`Colour scale: ${title}`}>
@@ -109,6 +109,7 @@ function ColorBar({ scale, units, title }: { scale: ColorScale; units?: string |
         {title}
         {units ? ` (${units})` : ""}
         {scale.log ? ", log scale" : ""}
+        {clipped ? ". The colours cover 98% of the values. The lowest 1% and the highest 1% show the colours at the two ends." : ""}
       </figcaption>
     </figure>
   );
@@ -199,6 +200,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
   const [arrowsOn, setArrowsOn] = useState(true);
   const [cell, setCell] = useState<{ row: number; col: number } | null>(null);
   const [maskOn, setMaskOn] = useState(true);
+  const [fullRange, setFullRange] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const maskCanvas = useRef<HTMLCanvasElement>(null);
 
@@ -223,7 +225,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
   const shown = values(frame, current, draw);
 
   // One colour scale per statistic group, shared by every frame and draw.
-  const scale = useMemo((): ColorScale | null => {
+  const fullScale = useMemo((): ColorScale | null => {
     if (current === "ratio") {
       const r = displayRange([frameValues(field, fr, "ratio")], false, colormap);
       return r ? { lo: r[0], hi: r[1], log: false, colormap } : null;
@@ -236,6 +238,15 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
     const r = rasterRange(group, enc, log, colormap);
     return r ? { lo: r[0], hi: r[1], log, colormap } : null;
   }, [current, field, fr, frames, enc, log, colormap]);
+  // Data mode: the 1% to 99% range of the values of every frame when the full range is much
+  // wider (a few bright cells); a check box shows the full range.
+  const robust = useMemo((): ColorScale | null => {
+    if (!data || !fullScale) return null;
+    const r = robustRange(frames.map((f) => frameValues(field, f, "mean")), log, colormap);
+    if (!r || fullScale.hi - fullScale.lo <= ROBUST_FACTOR * (r[1] - r[0])) return null;
+    return { ...fullScale, lo: r[0], hi: r[1] };
+  }, [data, fullScale, frames, field, log, colormap]);
+  const scale = robust && !fullRange ? robust : fullScale;
 
   useEffect(() => {
     const el = canvas.current;
@@ -326,6 +337,12 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
             Show the arrows
           </label>
         ) : null}
+        {robust ? (
+          <label className="flex items-center gap-2 pb-1 text-[13px]">
+            <input type="checkbox" className="accent-primary" checked={fullRange} onChange={(e) => setFullRange(e.target.checked)} />
+            Colours for the full range
+          </label>
+        ) : null}
         {maskValues ? (
           <label className="flex items-center gap-2 pb-1 text-[13px]">
             <input type="checkbox" className="accent-primary" checked={maskOn} onChange={(e) => setMaskOn(e.target.checked)} />
@@ -404,7 +421,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
               </svg>
             ) : null}
           </div>
-          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
+          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
         </div>
         <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-[13px]" aria-live="polite" data-testid="field-readout">
           {cell ? (

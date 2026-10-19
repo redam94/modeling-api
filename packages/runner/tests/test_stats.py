@@ -184,6 +184,17 @@ def test_outlier_scores_agree_under_normality_and_flag_spikes() -> None:
         assert np.mean(np.abs(s) > 3.5) < 0.005
 
 
+def test_outlier_scores_ignore_binary_variables() -> None:
+    """The ties of a network (E21 cowork: 85 % zeros, 15 % ones) are not unusual values."""
+    ties = np.zeros(5041)
+    ties[:756] = 1.0
+    ties[5] = np.nan
+    for method in ("mad", "iqr", "zscore"):
+        assert np.isnan(stats.outlier_scores(ties, method)).all()  # type: ignore[arg-type]
+    three = np.r_[np.zeros(100), 1.0, 9.0]
+    assert np.isfinite(stats.outlier_scores(three, "mad")).any()
+
+
 def test_block_permutation_is_a_permutation_that_keeps_blocks() -> None:
     rng = np.random.default_rng(13)
     perm = stats.block_permutation(103, 10, rng)

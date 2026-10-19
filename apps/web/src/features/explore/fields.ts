@@ -180,6 +180,41 @@ export function displayRange(arrays: readonly (ArrayLike<number> | null)[], log:
 }
 
 /**
+ * A robust display range: the `q` and `1 - q` quantiles of the display values (a sample of at
+ * most `maxSamples` values). A few bright cells (a molecule that blinks in a camera frame)
+ * then do not make the rest of the image one dark colour. `null` when the quantiles are equal.
+ */
+export function robustRange(arrays: readonly (ArrayLike<number> | null)[], log: boolean, colormap: ColormapName, q = 0.01, maxSamples = 200_000): [number, number] | null {
+  const total = arrays.reduce((n, a) => n + (a?.length ?? 0), 0);
+  const stride = Math.max(1, Math.ceil(total / maxSamples));
+  const sample: number[] = [];
+  let k = 0;
+  for (const a of arrays) {
+    if (!a) continue;
+    for (let i = 0; i < a.length; i++, k++) {
+      if (k % stride) continue;
+      const d = toDisplay(a[i]!, log);
+      if (Number.isFinite(d)) sample.push(d);
+    }
+  }
+  if (sample.length < 2) return null;
+  sample.sort((x, y) => x - y);
+  const at = (p: number) => sample[Math.min(sample.length - 1, Math.max(0, Math.round(p * (sample.length - 1))))]!;
+  let lo = at(q);
+  let hi = at(1 - q);
+  if (!(hi > lo)) return null;
+  if (colormap === "diverging" && !log && lo < 0 && hi > 0) {
+    const m = Math.max(-lo, hi);
+    lo = -m;
+    hi = m;
+  }
+  return [lo, hi];
+}
+
+/** Use the robust range when the full range is more than `factor` times as wide. */
+export const ROBUST_FACTOR = 3;
+
+/**
  * The display range of the rasters of a statistic group from their `lo`/`hi` only (no
  * decoding): every frame and draw share one scale, so colours compare across them.
  */

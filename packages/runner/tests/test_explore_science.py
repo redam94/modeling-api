@@ -348,6 +348,27 @@ def test_profiles_thin_frames_and_find_peaks() -> None:
     assert len(it.frames) == MAX_PROFILE_FRAMES and it.omitted_frames == 40 and it.log_x
 
 
+def test_a_spectrum_has_no_unusual_values() -> None:
+    """The points of a curve (E79 the power spectrum along the multipole) are not samples: the
+    peak is not an unusual value, in the section and in the quality check. The image keeps
+    its check."""
+    ds, schema = case_data("e79")
+    c = data_context(ds, schema)
+    assert "reference_dl" in c.curve_vars and "temperature" not in c.curve_vars
+    out = DATA_SECTION_FUNCS["outliers"](c)
+    assert "reference_dl" not in {i.var for i in out.items}  # type: ignore[attr-defined]
+    assert "temperature" in {i.var for i in out.items}  # type: ignore[attr-defined]
+    quality = DATA_SECTION_FUNCS["quality"](c)
+    assert not [w for w in quality.items if w.code == "OUTLIERS" and w.var == "reference_dl"]  # type: ignore[attr-defined]
+
+
+def test_the_overview_counts_one_variable_in_the_singular() -> None:
+    """E80 node /psf holds one image: "1 variable over 31 psf_row x 31 psf_col"."""
+    psf = xr.Dataset({"kernel": (("psf_row", "psf_col"), np.ones((31, 31)))})
+    v = DATA_SECTION_FUNCS["overview"](data_context(psf, None))
+    assert v.summary_plain.startswith("1 variable over 31 psf_row x 31 psf_col.")  # type: ignore[attr-defined]
+
+
 def test_the_map_has_rings_layers_neighbours_and_moran() -> None:
     ds, schema = case_data("e18")
     v = DATA_SECTION_FUNCS["map"](data_context(ds, schema))
@@ -412,6 +433,8 @@ def test_transitivity_density_and_homophily_by_hand() -> None:
     assert e.components.count == 1 and not e.directed
     (h,) = e.homophily
     assert h.within_share == pytest.approx(0.5) and h.expected_share == pytest.approx(4 / 12)
+    # one bar for each degree, centred on it: 1, 2 (two nodes) and 3
+    assert e.degree_hist.edges == [0.5, 1.5, 2.5, 3.5] and e.degree_hist.counts == [1, 2, 1]
 
 
 def test_the_tree_layout_traits_and_signal() -> None:

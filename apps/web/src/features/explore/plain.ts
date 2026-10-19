@@ -81,7 +81,19 @@ function q(item: VarDistribution, key: number): number | null {
   return null;
 }
 
+/** A variable with only the values 0 and 1 (an indicator, the ties of a network): its histogram has no values between. */
+function isBinary(item: VarDistribution): boolean {
+  const h = item.histogram;
+  if (!h || item.mean == null || item.mean < 0 || item.mean > 1) return false;
+  const lo = h.edges[0]!;
+  const hi = h.edges[h.edges.length - 1]!;
+  if (lo < 0 || hi > 1) return false;
+  // every count is in the first or the last bin
+  return h.counts.every((n, i) => n === 0 || i === 0 || i === h.counts.length - 1);
+}
+
 export function distributionReading(item: VarDistribution): Reading {
+  if (isBinary(item)) return { text: `${item.var} has only the values 0 and 1. ${pct(item.mean)} of the values are 1.`, tone: "neutral" };
   const parts: string[] = [];
   const lo = q(item, 0.25);
   const mid = q(item, 0.5);
@@ -90,7 +102,7 @@ export function distributionReading(item: VarDistribution): Reading {
   else if (item.mean != null) parts.push(`The mean of ${item.var} is ${num(item.mean, 3)}.`);
   let tone: Tone = "neutral";
   if (item.zero_share != null && item.zero_share >= 0.2) {
-    parts.push(`${pct(item.zero_share)} of the values are zero. This is usual for spend that starts and stops.`);
+    parts.push(`${pct(item.zero_share)} of the values are zero. This is usual for spend that starts and stops, and for counts of rare events.`);
     tone = "warn";
   }
   if (item.skew != null && Math.abs(item.skew) >= 1) {
@@ -149,8 +161,15 @@ export function strengthWord(r: number): string {
 }
 
 export function correlationReading(v: CorrelationView): Reading {
-  const strong = correlationPairs(v).filter((p) => Math.abs(p.r) >= 0.7);
-  if (!strong.length) return { text: "No two variables change closely together. Thus, it is easy for a model to find the effect of each variable.", tone: "good" };
+  const pairs = correlationPairs(v);
+  if (!pairs.length) return { text: "The data has no pair of numeric variables on the same dimensions to compare.", tone: "neutral" };
+  const strong = pairs.filter((p) => Math.abs(p.r) >= 0.7);
+  if (!strong.length) {
+    // the table calls 0.6 "strongly": name the largest pair so the summary agrees with it
+    const first = pairs[0];
+    const largest = first && Math.abs(first.r) >= 0.4 ? ` The largest correlation is ${first.a} and ${first.b} (${num(first.r, 2)}).` : "";
+    return { text: `No pair of variables has a correlation of 0.7 or more.${largest} Thus, it is easy for a model to find the effect of each variable.`, tone: "good" };
+  }
   const top = strong[0]!;
   return {
     text: `${top.a} and ${top.b} change ${strengthWord(top.r)} ${top.r > 0 ? "together" : "in opposite directions"} (${num(top.r, 2)}).${strong.length > 1 ? ` ${plural(strong.length - 1, "other pair")} also ${strong.length === 2 ? "has" : "have"} a strong correlation.` : ""} It is difficult for a model to separate variables that change together.`,
