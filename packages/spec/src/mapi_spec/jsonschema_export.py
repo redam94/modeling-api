@@ -44,8 +44,8 @@ from mapi_spec.tree import TreeSchema
 from mapi_spec.views import (
     AcfPacfView,
     BacktestView,
-    ComparisonView,
     CircularView,
+    ComparisonView,
     CorrelationView,
     CounterfactualView,
     CrossCorrelationView,

@@ -1106,8 +1106,12 @@ def check() -> list[str]:
     def views(where: str, part: Mapping[str, Any]) -> None:
         ExplorerIndex.model_validate(part["index"])
         for section, body in part.get("views", {}).items():
+            model = _view_model(section)
+            if model is None:
+                problems.append(f"{where} {section}: no view model")
+                continue
             try:
-                VIEW_MODELS[section].model_validate(body)
+                model.model_validate(body)
             except Exception as exc:  # pragma: no cover - reported, not raised
                 problems.append(f"{where} {section}: {str(exc)[:300]}")
 
