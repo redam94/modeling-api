@@ -5,6 +5,33 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### M5 phase 3 — Physics and biology recipes
+
+#### Added
+- **Recipe `sci_phylo_signal`** in the workflow gallery. It fits `sci.phylo_regression`
+  with four residual kinds (no tree, Brownian motion, Pagel's lambda, Ornstein-Uhlenbeck),
+  ranks them by `elpd_loo`, gives the stacking weights and selects the best. Then it tests
+  if the range of one slope of the winner excludes zero. A clear effect also gets a
+  predictive check. The report has the three tables and the `sci.phylogeny` plot. On the
+  301 primates of E23, lambda wins with an `elpd_loo` of 129.9 (the notebook gives 130).
+- **Recipe `sci_calibrate_then_design`** in the workflow gallery. It fits `sci.heat_plate`
+  with one calibration run held out, then fits all the runs again. It predicts the field of a
+  new heater layout (`model.score`, `sci.field_map`) only if the error on the run held out
+  and R-hat are in their limits. The report has the parameters, the holdout metrics and the
+  `sci.image_residuals` and `sci.field_map` plots.
+- Both recipes have a section in the workflow cookbook with the CLI and the Python client.
+  Their cookbook documents are tested against the gallery templates and run with the local
+  runner on the simulated data of the models.
+- `model.summary` has a new parameter `focus` and a result field `focus`. A condition cannot
+  build an entry name from a parameter, so `focus` names one value (`beta[north]`, or only
+  `north`). The result gives its mean, sd, HDI bounds, `p_positive` and `excludes_zero`.
+
+#### Fixed
+- `evaluate.ppc` failed for a model whose output has the name of its canonical target when
+  the dataset binds the target to a different name (for example `sci.phylo_regression`, with
+  `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
+  node now looks for that name.
+
 ### M5 phase 2 — Science gallery models
 
 #### Added

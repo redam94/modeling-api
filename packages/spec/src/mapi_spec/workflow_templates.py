@@ -635,8 +635,8 @@ SCI_CALIBRATE_THEN_DESIGN = WorkflowTemplate(
         difficulty=Difficulty.EXPERT,
         typical_runtime=TypicalRuntime.MINUTES,
         example="Three 10 W test runs give k = 59 W/m/K and a spread length of 13 cm. The "
-        "run that the fit did not see has an error of 0.21 degC, so the workflow predicts "
-        "the new layout: the hottest point is 41 degC.",
+        "run that the fit did not see has an error of 0.12 degC. Thus the workflow "
+        "predicts the new layout: the hottest point is 33 degC.",
         related=["sci.heat_plate", "split.holdout", "model.summary", "model.score",
                  "plot.render"],
         expert_notes="sci.heat_plate solves A(theta) u = eta q on a finite-volume grid. "
