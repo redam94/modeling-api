@@ -121,12 +121,13 @@ The attribute `mapi_schema` gives the variable its role, so you do not map colum
 2. Click **New dataset**.
 3. Type `dannhauser2022_unc13_dstorm` in **Name**. Type a description, for example "Raw dSTORM
    frames of Unc-13 at a Drosophila synapse, 2,000 frames of 40 × 40 pixels".
-4. In the upload panel, click **Choose files** and select `unc13_dstorm.nc`.
-5. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
-6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `unc13_dstorm.nc`.
+6. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
+7. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `frames` on `frame`, `row` and `col`.
-7. Optional: type a message in **Version message (optional)**.
-8. Click **Upload and ingest**.
+8. Optional: type a message in **Version message (optional)**.
+9. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `frames` has the role
@@ -138,15 +139,16 @@ The file is a plain dataset, not a tree. Do not open "Put this file in a node of
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `dannhauser2022_unc13_dstorm`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `dannhauser2022_unc13_dstorm`. The toast "Dataset set" shows.
 5. Type `storm` in the search field. Under **Models**, select **Molecule positions in STORM
    images** (`sci.storm_localisation@^1`). The toast "Model set" shows.
-6. Type the settings, the fit block, the metrics and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `unc13-dstorm-localisation` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `unc13-dstorm-localisation` from `metadata.name`.
 
 This is the full spec:
 

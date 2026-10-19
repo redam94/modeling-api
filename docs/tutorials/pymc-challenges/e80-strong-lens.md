@@ -142,12 +142,13 @@ results are the same.
 2. Click **New dataset**.
 3. Type `slacs_j1627_f814w` in **Name**. Type a description, for example "HST F814W image of
    the lens SDSS J1627-0053, with a noise map and a PSF".
-4. In the upload panel, click **Choose files** and select `slacs_j1627.nc`.
-5. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
-6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `slacs_j1627.nc`.
+6. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
+7. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `image` and `weight` on `row` and `col`, and `psf` on `psf_row` and `psf_col`.
-7. Optional: type a message in **Version message (optional)**.
-8. Click **Upload and ingest**.
+8. Optional: type a message in **Version message (optional)**.
+9. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `image` has the role
@@ -180,15 +181,16 @@ Explorer.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `slacs_j1627_f814w`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `slacs_j1627_f814w`. The toast "Dataset set" shows.
 5. Type `lens` in the search field. Under **Models**, select **Gravitational lens from an
    image** (`sci.strong_lens@^1`). The toast "Model set" shows.
-6. Type the settings, the fit block and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `slacs-j1627-lens` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `slacs-j1627-lens` from `metadata.name`.
 
 This is the full spec:
 

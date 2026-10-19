@@ -64,6 +64,22 @@ milestone releases are tagged on `main`.
   `trait` bound to `brain`). The score names outputs in the names of the dataset, and the
   node now looks for that name.
 
+- `sci.area_map` of a fitted `sci.areal_bym2` showed no **Observed** panel: the plot looked for
+  `rr` in the observed data, and the model keeps the raw SMR as `smr`. A spec cannot give
+  settings to a plot, so the fit now names the observed counterpart of `rr` in the attribute
+  `mapi_observed`, and the plot reads it.
+- The table of a score result on the Score page lost the cells of a grid when a dim had
+  numeric labels (for example `y_cm` and `x_cm` of `sci.heat_plate`, or the lawyer numbers of
+  `sci.network_latent_space`). The page took the numeric dims for variables and kept one row
+  for each run. The Arrow views now name their dims in the schema metadata `mapi.dims`, and
+  the page keeps these columns as keys.
+- The science tutorials: the build steps now paste the full spec over the starter template (it
+  has a pipeline, a split and MMM plots), open the closed **Datasets** section of the
+  **Insert** panel, click **Create dataset** before the upload, take the spec name from
+  `metadata.name`, and point to the **Events** card (the **Logs** card stays empty). The E18,
+  E21 and E51 tutorials and `complex-workflows.md` have eight screenshots from a live dev
+  stack (`make docs-screenshots-science`).
+
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
   `sci.areal_bym2` (`intercept_sd`, `slope_sd`, `sigma_scale`), so the check is skipped. The
@@ -85,8 +101,12 @@ milestone releases are tagged on `main`.
   and not the image.
 - The `mean` and `hdi_90` of a score summary of a circular output (`sci.circular_regression`)
   are calculated on a line, not on the circle.
-- The recipes have run with the local runner only. No recipe has run end to end on a live
-  server or in a browser.
+- The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
+  data with missing values by design: the padding of the outlines of `sci.areal_bym2`
+  (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and
+  E51 tutorials tell users that this failure is correct.
+- Only `sci_spatial_ladder` has run end to end on a live dev stack and in a browser. The
+  other recipes have run with the local runner only.
 
 ### M5 phase 2 — Science gallery models
 

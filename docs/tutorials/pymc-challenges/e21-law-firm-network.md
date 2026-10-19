@@ -125,15 +125,16 @@ tree (optional)") or the HDF5 path.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `lazega_coworkers`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `lazega_coworkers`. The toast "Dataset set" shows.
 5. Type `network` in the search field. Under **Models**, select **Who works with whom in a
    network** (`sci.network_latent_space@^1`). The toast "Model set" shows.
-6. Type the binding, the settings, the fit block, the metrics and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `lazega-coworkers-latent-space` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `lazega-coworkers-latent-space` from `metadata.name`.
 
 This is the full spec:
 
@@ -194,8 +195,9 @@ steps and smaller steps make the fit more stable. They do not remove the problem
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the progress of the sampler. The **Logs** card shows the
-   messages of the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the progress of the sampler. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://sociology/lazega-coworkers-latent-space@v1**. Click it.
 
@@ -278,6 +280,8 @@ tie_prob** on the **Plots** tab shows the same output as two panels (mean and sd
 ### 6.4 The latent map
 
 Open the plot **Network of tie_prob** (`net.graph`) on the **Plots** tab.
+
+![The plot Network of tie_prob: the 71 lawyers on the latent map, coloured by office, next to the matrix of the tie probabilities](../../assets/screenshots/science-network-graph.png){ .mapi-shot }
 
 - The node positions are the posterior mean of `position`, the aligned map.
 - The colour of a node is its office.

@@ -114,13 +114,14 @@ attribute `mapi_schema` gives each variable its role, so you do not map columns.
 2. Click **New dataset**.
 3. Type `planck_smica_lmc` in **Name**. Type a description, for example "Planck 2018 SMICA
    patch around the LMC, with the common mask and a noise map".
-4. In the upload panel, click **Choose files** and select `planck_smica_lmc.nc`.
-5. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
-6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `planck_smica_lmc.nc`.
+6. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
+7. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `temperature` and `noise_sd` on `row` and `col`, and `reference_dl` and
    `pixel_window` on `multipole`.
-7. Optional: type a message in **Version message (optional)**.
-8. Click **Upload and ingest**.
+8. Optional: type a message in **Version message (optional)**.
+9. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `temperature` has the role
@@ -134,15 +135,16 @@ pixels. The model does not fill them before the fit: a masked pixel has no data 
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `planck_smica_lmc`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `planck_smica_lmc`. The toast "Dataset set" shows.
 5. Type `cmb` in the search field. Under **Models**, select **Sky map behind a mask (CMB)**
    (`sci.cmb_field@^1`). The toast "Model set" shows.
-6. Type the settings, the fit block and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `planck-smica-lmc` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `planck-smica-lmc` from `metadata.name`.
 
 This is the full spec:
 

@@ -173,16 +173,16 @@ tree (optional)") or the HDF5 path.
 
 ### 4.1 The wind
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `ksba_wind_2021_2023`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `ksba_wind_2021_2023`. The toast "Dataset set" shows.
 5. Type `circular` in the search field. Under **Models**, select **Directions and times of
    day** (`sci.circular_regression@^1`). The toast "Model set" shows.
-6. Type the binding, the split, the settings, the fit block, the metrics and the plots of the
-   YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `ksba-wind-direction` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `ksba-wind-direction` from `metadata.name`.
 
 This is the full spec:
 
@@ -290,8 +290,9 @@ suggested spec of the export (`bci_camera_traps.yaml`) does not have this line, 
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the progress of the sampler. The **Logs** card shows the
-   messages of the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the progress of the sampler. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://meteorology/ksba-wind-direction@v1**. Click it.
 

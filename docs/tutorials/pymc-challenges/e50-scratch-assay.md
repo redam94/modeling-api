@@ -104,12 +104,14 @@ The dataset is one plain array. It is not a tree, and you do not need the HDF5 p
 
 ## 4. Build the spec
 
-1. In the sidebar, click **Build**. Start a new spec.
+1. In the sidebar, click **Build**. Click **New spec**. The editor opens with the geo MMM
+   template.
 2. Set the editor view to **YAML**.
 3. Open the **Insert** panel. In the search box, type `fisher`.
 4. Under **Models**, click `sci.fisher_kpp`. The toast **Model set** shows.
 5. Under **Datasets**, click `scratch_assay_pc3`. The toast **Dataset set** shows.
-6. Complete the YAML as below. Then click **Validate**.
+6. Select all the text in the editor and paste the full spec below. Then click
+   **Validate**.
 7. When the status shows `valid`, click **Save spec**.
 
 This is the full spec. It starts from the spec that the export command wrote. It adds the

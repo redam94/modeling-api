@@ -111,11 +111,12 @@ not map columns.
 2. Click **New dataset**.
 3. Type `e61_turing_early_images` in **Name**. Type a description, for example "Four early
    images of a Schnakenberg pattern, 128 × 128, t = 4 to 16".
-4. In the upload panel, click **Choose files** and select `e61_turing.nc`.
-5. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `e61_turing.nc`.
+6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `activator` on `t`, `y` and `x`.
-6. Optional: type a message in **Version message (optional)**.
-7. Click **Upload and ingest**.
+7. Optional: type a message in **Version message (optional)**.
+8. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `activator` has the role
@@ -127,15 +128,16 @@ tree (optional)") or the HDF5 path.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `e61_turing_early_images`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `e61_turing_early_images`. The toast "Dataset set" shows.
 5. Type `turing` in the search field. Under **Models**, select **Turing patterns from early
    images** (`sci.turing_pattern@^1`). The toast "Model set" shows.
-6. Type the settings, the fit block and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `e61-turing-mode-growth` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `e61-turing-mode-growth` from `metadata.name`.
 
 This is the full spec:
 

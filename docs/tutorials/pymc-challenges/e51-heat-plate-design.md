@@ -11,7 +11,7 @@ write PyMC code.
   part of each `dataset://` and `model://` reference, and `metadata.project` in the spec.
 - The modeling-api repository with its Python environment (`uv`). The notebook simulates its
   data, so you do not need a copy of pymc-challenges.
-- About 20 minutes. The fit takes about two minutes of sandbox time.
+- About 20 minutes. The fit takes about one minute of sandbox time.
 
 ## 1. The question
 
@@ -106,11 +106,14 @@ in `cal3`. The twelve thermocouples are in the same cells in each run. The attri
 2. Click **New dataset**.
 3. Type `heat_plate_e51` in **Name**. Type a description, for example "Calibration of the
    gradient plate: three 10 W test runs, twelve thermocouples".
-4. In the upload panel, click **Choose files** and select `heat_plate_e51.nc`.
-5. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `heat_plate_e51.nc`.
+6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `heater_w` and `reading_c` on `run`, `y_cm` and `x_cm`.
-6. Optional: type a message in **Version message (optional)**.
-7. Click **Upload and ingest**.
+
+   ![The upload panel with heat_plate_e51.nc: the sandbox lists five arrays, heater_w and reading_c on run, y_cm and x_cm](../../assets/screenshots/science-upload-preview.png){ .mapi-shot }
+7. Optional: type a message in **Version message (optional)**.
+8. Click **Upload and ingest**.
 
 When the ingest run is done, the version page shows the tabs Schema, Coordinates,
 Missingness, Preview and About. On **Schema**, `reading_c` has the role `target` and
@@ -123,17 +126,16 @@ tree (optional)") or the HDF5 path.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `heat_plate_e51`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `heat_plate_e51`. The toast "Dataset set" shows.
 5. Type `heat` in the search field. Under **Models**, select **Temperature of a heated plate**
    (`sci.heat_plate@^1`). The toast "Model set" shows.
-6. Type the `data.bind` block, the settings, the fit block and the plots of the YAML below.
-   When the bind is correct, the **Columns** section shows `y ← y_cm` and
-   `heater_power ← heater_w`.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `heat-plate-e51` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `heat-plate-e51` from `metadata.name`.
 
 This is the full spec:
 
@@ -210,14 +212,15 @@ the gradient plate:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the NUTS progress. The **Logs** card shows the messages of the
-   sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the NUTS progress. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://engineering/heat-plate-e51@v1**. Click it.
 
 The fit samples five numbers: `k`, `h`, `h_edge`, `eta` and `sigma`. For each draw, the model
 solves the heat equation of the 288 cells for each run. The model does this in the model
-graph, with gradients. The fit takes about two minutes.
+graph, with gradients. The fit took 45 s in our test.
 
 You can also find the run under **Runs**. Filter it with the kind `fit`.
 
@@ -225,6 +228,10 @@ You can also find the run under **Runs**. Filter it with the kind `fit`.
 
 On the model version page, the tabs are **Overview**, **Diagnostics**, **Plots**, **Data
 tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Model Explorer.
+
+The header of the version shows the badge **scorecard fail**. Open **Overview** to see why: the
+check "Few missing values" fails, because the cells without a thermocouple have no reading.
+This is correct for this dataset. The other checks pass.
 
 ### 6.1 Can you trust the fit?
 
@@ -282,6 +289,8 @@ sd are the values to compare.
 ### 6.3 The temperature fields
 
 Open **Fields** (group "What it learned"). The text says "The model has 1 output on a grid."
+
+![The Fields section of the heat plate: the mean temperature of run cal1, with the hot spot of the test heater and the readout of one cell](../../assets/screenshots/science-fields-heat-plate.png){ .mapi-shot }
 
 - The slider `run` selects `cal1`, `cal2` or `cal3`.
 - **Mean** shows the steady field of the run. Each test heater makes a hot spot of about 42 to

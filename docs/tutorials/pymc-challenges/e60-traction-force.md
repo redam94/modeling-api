@@ -93,11 +93,12 @@ each variable its role, so you do not map columns.
 2. Click **New dataset**.
 3. Type `pytfm_colony_ko04` in **Name**. Type a description, for example "PIV displacement
    under a colony of 7 cells, 49 kPa gel".
-4. In the upload panel, click **Choose files** and select `pytfm_colony.nc`.
-5. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `pytfm_colony.nc`.
+6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `displacement` on `component`, `row` and `col`, and `force_mask` on `row` and `col`.
-6. Optional: type a message in **Version message (optional)**.
-7. Click **Upload and ingest**.
+7. Optional: type a message in **Version message (optional)**.
+8. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `displacement` has the role
@@ -109,13 +110,14 @@ tree (optional)") or the HDF5 path.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `pytfm_colony_ko04`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `pytfm_colony_ko04`. The toast "Dataset set" shows.
 5. Type `traction` in the search field. Under **Models**, select **Cell forces from gel
    movement** (`sci.traction_force@^1`). The toast "Model set" shows.
-6. Type the settings, the fit block and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
 8. Click **Save spec**. The spec gets its name from `metadata.name`.
 
@@ -191,8 +193,9 @@ values). This table tells what each one means for the colony:
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the NUTS progress. The **Logs** card shows the messages of the
-   sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the NUTS progress. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://biophysics/pytfm-colony-traction@v1**. Click it.
 

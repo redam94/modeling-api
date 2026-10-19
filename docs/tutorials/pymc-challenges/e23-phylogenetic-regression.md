@@ -130,15 +130,16 @@ The tree is part of the same plain dataset, on the dim `node`. You do not need t
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `primates301`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `primates301`. The toast "Dataset set" shows.
 5. Type `phylo` in the search field. Under **Models**, select **Traits of related species**
    (`sci.phylo_regression@^1`). The toast "Model set" shows.
-6. Type the binding, the settings, the fit block, the metrics and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `primate-social-brain` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `primate-social-brain` from `metadata.name`.
 
 This is the full spec:
 
@@ -196,8 +197,9 @@ seed 2017.
 
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
-3. The **Progress** card shows the progress of the sampler. The **Logs** card shows the
-   messages of the sandbox. Click **Follow** to keep the latest line in view.
+3. The **Progress** card shows the progress of the sampler. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://biology/primate-social-brain@v1**. Click it.
 

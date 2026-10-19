@@ -589,6 +589,8 @@ After the run, the **Outputs** tab shows each plot in the plot sandbox. The repo
 shows the plot sections with their captions. In the drawer of a plot step, **Outputs** shows
 the same plot.
 
+![The report of a sci_spatial_ladder run on the Outputs tab: the elpd_loo of each rung above the relative risk map of the best rung](../assets/screenshots/science-recipe-report.png){ .mapi-shot }
+
 !!! note
     Only the JSON report and the run page of the web app show the plot sections. The HTML
     report does not show them. A plot that is larger than 256 KB stays in the output of its
@@ -720,6 +722,11 @@ then shows the inputs and outputs of the saved workflow as its ports.
 The gallery has six science recipes that use these patterns. In Guided mode, click **Recipes** in
 the sidebar, then **Run on my data**. In Expert mode, open the **Templates** tab of
 **Workflows** and click **Use this template** to edit a copy.
+
+This is the monitor of a `sci_spatial_ladder` run on the dataset of the
+[E18 tutorial](pymc-challenges/e18-scottish-lip-cancer.md). All 15 steps took 46 s.
+
+![The monitor of a sci_spatial_ladder run while it runs: the Steps tab with the three fitted rungs and the steps that wait for a worker](../assets/screenshots/science-recipe-monitor.png){ .mapi-shot }
 
 | Recipe (card title) | Model | What it does | Patterns |
 |---|---|---|---|

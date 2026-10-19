@@ -116,12 +116,13 @@ columns.
 2. Click **New dataset**.
 3. Type `optdigits_e31` in **Name**. Type a description, for example "UCI optdigits, 8 × 6
    pixels, 300 training and 200 test digits, bottom halves of the test digits hidden".
-4. In the upload panel, click **Choose files** and select `optdigits_e31.nc`.
-5. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
-6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `optdigits_e31.nc`.
+6. Make sure that the format is **netCDF (or HDF5 written by xarray)**.
+7. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `pixels` and `visible` on `digit`, `row` and `col`.
-7. Optional: type a message in **Version message (optional)**.
-8. Click **Upload and ingest**.
+8. Optional: type a message in **Version message (optional)**.
+9. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `pixels` has the role
@@ -132,15 +133,16 @@ The file is one flat dataset, so the tree path (HDF5 groups and nodes) does not 
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `optdigits_e31`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `optdigits_e31`. The toast "Dataset set" shows.
 5. Type `parts` in the search field. Under **Models**, select **Shared parts of small images**
    (`sci.ibp_features@^1`). The toast "Model set" shows.
-6. Type the `bind` block, the settings, the fit block and the plots of the YAML below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `optdigits-ibp` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `optdigits-ibp` from `metadata.name`.
 
 This is the full spec:
 

@@ -82,8 +82,8 @@ The file holds one dataset:
 
 | Name | Dims | Type | Meaning |
 |---|---|---|---|
-| `district` | 56 | text, `fixed` | The district names, as in the GeoJSON file (Orkney has the name `Okney`) |
-| `district_` | 56 | text, `fixed` | The same districts again: the second axis of `adjacency` |
+| `district` | 56 | categorical, `fixed` | The district names, as in the GeoJSON file (Orkney has the name `Okney`) |
+| `district_` | 56 | categorical, `fixed` | The same districts again: the second axis of `adjacency` |
 | `vertex` | 51 | integer, `fixed` | The points of the outline of each district |
 | `cases` | `district` | float64, target | The observed cases, 1975 to 1980 (`CANCER`) |
 | `expected` | `district` | float64, exposure | The expected cases (`CEXP`), from 1.07 to 88.66 |
@@ -112,12 +112,13 @@ The attribute `mapi_schema` gives each variable its role, so you do not map colu
 2. Click **New dataset**.
 3. Type `scotland_lip_cancer` in **Name**. Type a description, for example "Male lip cancer
    in 56 districts of Scotland, 1975 to 1980, with district outlines".
-4. In the upload panel, click **Choose files** and select `scotland_lip.nc`.
-5. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
+4. Click **Create dataset**. The upload panel opens.
+5. Click **Choose files** and select `scotland_lip.nc`.
+6. Click **Preview structure**. The panel shows **Structure of the file**. Make sure that it
    shows `cases`, `expected` and `aff` on `district`, and `adjacency` on `district` and
    `district_`.
-6. Optional: type a message in **Version message (optional)**.
-7. Click **Upload and ingest**.
+7. Optional: type a message in **Version message (optional)**.
+8. Click **Upload and ingest**.
 
 The ingest run reads the file in the sandbox. When it is done, the version page shows the tabs
 Schema, Coordinates, Missingness, Preview and About. On **Schema**, `cases` has the role
@@ -130,16 +131,18 @@ tree (optional)") or the HDF5 path.
 
 ## 4. Build the spec
 
-1. Open **Build**. Start a new spec.
+1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
 2. Set the **Editor view** to **YAML**.
 3. Open the **Insert** panel on the right.
-4. Under **Datasets**, select `scotland_lip_cancer`. The toast "Dataset set" shows.
+4. Open the **Datasets** section and select `scotland_lip_cancer`. The toast "Dataset set" shows.
 5. Type `areal` in the search field. Under **Models**, select **Disease risk on a map of
    areas** (`sci.areal_bym2@^1`). The toast "Model set" shows.
-6. Type the `bind` and `split` blocks, the settings, the fit block and the plots of the YAML
-   below.
+6. Select all the text in the editor and paste the full spec below. The template has other
+   blocks (a pipeline, a split and the MMM plots), so the spec must replace all of it.
 7. Click **Validate**. The status shows `valid`.
-8. Type `scotland-lip-cancer-bym2` as the name and click **Save spec**.
+8. Click **Save spec**. The spec gets its name `scotland-lip-cancer-bym2` from `metadata.name`.
+
+![The YAML editor with the saved spec scotland-lip-cancer-bym2, the status valid and the model sci.areal_bym2 in the Pipeline panel](../../assets/screenshots/science-spec-editor.png){ .mapi-shot }
 
 This is the full spec:
 
@@ -233,10 +236,13 @@ setting means for the question:
 1. Click **Fit**. The app opens the run page.
 2. The badge shows **Live** while the run sends events.
 3. The **Progress** card shows the progress of the sampler. The run fits two times: first
-   without the 7 held-out districts, then on all 56 districts. The **Logs** card shows the
-   messages of the sandbox. Click **Follow** to keep the latest line in view.
+   without the 7 held-out districts, then on all 56 districts. The **Events** card shows the
+   stages of the run and, at the end, the diagnostics. The **Logs** card stays empty when
+   the model writes no output.
 4. When the run is done, the **Result** card shows **Inspect
    model://epidemiology/scotland-lip-cancer-bym2@v1**. Click it.
+
+![The run page of the fit: the Progress card shows the sampler chain, the Events card shows the stages of the run](../../assets/screenshots/science-run-progress.png){ .mapi-shot }
 
 The two fits took 21 s in our test. Each fit samples `b0`, `b1`, `sigma`, `rho` and two
 effects for each district (`phi` for the ICAR part and `theta` for the independent part).
@@ -251,6 +257,10 @@ tree**, **Preprocessing** and **Provenance**. Click **Explore** to open the Mode
 The outputs of this model are on the districts, not on a grid. Thus the **Fields** section is
 under "Does not apply". **Fit vs actual** and **Residuals** also show there, because they need
 a time dimension. The maps are in the **Plots** tab of the model version page.
+
+The header of the version shows the badge **scorecard fail**. Open **Overview** to see why: the
+check "Few missing values" fails, because the padding of `ring_x` and `ring_y` counts as
+missing values (4,114 of 9,016). The padding is correct. The other checks pass.
 
 ### 6.1 The graph that the model used
 
@@ -330,13 +340,15 @@ On the model version page, open **Plots**:
 
 The area map has four panels for the relative risk `rr`:
 
-- **observed**: the raw SMR (observed ÷ expected). The extreme colours are on the smallest
+![The area map of rr: the panels Observed smr and Mean side by side, with the SD and P(rr > 1) panels below](../../assets/screenshots/science-area-map.png){ .mapi-shot }
+
+- **Observed smr**: the raw SMR (observed ÷ expected). The extreme colours are on the smallest
   districts. Skye-Lochalsh has 9 cases where 1.4 were expected.
-- **mean**: the smoothed relative risk. The contrast between the north-west and the central
+- **Mean**: the smoothed relative risk. The contrast between the north-west and the central
   belt stays, but the extremes are smaller. The two districts with zero cases (Annandale and
   Tweeddale) are not the "healthiest" districts of Scotland on this map.
-- **sd**: the uncertainty. It is large on small districts.
-- **probability**: the probability that `rr` is more than 1. A cross marks each district where
+- **SD**: the uncertainty. It is large on small districts.
+- **P(rr > 1)**: the probability that `rr` is more than 1. A cross marks each district where
   this probability is more than 95%. There are 19 crosses (notebook: 19).
 
 The districts with the highest smoothed risk are Skye-Lochalsh (median `rr` 4.56),
@@ -347,9 +359,9 @@ districts, the probability that `rr` is more than 1 is less than 0.05 (notebook:
 
 Make the notebook's decision with these outputs:
 
-1. **Where is the risk high?** Use the **probability** panel of the area map, not the
-   **observed** panel. Report the 19 districts with a cross. Report the smoothed map
-   (**mean**) for all districts.
+1. **Where is the risk high?** Use the **P(rr > 1)** panel of the area map, not the
+   **Observed smr** panel. Report the 19 districts with a cross. Report the smoothed map
+   (**Mean**) for all districts.
 2. **Which graph prior?** Fit the same spec with `kind: iid`, `kind: icar` and `kind: car`
    (change the setting, then save and fit each spec). Then select the versions in **Models**
    and click **Compare**. Or run the recipe of step 8, which does these fits for you. The
@@ -494,8 +506,18 @@ sections 4, 8 and 9 in one run:
 The recipe has no parameters that you must set, so the page does not show "2. What the recipe
 needs to know".
 
-The monitor of the run has the tabs **Graph**, **Steps**, **Decisions**, **Outputs** and
-**Events**. We ran the recipe on the exported data with `engine: nutpie` and the other
+The app opens the monitor of the run. It has the tabs **Graph**, **Steps**, **Decisions**,
+**Outputs** and **Events**. The recipe took 46 s in our test.
+
+![The monitor of the recipe run while it runs: the Steps tab with the three fitted rungs and the steps that wait for a worker](../../assets/screenshots/science-recipe-monitor.png){ .mapi-shot }
+
+The **Outputs** tab shows the report of the run. It has the comparison table, the stacking
+weights, the effect of `b1` with each prior width, the `elpd_loo` of each rung and the map of
+the best rung. The map of the recipe has no **Observed smr** panel.
+
+![The report of the recipe on the Outputs tab: the elpd_loo of the three rungs and the relative risk map of the best rung](../../assets/screenshots/science-recipe-report.png){ .mapi-shot }
+
+ We ran the recipe on the exported data with `engine: nutpie` and the other
 defaults:
 
 | Node | Result |
