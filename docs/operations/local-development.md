@@ -158,6 +158,39 @@ datasets again. `make` reads `SIZE` only from the make command line, because som
 `uv run python scripts/seed.py --export demo/` writes the same tables, the E33 score payloads
 and the spec as files. You can then upload these files through the web app.
 
+## Science data <span class="mapi-badge">v0.9</span> { #science-data }
+
+The `sci.*` models of `mapi-plugin-science` use the data of the
+[pymc-challenges](https://github.com/redam94/pymc-challenges) case studies. `make install`
+installs the plugin with the other workspace packages, so a `make dev` stack can fit these
+models. To get a dataset that you can upload, write it to a file with the export command:
+
+```bash
+export MAPI_PYMC_CHALLENGES_DATA=~/pymc-challenges/data      # the data/ directory of a local copy
+uv run python -m mapi_plugin_science.export --list           # the cases that you can export
+uv run python -m mapi_plugin_science.export e18 --out .local/science/scotland_lip.nc --spec .local/science/e18.yaml
+uv run python -m mapi_plugin_science.export e50 --synthetic --out .local/science/assay.nc
+```
+
+- `--challenges` gives the data directory. The default is `MAPI_PYMC_CHALLENGES_DATA`.
+- `--synthetic` writes the simulated data of the model. It does not need a copy of
+  pymc-challenges. The cases `e51` and `e61` do not need a data directory.
+- `--spec` also writes the suggested spec of the case.
+- The suffix of `--out` sets the format: `.nc`, `.zarr.zip` or `.tree.zip`.
+
+The [tutorials of the case studies](../tutorials/pymc-challenges/index.md) upload these files
+through the web app.
+
+The tests of the plugin that read the real data files run only when
+`MAPI_PYMC_CHALLENGES_DATA` is set. If it is not set, these tests skip. `MAPI_E21_DRAWS` sets
+the draws for each chain of the real-data fit of `sci.network_latent_space` (default 300).
+
+`make docs-screenshots-science` captures the screenshots of the science tutorials again from a
+`make dev` stack. Before you run it, export the cases `e18`, `e51` and `e21` to
+`scotland_lip.nc`, `heat_plate_e51.nc` and `lazega_coworkers.nc` in `.local/science` (or in
+the folder that `MAPI_SCIENCE_DATA` gives). Refer to the header of
+`scripts/docs_screenshots_science.mjs` for the full procedure.
+
 ## End-to-end tests
 
 `make e2e` does the M1 flow through the stack:

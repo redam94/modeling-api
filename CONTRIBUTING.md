@@ -41,4 +41,9 @@ Use conventional commits: `feat(sdk): …`, `fix(server): …`, `docs: …`, `te
   use mypy in strict mode.
 - Put the tests of each package in its `tests/` folder. PyMC fits in tests must use very
   small draw counts.
+- The tests of `mapi-plugin-science` that read the real data of pymc-challenges run only when
+  `MAPI_PYMC_CHALLENGES_DATA` gives the `data/` directory of a local copy. If it is not set,
+  they skip.
+- Put each new `MAPI_*` variable in `docs/operations/configuration.md`. A test looks for these
+  variables in the source tree.
 - Keep docstrings short (Google style). The contract tests are the executable documentation.
