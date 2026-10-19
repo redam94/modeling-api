@@ -102,7 +102,9 @@ attribute `mapi_schema` gives each variable its role, so you do not map columns.
     `--synthetic` writes a simulated patch from the model's own prior: a 32 × 32 map with a
     hole, a test spectrum and a known amplitude (1.15) and tilt (−0.1). Use it to try the
     steps. The numbers in this tutorial are for the real patch. For the simulated patch, use
-    the settings of `CMB_SPEC_YAML` in `mapi_plugin_science.cmb_data`.
+    the settings of `CMB_SPEC_YAML` in `mapi_plugin_science.cmb_data`. With `--synthetic`,
+    the `--spec` file has the bandpower bins of that spec (`bin_edges`), because the
+    simulated patch is too small for the first default bin.
 
     ```bash
     uv run python -m mapi_plugin_science.export e79 --synthetic --out cmb_synthetic.nc

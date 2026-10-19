@@ -253,8 +253,7 @@ image:
 | `z_lens`, `z_source` | 0.2076, 0.5241 | The SLACS redshifts. With them, the model gives `einstein_mass` (flat ΛCDM, `h0` 70, `omega_m` 0.3) |
 
 - `fit.mode: train_only` fits on all of the pixels. Without it, the validator shows the
-  warning `SPLIT_INVALID` ("There is no holdout for the evaluation"). The suggested spec of the
-  export does not have this line, so add it.
+  warning `SPLIT_INVALID` ("There is no holdout for the evaluation").
 - `target_accept: 0.9` is the value of the notebook. At 0.8 the notebook got some divergences.
 - The spec has no `evaluate` block. Metrics need a holdout (`data.split`), and this fit uses
   all of the pixels. The recipe of step 8 measures the in-sample coverage.
@@ -267,7 +266,7 @@ image:
     image checks `sci.image_residuals` and `sci.ppc_image_grid`. In the **Insert** panel, the
     **Plots** section adds a plot for you.
 
-    The spec does not keep `sci.field_map`. The fit draws that plot from the first posterior
+    Do not add `sci.field_map`. The fit draws that plot from the first posterior
     variable with two dims, `e_light`, and not from the image. To see the predicted image as
     a map, use the **Fields** section of the Model Explorer (step 6.3).
 

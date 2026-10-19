@@ -359,14 +359,27 @@ data:
 model:
   use: sci.fisher_kpp@^1
   settings: {steps_per_hour: 10, delay: true, max_extension: 4}
-  fit: {mode: evaluate_then_refit, seed: 50, tune: 1000, draws: 1000, chains: 4, engine: nutpie}
+  fit:
+    mode: evaluate_then_refit
+    seed: 50
+    tune: 1000
+    draws: 1000
+    chains: 4
+    engine: nutpie
+    keep: {log_likelihood: true}
 evaluate: {metrics: [rmse, mae, coverage_90, elpd_loo]}
-outputs: {plots: [core.convergence, core.posterior_forest, sci.field_map]}
+outputs:
+  plots: [core.convergence, core.posterior_forest, sci.profile_bands, sci.field_map]
 """
-"""E50: the PC-3 assay with the notebook grid; the 48 h counts are held out."""
+"""E50: the PC-3 assay with the notebook grid; the 48 h counts are held out. The fit keeps
+the pointwise log-likelihood, so ``elpd_loo`` can compare the models with and without the
+delay."""
 
 
 def _traction_spec(data: ExportData) -> str:
+    """E60: the settings of the file. The fit uses the full raster (``train_only``, so no
+    metrics); ``sci.vector_field`` draws the ``traction`` output (``sci.field_map`` cannot:
+    the output has a ``component`` dim)."""
     assert isinstance(data, xr.Dataset)
     s = traction_data.challenges_settings(data)
     settings = ", ".join(f"{k}: {json.dumps(v)}" for k, v in s.items())
@@ -379,10 +392,35 @@ data:
 model:
   use: sci.traction_force@^1
   settings: {{{settings}}}
-  fit: {{seed: 60, tune: 1000, draws: 1000, chains: 4}}
-evaluate: {{metrics: [rmse, mae]}}
-outputs: {{plots: [core.convergence, core.posterior_forest, sci.field_map]}}
+  fit: {{mode: train_only, seed: 60, tune: 1000, draws: 1000, chains: 4}}
+outputs: {{plots: [core.convergence, core.posterior_forest, sci.vector_field]}}
 """
+
+
+def _naming_spec(data: ExportData) -> str:
+    """E77: hold out the notebook's 9 Nafaanra speakers. The synthetic data has other
+    speakers, so its spec holds out 2 random speakers (as :data:`NAMING_SPEC_YAML`)."""
+    assert isinstance(data, xr.Dataset)
+    speakers = {str(s) for s in np.asarray(data["speaker"].values)}
+    spec = colour_naming_data.NAFAANRA_SPEC_YAML
+    if set(colour_naming_data.NAFAANRA_HELD_OUT) <= speakers:
+        return spec
+    groups = ", ".join(colour_naming_data.NAFAANRA_HELD_OUT)
+    return spec.replace(
+        f"split: {{kind: leave_group_out, dim: speaker, groups: [{groups}]}}",
+        "split: {kind: leave_group_out, dim: speaker, n: 2, seed: 1}",
+    )
+
+
+def _cmb_spec(data: ExportData) -> str:
+    """E79: the Planck patch with the default bandpower bins. The synthetic map is too
+    small for the first default bin, so its spec uses the bins of the tiny synthetic fit."""
+    assert isinstance(data, xr.Dataset)
+    spec = cmb_data.PLANCK_SPEC_YAML
+    if not str(data.attrs.get("source", "")).endswith("synthetic"):
+        return spec
+    edges = ", ".join(f"{e:g}" for e in cmb_data.TINY_EDGES)
+    return spec.replace("    border: 8\n", f"    border: 8\n    bin_edges: [{edges}]\n")
 
 
 def _storm_spec(data: ExportData) -> str:
@@ -531,7 +569,7 @@ _register(
         schema=colour_naming_data.NAMING_SCHEMA,
         project="linguistics",
         dataset="wcs_nafaanra",
-        spec=colour_naming_data.NAFAANRA_SPEC_YAML,
+        spec=_naming_spec,
     )
 )
 
@@ -547,7 +585,7 @@ _register(
         schema=cmb_data.CMB_SCHEMA,
         project="astronomy",
         dataset="planck_smica_lmc",
-        spec=cmb_data.PLANCK_SPEC_YAML,
+        spec=_cmb_spec,
     )
 )
 

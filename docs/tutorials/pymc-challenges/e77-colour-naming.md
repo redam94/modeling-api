@@ -98,7 +98,9 @@ each abbreviation.
 !!! tip "No pymc-challenges copy?"
     `--synthetic` writes naming that the model's own process simulates: 12 speakers, a small
     palette of 38 chips and three terms (`light`, `dark` and `warm`), with known parameters.
-    Use it to try the steps. The numbers in this tutorial are for Nafaanra.
+    Use it to try the steps. The numbers in this tutorial are for Nafaanra. With
+    `--synthetic`, the `--spec` file holds out 2 random speakers, because the simulated data
+    does not have the 9 speakers of the notebook.
 
     ```bash
     uv run python -m mapi_plugin_science.export e77 --synthetic --out colour_naming.nc

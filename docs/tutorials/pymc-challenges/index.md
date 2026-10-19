@@ -98,7 +98,9 @@ How the helper works:
   dataset). If you do not give `--out`, the file is `<dataset>.nc`.
 - `--spec` also writes the suggested spec. The spec reads the suggested dataset
   (`dataset://<project>/<dataset>@latest`). Use that project and dataset name when you
-  upload the file.
+  upload the file. The spec validates against the schema of the file, and a test fits each
+  spec on the simulated data and makes sure that each plot of the spec shows. With
+  `--synthetic`, the spec of `e77` and `e79` changes to fit the simulated data.
 - The file keeps the schema of the model in the attribute `mapi_schema`. Thus the upload gives
   the correct role to each variable, and you do not map columns.
 

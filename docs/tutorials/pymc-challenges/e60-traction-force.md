@@ -185,7 +185,7 @@ values). This table tells what each one means for the colony:
     The fit makes only the plots in `outputs.plots`, so the spec names them. The **Plots**
     section of the **Insert** panel adds a plot for you.
 
-    The `--spec` file of the export also names `sci.field_map`. Remove it. For the traction
+    Do not add `sci.field_map`. For the traction
     field, that recipe needs the settings `y` and `x`, and the fit skips it with the warning
     `PLOT_SKIPPED`. The **Fields** section of the Model Explorer shows the same maps.
 

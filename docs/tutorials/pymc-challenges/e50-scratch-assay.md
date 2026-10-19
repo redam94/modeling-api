@@ -118,8 +118,8 @@ The dataset is one plain array. It is not a tree, and you do not need the HDF5 p
    **Validate**.
 6. When the status shows `valid`, click **Save spec**.
 
-This is the full spec. It starts from the spec that the export command wrote. It adds the
-priors of the notebook, `keep: {log_likelihood: true}` and the `sci.profile_bands` plot:
+This is the full spec. It starts from the spec that the export command wrote and adds the
+priors of the notebook:
 
 ```yaml
 apiVersion: mapi/v1
@@ -155,10 +155,9 @@ outputs:
 ```
 
 !!! caution "Keep the log-likelihood"
-    Keep `keep: {log_likelihood: true}` in the spec. The spec that the export command writes
-    does not have it. Without it, the fit does not calculate `elpd_loo`, and the metrics show
-    "the model did not store a log_likelihood group". You need `elpd_loo` to compare the two
-    models.
+    Keep `keep: {log_likelihood: true}` in the spec. Without it, the fit does not calculate
+    `elpd_loo`, and the metrics show "the model did not store a log_likelihood group". You
+    need `elpd_loo` to compare the two models.
 
 !!! caution "Use the name of your project"
     Change `biology` in `metadata.project` and in `data.dataset` to the name of your project.
@@ -436,9 +435,9 @@ In **Decisions**, see if the convergence gate passed. In **Outputs**, open the r
     print(summary["density"].sel(stat="mean").round(0).values)  # (hours, position)
     ```
 
-`scratch-assay-pc3-kpp.yaml` is the full spec of step 4, not the spec that the export command
-writes. The export spec does not keep the log-likelihood, so its fit gives no `elpd_loo`. The
-CLI and the client then send the same two specs and the same score request as the web app.
+`scratch-assay-pc3-kpp.yaml` is the full spec of step 4: the spec that the export command
+writes, with the priors of the notebook. The CLI and the client then send the same two specs
+and the same score request as the web app.
 
 ## 10. Differences from the notebook
 
