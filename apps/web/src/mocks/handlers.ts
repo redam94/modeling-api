@@ -11,6 +11,7 @@ import { env } from "@/env";
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
 import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
+import { createSciHandlers, createSciState, SCI_DATASETS } from "./explore-sci";
 import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
@@ -42,6 +43,8 @@ interface MockState {
   governance: ReturnType<typeof createGovernanceState>;
   /** M4: upload records (names, inspections) and the tree dataset. */
   tree: ReturnType<typeof createTreeState>;
+  /** The science datasets of the Data Explorer (explorer-sci.gen.json). */
+  sci: ReturnType<typeof createSciState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -65,6 +68,7 @@ export function createState(): MockState {
     workflows: createWorkflowsState(),
     governance: seedGovernance(createGovernanceState()),
     tree: createTreeState(),
+    sci: createSciState(),
     runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -151,7 +155,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createTenancyHandlers(state.tenancy),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
     ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
-    // v0.10: demo datasets of the Data Explorer on scientific data (the spec's example views).
+    // The Data Explorer on scientific data (ds-sci-<case>), before the generic explorer routes.
+    ...createSciHandlers(state.sci, { artifacts: state.artifacts, runs: state.runs }),
+    // Demo datasets of the Data Explorer on scientific data (the spec's example views).
     ...createSciDemoHandlers({ artifacts: state.artifacts }),
     ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
@@ -185,7 +191,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ),
 
     // datasets
-    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset])),
+    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset, ...SCI_DATASETS])),
     http.get(`${API}/v1/datasets/:id`, ({ params }) => (params.id === fx.DS_ID ? HttpResponse.json(fx.dataset) : problem(404, "NOT_FOUND", "Not found", "no such dataset"))),
     http.post(`${API}/v1/datasets`, async ({ request }) => {
       const body = (await request.json()) as { name: string; description?: string };

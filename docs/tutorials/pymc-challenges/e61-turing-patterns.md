@@ -126,6 +126,23 @@ of a square raster.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `activator`, images of 128 × 128 cells. The frame slider goes through the
+  4 times of `t`. Look at the pattern of spots in each frame.
+- **Over time** shows one series: the mean of all cells at each time. The explorer does not
+  make a series for each cell.
+- The time patterns are in **Not for this data**: 4 times are not sufficient.
+- **Data quality** does not give the warning `SHORT_HISTORY`.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

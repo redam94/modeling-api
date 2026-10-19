@@ -5,6 +5,50 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Data Explorer for scientific data
+
+The Data Explorer now shows graphs of scientific data, not only time series. It finds the
+structure of the data (images, profiles, maps, networks, trees, directions and points) and
+shows the sections that apply first.
+
+#### Added
+- The explorer finds the shapes of each dataset, and of each node of a tree dataset, from the
+  dims, the coords, the roles and the units. The new section **Structure** shows the shapes,
+  the role of each dim and how the explorer uses each variable.
+- Seven picture sections in the new group *Pictures of the data*: **Images and fields**
+  (the field viewer of the Model Explorer, with the statistics of each frame), **Profiles and
+  spectra**, **Map** (areas in colour, neighbours and Moran's I), **Network** (matrix,
+  drawing, degree and homophily), **Tree** (the tree with the traits and the phylogenetic
+  signal), **Directions and times of day** (roses and the Rayleigh test) and **Points**
+  (lattice, CIE Lab colours and agreement).
+- The ingest writes `structure` and each picture section that applies. The explorer index
+  gives the new fields `reason`, `shapes` and `order`. A request takes the new field `hints`
+  to correct the structure.
+- In Expert mode, *All series* also shows the Plotly plots `sci.area_map`, `net.graph` and
+  `sci.rose`.
+- Mock datasets for eleven pymc-challenges cases and the E80 lens tree, and screenshots of
+  the new sections (`make docs-screenshots-explorers` also records them).
+- Each pymc-challenges tutorial has a step "Explore the data". The guide
+  Explore a dataset (`docs/guides/data-explorer.md`) has a new part
+  "Scientific data".
+
+#### Changed
+- The list of sections shows only the sections that apply to the data, in the sequence that
+  agrees with the structure. The other sections go in the closed list **Not for this data**.
+  A link to one of these sections continues to open it. Versions from earlier releases keep
+  the thirteen sections.
+- A dim with `policy: extend` is time only when its coords are numbers that increase and it
+  is not a list of ids. If your data uses a list of ids as time, give `time_dim` in the
+  request.
+- **Over time** adds or averages the cells of an image to make one series. It does not make
+  a series for each cell. The time patterns need a real time dim and 16 periods or more.
+- **Group comparison** compares only real groups. **Correlations**, **Distributions** and
+  **Unusual values** do not use geometry (borders, neighbours, tree variables, positions).
+  **Data quality** gives `SHORT_HISTORY` only for data with a time dim, and has the new
+  warnings `GEOMETRY_INVALID`, `TREE_INVALID`, `NETWORK_ASYMMETRIC`, `ANGLE_RANGE` and
+  `IMAGE_SATURATED`.
+- A request can have all 21 sections (before: 13).
+
 ## [0.9.1] — Science gallery docs — 2026-10-19
 
 This release updates the documentation for v0.9.0. It has no code changes.

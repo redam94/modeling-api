@@ -135,6 +135,22 @@ pixels. The model does not fill them before the fit: a masked pixel has no data 
     The file has no groups, so the upload makes a flat dataset. Do not open "Put this file in
     a node of a tree (optional)".
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `temperature` and `noise_sd` on a grid of 128 × 128 pixels.
+  `temperature` has values on the two sides of zero, thus its colour map has two colours.
+- Click **Profiles and spectra**. The profiles show `reference_dl` and `pixel_window` along
+  `multipole` (4,097 values). The x axis is logarithmic.
+- The time sections are in **Not for this data**.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

@@ -124,6 +124,24 @@ Schema, Coordinates, Missingness, Preview and About. On **Schema**, `cowork` has
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Network**.
+
+- The first entry shows `cowork`, the ties between the 71 lawyers. The matrix puts similar
+  lawyers next to each other. The drawing gives each office a colour.
+- The table of homophily gives the fraction of ties in the same office, and the fraction that
+  you expect by chance. A much larger fraction shows that the office explains many ties.
+- The second entry shows `homophily`: one matrix for each of the 6 covariates
+  (`same_office`, `same_practice` and the other covariates).
+- **Group comparison** and the time sections are in **Not for this data**.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.
