@@ -238,7 +238,8 @@ export function createTenancyState(): TenancyState {
         vcpu_seconds_budget: 36_000,
         budget_period: "month",
         created_at: "2026-10-01T09:30:00Z",
-        expires_at: "2026-10-19T09:30:00Z",
+        // Three days from now, so the list always shows the "expires within a week" warning.
+        expires_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
         last_used_at: "2026-10-15T08:00:00Z",
       },
       {
