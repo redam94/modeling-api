@@ -44,6 +44,8 @@ the closed list **Not for this data** below the other sections. Open this list t
 these sections and the reason. A link to one of these sections (`?section=`) continues to open
 it.
 
+![The sections of a vector field (E60): the picture sections first, the other sections in the open list Not for this data](../assets/screenshots/explorer-sci-nav.png){ .mapi-shot }
+
 A tick marks a section that is ready. An empty circle marks a section that the platform
 calculates when you ask for it. A dash marks a section that cannot show a result for this
 data, for example because a series is too short. The dash shows the reason.
@@ -244,6 +246,20 @@ use them in the statistics (distributions, unusual values, correlations and qual
 | `tree` (Tree) | The tree, with the traits of the tips next to it. The number of nodes and of tips, the depth, and if all tips are at the same distance from the root. How the explorer matched the tips to the traits: by label, by count or by sequence. The phylogenetic signal of each trait (Moran's I with the inverse distance on the tree, 999 permutations). | A small p-value shows that near species have similar traits. Then a model that uses the tree is necessary (E23). |
 | `circular` (Directions and times of day) | A rose for each group, with the mean direction as a line of length R. The circular spread and the Rayleigh test. For two circular variables on one dim (E81 the hour and the wind direction), a heat map of the two and their circular correlation. | A small Rayleigh p-value shows a preferred direction or time. R near 1 shows values near one direction. R near 0 shows values in all directions, or in opposite directions. |
 | `points` (Points) | The points, or the cells of a lattice. A picker sets the colour: the colour of a CIE Lab triple, the most frequent answer, the agreement of the answers, or a numeric variable. For points that are not on a lattice, the Clark-Evans R. | R less than 1 shows clusters. R more than 1 shows points at regular distances. For E77, the agreement shows where the speakers do not agree on the name of a colour. |
+
+![Images and fields (E07, synthetic data): the counts of each cell for one quarter, the frame slider with the mean and the range of each quarter, and the histogram of all cells](../assets/screenshots/explorer-sci-images.png){ .mapi-shot }
+
+![Profiles and spectra (E79, synthetic data): the reference power spectrum along the multipole, on a logarithmic axis](../assets/screenshots/explorer-sci-profiles.png){ .mapi-shot }
+
+![Map (E18, synthetic data): the districts in colour, Moran's I of each variable and the values of each district](../assets/screenshots/explorer-sci-map.png){ .mapi-shot }
+
+![Network (E21, synthetic data): the drawing of the ties, the histogram of the degree and the fraction of ties in the same office](../assets/screenshots/explorer-sci-network.png){ .mapi-shot }
+
+![Tree (E23, synthetic data): the tree with the traits next to the tips, and the phylogenetic signal of each trait](../assets/screenshots/explorer-sci-tree.png){ .mapi-shot }
+
+![Directions and times of day (E81b, synthetic data): one rose for each species, with the mean time and the Rayleigh test](../assets/screenshots/explorer-sci-circular.png){ .mapi-shot }
+
+![Points (E77, synthetic data): the colour chips on the grid of the survey](../assets/screenshots/explorer-sci-points.png){ .mapi-shot }
 
 In Expert mode, *All series* also shows the export plots of the science plot recipes: the
 map (`sci.area_map`), the network (`net.graph`) and the roses (`sci.rose`). These plots are
