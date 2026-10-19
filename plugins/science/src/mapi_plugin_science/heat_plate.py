@@ -279,6 +279,8 @@ class HeatPlateModel(PyMCModel[HeatPlateSettings]):
         identified_quantities=["k", "h", "eta", "spread_length"],
     )
     schema_template = _TEMPLATE
+    structural_missing = (TARGET,)
+    """A cell without a thermocouple has no reading: by design, not a gap in the data."""
     outputs: ClassVar[dict[str, Any]] = {
         FIELD: {
             "dims": [RUN_DIM, Y_DIM, X_DIM],

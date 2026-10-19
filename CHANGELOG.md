@@ -81,6 +81,14 @@ milestone releases are tagged on `main`.
 - `sci_spatial_ladder` ignored its own convergence check: the branch `clear` took the then
   arm when the chains of the best model did not agree. The branch now needs a convergence
   check that does not fail, and the report says so.
+- The scorecard check "Few missing values" (`data.missing`) counted each NaN of the raw
+  dataset. Thus it always failed for E18 (the padding of the outlines `ring_x` and `ring_y`)
+  and E51 (the cells without a thermocouple). The check now counts only the variables that
+  contain observations. It does not count the roles `constant`, `index` and `mask`, or the
+  variables that the model declares in the new class attribute
+  `CustomModel.structural_missing` (`sci.heat_plate` declares `temperature`). The expert
+  message names the variables that the check does not count. Gaps in a target, a spend or a
+  covariate count as before, also with `missing: allow`.
 - The gate of `sci_calibrate_then_design` stopped the run with `EXPRESSION_ERROR` when R-hat
   was null (one chain). The condition now uses `coalesce`, and the recipe needs two or more
   chains.
@@ -141,10 +149,6 @@ milestone releases are tagged on `main`.
   the sensor dim, the observed data is on the grid). Some science models (for example
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
-- The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
-  data with missing values by design: the padding of the outlines of `sci.areal_bym2`
-  (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and
-  E51 tutorials tell users that this failure is correct.
 - Only `sci_spatial_ladder` has run end to end on a live dev stack and in a browser. The
   six M5 recipes run through the server orchestrator in a slow test
   (`packages/server/tests/test_workflows_m5_templates.py`), with small fits.

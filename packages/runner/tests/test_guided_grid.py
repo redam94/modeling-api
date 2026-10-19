@@ -79,7 +79,7 @@ def test_a_view_the_contract_refuses_is_reported_as_invalid(
         write_json=lambda name, body: written.__setitem__(name, body),
         warning=lambda code, message, untrusted=None: warnings.append((code, message)),
     )
-    monkeypatch.setattr(fit_mod, "fit_scorecard", lambda bundle, data: rollup([]))
+    monkeypatch.setattr(fit_mod, "fit_scorecard", lambda bundle, data, **_: rollup([]))
     off = curves(multipliers=[0.0, 0.35, 0.7, 1.05, 1.4])
     fit_mod.write_guided_views(ctx, fake_bundle(off), xr.Dataset())  # type: ignore[arg-type]
     assert RESPONSE_GRID_VIEW not in written

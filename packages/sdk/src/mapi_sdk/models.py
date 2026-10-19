@@ -336,7 +336,9 @@ class CustomModel[SettingsT: BaseModel]:
     :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`,
     :meth:`forecast_with_actuals` (with ``capabilities.conditions_on_actuals``). Set
     ``pad_extend = False`` if the model does not index time positionally (scoring then skips
-    padding ``extend`` dims to the fit range).
+    padding ``extend`` dims to the fit range). List in ``structural_missing`` the canonical
+    variables whose NaN are part of the design of the data (not gaps), so that the scorecard
+    check ``data.missing`` does not count them.
     """
 
     id: ClassVar[str]
@@ -351,6 +353,9 @@ class CustomModel[SettingsT: BaseModel]:
     fit_schema: ClassVar[Mapping[str, Any] | None] = None
     description: ClassVar[str | None] = None
     pad_extend: ClassVar[bool] = True
+    structural_missing: ClassVar[Sequence[str]] = ()
+    """Canonical variables whose NaN are expected by design (for example cells without a
+    sensor). The scorecard check ``data.missing`` does not count their missing values."""
     about: ClassVar[About | None] = None
     """M3.5: the plain-language About card. Built-in models take theirs from
     :data:`mapi_spec.abouts.MODEL_ABOUTS` when this is unset."""

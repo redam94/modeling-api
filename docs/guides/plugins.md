@@ -35,6 +35,11 @@ dims, for example `chain`/`draw` or `quantile`. If the data dims change with the
 `"dims_of": "y"`. The output then also gets each dim of that input variable in the resolved
 schema (for example `settings.rows` of the sklearn models).
 
+If the NaN of an input are part of the design of the data, list its canonical name in the class
+attribute `structural_missing`. An example is a grid of cells where only some cells have a
+sensor. The scorecard check `data.missing` then does not count these NaN. Do not use it for
+gaps in observed series: the check must show them.
+
 `FitOutput.native` is only for safe native formats (skops, xgboost JSON, safetensors). The
 platform rejects pickle when it writes a bundle and when it reads a bundle.
 

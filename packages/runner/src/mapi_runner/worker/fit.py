@@ -44,7 +44,7 @@ from mapi_runner.worker.data import (
 from mapi_runner.worker.explore import write_model_explorer
 from mapi_runner.worker.guided import check_lift_tests, response_grid_view
 from mapi_runner.worker.plots import render_for
-from mapi_runner.worker.scorecard import fit_scorecard
+from mapi_runner.worker.scorecard import fit_scorecard, model_structural_missing
 from mapi_runner.worker.views import externalize_plot_data, write_ui_views
 
 __all__ = ["FIT_COORDS", "run_fit", "write_fit_coords", "write_guided_views"]
@@ -109,7 +109,8 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
 
 def write_guided_views(ctx: WorkerContext, bundle: Bundle, data: xr.Dataset) -> None:
     """``scorecard.json`` and, for models with response curves, the what-if grid view."""
-    card = fit_scorecard(bundle, data)
+    structural = model_structural_missing(getattr(ctx, "registry", None), bundle)
+    card = fit_scorecard(bundle, data, structural_missing=structural)
     ctx.write_json(SCORECARD_OUTPUT, card.model_dump(mode="json", exclude_none=True))
     try:
         grid = response_grid_view(bundle)
