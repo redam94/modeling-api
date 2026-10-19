@@ -300,12 +300,13 @@ docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets c
 	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
-DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize
+DOCS_EXPLORER_SCI_SHOTS := explorer-sci-images,explorer-sci-profiles,explorer-sci-map,explorer-sci-network,explorer-sci-tree,explorer-sci-circular,explorer-sci-points,explorer-sci-nav
+DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize,$(DOCS_EXPLORER_SCI_SHOTS)
 
 .PHONY: docs-screenshots-explorers
-docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser and optimisation screenshots from mock mode (Playwright)
+docs-screenshots-explorers: ## Recapture the explorer (also on scientific data), About-card, chooser and optimisation screenshots from mock mode (Playwright)
 	MAPI_EXPLORER_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
-		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts
+		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts e2e/science-explorer-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-explorers docs/assets/screenshots --max-kb 150 --only $(DOCS_EXPLORER_SHOTS)
 
 DOCS_WORKFLOW_SHOTS := workflows-gallery,workflows-editor,workflows-run-monitor,workflows-node-drawer,workflows-decisions,workflows-schedule,workflows-recipe,governance-policies,governance-policy,governance-policy-editor,governance-review-queue,governance-validation,governance-evidence

@@ -24,11 +24,19 @@ It also writes ``src/features/explore/views.gen.ts``: TypeScript types of every 
 by the runner's section function from synthetic posterior draws of three gridded outputs (a
 framed log intensity, a vector field and a space-time density), without a fit.
 
+``--science`` writes ``src/mocks/explorer-sci.gen.json`` (served by ``src/mocks/explore-sci.ts``):
+the Data Explorer of scientific data on the synthetic exports of eleven pymc-challenges cases
+(``mapi_plugin_science.export``: images, a vector field, profiles, a map, networks, a tree,
+points and directions) and of the E80 lens as a tree dataset. Each file is ingested by the
+runner's own ``run_ingest`` (the index, views and plots an upload gets), and each plain
+dataset is also explored with every section (as a default explore run).
+
 Usage::
 
     uv run python apps/web/scripts/gen_explorer_fixtures.py           # refit and rewrite (minutes)
     uv run python apps/web/scripts/gen_explorer_fixtures.py --types   # only views.gen.ts
     uv run python apps/web/scripts/gen_explorer_fixtures.py --fields  # only fields.gen.json
+    uv run python apps/web/scripts/gen_explorer_fixtures.py --science # only explorer-sci.gen.json
     uv run python apps/web/scripts/gen_explorer_fixtures.py --check   # contracts only (seconds)
 
 Writing needs the runner, the plugins and pnpm. ``--check`` needs only ``mapi_spec``: every
@@ -174,6 +182,27 @@ CHEAP_CHECKS: Final = (
 )
 MAX_PLOTS_BYTES: Final = 40_000
 
+SCI_OUT: Final = WEB / "src" / "mocks" / "explorer-sci.gen.json"
+#: The science sections of the Data Explorer (their views are found by format tag).
+SCIENCE_SECTIONS: Final = (
+    "structure",
+    "images",
+    "profiles",
+    "map",
+    "network",
+    "tree",
+    "circular",
+    "points",
+)
+#: pymc-challenges export cases served as mock datasets ``ds-sci-<case>`` (synthetic data;
+#: e58 is left out: its frames exercise nothing e07 does not), then the E80 lens as a tree.
+SCI_CASES: Final = ("e07", "e50", "e60", "e18", "e21", "e19", "e23", "e77", "e79", "e81", "e81b")
+SCI_TREE: Final = "e80tree"
+SCI_T0: Final = "2026-10-19T09:00:00Z"
+SCI_SHA: Final = "sha256:" + "5c" * 32
+SCI_MAX_BYTES: Final = 3 * 1024 * 1024
+SCI_MAX_PLOTS_BYTES: Final = 120_000
+
 
 # ======================================================================== small helpers
 
@@ -207,8 +236,13 @@ def _fix_times(obj: Any) -> Any:
 
 def _schema_doc() -> dict[str, Any]:
     """An OpenAPI document holding the JSON Schemas of the explorer views."""
+    models: list[type[BaseModel]] = [
+        *VIEW_MODELS.values(),
+        *_science_view_models().values(),
+        ExplorerIndex,
+    ]
     _, defs = models_json_schema(
-        [(m, "serialization") for m in [*VIEW_MODELS.values(), ExplorerIndex]],
+        [(m, "serialization") for m in models],
         ref_template="#/components/schemas/{model}",
     )
     return {
@@ -591,7 +625,7 @@ def _models() -> tuple[dict[str, Any], dict[str, Any]]:
     out[VECM_REF] = _explore_model(
         vecm, VECM_REF, extra=["forecast"], request={"sections": ["forecast"], "horizon": 12}
     )
-    cheap = [(c, {}) for c in CHEAP_CHECKS]
+    cheap: list[tuple[str, dict[str, Any]]] = [(c, {}) for c in CHEAP_CHECKS]
     out[MMM_REF]["governance"] = _governance(mmm, cheap)
     out[ARIMAX_V1]["governance"] = _governance(
         v1, [*cheap, ("null.permutation_target", {"n_permutations": 19})]
@@ -727,6 +761,292 @@ def _fields_demo() -> dict[str, Any]:
     }  # fmt: skip
 
 
+# ======================================================================= science datasets
+
+
+class _Cancel:
+    cancelled = False
+
+    def check(self) -> None:
+        return None
+
+
+class _Ctx:
+    """An in-process stand-in for the worker context (outputs kept in memory)."""
+
+    def __init__(self, inputs: dict[str, Path] | None = None) -> None:
+        self.inputs = dict(inputs or {})
+        self.cancel = _Cancel()
+        self.outputs: dict[str, bytes] = {}
+        self.warnings: list[str] = []
+        self.registry = None
+
+    def has_input(self, name: str) -> bool:
+        return name in self.inputs
+
+    def input_names(self, prefix: str) -> list[str]:
+        return sorted(n for n in self.inputs if n.startswith(prefix))
+
+    def download(self, name: str, *, required: bool = True) -> Path | None:
+        return self.inputs.get(name)
+
+    def state(self, *_a: Any, **_k: Any) -> None:
+        return None
+
+    def progress(self, *_a: Any, **_k: Any) -> None:
+        return None
+
+    def log(self, _m: str) -> None:
+        return None
+
+    def warning(self, code: str, message: str, untrusted_text: str | None = None) -> None:
+        self.warnings.append(f"{code}: {message}: {untrusted_text or ''}"[:300])
+
+    def write_output(self, name: str, data: bytes) -> Path:
+        self.outputs[name] = data
+        return Path(name)
+
+    def write_json(self, name: str, obj: Any) -> Path:
+        data = json.dumps(obj, sort_keys=True, allow_nan=False, default=str).encode()
+        return self.write_output(name, data)
+
+    def json(self, name: str) -> Any:
+        return json.loads(self.outputs[name])
+
+
+def _view_model(section: str) -> type[BaseModel] | None:
+    """The :mod:`mapi_spec.views` model of a data section, found by its ``format`` tag
+    (``mapi.data-explorer.<section>/v1``), so new sections need no import here."""
+    if section in VIEW_MODELS:
+        return VIEW_MODELS[section]
+    import mapi_spec.views as views_mod
+
+    tag = f"mapi.data-explorer.{section}/v1"
+    for obj in vars(views_mod).values():
+        if (
+            isinstance(obj, type)
+            and issubclass(obj, BaseModel)
+            and "format" in obj.model_fields
+            and obj.model_fields["format"].default == tag
+        ):
+            return obj
+    return None
+
+
+def _science_view_models() -> dict[str, type[BaseModel]]:
+    """The views of the science sections that the spec defines (none before they exist)."""
+    out: dict[str, type[BaseModel]] = {}
+    for section in SCIENCE_SECTIONS:
+        model = _view_model(section)
+        if model is not None:
+            out[section] = model
+    return out
+
+
+def _sci_trim(ctx: _Ctx, index: dict[str, Any], prefix: str = "ui/explore/") -> dict[str, Any]:
+    """The index of a part and its views and plots (rounded), as artifacts. Plots larger
+    than :data:`SCI_MAX_PLOTS_BYTES` are left out (the app draws its own plots from the
+    views)."""
+    artifacts: dict[str, Any] = {}
+    sections = []
+    for ref in index["sections"]:
+        ref = dict(ref)
+        if (ref.get("status") or "ok") == "ok":
+            artifacts[ref["view"]] = _round(ctx.json(ref["view"]))
+            plots_name = ref.get("plots")
+            if plots_name:
+                plots = _round(_fix_times(ctx.json(plots_name)))
+                if len(json.dumps(plots, separators=(",", ":"))) <= SCI_MAX_PLOTS_BYTES:
+                    artifacts[plots_name] = plots
+                else:
+                    ref.pop("plots")
+        sections.append(ref)
+    artifacts[f"{prefix}index.json"] = {**index, "sections": sections}
+    return artifacts
+
+
+def _sci_version(
+    ds_id: str, ref: str, ctx: _Ctx, size: int, message: str, *, tree: bool
+) -> dict[str, Any]:
+    from mapi_spec.api import DatasetVersion
+
+    summary = ctx.json("summary.json")
+    doc: dict[str, Any] = {
+        "dataset_id": ds_id,
+        "tenant_id": "default",
+        "project_id": "default",
+        "version": 1,
+        "ref": f"{ref}@v1",
+        "status": "ready",
+        "sha256": SCI_SHA,
+        "size_bytes": size,
+        "data_schema": ctx.json("schema.json"),
+        "summary": {k: v for k, v in summary.items() if k != "nodes"},
+        "profile": {"name": "profile.json", "size": 2048, "content_type": "application/json"},
+        "preview": {"name": "preview.json", "size": 2048, "content_type": "application/json"},
+        "ingest_run_id": f"run_01jaf3q2x8m9v7k5h4{ds_id.removeprefix('ds-sci-')}".ljust(30, "0"),
+        "issues": [],
+        "message": message,
+        "created_at": SCI_T0,
+        "ready_at": SCI_T0,
+    }
+    if tree:
+        doc["layout"] = "tree"
+        doc["tree_schema"] = ctx.json("tree_schema.json")
+    return DatasetVersion.model_validate(doc).model_dump(mode="json", exclude_none=True)
+
+
+def _sci_case(case: str, tmp: Path) -> dict[str, Any]:
+    """One science dataset: its synthetic export ingested by the runner (``run_ingest``, as
+    an upload), then explored by an explore run of every section (plain datasets)."""
+    import xarray as xr
+    from mapi_plugin_science.export import EXPORTS, SCHEMA_ATTR, write_export
+    from mapi_runner.worker.explore import write_sections
+    from mapi_runner.worker.explore_data import DATA_SECTION_FUNCS, data_context
+    from mapi_runner.worker.ingest import run_ingest
+    from mapi_sdk.schema import data_summary
+    from mapi_spec.about import describe_dataset
+    from mapi_spec.api import Dataset
+    from mapi_spec.explore import DataExploreRequest
+    from mapi_spec.ingest import IngestMapping
+    from mapi_spec.jobs import IngestJob
+    from mapi_spec.schema import DataSchema
+    from mapi_spec.views import DATA_SECTIONS
+
+    tree = case == SCI_TREE
+    export = EXPORTS["e80" if tree else case]
+    data = export.synthetic()
+    path = tmp / f"{case}.nc"
+    if tree:
+        from mapi_plugin_science import lens_data
+
+        assert isinstance(data, xr.Dataset)
+        flat = data.copy()
+        flat.attrs.pop(SCHEMA_ATTR, None)
+        write_export(lens_data.to_tree(flat), path, schema=lens_data.LENS_TREE_SCHEMA)
+        name = f"{export.dataset}_tree"
+        title = f"{export.title} (a tree: /image and /psf)"
+    else:
+        write_export(data, path, schema=export.schema)
+        name = export.dataset
+        title = export.title
+    ds_id = f"ds-sci-{case}"
+    ref = f"dataset://{export.project}/{name}"
+    ctx = _Ctx({"upload": path})
+    mapping = IngestMapping.model_validate({"format": "netcdf"})
+    run_ingest(ctx, IngestJob(mapping=mapping, dataset=f"{ref}@v1"))  # type: ignore[arg-type]
+    artifacts: dict[str, Any] = {
+        n: ctx.json(n) for n in ("summary.json", "profile.json", "preview.json")
+    }
+    artifacts["profile.json"]["sha256"] = SCI_SHA  # the zip's hash is not part of the contract
+    artifacts.update(_sci_trim(ctx, ctx.json("ui/explore/index.json")))
+    explore: dict[str, Any] = {}
+    about: dict[str, Any] | None = None
+    if tree:
+        artifacts["tree_schema.json"] = ctx.json("tree_schema.json")
+        nodes = ctx.json("ui/explore/nodes/index.json")
+        artifacts["ui/explore/nodes/index.json"] = nodes
+        for entry in nodes["nodes"].values():
+            prefix = entry["index"].removesuffix("index.json")
+            artifacts.update(_sci_trim(ctx, ctx.json(entry["index"]), prefix))
+    else:
+        # an explore run of every section with the default request (the on-demand ones)
+        with xr.open_dataset(path, engine="h5netcdf") as raw:
+            loaded = raw.load()
+        schema = DataSchema.model_validate(ctx.json("schema.json"))
+        about = describe_dataset(
+            schema, data_summary(loaded, schema), description=f"{title} ({export.case})."
+        ).model_dump(mode="json", exclude_none=True)
+        run = _Ctx()
+        request = DataExploreRequest()
+        index = write_sections(
+            run,  # type: ignore[arg-type]
+            DATA_SECTION_FUNCS,
+            list(DATA_SECTIONS),
+            data_context(loaded, schema, request),
+            target="dataset",
+            ref=f"{ref}@v1",
+        )
+        part = _sci_trim(run, index.model_dump(mode="json", exclude_none=True))
+        # the mock serves the ingest copy of a view the run computed identically
+        for key in list(part):
+            if key != "ui/explore/index.json" and artifacts.get(key) == part[key]:
+                del part[key]
+        explore = {"request": request.model_dump(mode="json", exclude_none=True), "artifacts": part}
+    dataset = Dataset.model_validate(
+        {
+            "id": ds_id,
+            "tenant_id": "default",
+            "project_id": "default",
+            "name": name,
+            "ref": ref,
+            "description": f"{title} ({export.case}, synthetic data of {export.model})",
+            "latest_version": 1,
+            "created_at": SCI_T0,
+            "updated_at": SCI_T0,
+        }
+    )
+    size = path.stat().st_size
+    message = f"Synthetic export of {export.case} (python -m mapi_plugin_science.export)"
+    return {
+        "case": case,
+        "dataset": dataset.model_dump(mode="json", exclude_none=True),
+        "version": _sci_version(ds_id, ref, ctx, size, message, tree=tree),
+        "artifacts": artifacts,
+        "explore": explore,
+        "about": about,
+        "warnings": sorted(set(ctx.warnings)),
+    }
+
+
+def render_science() -> str:
+    """``explorer-sci.gen.json``: the science datasets of the mock API (``explore-sci.ts``)."""
+    with tempfile.TemporaryDirectory() as tmp, warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cases = [_sci_case(c, Path(tmp)) for c in (*SCI_CASES, SCI_TREE)]
+    doc = {"generated_at": GENERATED_AT, "datasets": cases}
+    text = json.dumps(_fix_times(doc), separators=(",", ":"), sort_keys=True) + "\n"
+    if len(text) > SCI_MAX_BYTES:
+        raise SystemExit(f"explorer-sci.gen.json: {len(text):,} bytes (max {SCI_MAX_BYTES:,})")
+    return text
+
+
+def _check_science(problems: list[str]) -> None:
+    if not SCI_OUT.exists():
+        problems.append(f"{SCI_OUT} is missing")
+        return
+    from mapi_spec.api import Dataset, DatasetVersion
+
+    doc = json.loads(SCI_OUT.read_text("utf-8"))
+    cases = [d["case"] for d in doc["datasets"]]
+    if cases != [*SCI_CASES, SCI_TREE]:
+        problems.append(f"explorer-sci.gen.json has the cases {cases}")
+    for d in doc["datasets"]:
+        Dataset.model_validate(d["dataset"])
+        DatasetVersion.model_validate(d["version"])
+        if d.get("about") is not None:
+            DatasetAbout.model_validate(d["about"])
+        parts = [d["artifacts"], d.get("explore", {}).get("artifacts", {})]
+        for arts in parts:
+            for name, body in arts.items():
+                if not name.startswith("ui/explore/") or "/plots/" in name:
+                    continue
+                if name.endswith("index.json"):
+                    if name.endswith("nodes/index.json"):
+                        continue
+                    ExplorerIndex.model_validate(body)
+                    continue
+                section = name.rsplit("/", 1)[-1].removesuffix(".json")
+                model = _view_model(section)
+                if model is None:
+                    problems.append(f"{d['case']} {name}: no view model for {section!r}")
+                    continue
+                try:
+                    model.model_validate(body)
+                except Exception as exc:  # pragma: no cover - reported, not raised
+                    problems.append(f"{d['case']} {name}: {str(exc)[:300]}")
+
+
 def _write_types() -> None:
     """``views.gen.ts`` from the view schemas (openapi-typescript, as ``schema.d.ts``)."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -817,6 +1137,7 @@ def check() -> list[str]:
         views("demo fields", json.loads(FIELDS_OUT.read_text("utf-8"))["fit"])
     else:
         problems.append(f"{FIELDS_OUT} is missing")
+    _check_science(problems)
     return problems
 
 
@@ -825,6 +1146,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="fail if the fixtures are stale")
     parser.add_argument("--types", action="store_true", help="write only views.gen.ts")
     parser.add_argument("--fields", action="store_true", help="write only fields.gen.json")
+    parser.add_argument("--science", action="store_true", help="write only explorer-sci.gen.json")
     args = parser.parse_args(argv)
     if args.check:
         problems = check()
@@ -834,7 +1156,10 @@ def main(argv: list[str] | None = None) -> int:
             print("run: uv run python apps/web/scripts/gen_explorer_fixtures.py", file=sys.stderr)
         return 1 if problems else 0
     warnings.filterwarnings("ignore")
-    if args.types or args.fields:
+    if args.types or args.fields or args.science:
+        if args.science:
+            SCI_OUT.write_text(render_science(), "utf-8")
+            print(f"wrote {SCI_OUT.relative_to(WEB)} ({SCI_OUT.stat().st_size // 1024} KiB)")
         if args.types:
             _write_types()
             print(f"wrote {TYPES.relative_to(WEB)}")
@@ -844,9 +1169,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     _write_types()
     _write_fields()
+    SCI_OUT.write_text(render_science(), "utf-8")
     OUT.write_text(render(), "utf-8")
     print(f"wrote {FIELDS_OUT.relative_to(WEB)}")
     print(f"wrote {OUT.relative_to(WEB)} ({OUT.stat().st_size // 1024} KiB)")
+    print(f"wrote {SCI_OUT.relative_to(WEB)} ({SCI_OUT.stat().st_size // 1024} KiB)")
     print(f"wrote {TYPES.relative_to(WEB)}")
     return 0
 
