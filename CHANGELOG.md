@@ -5,6 +5,17 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.9.0] — Science gallery — 2026-10-19
+
+This release adds eleven science models from the pymc-challenges case studies, for images,
+fields, maps and graphs (15 `sci.*` models in all), and 14 plot recipes for them: maps,
+networks, trees, polar charts, image checks, colour swatches and posterior views. New workflow
+nodes give posterior summaries, posterior predictive checks, stacking weights, score modes and
+plots inside a workflow. Six workflow recipes use them for model ladders, a convergence-gated
+Bayesian audit and calibrate-then-design. Each ported case has a tutorial that does the
+notebook analysis in the web app, and `python -m mapi_plugin_science.export` turns the
+pymc-challenges data into datasets to upload.
+
 ### M5 phase 3 — Workflow recipes and tutorials for science models
 
 #### Added

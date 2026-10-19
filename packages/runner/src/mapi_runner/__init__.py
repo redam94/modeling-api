@@ -10,4 +10,4 @@
 Importing this package (or the supervisor) never imports the SDK, plugins, numpy or xarray.
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
