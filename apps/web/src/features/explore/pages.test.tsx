@@ -6,7 +6,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -14,12 +13,9 @@ import { AboutCard } from "@/features/about/about-card";
 import { guidedTemplateForModel, startTarget } from "@/features/about/start";
 import { specStarterFor } from "@/features/about/spec-starter";
 import { createHandlers } from "@/mocks/handlers";
-import * as fx from "@/mocks/fixtures";
 import { DS_ID, MODEL_ID } from "@/mocks/fixtures";
-import { env } from "@/env";
+import { SCI_DEMO_ID, SCI_DEMO_NOT_APPLICABLE, SCI_DEMO_TREE_ID } from "@/mocks/explore-sci-demo";
 import { DATA_SECTION_META } from "@/features/explore/sections-meta";
-import { scienceExample } from "@/features/explore/science-examples.test-helper";
-import { SCIENCE_SECTIONS, type DataSection } from "@/features/explore/views";
 import { EXTRA_MODEL_IDS, FIXTURE } from "@/mocks/explore";
 import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
@@ -208,52 +204,8 @@ describe("budget optimisation", () => {
 
 // ------------------------------------------------------------------------------ scientific data
 
-/** A dataset whose ingest wrote every section for scientific data (the spec's example views). */
-const SCI_ID = "ds_01jaf3sci0demo0000000000";
-const NOT_APPLICABLE: DataSection[] = ["timeseries", "ccf", "acf_pacf", "stationarity", "stl", "groups", "vif"];
-const ORDER: DataSection[] = ["overview", "structure", "images", "map", "network", "tree", "circular", "points", "profiles", "quality", "distributions", "correlation", "missingness", "outliers"];
-
-function sciArtifacts(): Map<string, unknown> {
-  const structure = scienceExample("structure");
-  const overview = { ...FIXTURE.dataset.ingest.views.overview, shapes: structure.shapes };
-  const views = new Map<string, unknown>([["overview", overview], ...SCIENCE_SECTIONS.map((s) => [s, scienceExample(s)] as [string, unknown])]);
-  const index = {
-    format: "mapi.explorer-index/v1",
-    target: "dataset",
-    ref: "dataset://default/sci_demo@v1",
-    shapes: ["image", "areal_map", "network", "tree", "circular", "points", "profile"],
-    order: ORDER,
-    sections: [
-      ...[...views.keys()].map((s) => ({ section: s, view: `ui/explore/${s}.json` })),
-      ...NOT_APPLICABLE.map((s) => ({ section: s, view: `ui/explore/${s}.json`, status: "skipped", reason: "not_applicable", message_plain: `Not available: the data has no time dimension (${s}).` })),
-    ],
-  };
-  const out = new Map<string, unknown>([["ui/explore/index.json", index]]);
-  for (const [s, v] of views) out.set(`ui/explore/${s}.json`, v);
-  return out;
-}
-
-function sciHandlers() {
-  const API = env.apiBase;
-  const artifacts = sciArtifacts();
-  const enc = new TextEncoder();
-  const bytes = (name: string) => enc.encode(JSON.stringify(artifacts.get(name)));
-  const version = { ...fx.datasetVersion, id: "dv_01jaf3sci0demo000000000", dataset_id: SCI_ID, ref: "dataset://default/sci_demo@v1", data_schema: { layout: "dense" as const, dims: { row: { kind: "integer" as const, policy: "fixed" as const }, col: { kind: "integer" as const, policy: "fixed" as const } }, vars: {} } };
-  return [
-    http.get(`${API}/v1/datasets/${SCI_ID}`, () => HttpResponse.json({ ...fx.dataset, id: SCI_ID, name: "sci_demo", ref: "dataset://default/sci_demo" })),
-    http.get(`${API}/v1/datasets/${SCI_ID}/versions/1`, () => HttpResponse.json(version)),
-    http.get(new RegExp(`/v1/datasets/${SCI_ID}/versions/1/artifacts/(.+)$`), ({ request }) => {
-      const name = decodeURIComponent(new URL(request.url).pathname.split("/artifacts/")[1] ?? "");
-      if (!artifacts.has(name)) return HttpResponse.json({ type: "urn:mapi:error:NOT_FOUND", title: "Not found", status: 404, code: "NOT_FOUND", errors: [] }, { status: 404 });
-      return HttpResponse.json(fx.artifactLink(`scidemo:${name}`, bytes(name), "application/json"));
-    }),
-    http.get("http://127.0.0.1:4443/mock-artifacts/:name", ({ params }) => {
-      const key = String(params.name);
-      if (!key.startsWith("scidemo:")) return undefined;
-      return new HttpResponse(bytes(key.slice("scidemo:".length)), { headers: { "content-type": "application/json" } });
-    }),
-  ];
-}
+const SCI_ID = SCI_DEMO_ID;
+const NOT_APPLICABLE = SCI_DEMO_NOT_APPLICABLE;
 
 describe("the Data Explorer on scientific data", () => {
   // jsdom has no canvas: the field viewer paints nothing (fields.test.ts tests the pixels)
@@ -262,7 +214,6 @@ describe("the Data Explorer on scientific data", () => {
   });
 
   it("lists the sections by relevance, hides what does not apply and links the shapes", async () => {
-    server.use(...sciHandlers());
     const { router } = renderApp(`/datasets/${SCI_ID}/versions/1/explore`);
     const chips = await screen.findByTestId("shape-chips", undefined, T);
     const nav = screen.getByRole("navigation", { name: "Data Explorer sections" });
@@ -283,10 +234,9 @@ describe("the Data Explorer on scientific data", () => {
   });
 
   it("opens a section that does not apply from its link, with the reason", async () => {
-    server.use(...sciHandlers());
     renderApp(`/datasets/${SCI_ID}/versions/1/explore?section=stl`);
     const skipped = await screen.findByTestId("section-skipped", undefined, T);
-    expect(skipped).toHaveTextContent("Not available: the data has no time dimension (stl).");
+    expect(skipped).toHaveTextContent("Not available: the data has no time dimension.");
     const hidden = screen.getByTestId("nav-not-applicable");
     expect((hidden as HTMLDetailsElement).open).toBe(true);
     expect(within(hidden).getByRole("button", { name: /Trend and season/ })).toHaveAttribute("aria-current", "page");
@@ -302,7 +252,6 @@ describe("the Data Explorer on scientific data", () => {
     ["circular", "Rose of wind_from"],
     ["points", "chip: Colour of each point"],
   ] as const)("renders the %s section from its view", async (section, plotTitle) => {
-    server.use(...sciHandlers());
     renderApp(`/datasets/${SCI_ID}/versions/1/explore?section=${section}`);
     expect(await screen.findByTestId("plain-summary", undefined, T)).toBeInTheDocument();
     expect(screen.getByText(DATA_SECTION_META[section].question)).toBeInTheDocument();
@@ -312,5 +261,20 @@ describe("the Data Explorer on scientific data", () => {
     } else {
       expect(screen.getByTestId("field-viewer")).toBeInTheDocument();
     }
+  });
+
+  it("gives each node of a tree dataset its own sections", async () => {
+    const { router } = renderApp(`/datasets/${SCI_DEMO_TREE_ID}/versions/1/explore?node=%2Flinks&section=network`);
+    expect(await screen.findByText(/^The network of cowork has 4 nodes/, undefined, T)).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Data Explorer sections" });
+    expect(nav.querySelector('[data-section="network"]:not([data-reason])')).not.toBeNull();
+    expect(nav.querySelector('[data-section="images"]')).toHaveAttribute("data-reason", "not_applicable");
+    // the other node: the image is there, the network does not apply
+    await userEvent.selectOptions(screen.getByLabelText("Node"), "/image");
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ node: "/image" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Images and fields/ }, T));
+    expect(await screen.findByTestId("field-viewer", undefined, T)).toBeInTheDocument();
+    const nav2 = screen.getByRole("navigation", { name: "Data Explorer sections" });
+    expect(nav2.querySelector('[data-section="network"]')).toHaveAttribute("data-reason", "not_applicable");
   });
 });
