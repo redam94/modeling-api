@@ -1,19 +1,19 @@
 # E18: the smoothed map, predictive counts, new maps (simulate) and typed refusals.
+# The district count follows the data size (43 tiny, 57 full): expectations.py checks it.
 - name: predict_map
   request: {mode: predict, output: {draws: 5}}
   payload: fit_data
   expect:
     groups: [summary, draws]
     vars: [cases, rr, p_exceed, effect]
-    sizes: {district: 43}
 - name: predict_predictive
   request: {mode: predict, output: {kind: predictive}}
   payload: fit_data
-  expect: {vars: [cases], sizes: {district: 43}}
+  expect: {vars: [cases]}
 - name: simulate_new_maps
   request: {mode: simulate, output: {kind: predictive}}
   payload: fit_data
-  expect: {vars: [cases, rr, effect], sizes: {district: 43}}
+  expect: {vars: [cases, rr, effect]}
 - name: predict_two_areas
   request: {mode: predict, output: {summary: [mean, q5, q95]}}
   payload: two_areas

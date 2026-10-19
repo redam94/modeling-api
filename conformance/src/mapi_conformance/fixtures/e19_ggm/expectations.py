@@ -37,8 +37,12 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
 
 
 def check_score(name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset) -> None:
+    n_protein = data.sizes["protein"]  # 6 at tiny size, 11 at full
+    if name in ("predict_graph", "simulate_cells"):
+        assert tree["summary"].to_dataset().sizes["protein"] == n_protein
     if name == "predict_graph":
         summary = tree["summary"].to_dataset()
+        assert summary.sizes["protein_"] == n_protein
         assert summary["level"].attrs["units"] == "log_intensity"
         mean = summary["pcor"].sel(stat="mean").values
         assert np.allclose(np.diag(mean), 1.0) and np.allclose(mean, mean.T, atol=1e-8)

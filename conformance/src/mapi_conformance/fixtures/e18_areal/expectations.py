@@ -41,6 +41,9 @@ def check_fit(bundle: Bundle, data: xr.Dataset) -> None:
 
 def check_score(name: str, tree: xr.DataTree, bundle: Bundle, data: xr.Dataset) -> None:
     summary = tree["summary"].to_dataset()
+    if name in ("predict_map", "predict_predictive", "simulate_new_maps"):
+        # every district of the payload (43 at tiny size, 57 at full)
+        assert summary.sizes["district"] == data.sizes["district"]
     if name == "predict_map":
         p = summary["p_exceed"].sel(stat="mean")
         assert bool(((p >= 0) & (p <= 1)).all())
