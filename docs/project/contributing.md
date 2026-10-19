@@ -117,7 +117,21 @@ The site uses MkDocs Material. `mkdocs.yml` is at the repository root, and the p
   (`docs/operations/configuration.md`). A test looks for these variables in the source tree.
 - **Screenshots** are in `docs/assets/screenshots/`. Each screenshot must be 300 KB or less,
   and a page must use it. `make docs-screenshots` captures them again from a stack that runs and has
-  seed data.
+  seed data. Other targets capture one set each:
+    - from a `make dev` stack: `docs-screenshots-admin` and `docs-screenshots-science` (the
+      science tutorials, with the datasets of
+      [Science data](../operations/local-development.md#science-data));
+    - from the web app in mock mode: `docs-screenshots-guided`, `docs-screenshots-integrations`,
+      `docs-screenshots-tutorials`, `docs-screenshots-explorers` and
+      `docs-screenshots-workflows`.
+
+    The [configuration reference](../operations/configuration.md#documentation) lists the
+    variables that these scripts read.
+- **The cookbook documents are tested.** `conformance/tests/test_docs_v05.py` makes sure that
+  each `docs/snippets/cookbook_*.yaml` is a valid workflow. It also makes sure that the
+  documents of the six M5 recipes (`cookbook_sci_*.yaml` and
+  `cookbook_bayes_workflow_audit.yaml`) are the same as their gallery templates. If you change
+  one of these templates, change its document too.
 - `make docs-build` must pass (`mkdocs build --strict`, with anchor validation).
 - Write for two types of readers. An analyst wants to know what a feature does for them. A
   data scientist wants to know exactly how it works.

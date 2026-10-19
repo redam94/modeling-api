@@ -53,14 +53,14 @@ behaviour against a real Cloud Run Jobs execution (see
 | Use a leaked token | Tokens have a scope and one project. They expire and can have rate limits and budgets. You can revoke them immediately. They never have operator powers. The platform audits failed uses. | **Enforced** |
 | Use too much compute, or stop the work of all other users | Quotas in vCPU-seconds for each token, tenant and platform. Interactive work goes before batch work. A global spend cap. A switch that stops all uploaded code. | **Enforced** |
 | Run script in your browser through a plot | A sanitizer, then a sandboxed iframe on a different origin with a strict CSP | **Enforced** |
-| Take control of the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`). The platform checks package uploads for `.pth` and `sitecustomize`. | Supervisor isolation is **enforced**. Uploaded packages come with the overlay pipeline (v0.6). |
+| Take control of the runner with a malicious package | The supervisor runs in its own environment (`python -I -S`). The platform checks package uploads for `.pth` and `sitecustomize`. | Supervisor isolation is **enforced**. Uploaded packages come with the overlay pipeline, which is planned for a later release. |
 | Put a hostile item into the supply chain | Hash-locked Python, digest-pinned images, a frozen JavaScript lockfile without install scripts, and keyless CI identities | **Enforced** in the builds. Enforcement of signed images (Binary Authorization) comes with public code upload. |
 | Use a webhook to attack your network (SSRF) | Static URL checks. One DNS resolution, with a check of each address. A connection pinned to the checked address. No redirects. Limits on time and size. The platform refuses private, loopback and link-local addresses and unusual ports. | **Enforced**. Unit tests cover the delivery to public hosts. The `multi-tenant` profile refuses the development allow-list. |
 | Forge or replay a webhook delivery to your receiver | An HMAC-SHA256 signature over a timestamp and the raw body. Each webhook has its own secret. The platform shows the secret one time and keeps it sealed. Receivers refuse old timestamps. Envelopes contain ids and states, never data, links or secrets. | **Enforced** (`mapi_client.webhooks.verify`) |
 | Use an embed link to see more than one chart | A tokenised link to one saved plot of a platform recipe, stored as a keyed hash. The public view reads no credential and contains only the data of that plot. It has rate limits for each link and each address. It stops on revocation or expiry. | **Enforced** |
 | Sign up many workspaces to get free compute | E-mail verification. The platform refuses disposable domains. Sign-up limits for each address, each domain and the platform. Operators review Sybil flags. `public` workspaces run only built-ins and declarative specs (cut line A). They run only on executors that enforce egress and DNS. | **Enforced**. Vendor identity verification and a public run on such an executor wait for a deployment. |
 | Keep the data of a tenant after the tenant leaves | After a grace period, tenant deletion purges all tables and object prefixes. It sends a notification by signed webhook. A GDPR export with the credentials redacted. | **Enforced**. The platform keeps only the pseudonymised audit log and the cost ledger. |
-| Misuse the MCP server | Curated tools with delimited untrusted text | Not applicable yet. The MCP server comes in v0.6. |
+| Misuse the MCP server | Curated tools with delimited untrusted text | Not applicable yet. The MCP server is planned for a later release. |
 
 The [security suite](../operations/security-suite.md) contains the probes that check these
 rows as hostile code, for each executor.
@@ -248,7 +248,7 @@ The CLI removes escape sequences before it prints.
 
 ## What comes next
 
-Plugin upload for allow-listed teams comes in [v0.6](../roadmap/expert-plugins.md). The
+Plugin upload for allow-listed teams is [planned](../roadmap/expert-plugins.md) for a later release. It has no release number yet. The
 platform builds the plugins into hash-pinned overlays, and the contract kit checks them on
 upload. [Public code upload](../roadmap/index.md#after-v06) lets all tenants upload their own
 plugins. It comes only after these items are available:

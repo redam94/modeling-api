@@ -16,7 +16,8 @@ This guide tells you how to:
 - make one version from [several files](#versions-made-from-several-files): one file for each
   node, files stacked along a dim, or files merged on shared coords;
 - read nodes of a tree in a spec with [`data.nodes`](#read-a-tree-in-a-spec-datanodes);
-- write a model that reads the [whole tree](#models-that-read-the-whole-tree).
+- write a model that reads the [whole tree](#models-that-read-the-whole-tree);
+- use a tree dataset in a [workflow](#tree-datasets-in-a-workflow) (v0.9).
 
 All existing datasets, specs and plugins continue to work without changes. A file without
 groups still gives a plain dataset version, as before.
@@ -402,6 +403,37 @@ holdout score see only their part of the tree.
 over `psf_row` and `psf_col`, the fit uses that PSF. Otherwise it uses the flat `psf`, as
 before. With the setting `psf_source: tree`, a spec can select only the image node in
 `data.nodes`. Refer to the model's section in the [model reference](../reference/models.md).
+
+## Tree datasets in a workflow <span class="mapi-badge">v0.9</span> { #tree-datasets-in-a-workflow }
+
+A workflow input can be a tree dataset. In the local runner, it can be an `xr.DataTree`.
+`model.fit` and `model.backtest` take the parameters `nodes` and `join`. They are the same as
+`data.nodes` and `data.join` of a spec. If you do not give `nodes`, the node reads the root
+node. `join` is `exact` (the default), `inner` or `outer`.
+
+```yaml
+- id: fit
+  use: model.fit
+  inputs: {data: inputs.data}
+  with:
+    model: toy.tree_linear@^1
+    nodes: {sales: {path: /sales}, media: {path: /media}}
+    join: inner
+```
+
+`model.score`, `model.forecast` and `plot.render` (`source: predictions`) send a tree on their
+`data` input as a whole tree. They select the same nodes as the fit. A tree-input model gets
+the tree of that input, not the tree of its fit. With `source: data`, `plot.render` keeps all
+the groups of a tree input. For example, `sci.area_map` reads the group `geometry`, and
+`sci.phylogeny` reads the group `tree`.
+
+These limits apply:
+
+- A backtest of a tree dataset gives the full tree to each fold. A tree-input model that
+  reads its target from the tree can see the test window. The node shows a warning.
+- `search.grid` has no `nodes` parameter.
+
+Refer to [Tree datasets](workflows.md#tree-datasets) in the workflows guide.
 
 ## Limits
 

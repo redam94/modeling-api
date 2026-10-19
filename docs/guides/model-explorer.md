@@ -25,7 +25,7 @@ sections into groups by the question that they answer:
 | Group | Sections |
 |---|---|
 | Overview | *At a glance*: the plain readings of the diagnostics and the fit, the holdout metrics and the [About card](../concepts/about-and-choosing.md) of the model |
-| What it learned | Parameters (a table that you can sort and filter, with intervals, p-values, R-hat and ESS, and a forest plot for each parameter), contributions, response curves, impulse responses and variance decomposition |
+| What it learned | Parameters (a table that you can sort and filter, with intervals, p-values, R-hat and ESS, and a forest plot for each parameter), contributions, response curves, impulse responses, variance decomposition and fields (the outputs of the model on a 2-D grid) |
 | Can you trust it? | Diagnostics (convergence, fit statistics for each series, the tests of the model), fit vs actual (with the coverage of the band in plain words), residuals (over time, ACF, histogram, QQ plot, Ljung-Box, Jarque-Bera, Breusch-Pagan and ARCH-LM), backtest |
 | Looking ahead | Forecast (a fan for each series) |
 | Trust and origin | Governance (the status badge of the latest validation, each check with its evidence, the status history) and lineage (dataset, spec revision, fit run and workflow run, and also plugin, image, seed and libraries) |
@@ -190,6 +190,21 @@ view does not include the tests. It gives a warning. For more sections, add
 | `forecast` | A forecast fan over `horizon` periods after the history. The drivers stay at their last values | models that forecast |
 | `backtest` | New fits on a rolling-origin or expanding-window plan: metrics for each fold and horizon, against "same as last period" and "same as last season" | models over time |
 | `comparison` | More than one version side by side (above) | all |
+
+The science models have many outputs on a grid. Some examples:
+
+- `sci.heat_plate`: `field`, the temperature of each cell for each run.
+- `sci.turing_pattern`: `pattern`, `settled` and `turing_space`.
+- `sci.storm_localisation`: `render`, `patch_fit` and `frames_hat`.
+- `sci.ibp_features`: `ink_hat` and `features`.
+- `sci.graphical_model`: `pcor` and `edge_prob`.
+- `sci.network_latent_space`: `tie_prob` and `tie`.
+- `sci.circular_regression`: `density` and `overlap`.
+
+The `fields` section calculates its statistics on a line. It does not use the circular rules
+of an output that is an angle (`OutputDecl.circular`), as the score summaries do. At this
+time, no circular output of a bundled model has a `grid`. The section does not show an output
+that is not numeric, or an output that does not have the dims of its `grid`.
 
 ## For plugin authors: what the explorer reads
 

@@ -20,7 +20,7 @@ MAPI_EXEC_TOKEN=… mapi-runner
 | `mapi_runner.sandbox` | trusted | uid 10001 + no-new-privs when root; dev mode otherwise |
 | `mapi_runner.channel` | both | the length-prefixed JSON message protocol over the socketpair |
 | `mapi_runner.jobs` | both | `RunSpec.spec` per kind; input and output names |
-| `mapi_runner.worker` | untrusted | `ingest`, `inspect`, `describe`, `validate`, `fit`, `score`, `evaluate`, `derive`, `render` |
+| `mapi_runner.worker` | untrusted | `ingest`, `inspect`, `describe`, `validate`, `fit`, `score`, `evaluate`, `derive`, `render`, `optimize`, `translate_priors`, `explore`, `governance`, `workflow_node` (the sandboxed workflow nodes, for example `model.summary`, `evaluate.ppc`, `compare.stacking`, `model.score` and `plot.render`) |
 | `mapi_runner.worker.hdf5_guard` | untrusted | v0.8: walks an HDF5 upload with h5py's low-level API (no link followed) and refuses external links, external storage, virtual datasets, filter plugins, large user blocks and unbounded shapes before any reader opens it |
 | `mapi_runner.testing` | untrusted | misbehaving registries for the sandbox tests |
 

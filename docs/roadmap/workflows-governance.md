@@ -26,6 +26,20 @@
 | A gallery: readiness to ARIMAX, VAR/VECM cointegration, governed MMM, forecast bake-off | [Workflow cookbook](../guides/workflow-cookbook.md) |
 | A visual workflow builder, a live run monitor and Guided recipes in the web app | [In the web app](../guides/workflows.md#in-the-web-app) |
 
+!!! note "Added after v0.5"
+    - v0.9 (M5): five new nodes, 56 in all. `model.summary`, `evaluate.ppc`,
+      `compare.stacking`, `model.score` and `plot.render` give posterior summaries,
+      posterior predictive checks, stacking weights, scores and plots in a workflow. The new
+      node kind is `plot`, and reports have plot sections.
+    - v0.9 (M5): `model.fit` and `model.backtest` read the tree datasets of v0.8 (the
+      parameters `nodes` and `join`). The local runner accepts `xr.DataTree` inputs.
+    - v0.9 (M5): six new recipes, ten in the gallery in all: `sci_spatial_ladder`,
+      `sci_network_ladder`, `sci_phylo_signal`, `sci_calibrate_then_design`,
+      `bayes_workflow_audit` and `sci_image_model_check`.
+
+    Read [Bayesian models in a workflow](../concepts/workflows.md#bayesian-models-in-a-workflow)
+    and [the gallery](../concepts/workflows.md#the-gallery).
+
 ## Governance
 
 | Shipped | Where to read about it |

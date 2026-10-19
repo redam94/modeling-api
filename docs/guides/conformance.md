@@ -84,6 +84,23 @@ The contract kit does not run in this mode. It needs the plugin in-process.
 | `mmm_frequentist` | `mmm.frequentist` | The ridge estimator of mmm-framework with bootstrap draws. A model that `owns` scaling, carry-over and units. A score window is equal to the same weeks of the full series. |
 | `e84_lite` | `choice.multinomial_logit` | A ragged household × trip panel with a text target. `last_per_group` split. Products off the shelf. New households from the fitted spread. A price-rise counterfactual. Next trips. Categorical holdout metrics (hit rate against the naive guess, log score, Brier). |
 | `guided_mmm` | `mmm.bayesian` | The draft of the `geo_mmm` Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset. |
+| `sm_arimax` | `ts.sarimax` | Weekly sales for each geo with price and promotion drivers. An ARIMAX model for each series (statsmodels) |
+| `sm_vecm_macro` | `ts.vecm` | US real GDP, consumption and investment in log levels. A VECM with the Johansen cointegration rank |
+| `e07_lgcp` | `sci.lgcp_grid` | Earthquake counts on a space-time grid. A log-Gaussian Cox process with a 2-D HSGP map |
+| `e18_areal` | `sci.areal_bym2` | A disease map on a graph of areas (BYM2). The polygons stay for the map |
+| `e50_kpp` | `sci.fisher_kpp` | A scratch assay as a Fisher-KPP reaction-diffusion PDE that the model solves |
+| `e51_heat_plate` | `sci.heat_plate` | A heated plate, calibrated with the 2-D steady heat equation that the model solves |
+| `e60_traction` | `sci.traction_force` | Traction force microscopy. A Gaussian inverse problem in Fourier space |
+| `e80_lens` | `sci.strong_lens` | A galaxy-scale strong lens. A forward model of each pixel of a mock image |
+| `e61_turing` | `sci.turing_pattern` | Schnakenberg kinetics from early images of a Turing pattern |
+| `e58_storm` | `sci.storm_localisation` | Molecule positions in raw STORM frames (a Gaussian PSF with Poisson counts) |
+| `e31_ibp` | `sci.ibp_features` | Binary features of small images. An Indian buffet process |
+| `e77_colour_naming` | `sci.colour_naming` | Colour names of one language as a softmax over CIELAB values |
+| `e79_cmb` | `sci.cmb_field` | A masked CMB map. A Gibbs sampler for the sky behind the mask and the bandpowers |
+| `e21_network` | `sci.network_latent_space` | The ties of a graph, with sociality and a latent space |
+| `e19_ggm` | `sci.graphical_model` | A Gaussian graphical model. Partial correlations and edge probabilities of proteins |
+| `e23_phylo` | `sci.phylo_regression` | A regression across primate species, with residuals that the phylogeny correlates |
+| `e81_circular` | `sci.circular_regression` | Wind directions on the circle. A von Mises regression |
 
 ### Deferred
 
@@ -93,9 +110,9 @@ the list of the plan, the fixtures and the deferrals agree:
 
 | Plan fixture | Waits for |
 |---|---|
-| E13 state-space | A state-space plugin with the `filter` mode (vetted plugins, M4) |
-| E82-slim GP Bayesian optimisation | The `recommend` mode and Campaign runs (M6) |
-| E45 | A plugin for its model (vetted plugins, M4) |
+| E13 state-space | A state-space plugin with the `filter` mode (vetted plugins, planned) |
+| E82-slim GP Bayesian optimisation | The `recommend` mode and Campaign runs (planned) |
+| E45 | A plugin for its model (vetted plugins, planned) |
 
 ## Time to port
 

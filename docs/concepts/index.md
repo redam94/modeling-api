@@ -46,7 +46,8 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 
     Data is an `xr.Dataset`. A `DataSchema` gives each dim a policy (`fixed`, `extend`,
     `new_levels`). It gives each variable a role, units and rules for missing values. Bindings
-    map your names to the canonical names of a model, and back.
+    map your names to the canonical names of a model, and back. A dataset can also be a tree
+    of groups (v0.8). A spec selects the nodes of the tree that it reads.
 
 -   **[Pipelines and stages](pipelines.md)**
 
@@ -57,7 +58,7 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 -   **[Representations and summaries](representations.md)**
 
     Draws, quantiles, intervals, points and moments. The representation sets which summaries
-    exist and which aggregations are correct.
+    exist and which aggregations are correct. The summaries of an angle are on the circle.
 
 -   **[Bundles](bundles.md)**
 
@@ -79,7 +80,8 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 -   **[Capabilities and manifests](capabilities.md)**
 
     The static data that a model declares about itself: representation, score modes,
-    outputs, derived quantities and the preprocessing that it owns.
+    outputs, derived quantities and the preprocessing that it owns. An output can be a field
+    on a grid or an angle on a circle.
 
 -   **[Tenancy and authentication](tenancy-and-auth.md)** <span class="mapi-badge">v0.3</span>
 
@@ -105,8 +107,9 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 -   **[Workflows](workflows.md)** <span class="mapi-badge">v0.5</span>
 
     Versioned DAGs of statistical tests, transforms, branches, train/test plans, searches,
-    fits, comparisons, governance and reports. Workflows have typed ports, a safe condition
-    language, a cache, schedules and triggers.
+    fits, comparisons, governance and reports. Bayesian checks, stacking weights, scores and
+    plots are nodes too. Workflows have typed ports, a safe condition language, a cache,
+    schedules and triggers.
 
 -   **[Governance](governance.md)** <span class="mapi-badge">v0.5</span>
 
@@ -133,7 +136,7 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 | **Output space** | The space of the output values after the inverse transforms, for example `raw` or `weekly`. |
 | **Bundle** | The verified result of a fit: states, model groups, native artifacts, manifest and hashes. |
 | **Run** | A unit of work (`fit`, `score`, …) that the platform sends to an executor as JSON. |
-| **Workflow** | A versioned graph of nodes (tests, transforms, splits, searches, fits, checks, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed `workflow_node` runs or as child fits. |
+| **Workflow** | A versioned graph of nodes (tests, transforms, splits, searches, fits, summaries, scores, checks, plots, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed `workflow_node` runs or as child fits. |
 | **Policy** | The governance checks that a model must pass, with thresholds and severities, for each model family. A policy applies to a full tenant or to one project. Each policy has versions. |
 | **Validation** | The measurement of one model version against the current policies. It has results, evidence, approvals and a status (`draft` … `validated`). |
 | **About card** | The description in plain language that each catalog item has, if you can select the item. |

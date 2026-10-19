@@ -156,7 +156,7 @@ in plain words. The rule (`mapi_spec.trust.uploaded_code_allowed`):
 |---|---|
 | `internal`, `self-hosted-trusted` | allowed |
 | `verified` | only after identity verification |
-| `public` | never before cut line B (`MAPI_PUBLIC_CODE_UPLOAD_ENABLED`, M5). After cut line B, only with identity verification |
+| `public` | never before cut line B (`MAPI_PUBLIC_CODE_UPLOAD_ENABLED`, planned). After cut line B, only with identity verification |
 
 The server enforces the rule at **run admission**. If a tenant cannot run uploaded code, the
 server refuses its runs of uploaded code with `403 IDENTITY_VERIFICATION_REQUIRED`. The audit

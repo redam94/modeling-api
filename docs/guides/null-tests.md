@@ -281,6 +281,10 @@ Prior sensitivity does these steps:
    changes Beta or Gamma `beta`/`b` parameters.
 3. It gives the largest relative change of a key posterior mean (pass ≤ 20%).
 
+If the check finds no prior width in the settings, the result is `skipped` with the reason.
+For example, the check does not find the widths of `sci.areal_bym2` (`intercept_sd`,
+`slope_sd` and `sigma_scale`), because these names do not agree with the rules of step 2.
+
 Recovery is a small version of simulation-based calibration with `S` refits. It gives the
 coverage of the 90% intervals for the known values (target 90%, pass within 10 points). The
 check makes the simulated data in one of two ways:
@@ -288,10 +292,17 @@ check makes the simulated data in one of two ways:
 - A Bayesian model that gives predictive draws: each dataset is one draw of the posterior
   predictive. It comes from one posterior draw and the noise of the model, so counts stay
   whole numbers and ties stay 0 or 1. The known values are the values of that posterior draw.
+  The draws come from the `predict` score mode with predictive draws. Thus the model must
+  have the `predict` mode.
 - Other models: `y* = E[y] + ε*` with block-bootstrapped residuals. The known values are the
-  fitted values. The platform skips this check when the target holds whole numbers (counts),
-  because `E[y] + ε*` is not a whole number. It also skips it for autoregressive models,
-  because resampled residuals do not make the same dynamics as the model.
+  fitted values. The platform skips this check when the target holds whole numbers (counts
+  or yes/no values), because `E[y] + ε*` is not a whole number. The result is `skipped`
+  with the reason. The platform also skips this check for autoregressive models that are not
+  Bayesian, because resampled residuals do not make the same dynamics as the model.
+
+If the model cannot fit one simulated dataset, the check continues with the next dataset.
+The evidence gives the number of these datasets (`failed_simulations`), and the message tells
+how many fits failed. If no refit gives parameter intervals, the result is `error`.
 
 ### Interpreting a set of results
 

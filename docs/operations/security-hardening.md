@@ -168,7 +168,7 @@ retention ([Deleting data](../guides/data-deletion.md#logs)).
   skip).
 - A Binary Authorization attestor, note and signing key are available
   (`modules/build/binauthz.tf`). Enforcement on the Jobs (`binary_authorization = true`)
-  starts in M5, when CI attests each base digest.
+  starts in a later release, when CI attests each base digest.
 - CI authenticates with Workload Identity Federation. Nobody ever makes a service-account
   key.
 

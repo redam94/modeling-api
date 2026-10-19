@@ -18,11 +18,11 @@ make docker-pin-check                  # every base image pinned by digest?
 
 | Image | Contents | Runs as | Entry point |
 |---|---|---|---|
-| `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, `mapi-pymc`, the `mmm.*` and `tabular.*` plugins, a C++ compiler for PyTensor | `10001` | `mapi-runner` |
-| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, `mapi-sklearn` (`sklearn.*` plugins). **No PyMC.** | `10001` | `mapi-runner` |
-| `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, `mapi-pymc`, the `ts.*` plugins | `10001` | `mapi-runner` |
+| `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `mmm.*`, `tabular.*` and `sci.*` plugins (`mapi-plugin-science`, which uses SciPy), a C++ compiler for PyTensor | `10001` | `mapi-runner` |
+| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` (`sklearn.*` plugins). **No PyMC.** | `10001` | `mapi-runner` |
+| `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `ts.*` plugins (`mapi-plugin-ts` and `mapi-plugin-statsmodels`) | `10001` | `mapi-runner` |
 | `mapi/worker` | `base-bayes` with the `ts.*` plugins and `mapi-server` (target `worker` of the base-bayes Dockerfile). Only for compose | `10001` | `mapi-server worker` |
-| `mapi/server` | The control plane: `mapi-server`, `mapi-spec`, the JSON-only `mapi-plots` core, docker-py. **No science dependencies.** | `10001` | `mapi-server api` (or `worker`, `migrate`) |
+| `mapi/server` | The control plane: `mapi-server`, `mapi-spec`, the JSON-only `mapi-plots` core, the JSON-only `mapi-workflows` engine, docker-py. **No science dependencies.** | `10001` | `mapi-server api` (or `worker`, `migrate`) |
 | `mapi/gcs-shim` | The local Cloud Storage emulator | `10001` | `mapi-gcs-shim` |
 | `mapi/web` | nginx that serves `apps/web` (port 8080) and `apps/plot-sandbox` (port 8081) | `101` | nginx |
 

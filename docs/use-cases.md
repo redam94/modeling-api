@@ -1,5 +1,5 @@
 ---
-description: Six problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store and customer choice - with the data each needs, what you get and the tutorials that walk through them.
+description: Seven problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.
 ---
 
 # Use cases
@@ -18,6 +18,7 @@ scorecard, governance policies, the explorers, endpoints, snippets, webhooks and
 | [Weekly forecasting](#weekly-forecasting) | Guided *Weekly forecast* | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
 | [Store demand](#demand-by-store) | Guided *Demand by store* | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
 | [Customer choice](#customer-choice) | Guided *Customer choice* | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
+| [Science models](#science-models-images-fields-maps-and-graphs) | A pymc-challenges tutorial, then a science recipe (for example `sci_spatial_ladder`) | 15 `sci.*` models, for example `sci.areal_bym2`, `sci.heat_plate` and `sci.network_latent_space` | What does the model of a research notebook tell, and can the analysis repeat with the same checks? |
 
 ## Marketing-mix budget planning
 
@@ -210,6 +211,58 @@ trip.
 **Start here.**
 [The Guided tutorial](guides/guided-tutorial.md) (pick *Customer choice*) →
 [Built-in models](reference/models.md).
+
+## Science models: images, fields, maps and graphs
+
+**The question.** A research notebook fits a Bayesian model to an image, a field, a map or
+a graph. For example: which districts have a high risk of a disease, and does a covariate
+explain it? Which conductivity does a heated plate have, and which field does a new heater
+layout give? Which effects explain the ties of a network? The analysis must repeat, and a
+person who does not write PyMC code must be able to read it.
+
+**The data.** The data of the notebook, as a file that you can upload. The export helper
+writes it:
+
+```bash
+uv run python -m mapi_plugin_science.export --list
+uv run python -m mapi_plugin_science.export e18 \
+    --challenges <path to pymc-challenges>/data \
+    --out scotland_lip_cancer.nc --spec scotland_lip_cancer.yaml
+```
+
+The file keeps the schema of the model. Thus the upload gives the correct role to each
+variable. Without a copy of pymc-challenges, `--synthetic` writes data that the model
+simulates.
+
+**What you get.**
+
+- 15 science models, for example disease maps (`sci.areal_bym2`), a heat equation
+  (`sci.heat_plate`), Turing patterns (`sci.turing_pattern`), STORM frames
+  (`sci.storm_localisation`), the CMB sky (`sci.cmb_field`), networks
+  (`sci.network_latent_space`), graphical models (`sci.graphical_model`), phylogenies
+  (`sci.phylo_regression`) and angles (`sci.circular_regression`).
+- Plots for each type of data: area maps, field maps, image residuals, predictive image
+  grids, network graphs, phylogenies, polar roses, colour swatches and power spectra.
+- The Model Explorer: the **Fields**, **Plots**, **Parameters** and **Diagnostics**
+  sections. The **Score** page predicts and simulates new data.
+- Recipes that do the Bayesian workflow:
+    - `sci_spatial_ladder`, `sci_network_ladder` and `sci_phylo_signal` compare model
+      variants by `elpd_loo` and stacking weights. Then they tell if an effect is clear.
+    - `sci_calibrate_then_design` predicts a new design only if the calibration passes its
+      checks.
+    - `bayes_workflow_audit` and `sci_image_model_check` do the convergence, predictive,
+      prior and recovery checks.
+
+We did the E18 tutorial in the web app with the real data. The BYM2 map has an `elpd_loo` of
+−153.0, and the notebook gives −152.7. The effect of outdoor work stays clear. The
+`sci_spatial_ladder` recipe took 46 s and selected the ICAR model. The notebook also gives the
+ICAR model the best `elpd_loo`.
+
+**Start here.**
+[pymc-challenges in the web app](tutorials/pymc-challenges/index.md) →
+[E18 Lip cancer disease map](tutorials/pymc-challenges/e18-scottish-lip-cancer.md) →
+[Complex workflows](tutorials/complex-workflows.md) →
+[Scientific models](reference/models.md#scientific-models-mapi-plugin-science).
 
 ## Your own model
 

@@ -144,8 +144,9 @@ The audit log records each new link and each revoked link (`plot.embed_create`,
 ### What can be embedded
 
 You can embed only the plots that a model version drew with one of the **platform's own
-recipes** (`core.*`, `mmm.*`, `ml.*`, `ts.*`, `choice.*`). The platform refuses plots from a
-model plugin and plots that a person wrote. The answer is `422 EMBED_NOT_ALLOWED`. This rule
+recipes** (`core.*`, `mmm.*`, `ml.*`, `ts.*`, `choice.*`). The science pack (`sci.*`) and
+the network pack (`net.*`) are not in this list. Thus you cannot embed their plots. Share them
+in the project, or render them to an image. The platform refuses plots from a model plugin and plots that a person wrote. The answer is `422 EMBED_NOT_ALLOWED`. This rule
 exists because a shared link runs the spec of the plot in the browser of a stranger. Also in the
 sandbox, a spec can navigate its own frame. Thus shared views run only specs that the platform
 wrote. Share other plots in the project, or render them to an image.

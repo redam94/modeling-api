@@ -1,5 +1,5 @@
 ---
-description: Fixes for the problems you are most likely to meet running modeling-api - port conflicts, a stale stack, PostgreSQL, migrations, the web app and plots, scoring errors, Docker Compose.
+description: Fixes for the problems you are most likely to meet running modeling-api - port conflicts, a stale stack, PostgreSQL, migrations, the web app and plots, scoring errors, workflows and science models, Docker Compose.
 ---
 
 # Troubleshooting <span class="mapi-badge">v0.2</span>
@@ -155,6 +155,44 @@ A run is `stalled`
 :   The signed manifest of the bundle does not verify. Thus the API does not mint download
     links. Locally, this occurs when somebody deleted `.local/keys/`. You cannot trust the
     old model versions after this. Fit again.
+
+`SCHEMA_INVALID`: "the score request has no data"
+:   The request has no data, no scenario dataset and no forecast horizon. The server refuses
+    it before a run starts. Give a dataset, a scenario dataset or a horizon. The Score page
+    shows **No new data** only for **Forecast**, or when a scenario dataset gives the values.
+
+`SETTINGS_INVALID` before the fit starts
+:   The settings of the model break a rule that uses more than one field. The harness reads
+    the settings before it transforms or splits the data, so this error comes early. The
+    message tells which settings to change. For example, `sci.storm_localisation` refuses a
+    render of more than 50 million values.
+
+## Workflows and science models <span class="mapi-badge">v0.9</span> { #workflows-and-science-models }
+
+`EXPRESSION_ERROR` in a branch node
+:   The condition could not be calculated. Usually, it compares a value that is null or not
+    there, for example the R-hat of a fit with one chain. Wrap the reference in
+    `coalesce(...)` or `exists(...)`, or fit two or more chains.
+
+`PLOT_UNSAFE` on a workflow node
+:   The `plot` output of the node did not pass the plot sanitizer, so the node failed. The
+    server does a check of each plot output when it collects it, and again when it serves
+    it. Look at the recipe and the settings of the `plot.render` node.
+
+The tests of the science plugin skip
+:   The tests that read the real data of pymc-challenges run only when
+    `MAPI_PYMC_CHALLENGES_DATA` gives the `data/` directory of a local copy. Refer to
+    [Science data](local-development.md#science-data).
+
+`make docs-screenshots-science` stops at an upload (`ENOENT`)
+:   The script reads `scotland_lip.nc`, `heat_plate_e51.nc` and `lazega_coworkers.nc` from
+    `.local/science`, or from the folder that `MAPI_SCIENCE_DATA` gives. Export them first
+    with `python -m mapi_plugin_science.export`.
+
+The recipe monitor screenshot shows **Reused**
+:   `make docs-screenshots-science` ran before on the same stack. The server used the earlier
+    results of the recipe again. To capture a run in progress, use a new stack (a new
+    `MAPI_DATA_DIR`).
 
 ## Docker and compose
 

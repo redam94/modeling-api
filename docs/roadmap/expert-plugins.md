@@ -1,17 +1,20 @@
-# Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">next: v0.6</span>
+# Expert plugins and MCP <span class="mapi-badge mapi-badge--soon">planned</span>
 
-!!! abstract "Status: next (milestone M4)"
+!!! abstract "Status: planned, no release number yet"
     v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
     workflows, governance, the explorers and budget optimisation in the sandbox
-    ([what's new](../whats-new-0.5.md)). In v0.6, **allow-listed experts can upload their own
-    model plugins**. v0.6 also gives AI assistants and agents a curated **MCP server**.
-    Sweeps and simulation-based calibration become single parent runs. Public code upload
-    for all users comes after v0.6, with its own controls (see the [roadmap](index.md#after-v06)).
+    ([what's new](../whats-new-0.5.md)). The plan before v0.5 put this work in v0.6 (M4).
+    The releases v0.6 to v0.9 gave other features: the spec builder, scientific models, tree
+    datasets (M4) and the science gallery (M5). Thus the items on this page are not done
+    yet. With them, **allow-listed experts can upload their own model plugins**. AI
+    assistants and agents also get a curated **MCP server**. Sweeps and simulation-based
+    calibration become single parent runs. Public code upload for all users comes after
+    these items, with its own controls (see the [roadmap](index.md#after-v06)).
 
 ## Plugin upload for allow-listed experts
 
 Now, a data scientist can run their own `PyMCModel` or `SklearnModel` only on a deployment
-that they control. They install it into the environment of the runner. v0.6 makes this a
+that they control. They install it into the environment of the runner. This work makes it a
 product feature of a shared deployment. It is available to tenants that an operator put on
 the allow list:
 
@@ -34,8 +37,8 @@ flowchart LR
   web app makes forms from them.
 - **Dev overlays** for fast iteration. The target is less than five minutes from `push` to
   a runnable version.
-- **A vetted tier.** We ported the sibling marketing-mix and HMM models as plugins. They
-  are the proof that real models agree with the contract.
+- **A vetted tier.** We will port the sibling marketing-mix and HMM models as plugins. They
+  will show that real models agree with the contract.
 
 ## An MCP server for agents
 
@@ -45,7 +48,7 @@ returns each string from a user or a plugin as clearly delimited untrusted text.
 name cannot put hidden instructions into an agent. Tokens and scopes work the same as for
 other clients.
 
-## Sweeps as jobs, and what v0.5 already delivered
+## Sweeps as jobs, and what is already delivered
 
 - **`optimize` runs** (delivered in v0.5). The sandbox optimises budgets *next to the
   model* with the planning module of mmm-framework. It uses the response curves of the
@@ -55,6 +58,13 @@ other clients.
 - **`Sweep` and `SBC`** as one parent run that fans out and aggregates the results. For
   example, a sensitivity sweep over a prior, or simulation-based calibration of a new
   plugin. (The governance of v0.5 has a parametric-bootstrap version, `recovery.simulated`.)
+- **Bayesian checks in a workflow** (delivered in v0.9). The recipe `bayes_workflow_audit`
+  does a convergence gate, a posterior predictive check, a prior sensitivity check and a
+  recovery check in one workflow run. Since v0.9, `recovery.simulated` simulates each dataset
+  of a Bayesian model with predictive draws from its posterior predictive. `sci_spatial_ladder` fits its best model
+  again with wider and narrower priors
+  ([Bayesian models in a workflow](../concepts/workflows.md#bayesian-models-in-a-workflow)).
+  These checks run as nodes of the workflow, not as one parent run of a sweep.
 
 ## Exit criteria
 

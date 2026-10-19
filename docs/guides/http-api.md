@@ -216,6 +216,20 @@ takes more time, the answer is `202` with `done: false`. In this case, do one of
 The response header `Preference-Applied` tells which wait the server used. Over HTTP, the
 `ScoreRequest` needs its `apiVersion` and `kind`. The Python client fills them in.
 
+The request must give data to score: `data`, inline values, a `scenario` dataset or a
+`horizon`. If it gives none of them, the server refuses it before a run starts
+(`SCHEMA_INVALID` at `/data`, "the score request has no data").
+
+`ui/summary.arrow` names its dim columns in the schema metadata `mapi.dims` (a JSON list).
+Use this list to find the keys of a row. A dim with numeric labels, for example a grid
+position in cm, has a numeric type, the same as a statistic. In `summary.json`, each table of
+a circular output (`OutputDecl.circular`) has the field `period`. Its statistics are then on
+the circle:
+
+- `mean` is the circular mean, and `sd` is the circular standard deviation.
+- Each interval and quantile is centred on the circular mean.
+- All values are in `[0, period)`. An interval with `lower` more than `upper` crosses the seam.
+
 ## Errors
 
 ```bash

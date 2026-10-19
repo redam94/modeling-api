@@ -1,6 +1,6 @@
 # Getting started
 
-You can start in four ways. All four use the same spec format, steps, models and bundles.
+You can start in five ways. All five use the same spec format, steps, models and bundles.
 
 <div class="grid cards" markdown>
 
@@ -32,6 +32,16 @@ You can start in four ways. All four use the same spec format, steps, models and
     `mapi workflows run --watch` or with Python.
 
     [:octicons-arrow-right-24: Workflow cookbook](../guides/workflow-cookbook.md)
+
+-   :material-atom-variant: **Fit a science model** <span class="mapi-badge">v0.9</span>
+
+    ---
+
+    Do the analysis of a pymc-challenges notebook in the web app. Export the data with
+    `python -m mapi_plugin_science.export`, upload it, fit a `sci.*` model and run the recipe
+    of the case. Images, fields, maps and graphs are available.
+
+    [:octicons-arrow-right-24: pymc-challenges in the web app](../tutorials/pymc-challenges/index.md)
 
 -   :material-language-python: **Use the library in your own process**
 
@@ -76,6 +86,7 @@ platform also needs Node.js 22+ with pnpm for the web app. Docker is optional
     uv add "mapi-plots[recipes]"               # plot recipes (Altair, Plotly)
     uv add mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular   # the built-in models
     uv add mapi-plugin-statsmodels "mapi-workflows[runtime]"    # statsmodels models, workflows
+    uv add mapi-plugin-science                 # science models (sci.*) and the export helper
     ```
 
     !!! note "Not on PyPI yet"
@@ -92,8 +103,8 @@ platform also needs Node.js 22+ with pnpm for the web app. Docker is optional
 | `mapi-pymc` | `mapi_pymc` | `PyMCModel`: you write `build()`. You get engines, diagnostics, new levels and counterfactuals. | PyMC |
 | `mapi-sklearn` | `mapi_sklearn` | `SklearnModel`: you write `estimator()`. You get stacking, safe persistence and uncertainty. | scikit-learn, xgboost, skops |
 | `mapi-plots` | `mapi_plots` | The JSON-only plot sanitizer and templates. Recipes come with the `recipes` extra. | Altair, Plotly (extra) |
-| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix (`mapi-plugin-mmm`, on mmm-framework), time series, statsmodels time series (`mapi-plugin-statsmodels`) and tabular | as above; mmm-framework, statsmodels |
-| `mapi-workflows` | `mapi_workflows` | The workflow engine, the node implementations and a local runner for notebooks ([guide](../guides/workflows.md#run-it-locally)) | The engine has none (pure Python, safe for the control plane). The node implementations are the `runtime` extra (numpy, xarray, scipy, statsmodels). |
+| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix (`mapi-plugin-mmm`, on mmm-framework), time series, statsmodels time series (`mapi-plugin-statsmodels`), tabular and science (`mapi-plugin-science`: 15 `sci.*` models for images, fields, maps and graphs) | as above; mmm-framework, statsmodels, scipy |
+| `mapi-workflows` | `mapi_workflows` | The workflow engine, the node implementations and a local runner for notebooks ([guide](../guides/workflows.md#run-it-locally)) | The engine has none (pure Python, safe for the control plane). The node implementations are the `runtime` extra (numpy, xarray, scipy, statsmodels and the plot recipes of `mapi-plots[recipes]`). |
 | `mapi-conformance` | `mapi_conformance` | The conformance corpus and its runner | all of the above |
 | `mapi-client` | `mapi_client` | A typed Python client for the HTTP API ([guide](../guides/python-client.md)) | httpx (xarray optional) |
 | `mapi-cli` | `mapi_cli` | The `mapi` command line ([guide](../guides/cli.md)) | typer, rich |
@@ -148,6 +159,7 @@ xgb_store_demand  tabular.regressor@1.0.0  ok        ok   ok 6/6  ok        ok 1
 
 -   :material-connection: **[Tutorials](../tutorials/index.md)**
 
-    Google Sheets, embedded charts, webhook receivers and budget plans.
+    Google Sheets, embedded charts, webhook receivers, budget plans, complex workflows and
+    the science models of pymc-challenges.
 
 </div>

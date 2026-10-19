@@ -247,6 +247,10 @@ a new run from a run that failed.
 takes longer, the command follows the run. It shows the outputs with their sizes and CRC32C.
 With `-o`, it downloads the result tree and checks it against that CRC32C.
 
+The request must give data to score: `data`, inline values, a `scenario` dataset or a
+forecast `horizon`. If it gives none of them, the server refuses the request before a run
+starts (`SCHEMA_INVALID` on `/data`, "the score request has no data").
+
 ### Endpoints, webhooks and sharing <span class="mapi-badge">v0.4</span> { #endpoints-webhooks-and-sharing }
 
 ```bash
@@ -424,6 +428,21 @@ driver. The search selected ARIMA(1, 1, 1) by AIC.
 version. `-p name=value` sets a parameter. If the value parses as JSON, the CLI sends it as
 JSON (`-p 'horizons=[1,4,13]'`). The [workflow cookbook](workflow-cookbook.md) has complete
 documents that you can start from.
+
+Since v0.9, `mapi workflows templates` also lists the recipes for Bayesian and science models.
+Start each one with `mapi workflows init <id>`. The cookbook shows the commands for each one:
+
+| Template | Cookbook section |
+|---|---|
+| `sci_spatial_ladder` | [Disease map: which spatial model?](workflow-cookbook.md#disease-map-which-spatial-model) |
+| `sci_network_ladder` | [Network ties: which model?](workflow-cookbook.md#network-ties-which-model) |
+| `sci_phylo_signal` | [Trait regression across species](workflow-cookbook.md#trait-regression-across-species) |
+| `sci_calibrate_then_design` | [Calibrate, then design](workflow-cookbook.md#calibrate-then-design) |
+| `bayes_workflow_audit` | [Bayesian workflow audit](workflow-cookbook.md#bayesian-workflow-audit) |
+| `sci_image_model_check` | [Image model check](workflow-cookbook.md#image-model-check) |
+
+To get the data of a science case study, use `python -m mapi_plugin_science.export <case>`.
+Then upload the file with `mapi datasets upload`.
 
 **Governance**: the check catalog, policies, validations and approval by a second person.
 `mapi validate model` waits for the checks. It shows each result in plain words with the

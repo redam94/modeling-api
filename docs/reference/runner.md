@@ -165,8 +165,8 @@ this sequence:
 | `inspect` | `InspectJob` (v0.8: `format`, and caps for arrays, HDF5 objects, dims and attributes) | `upload` | `inspection.json` (`UploadInspection`). The run reads only metadata, after the HDF5 guard |
 | `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages that a dry run resolved) |
-| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json`, `coords.json` (`{stage: {dim: CoordSummary}}`), `scorecard.json` (`Scorecard`, v0.4), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/grids/response_curves.json` (`mapi.response-grid/v1`, v0.4), `ui/plotdata/*.arrow` |
-| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). |
+| `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json` (`MetricsReport`. v0.9: `elpd` has the `elpd_loo`/`elpd_waic` estimates with their pointwise values), `coords.json` (`{stage: {dim: CoordSummary}}`), `scorecard.json` (`Scorecard`, v0.4), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/grids/response_curves.json` (`mapi.response-grid/v1`, v0.4), `ui/plotdata/*.arrow` |
+| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `summary.json` (`ScoreSummary`: the summary as tables, at most 100 000 cells. v0.9: a circular output has `period`), `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). |
 | `evaluate` | `{"request": …?, "metrics": […]?}` | `bundle`, `dataset`, `side.<name>` | the score outputs and also `metrics.json` |
 | `derive` | `{"names": […], "draws": n?, "data": "dataset://…"?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |
 | `render` | `{"plots": […]?, "format": "png" \| "svg", "scale": 2}` | `plots` (a `plots.json`) | `renders/<plot id>.<format>` |
@@ -179,6 +179,24 @@ evaluation sub-bundle keeps the SDK layout (`evaluation/manifest.json`).
 In `plots.json`, the runner moves inline Arrow datasets that are larger than 64 KiB to
 `ui/plotdata/<plot>.<dataset>.arrow`. The plot refers to them as `data_ref`, with their size
 and CRC32C.
+
+The Arrow views (`ui/summary.arrow`, `ui/grids/*.arrow`) are tidy tables from
+`mapi_sdk.wire.to_arrow_table`. From v0.9, the schema metadata `mapi.dims` gives the names of
+the dim columns as a JSON list. Thus the web app keeps a numeric dim, for example a grid
+position in cm, as a key column and not as a value.
+
+`scorecard.json` does the data checks on the raw dataset. The check `data.missing` (v0.9)
+does not count these variables:
+
+- the variables with the role `constant`, `index` or `mask` in the raw schema or in the
+  schema of the model stage
+- the canonical variables that the model lists in `CustomModel.structural_missing`. The
+  runner gets them from the plugin registry. If it cannot find the plugin, the list is empty.
+
+The message of the check names the variables that it does not count.
+
+A `workflow_node` run gets a tree dataset input as its root node, and keeps the full tree
+(v0.9). Thus the `nodes` parameter of a model node can select other nodes of the tree.
 
 ### MFF preset
 

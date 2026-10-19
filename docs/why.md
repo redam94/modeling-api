@@ -26,6 +26,7 @@ production. Their analysis must be repeatable and defensible.
 | **Uncertainty is lost or added incorrectly** | A point estimate controls a budget decision. Someone adds the 90% quantiles of 40 stores | Each output has its **representation** (draws, quantiles, interval, point, moments). The platform gives only the valid summaries and aggregations ([Representations](concepts/representations.md)) |
 | **Each scenario needs the data scientist** | The analyst asks "what if we move 20% to search?" and waits a week | Guided mode has templates, beliefs in business terms and a report in plain language. It has instant what-if sliders over a response curve for each draw, and budget plans from the posterior ([Guided mode](concepts/guided-mode.md)) |
 | **To choose a model, you need a statistician** | The analyst uses the model of the last project, or the model with the most interesting name | Each model, step, node and check has an **About card** in plain words. **Help me choose** asks some questions and gives a ranked shortlist with reasons ([Choosing a model](guides/choosing-a-model.md)) |
+| **The Bayesian checks stay in a notebook** | R-hat, the predictive check and the LOO comparison run one time, by hand, for one model. Nobody runs them again on the next version | Posterior summaries, posterior predictive checks, stacking weights and plots are **workflow nodes**. The `bayes_workflow_audit` recipe runs the checks of a careful Bayesian workflow for each model that gives draws. Model ladders compare variants by `elpd_loo` ([Complex workflows](tutorials/complex-workflows.md)) |
 | **You find data problems after the model** | Gaps, a constant driver or a series that wanders show in the residuals one week later | The **Data Explorer** makes a profile of each upload in the sandbox. It shows quality warnings, the stationarity of each series, cross-correlation with the KPI by lag, STL and collinearity ([Explore a dataset](guides/data-explorer.md)) |
 | **Nobody knows if they can trust the model** | Convergence warnings are in a log that nobody reads | A **sanity scorecard** (convergence, holdout error and coverage, plausibility, data) in plain words, and a promotion gate that uses it ([Scorecard](concepts/guided-mode.md#scorecard)) |
 | **Other tools need the model** | A Flask app for each model, a shared pickle, or a CSV file in an e-mail each Monday | **Endpoints** with aliases, history and rollback. Scoped tokens, generated snippets, signed webhooks and charts that you can embed ([Integrations](concepts/integrations.md)) |
@@ -38,7 +39,7 @@ This is the most usual alternative. It is a good alternative for one model and o
 | | Notebook + a small web app | modeling-api |
 |---|---|---|
 | How to start | Minutes: you already have the notebook | A spec or a `build()` method. Guided templates and workflow recipes need no code |
-| Freedom | Any library, any code | Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment comes in v0.6, first for allow-listed teams |
+| Freedom | Any library, any code | Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice, and 15 science models for images, fields, maps and graphs. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment is planned for a later release, first for allow-listed teams ([roadmap](roadmap/index.md)) |
 | Preprocessing at score time | Someone copies it into the app by hand, or pickles it with the model | Declared steps with fitted state that the platform replays exactly. Static checks find leakage |
 | Forecasts and new groups | The result depends on what the code does with a row or date that it did not see | Declared for each dim and checked before compute, with typed errors (`UNSEEN_LEVELS`, `HORIZON_EXCEEDS_FIT`, …) |
 | How to repeat the analysis | Run the cells again, and hope that the sequence is correct | A versioned workflow with typed ports. The platform validates it before it runs. A schedule or new data starts it. It records each decision |
@@ -60,12 +61,12 @@ are the *statistics* of one analysis, not a data pipeline.
 
 | | General-purpose orchestrator | modeling-api workflows |
 |---|---|---|
-| A step is | Any Python function or container | A node from a catalog (51 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, comparisons, governance, reports) or a saved sub-workflow |
+| A step is | Any Python function or container | A node from a catalog (56 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, scores, posterior summaries, predictive checks, comparisons and stacking weights, governance, reports and plots) or a saved sub-workflow |
 | Between steps | The data that the code sends | Typed ports (`dataset`, `test_result`, `split_plan`, `model_version`, …). The platform checks them before the run starts, with a JSON pointer to each problem |
 | Decisions | Python `if` statements | Branch conditions in a small, safe expression language (never `eval`). The run records the values that each condition read |
 | Where user data is read | The location where the task runs | In a new sandbox without network. The orchestrator sees only JSON results |
 | Reuse | A task cache that you configure | The identity of each node is its implementation, its parameters and the content of its inputs. The platform uses unchanged steps again automatically |
-| Output | The data that the tasks write | Verdicts in plain language, a report, governance evidence and a model version that is ready to validate and promote |
+| Output | The data that the tasks write | Verdicts in plain language, a report with plots, governance evidence and a model version that is ready to validate and promote |
 
 Use an orchestrator to move data between systems and to call modeling-api. Use a workflow
 for the analysis. The two tools work well together. For example, an orchestrator uploads the
@@ -105,7 +106,7 @@ same platform, and connect the result to your own tools.
 | Proof that it does not fit noise | Not frequently shown | You must do it | Shuffled-sales and fake-channel null tests, effect signs, holdout accuracy and prior sensitivity, with evidence and the approval of a reviewer |
 | Analyst scenarios | Dashboards | You build them | What-if sliders with joint uncertainty, "Run exact", forecasts and counterfactuals |
 | Budget optimisation | Usually included | Library functions | `optimize` runs in the sandbox on mmm-framework planning: bounds, groups, risk objectives (P10, CVaR) and the efficient frontier |
-| Other models on the same platform | No | No | Forecasting, macro systems (VAR/VECM), store demand, customer choice, your own |
+| Other models on the same platform | No | No | Forecasting, macro systems (VAR/VECM), store demand, customer choice, science models, your own |
 | Who owns the posterior | The vendor | You | You |
 
 ## Compared with generic ML model serving
@@ -144,16 +145,20 @@ trade-offs.
 - **Your model needs the network at run time** (an API, a database). Runs have no egress, by
   design.
 - **You want to upload public code to a hosted platform now**. On a shared deployment,
-  uploaded plugins come first to allow-listed teams (v0.6). They come to the public only after
+  uploaded plugins are planned first for allow-listed teams, in a later release. They come to the public only after
   an external penetration test. On a deployment that you control, you can install and run
   your own plugins now.
 
 ## Where it stands
 
-v0.5 is complete, and we tested it on a laptop. The workflow, governance, mmm-framework,
-explorer and CLI journeys pass end to end against a live stack. All earlier journeys also
-pass. The numbers on the [home page](index.md#measured-not-promised) come from those runs.
-Two items are still open. We test the cloud controls against fakes until they meet a real
-Google Cloud project. Also, the study with five non-technical testers did not run yet.
-See [M3.5 verification](operations/m35-verification.md), [M3 verification](operations/m3-verification.md)
+v0.9 is complete, and we tested it on a laptop. We did the E18, E51 and E21 science
+tutorials in the web app on a local dev stack, with the real data of the notebooks. The
+`sci_spatial_ladder` recipe also ran from start to end in a browser. The other five new
+recipes run through the server orchestrator in a slow test, with small fits. The v0.5
+workflow, governance, mmm-framework, explorer and CLI journeys passed end to end against a
+live stack. The numbers on the [home page](index.md#measured-not-promised) come from those
+runs. Two items are still open. We test the cloud controls against fakes until they meet a
+real Google Cloud project. Also, the study with five non-technical testers did not run yet.
+See [What's new in 0.9](whats-new-0.9.md#what-is-not-in-09-yet),
+[M3.5 verification](operations/m35-verification.md), [M3 verification](operations/m3-verification.md)
 and the [roadmap](roadmap/index.md).

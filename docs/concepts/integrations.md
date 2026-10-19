@@ -182,7 +182,7 @@ built-in plugins. The data is not trusted, but the code is trusted.
    project.
 3. **Identity verification** is necessary before any uploaded code. Tenants on the `verified`
    tier (allow-listed, M4) can upload code after verification. Public tenants can upload code
-   only after **cut line B** (M5). Until then, `VerificationStatus.uploaded_code_allowed` is
+   only after **cut line B** (planned). Until then, `VerificationStatus.uploaded_code_allowed` is
    false for all public tenants.
 4. **Deleting a tenant** starts a grace period of 7 days. During this period, the tenant is
    suspended (read-only) and you can cancel the deletion. Then the platform purges each store:

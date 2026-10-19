@@ -53,13 +53,14 @@ These items have cards:
 - model manifests and catalog entries (`ModelManifest.about`, `StepCatalogEntry.about`)
 - guided templates (`GuidedTemplate.about`)
 - workflow templates, node kinds and node implementations
+- plot recipes (`PlotCatalogEntry.about`)
 - governance checks.
 
 Your own specs, pipelines and workflows can also have a card, in `metadata.about`. Then
 colleagues know when to use them again. `GET /v1/catalog/abouts` lists the cards of all items
-that a user can select (filter with `kind`). These items are the installed models and
-preprocessing steps, the splits, guided templates, workflow templates, workflow node kinds
-and nodes, and the governance checks.
+that a user can select (filter with `kind`). These items are the installed models,
+preprocessing steps and plot recipes, the splits, guided templates, workflow templates,
+workflow node kinds and nodes, and the governance checks.
 
 Datasets have a `DatasetAbout`. It contains the description from the owner and a summary.
 The platform makes the summary from the schema and the coordinate summary. For example:
@@ -87,8 +88,8 @@ a complete card fails its checks. The built-in cards are in `mapi_spec.abouts`.
 
 | Question | Answers |
 |---|---|
-| `goal` - What do you want to do? | measure what marketing adds, plan a budget, forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model |
-| `data_shape` - What does your data look like? | one series, a few related series, a panel (markets, stores), choices, a table |
+| `goal` - What do you want to do? | measure what marketing adds, plan a budget, forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model, make a map or an image from measurements (`map_fields`), fit a physical model to measurements (`fit_physics`) |
+| `data_shape` - What does your data look like? | one series, a few related series, a panel (markets, stores), choices, a table, a map, an image or values on a regular grid (`grid`) |
 | `frequency` | daily, weekly, monthly, not over time |
 | `history` | less than a year, one to three years, more |
 | `drivers` - Other columns that could explain the result? | yes, no |
@@ -118,13 +119,20 @@ workflow templates. `kind=step`, `kind=node` or `kind=check` ranks one kind of b
 block. If the chooser does not know a question or an answer, it returns `422
 CHOOSER_ANSWER_INVALID`.
 
+The goals `map_fields` and `fit_physics` and the data shape `grid` are for the science models
+(`sci.*`). For example, `goal=map_fields&data_shape=grid` ranks `sci.heat_plate`,
+`sci.cmb_field`, `sci.lgcp_grid` and the other map, image and field models first, together with
+the `sci_image_model_check` and `sci_calibrate_then_design` workflow templates. The chooser
+shows a model only when the catalog has its plugin. For a comparison of the science models,
+see [Choosing a model](../guides/choosing-a-model.md#science-models-compared).
+
 ## In the web app
 
 **About cards everywhere.** Each place where you select an item shows its card, with plain
 language first. The **Browse** tab of the catalog lists all items that a user can select.
 You can filter by kind, by difficulty or by text. The kinds are Guided analyses, models,
-workflow templates, preparation steps, splits, governance checks, workflow nodes and node
-kinds. A card shows the uses, limits, data needs, assumptions, outputs, an example and related
+workflow templates, preparation steps, splits, plots, governance checks, workflow nodes and
+node kinds. A card shows the uses, limits, data needs, assumptions, outputs, an example and related
 items. The maths and the references are under *For experts: how it works*, which is
 collapsed.
 

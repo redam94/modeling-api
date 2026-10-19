@@ -70,7 +70,7 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `effects` | `StepKind`, `SchemaEffect`, `ContextNeed`, `apply_effect`, `propagate` |
 | `spec` | `ModelSpec`, `ScoreRequest`, `Sweep`, `Backtest`, `SBC`, `Campaign` and their blocks |
 | `loader` | strict YAML 1.2/JSON loader, apiVersion upgrades, `canonical_json`, `spec_hash`, `dump_yaml` |
-| `capabilities` | `Representation` + aggregation/summary rules, `Capabilities`, `ModelManifest`, `OutputSelector`, `Diagnostic` |
+| `capabilities` | `Representation` + aggregation/summary rules, `Capabilities`, `ModelManifest`, `OutputDecl` (`grid` for fields, `circular` for angles with a `period` attr), `OutputSelector`, `Diagnostic` |
 | `errors` | `ErrorCode`, `ERROR_INFO` (HTTP status), RFC 7807 `Problem`, `Issue`, `MapiError` hierarchy |
 | `plots` | `PlotSpec` envelope, `DataRef`/`InlineArrow`, `PlotBindings`, `PlotProvenance` |
 | `catalog` | `StepCatalogEntry`, `ModelCatalogEntry`, `PlotCatalogEntry`, `Catalog` (semver resolution) |
@@ -82,7 +82,7 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `executor` | the `Executor` protocol, `RunSubmit`, `Handle`, `ExecStatus`, `ExecutorCaps`, `Isolation`, `RunKind`, `RunEvent` |
 | `run` | run protocol (M1): `RunState` + `transition()`, `RunSpec` bootstrap, event payloads and HMAC signing, stdout wire format, `OutputManifest`/`BundleManifest`, `RunnerEnv`, `RunnerExit` |
 | `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming |
-| `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, `Me`, `UsageReport`, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` + `M2_ENDPOINTS` (= `ENDPOINTS`), `ROUTE_ACCESS` (scope and permission of every operation) |
+| `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, `Me`, `UsageReport`, `ScoreSummaryTable` with `period` for a circular output, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` + `M2_ENDPOINTS` (= `ENDPOINTS`), `ROUTE_ACCESS` (scope and permission of every operation) |
 | `tenancy` | `Tenant`, `Project`, `TrustTier` and placement, data residency, `ProjectRole`, the `PERMISSIONS` matrix and `can()`, `Membership`, principals, `AuthContext`, `X-Mapi-Project` resolution |
 | `tokens` | `mapi_<prefix>_<secret><checksum>` tokens: generate, parse, peppered hashing, scopes and `scope_allows()`, `TokenCreate`/`TokenCreated`/`ApiToken` |
 | `auth` | BFF OIDC helpers (PKCE S256, login transaction, safe `return_to`, `__Host-` cookies, `SessionInfo`), the Pub/Sub push envelope and its OIDC claims check |
@@ -91,6 +91,11 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `audit` | `AuditEvent` with keyed IP/user-agent fingerprints, `AuditAction`, `make_audit_event()` |
 | `admin` | `KillSwitches` and `kill_switch_decision()`, `ExecutorHealth` |
 | `conformance_executor` | the executor conformance suite as data (`EXECUTOR_CONFORMANCE`), `check_expectation()`, `ConformanceReport` |
+| `workflow` | `WorkflowSpec` (`kind: Workflow`), `load_workflow`, `workflow_hash`, `validate_workflow` (the `recipe` of `plot.render` resolves against the plot catalog), `check_run_params`, node cache keys |
+| `workflow_nodes` | `NODE_IMPLEMENTATIONS`: the ports, parameters, result fields, `runs_in` and About card of each built-in node (for example `model.summary`, `evaluate.ppc`, `compare.stacking`, `model.score`, `plot.render`) |
+| `workflow_templates` | `WORKFLOW_TEMPLATES` (the ten gallery recipes, for example `sci_spatial_ladder` and `bayes_workflow_audit`) and `instantiate_template` |
+| `expr` | the safe condition language of `branch.if` (no `eval`, bounded inputs) |
+| `abouts`, `plot_abouts` | the About cards of the steps, splits, models and templates, and of the plot recipes (core, MMM, ML, science and network packs) |
 | `localdev` | local ports, origins and environment variable names (`LocalDev`) |
 | `jsonschema_export` | `export_schemas()` (JSON Schema 2020-12 for every document, run-protocol model and REST DTO) |
 | `examples` | the plan's example documents (E33 geo MMM, xgboost store demand, score request) |

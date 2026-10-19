@@ -303,3 +303,34 @@ If `DATABASE_URL` is not set, Postgres is the embedded `pgserver`. If nothing li
 `MAPI_GCS_ENDPOINT`, the command starts the [GCS shim](gcs-shim.md) in the same process. Runs
 use the `local-process` executor with the real `mapi-runner`. To also run the web app, use
 `make dev` ([Local development](../operations/local-development.md)).
+
+### Export the data of a science case study <span class="mapi-badge">v0.9</span>
+
+`mapi-plugin-science` has its own command. It writes the dataset of a pymc-challenges case
+study to a file that you can upload (`mapi datasets upload`, or **Datasets → New dataset** in
+the web app). It is not a `mapi` command:
+
+```bash
+python -m mapi_plugin_science.export --list
+python -m mapi_plugin_science.export CASE [--challenges DIR] [--out FILE] [--spec FILE] [--synthetic]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `CASE` | — | The case id, for example `e07`, `e81` or `e81b`. Upper case is also correct |
+| `--list` | — | Print each case (model, `dataset` or `tree`, title, notebook, data files and the suggested dataset), then stop |
+| `--challenges DIR` | `$MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. A case without a data file (`e51`, `e61`) does not need it |
+| `--out FILE` | `<dataset>.nc` | The file to write. The suffix sets the format: `.nc` (NetCDF-4), `.zarr.zip` (a plain dataset) or `.tree.zip` (a tree dataset) |
+| `--spec FILE` | — | Also write the suggested spec (YAML). It reads `dataset://<project>/<dataset>@latest` |
+| `--synthetic` | off | Write the simulated data of the model. You do not need pymc-challenges |
+
+There are 16 cases: `e07`, `e50`, `e60`, `e80`, `e51`, `e61`, `e58`, `e31`, `e77`, `e79`,
+`e18`, `e21`, `e19`, `e23`, `e81` (the wind directions at Santa Barbara airport) and `e81b`
+(the camera-trap times at Barro Colorado). The
+[case table](models.md#export-the-data-of-a-case-study) gives the model, the data files
+and the suggested dataset of each case.
+
+The command prints the file that it wrote and the dataset name to use for the upload. The
+exit status is 0 on success and 1 if a data file is missing or the data is not correct. It is
+2 for a usage error, for example an unknown case, or a case that needs data without
+`--challenges` and without `--synthetic`.
