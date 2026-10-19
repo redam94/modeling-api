@@ -90,6 +90,24 @@ milestone releases are tagged on `main`.
   dataset gives the values. For the other modes, a note on the page tells why the option is
   not there. For a model that has no forecast mode, the note says that the model always needs
   values to score.
+- Some suggested specs of `mapi_plugin_science.export` needed changes by hand:
+  - E50 lists `elpd_loo`, but the spec did not keep the log-likelihood, so the fit did not
+    calculate `elpd_loo`. The spec now has `fit.keep: {log_likelihood: true}` and the
+    `sci.profile_bands` plot.
+  - E60 listed `sci.field_map`, which cannot draw the vector output `traction`. The spec now
+    lists `sci.vector_field`. It also fits on all of the data (`mode: train_only`), with no
+    metrics.
+  - E80 listed `sci.field_map`, which draws the parameter `e_light` and not the image. The
+    spec now lists `sci.image_residuals` and `sci.ppc_image_grid`, and fits on all of the
+    pixels (`mode: train_only`).
+  - With `--synthetic`, the E77 spec held out speakers that the simulated data does not have,
+    and the E79 spec had a bandpower bin that the simulated patch is too small for. These
+    specs now fit the simulated data.
+
+  New tests make sure that each suggested spec validates against the schema of its exported
+  file. A slow test fits each spec on the simulated data with few draws and makes sure that
+  each plot of the spec shows, that a map shows an output of the model, and that the fit
+  calculates `elpd_loo` when the spec lists it.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -102,11 +120,6 @@ milestone releases are tagged on `main`.
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
 - The recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
-- Some suggested specs of `mapi_plugin_science.export` need changes that the tutorials make by
-  hand: the E50 spec lists `elpd_loo` but does not keep the log-likelihood
-  (`fit.keep: {log_likelihood: true}`), and the E60 spec lists `sci.field_map`, which cannot
-  draw the vector output `traction`. For `sci.strong_lens`, `sci.field_map` draws `e_light`
-  and not the image.
 - The `mean` and `hdi_90` of a score summary of a circular output (`sci.circular_regression`)
   are calculated on a line, not on the circle.
 - The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
