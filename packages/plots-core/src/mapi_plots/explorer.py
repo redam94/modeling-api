@@ -532,6 +532,474 @@ def _quality(v: Mapping[str, Any]) -> list[Plot]:
     return [_plot("quality", "counts", "Data problems", spec, {"q": rows}, v.get("caption_plain"))]
 
 
+# ------------------------------------------------------------- Data Explorer: scientific data
+
+
+def _structure(v: Mapping[str, Any]) -> list[Plot]:
+    roles = {d["name"]: d.get("role_in_data", "other") for d in v.get("dims", [])}
+    sizes = {d["name"]: d.get("size") for d in v.get("dims", [])}
+    rows = [
+        {"var": x["name"], "dim": d, "role": roles.get(d, "other"), "size": sizes.get(d)}
+        for x in v.get("vars", [])
+        for d in x.get("dims", [])
+    ]
+    if not rows:
+        return []
+    base = {"x": _n("dim", "Dimension"), "y": _n("var", "Variable")}
+    spec = {
+        "data": {"name": "cells"},
+        "layer": [
+            {"mark": {"type": "rect"}, "encoding": {**base, "color": _n("role", "Part")}},
+            {
+                "mark": {"type": "text", "fontSize": 10},
+                "encoding": {**base, "text": {"field": "size", "type": "quantitative"}},
+            },
+        ],
+    }
+    return [
+        _plot(
+            "structure",
+            "matrix",
+            "Variables and dimensions",
+            spec,
+            {"cells": rows},
+            "Each cell is a dimension of a variable, coloured by the part the dimension plays. "
+            "The number is its size.",
+        )
+    ]
+
+
+def _images(v: Mapping[str, Any]) -> list[Plot]:
+    stats_rows: list[Row] = []
+    hist_rows: list[Row] = []
+    for f in v.get("fields", []):
+        name = f.get("var") or f.get("output")
+        label = name if not f.get("facet") else f"{name} ({_facet_label(f.get('facet'))})"
+        fs = f.get("frame_stats")
+        if fs:
+            for i, c in enumerate(fs.get("coords", [])):
+                for stat in ("mean", "min", "max"):
+                    y = fs[stat][i]
+                    if y is not None:
+                        stats_rows.append({"image": label, "frame": c, "stat": stat, "value": y})
+        h = f.get("histogram")
+        if h:
+            edges = h["edges"]
+            hist_rows += [
+                {"image": label, "lo": edges[i], "hi": edges[i + 1], "count": k}
+                for i, k in enumerate(h["counts"])
+            ]
+    plots: list[Plot] = []
+    if stats_rows:
+        xt = _xtype(r["frame"] for r in stats_rows)
+        layer = {
+            "data": {"name": "frames"},
+            "mark": {"type": "line"},
+            "encoding": {
+                "x": {"field": "frame", "type": xt, "title": "Frame"},
+                "y": _q("value", "Value"),
+                "color": _n("stat", "Statistic"),
+            },
+        }
+        plots.append(
+            _plot(
+                "images",
+                "frames",
+                "Each frame: mean, minimum and maximum",
+                _facet_spec(layer, "image", columns=2),
+                {"frames": stats_rows},
+                "The mean, the smallest and the largest value of each frame.",
+            )
+        )
+    if hist_rows:
+        layer = {
+            "data": {"name": "hist"},
+            "mark": {"type": "bar"},
+            "encoding": {
+                "x": _q("lo", "Value", bin={"binned": True}),
+                "x2": {"field": "hi"},
+                "y": _q("count", "Cells"),
+            },
+        }
+        plots.append(
+            _plot(
+                "images",
+                "histograms",
+                "Values of all the cells",
+                _facet_spec(layer, "image", columns=2),
+                {"hist": hist_rows},
+                "How the values of all the cells (all frames) are spread out.",
+            )
+        )
+    return plots
+
+
+def _profiles(v: Mapping[str, Any]) -> list[Plot]:
+    plots: list[Plot] = []
+    for k, it in enumerate(v.get("items", [])[:8]):
+        rows = [
+            {"x": c, "y": y, "frame": str(fr.get("label", "all"))}
+            for fr in it.get("frames", [])
+            for c, y in zip(it.get("coords", []), fr.get("values", []), strict=False)
+            if y is not None and c is not None
+        ]
+        if not rows:
+            continue
+        xscale = {"type": "symlog"} if it.get("log_x") else {}
+        yscale = {"type": "log"} if it.get("log_y") else {}
+        units = f" ({it['units']})" if it.get("units") else ""
+        spec = {
+            "data": {"name": "curves"},
+            "mark": {"type": "line"},
+            "encoding": {
+                "x": _q("x", it.get("along"), scale=xscale),
+                "y": _q("y", f"{it['var']}{units}", scale=yscale),
+                "color": {
+                    "field": "frame",
+                    "type": "ordinal",
+                    "title": it.get("frame_dim") or "Curve",
+                    "scale": {"scheme": "viridis"},
+                },
+            },
+        }
+        plots.append(
+            _plot(
+                "profiles",
+                f"curve{k}",
+                f"{it['var']} along {it.get('along')}",
+                spec,
+                {"curves": rows},
+                v.get("caption_plain"),
+            )
+        )
+    return plots
+
+
+def _map(v: Mapping[str, Any]) -> list[Plot]:
+    areas = v.get("areas", [])
+    n = len(areas)
+    nbrs: list[list[int]] = [[] for _ in range(n)]
+    for i, j in v.get("edges", []):
+        if 0 <= i < n and 0 <= j < n:
+            nbrs[i].append(j)
+            nbrs[j].append(i)
+    plots: list[Plot] = []
+    bars: list[Row] = []
+    scatter: list[Row] = []
+    for layer in v.get("layers", [])[:6]:
+        vals = layer.get("values", [])
+        for i, a in enumerate(areas):
+            if i < len(vals) and vals[i] is not None:
+                bars.append({"layer": layer["var"], "area": str(a), "value": vals[i]})
+        if not any(nbrs):
+            continue
+        for i in range(min(n, len(vals))):
+            near = [vals[j] for j in nbrs[i] if j < len(vals) and vals[j] is not None]
+            if vals[i] is not None and near:
+                scatter.append(
+                    {
+                        "layer": layer["var"],
+                        "area": str(areas[i]),
+                        "value": vals[i],
+                        "lag": sum(near) / len(near),
+                    }
+                )
+    if scatter:
+        layer_spec = {
+            "data": {"name": "moran"},
+            "layer": [
+                {
+                    "mark": {"type": "point", "filled": True, "opacity": 0.7},
+                    "encoding": {
+                        "x": _q("value", "Value of the area"),
+                        "y": _q("lag", "Mean of its neighbours"),
+                        "tooltip": [_n("area", "Area"), _q("value", "Value"), _q("lag", "Lag")],
+                    },
+                },
+                {
+                    "mark": {"type": "line", "color": "#888"},
+                    "transform": [{"regression": "lag", "on": "value"}],
+                    "encoding": {"x": _q("value"), "y": _q("lag")},
+                },
+            ],
+        }
+        plots.append(
+            _plot(
+                "map",
+                "moran",
+                "Each area against its neighbours",
+                _facet_spec(layer_spec, "layer", columns=3),
+                {"moran": scatter},
+                "A rising line shows that neighbouring areas have similar values (Moran's I).",
+            )
+        )
+    if bars:
+        layer_spec = {
+            "data": {"name": "areas"},
+            "mark": {"type": "bar"},
+            "encoding": {
+                "y": _n("area", "Area", sort="-x"),
+                "x": _q("value", "Value"),
+            },
+        }
+        plots.append(
+            _plot(
+                "map",
+                "areas",
+                "Value of each area",
+                _facet_spec(layer_spec, "layer", columns=3),
+                {"areas": bars},
+                v.get("caption_plain"),
+            )
+        )
+    return plots
+
+
+def _network(v: Mapping[str, Any]) -> list[Plot]:
+    plots: list[Plot] = []
+    for k, it in enumerate(v.get("items", [])[:2]):
+        labels = [str(x) for x in it.get("labels", [])]
+        title = it["var"] + (f" ({_facet_label(it.get('facet'))})" if it.get("facet") else "")
+        m, order = it.get("matrix"), it.get("order", [])
+        if m:
+            names = [labels[i] for i in order]
+            rows = [
+                {"a": names[a], "b": names[b], "w": m[a][b], "ia": a, "ib": b}
+                for a in range(len(names))
+                for b in range(len(names))
+                if m[a][b] is not None and m[a][b] != 0
+            ]
+            if rows:
+                spec = {
+                    "data": {"name": "matrix"},
+                    "mark": {"type": "rect"},
+                    "encoding": {
+                        "x": _n("b", None, sort={"field": "ib"}, axis={"labels": len(names) <= 40}),
+                        "y": _n("a", None, sort={"field": "ia"}, axis={"labels": len(names) <= 40}),
+                        "color": _q("w", "Link"),
+                    },
+                }
+                plots.append(
+                    _plot(
+                        "network",
+                        f"matrix{k}",
+                        f"{title}: matrix",
+                        spec,
+                        {"matrix": rows},
+                        "Linked pairs, with similar nodes put together.",
+                    )
+                )
+        pos = it.get("positions")
+        if pos:
+            xs, ys = pos["x"], pos["y"]
+            deg = it.get("degree") or [0.0] * len(labels)
+            nodes = [
+                {"node": labels[i], "x": xs[i], "y": ys[i], "degree": deg[i]}
+                for i in range(len(labels))
+            ]
+            links = [
+                {"x": xs[e["i"]], "y": ys[e["i"]], "x2": xs[e["j"]], "y2": ys[e["j"]], "w": e["w"]}
+                for e in it.get("edges", [])
+            ]
+            spec = {
+                "layer": [
+                    {
+                        "data": {"name": "links"},
+                        "mark": {"type": "rule", "opacity": 0.35},
+                        "encoding": {
+                            "x": _q("x", None, axis=None),
+                            "y": _q("y", None, axis=None),
+                            "x2": {"field": "x2"},
+                            "y2": {"field": "y2"},
+                        },
+                    },
+                    {
+                        "data": {"name": "nodes"},
+                        "mark": {"type": "circle", "opacity": 0.9},
+                        "encoding": {
+                            "x": _q("x", None, axis=None),
+                            "y": _q("y", None, axis=None),
+                            "size": _q("degree", "Links"),
+                            "tooltip": [_n("node", "Node"), _q("degree", "Links")],
+                        },
+                    },
+                ]
+            }
+            plots.append(
+                _plot(
+                    "network",
+                    f"graph{k}",
+                    f"{title}: drawing",
+                    spec,
+                    {"links": links, "nodes": nodes},
+                    v.get("caption_plain"),
+                )
+            )
+    return plots
+
+
+def _tree(v: Mapping[str, Any]) -> list[Plot]:
+    lay = v.get("layout") or {}
+    xs, ys, parent = lay.get("x", []), lay.get("y", []), lay.get("parent", [])
+    branches: list[Row] = []
+    for i, p in enumerate(parent):
+        if 0 <= p < len(xs):
+            branches.append({"x": xs[p], "x2": xs[i], "y": ys[i], "y2": ys[i]})
+            branches.append({"x": xs[p], "x2": xs[p], "y": ys[p], "y2": ys[i]})
+    if not branches:
+        return []
+    tips = v.get("tips", [])
+    labels = lay.get("label", [])
+    tip_rows = [{"y": ys[t], "label": str(labels[t] or t)} for t in tips if t < len(ys)]
+    tree_spec: dict[str, Any] = {
+        "width": 360,
+        "layer": [
+            {
+                "data": {"name": "branches"},
+                "mark": {"type": "rule"},
+                "encoding": {
+                    "x": _q("x", "Distance from the root"),
+                    "x2": {"field": "x2"},
+                    "y": _q("y", None, axis=None, scale={"reverse": True}),
+                    "y2": {"field": "y2"},
+                },
+            },
+            {
+                "data": {"name": "tips"},
+                "mark": {"type": "tick", "orient": "horizontal", "opacity": 0},
+                "encoding": {
+                    "y": _q("y", None, axis=None, scale={"reverse": True}),
+                    "tooltip": [_n("label", "Tip")],
+                },
+            },
+        ],
+    }
+    trait_rows = [
+        {"trait": t["var"], "y": ys[tips[i]], "value": val, "label": str(labels[tips[i]] or "")}
+        for t in v.get("traits", [])[:6]
+        for i, val in enumerate(t.get("values", []))
+        if val is not None and i < len(tips) and tips[i] < len(ys)
+    ]
+    data: dict[str, list[Row]] = {"branches": branches, "tips": tip_rows}
+    if not trait_rows:
+        spec = tree_spec
+    else:
+        data["traits"] = trait_rows
+        strips = {
+            "data": {"name": "traits"},
+            "facet": {"column": {"field": "trait", "type": "nominal", "title": None}},
+            "spec": {
+                "width": 120,
+                "mark": {"type": "bar", "orient": "horizontal"},
+                "encoding": {
+                    "y": _q("y", None, axis=None, scale={"reverse": True}),
+                    "x": _q("value", None),
+                    "tooltip": [_n("label", "Tip"), _q("value", "Value")],
+                },
+            },
+            "resolve": {"scale": {"x": "independent"}},
+        }
+        spec = {"hconcat": [tree_spec, strips], "resolve": {"scale": {"y": "shared"}}}
+    return [_plot("tree", "dendrogram", "Tree and traits", spec, data, v.get("caption_plain"))]
+
+
+def _circular(v: Mapping[str, Any]) -> list[Plot]:
+    rows: list[Row] = []
+    for it in v.get("items", []):
+        bins = it.get("bins", [])
+        for g in it.get("groups", []):
+            total = sum(g.get("counts", [])) or 1
+            for i, k in enumerate(g.get("counts", [])):
+                rows.append(
+                    {
+                        "var": it["var"],
+                        "group": str(g.get("label")),
+                        "lo": bins[i],
+                        "hi": bins[i + 1],
+                        "share": k / total,
+                    }
+                )
+    plots: list[Plot] = []
+    if rows:
+        layer = {
+            "data": {"name": "bins"},
+            "mark": {"type": "bar"},
+            "encoding": {
+                "x": _q("lo", "Angle or time", bin={"binned": True}),
+                "x2": {"field": "hi"},
+                "y": _q("share", "Share", axis={"format": "%"}),
+                "color": _n("group", "Group"),
+                "yOffset": _n("group"),
+            },
+        }
+        plots.append(
+            _plot(
+                "circular",
+                "bins",
+                "Values around the circle",
+                _facet_spec(layer, "var"),
+                {"bins": rows},
+                v.get("caption_plain"),
+            )
+        )
+    for k, pair in enumerate(v.get("pairs", [])[:4]):
+        ab, bb = pair["a_bins"], pair["b_bins"]
+        cells = [
+            {"a": ab[i], "a2": ab[i + 1], "b": bb[j], "b2": bb[j + 1], "n": n}
+            for i, row in enumerate(pair["counts"])
+            for j, n in enumerate(row)
+        ]
+        spec = {
+            "data": {"name": "pair"},
+            "mark": {"type": "rect"},
+            "encoding": {
+                "x": _q("a", pair["a"], bin={"binned": True}),
+                "x2": {"field": "a2"},
+                "y": _q("b", pair["b"], bin={"binned": True}),
+                "y2": {"field": "b2"},
+                "color": _q("n", "Count"),
+            },
+        }
+        plots.append(
+            _plot(
+                "circular",
+                f"pair{k}",
+                f"{pair['a']} and {pair['b']}",
+                spec,
+                {"pair": cells},
+                "Counts of each pair of values. A pattern shows that the two go together.",
+            )
+        )
+    return plots
+
+
+def _points(v: Mapping[str, Any]) -> list[Plot]:
+    s = v.get("sample") or {}
+    xs, ys = s.get("x", []), s.get("y", [])
+    srgb = v.get("srgb") or []
+    hexok = re.compile(r"^#[0-9a-f]{6}$")
+    rows: list[Row] = []
+    for i in range(min(len(xs), len(ys))):
+        if xs[i] is None or ys[i] is None:
+            continue
+        row: Row = {"x": xs[i], "y": ys[i]}
+        if i < len(srgb) and isinstance(srgb[i], str) and hexok.match(srgb[i]):
+            row["hex"] = srgb[i]
+        rows.append(row)
+    if not rows:
+        return []
+    lattice = bool(v.get("lattice"))
+    enc: dict[str, Any] = {
+        "x": {"field": "x", "type": "ordinal" if lattice else "quantitative", "title": v.get("x")},
+        "y": {"field": "y", "type": "ordinal" if lattice else "quantitative", "title": v.get("y")},
+    }
+    if all("hex" in r for r in rows):
+        enc["color"] = {"field": "hex", "type": "nominal", "scale": None, "legend": None}
+    mark = {"type": "rect"} if lattice else {"type": "circle", "opacity": 0.6, "size": 12}
+    spec = {"data": {"name": "points"}, "mark": mark, "encoding": enc}
+    return [_plot("points", "map", "Points", spec, {"points": rows}, v.get("caption_plain"))]
+
+
 # --------------------------------------------------------------------- Model Explorer
 
 
@@ -1025,6 +1493,14 @@ EXPLORER_RECIPES: Final[dict[str, Callable[[Mapping[str, Any]], list[Plot]]]] = 
     "mapi.data-explorer.vif/v1": _vif,
     "mapi.data-explorer.groups/v1": _groups,
     "mapi.data-explorer.quality/v1": _quality,
+    "mapi.data-explorer.structure/v1": _structure,
+    "mapi.data-explorer.images/v1": _images,
+    "mapi.data-explorer.profiles/v1": _profiles,
+    "mapi.data-explorer.map/v1": _map,
+    "mapi.data-explorer.network/v1": _network,
+    "mapi.data-explorer.tree/v1": _tree,
+    "mapi.data-explorer.circular/v1": _circular,
+    "mapi.data-explorer.points/v1": _points,
     "mapi.model-explorer.params/v1": _params,
     "mapi.model-explorer.diagnostics/v1": lambda _v: [],
     "mapi.model-explorer.fit/v1": _fit,

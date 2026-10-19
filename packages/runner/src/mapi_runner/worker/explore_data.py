@@ -19,18 +19,26 @@ section                   what it shows
 ``quality``               plain-language data-quality warnings with suggested actions
 ========================  ====================================================================
 
-``CHEAP_SECTIONS`` are written by every ingest run (``ui/explore/``); the others run on
-demand in an ``explore`` run. Columns are built at the time level: panel dims (geo, store)
-are summed for additive roles (target, media, spend) and averaged otherwise, and a small
-categorical dim (up to :data:`MAX_SPLIT_LEVELS` levels, e.g. ``channel``) splits a variable
-into one column per level (``spend[tv]``).
+plus the sections for scientific data (``structure``, ``images``, ``profiles``, ``map``,
+``network``, ``tree``, ``circular``, ``points``; :mod:`~mapi_runner.worker.explore_science`).
+
+Every section reads the data shapes of :func:`~mapi_runner.worker.structure.detect_structure`
+(``DataContext.structure``): geometry (polygon rings, neighbour and tree links, x/y
+positions), masks and labels are not data; an observation index is not time; the spatial
+dims of an image are reduced, never split into one series per pixel.
+
+:func:`ingest_sections` are written by every ingest run (``ui/explore/``); the others run
+on demand in an ``explore`` run. Columns are built at the time level: panel dims (geo,
+store) are summed for additive roles (target, media, spend) and averaged otherwise, and a
+small categorical dim (up to :data:`MAX_SPLIT_LEVELS` levels, e.g. ``channel``) splits a
+variable into one column per level (``spend[tv]``). Without time, columns are the variables
+along the unit dim (areas, species), the columns of a table (``level[raf]``) or the pixels
+of images that share a grid.
 """
 
 from __future__ import annotations
 
-import datetime
 import itertools
-import math
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final
@@ -77,15 +85,31 @@ from mapi_spec.views import (
 from pydantic import BaseModel
 
 from mapi_runner.worker import stats
+from mapi_runner.worker.explore_common import (
+    InsufficientData,
+    NeedsOption,
+    NotApplicable,
+    SectionSkipped,
+    jsonable,
+)
+from mapi_runner.worker.explore_common import fv as _fv
+from mapi_runner.worker.explore_science import SCIENCE_SECTION_FUNCS
+from mapi_runner.worker.structure import Structure, detect_structure, time_strength
 
 __all__ = [
     "CHEAP_SECTIONS",
     "DATA_SECTION_FUNCS",
     "MAX_SPLIT_LEVELS",
+    "MIN_TIME_PERIODS",
     "DataContext",
+    "InsufficientData",
+    "NeedsOption",
+    "NotApplicable",
     "SectionSkipped",
+    "data_columns",
     "data_context",
     "explore_period",
+    "ingest_sections",
     "jsonable",
     "quality_warnings",
 ]
@@ -99,43 +123,17 @@ CHEAP_SECTIONS: Final = (
     "correlation",
     "quality",
 )
-"""Sections every ingest run writes (seconds even for large panels)."""
+"""Sections every ingest run writes (seconds even for large panels); :func:`ingest_sections`
+adds ``structure`` and the picture sections that apply."""
 MAX_SPLIT_LEVELS: Final = 12
 """A categorical dim with at most this many levels splits a variable into columns."""
+MIN_TIME_PERIODS: Final = 16
+"""Periods a series needs for the lag, stationarity and trend sections."""
 _ADDITIVE: Final = frozenset({Role.TARGET, Role.MEDIA, Role.SPEND, Role.EXPOSURE, Role.WEIGHT})
 _DRIVERS: Final = frozenset({Role.MEDIA, Role.SPEND, Role.COVARIATE, Role.CONTROL, Role.EXPOSURE})
 _HIST_BINS: Final = 30
-
-
-class SectionSkipped(Exception):
-    """A section that does not apply to this data (the message is shown to the user)."""
-
-
-def jsonable(v: Any) -> str | int | float | bool | None:
-    """A JSON scalar for a coordinate label or value (dates as ISO text, NaN as ``None``)."""
-    if isinstance(v, np.datetime64 | pd.Timestamp | datetime.datetime | datetime.date):
-        ts = pd.Timestamp(v)
-        if pd.isna(ts):
-            return None
-        text: str = ts.date().isoformat() if ts == ts.normalize() else ts.isoformat()
-        return text
-    if isinstance(v, np.generic):
-        v = v.item()
-    if isinstance(v, float):
-        return v if math.isfinite(v) else None
-    if isinstance(v, bool | int | str) or v is None:
-        return v[:256] if isinstance(v, str) else v
-    if isinstance(v, bytes):
-        return v.decode("utf-8", "replace")[:256]
-    return str(v)[:256]
-
-
-def _fv(x: Any) -> float | None:
-    try:
-        f = float(x)
-    except (TypeError, ValueError):
-        return None
-    return f if math.isfinite(f) else None
+_REDUCED_ROLES: Final = frozenset({"y", "x", "along", "vertex", "index", "item"})
+"""Dims of these parts (``role_in_data``) are reduced in series, never split per level."""
 
 
 def explore_period(freq: str | None) -> int | None:
@@ -166,6 +164,28 @@ class DataContext:
     roles: dict[str, Role]
     kpi: str | None
     warnings: list[str] = field(default_factory=list)
+    structure: Structure | None = None
+
+    @property
+    def shapes(self) -> Structure:
+        """The detected structure (computed on first use when the context was built by
+        hand)."""
+        if self.structure is None:
+            self.structure = detect_structure(self.ds, self.schema, self.req.hints)
+        return self.structure
+
+    @property
+    def strong_time(self) -> bool:
+        """The time dim is real time (``kind: time``, a datetime coord, or the request's)."""
+        return self.time_dim is not None and (
+            self.time_dim == self.req.time_dim or self.shapes.time_dim == self.time_dim
+        )
+
+    def reduced_dims(self) -> set[str]:
+        """Dims that are reduced in a series (pixels, positions, observation ids)."""
+        if self.shapes.plain:
+            return set()
+        return {d for d, r in self.shapes.dim_roles.items() if r in _REDUCED_ROLES}
 
     @property
     def max_series(self) -> int:
@@ -203,7 +223,8 @@ def _find_time_dim(ds: xr.Dataset, schema: DataSchema | None, given: str | None)
             if name in ds.dims and d.kind == "time":
                 return name
         for name, d in schema.dims.items():
-            if name in ds.dims and d.policy.value == "extend":
+            # an observation index (report 0..n-1) is not time, even when it can extend
+            if name in ds.dims and d.policy.value == "extend" and time_strength(ds, schema, name):
                 return name
     for dim in ds.dims:
         if str(dim) in ds.coords and np.asarray(ds[dim].values).dtype.kind == "M":
@@ -216,7 +237,12 @@ def data_context(
 ) -> DataContext:
     """Resolve the time dim, frequency, season length, variables and KPI of a request."""
     req = req or DataExploreRequest()
-    time_dim = _find_time_dim(ds, schema, req.time_dim)
+    given_time = req.time_dim or (req.hints.time_dim if req.hints is not None else None)
+    time_dim = _find_time_dim(ds, schema, given_time)
+    structure = detect_structure(ds, schema, req.hints, time_dim=given_time)
+    if req.group_by is not None and "groups" in structure.not_applicable:
+        na = {k: v for k, v in structure.not_applicable.items() if k != "groups"}
+        structure = Structure(**{**structure.__dict__, "not_applicable": na})
     roles: dict[str, Role] = {}
     if schema is not None:
         roles = {n: v.role for n, v in schema.vars.items()}
@@ -225,9 +251,12 @@ def data_context(
     missing = [v for v in wanted if v not in ds.data_vars]
     if missing:
         raise SectionSkipped(f"the data has no variable called {missing[0]!r}")
-    chosen = [v for v in wanted if v in numeric and roles.get(v) not in (Role.INDEX, Role.MASK)][
-        :MAX_EXPLORE_VARS
-    ]
+    non_data = structure.non_data
+    chosen = [
+        v
+        for v in wanted
+        if v in numeric and roles.get(v) not in (Role.INDEX, Role.MASK) and v not in non_data
+    ][:MAX_EXPLORE_VARS]
     freq: str | None = None
     if time_dim is not None:
         if schema is not None and time_dim in schema.dims:
@@ -245,7 +274,19 @@ def data_context(
         unknown = [d for d in req.facet_by if d not in ds.dims]
         if unknown:
             raise SectionSkipped(f"the data has no dimension called {unknown[0]!r}")
-    return DataContext(ds, schema, req, time_dim, freq, period, chosen, roles, kpi)
+    return DataContext(
+        ds, schema, req, time_dim, freq, period, chosen, roles, kpi, structure=structure
+    )
+
+
+def ingest_sections(structure: Structure) -> tuple[str, ...]:
+    """The sections an ingest writes: :data:`CHEAP_SECTIONS`, ``structure`` and the
+    picture sections that apply (the others are listed as not applicable)."""
+    from mapi_spec.views import SCIENCE_SECTIONS
+
+    out = [s for s in CHEAP_SECTIONS if s not in structure.not_applicable]
+    out += [s for s in SCIENCE_SECTIONS if s not in structure.not_applicable]
+    return tuple(out)
 
 
 # ------------------------------------------------------------------------- series
@@ -276,6 +317,9 @@ def iter_series(
     if c.time_dim not in da.dims:
         return
     others = [str(d) for d in da.dims if d != c.time_dim]
+    if facet_dims is None and not c.req.facet_by:
+        reduced = c.reduced_dims()
+        facet_dims = [d for d in others if d not in reduced]
     keep = list(facet_dims) if facet_dims is not None else (list(c.req.facet_by) or others)
     keep = [d for d in keep if d in others]
     da = _reduce(c, da.rename(var), [d for d in others if d not in keep])
@@ -338,7 +382,20 @@ def _downsample(
 
 def _need_time(c: DataContext) -> None:
     if c.time_dim is None:
-        raise SectionSkipped("the data has no time dimension")
+        raise NotApplicable("the data has no time dimension")
+
+
+def _need_strong_time(c: DataContext) -> None:
+    """The lag, stationarity and trend sections: real time with enough periods."""
+    _need_time(c)
+    assert c.time_dim is not None
+    if not c.strong_time:
+        raise NotApplicable(f"{c.time_dim} is an ordered sequence, not time")
+    n = int(c.ds.sizes[c.time_dim])
+    if n < MIN_TIME_PERIODS:
+        raise InsufficientData(
+            f"there are only {n} periods. This view needs {MIN_TIME_PERIODS} or more"
+        )
 
 
 # ------------------------------------------------------------------------ sections
@@ -408,6 +465,7 @@ def overview(c: DataContext) -> DataOverviewView:
                 missing_share=min(1.0, max(0.0, miss)),
                 distinct=distinct,
                 constant=constant,
+                used_as=None if c.shapes.plain else c.shapes.var_use.get(name, "data"),
             )
         )
     issues = quality_warnings(c)
@@ -420,8 +478,18 @@ def overview(c: DataContext) -> DataOverviewView:
         td = next((d for d in dims if d.name == c.time_dim), None)
         if td is not None and td.start is not None:
             period_txt = f", from {td.start} to {td.end}"
+    shapes_txt = ""
+    shape_views = None
+    if not c.shapes.plain:
+        from mapi_runner.worker.explore_science import shape_views as _shape_views
+
+        shape_views = _shape_views(c.shapes)
+        main = [s for s in c.shapes.shapes if s.kind not in ("timeseries", "sequence", "table")]
+        if main:
+            shapes_txt = f"It holds {_shapes_phrase(ds, main)}. "
     summary = (
         f"{len(var_rows)} variables over {shape}{period_txt}. "
+        + shapes_txt
         + (
             f"The result to explain is {c.kpi!r}. "
             if c.kpi
@@ -442,15 +510,61 @@ def overview(c: DataContext) -> DataOverviewView:
         summary_plain=summary[:1000],
         quality_score=max(0.0, 1.0 - 0.1 * serious),
         caption_plain="What the dataset contains: its dimensions, variables and roles.",
+        shapes=shape_views,
     )
+
+
+_SHAPE_WORDS: Final = {
+    "image": "image", "vector_field": "vector field", "areal_map": "map of areas",
+    "points": "set of points", "network": "network", "tree": "tree",
+    "circular": "set of angles or times of day", "profile": "profile",
+}  # fmt: skip
+
+
+def _shapes_phrase(ds: xr.Dataset, shapes: Sequence[Any]) -> str:
+    """``2 images of 81 x 81 pixels and 1 of 31 x 31 pixels; a network``."""
+    parts: list[str] = []
+    for kind in dict.fromkeys(s.kind for s in shapes):
+        group = [s for s in shapes if s.kind == kind]
+        word = _SHAPE_WORDS.get(kind, kind)
+        if kind in ("image", "vector_field"):
+            sizes: dict[str, int] = {}
+            for s in group:
+                key = f"{ds.sizes[s.dims['y']]} x {ds.sizes[s.dims['x']]} pixels"
+                sizes[key] = sizes.get(key, 0) + len(s.vars)
+            items = list(sizes.items())
+            total = sum(sizes.values())
+            text = f"{items[0][1]} {word}{'s' if total != 1 else ''} of {items[0][0]}"
+            text += "".join(f" and {n} of {k}" for k, n in items[1:])
+            parts.append(text)
+        else:
+            parts.append(f"{len(group)} {word}s" if len(group) > 1 else f"a {word}")
+    return "; ".join(parts)[:400]
+
+
+def _distribution_columns(c: DataContext) -> dict[str, np.ndarray]:
+    """Values per distribution: each variable as a whole, a table split per column."""
+    tables = {s.vars[0]: s for s in c.shapes.of("table")}
+    out: dict[str, np.ndarray] = {}
+    for var in c.vars:
+        shape = tables.get(var)
+        if shape is None:
+            out[var] = np.asarray(c.ds[var].values)
+            continue
+        col = shape.dims["columns"]
+        da = c.ds[var].transpose(col, ...)
+        for i, label in enumerate(_labels(c.ds, col)):
+            out[f"{var}[{label}]"] = np.asarray(da.values[i])
+    return out
 
 
 def distributions(c: DataContext) -> DistributionsView:
     from scipy import stats as sps
 
     items: list[VarDistribution] = []
-    for var in c.vars[: c.max_series]:
-        y = stats.finite(c.ds[var].values)
+    cols = _distribution_columns(c)
+    for var in list(cols)[: c.max_series]:
+        y = stats.finite(cols[var])
         if y.size == 0:
             items.append(VarDistribution(var=var, n=0))
             continue
@@ -515,17 +629,29 @@ def _longest_gap(values: np.ndarray) -> int:
     return best
 
 
+def _missing_along(c: DataContext) -> str | None:
+    """The dim of the missingness grid: time, else the frame dim of an image, else the
+    unit dim (areas, species, observations)."""
+    if c.time_dim is not None:
+        return c.time_dim
+    image = c.shapes.first("image", "vector_field")
+    if image is not None and "frame" in image.dims:
+        return image.dims["frame"]
+    return c.shapes.unit_dim
+
+
 def missingness_grid(c: DataContext) -> MissingnessGrid | None:
-    if c.time_dim is None:
+    along = _missing_along(c)
+    if along is None:
         return None
     labels: list[str] = []
     rows: list[list[float]] = []
-    coords = [str(x) for x in c.time_coords()]
+    coords = [str(x) for x in _labels(c.ds, along)]
     for var in c.vars:
         da = c.ds[var]
-        if c.time_dim not in da.dims:
+        if along not in da.dims:
             continue
-        frac = np.isnan(np.asarray(da.transpose(c.time_dim, ...).values, dtype=float))
+        frac = np.isnan(np.asarray(da.transpose(along, ...).values, dtype=float))
         frac = frac.reshape(frac.shape[0], -1).mean(axis=1)
         labels.append(var)
         rows.append([float(f) for f in frac])
@@ -540,9 +666,7 @@ def missingness_grid(c: DataContext) -> MissingnessGrid | None:
             [float(np.mean(r[a:b])) if b > a else 0.0 for a, b in itertools.pairwise(edges)]
             for r in rows
         ]
-    return MissingnessGrid(
-        along=c.time_dim, labels=labels[:1024], coords=coords, fraction=rows[:1024]
-    )
+    return MissingnessGrid(along=along, labels=labels[:1024], coords=coords, fraction=rows[:1024])
 
 
 def missingness(c: DataContext) -> MissingnessView:
@@ -617,12 +741,45 @@ def _corr(a: np.ndarray, b: np.ndarray, method: str) -> tuple[float | None, floa
     return _fv(res.statistic), _fv(res.pvalue)
 
 
-def _flat_columns(c: DataContext) -> dict[str, np.ndarray]:
+def data_columns(c: DataContext) -> dict[str, np.ndarray]:
+    """Columns for correlation and VIF: along time (panel dims reduced, small categories
+    split); without time the columns of a table (``level[raf]``), else the variables on the
+    unit dim (areas, species), else the pixels of images that share a grid, else the
+    variables that share the first variable's dims."""
     if c.time_dim is not None:
         return time_columns(c, c.vars)
-    # no time: variables that share the first variable's dims, flattened
     if not c.vars:
         return {}
+    s = c.shapes
+    if not s.plain:
+        table = s.first("table")
+        if table is not None and table.vars[0] in c.vars:
+            var, col = table.vars[0], table.dims["columns"]
+            da = c.ds[var].transpose(table.dims["item"], col)
+            out = {
+                f"{var}[{label}]": np.asarray(da.values[:, i], dtype=float)
+                for i, label in enumerate(_labels(c.ds, col))
+            }
+            return dict(itertools.islice(out.items(), MAX_EXPLORE_VARS))
+        unit = s.unit_dim
+        if unit is not None:
+            on_unit = {
+                v: np.asarray(c.ds[v].values, dtype=float)
+                for v in c.vars
+                if c.ds[v].dims == (unit,)
+            }
+            if len(on_unit) >= 2:
+                return on_unit
+        for image in s.of("image"):
+            same = [v for v in image.vars if v in c.vars]
+            if len(same) >= 2:
+                dims = c.ds[same[0]].dims
+                return {
+                    v: np.asarray(c.ds[v].transpose(*dims).values, dtype=float).reshape(-1)
+                    for v in same
+                    if set(c.ds[v].dims) == set(dims)
+                }
+    # variables that share the first variable's dims, flattened
     dims = c.ds[c.vars[0]].dims
     return {
         v: np.asarray(c.ds[v].transpose(*dims).values, dtype=float).reshape(-1)
@@ -631,11 +788,14 @@ def _flat_columns(c: DataContext) -> dict[str, np.ndarray]:
     }
 
 
+_flat_columns = data_columns
+
+
 def correlation(c: DataContext) -> CorrelationView:
     cols = _flat_columns(c)
     names = list(cols)[:64]
     if len(names) < 2:
-        raise SectionSkipped("a correlation needs at least two numeric variables")
+        raise NotApplicable("a correlation needs at least two numeric variables")
     m: list[list[float | None]] = [[None] * len(names) for _ in names]
     p: list[list[float | None]] = [[None] * len(names) for _ in names]
     for i, a in enumerate(names):
@@ -675,13 +835,13 @@ def _profile(var: str, facet: dict[str, Any], prof: stats.Lagged) -> LagProfile:
 
 
 def ccf(c: DataContext) -> CrossCorrelationView:
-    _need_time(c)
+    _need_strong_time(c)
     if c.kpi is None:
-        raise SectionSkipped("no KPI. Give a variable the role target, or give kpi")
+        raise NeedsOption("no KPI. Give a variable the role target, or give kpi")
     items: list[LagProfile] = []
     drivers = c.drivers()
     if not drivers:
-        raise SectionSkipped("the data has no drivers to compare with the KPI")
+        raise NotApplicable("the data has no drivers to compare with the KPI")
     for facet in _facets(c):
         kpi_col = time_columns(c, [c.kpi], facet=facet)
         y = next(iter(kpi_col.values()), None)
@@ -705,7 +865,7 @@ def ccf(c: DataContext) -> CrossCorrelationView:
 
 
 def acf_pacf(c: DataContext) -> AcfPacfView:
-    _need_time(c)
+    _need_strong_time(c)
     acfs: list[LagProfile] = []
     pacfs: list[LagProfile] = []
     suggested: dict[str, dict[str, int]] = {}
@@ -731,7 +891,7 @@ def acf_pacf(c: DataContext) -> AcfPacfView:
 
 
 def stationarity(c: DataContext) -> StationarityView:
-    _need_time(c)
+    _need_strong_time(c)
     rows: list[StationarityRow] = []
     for var in c.vars:
         for facet, values in iter_series(c, var):
@@ -754,9 +914,9 @@ def stationarity(c: DataContext) -> StationarityView:
 
 
 def stl(c: DataContext) -> StlView:
-    _need_time(c)
+    _need_strong_time(c)
     if c.period is None:
-        raise SectionSkipped("the season length is unknown. Give period")
+        raise NeedsOption("the season length is unknown. Give period")
     coords = c.time_coords()
     items: list[StlComponents] = []
     skipped = 0
@@ -788,7 +948,7 @@ def stl(c: DataContext) -> StlView:
                 )
             )
     if not items:
-        raise SectionSkipped(
+        raise InsufficientData(
             f"each series has less than two seasons ({2 * c.period} periods) of complete data"
         )
     warn = (
@@ -806,13 +966,17 @@ def stl(c: DataContext) -> StlView:
 
 def vif(c: DataContext, *, limit: float = 10.0) -> VifView:
     drivers = c.drivers()
-    cols = (
-        time_columns(c, drivers)
-        if c.time_dim is not None
-        else {k: v for k, v in _flat_columns(c).items() if k in drivers}
-    )
+    if c.time_dim is not None:
+        cols = time_columns(c, drivers)
+    else:
+        tshape = c.shapes.first("table")
+        cols = {
+            k: v
+            for k, v in data_columns(c).items()
+            if k in drivers or (tshape is not None and k.startswith(f"{tshape.vars[0]}["))
+        }
     if len(cols) < 2:
-        raise SectionSkipped("collinearity needs at least two drivers")
+        raise NotApplicable("collinearity needs at least two drivers")
     table = stats.vif_table(cols)
     flagged = [k for k, v in table.items() if v is not None and v > limit]
     return VifView(
@@ -825,17 +989,102 @@ def vif(c: DataContext, *, limit: float = 10.0) -> VifView:
     )
 
 
-def groups(c: DataContext) -> GroupComparisonView:
+def _group_comparison(
+    c: DataContext, var: str, labels: Sequence[Any], parts: Sequence[np.ndarray]
+) -> GroupComparison:
+    """One variable across groups (``parts[i]`` = the values of group ``labels[i]``)."""
     from scipy import stats as sps
 
+    total = None
+    every = np.concatenate([np.asarray(x, dtype=float).ravel() for x in parts]) if parts else None
+    if c.role(var) in _ADDITIVE and every is not None:
+        total = float(np.nansum(every))
+    rows: list[GroupStats] = []
+    samples: list[np.ndarray] = []
+    for i, label in enumerate(labels[:1000]):
+        y = stats.finite(parts[i])
+        samples.append(y)
+        share = None
+        if total and total > 0 and every is not None and np.all(stats.finite(every) >= 0):
+            share = float(min(1.0, max(0.0, float(y.sum()) / total)))
+        rows.append(
+            GroupStats(
+                group=label if label is not None else str(i),
+                n=int(y.size),
+                mean=_fv(y.mean()) if y.size else None,
+                sd=_fv(y.std(ddof=1)) if y.size > 1 else None,
+                median=_fv(np.median(y)) if y.size else None,
+                share_of_total=share,
+            )
+        )
+    usable = [s for s in samples if s.size >= 2]
+    test = p = None
+    if len(usable) >= 2 and any(np.ptp(s) > 0 for s in usable):
+        normalish = all(s.size >= 8 for s in usable)
+        if normalish:
+            test, p = "anova", _fv(sps.f_oneway(*usable).pvalue)
+        else:
+            test, p = "kruskal", _fv(sps.kruskal(*usable).pvalue)
+    return GroupComparison(
+        var=var,
+        groups=rows,
+        test=test,
+        p_value=min(1.0, max(0.0, p)) if p is not None else None,
+        differs=None if p is None else p < c.req.alpha,
+    )
+
+
+def _groups_by_var(c: DataContext, gvar: str) -> GroupComparisonView:
+    """Groups given by a grouping variable (an index var, or an integer var with few
+    values) on the same dims as the data."""
+    g = c.ds[gvar]
+    codes = np.asarray(g.values)
+    levels = np.unique(codes[np.isfinite(codes.astype(float))]) if codes.size else codes
+    labelled = c.shapes.group_vars.get(gvar) or (
+        c.schema.vars[gvar].index_of if c.schema is not None and gvar in c.schema.vars else None
+    )
+    names = _labels(c.ds, labelled) if labelled and labelled in c.ds.dims else None
+    labels: list[Any] = []
+    for code in levels[:1000]:
+        k = int(code)
+        labels.append(names[k] if names is not None and 0 <= k < len(names) else jsonable(code))
+    items: list[GroupComparison] = []
+    for var in c.vars:
+        da = c.ds[var]
+        if da.dims != g.dims or var == gvar:
+            continue
+        vals = np.asarray(da.values, dtype=float)
+        parts = [vals[codes == code] for code in levels[:1000]]
+        items.append(_group_comparison(c, var, labels, parts))
+    if not items:
+        raise NotApplicable(f"no variable has the dimensions of {gvar}")
+    by = labelled or gvar
+    return GroupComparisonView(
+        by=by[:128],
+        items=items,
+        caption_plain=f"Each variable compared across the values of {by} (from {gvar}).",
+    )
+
+
+def groups(c: DataContext) -> GroupComparisonView:
     by = c.req.group_by
+    if by is not None and by in c.ds.data_vars:
+        return _groups_by_var(c, by)
     if by is None:
-        cats = [str(d) for d in c.ds.dims if str(d) != c.time_dim and 2 <= c.ds.sizes[d] <= 1000]
+        s = c.shapes
+        if s.plain:
+            cats = [
+                str(d) for d in c.ds.dims if str(d) != c.time_dim and 2 <= c.ds.sizes[d] <= 1000
+            ]
+        else:
+            cats = list(s.categorical_dims)
+            if not cats and s.group_vars:
+                return _groups_by_var(c, next(iter(s.group_vars)))
         if not cats:
-            raise SectionSkipped("the data has no dimension with groups to compare")
+            raise NotApplicable("the data has no dimension with groups to compare")
         by = cats[0]
     if by not in c.ds.dims:
-        raise SectionSkipped(f"the data has no dimension called {by!r}")
+        raise NotApplicable(f"the data has no dimension called {by!r}")
     labels = _labels(c.ds, by)
     items: list[GroupComparison] = []
     for var in c.vars:
@@ -843,42 +1092,9 @@ def groups(c: DataContext) -> GroupComparisonView:
         if by not in da.dims:
             continue
         arr = np.asarray(da.transpose(by, ...).values, dtype=float).reshape(len(labels), -1)
-        total = float(np.nansum(arr)) if c.role(var) in _ADDITIVE else None
-        rows: list[GroupStats] = []
-        samples: list[np.ndarray] = []
-        for i, label in enumerate(labels[:1000]):
-            y = stats.finite(arr[i])
-            samples.append(y)
-            share = None
-            if total and total > 0 and np.all(stats.finite(arr) >= 0):
-                share = float(min(1.0, max(0.0, float(y.sum()) / total)))
-            rows.append(
-                GroupStats(
-                    group=label if label is not None else str(i),
-                    n=int(y.size),
-                    mean=_fv(y.mean()) if y.size else None,
-                    sd=_fv(y.std(ddof=1)) if y.size > 1 else None,
-                    median=_fv(np.median(y)) if y.size else None,
-                    share_of_total=share,
-                )
-            )
-        usable = [s for s in samples if s.size >= 2]
-        test = p = None
-        if len(usable) >= 2 and any(np.ptp(s) > 0 for s in usable):
-            normalish = all(s.size >= 8 for s in usable)
-            if normalish:
-                test, p = "anova", _fv(sps.f_oneway(*usable).pvalue)
-            else:
-                test, p = "kruskal", _fv(sps.kruskal(*usable).pvalue)
-        items.append(
-            GroupComparison(
-                var=var,
-                groups=rows,
-                test=test,
-                p_value=min(1.0, max(0.0, p)) if p is not None else None,
-                differs=None if p is None else p < c.req.alpha,
-            )
-        )
+        items.append(_group_comparison(c, var, labels, list(arr)))
+    if not items:
+        raise NotApplicable(f"no variable varies over {by}")
     return GroupComparisonView(
         by=by,
         items=items,
@@ -929,7 +1145,7 @@ def quality_warnings(
             )
         n = int(t.size)
         need = min_history or (2 * c.period if c.period else 24)
-        if n < need:
+        if n < need and c.strong_time:
             out.append(
                 _w(
                     "SHORT_HISTORY",
@@ -1059,6 +1275,10 @@ def quality_warnings(
                         "Combine them, remove one, or use priors to separate them.",
                     )
                 )
+    if not c.shapes.plain:
+        from mapi_runner.worker.explore_science import structure_warnings
+
+        out.extend(structure_warnings(c))
     return out[:500]
 
 
@@ -1086,5 +1306,6 @@ DATA_SECTION_FUNCS: Final[dict[str, Callable[[DataContext], BaseModel]]] = {
     "vif": vif,
     "groups": groups,
     "quality": quality,
+    **SCIENCE_SECTION_FUNCS,
 }
 """Every Data Explorer section's implementation (keys = :data:`mapi_spec.views.DATA_SECTIONS`)."""

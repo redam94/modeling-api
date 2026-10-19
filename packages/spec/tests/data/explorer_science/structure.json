@@ -1,0 +1,108 @@
+{
+ "caption_plain": "Shows the shapes the explorer found in the data and the part each dimension plays.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.structure/v1",
+ "shapes": [
+  {
+   "kind": "image",
+   "vars": [
+    "quakes"
+   ],
+   "dims": {
+    "y": "row",
+    "x": "col",
+    "frame": "quarter"
+   },
+   "score": 0.9,
+   "label_plain": "image: 9 x 12 cells, 44 quarter",
+   "sections": [
+    "images"
+   ]
+  },
+  {
+   "kind": "timeseries",
+   "vars": [
+    "quakes"
+   ],
+   "dims": {
+    "time": "quarter"
+   },
+   "score": 0.6,
+   "label_plain": "time series: 44 quarter (row and col summed)",
+   "sections": [
+    "timeseries"
+   ]
+  }
+ ],
+ "dims": [
+  {
+   "name": "quarter",
+   "size": 44,
+   "kind": "time",
+   "role_in_data": "time",
+   "start": "2009-01-01",
+   "end": "2019-10-01",
+   "evenly_spaced": true
+  },
+  {
+   "name": "row",
+   "size": 9,
+   "kind": "integer",
+   "role_in_data": "y",
+   "start": 0,
+   "end": 8,
+   "evenly_spaced": true
+  },
+  {
+   "name": "col",
+   "size": 12,
+   "kind": "integer",
+   "role_in_data": "x",
+   "start": 0,
+   "end": 11,
+   "evenly_spaced": true
+  }
+ ],
+ "vars": [
+  {
+   "name": "quakes",
+   "dims": [
+    "quarter",
+    "row",
+    "col"
+   ],
+   "shape": [
+    44,
+    9,
+    12
+   ],
+   "dtype": "int64",
+   "role": "target",
+   "units": "events",
+   "used_as": "data"
+  }
+ ],
+ "recommended": [
+  "overview",
+  "structure",
+  "images",
+  "quality",
+  "distributions",
+  "timeseries",
+  "missingness",
+  "outliers"
+ ],
+ "not_applicable": {
+  "map": "the data has no polygons (ring_x and ring_y)",
+  "network": "no variable links a dimension to itself (X, X_)",
+  "tree": "no variable gives the parent of each node",
+  "circular": "no variable is an angle or a time of day",
+  "points": "no two variables give x and y positions",
+  "profiles": "no variable lies along a non-time axis",
+  "groups": "the data has no dimension with groups to compare",
+  "correlation": "a correlation needs at least two numeric variables",
+  "vif": "collinearity needs at least two drivers"
+ },
+ "time_dim": "quarter",
+ "categorical_dims": []
+}
