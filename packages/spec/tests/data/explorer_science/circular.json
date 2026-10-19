@@ -1,0 +1,114 @@
+{
+ "caption_plain": "Shows each angle or time of day as a rose. The line shows the mean direction.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.circular/v1",
+ "items": [
+  {
+   "var": "wind_from",
+   "units": "deg",
+   "period": 360.0,
+   "zero": "north",
+   "clockwise": true,
+   "bins": [
+    0.0,
+    90.0,
+    180.0,
+    270.0,
+    360.0
+   ],
+   "groups": [
+    {
+     "label": "all",
+     "n": 100,
+     "counts": [
+      10,
+      20,
+      50,
+      20
+     ],
+     "mean_direction": 182.0,
+     "resultant_length": 0.42,
+     "circular_sd": 75.0,
+     "rayleigh_z": 17.6,
+     "rayleigh_p": 0.0001
+    }
+   ],
+   "omitted_groups": 0
+  },
+  {
+   "var": "clock_time",
+   "units": "h",
+   "period": 24.0,
+   "zero": "north",
+   "clockwise": true,
+   "group_by": "species",
+   "bins": [
+    0.0,
+    6.0,
+    12.0,
+    18.0,
+    24.0
+   ],
+   "groups": [
+    {
+     "label": "ocelot",
+     "n": 40,
+     "counts": [
+      20,
+      2,
+      3,
+      15
+     ],
+     "mean_direction": 0.5,
+     "resultant_length": 0.6,
+     "circular_sd": 3.9,
+     "rayleigh_z": 14.4,
+     "rayleigh_p": 0.0001
+    },
+    {
+     "label": "agouti",
+     "n": 30,
+     "counts": [
+      1,
+      14,
+      14,
+      1
+     ],
+     "mean_direction": 12.0,
+     "resultant_length": 0.7,
+     "circular_sd": 3.2,
+     "rayleigh_z": 14.7,
+     "rayleigh_p": 0.0001
+    }
+   ],
+   "omitted_groups": 0
+  }
+ ],
+ "pairs": [
+  {
+   "a": "hour_lst",
+   "b": "wind_from",
+   "a_bins": [
+    0.0,
+    12.0,
+    24.0
+   ],
+   "b_bins": [
+    0.0,
+    180.0,
+    360.0
+   ],
+   "counts": [
+    [
+     30,
+     20
+    ],
+    [
+     10,
+     40
+    ]
+   ],
+   "rho": 0.21
+  }
+ ]
+}
