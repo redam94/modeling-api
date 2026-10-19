@@ -68,12 +68,23 @@ function allDims(schema: DataSchema | null | undefined): string[] {
   return Object.keys(schema?.dims ?? {});
 }
 
-const ANGLE_UNITS = [
+type AngleUnits = NonNullable<StructureHints["angle_vars"]>[string];
+
+const ANGLE_UNITS: readonly { value: AngleUnits; label: string }[] = [
   { value: "deg", label: "degrees" },
   { value: "rad", label: "radians" },
   { value: "h", label: "hours (time of day)" },
   { value: "d", label: "days (day of the year)" },
+  { value: "month", label: "months" },
 ];
+
+/** The hint problems in plain words (the server refuses them too). */
+export function hintProblem(h: StructureHints | null | undefined): string | null {
+  if (!h) return null;
+  if (Boolean(h.y_dim) !== Boolean(h.x_dim)) return "Select the rows and the columns of the image, or neither.";
+  if (h.y_dim && h.y_dim === h.x_dim) return "The rows and the columns of the image must be different dimensions.";
+  return null;
+}
 
 /** The hints without empty fields (`null` when no hint is set). */
 export function cleanHints(h: StructureHints | null | undefined): StructureHints | null {
@@ -121,6 +132,7 @@ function OptionsDialog({
   const hints = req.hints ?? {};
   const setHint = (patch: Partial<StructureHints>) => setReq((r) => ({ ...r, hints: { ...(r.hints ?? {}), ...patch } }));
   const [angleVar, angleUnits] = Object.entries(hints.angle_vars ?? {})[0] ?? ["", "deg"];
+  const problem = hintProblem(cleanHints(req.hints));
   const dimSelect = (id: string, key: "y_dim" | "x_dim" | "frame_dim" | "node_dim" | "time_dim", label: string, hint?: string) => (
     <Field label={label} htmlFor={id} {...(hint ? { hint } : {})}>
       <NativeSelect id={id} value={hints[key] ?? ""} onChange={(e) => setHint({ [key]: e.target.value || null })}>
@@ -133,7 +145,7 @@ function OptionsDialog({
       </NativeSelect>
     </Field>
   );
-  const valid = sections.length > 0 && (req.facet_by ?? []).length <= 2;
+  const valid = sections.length > 0 && (req.facet_by ?? []).length <= 2 && hintProblem(cleanHints(req.hints)) === null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent wide>
@@ -247,7 +259,7 @@ function OptionsDialog({
                       </option>
                     ))}
                   </NativeSelect>
-                  <NativeSelect aria-label="Units of the angle" value={angleUnits} disabled={!angleVar} onChange={(e) => setHint({ angle_vars: angleVar ? { [angleVar]: e.target.value } : {} })} className="w-44">
+                  <NativeSelect aria-label="Units of the angle" value={angleUnits} disabled={!angleVar} onChange={(e) => setHint({ angle_vars: angleVar ? { [angleVar]: e.target.value as AngleUnits } : {} })} className="w-44">
                     {ANGLE_UNITS.map((u) => (
                       <option key={u.value} value={u.value}>
                         {u.label}
@@ -257,6 +269,11 @@ function OptionsDialog({
                 </div>
               </Field>
             </div>
+            {problem ? (
+              <p role="alert" className="text-xs text-destructive">
+                {problem}
+              </p>
+            ) : null}
           </fieldset>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

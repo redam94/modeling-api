@@ -83,18 +83,20 @@ const ROLE_ORDER = ["time", "sequence", "frame", "y", "x", "component", "channel
 
 /** The variables × dimensions matrix: one cell per (var, dim), coloured by the dim's role, the size as text. */
 export function structureMatrixPlot(view: StructureView): SciPlot | null {
-  const roles = new Map(view.dims.map((d) => [d.name, d]));
+  const dims = view.dims ?? [];
+  const vars = view.vars ?? [];
+  const roles = new Map(dims.map((d) => [d.name, d]));
   const rows: Row[] = [];
-  for (const v of view.vars) {
-    v.dims.forEach((dim, i) => {
+  for (const v of vars) {
+    (v.dims ?? []).forEach((dim, i) => {
       const d = roles.get(dim);
-      rows.push({ var: v.name, dim, role: d?.role_in_data ?? "other", size: v.shape[i] ?? d?.size ?? null, used_as: v.used_as });
+      rows.push({ var: v.name, dim, role: d?.role_in_data ?? "other", size: v.shape?.[i] ?? d?.size ?? null, used_as: v.used_as ?? "data" });
     });
   }
   if (!rows.length) return null;
   const capped = rows.slice(0, MAX_SANDBOX_ROWS);
-  const x = { field: "dim", type: "nominal", title: "Dimension", sort: view.dims.map((d) => d.name), axis: { labelAngle: 0, labelOverlap: true } };
-  const y = { field: "var", type: "nominal", title: "Variable", sort: view.vars.map((v) => v.name) };
+  const x = { field: "dim", type: "nominal", title: "Dimension", sort: dims.map((d) => d.name), axis: { labelAngle: 0, labelOverlap: true } };
+  const y = { field: "var", type: "nominal", title: "Variable", sort: vars.map((v) => v.name) };
   return {
     kind: "vega-lite",
     datasets: { cells: capped },
@@ -243,9 +245,11 @@ function fmtNum(v: number): string {
  * (separated by empty rows), the neighbour lines and a hover point at each centroid.
  */
 export function mapPlot(view: MapView, layer: number, frame: number | null = null, opts: { edges?: boolean; classes?: number } = {}): SciPlot | null {
-  const l = view.layers[layer];
+  const l = view.layers?.[layer];
   if (!l) return null;
   const values = frame !== null && l.frames?.[frame] ? l.frames[frame].values : l.values;
+  const cx = view.centroids?.x ?? [];
+  const cy = view.centroids?.y ?? [];
   const breaks = classBreaks(values, opts.classes ?? 7);
   const nClass = Math.max(1, breaks.length - 1);
   const classOfArea = view.areas.map((_, a) => classOf(values[a], breaks));
@@ -258,7 +262,7 @@ export function mapPlot(view: MapView, layer: number, frame: number | null = nul
   ];
   for (const g of groups) {
     const rows: Row[] = [];
-    for (const ring of view.rings) {
+    for (const ring of view.rings ?? []) {
       if (classOfArea[ring.area] !== g.c) continue;
       const n = Math.min(ring.x.length, ring.y.length);
       if (rows.length + n + 1 > budget) break;
@@ -286,10 +290,11 @@ export function mapPlot(view: MapView, layer: number, frame: number | null = nul
     const rows: Row[] = [];
     for (const [i, j] of view.edges) {
       if (rows.length + 3 > budget) break;
-      const xi = view.centroids.x[i];
-      const yi = view.centroids.y[i];
-      const xj = view.centroids.x[j];
-      const yj = view.centroids.y[j];
+      if (i === undefined || j === undefined) continue;
+      const xi = cx[i];
+      const yi = cy[i];
+      const xj = cx[j];
+      const yj = cy[j];
       if (![xi, yi, xj, yj].every(finite)) continue;
       rows.push({ x: xi!, y: yi! }, { x: xj!, y: yj! }, { x: null, y: null });
     }
@@ -300,8 +305,8 @@ export function mapPlot(view: MapView, layer: number, frame: number | null = nul
   }
   const units = l.units ? ` ${plotlyText(l.units)}` : "";
   const hover: Row[] = view.areas.slice(0, budget).map((a, i) => ({
-    x: finite(view.centroids.x[i]) ? view.centroids.x[i] : null,
-    y: finite(view.centroids.y[i]) ? view.centroids.y[i] : null,
+    x: finite(cx[i]) ? cx[i] : null,
+    y: finite(cy[i]) ? cy[i] : null,
     text: `${plotlyText(a)}: ${finite(values[i]) ? fmtNum(values[i]) : "no value"}${units}`,
   }));
   datasets.centroids = hover;
@@ -358,17 +363,17 @@ export function networkMatrixPlot(entry: NetworkEntry): SciPlot | null {
 
 /** Node-link drawing with the runner's layout: edges as rules, nodes sized by degree, coloured by an attribute. */
 export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): SciPlot | null {
-  const xs = entry.positions.x;
-  const ys = entry.positions.y;
+  const xs = entry.positions?.x ?? [];
+  const ys = entry.positions?.y ?? [];
   const attrValues = attr ? entry.node_attrs?.[attr] : undefined;
   const nodes: Row[] = [];
   entry.labels.forEach((l, i) => {
     if (!finite(xs[i]) || !finite(ys[i]) || nodes.length >= MAX_SANDBOX_ROWS) return;
-    nodes.push({ x: xs[i], y: ys[i], label: label(l, i), degree: entry.degree[i] ?? null, attr: attrValues ? scalar(attrValues[i]) : null });
+    nodes.push({ x: xs[i], y: ys[i], label: label(l, i), degree: entry.degree?.[i] ?? null, attr: attrValues ? scalar(attrValues[i]) : null });
   });
   if (!nodes.length) return null;
   const edges: Row[] = [];
-  for (const e of entry.edges) {
+  for (const e of entry.edges ?? []) {
     if (edges.length >= MAX_SANDBOX_ROWS) break;
     if (!finite(xs[e.i]) || !finite(ys[e.i]) || !finite(xs[e.j]) || !finite(ys[e.j])) continue;
     edges.push({ x: xs[e.i]!, y: ys[e.i]!, x2: xs[e.j]!, y2: ys[e.j]!, w: finite(e.w) ? e.w : 1, sign: finite(e.w) && e.w < 0 ? "negative" : "positive" });
@@ -411,8 +416,12 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
 
 // ------------------------------------------------------------------------------ tree
 
-/** The tip nodes in layout order (increasing y), the order of the trait values. */
-export function tipsInLayoutOrder(view: Pick<TreeView, "layout">): number[] {
+/**
+ * The tip nodes in the order of the trait values: `tips` of the view, else the nodes marked
+ * as tips in layout order (increasing y).
+ */
+export function tipOrder(view: Pick<TreeView, "layout" | "tips">): number[] {
+  if (view.tips?.length) return view.tips;
   const { y, is_tip } = view.layout;
   return is_tip.map((t, i) => (t ? i : -1)).filter((i) => i >= 0).sort((a, b) => (y[a] ?? 0) - (y[b] ?? 0));
 }
@@ -432,7 +441,7 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
     if (connectors.length < MAX_SANDBOX_ROWS) connectors.push({ x: x[p], y: y[p], y2: y[k] });
   });
   if (!branches.length) return null;
-  const tips = tipsInLayoutOrder(view);
+  const tips = tipOrder(view);
   const tipRows: Row[] = tips.filter((k) => finite(x[k]) && finite(y[k])).slice(0, MAX_SANDBOX_ROWS).map((k) => ({ x: x[k]!, y: y[k]!, label: label(labels[k], k) }));
   const yEnc = { field: "y", type: "quantitative", axis: null, scale: { zero: false, nice: false, reverse: true } };
   const showLabels = tipRows.length <= 80;
@@ -455,7 +464,7 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
   const datasets: PlotDatasets = { branches, connectors, tips: tipRows };
   const strips: JsonObject[] = [];
   for (const name of traits.slice(0, 4)) {
-    const t = view.traits.find((tr) => tr.var === name);
+    const t = (view.traits ?? []).find((tr) => tr.var === name);
     if (!t) continue;
     const rows: Row[] = [];
     tips.forEach((k, i) => {
@@ -484,11 +493,14 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
 
 // ------------------------------------------------------------------------------ circular
 
-/** The bin centres of a circular entry in degrees (0..360). */
-export function binCentresDeg(entry: Pick<CircularEntry, "bins" | "period">, nCounts: number): number[] {
-  const n = nCounts || entry.bins.length;
-  const width = entry.period / Math.max(1, n);
-  return Array.from({ length: n }, (_, i) => (((entry.bins[i] ?? i * width) + width / 2) / entry.period) * 360);
+/** The bin centres in degrees (0..360) from the bin edges (`bins`, one more than the counts). */
+export function binCentresDeg(bins: readonly number[], period: number): number[] {
+  return bins.slice(0, -1).map((lo, i) => (((lo + (bins[i + 1] ?? period)) / 2 / period) * 360));
+}
+
+/** The width of each bin in degrees. */
+export function binWidthsDeg(bins: readonly number[], period: number): number[] {
+  return bins.slice(0, -1).map((lo, i) => (((bins[i + 1] ?? period) - lo) / period) * 360);
 }
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -499,7 +511,7 @@ const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
  */
 export function circularFrame(entry: Pick<CircularEntry, "zero" | "clockwise">): { rotation: number; direction: "clockwise" | "counterclockwise" } {
   const zero = entry.zero ?? "north";
-  const rotation = zero === "east" ? 0 : zero === "south" ? 270 : zero === "west" ? 180 : 90;
+  const rotation = zero === "east" ? 0 : 90;
   const clockwise = entry.clockwise ?? zero !== "east";
   return { rotation, direction: clockwise ? "clockwise" : "counterclockwise" };
 }
@@ -536,11 +548,11 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
   const ticks = angularTicks(entry);
   groups.forEach((g, k) => {
     const id = k === 0 ? "polar" : `polar${k + 1}`;
-    const centres = binCentresDeg(entry, g.counts.length);
+    const centres = binCentresDeg(entry.bins, entry.period);
+    const widths = binWidthsDeg(entry.bins, entry.period);
     const ds = `g${k}`;
-    datasets[ds] = g.counts.map((c, i) => ({ theta: centres[i] ?? 0, count: c }));
-    const width = 360 / g.counts.length;
-    traces.push({ type: "barpolar", subplot: id, r: { $ref: `${ds}.count` }, theta: { $ref: `${ds}.theta` }, width, name: plotlyText(g.label ?? "all"), marker: { line: { width: 0.5 } }, hovertemplate: "%{theta:.0f}°: %{r}<extra></extra>" });
+    datasets[ds] = g.counts.map((c, i) => ({ theta: centres[i] ?? 0, width: widths[i] ?? 360 / g.counts.length, count: c }));
+    traces.push({ type: "barpolar", subplot: id, r: { $ref: `${ds}.count` }, theta: { $ref: `${ds}.theta` }, width: { $ref: `${ds}.width` }, name: plotlyText(g.label ?? "all"), marker: { line: { width: 0.5 } }, hovertemplate: "%{theta:.0f}°: %{r}<extra></extra>" });
     const max = Math.max(0, ...g.counts);
     if (finite(g.mean_direction) && finite(g.resultant_length) && max > 0) {
       const deg = (g.mean_direction / entry.period) * 360;
@@ -565,14 +577,20 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
   return { kind: "plotly", datasets, spec: { data: traces, layout } };
 }
 
+/** "0–90": the label of bin `i` from its edges. */
+function binLabel(edges: readonly number[], i: number): string {
+  const lo = edges[i];
+  const hi = edges[i + 1];
+  return lo !== undefined && hi !== undefined ? `${fmtNum(lo)}–${fmtNum(hi)}` : String(i);
+}
+
 /** Two circular variables on one dimension: counts per pair of bins (e.g. hour × direction). */
 export function circularPairPlot(pair: CircularPair, a?: CircularEntry, b?: CircularEntry): SciPlot | null {
-  const lab = (e: CircularEntry | undefined, i: number, n: number) => (e ? fmtNum(e.bins[i] ?? (i * e.period) / n) : String(i));
   const cells: { x: string; y: string; value: number }[] = [];
   const na = pair.counts.length;
   const nb = pair.counts[0]?.length ?? 0;
-  const yOrder = Array.from({ length: na }, (_, i) => lab(a, i, na));
-  const xOrder = Array.from({ length: nb }, (_, j) => lab(b, j, nb));
+  const yOrder = Array.from({ length: na }, (_, i) => binLabel(pair.a_bins, i));
+  const xOrder = Array.from({ length: nb }, (_, j) => binLabel(pair.b_bins, j));
   pair.counts.forEach((row, i) => row.forEach((c, j) => cells.length < MAX_SANDBOX_ROWS && cells.push({ x: xOrder[j]!, y: yOrder[i]!, value: c })));
   if (!cells.length) return null;
   return vl(heatmapPlot(cells, { xTitle: b?.units ? `${pair.b} (${b.units})` : pair.b, yTitle: a?.units ? `${pair.a} (${a.units})` : pair.a, legend: "Count", scheme: "blues", xOrder, yOrder, format: "," }));
@@ -592,11 +610,9 @@ export function pointsColours(view: PointsView): PointsColour[] {
   return out;
 }
 
-/** The modal term of point `i` (the answer views store a term or its index). */
+/** The modal term of point `i`. */
 export function modeTerm(view: PointsView, i: number): string | null {
-  const m = view.answers?.mode[i];
-  if (m === null || m === undefined) return null;
-  return typeof m === "number" ? (view.answers?.terms[m] ?? String(m)) : String(m);
+  return view.answers?.mode[i] ?? null;
 }
 
 /**

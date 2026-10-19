@@ -5,12 +5,14 @@
  * tag so an unknown or newer document degrades to "not available" instead of breaking the
  * page. Every string in a view comes from the user's data: render it as text only.
  */
+import type { components as ApiComponents } from "@/api/schema";
+
 import type { components } from "./views.gen";
 
 type V = components["schemas"];
+type ApiSchemas = ApiComponents["schemas"];
 
-/** Since v0.10 with `shapes` (the detected shapes) and `VarOverview.used_as`. */
-export type DataOverviewView = V["DataOverviewView"] & { shapes?: ShapeView[] | null };
+export type DataOverviewView = V["DataOverviewView"];
 export type DistributionsView = V["DistributionsView"];
 export type TimeSeriesView = V["TimeSeriesView"];
 export type MissingnessView = V["MissingnessView"];
@@ -239,350 +241,50 @@ export function seriesLabel(variable: string, facet: Facet | null | undefined): 
 
 // ------------------------------------------------------------------------------ scientific data
 //
-// The views of the eight sections for scientific data (design §4.3/§5.1, format tags
-// `mapi.data-explorer.<section>/v1`). Written by hand from the design contract until
-// `views.gen.ts` is regenerated from `mapi_spec.views` (`gen_explorer_fixtures.py --types`);
-// the field names are the design's. Every list is capped by the runner. Every string comes
-// from the user's data: text only.
+// The views of the eight sections for scientific data (v0.10, format tags
+// `mapi.data-explorer.<section>/v1`), generated from `mapi_spec.views`. Every list is capped
+// by the runner. Every string comes from the user's data: text only.
 
-type Coord = string | number | boolean | null;
-type Num = number | null;
-
-/** The data shapes the runner detects (`mapi_runner.worker.structure.ShapeKind`). */
-export type ShapeKind = "timeseries" | "sequence" | "image" | "vector_field" | "areal_map" | "points" | "network" | "tree" | "circular" | "profile" | "table";
-
+/** The data shapes the runner detects (`mapi_spec.views.ShapeKind`). */
+export type ShapeKind = V["ShapeView"]["kind"];
 /** Why a section is skipped (`ExplorerSectionRef.reason`). */
-export type SkipReason = "not_applicable" | "insufficient_data" | "needs_option";
+export type SkipReason = NonNullable<V["ExplorerSectionRef"]["reason"]>;
+export type UsedAs = NonNullable<V["VarOverview"]["used_as"]>;
 
-interface ExploreBase {
-  caption_plain?: string | null;
-  warnings_plain?: string[];
-  node?: string | null;
-  [key: string]: unknown;
-}
-
-/** One detected shape: what it shows and where to see it. */
-export interface ShapeView {
-  kind: ShapeKind;
-  vars: string[];
-  /** role → dim (y, x, frame, component, channel, area, vertex, node, along, item, columns, time, point, tip). */
-  dims: Record<string, string>;
-  score: number;
-  label_plain: string;
-  /** The sections that show this shape, best first. */
-  sections?: string[];
-}
-
-export interface StructureDim {
-  name: string;
-  size: number;
-  kind?: string | null;
-  role_in_data: string;
-  start?: Coord;
-  end?: Coord;
-  evenly_spaced?: boolean | null;
-}
-
-export type UsedAs = "data" | "geometry" | "mask" | "weight" | "index" | "label";
-
-export interface StructureVar {
-  name: string;
-  dims: string[];
-  shape: number[];
-  dtype: string;
-  role?: string | null;
-  units?: string | null;
-  used_as: UsedAs;
-}
-
-export interface StructureView extends ExploreBase {
-  format?: "mapi.data-explorer.structure/v1";
-  shapes: ShapeView[];
-  dims: StructureDim[];
-  vars: StructureVar[];
-  recommended?: string[];
-  not_applicable?: Record<string, string>;
-}
-
-/** Statistics of every frame of an image (not only of the frames shown). */
-export interface FrameStats {
-  coords: Coord[];
-  mean: Num[];
-  sd?: Num[];
-  min?: Num[];
-  max?: Num[];
-  missing_share?: Num[];
-  downsampled?: boolean;
-}
-
-export interface ImageStats {
-  min?: Num;
-  max?: Num;
-  mean?: Num;
-  sd?: Num;
-  missing_share?: Num;
-  saturated_share?: Num;
-}
-
-/** The mean raster of one level of a label of the frame dim (e.g. the digit classes). */
-export interface ImageGroupMean {
-  label: Coord;
-  n?: number;
-  mean: FieldRaster;
-}
-
-export interface ImageComponent {
-  name: string;
-  histogram: Histogram;
-}
-
-/** One image: a `FieldEntry` (drawn by the field viewer) whose frames hold only the data value. */
-export type ImageEntry = FieldEntry & {
-  var: string;
-  role?: string | null;
-  mask_var?: string | null;
-  /** The mask raster (0/1, the same size as the image). */
-  mask?: FieldRaster | null;
-  frame_stats?: FrameStats | null;
-  histogram?: Histogram | null;
-  /** The histogram counts are skewed: draw them on a log scale. */
-  log_count?: boolean;
-  stats?: ImageStats | null;
-  /** The label of the frame dim that the group means are of. */
-  group_by?: string | null;
-  groups?: ImageGroupMean[];
-  components?: ImageComponent[];
-};
-
-export interface ImagesView extends ExploreBase {
-  format?: "mapi.data-explorer.images/v1";
-  fields: ImageEntry[];
-  omitted?: string[];
-}
-
-export interface ProfileFrame {
-  label: Coord;
-  values: Num[];
-}
-
-export interface ProfilePeak {
-  frame: Coord;
-  at: Coord;
-  value: Num;
-}
-
-export interface ProfileEntry {
-  var: string;
-  units?: string | null;
-  along: string;
-  coords: Coord[];
-  frame_dim?: string | null;
-  frames: ProfileFrame[];
-  facet?: Facet;
-  log_x?: boolean;
-  log_y?: boolean;
-  peak?: ProfilePeak[];
-  downsampled?: boolean;
-  omitted_frames?: number;
-}
-
-export interface ProfilesView extends ExploreBase {
-  format?: "mapi.data-explorer.profiles/v1";
-  items: ProfileEntry[];
-}
-
-export interface MapRing {
-  /** The index of the area in `areas`. */
-  area: number;
-  x: Num[];
-  y: Num[];
-}
-
-export interface MapLayerFrame {
-  label: Coord;
-  values: Num[];
-}
-
-export interface MapLayer {
-  var: string;
-  units?: string | null;
-  role?: string | null;
-  /** One value per area. */
-  values: Num[];
-  frames?: MapLayerFrame[] | null;
-  /** A layer that the runner derived (the ratio target ÷ exposure). */
-  derived?: boolean;
-}
-
-export interface MoranRow {
-  var: string;
-  morans_i: Num;
-  expected?: Num;
-  z?: Num;
-  p_value?: Num;
-  weights?: "adjacency" | "knn4";
-}
-
-export interface MapView extends ExploreBase {
-  format?: "mapi.data-explorer.map/v1";
-  area_dim: string;
-  areas: Coord[];
-  rings: MapRing[];
-  /** [x min, y min, x max, y max]. */
-  bbox?: Num[];
-  centroids: { x: Num[]; y: Num[] };
-  layers: MapLayer[];
-  edges?: [number, number][];
-  isolates?: number[];
-  moran?: MoranRow[];
-}
-
-export interface NetworkEdge {
-  i: number;
-  j: number;
-  w?: Num;
-}
-
-export interface NetworkEntry {
-  var: string;
-  node_dim: string;
-  facet?: Facet;
-  binary?: boolean;
-  signed?: boolean;
-  directed?: boolean;
-  weighted?: boolean;
-  n_nodes: number;
-  /** One label per node shown (the nodes of highest degree when there are too many). */
-  labels: Coord[];
-  /** The adjacency matrix in seriation order (`order`); absent when there are too many nodes. */
-  matrix?: Num[][] | null;
-  order?: number[] | null;
-  positions: { x: Num[]; y: Num[] };
-  edges: NetworkEdge[];
-  degree: Num[];
-  degree_hist?: Histogram | null;
-  density?: Num;
-  transitivity?: Num;
-  reciprocity?: Num;
-  components?: { count: number; largest_share: Num } | null;
-  node_attrs?: Record<string, Coord[]>;
-  homophily?: { attr: string; within_share: Num; expected_share: Num }[];
-  omitted_nodes?: number;
-}
-
-export interface NetworkView extends ExploreBase {
-  format?: "mapi.data-explorer.network/v1";
-  items: NetworkEntry[];
-}
-
-/** The layout of a tree: one entry per node in every list (columnar). */
-export interface TreeNodeLayout {
-  x: Num[];
-  y: Num[];
-  /** The parent's index (-1 for a root). */
-  parent: number[];
-  is_tip: boolean[];
-  label: Coord[];
-}
-
-export interface TipTrait {
-  var: string;
-  units?: string | null;
-  /** One value per tip, the tips in layout order (increasing y). */
-  values: Num[];
-}
-
-export interface TreeView extends ExploreBase {
-  format?: "mapi.data-explorer.tree/v1";
-  node_dim: string;
-  n_nodes: number;
-  n_tips: number;
-  roots?: number;
-  depth?: Num;
-  ultrametric?: boolean;
-  layout: TreeNodeLayout;
-  tip_dim?: string | null;
-  matched_by?: "label" | "count" | "order" | null;
-  unmatched?: number;
-  traits: TipTrait[];
-  signal?: { var: string; morans_i: Num; p_value: Num }[];
-}
-
-export interface CircularGroup {
-  label: Coord;
-  n: number;
-  counts: number[];
-  mean_direction?: Num;
-  resultant_length?: Num;
-  circular_sd?: Num;
-  rayleigh_z?: Num;
-  rayleigh_p?: Num;
-}
-
-export interface CircularEntry {
-  var: string;
-  units?: string | null;
-  /** The length of one turn in `units` (360 for degrees, 24 for hours, ...). */
-  period: number;
-  /** Where 0 is: "north" (compass, clock) or "east" (mathematics). */
-  zero?: string | null;
-  clockwise?: boolean;
-  group_by?: string | null;
-  groups: CircularGroup[];
-  /** The lower edge of each bin, in `units` (as many as `counts`). */
-  bins: number[];
-}
-
-export interface CircularPair {
-  a: string;
-  b: string;
-  /** counts[a_bin][b_bin]. */
-  counts: number[][];
-  rho?: Num;
-}
-
-export interface CircularView extends ExploreBase {
-  format?: "mapi.data-explorer.circular/v1";
-  items: CircularEntry[];
-  pairs?: CircularPair[];
-}
-
-export interface PointsAnswers {
-  var: string;
-  by_dim: string;
-  terms: string[];
-  /** The modal term of each sampled point (a term, or its index in `terms`). */
-  mode: (string | number | null)[];
-  /** The share of answers that agree with the modal term, per sampled point. */
-  agreement: Num[];
-  counts?: number[];
-}
-
-export interface PointsView extends ExploreBase {
-  format?: "mapi.data-explorer.points/v1";
-  point_dim: string;
-  x: string;
-  y: string;
-  lattice?: boolean;
-  n: number;
-  sample: { x: Num[]; y: Num[]; index: number[] };
-  density?: { x_edges: number[]; y_edges: number[]; counts: number[][] } | null;
-  colour?: { var: string; values: Num[] }[];
-  /** "#rrggbb" per sampled point (Lab → sRGB in the runner). */
-  srgb?: (string | null)[] | null;
-  answers?: PointsAnswers | null;
-  clark_evans?: { r: Num; z?: Num; p_value?: Num } | null;
-}
+export type ShapeView = V["ShapeView"];
+export type StructureDim = V["StructureDim"];
+export type StructureVar = V["StructureVar"];
+export type StructureView = V["StructureView"];
+export type FrameStats = V["FrameStats"];
+export type ImageStats = V["ImageStats"];
+export type ImageGroupMean = V["ImageGroupMean"];
+export type ImageComponent = V["ImageComponent"];
+export type ImageEntry = V["ImageEntry"];
+export type ImagesView = V["ImagesView"];
+export type ProfileFrame = V["ProfileFrame"];
+export type ProfilePeak = V["ProfilePeak"];
+export type ProfileEntry = V["ProfileEntry"];
+export type ProfilesView = V["ProfilesView"];
+export type MapRing = V["MapRing"];
+export type MapFrame = V["MapFrame"];
+export type MapLayer = V["MapLayer"];
+export type MoranRow = V["MoranRow"];
+export type MapView = V["MapView"];
+export type NetworkEdge = V["NetworkEdge"];
+export type NetworkEntry = V["NetworkEntry"];
+export type NetworkView = V["NetworkView"];
+export type TreeNodeLayout = V["TreeNodeLayout"];
+export type TipTrait = V["TipTrait"];
+export type TreeView = V["TreeView"];
+export type CircularGroup = V["CircularGroup"];
+export type CircularEntry = V["CircularEntry"];
+export type CircularPair = V["CircularPair"];
+export type CircularView = V["CircularView"];
+export type PointAnswers = V["PointAnswers"];
+export type PointsView = V["PointsView"];
 
 /** The hints of an explore run (`DataExploreRequest.hints`): they override the detection. */
-export interface StructureHints {
-  y_dim?: string | null;
-  x_dim?: string | null;
-  frame_dim?: string | null;
-  node_dim?: string | null;
-  time_dim?: string | null;
-  angle_vars?: Record<string, string>;
-}
+export type StructureHints = ApiSchemas["StructureHints"];
 
 export const SKIP_REASONS: readonly SkipReason[] = ["not_applicable", "insufficient_data", "needs_option"];
 

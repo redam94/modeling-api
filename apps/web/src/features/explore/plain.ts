@@ -422,7 +422,7 @@ export function mapReading(v: MapView, layerVar: string): Reading {
 }
 
 export function networkReading(e: NetworkEntry): Reading {
-  const parts = [`The network of ${e.var} has ${plural(e.n_nodes, "node")} and ${plural(e.edges.length, e.directed ? "link" : "tie")}${(e.omitted_nodes ?? 0) > 0 ? ` (the drawing shows the ${e.labels.length} nodes with the most ties)` : ""}.`];
+  const parts = [`The network of ${e.var} has ${plural(e.n_nodes, "node")} and ${plural((e.edges ?? []).length + (e.omitted_edges ?? 0), e.directed ? "link" : "tie")}${(e.omitted_nodes ?? 0) > 0 ? ` (the drawing shows the ${e.labels.length} nodes with the most ties)` : ""}.`];
   if (isNum(e.density)) parts.push(`${pct(e.density, e.density < 0.01 ? 1 : 0)} of all possible ties are present.`);
   if (e.components && e.components.count > 1) parts.push(`It has ${plural(e.components.count, "separate part")}; the largest part has ${pct(e.components.largest_share ?? 0)} of the nodes.`);
   if (isNum(e.transitivity) && e.transitivity > 0) parts.push(`When two nodes have a tie with the same node, they also have a tie with each other in ${pct(e.transitivity)} of the cases.`);
@@ -434,8 +434,9 @@ export function networkReading(e: NetworkEntry): Reading {
 export function treeReading(v: TreeView): Reading {
   const parts = [`The tree has ${plural(v.n_tips, "tip")} and ${plural(v.n_nodes, "node")} in all${v.ultrametric ? ". All tips are at the same distance from the root" : ""}.`];
   let tone: Tone = "neutral";
-  if ((v.roots ?? 1) !== 1) {
-    parts.push(`It has ${plural(v.roots ?? 0, "root")}, not one.`);
+  const roots = v.roots?.length ?? 1;
+  if (roots !== 1) {
+    parts.push(`It has ${plural(roots, "root")}, not one.`);
     tone = "warn";
   }
   if ((v.unmatched ?? 0) > 0) {

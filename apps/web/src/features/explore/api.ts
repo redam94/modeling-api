@@ -14,7 +14,7 @@ import { fetchArtifactJson } from "@/lib/artifacts";
 
 import { resolvePlotDatasets } from "@/features/plots/plot-data";
 
-import { EXPLORE_INDEX, parseIndex, parseView, plotsName, skipReason, viewName, type ExplorerIndexView, type ExplorerSection, type SectionViews, type SkipReason, type StructureHints } from "./views";
+import { EXPLORE_INDEX, parseIndex, parseView, plotsName, skipReason, viewName, type ExplorerIndexView, type ExplorerSection, type SectionViews, type SkipReason } from "./views";
 
 type Arrayify<T> = T extends (infer E)[] ? Arrayify<E>[] : T extends object ? { [K in keyof T]: Arrayify<T[K]> } : T;
 type S = { [K in keyof components["schemas"]]: Arrayify<components["schemas"][K]> };
@@ -22,9 +22,9 @@ type S = { [K in keyof components["schemas"]]: Arrayify<components["schemas"][K]
 export type Exploration = S["Exploration"];
 /**
  * `POST …/explore` of a dataset. v0.10: every one of the 21 sections, and `hints` that override
- * the structure detection (the OpenAPI types still list the 13 sections of v0.5).
+ * the structure detection.
  */
-export type DataExploreRequest = Omit<S["DataExploreRequest"], "sections"> & { sections?: string[]; hints?: StructureHints | null };
+export type DataExploreRequest = S["DataExploreRequest"];
 export type ModelExploreRequest = S["ModelExploreRequest"];
 export type ModelCompareRequest = S["ModelCompareRequest"];
 export type ModelValidation = S["ModelValidation"];
@@ -141,8 +141,7 @@ export function useStartExploration(t: ExplorerTarget) {
               api.POST("/v1/datasets/{dataset_id}/versions/{version}/explore", {
                 params: { path: { dataset_id: t.id, version: t.version }, header: { "Idempotency-Key": key } },
                 headers: s.headers,
-                // the OpenAPI types still list the 13 sections of v0.5 and no hints
-                body: body as unknown as S["DataExploreRequest"],
+                body: body as DataExploreRequest,
               }),
             )
           : await unwrapWithStatus(

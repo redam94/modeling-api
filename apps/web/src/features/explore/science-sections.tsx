@@ -152,8 +152,8 @@ export function StructureSection({ view, expert, onSection }: P<StructureView> &
           columns={[
             { key: "name", header: "Variable", cell: (v) => <span className="font-mono text-xs">{v.name}</span> },
             { key: "used", header: "Used as", cell: (v) => <Badge variant={v.used_as === "data" ? "outline" : "secondary"}>{v.used_as}</Badge> },
-            { key: "dims", header: "Dims", cell: (v) => <span className="font-mono text-xs text-muted-foreground">{v.dims.join(" × ")}</span> },
-            { key: "shape", header: "Shape", cell: (v) => <span className="tabular">{v.shape.join(" × ")}</span> },
+            { key: "dims", header: "Dims", cell: (v) => <span className="font-mono text-xs text-muted-foreground">{(v.dims ?? []).join(" × ")}</span> },
+            { key: "shape", header: "Shape", cell: (v) => <span className="tabular">{(v.shape ?? []).join(" × ")}</span> },
             { key: "dtype", header: "Type", cell: (v) => v.dtype },
             { key: "role", header: "Role", cell: (v) => v.role ?? "—" },
             { key: "units", header: "Units", cell: (v) => v.units ?? "—" },
@@ -193,7 +193,7 @@ export function ImagesSection({ view, expert }: P<ImagesView>) {
   const e = fields[pick] ?? fields[0];
   const groups = useMemo(() => (e ? groupField(e) : null), [e]);
   const stats = useMemo(() => (e?.frame_stats ? frameStatsPlot(e.frame_stats, { frameDim: e.frame_dim ?? "frame", title: e.units ? `${e.var} (${e.units})` : e.var }) : null), [e]);
-  const hist = useMemo(() => (e?.histogram ? countsHistogramPlot(e.histogram, { title: e.units ? `${e.var} (${e.units})` : e.var, logCount: Boolean(e.log_count) }) : null), [e]);
+  const hist = useMemo(() => (e?.histogram ? countsHistogramPlot(e.histogram, { title: e.units ? `${e.var} (${e.units})` : e.var, logCount: Boolean(e.log_counts) }) : null), [e]);
   if (!e) return <p className="text-muted-foreground">The data has no images.</p>;
   const reading = imageReading(e);
   const shown = show === "groups" && groups ? groups : e;
@@ -219,9 +219,9 @@ export function ImagesSection({ view, expert }: P<ImagesView>) {
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
         {hist ? <SciPlotView plot={hist} title={`Values of all the cells of ${e.var}`} height={230} /> : null}
-        {(e.components ?? []).map((c) => (
-          <SciPlotView key={c.name} plot={countsHistogramPlot(c.histogram, { title: `${e.var}, component ${c.name}` })} title={`Component ${c.name} of ${e.var}`} height={200} />
-        ))}
+        {(e.components ?? []).map((c, i) =>
+          c.histogram ? <SciPlotView key={`${str(c.label)}-${i}`} plot={countsHistogramPlot(c.histogram, { title: `${e.var}, component ${str(c.label)}` })} title={`Component ${str(c.label)} of ${e.var}`} height={200} /> : null,
+        )}
         <StatTable
           label="Image statistics"
           rows={fields}
@@ -312,7 +312,7 @@ export function MapSection({ view, expert }: P<MapView>) {
         <Picker
           label="Colour the areas by"
           value={String(layers.indexOf(l))}
-          options={layers.map((x, i) => ({ value: String(i), label: x.derived ? `${x.var} (derived)` : x.var }))}
+          options={layers.map((x, i) => ({ value: String(i), label: x.derived_from?.length ? `${x.var} (derived)` : x.var }))}
           onChange={(v) => {
             setLayer(Number(v));
             setFrame(0);
@@ -407,7 +407,7 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
           <dt className="text-muted-foreground">Nodes</dt>
           <dd className="tabular">{num(e.n_nodes)}</dd>
           <dt className="text-muted-foreground">Ties</dt>
-          <dd className="tabular">{num(e.edges.length)}</dd>
+          <dd className="tabular">{num((e.edges ?? []).length + (e.omitted_edges ?? 0))}</dd>
           <dt className="text-muted-foreground">Kind</dt>
           <dd>{[e.binary ? "binary" : "weighted", e.signed ? "signed" : null, e.directed ? "directed" : "undirected"].filter(Boolean).join(", ")}</dd>
           <dt className="text-muted-foreground">Density</dt>
@@ -476,7 +476,7 @@ export function TreeSection({ view, expert }: P<TreeView>) {
           <dt className="text-muted-foreground">Tips</dt>
           <dd className="tabular">{num(view.n_tips)}</dd>
           <dt className="text-muted-foreground">Roots</dt>
-          <dd className="tabular">{num(view.roots)}</dd>
+          <dd className="tabular">{num(view.roots?.length)}</dd>
           <dt className="text-muted-foreground">Depth</dt>
           <dd className="tabular">{num(view.depth)}</dd>
           <dt className="text-muted-foreground">Ultrametric</dt>
@@ -565,6 +565,15 @@ function colourLabel(c: PointsColour, view: PointsView): string {
   }
 }
 
+/** For each term, the number of sampled points where it is the most frequent answer. */
+export function modeCounts(view: PointsView): { t: string; n: number }[] {
+  const a = view.answers;
+  if (!a) return [];
+  const n = new Map(a.terms.map((t) => [t, 0]));
+  for (const m of a.mode) if (m !== null && n.has(m)) n.set(m, (n.get(m) ?? 0) + 1);
+  return a.terms.map((t) => ({ t, n: n.get(t) ?? 0 })).sort((x, y) => y.n - x.n);
+}
+
 export function PointsSection({ view, expert }: P<PointsView>) {
   const colours = useMemo(() => pointsColours(view), [view]);
   const [key, setKey] = useState(colourKey(colours[0]!));
@@ -601,15 +610,15 @@ export function PointsSection({ view, expert }: P<PointsView>) {
             </>
           ) : null}
         </dl>
-        {view.answers?.counts?.length ? (
+        {view.answers?.terms.length ? (
           <StatTable
             label="Answers"
-            rows={view.answers.terms.map((t, i) => ({ t, n: view.answers?.counts?.[i] ?? 0 }))}
+            rows={modeCounts(view)}
             rowKey={(r) => r.t}
             maxHeight="18rem"
             columns={[
               { key: "t", header: view.answers.var, cell: (r) => r.t },
-              { key: "n", header: "Points where it is the most frequent", numeric: true, cell: (r) => num(r.n) },
+              { key: "n", header: "Points where it is the most frequent answer", numeric: true, cell: (r) => num(r.n) },
             ]}
           />
         ) : null}
