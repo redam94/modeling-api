@@ -34,6 +34,7 @@ from mapi_spec.views import (
     DATA_SECTIONS,
     EXPLORE_INDEX,
     MODEL_SECTIONS,
+    SCIENCE_SECTIONS,
     CorrelationView,
     ExplorerIndex,
     FevdView,
@@ -105,7 +106,12 @@ def test_data_explorer_sections_validate_and_plot(facet: list[str] | None) -> No
         ds, schema, DataExploreRequest(facet_by=facet or [], prewhiten=True, max_lag=8)
     )
     assert c.time_dim == "week" and c.freq == "W-SUN" and c.period == 52 and c.kpi == "sales"
+    assert set(c.shapes.not_applicable) == set(SCIENCE_SECTIONS) - {"structure"}
     for name, f in DATA_SECTION_FUNCS.items():
+        if name in c.shapes.not_applicable:
+            with pytest.raises(SectionSkipped):
+                f(c)
+            continue
         view = f(c).model_dump(mode="json", exclude_none=True)
         json.dumps(view, allow_nan=False)
         assert _sanitized(view) >= 1, name
@@ -194,8 +200,16 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     ds, schema = _panel()
     ctx = FakeCtx(tmp_path)
     index = write_data_explorer(ctx, ds, schema, ref="dataset://p/sales@v1")  # type: ignore[arg-type]
-    assert index is not None and [s.section for s in index.sections] == list(CHEAP_SECTIONS)
-    assert all(s.status == "ok" for s in index.sections)
+    assert index is not None
+    # the ingest set: the cheap sections, structure, and every picture section as skipped
+    assert [s.section for s in index.sections] == [*CHEAP_SECTIONS, *SCIENCE_SECTIONS]
+    status = {s.section: (s.status, s.reason) for s in index.sections}
+    assert all(status[s] == ("ok", None) for s in (*CHEAP_SECTIONS, "structure"))
+    assert all(
+        status[s] == ("skipped", "not_applicable") for s in SCIENCE_SECTIONS if s != "structure"
+    )
+    assert index.shapes == ["timeseries"] and index.order is not None
+    assert index.order[:4] == ["overview", "quality", "distributions", "timeseries"]
     stored = ExplorerIndex.model_validate(ctx.written[EXPLORE_INDEX])
     assert stored.ref == "dataset://p/sales@v1"
     assert "ui/explore/overview.json" in ctx.written
@@ -210,6 +224,7 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     idx = write_sections(ctx, DATA_SECTION_FUNCS, ["overview", "stl"], c, target="dataset", ref="x")  # type: ignore[arg-type]
     assert [s.status for s in idx.sections] == ["ok", "skipped"]
     assert idx.sections[1].message_plain and "time" in idx.sections[1].message_plain
+    assert idx.sections[1].reason == "not_applicable"
 
 
 @pytest.fixture(scope="module")

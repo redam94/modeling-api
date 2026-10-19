@@ -33,7 +33,7 @@ def _check(view: dict[str, object]) -> list[dict[str, object]]:
 
 
 def test_recipes_cover_every_view_format() -> None:
-    assert len(EXPLORER_RECIPES) == 25
+    assert len(EXPLORER_RECIPES) == 33
     assert explorer_plots({"format": "mapi.unknown/v1"}) == []
     assert explorer_plots({"format": "mapi.model-explorer.diagnostics/v1"}) == []
 
@@ -97,6 +97,54 @@ def test_model_views_plot() -> None:
         table={"model://p/a@v1": {"rmse": 1.0}, "model://p/b@v1": {"rmse": 2.0}},
     )
     assert len(_check(cmp.model_dump(mode="json"))) == 1
+
+
+@pytest.mark.parametrize(
+    ("section", "count"),
+    [
+        ("structure", 1),
+        ("images", 2),
+        ("profiles", 2),
+        ("map", 2),
+        ("network", 2),
+        ("tree", 1),
+        ("circular", 2),
+        ("points", 1),
+    ],
+)
+def test_the_scientific_views_plot(section: str, count: int) -> None:
+    from mapi_spec.explorer_examples import SCIENCE_VIEW_EXAMPLES
+
+    plots = _check(dict(SCIENCE_VIEW_EXAMPLES[section]))
+    assert len(plots) == count
+    for p in plots:
+        assert p["kind"] == "vega-lite"
+        datasets = p["spec"]["datasets"]  # type: ignore[index]
+        assert all(len(rows) <= MAX_ROWS for rows in datasets.values())
+
+
+def test_scientific_recipes_cap_rows_and_refuse_bad_colours() -> None:
+    from mapi_spec.explorer_examples import SCIENCE_VIEW_EXAMPLES
+
+    n = 30_000
+    big = {
+        "format": "mapi.data-explorer.points/v1",
+        "point_dim": "p",
+        "x": "x",
+        "y": "y",
+        "n": n,
+        "sample": {"x": list(range(n)), "y": list(range(n)), "index": list(range(n))},
+    }
+    (plot,) = _check(big)
+    assert len(plot["spec"]["datasets"]["points"]) == MAX_ROWS  # type: ignore[index]
+    pts = json.loads(json.dumps(SCIENCE_VIEW_EXAMPLES["points"]))
+    pts["srgb"][0] = "red;url(x)"
+    (plot,) = _check(pts)
+    assert "color" not in plot["spec"]["encoding"]  # type: ignore[index]
+    assert all(
+        "hex" not in r or r["hex"].startswith("#") for r in plot["spec"]["datasets"]["points"]
+    )  # type: ignore[index]
+    assert explorer_plots({"format": "mapi.data-explorer.tree/v1", "layout": {}}) == []
 
 
 def test_the_module_is_json_only() -> None:

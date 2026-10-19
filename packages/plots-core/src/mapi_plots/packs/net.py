@@ -45,7 +45,7 @@ from mapi_plots.recipes._base import (
 )
 from mapi_plots.recipes._util import SAMPLE, fmt, pct, sample_dims
 
-__all__ = ["GraphSettings", "graph", "net_recipes", "spectral_layout"]
+__all__ = ["GraphSettings", "fiedler_order", "graph", "net_recipes", "spectral_layout"]
 
 _WIDTH_CLASSES = (1.0, 2.0, 3.5, 5.5)
 _TRUTH_GROUPS = ("observed_data", "constant_data")
@@ -121,6 +121,10 @@ def _fiedler_order(w: np.ndarray) -> np.ndarray:
     if f[int(np.argmax(np.abs(f)))] < 0:
         f = -f
     return np.argsort(f, kind="stable")
+
+
+fiedler_order = _fiedler_order
+"""Public name of the seriation order (the Data Explorer's adjacency heatmap uses it)."""
 
 
 # ---------------------------------------------------------------------------- settings
