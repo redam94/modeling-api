@@ -115,6 +115,7 @@ from mapi_sdk.summarise import (
     select_draws,
     summarise,
     thin_index,
+    wrap_signed,
 )
 from mapi_sdk.tree import (
     infer_tree_schema,
@@ -1054,6 +1055,41 @@ def _decompositions(fitted: Fitted) -> list[str]:
     ]
 
 
+def _circular_periods(fitted: Fitted, pred: xr.Dataset, issues: list[Issue]) -> dict[str, float]:
+    """``{output: period}`` of the circular outputs (``OutputDecl.circular``) in ``pred``,
+    whose score summaries are taken on the circle. An output without a valid ``period`` attr,
+    or one aggregated over a dim (a sum of angles is not an angle), keeps the linear summary
+    with a warning."""
+    out: dict[str, float] = {}
+    for v in pred.data_vars:
+        decl = fitted.manifest.outputs.get(str(v))
+        if decl is None or not decl.circular:
+            continue
+        attrs = pred[v].attrs
+        why = ""
+        try:
+            period = float(attrs.get("period"))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            period = math.nan
+        if not (math.isfinite(period) and period > 0):
+            why = f"the model set no valid 'period' attr ({attrs.get('period')!r})"
+        elif "aggregated" in attrs:
+            why = f"it is aggregated ({attrs['aggregated']}), so it is no longer an angle"
+        if why:
+            issues.append(
+                Issue(
+                    code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                    severity=Severity.WARNING,
+                    pointer="/output/summary",
+                    message=f"{v!r} is a circular output, but {why}; its summary is calculated "
+                    "on a line, not on the circle",
+                )
+            )
+            continue
+        out[str(v)] = period
+    return out
+
+
 def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, xr.DataArray]:
     """Model-space in-sample residuals for Duan's smearing retransformation.
 
@@ -1790,7 +1826,8 @@ def score_bundle(
         if req.output.summary is not None
         else default_summary_names(pred, rep)
     )
-    groups["summary"] = summarise(pred, rep, names)
+    periods = _circular_periods(bundle.model, pred, issues)
+    groups["summary"] = summarise(pred, rep, names, periods=periods)
     if req.output.draws > 0:
         if bundle.thin is None:
             raise MapiError(
@@ -1806,12 +1843,14 @@ def score_bundle(
     if baseline is not None:
         base, _, _ = finish(baseline.pred)
         base, _ = aggregate(base, rep, _canonical_agg(req.output, binding))
-        groups["baseline/summary"] = summarise(base, rep, names)
+        groups["baseline/summary"] = summarise(base, rep, names, periods=periods)
         if rep in (Representation.DRAWS, Representation.POINT):
             delta = pred - base
             for v in delta.data_vars:
+                if str(v) in periods:  # the signed difference of two angles: -170, not 190
+                    delta[v] = wrap_signed(delta[v], periods[str(v)])
                 delta[v].attrs = {**pred[v].attrs, "delta": "scenario - baseline"}
-            groups["delta/summary"] = summarise(delta, rep, names)
+            groups["delta/summary"] = summarise(delta, rep, names, periods=periods, signed=True)
             if req.output.draws > 0 and bundle.thin is not None:
                 groups["delta/draws"] = select_draws(delta, bundle.thin, req.output.draws)
             if return_full:

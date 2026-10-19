@@ -541,12 +541,13 @@ resultant length of the predictive distribution of each report. It also has
 result also shows a warning: the dataset has directions after the fitted reports, and the
 predict mode does not use them. This is correct.
 
-!!! caution "The summary of a direction near north"
-    The `mean` and `hdi_90` of the summary are not circular. For a report with a mean direction
-    near 0 or 360 degrees, the draws are on the two sides of north. Then the summary `mean` is
-    near 180 degrees, and `hdi_90` covers almost the full circle. In the fit for this tutorial,
-    538 of the 18,049 reports have this problem. For these reports, ask for draws (**Draws** in
-    **Advanced**), and calculate the circular mean: `atan2(mean(sin θ), mean(cos θ))`.
+!!! note "The summary of a direction near north"
+    `direction_hat` and `mean_direction` are circular outputs. Their `mean` is the circular
+    mean `atan2(mean(sin θ), mean(cos θ))`, and `hdi_90` is centred on that mean. All values
+    are from 0 to 360 degrees. For a report with a mean direction near north, the draws are on
+    the two sides of north, and the interval can cross north. Then `hdi_90_lower` is more than
+    `hdi_90_upper`: for example, from 350 to 10 degrees. In the table of `summary.json`, these
+    variables have the field `period` (360).
 
 !!! note "No new data"
     The page does not show **No new data** for this model. The model cannot forecast, so a

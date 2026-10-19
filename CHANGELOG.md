@@ -108,6 +108,18 @@ milestone releases are tagged on `main`.
   file. A slow test fits each spec on the simulated data with few draws and makes sure that
   each plot of the spec shows, that a map shows an output of the model, and that the fit
   calculates `elpd_loo` when the spec lists it.
+- The score summaries of a circular output (`OutputDecl.circular`) were calculated on a line,
+  not on the circle. For draws on the two sides of north (350 and 10 degrees), the `mean` was
+  near 180 degrees and `hdi_90` covered almost the full circle. Now the summaries of draws use
+  the circular mean, and each interval (`hdi`, `eti`) and quantile is centred on that mean. The
+  values are in `[0, period)`, so an interval with `lower` more than `upper` crosses the seam.
+  `sd` is the circular standard deviation. The difference between a scenario and its baseline
+  (`delta/summary`, `delta/draws`) is wrapped to `[-period/2, period/2)`. This is the same
+  rule as the evaluate metrics. A circular output that has no valid `period` attr, or that is
+  aggregated over a dim, keeps the summary on a line, and the result has a warning.
+- `ScoreSummaryTable` (`summary.json`) has a new field `period` for a circular output, so that
+  a reader knows that the statistics are on the circle.
+- `sci.circular_regression` also declares `mean_direction` circular, with a `period` attr.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -120,8 +132,6 @@ milestone releases are tagged on `main`.
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
 - The recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
-- The `mean` and `hdi_90` of a score summary of a circular output (`sci.circular_regression`)
-  are calculated on a line, not on the circle.
 - The scorecard check "Few missing values" counts every NaN of the raw dataset. It fails for
   data with missing values by design: the padding of the outlines of `sci.areal_bym2`
   (`ring_x`, `ring_y`) and the cells without a thermocouple of `sci.heat_plate`. The E18 and

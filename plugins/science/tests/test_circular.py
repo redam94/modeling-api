@@ -7,6 +7,7 @@ from __future__ import annotations
 import math
 import re
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pymc as pm
@@ -388,16 +389,26 @@ def test_evaluate_scores_the_holdout(
     assert lpd.mean() > -math.log(TWO_PI)
 
 
-def test_evaluate_metrics_are_circular_at_the_seam(registry: Registry) -> None:
-    """Wind from the north (mean 0 degrees): the holdout errors wrap at 0/360. Linear metrics
-    put the mean of draws spread over 350 and 10 degrees near 180 and report an MAE of about
-    140 degrees; the circular MAE is close to that of the true mean direction."""
-    ds = wind_dataset(truth={"1": (2.0, 0.0)}, seed=0)
+@pytest.fixture(scope="module")
+def north() -> xr.Dataset:
+    """Winds from the north (mean direction 0 degrees): the draws straddle the seam."""
+    return wind_dataset(truth={"1": (2.0, 0.0)}, seed=0)
+
+
+@pytest.fixture(scope="module")
+def north_bundle(registry: Registry, north: xr.Dataset) -> Bundle:
     spec = WIND_SPEC_YAML.replace(
         "evaluate: {metrics: [elpd_loo]}",
         "evaluate: {metrics: [mae, rmse, bias, coverage_90, crps, r2]}",
     )
-    bundle = fit_spec(spec, ds, registry=registry, raw_schema=WIND_SCHEMA)
+    return fit_spec(spec, north, registry=registry, raw_schema=WIND_SCHEMA)
+
+
+def test_evaluate_metrics_are_circular_at_the_seam(north: xr.Dataset, north_bundle: Bundle) -> None:
+    """Wind from the north (mean 0 degrees): the holdout errors wrap at 0/360. Linear metrics
+    put the mean of draws spread over 350 and 10 degrees near 180 and report an MAE of about
+    140 degrees; the circular MAE is close to that of the true mean direction."""
+    ds, bundle = north, north_bundle
     assert bundle.metrics is not None
     got, skipped = bundle.metrics.values, bundle.metrics.skipped
     obs = ds["wind_from"].values[-60:]
@@ -409,6 +420,48 @@ def test_evaluate_metrics_are_circular_at_the_seam(registry: Registry) -> None:
     assert 0.75 <= cov <= 1.0
     assert "r2" in skipped
     assert CircularRegressionModel.manifest().outputs["direction_hat"].circular
+
+
+def test_score_summaries_are_circular_at_the_seam(
+    north: xr.Dataset, north_bundle: Bundle, registry: Registry
+) -> None:
+    """Winds from the north: the summary ``mean`` of ``direction_hat`` and ``mean_direction``
+    is the circular mean (near 0/360, not near 180), and ``hdi_90`` is centred on it and
+    crosses the seam (lower > upper) instead of covering almost the full circle."""
+    out = score_bundle(
+        north_bundle,
+        _req("mode: predict\noutput: {summary: [mean, hdi_90]}\n"),
+        north.drop_vars("wind_from"),
+        registry=registry,
+        return_full=True,
+    )
+    summary = out["summary"].to_dataset()
+    pred = out["predictions"].to_dataset()
+
+    def gap(a: Any, b: Any) -> Any:
+        return np.abs((np.asarray(a) - np.asarray(b) + 180.0) % 360.0 - 180.0)
+
+    for var in ("direction_hat", "mean_direction"):
+        s = summary[var]
+        assert s.attrs["circular_period"] == 360.0, var
+        mean = s.sel(stat="mean").values
+        lo, hi = s.sel(stat="hdi_90_lower").values, s.sel(stat="hdi_90_upper").values
+        assert ((mean >= 0) & (mean < 360) & (lo >= 0) & (hi < 360)).all(), var
+        rad = np.deg2rad(pred[var])
+        circ = np.rad2deg(
+            np.arctan2(np.sin(rad).mean(("chain", "draw")), np.cos(rad).mean(("chain", "draw")))
+        )
+        np.testing.assert_allclose(gap(mean, circ.values), 0.0, atol=1e-6)
+        width = (hi - lo) % 360.0
+        assert (width < 180.0).all(), (var, width.max())
+        # the mean sits inside its interval, measured around the circle from the lower end
+        assert ((mean - lo) % 360.0 <= width + 1e-9).all(), var
+    near = gap(summary["direction_hat"].sel(stat="mean").values, 0.0) < 20.0
+    lo = summary["direction_hat"].sel(stat="hdi_90_lower").values
+    hi = summary["direction_hat"].sel(stat="hdi_90_upper").values
+    assert near.mean() > 0.5 and (lo[near] > hi[near]).any()  # many cross the seam
+    linear = pred["direction_hat"].mean(("chain", "draw")).values
+    assert (gap(linear[near], 0.0) > 90.0).any()  # the defect this guards
 
 
 @pytest.mark.mapi_contract

@@ -312,7 +312,8 @@ class OutputDecl(StrictModel):
         False,
         description="The output is an angle on a circle (a direction, a time of day). The "
         "model sets a 'period' attr (one turn, in the output's units) on the scored array; "
-        "holdout metrics then use the circular mean and wrapped errors",
+        "holdout metrics then use the circular mean and wrapped errors, and the score summaries "
+        "of draws use the circular mean and intervals centred on it, wrapped into [0, period)",
         exclude_if=lambda v: not v,
     )
 

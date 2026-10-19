@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:20546f8d6957b49b79cee12d2f2093ea0e5cfb0826c5b464cde84ee26ce0c588",
+  "digest": "sha256:29969a47a6e65fe9186dfd841fbf57d6aec12f38a5aeef0bcec4f526b6651fa3",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -2272,6 +2272,7 @@
        "units_of": "direction"
       },
       "mean_direction": {
+       "circular": true,
        "description": "Direction of the mean resultant vector of each frame",
        "dims": [
         "frame"
