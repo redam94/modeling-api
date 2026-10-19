@@ -539,7 +539,8 @@ What to look for:
 - `bayes_workflow_audit` ("Bayesian workflow audit") does the checks of a Bayesian workflow on
   one model. In **2. What the recipe needs to know**, type `sci.network_latent_space@^1` in
   **Model**. In **Fine-tune**, type `{"kind": "sociality", "node_groups": true}` in
-  **Settings** and the `bind` of step 4 as JSON in **Bind**. The recovery check fits the model
+  **Settings** and the `bind` of step 4 as JSON in **Bind**. The recovery check simulates each
+  graph from the posterior predictive of the model, so each tie is 0 or 1. It fits the model
   many times, so it takes longer.
 - `sci_spatial_ladder`, `sci_phylo_signal`, `sci_calibrate_then_design` and
   `sci_image_model_check` are for other science models. They do not apply to this model.

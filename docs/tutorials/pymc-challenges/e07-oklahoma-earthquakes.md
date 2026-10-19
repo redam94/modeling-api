@@ -373,9 +373,8 @@ shows the plots and the report. The model version link opens the Model Explorer.
     The checks after the gate refit the model. `sensitivity.prior` fits it one time for each
     value in **Prior scales** (two by default), and `recovery.simulated` fits it **N sims**
     times (20 by default). Thus the audit takes much longer than one fit. For
-    `sci.lgcp_grid`, the check `recovery.simulated` can end with the status `error`. Then the
-    branch `trusted` takes the else arm and the report has no estimate plot. The other
-    results are still in **Outputs**.
+    `sci.lgcp_grid`, `recovery.simulated` simulates the counts from the posterior predictive
+    of the model. Thus each simulated dataset has whole counts.
 
 The recipe `sci_spatial_ladder` compares models of areas (counties, districts), and
 `sci_image_model_check` is for models of images. They do not apply to this model.

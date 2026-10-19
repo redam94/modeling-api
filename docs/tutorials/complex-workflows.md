@@ -355,10 +355,12 @@ The example uses `sci.fisher_kpp` and the scratch assay of E50
   `prior_sd`. Here it changes `capacity_sigma`.
 - `recovery.simulated` needs a model whose predictions are numbers. The cell counts are numbers.
 
-The checks do not apply to all models. On `sci.network_latent_space`, the recovery check is
-`skipped`, because a tie is yes or no. On `sci.areal_bym2`, the sensitivity check is `skipped`,
-because its prior widths have other names. Its recovery check can end with `error`, and then
-the branch `trusted` takes the else arm.
+The checks do not apply to all models. On `sci.areal_bym2`, the sensitivity check is
+`skipped`, because its prior widths have other names. The recovery check applies to count
+models and to `sci.network_latent_space`: it simulates each dataset from the posterior
+predictive of the model, so the counts are whole numbers and a tie is 0 or 1. The latent
+positions of the network model are known only to a rotation. To do the check on the other
+parameters only, add `params: [alpha, beta]` to the `params` of the node (next to `n_sims`).
 
 ```yaml
 apiVersion: mapi/v1
