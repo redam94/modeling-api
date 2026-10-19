@@ -80,6 +80,32 @@ export function defaultScoreForm(): ScoreForm {
   };
 }
 
+/** Modes that read a dataset only (the server refuses inline data and no data for them). */
+export const DATASET_ONLY: ScoreMode[] = ["filter", "evaluate"];
+
+/** Whether the form can offer "No new data" for a mode, and the reason in plain words when not. */
+export type NoDataRule = { ok: true } | { ok: false; reason: string };
+
+/**
+ * When a score request can go without new data. The server refuses a request that has no
+ * `data`, no inline values, no `scenario` and no `horizon` ("the score request has no data",
+ * `check_score_request` in `mapi_server/services/specs.py`). A forecast always sends its
+ * horizon, and a scenario dataset is data. Filter and evaluate read a dataset only. `modes` are
+ * the modes the model declares (`Capabilities.score_modes`), to tell the user if Forecast is
+ * an alternative.
+ */
+export function noDataRule(mode: ScoreMode, modes: readonly ScoreMode[], scenario: string): NoDataRule {
+  if (DATASET_ONLY.includes(mode)) return { ok: false, reason: "This mode reads new observations from a dataset. Select a dataset." };
+  if (mode === "forecast" || scenario.trim()) return { ok: true };
+  const base = "No new data is not available for this mode. The server needs values to score, a scenario dataset or a forecast horizon.";
+  return {
+    ok: false,
+    reason: modes.includes("forecast")
+      ? `${base} Type values or use a dataset. To score from the end of the fit without new data, select Forecast.`
+      : `${base} This model cannot forecast, so it always needs values to score. Type values or use a dataset.`,
+  };
+}
+
 export interface FormProblem {
   field: string;
   message: string;

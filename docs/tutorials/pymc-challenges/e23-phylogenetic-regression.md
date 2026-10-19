@@ -368,8 +368,9 @@ good example. *Cercocebus torquatus* has 106.0 cc, but its relatives predict 88.
 subspecies is the heavier of the two but has the smaller brain.
 
 !!! note "No new data"
-    **No new data** does not work for this model. The request then has no `data`, and the
-    server refuses it with "the score request has no data" before a run starts.
+    The page does not show **No new data** for this model. The model cannot forecast, so a
+    request without a dataset has no forecast horizon, and the server refuses it. A note under
+    **Values to score** gives this reason.
 
 ### 7.2 Simulate: brain volumes without the relatives
 

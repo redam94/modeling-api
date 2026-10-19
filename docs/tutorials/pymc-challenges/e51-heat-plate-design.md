@@ -392,8 +392,9 @@ wide. The result can show the information note `UNSEEN_LEVELS`: the two runs are
 `run`. This is correct.
 
 !!! note "No new data"
-    **No new data** does not work for this model. The model has no forecast horizon, so the
-    server refuses the request with "the score request has no data". The dataset
+    The page does not show **No new data** for this model. The model has no forecast horizon,
+    so the server refuses a request without a dataset ("the score request has no data"). A
+    note under **Values to score** gives this reason. The dataset
     `heat_plate_e51` gives the predictions of the calibration runs.
 
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
