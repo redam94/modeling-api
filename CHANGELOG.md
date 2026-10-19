@@ -84,6 +84,12 @@ milestone releases are tagged on `main`.
 - The gate of `sci_calibrate_then_design` stopped the run with `EXPRESSION_ERROR` when R-hat
   was null (one chain). The condition now uses `coalesce`, and the recipe needs two or more
   chains.
+- The Score page offered **No new data** for Predict, Simulate and What if. The server refuses
+  such a request when it has no forecast horizon and no scenario dataset ("the score request
+  has no data"). The page now shows **No new data** only for Forecast, or when a scenario
+  dataset gives the values. For the other modes, a note on the page tells why the option is
+  not there. For a model that has no forecast mode, the note says that the model always needs
+  values to score.
 
 #### Known gaps
 - `governance.check` with `sensitivity.prior` cannot find the prior widths of
@@ -96,9 +102,6 @@ milestone releases are tagged on `main`.
   `sci.cmb_field` and `sci.phylo_regression`) keep no prior draws. The audit then shows a
   failed prior plot and continues.
 - The recovery check gives `error` for `sci.lgcp_grid` and `sci.areal_bym2`.
-- The Score page offers **No new data** for Predict and Simulate. For models without a forecast
-  horizon, the server refuses such a request ("the score request has no data"). The tutorials
-  tell users to select **Use a dataset**.
 - Some suggested specs of `mapi_plugin_science.export` need changes that the tutorials make by
   hand: the E50 spec lists `elpd_loo` but does not keep the log-likelihood
   (`fit.keep: {log_likelihood: true}`), and the E60 spec lists `sci.field_map`, which cannot

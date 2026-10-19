@@ -402,8 +402,9 @@ that you fitted. The model uses its grid and its noise map.
 The **Results** card shows the mean and the 90% interval (`hdi_90`) of each output.
 
 !!! note "No new data"
-    **No new data** does not work for this model. The request then has no `data`, and the
-    server refuses it with "the score request has no data" before a run starts.
+    The page does not show **No new data** for this model. The model cannot forecast, so a
+    request without a dataset has no forecast horizon, and the server refuses it. A note under
+    **Values to score** gives this reason.
 
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
 

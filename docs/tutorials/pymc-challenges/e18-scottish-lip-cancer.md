@@ -401,8 +401,9 @@ dataset does not give them. A dataset can change them, for example to ask a "wha
 question about AFF. A district that was not in the fit stops the score with `UNSEEN_LEVELS`.
 
 !!! note "No new data"
-    **No new data** does not work for this model. The model has no time dimension, so the
-    server refuses a request without a dataset ("the score request has no data").
+    The page does not show **No new data** for this model. The model has no time dimension and
+    cannot forecast, so the server refuses a request without a dataset ("the score request has
+    no data"). A note under **Values to score** gives this reason.
 
 **Predict the risk of each district:**
 

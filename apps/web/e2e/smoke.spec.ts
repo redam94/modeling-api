@@ -299,6 +299,24 @@ test("the Score page explains the model's inputs and scores typed-in values", as
   expect(body.inline.data.data_vars.spend.data[0]![0]![0]).toBe(1500);
 });
 
+test("the Score page offers No new data only where the server accepts it, and says why", async ({ page }) => {
+  await page.goto(`/score?model=${MODEL}&version=1`);
+  const source = page.getByRole("radiogroup", { name: "Where the values come from" });
+  const noData = source.getByRole("radio", { name: "No new data" });
+  // A forecast sends its horizon, so it can score from the end of the fit.
+  await expect(noData).toBeVisible({ timeout: 20_000 });
+  await noData.click();
+  // Predict without data: the server refuses it ("the score request has no data").
+  await page.getByRole("radiogroup", { name: "Score mode" }).getByRole("radio", { name: /^Predict/ }).click();
+  await expect(noData).toHaveCount(0);
+  await expect(page.getByTestId("no-data-reason")).toContainText("The server needs values to score, a scenario dataset or a forecast horizon.");
+  await expect(source.getByRole("radio", { name: "Type values" })).toHaveAttribute("aria-checked", "true");
+  // Evaluate reads a dataset only.
+  await page.getByRole("radiogroup", { name: "Score mode" }).getByRole("radio", { name: /^Evaluate/ }).click();
+  await expect(noData).toHaveCount(0);
+  await expect(source.getByRole("radio", { name: "Use a dataset" })).toHaveAttribute("aria-checked", "true");
+});
+
 test("a CSV is previewed locally, mapped, uploaded to the signed URL and ingested", async ({ page }) => {
   await page.goto("/datasets/ds_01jaf3a1b2c3d4e5f6g7h8j9k0?upload=true");
   const csv = "date,market,revenue,spend\n2026-01-01,de,10.5,3\n2026-01-02,de,11,4\n";

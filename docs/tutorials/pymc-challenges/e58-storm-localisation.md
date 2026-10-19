@@ -432,8 +432,9 @@ the 200 spots. The frames of the dataset do not change these values. For example
 x = 2,386 nm (90% interval 2,379 to 2,389 nm) with 4,975 photons.
 
 !!! note "No new data"
-    **No new data** does not work for this model. The request then has no `data`, and the
-    server refuses it with "the score request has no data" before a run starts. Do not select the full movie
+    The page does not show **No new data** for this model. The model cannot forecast, so a
+    request without a dataset has no forecast horizon, and the server refuses it. A note under
+    **Values to score** gives this reason. Do not select the full movie
     `dannhauser2022_unc13_dstorm`. The model then refuses the score with
     `PAYLOAD_TOO_LARGE`.
 

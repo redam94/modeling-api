@@ -95,6 +95,50 @@ describe("ScorePage", () => {
     expect((data.data_vars.spend!.data as number[][][])[0]![0]![0]).toBe(1000);
   });
 
+  it("offers No new data only for modes that the server accepts without data, and says why", async () => {
+    let sent: { request?: { mode?: string; data?: unknown; scenario?: string } } = {};
+    server.use(
+      http.post(new RegExp(`/v1/models/[^/]+/versions/\\d+:score$`), async ({ request }) => {
+        sent = (await request.json()) as typeof sent;
+        return HttpResponse.json({ done: true, run: { id: "run_x", kind: "score", state: "succeeded" }, outputs: [] });
+      }),
+    );
+    renderAt(`/score?model=${MODEL_ID}&version=1`);
+    await screen.findByRole("table", { name: "Values to score" }, { timeout: 3000 });
+    const source = () => screen.getByRole("radiogroup", { name: "Where the values come from" });
+    // Forecast: the model continues from the end of the fit.
+    await userEvent.click(within(source()).getByRole("radio", { name: "No new data" }));
+    expect(screen.queryByTestId("no-data-reason")).toBeNull();
+    // Predict: the server refuses a request without data, so the option goes and the page says why.
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "Score mode" })).getByRole("radio", { name: /^Predict/ }));
+    await waitFor(() => expect(within(source()).queryByRole("radio", { name: "No new data" })).toBeNull());
+    expect(screen.getByTestId("no-data-reason")).toHaveTextContent(/The server needs values to score, a scenario dataset or a forecast horizon\..*select Forecast\./);
+    // The form left "No new data" for typed values.
+    expect(within(source()).getByRole("radio", { name: "Type values" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("No values are typed. Type one or more values, or use a dataset.")).toBeInTheDocument();
+    // A scenario dataset gives the values, so No new data is possible again.
+    await userEvent.click(screen.getByText("Advanced", { exact: true }));
+    await userEvent.type(screen.getByLabelText("Scenario dataset (optional)"), "dataset://default/plan_2027h1@v1");
+    await userEvent.click(within(source()).getByRole("radio", { name: "No new data" }));
+    expect(screen.queryByTestId("no-data-reason")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /^Predict$/ }));
+    await waitFor(() => expect(sent.request).toBeDefined());
+    expect(sent.request).toMatchObject({ mode: "predict", scenario: "dataset://default/plan_2027h1@v1" });
+    expect(sent.request?.data).toBeUndefined();
+  });
+
+  it("explains that a model without forecast mode always needs values", async () => {
+    server.use(
+      http.get(`${env.apiBase}/v1/models/:id/versions/:v/inputs`, () =>
+        HttpResponse.json({ ...editorGen.model_inputs, snapshot: { ...editorGen.model_inputs.snapshot, score_modes: ["predict", "simulate"] } }),
+      ),
+    );
+    renderAt(`/score?model=${MODEL_ID}&version=1`);
+    const reason = await screen.findByTestId("no-data-reason", undefined, { timeout: 3000 });
+    expect(reason).toHaveTextContent("This model cannot forecast, so it always needs values to score.");
+    expect(within(screen.getByRole("radiogroup", { name: "Where the values come from" })).queryByRole("radio", { name: "No new data" })).toBeNull();
+  });
+
   it("asks a quantile model for the summaries it can give, and no draws", async () => {
     let sent: { request?: { output?: { summary?: string[]; draws?: number } } } = {};
     server.use(
