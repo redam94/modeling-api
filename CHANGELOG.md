@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.12.0] — MMM pack — 2026-10-20
+
 ### MMM pack
 
 The marketing-mix models get two new models, two new kinds of data and the charts that a

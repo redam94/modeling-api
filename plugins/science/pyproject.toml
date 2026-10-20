@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plugin-science"
-version = "0.11.0"
+version = "0.12.0"
 description = "Scientific model plugins: space-time fields, PDE simulators and image inverse problems"
 readme = "README.md"
 requires-python = ">=3.12"
