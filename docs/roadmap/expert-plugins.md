@@ -4,9 +4,9 @@
     v0.4 opened the hosted platform to declarative specs and built-in models. v0.5 added
     workflows, governance, the explorers and budget optimisation in the sandbox
     ([what's new](../whats-new-0.5.md)). The plan before v0.5 put this work in v0.6 (M4).
-    The releases v0.6 to v0.9 gave other features: the spec builder, scientific models, tree
-    datasets (M4) and the science gallery (M5). Thus the items on this page are not done
-    yet. With them, **allow-listed experts can upload their own model plugins**. AI
+    The releases v0.6 to v0.15 gave other features: the spec builder, scientific models, tree
+    datasets (M4), the science gallery (M5), run tracking, the MMM pack, causal models, run
+    comparison, image data and deep learning. Thus the items on this page are not done yet. With them, **allow-listed experts can upload their own model plugins**. AI
     assistants and agents also get a curated **MCP server**. Simulation-based calibration
     becomes a single parent run. Sweeps are workflows with a `search.grid` node (v0.14
     retired the `Sweep` document). Public code upload for all users comes after these

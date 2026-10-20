@@ -122,6 +122,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.10 to 0.15": whats-new-0.15.md
       - "What's new in 0.9": whats-new-0.9.md
       - "What's new in 0.5": whats-new-0.5.md
       - "Why modeling-api?": why.md
@@ -174,6 +175,9 @@ nav:
       - Workflows: concepts/workflows.md
       - Governance: concepts/governance.md
       - About cards and choosing: concepts/about-and-choosing.md
+      - Run tracking and experiments: concepts/run-tracking.md
+      - Causal effects: concepts/causal-effects.md
+      - Image data and collections: concepts/image-collections.md
   - Guides:
       - Using the platform:
           - The Expert web app: guides/web-ui.md
