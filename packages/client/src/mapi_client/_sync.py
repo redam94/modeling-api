@@ -39,10 +39,15 @@ from mapi_spec.api import (
     Membership,
     MembershipCreate,
     MembershipUpdate,
+    MetricHistory,
+    MetricPointIn,
+    MetricSeries,
+    MetricsWriteResult,
     Model,
     ModelInputSchema,
     ModelVersion,
     Page,
+    ParamsWriteResult,
     PlotListItem,
     PlotSpec,
     PlotValidateResponse,
@@ -54,6 +59,7 @@ from mapi_spec.api import (
     Run,
     RunCreate,
     RunEventView,
+    RunParam,
     RunRetry,
     ScoreCall,
     ScoreCallResult,
@@ -89,11 +95,13 @@ from mapi_spec.run import RunState
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.tenancy import Capability, ProjectRole, TenantStatus, TrustTier
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, BudgetPeriod, TokenStatus
+from mapi_spec.tracking import ParamValue
 from mapi_spec.tree import TreeJoin
 from pydantic import JsonValue
 
 from mapi_client import _calls as calls
 from mapi_client import _calls_m4 as m4calls
+from mapi_client import _calls_tracking as tcalls
 from mapi_client._common import (
     USER_AGENT,
     ScoreResult,
@@ -138,6 +146,7 @@ from mapi_client._m35 import (
     Validations,
     Workflows,
 )
+from mapi_client._tracking import RunTracker
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -803,10 +812,40 @@ class Runs(_Resource):
         kind: RunKind | str | None = None,
         state: RunState | str | None = None,
         spec_id: str | None = None,
+        parent_run_id: str | None = None,
+        name: str | None = None,
+        tags: Mapping[str, str | None] | Sequence[str] | None = None,
+        filters: Sequence[str] = (),
+        order_by: str | None = None,
+        columns: Sequence[str] = (),
         limit: int | None = None,
     ) -> Paginator[Run]:
+        """Runs, newest first unless ``order_by`` says otherwise.
+
+        Search (v0.11): ``tags`` (``{key: value}``, ``None`` = any value, or ``"key"`` /
+        ``"key:value"`` strings), ``filters`` (``"metric.rmse < 0.5"``,
+        ``"param.fit.draws >= 1000"``, ``"tag.stage = candidate"``, ``"name ~ weekly"``),
+        ``order_by`` (``"-metric.rmse"``, ``"created_at"``) and ``columns`` (refs whose values
+        come back in ``Run.columns``). Bad grammar raises :class:`ValueError` before the
+        request.
+        """
+        tcalls.run_search_params(
+            tags=tags, filters=filters, order_by=order_by, columns=columns
+        )  # validate now, not when the first page is fetched
         return self._c.page_iter(
-            lambda cur: calls.list_runs(limit, cur, kind=kind, state=state, spec_id=spec_id)
+            lambda cur: calls.list_runs(
+                limit,
+                cur,
+                kind=kind,
+                state=state,
+                spec_id=spec_id,
+                parent_run_id=parent_run_id,
+                name=name,
+                tags=tags,
+                filters=filters,
+                order_by=order_by,
+                columns=columns,
+            )
         )
 
     def wait(
@@ -929,11 +968,22 @@ class Runs(_Resource):
         *,
         attempt: int | None = None,
         stream: str | None = None,
+        level: str | None = None,
         limit: int | None = None,
+        include_user: bool = True,
     ) -> Paginator[LogLine]:
-        """Captured log lines. ``LogLine.line`` is untrusted text: display it as text."""
+        """Captured and ``user`` log lines (``include_user=False``: captured lines only).
+        ``LogLine.line`` is untrusted text: display it as text."""
         return self._c.page_iter(
-            lambda cur: calls.run_logs(run_id, limit, cur, attempt=attempt, stream=stream)
+            lambda cur: calls.run_logs(
+                run_id,
+                limit,
+                cur,
+                attempt=attempt,
+                stream=stream,
+                level=tcalls.log_level(level),
+                include_user=include_user,
+            )
         )
 
     def plots(self, run_id: str, *, limit: int | None = None) -> Paginator[PlotSpec]:
@@ -962,6 +1012,110 @@ class Runs(_Resource):
             reason=reason,
         )
         return self._c.send(calls.retry_run(run_id, body, idempotency_key))
+
+    # ------------------------------------------------------------------ tracking (v0.11)
+
+    def update(
+        self,
+        run_id: str,
+        *,
+        name: str | tcalls.Unset | None = tcalls.UNSET,
+        note: str | tcalls.Unset | None = tcalls.UNSET,
+        tags: Mapping[str, str | None] | None = None,
+    ) -> Run:
+        """Set the run's name, note or tags (a field left ``UNSET`` is unchanged; ``None``
+        clears the name/note; a tag set to ``None`` is deleted)."""
+        body = tcalls.run_patch(name=name, note=note, tags=tags)
+        return self._c.send(tcalls.update_run(run_id, body))
+
+    def set_tags(self, run_id: str, tags: Mapping[str, str | None]) -> Run:
+        """Set (or, with ``None``, delete) run tags; the last value wins."""
+        return self.update(run_id, tags=tags)
+
+    def log_metric(
+        self,
+        run_id: str,
+        key: str,
+        value: float,
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        ts: datetime | None = None,
+    ) -> MetricsWriteResult:
+        """Log one metric point (also to a finished run: post-hoc KPIs)."""
+        points = tcalls.metric_points({key: value}, step=step, labels=labels, ts=ts)
+        return self.log_metrics(run_id, points)
+
+    def log_metrics(
+        self,
+        run_id: str,
+        values: Mapping[str, float] | Sequence[MetricPointIn],
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+    ) -> MetricsWriteResult:
+        """Log ``{key: value}`` (sharing ``step`` and ``labels``) or a list of points.
+
+        Sent in requests of at most 1000 points; non-finite values are dropped.
+        """
+        points = tcalls.metric_points(values, step=step, labels=labels)
+        results = [
+            self._c.send(tcalls.log_run_metrics(run_id, body))
+            for body in tcalls.metrics_bodies(points)
+        ]
+        return tcalls.sum_metrics(results)
+
+    def log_params(self, run_id: str, params: Mapping[str, ParamValue]) -> ParamsWriteResult:
+        """Log params (write-once: a different value for a stored key is a 409 ``CONFLICT``).
+
+        Sent in requests of at most 500 params.
+        """
+        results = [
+            self._c.send(tcalls.log_run_params(run_id, body))
+            for body in tcalls.params_bodies(params)
+        ]
+        return tcalls.sum_params(results)
+
+    def metrics(
+        self,
+        run_id: str,
+        *,
+        key: str | None = None,
+        attempt: int | None = None,
+        limit: int | None = None,
+    ) -> Paginator[MetricSeries]:
+        """Metric series of the run with their summaries (last, min, max, count)."""
+        return self._c.page_iter(
+            lambda cur: tcalls.list_run_metrics(run_id, limit, cur, key=key, attempt=attempt)
+        )
+
+    def metric_history(
+        self,
+        run_id: str,
+        key: str,
+        *,
+        max_points: int = 1000,
+        attempt: int | None = None,
+        labels: Mapping[str, str] | None = None,
+    ) -> MetricHistory:
+        """The points of every series of ``key`` (downsampled to ``max_points`` each)."""
+        call = tcalls.get_metric_history(
+            run_id, key, max_points=max_points, attempt=attempt, labels=labels
+        )
+        return self._c.send(call)
+
+    def params(
+        self, run_id: str, *, prefix: str | None = None, limit: int | None = None
+    ) -> Paginator[RunParam]:
+        """Params of the run (key order); ``prefix`` keeps keys that start with it."""
+        return self._c.page_iter(
+            lambda cur: tcalls.list_run_params(run_id, limit, cur, prefix=prefix)
+        )
+
+    def track(self, run_id: str, *, flush_every: int = 500) -> RunTracker:
+        """A buffered tracker for ``with``: points, params and tags are sent in batches
+        when ``flush_every`` points wait and when the block ends."""
+        return RunTracker(self, run_id, flush_every=flush_every)
 
 
 class Models(_Resource, ModelInsightMixin):

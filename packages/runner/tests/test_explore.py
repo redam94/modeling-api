@@ -285,12 +285,46 @@ def test_model_explorer_numbers(model_ctx: ModelContext) -> None:
     assert lb["decision"] == "white_noise"
     bt = MODEL_SECTION_FUNCS["backtest"](model_ctx).model_dump()
     assert len(bt["folds"]) == 3 and bt["summary"]["skill_vs_best_benchmark"] > 0.5
+    # pooled over folds for the plan's horizons; MASE from the folds' naive scale
+    assert set(bt["by_horizon"]) == {"1", "4"}
+    assert bt["by_horizon"]["1"]["mae"] is not None and "mase" in bt["by_horizon"]["4"]
     cmp = MODEL_SECTION_FUNCS["comparison"](model_ctx).model_dump()
     assert cmp["models"] == ["model://p/lin@v1", "model://p/ridge@v1"]
     assert set(cmp["ranking"]["rmse"]) == set(cmp["models"])
     assert cmp["tests"] and cmp["tests"][0]["test"] == "test.diebold_mariano"
     dec = MODEL_SECTION_FUNCS["decomposition"](model_ctx).model_dump()
     assert set(dec["components"]) == {"intercept", "spend", "price"}
+
+
+def test_backtest_default_horizons(
+    model_ctx: ModelContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # window plans validate a non-empty horizon list, so a plan without horizons is built
+    # here directly: the backtest then scores every horizon of the first fold's test window
+    import mapi_runner.worker.explore_model as em
+
+    assert model_ctx.req.backtest is not None
+    sized = model_ctx.req.backtest.model_copy(update={"horizons": [6]})
+    real = em.plan_folds
+    monkeypatch.setattr(
+        em,
+        "plan_folds",
+        lambda _plan, n: [f.model_copy(update={"horizons": []}) for f in real(sized, n)],
+    )
+    req = model_ctx.req.model_copy(update={"backtest": sized.model_copy(update={"horizons": []})})
+    c = ModelContext(
+        model_ctx.bundle, model_ctx.data, model_ctx.registry, req, refitter=model_ctx.refitter
+    )
+    view = MODEL_SECTION_FUNCS["backtest"](c)
+    want = [str(h) for h in range(1, 7)]
+    assert list(view.by_horizon) == want
+    assert all(list(f.by_horizon) == want for f in view.folds)
+    pooled_mae = [view.by_horizon[h]["mae"] for h in want]
+    assert all(m is not None and m >= 0 for m in pooled_mae)
+    plots = explorer_plots(view.model_dump(mode="json", exclude_none=True))
+    assert [p["id"] for p in plots] == ["explore.backtest.folds", "explore.backtest.horizons"]
+    for p in plots:
+        sanitize_plot(p)
 
 
 def test_var_and_mmm_views_plot_through_the_sanitizer() -> None:

@@ -103,6 +103,28 @@ last 10% of the steps, the caption tells you so. Then increase `tune` and fit ag
 
 `map` and `pathfinder` do not keep a loss history.
 
+From v0.11, ADVI also sends the loss to the run while it optimises. The run gets the metric
+`loss` with the optimisation step as its step. For a fit of more than 5,000 steps, it sends
+each k-th step, k = ceil(steps / 5000), and the last step. The **Metrics** tab of the run page
+shows the curve while the fit runs.
+
+### Live chains and step metrics <span class="mapi-badge">v0.11</span> { #live-chains }
+
+While nutpie or the PyMC NUTS sampler makes draws, the fit sends the progress of each chain
+to the run. The run page shows one lane for each chain, with its draws, divergences and step
+size. The fit also logs these step metrics, with the label `chain`:
+
+| Engine | Keys | Step |
+|---|---|---|
+| `nutpie` | `step_size`, `num_steps` (leapfrog steps of the latest draw), `divergences` (cumulative) | The draws that the chain finished, with tuning (starts at 1) |
+| `pymc` (NUTS) | `step_size`, `tree_depth`, `num_steps`, `divergences` (cumulative) | The draw index, with tuning (starts at 1). If a chain has more than 5000 draws, each k-th draw and the last draw, k = ceil(n / 5000) |
+
+The evaluation fit of `evaluate_then_refit` adds the label `fit=evaluation`. Thus its curves
+do not mix with the curves of the final fit. Its params get the prefix `evaluation.`. Your model code can log its own metrics, params
+and tags with `ctx` (see [Track metrics, params and tags](tracking.md)). The SDK does not
+build the step metrics when no tracker records them, for example in a notebook fit without a
+recorder.
+
 ### Segmented sampling and checkpoints
 
 With `engine: pymc` and `checkpoint.every_draws`, the sampler tunes one time. Then it makes the

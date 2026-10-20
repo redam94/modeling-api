@@ -116,6 +116,30 @@ HOLD = {
 }
 
 
+async def test_a_search_node_keeps_its_search_run_first_in_child_runs(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """After the search, the node's ``run_id`` is the winner's refit; the search run (with
+    the grid's tracking data) stays the first entry of ``child_runs`` (the docs rely on it)."""
+    await put_dataset(ctx, "sales", weekly_series(120))
+    rid = await _start(client, await _create(client, _doc([HOLD, GRID], name="gridwf")))
+    orch = WorkflowOrchestrator(ctx)
+    for _ in range(2):
+        await orch.tick(rid)
+        await execute_children(ctx)
+    async with ctx.db.session() as s:
+        row = await s.get(m.WorkflowNodeRunRow, (rid, "grid"))
+        assert row is not None and row.child_run_id is not None
+        search = row.child_run_id
+    await orch.tick(rid)
+    node = (await client.get(f"/v1/workflow-runs/{rid}/nodes/grid")).json()
+    async with ctx.db.session() as s:
+        refit = await s.get(m.Run, node["run_id"])
+        assert refit is not None and refit.kind == "fit"
+    assert node["run_id"] != search
+    assert node["child_runs"] == [search, node["run_id"]]
+
+
 async def test_cancelling_between_a_search_and_its_refit_starts_no_fit(
     client: httpx.AsyncClient, ctx: ServerContext
 ) -> None:

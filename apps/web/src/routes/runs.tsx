@@ -4,10 +4,12 @@ import { Activity } from "lucide-react";
 import { useMemo } from "react";
 
 import { useRuns } from "@/api/queries";
+import { runName, runTags } from "@/api/tracking";
 import type { Run, RunKind, RunState } from "@/api/types";
 import { EmptyState, Mono, PageHeader, QueryView, StateBadge } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { NativeSelect } from "@/components/ui/primitives";
+import { TagBadges } from "@/features/runs/tag-badges";
 import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
 import { runCostView } from "@/lib/cost";
 import { RUN_KINDS, RUN_STATES, runSubject, STATE_META } from "@/lib/run-state";
@@ -22,13 +24,22 @@ export const runColumns: ColumnDef<Run, unknown>[] = [
     sortingFn: (a, b) => RUN_STATES.indexOf(a.original.state) - RUN_STATES.indexOf(b.original.state),
   },
   {
-    accessorKey: "id",
-    header: "Run",
-    cell: ({ row }) => (
-      <Link to="/runs/$runId" params={{ runId: row.original.id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-        <Mono>{shortId(row.original.id)}</Mono>
-      </Link>
-    ),
+    // v0.11: the run's name (or its short id) and up to three tags. Both are untrusted text.
+    id: "name",
+    header: "Name",
+    accessorFn: (r) => runName(r) ?? r.id,
+    cell: ({ row }) => {
+      const name = runName(row.original);
+      const tags = runTags(row.original);
+      return (
+        <span className="grid max-w-80 gap-1">
+          <Link to="/runs/$runId" params={{ runId: row.original.id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+            {name ? <span className="font-medium [overflow-wrap:anywhere]" title={row.original.id}>{name}</span> : <Mono>{shortId(row.original.id)}</Mono>}
+          </Link>
+          {Object.keys(tags).length ? <TagBadges tags={tags} max={3} /> : null}
+        </span>
+      );
+    },
   },
   { accessorKey: "kind", header: "Kind" },
   { id: "subject", header: "Input", accessorFn: runSubject, cell: ({ getValue }) => <Mono className="text-muted-foreground">{String(getValue())}</Mono> },

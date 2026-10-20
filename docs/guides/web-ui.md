@@ -164,7 +164,8 @@ or the number of errors.
 ![The runs list](../assets/screenshots/runs.png){ .mapi-shot }
 
 Each ingest, describe, dry-run, fit and score is a run. You can filter the list by state and
-by type. The list updates live.
+by type. The list updates live. From v0.11, the **Name** column shows the name of the run (or
+its short id) and a maximum of three of its tags.
 
 ### Run detail
 
@@ -173,15 +174,32 @@ by type. The list updates live.
 The run page subscribes to the server-sent event stream of the run (`Live` next to the state).
 After a disconnect, it continues from the point where it stopped.
 
+From v0.11, the run page has five tabs. The URL keeps the tab (`?tab=metrics`).
+
+| Tab | What it shows |
+|---|---|
+| **Overview** | Progress, details, events and plots (the items below) |
+| **Metrics** | A chart for each metric key. See [Metrics tab](#metrics-tab). |
+| **Params** | The tags and the params of the run. Type in the filter to find a param. |
+| **Logs** | All the log lines, with a level filter |
+| **Notes** | The name, the tags and the note. You can change them. |
+
+The **Overview** tab has these cards:
+
 - **Progress**: the current phase (*Starting the sandbox*, *Loading inputs*, *Fitting*,
   *Rendering plots*, *Uploading outputs*, …), the latest message from the runner and a
   progress bar. For a PyMC fit, the message shows the chain, draw and divergence counts.
+  From v0.11, a PyMC or `mmm.bayesian` fit also shows one lane for each chain, with its
+  draws, divergences and step size.
   *No progress reported recently* shows when a run is quiet for longer than expected. The
   app then marks the run as `stalled`. This is a warning, not a failure. The status from the
   executor tells if the run is alive.
-- **Logs**: the stdout and stderr that the supervisor captured from the worker. The logs have
-  a size limit, and the app removes unsafe characters. Use the **All / stdout / stderr /
-  system** filters, a text filter and **Follow**.
+- **Logs** (the **Logs** tab from v0.11): the stdout and stderr that the supervisor captured
+  from the worker, and the structured lines that the model wrote (stream **user**). The logs
+  have a size limit, and the app removes unsafe characters. Use the **All / stdout / stderr /
+  system / user** filters, a text filter and **Follow**. The level filter (**All**, **Info and
+  above**, **Warnings**, **Errors**) hides the lines with a lower level. A user line shows its
+  level and its fields as `key=value` chips.
 - **Details**: the timestamps, and the spec revision, model version or dataset of the run. It
   also shows the spec hash, the run that it retried and its cost (`Not metered locally`).
 - **Events**: each persisted event, with diagnostics and metrics. On a laptop, this includes
@@ -192,6 +210,26 @@ After a disconnect, it continues from the point where it stopped.
   plots. Some plots of a run keep their data in a file of the run. The page cannot open this
   file, so the plot shows the note "The data of this plot is in a file of the run. Open the
   model version to see the plot." The card does not show when the run has no plots.
+
+#### Metrics tab { #metrics-tab }
+
+The **Metrics** tab shows the metrics that the run logged (see
+[Track metrics, params and tags](tracking.md)). The charts update while the run is active.
+
+- The **Values** table shows the metrics that have no steps, for example `rmse`.
+- Each key with steps has a card with a chart, the latest value, the minimum and the maximum.
+- **Colour by** gives each value of a label its own colour. The default is `chain` when the
+  series have that label.
+- **Show** filters the values of each other label.
+- The log-scale switch changes the y axis.
+
+If the run did not log metrics, the tab tells you so.
+
+#### Notes tab
+
+Type a name, add or remove tags and type a note. Then click **Save**. The app sends only the
+fields that you changed. You need the runner role. Without it, the tab is read-only. Tag keys
+that start with `mapi.` are for the platform only.
 
 **Actions:**
 

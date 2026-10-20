@@ -204,6 +204,42 @@ class _Learned(BaseModel):
         return str(self.estimator["kind"])
 
 
+_MAX_ESTIMATOR_PARAMS = 100
+_MAX_PARAM_TEXT = 500
+
+
+def estimator_params(est: Any) -> dict[str, bool | int | float | str]:
+    """The scalar hyperparameters of a fitted estimator as run params ``estimator.<name>``.
+
+    ``get_params(deep=False)``: ``None``, non-finite floats and objects (nested estimators,
+    arrays, callables) are skipped; long strings are truncated; at most 100 params.
+    """
+    get = getattr(est, "get_params", None)
+    if get is None:
+        return {}
+    try:
+        raw = get(deep=False)
+    except Exception:
+        return {}
+    out: dict[str, bool | int | float | str] = {}
+    for name in sorted(raw):
+        value = raw[name]
+        if isinstance(value, np.generic):
+            value = value.item()
+        if isinstance(value, bool | int | str):
+            scalar: bool | int | float | str = (
+                value[:_MAX_PARAM_TEXT] if isinstance(value, str) else value
+            )
+        elif isinstance(value, float) and np.isfinite(value):
+            scalar = value
+        else:
+            continue
+        out[f"estimator.{name}"] = scalar
+        if len(out) >= _MAX_ESTIMATOR_PARAMS:
+            break
+    return out
+
+
 @dataclass(slots=True)
 class _Fitter:
     """Builds and fits estimators for one choice, collecting warnings."""
@@ -384,6 +420,8 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
         fitter = _Fitter(entry, choice, layout, seed, s.n_jobs)
         ctx.check_cancelled()
         result = self._fit_models(fitter, design, y, s, ctx)
+        if ctx.tracking and result.models:
+            ctx.log_params(estimator_params(result.models[0][1]))
         ctx.progress(0.95, "persisting the fitted estimators")
         native: dict[str, bytes] = {}
         keys: list[str] = []

@@ -106,7 +106,7 @@ summary:
 | token | viewer | viewer | — | viewer (own) | `manage` (tokens of other persons): admin |
 | catalog | viewer | — | — | — | — |
 | dataset, spec | viewer | editor | editor | admin | — |
-| run | viewer | runner | — | — | `cancel`: runner |
+| run | viewer | runner | runner (v0.11: name, note, tags, metric and param writes) | — | `cancel`: runner |
 | model | viewer | — | — | admin | `run` (score): runner |
 | endpoint | viewer | admin | admin | admin | `run`: runner. `promote`: admin. |
 | plot | viewer | editor | — | — | `run` (render): runner |
@@ -217,6 +217,7 @@ owner. The token of an admin with `models:read` can only read.
 | `workflows:run` (v0.5) | Run and cancel workflows, and manage their schedules and triggers |
 | `models:validate` (v0.5) | Submit model versions for governance validation, and read policies. It never approves. |
 | `policies:manage` (v0.5) | Make, edit and retire the governance policies of the project (policy-as-code) |
+| `runs:write` (v0.11) | `models:read`, plus change the name, the note and the tags of runs, and log metrics and params to runs. Use it for a script that logs business KPIs after a deployment. `runs:create` does not give these writes. |
 | `admin` | All actions that the role of the owner allows, except three: mint tokens, override a promotion gate and approve a validation |
 
 No scope lets a token mint tokens. A child token would escape the expiry, budget, rate limit
@@ -278,6 +279,10 @@ These actions are:
 - Changes to quotas and kill switches
 - Artifact links that the platform mints
 - Quota denials and refused run events
+- Changes to the name, the note or the tags of a run (`run.update`, v0.11). The entry names
+  the changed fields and the number of tags. It never contains the text of the note.
+- Metrics and params that a person or a script logged through the API (`run.log`, v0.11). The
+  entry gives the number of points or params.
 
 Each entry records the platform id of the actor, the action, the resource, the result and a
 problem code. The platform keeps client IP addresses and user agents only as keyed HMACs.

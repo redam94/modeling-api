@@ -79,8 +79,15 @@ def progress_dto(p: m.RunProgress | None) -> ProgressSnapshot | None:
 
 
 def run_dto(
-    run: m.Run, progress: m.RunProgress | None = None, *, cost: RunCost | None = None
+    run: m.Run,
+    progress: m.RunProgress | None = None,
+    *,
+    cost: RunCost | None = None,
+    tags: Mapping[str, str] | None = None,
+    columns: Mapping[str, float | str | None] | None = None,
 ) -> RunDTO:
+    """The API view of a run. ``tags`` come from ``run_tags`` (the caller reads them, one
+    query per page); ``columns`` are the requested run-search columns (``list_runs`` only)."""
     return RunDTO(
         id=run.id,
         tenant_id=run.tenant_id,
@@ -108,6 +115,10 @@ def run_dto(
         else None,
         cost=cost if cost is not None else _estimate_only(run),
         labels=run.labels,
+        name=run.name,
+        note=run.note,
+        tags=dict(tags or {}),
+        columns=dict(columns) if columns is not None else None,
         created_at=run.created_at,
         queued_at=run.queued_at,
         started_at=run.started_at,

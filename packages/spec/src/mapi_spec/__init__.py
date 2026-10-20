@@ -4,7 +4,8 @@ guided-mode and integration contracts: templates, calibration, what-if, scorecar
 promotion gate, endpoints, snippets, webhooks, plot sharing and the trust lifecycle; and the
 M3.5 contracts: About cards and the chooser, workflows with the safe condition language,
 split plans, statistical test results, governance policies and validation, the Data and
-Model Explorer views and budget optimisation).
+Model Explorer views and budget optimisation; and the v0.11 run tracking contracts: metric,
+param and tag keys, tracking budgets and the run-search grammar).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -178,6 +179,15 @@ from mapi_spec.refs import (
     resolve_version,
 )
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
+from mapi_spec.run import (
+    MetricBatchPayload,
+    MetricSeriesBatch,
+    ParamItem,
+    ParamsPayload,
+    TagItem,
+    TagsPayload,
+    split_for_events,
+)
 from mapi_spec.schema import (
     DataSchema,
     DataSchemaTemplate,
@@ -238,6 +248,23 @@ from mapi_spec.tenancy import (
     can,
 )
 from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
+from mapi_spec.tracking import (
+    LogLevel,
+    RunFilter,
+    RunOrder,
+    RunRef,
+    TrackingLimits,
+    check_labels,
+    check_metric_key,
+    check_param_key,
+    check_tag_key,
+    labels_key,
+    param_text,
+    parse_labels_key,
+    parse_run_filter,
+    parse_run_order,
+    parse_run_ref,
+)
 from mapi_spec.tree import (
     MAX_TREE_DEPTH,
     MAX_TREE_NODES,
@@ -382,9 +409,12 @@ __all__ = [
     "KillSwitches",
     "LiftTest",
     "Limits",
+    "LogLevel",
     "MapiError",
     "Membership",
     "MeridianColumns",
+    "MetricBatchPayload",
+    "MetricSeriesBatch",
     "MffOptions",
     "ModelBlock",
     "ModelCatalogEntry",
@@ -402,6 +432,8 @@ __all__ = [
     "OptimizeResult",
     "OutputDecl",
     "OutputSelector",
+    "ParamItem",
+    "ParamsPayload",
     "PlotBindings",
     "PlotCatalogEntry",
     "PlotEmbed",
@@ -431,6 +463,9 @@ __all__ = [
     "ResponseGridView",
     "Role",
     "RunCost",
+    "RunFilter",
+    "RunOrder",
+    "RunRef",
     "SavedPlot",
     "SchemaEffect",
     "ScopeName",
@@ -453,9 +488,12 @@ __all__ = [
     "StepCatalogEntry",
     "StepKind",
     "Sweep",
+    "TagItem",
+    "TagsPayload",
     "Tenant",
     "TenantDeletion",
     "TenantStatus",
+    "TrackingLimits",
     "TreeSchema",
     "TrustTier",
     "TypicalRuntime",
@@ -491,6 +529,10 @@ __all__ = [
     "can_aggregate",
     "canonical_json",
     "catalog_about_issues",
+    "check_labels",
+    "check_metric_key",
+    "check_param_key",
+    "check_tag_key",
     "check_webhook_url",
     "default_summary",
     "describe_dataset",
@@ -509,6 +551,7 @@ __all__ = [
     "is_ancestor",
     "json_pointer",
     "kill_switch_decision",
+    "labels_key",
     "load_document",
     "load_model_spec",
     "load_score_request",
@@ -518,9 +561,14 @@ __all__ = [
     "node_join",
     "node_name",
     "node_parent",
+    "param_text",
     "parse_document",
     "parse_expression",
     "parse_freq",
+    "parse_labels_key",
+    "parse_run_filter",
+    "parse_run_order",
+    "parse_run_ref",
     "parse_summary",
     "parse_token",
     "plan_folds",
@@ -538,6 +586,7 @@ __all__ = [
     "scope_allows",
     "signature_header",
     "spec_hash",
+    "split_for_events",
     "suggest_roles",
     "summary_allowed",
     "topological_order",

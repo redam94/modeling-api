@@ -68,7 +68,9 @@ def test_fit_keeps_opt_in_groups_and_reports_diagnostics(radon_bundle: Bundle) -
         "prior",
         "prior_predictive",
         "posterior_predictive",
+        "metrics_history",  # the engine's step metrics (v0.11)
     }
+    assert {"step_size", "tree_depth", "divergences"} <= set(groups["metrics_history"].data_vars)
     assert dict(groups["posterior"].sizes) == {"chain": 2, "draw": 150, "county": 6, "obs": 48}
     assert groups["posterior_predictive"].sizes["draw"] == 30  # thin: 5
     assert groups["prior"].sizes["draw"] == 40

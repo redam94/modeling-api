@@ -413,6 +413,7 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.RUN, _AC.READ): Rule(_V, _P),
     (_RK.RUN, _AC.CREATE): Rule(_R, _P),
     (_RK.RUN, _AC.CANCEL): Rule(_R, _P),
+    (_RK.RUN, _AC.UPDATE): Rule(_R, _P),  # v0.11: name, note, tags, metric and param writes
     (_RK.MODEL, _AC.READ): Rule(_V, _P),
     (_RK.MODEL, _AC.RUN): Rule(_R, _P),
     (_RK.MODEL, _AC.DELETE): Rule(_A, _P),

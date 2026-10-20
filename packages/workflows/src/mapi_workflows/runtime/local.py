@@ -328,6 +328,7 @@ class LocalRunner:
             log=self.log,
             input_refs=dict(action.inputs),
             services={"governance": self.governance},
+            tracker=None,
         )
         timeout = action.node.timeout.seconds if action.node.timeout is not None else None
         budget = max(0.0, deadline - time.monotonic())

@@ -63,12 +63,13 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
-CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples", "0014_tree_datasets")
+CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples", "0014_tree_datasets", "0015_run_tracking")
 
 
 def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
     """The M3, M3.5 and later revisions chain off 0006 in order, and each steps down and up
-    cleanly (0013 adds ``catalogs.plot_examples``, 0014 the tree-dataset columns)."""
+    cleanly (0013 adds ``catalogs.plot_examples``, 0014 the tree-dataset columns, 0015 the
+    run tracking tables)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
     assert script.get_heads() == [CHAIN[-1]]
     down = "0006_executor_disable"
@@ -160,6 +161,63 @@ def test_tree_datasets_migration_backfills_sources_and_steps_down_and_up(
     assert not {"inspection", "inspect_run_id"} & _columns(scratch_db, "uploads")
     upgrade(scratch_db)
     assert {"layout", "tree_schema", "sources"} <= _columns(scratch_db, "dataset_versions")
+    command.check(alembic_config(scratch_db))
+
+
+TRACKING_TABLES = ("run_metrics", "run_metric_summary", "run_params", "run_tags")
+
+
+def test_run_tracking_migration_secures_its_tables_and_steps_down_and_up(
+    scratch_db: str,
+) -> None:
+    """0015 adds the run name/note, the level/fields of log lines and four tracking tables
+    with forced row-level security (tenant + platform policies), least-privilege grants for
+    the request path (tags may be deleted, the others not), nothing for the gateway, and the
+    shared ``run_tracking_seq``; it steps down and up cleanly."""
+    upgrade(scratch_db)
+    assert {"name", "note"} <= _columns(scratch_db, "runs")
+    assert {"level", "fields"} <= _columns(scratch_db, "run_logs")
+    assert set(TRACKING_TABLES) <= _tables(scratch_db)
+    with psycopg.connect(scratch_db) as conn:
+        for table in TRACKING_TABLES:
+            rls = conn.execute(
+                "SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE relname = %s",
+                (table,),
+            ).fetchone()
+            assert rls == (True,), table
+            policies = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT policyname FROM pg_policies WHERE tablename = %s", (table,)
+                ).fetchall()
+            }
+            assert policies == {"mapi_tenant_isolation", "mapi_platform_access"}, table
+            grants = {
+                (r[0], r[1])
+                for r in conn.execute(
+                    "SELECT grantee, privilege_type FROM information_schema.role_table_grants "
+                    "WHERE table_name = %s",
+                    (table,),
+                ).fetchall()
+            }
+            assert not {g for g in grants if g[0] == "mapi_gateway"}, table
+            app = {p for g, p in grants if g == "mapi_app"}
+            expected = {"SELECT", "INSERT", "UPDATE"} | (
+                {"DELETE"} if table == "run_tags" else set()
+            )
+            assert app == expected, (table, app)
+        seq = conn.execute(
+            "SELECT has_sequence_privilege('mapi_app', 'run_tracking_seq', 'USAGE'), "
+            "has_sequence_privilege('mapi_system', 'run_tracking_seq', 'USAGE'), "
+            "has_sequence_privilege('mapi_gateway', 'run_tracking_seq', 'USAGE')"
+        ).fetchone()
+        assert seq == (True, True, False)
+    downgrade(scratch_db, "0014_tree_datasets")
+    assert not set(TRACKING_TABLES) & _tables(scratch_db)
+    assert not {"name", "note"} & _columns(scratch_db, "runs")
+    assert not {"level", "fields"} & _columns(scratch_db, "run_logs")
+    upgrade(scratch_db)
+    assert set(TRACKING_TABLES) <= _tables(scratch_db)
     command.check(alembic_config(scratch_db))
 
 

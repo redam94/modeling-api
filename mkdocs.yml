@@ -181,6 +181,7 @@ nav:
           - The command line: guides/cli.md
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
+          - "Track metrics, params and tags": guides/tracking.md
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - "Tree datasets, HDF5 and multi-file versions": guides/tree-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md

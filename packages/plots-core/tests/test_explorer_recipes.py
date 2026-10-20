@@ -99,6 +99,36 @@ def test_model_views_plot() -> None:
     assert len(_check(cmp.model_dump(mode="json"))) == 1
 
 
+def test_backtest_plots_error_by_horizon() -> None:
+    folds = [
+        {
+            "fold": {"index": j},
+            "metrics": {"mae": 1.0 + j},
+            "by_horizon": {str(h): {"mae": h * (1.0 + j)} for h in (1, 2, 3)},
+        }
+        for j in range(2)
+    ]
+    view = BacktestView(
+        folds=folds,  # type: ignore[arg-type]
+        by_horizon={"1": {"mae": 1.5}, "2": {"mae": 3.0}, "3": {"mae": 4.5}},
+    ).model_dump(mode="json")
+    view["by_horizon"]["x"] = {"mae": 9.0}  # type: ignore[index]  # not a horizon: ignored
+    folds_plot, horizons = _check(view)
+    assert folds_plot["id"] == "explore.backtest.folds"
+    assert horizons["id"] == "explore.backtest.horizons"
+    assert horizons["title"] == "Backtest error by horizon"
+    assert horizons["caption_plain"] == (
+        "Shows the error for each number of periods ahead. The error usually increases with "
+        "the horizon."
+    )
+    data = horizons["spec"]["datasets"]  # type: ignore[index]
+    assert [r["h"] for r in data["pooled"]] == [1, 2, 3]
+    assert len(data["folds"]) == 6
+    # one pooled horizon (or none) draws only the fold chart
+    view["by_horizon"] = {"1": {"mae": 1.5}, "2": {"mae": None}}
+    assert [p["id"] for p in _check(view)] == ["explore.backtest.folds"]
+
+
 @pytest.mark.parametrize(
     ("section", "count"),
     [

@@ -151,6 +151,12 @@ class AuditAction(StrEnum):
     ENDPOINT_PROMOTE_NOT_VALIDATED = "endpoint.promote_not_validated"
     """A promotion was refused because the policy requires a validated model."""
     DATASET_ABOUT_UPDATE = "dataset.about_update"
+    # --- v0.11 (additive) --------------------------------------------------------------------
+    RUN_UPDATE = "run.update"
+    """``PATCH /v1/runs/{id}``: details ``{"fields": [...], "tags_set": n, "tags_deleted": n}``
+    (never the note text)."""
+    RUN_LOG = "run.log"
+    """Metrics or params written through the API: details ``{"metrics": n}`` / ``{"params": n}``."""
 
 
 class AuditEvent(ResponseModel):

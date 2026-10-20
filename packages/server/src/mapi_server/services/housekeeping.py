@@ -12,7 +12,11 @@ The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_inter
   ``/auth/login`` and ``/auth/callback``, are deleted (a request with an expired cookie
   deletes its own row; this catches the cookies that never come back);
 * **rate counters** of past windows (each subject's own old windows are only deleted when
-  it is counted again, and failure counters of unknown token prefixes never are).
+  it is counted again, and failure counters of unknown token prefixes never are);
+* **run tracking points** (``MAPI_TRACKING_RETENTION_DAYS``, off by default): metric points
+  and ``user`` log lines of runs that finished longer ago than the retention are deleted, at
+  most :data:`TRACKING_PRUNE_BATCH` rows per table and pass. Metric summaries, params, tags,
+  names and notes stay, so finished runs can still be searched and compared.
 
 It runs on the platform role and touches nothing a request could still be using: an
 expired PUT can no longer be completed, ``create_dataset_version`` refuses an upload
@@ -27,16 +31,26 @@ import logging
 from datetime import datetime, timedelta
 
 from mapi_spec.storage import NotFound
-from sqlalchemy import delete, update
+from mapi_spec.tracking import SCALAR_STEP
+from sqlalchemy import delete, text, update
 
 from mapi_server.auth.identity import sweep_expired_logins
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.runs import now as utcnow
 
-__all__ = ["Housekeeper"]
+__all__ = ["TRACKING_PRUNE_BATCH", "Housekeeper"]
 
 log = logging.getLogger(__name__)
+
+TRACKING_PRUNE_BATCH = 10_000
+"""Rows of one table the tracking retention deletes per pass (a backlog takes more passes)."""
+
+_PRUNE_SQL = {
+    # the point of a metric without a step is its only value: it stays
+    "run_metrics": f"AND step <> {SCALAR_STEP}",
+    "run_logs": "AND stream = 'user'",
+}
 
 
 class Housekeeper:
@@ -62,6 +76,7 @@ class Housekeeper:
         """One pass; returns how many rows it retired."""
         at = now or utcnow()
         uploads = await self.expire_uploads(now=at)
+        tracking = await self.prune_tracking(now=at)
         async with self.ctx.db.session() as s:
             logins = await sweep_expired_logins(s, at=at)
             # fixed one-minute windows: anything older than the previous one is dead weight
@@ -69,7 +84,31 @@ class Housekeeper:
             stale = await s.execute(
                 delete(m.RateCounter).where(m.RateCounter.window_start < at - timedelta(minutes=2))
             )
-        return uploads + logins + int(getattr(stale, "rowcount", 0) or 0)
+        return uploads + logins + tracking + int(getattr(stale, "rowcount", 0) or 0)
+
+    async def prune_tracking(self, *, now: datetime) -> int:
+        """Delete metric points (not the one point of a metric without a step) and user log
+        lines of runs finished before the retention. The summaries stay."""
+        days = self.ctx.settings.tracking_retention_days
+        if days is None:
+            return 0
+        cutoff = now - timedelta(days=days)
+        deleted = 0
+        async with self.ctx.db.session() as s:
+            for table, extra in _PRUNE_SQL.items():
+                # one bounded batch per table and pass (ctid: no primary-key tuple needed)
+                res = await s.execute(
+                    text(
+                        f"DELETE FROM {table} WHERE ctid IN (SELECT ctid FROM {table} "
+                        "WHERE run_id IN (SELECT id FROM runs WHERE finished_at < :cutoff) "
+                        f"{extra} LIMIT :n)"
+                    ),
+                    {"cutoff": cutoff, "n": TRACKING_PRUNE_BATCH},
+                )
+                deleted += int(getattr(res, "rowcount", 0) or 0)
+        if deleted:
+            log.info("pruned %d run tracking row(s) past the retention", deleted)
+        return deleted
 
     async def expire_uploads(self, *, now: datetime) -> int:
         """Mark pending intents whose PUT expired ``expired`` and delete their objects."""

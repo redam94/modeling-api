@@ -9,9 +9,12 @@ Both transports end here:
 
 For every event: the per-attempt HMAC key verifies it (a bad HMAC is dropped and counted as
 a sandbox violation — it never changes the run); ``(run, attempt, seq)`` deduplicates it;
-``progress`` upserts the single ``run_progress`` row; ``log`` lines go to ``run_logs``;
-everything else is appended to ``run_events``. The first verified event of an attempt moves
-the run to ``RUNNING`` (events never move it anywhere else).
+``progress`` upserts the single ``run_progress`` row; ``log`` lines go to ``run_logs``
+(``user`` lines with their level and fields); ``metrics``/``params``/``tags`` go to the run
+tracking tables (:mod:`mapi_server.services.tracking`), never to ``run_events``; everything
+else is appended to ``run_events`` (a legacy scalar ``metric`` is also mirrored as a
+tracking point). The first verified event of an attempt moves the run to ``RUNNING``
+(events never move it anywhere else).
 """
 
 from __future__ import annotations
@@ -33,15 +36,20 @@ from mapi_spec.run import (
     ErrorPayload,
     InvalidEvent,
     LogPayload,
+    MetricBatchPayload,
+    MetricPayload,
+    ParamsPayload,
     ProgressPayload,
     RunState,
     RunTrigger,
+    TagsPayload,
     can_transition,
     event_from_log_payload,
     parse_payload,
     verify_event,
 )
 from mapi_spec.tenancy import PrincipalKind, ResourceKind
+from mapi_spec.tracking import TrackingLimits, check_labels
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -55,6 +63,7 @@ from mapi_server.observability import metrics as obs_metrics
 from mapi_server.services.audit import add_audit
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import append_event, apply_transition, now
+from mapi_server.services.tracking import write_metric_points, write_params, write_tags
 
 __all__ = ["EventIngestor", "IngestResult", "events_from_envelope"]
 
@@ -271,6 +280,8 @@ class EventIngestor:
                     stream=_stream_label(payload),
                     line=payload.line,
                     truncated=payload.truncated,
+                    level=payload.level if payload.stream == "user" else None,
+                    fields=payload.fields if payload.stream == "user" else None,
                 )
                 .on_conflict_do_nothing()
                 .returning(m.RunLog.seq)
@@ -280,6 +291,9 @@ class EventIngestor:
             attempt.log_bytes += line_bytes
             await notify_run(session, run.id, "log")
             return IngestResult.ACCEPTED
+
+        if isinstance(payload, MetricBatchPayload | ParamsPayload | TagsPayload):
+            return await self._persist_tracking(session, run, event, payload)
 
         dup = await session.execute(
             select(m.RunEvent.id).where(
@@ -305,7 +319,68 @@ class EventIngestor:
             ts=event.ts,
             source="runner",
         )
+        if isinstance(payload, MetricPayload):
+            await self._mirror_metric(session, run, event, payload)
         return IngestResult.ACCEPTED
+
+    async def _persist_tracking(
+        self,
+        session: AsyncSession,
+        run: m.Run,
+        event: RunEvent,
+        payload: MetricBatchPayload | ParamsPayload | TagsPayload,
+    ) -> IngestResult:
+        """Tracking events write their tables; a replay changes nothing (``DUPLICATE``).
+
+        The supervisor already enforced the run's budgets; the defaults are checked again
+        here (the trusted side never stores more than :class:`TrackingLimits` allows).
+        """
+        if isinstance(payload, MetricBatchPayload):
+            accepted, _ = await write_metric_points(
+                session,
+                run,
+                event.attempt,
+                payload.points(),
+                source="runner",
+                limits=TrackingLimits(),
+            )
+            changed = accepted > 0
+        elif isinstance(payload, ParamsPayload):
+            # write-once: a key repeated in one event keeps its first value
+            items: dict[str, Any] = {}
+            for p in payload.params:
+                items.setdefault(p.key, p.value)
+            written, _, _ = await write_params(session, run, items, source="runner")
+            changed = written > 0
+        else:
+            tags = {t.key: t.value for t in payload.tags}  # the last value wins
+            written, _ = await write_tags(session, run, tags, actor=None, ts=event.ts)
+            changed = written > 0
+        if not changed:
+            return IngestResult.DUPLICATE
+        await notify_run(session, run.id, "tracking")
+        return IngestResult.ACCEPTED
+
+    async def _mirror_metric(
+        self, session: AsyncSession, run: m.Run, event: RunEvent, payload: MetricPayload
+    ) -> None:
+        """A legacy ``metric`` event is also one point of its series (the run's Metrics
+        view and run search see end-of-run metrics). Labels the tracking grammar refuses
+        skip the mirror; the event itself is kept."""
+        try:
+            labels = check_labels(payload.labels)
+        except ValueError:
+            return
+        accepted, _ = await write_metric_points(
+            session,
+            run,
+            event.attempt,
+            [(payload.name, labels, payload.step, payload.value, event.ts)],
+            source="runner",
+            limits=TrackingLimits(),
+        )
+        if accepted:
+            await notify_run(session, run.id, "tracking")
 
     async def pump(self, source: AsyncIterator[RunEvent]) -> None:
         """Consume an executor's event source forever (one task per worker process)."""

@@ -142,6 +142,15 @@ a kind of uncertainty needs. For example, `sklearn.tabular_quantiles` sets the x
 are a discriminated union. Thus the control plane validates them **statically**. For example, it
 rejects `max_depth: -1` with a JSON pointer before a run starts.
 
+### Hyperparameters as run params <span class="mapi-badge">v0.11</span>
+
+A fit logs the hyperparameters of the fitted estimator as run params with the prefix
+`estimator.`, for example `estimator.max_depth = 6`. The fit logs only booleans, numbers and
+text (a maximum of 100 params). It does not log nested estimators, arrays or `None`. The
+**Params** tab of the run page shows them, and you can search runs by them
+(`--filter 'param.estimator.max_depth >= 6'`). See
+[Track metrics, params and tags](tracking.md).
+
 ## Uncertainty
 
 **Quantiles.** xgboost fits all levels at the same time. The sklearn estimators that can do

@@ -52,7 +52,7 @@ EXPECTED: dict[str, dict[str, str]] = {
     "catalog": {"read": "V/P"},
     "dataset": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
     "spec": {"read": "V/P", "create": "E/P", "update": "E/P", "delete": "A/P"},
-    "run": {"read": "V/P", "create": "R/P", "cancel": "R/P"},
+    "run": {"read": "V/P", "create": "R/P", "cancel": "R/P", "update": "R/P"},
     "model": {"read": "V/P", "run": "R/P", "delete": "A/P",
               "validate": "R/P", "approve": "E/P+reviewer", "update": "A/P"},
     "endpoint": {

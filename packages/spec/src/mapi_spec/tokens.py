@@ -228,6 +228,8 @@ class ScopeName(StrEnum):
     """M3.5: submit model versions for governance validation; never approves."""
     POLICIES_MANAGE = "policies:manage"
     """M3.5: manage the project's governance policies (policy-as-code)."""
+    RUNS_WRITE = "runs:write"
+    """v0.11: rename runs, edit notes and tags, log metrics and params to existing runs."""
     ADMIN = "admin"
 
 
@@ -264,7 +266,7 @@ TokenScope = Annotated[
 ]
 """``models:read`` | ``runs:create`` | ``score:{endpoint}`` | ``plugins:publish`` |
 ``datasets:write`` | ``endpoints:promote`` | ``webhooks:manage`` | ``workflows:write`` |
-``workflows:run`` | ``models:validate`` | ``policies:manage`` | ``admin``."""
+``workflows:run`` | ``models:validate`` | ``policies:manage`` | ``runs:write`` | ``admin``."""
 
 
 def scope_allows(
@@ -304,6 +306,8 @@ def scope_allows(
     ``models:validate``    ``read``/``validate`` model, ``read`` policy, ``read``/
                            ``create`` run (the governance checks run)
     ``policies:manage``    ``read``/``create``/``update``/``delete`` policy
+    ``runs:write``         ``models:read`` + ``update`` run (name, note, tags, metric
+                           and param writes)
     =====================  =======================================================
 
     No scope covers :data:`TOKEN_NEVER`: minting tokens (a child token would escape its
@@ -356,6 +360,7 @@ _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
         ("endpoint", "run"),
         ("plot", "run"),
     },
+    ScopeName.RUNS_WRITE: _READ | {("run", "update")},
     ScopeName.DATASETS_WRITE: frozenset(
         {("dataset", "read"), ("dataset", "create"), ("dataset", "update")}
     ),

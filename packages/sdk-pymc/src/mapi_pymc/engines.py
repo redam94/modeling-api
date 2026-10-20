@@ -23,6 +23,16 @@
 Every engine reports progress through one callback ``(fraction, message)`` where the
 message names the chain (``"chain 2/4: sampling 150/500, 0 divergences"``).
 
+**Tracking.** When :attr:`EngineHooks.tracker` is set (:meth:`EngineHooks.for_context` sets it
+when the run records metrics), the engines also report every chain's progress
+(``nutpie``, ``pymc``) and step metrics: ``step_size``, ``num_steps`` and cumulative
+``divergences`` per chain (label ``chain``; step = draws done, tuning included; the ``pymc``
+engine adds ``tree_depth`` and logs every k-th draw so that a chain has at most
+:data:`MAX_HISTORY_POINTS` points per metric), and the ADVI ``loss`` (negative ELBO) at most
+:data:`MAX_HISTORY_POINTS` times per fit. :func:`pymc_draw_callback` gives the same for a
+library that calls ``pm.sample`` itself. ``numpyro``, ``blackjax``, ``map`` and
+``pathfinder`` report progress only.
+
 **Start points.** By default every MCMC chain starts at the model's initial point with a
 random jitter. A plugin whose posterior has a trap near the default start (a mixture whose
 components all switch off) sets :attr:`EnginePlan.initvals` (values on the constrained scale,
@@ -33,12 +43,16 @@ by free variable name, as ``pm.sample(initvals=...)``) and ``jitter=False`` with
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
+import logging
+import math
 import time
 import warnings
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import numpy as np
 import pymc as pm
@@ -53,6 +67,12 @@ from pymc.step_methods.hmc.nuts import NUTS
 
 from mapi_pymc.checkpoint import CheckpointSink, SamplingCheckpoint, decode_state, encode_state
 
+if TYPE_CHECKING:
+    from mapi_sdk.models import FitContext
+    from mapi_sdk.tracking import Tracker
+    from mapi_spec import run as spec_run
+    from mapi_spec.tracking import LogFieldValue, LogLevel, ParamValue
+
 __all__ = [
     "DEFAULT_ADVI_STEPS",
     "DEFAULT_CHAINS",
@@ -66,10 +86,16 @@ __all__ = [
     "EngineHooks",
     "EnginePlan",
     "EngineResult",
+    "SamplerPlan",
     "engine_available",
+    "nutpie_progress",
+    "pymc_draw_callback",
+    "pymc_nutpie_progress",
     "resolve_engine",
     "run_engine",
 ]
+
+_log = logging.getLogger(__name__)
 
 ENGINES = ("nutpie", "pymc", "numpyro", "blackjax", "map", "advi", "pathfinder")
 MCMC_ENGINES = frozenset({"nutpie", "pymc", "numpyro", "blackjax"})
@@ -89,6 +115,7 @@ _ENGINE_MODULES = {
 _VOLATILE_STATS = ("perf_counter_diff", "perf_counter_start", "process_time_diff", "warning")
 _PROGRESS_EVERY_S = 0.5
 _NUTPIE_POLL_S = 0.05
+_no_live_progress_logged = False
 
 
 def engine_available(name: str) -> bool:
@@ -169,6 +196,8 @@ class ChainProgress:
     total: int
     tuning: bool
     divergences: int = 0
+    step_size: float | None = None
+    num_steps: int | None = None
 
     def message(self) -> str:
         phase = "tuning" if self.tuning else "sampling"
@@ -177,10 +206,72 @@ class ChainProgress:
             f"{self.divergences} divergences"
         )
 
+    def to_spec(self) -> spec_run.ChainProgress:
+        """The run-protocol form (``progress`` event ``chains``)."""
+        from mapi_spec.run import ChainProgress as SpecChainProgress
+
+        step_size = self.step_size
+        if step_size is not None and not (math.isfinite(step_size) and step_size >= 0):
+            step_size = None
+        return SpecChainProgress(
+            chain=self.chain,
+            draws_done=max(self.done, 0),
+            draws_total=max(self.total, 0),
+            tuning=self.tuning,
+            divergences=max(self.divergences, 0),
+            step_size=step_size,
+            num_steps=None if self.num_steps is None else max(self.num_steps, 0),
+        )
+
+
+class _ContextTracker:
+    """A :class:`~mapi_sdk.tracking.Tracker` over a ``FitContext``.
+
+    Forwards to the context's logging methods so every engine value is validated by
+    ``TrackingMixin`` (the context's own signatures differ from the protocol's).
+    """
+
+    __slots__ = ("_ctx",)
+
+    def __init__(self, ctx: FitContext) -> None:
+        self._ctx = ctx
+
+    def log_metrics(
+        self,
+        values: Mapping[str, float],
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+    ) -> None:
+        self._ctx.log_metrics(values, step=step, labels=labels)
+
+    def log_params(self, params: Mapping[str, ParamValue]) -> None:
+        self._ctx.log_params(params)
+
+    def set_tags(self, tags: Mapping[str, str]) -> None:
+        self._ctx.set_tags(tags)
+
+    def log_line(
+        self,
+        message: str,
+        *,
+        level: LogLevel = "info",
+        fields: Mapping[str, LogFieldValue] | None = None,
+    ) -> None:
+        self._ctx.log_line(message, level=level, fields=fields)
+
+    def chains(self, chains: Sequence[spec_run.ChainProgress]) -> None:
+        self._ctx.chains(chains)
+
+    def flush(self) -> None:
+        if self._ctx.tracker is not None:
+            self._ctx.tracker.flush()
+
 
 @dataclass(slots=True)
 class EngineHooks:
-    """Callbacks an engine run uses: progress, cancellation, logging and checkpoints."""
+    """Callbacks an engine run uses: progress, cancellation, logging, checkpoints and
+    tracking (chains and step metrics; ``tracker=None`` skips building them)."""
 
     progress: Callable[[float, str], None] | None = None
     cancel: CancelToken | None = None
@@ -188,7 +279,28 @@ class EngineHooks:
     sink: CheckpointSink | None = None
     key: str | None = None
     min_interval: float = _PROGRESS_EVERY_S
+    tracker: Tracker | None = None
     _last: float = field(default=float("-inf"), repr=False)
+    _chains_last: float = field(default=float("-inf"), repr=False)
+
+    @classmethod
+    def for_context(
+        cls,
+        ctx: FitContext,
+        *,
+        progress: Callable[[float, str], None] | None,
+        sink: CheckpointSink | None = None,
+        key: str | None = None,
+    ) -> EngineHooks:
+        """Hooks wired to a plugin's ``FitContext`` (its cancel token, log and tracker)."""
+        return cls(
+            progress=progress,
+            cancel=ctx.cancel,
+            log=ctx.log,
+            sink=sink,
+            key=key,
+            tracker=_ContextTracker(ctx) if ctx.tracking else None,
+        )
 
     def report(self, fraction: float, message: str, *, force: bool = False) -> None:
         """Forward progress, at most once per ``min_interval`` seconds unless forced."""
@@ -206,6 +318,29 @@ class EngineHooks:
     def check(self) -> None:
         if self.cancel is not None:
             self.cancel.check()
+
+    def metrics(
+        self, values: Mapping[str, float], *, step: int, labels: Mapping[str, str] | None = None
+    ) -> None:
+        """Log step metrics (no-op without a tracker)."""
+        if self.tracker is not None:
+            self.tracker.log_metrics(values, step=step, labels=labels)
+
+    def chains(self, chains: Sequence[ChainProgress]) -> None:
+        """Report every chain's progress (no-op without a tracker)."""
+        if self.tracker is not None:
+            self.tracker.chains([c.to_spec() for c in chains])
+
+    def chains_every(
+        self, build: Callable[[], Sequence[ChainProgress]], *, force: bool = False
+    ) -> None:
+        """:meth:`chains`, at most once per ``min_interval`` seconds unless forced."""
+        if self.tracker is None:
+            return
+        now = time.monotonic()
+        if force or now - self._chains_last >= self.min_interval:
+            self._chains_last = now
+            self.chains(build())
 
 
 @dataclass(slots=True)
@@ -271,6 +406,141 @@ class _Chains:
     completed: int = 0
 
 
+@dataclass(slots=True)
+class _LiveChains:
+    """Per-chain live state of the in-process PyMC sampler, for tracking only.
+
+    ``divergences`` counts tuning draws too (the step metric is cumulative over the run).
+    The step metrics go out for every ``every``-th draw and the last one, so a chain logs at
+    most :data:`MAX_HISTORY_POINTS` points per series (under the run's per-series budget).
+    """
+
+    hooks: EngineHooks
+    chains: int
+    total: int
+    tune: int
+    done: list[int]
+    divergences: list[int]
+    step_size: list[float | None]
+    num_steps: list[int | None]
+    every: int = 1
+
+    @classmethod
+    def start(cls, hooks: EngineHooks, plan: SamplerPlan) -> _LiveChains:
+        n = plan.chains
+        total = plan.tune + plan.draws
+        return cls(
+            hooks,
+            n,
+            total,
+            plan.tune,
+            [0] * n,
+            [0] * n,
+            [None] * n,
+            [None] * n,
+            every=max(1, math.ceil(total / MAX_HISTORY_POINTS)),
+        )
+
+    def draw(self, c: int, stats: Mapping[str, Any]) -> None:
+        """Record one draw of chain ``c`` (``stats``: the NUTS step stats)."""
+        self.done[c] += 1
+        if bool(stats.get("diverging", False)):
+            self.divergences[c] += 1
+        size = _finite(stats.get("step_size"))
+        steps = _stat(stats, "tree_size", "n_steps")
+        depth = _stat(stats, "depth", "tree_depth")
+        self.step_size[c] = size
+        self.num_steps[c] = int(steps) if steps is not None else None
+        if self.done[c] % self.every and self.done[c] != self.total:
+            self.hooks.chains_every(self.snapshot)
+            return
+        values: dict[str, float] = {"divergences": float(self.divergences[c])}
+        if size is not None:
+            values["step_size"] = size
+        if depth is not None:
+            values["tree_depth"] = depth
+        if steps is not None:
+            values["num_steps"] = steps
+        self.hooks.metrics(values, step=self.done[c], labels={"chain": str(c)})
+        self.hooks.chains_every(self.snapshot)
+
+    def chain(self, c: int) -> ChainProgress:
+        return ChainProgress(
+            c,
+            self.chains,
+            self.done[c],
+            self.total,
+            self.done[c] < self.tune,
+            self.divergences[c],
+            self.step_size[c],
+            self.num_steps[c],
+        )
+
+    def snapshot(self) -> list[ChainProgress]:
+        return [self.chain(c) for c in range(self.chains)]
+
+
+class SamplerPlan(Protocol):
+    """The part of a plan that :func:`pymc_draw_callback` reads (an :class:`EnginePlan` or a
+    library's own plan)."""
+
+    @property
+    def tune(self) -> int: ...
+    @property
+    def draws(self) -> int: ...
+    @property
+    def chains(self) -> int: ...
+
+
+def pymc_draw_callback(hooks: EngineHooks, plan: SamplerPlan) -> Callable[[Any, Any], None]:
+    """A ``pm.sample(callback=...)`` handler for PyMC's own NUTS when a library samples
+    outside :func:`run_engine` (``mmm.bayesian`` through mmm-framework).
+
+    It reports progress (the slowest chain), stops the sampler on a cancel request
+    (``RunCancelled`` raised in the callback) and, with a tracker, reports the chains and
+    the same step metrics as the ``pymc`` engine: ``step_size``, ``num_steps``,
+    ``tree_depth`` and cumulative ``divergences`` per chain, thinned as the engine does.
+    """
+    live = _LiveChains.start(hooks, plan)
+    total = max(live.total * plan.chains, 1)
+
+    def callback(trace: Any, draw: Any) -> None:
+        c = int(draw.chain)
+        if c >= plan.chains:
+            return
+        hooks.check()
+        stats = draw.stats[0] if isinstance(draw.stats, list | tuple) and draw.stats else {}
+        if hooks.tracker is not None:
+            live.draw(c, stats if isinstance(stats, Mapping) else {})
+            if min(live.done) >= live.total:  # the last draw: the final lanes always go out
+                hooks.chains_every(live.snapshot, force=True)
+        else:
+            live.done[c] += 1
+            if isinstance(stats, Mapping) and bool(stats.get("diverging", False)):
+                live.divergences[c] += 1
+        k = min(range(plan.chains), key=lambda j: live.done[j])
+        hooks.report(sum(live.done) / total, live.chain(k).message())
+
+    return callback
+
+
+def _stat(stats: Mapping[str, Any], *names: str) -> float | None:
+    """The first of ``names`` in a NUTS step's raw stats (``depth``/``tree_size`` there are
+    ``tree_depth``/``n_steps`` in ``sample_stats``)."""
+    for name in names:
+        if name in stats:
+            return _finite(stats[name])
+    return None
+
+
+def _finite(value: Any) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if math.isfinite(out) else None
+
+
 def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult:
     if not all(v.dtype.startswith("float") for v in model.value_vars) or not model.value_vars:
         return _sample_pymc_compound(model, plan, hooks)
@@ -295,8 +565,14 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
     names = [v.name for v in model.value_vars]
     chains = _resume(hooks, plan, names, step)
     resumed_from = chains.completed if chains is not None else 0
+    live: _LiveChains | None = None
+    if hooks.tracker is not None:
+        live = _LiveChains.start(hooks, plan)
+        if chains is not None:  # resumed: tuning and the saved draws are done
+            live.done = [plan.tune + resumed_from] * plan.chains
+            live.divergences = list(chains.divergences)
     if chains is None:
-        chains = _tune(model, plan, hooks, step, initial_points, names, seeds)
+        chains = _tune(model, plan, hooks, step, initial_points, names, seeds, live)
     total = plan.chains * (plan.tune + plan.draws)
     chunk = plan.checkpoint_every or plan.draws
     saved = 0
@@ -315,6 +591,8 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
                         hooks.check()
                     point, stats = step.step(point)
                     _record(chains, c, point, stats[0])
+                    if live is not None:
+                        live.draw(c, stats[0])
                     done = plan.chains * (plan.tune + chains.completed) + c * n + i + 1
                     hooks.report(
                         done / total,
@@ -341,6 +619,8 @@ def _sample_pymc(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engin
         if hooks.sink is not None and chains.completed:
             _save(hooks, plan, chains)
         raise
+    if live is not None:
+        hooks.chains_every(live.snapshot, force=True)
     hooks.report(1.0, f"sampled {plan.chains} chains x {plan.draws} draws", force=True)
     idata = _to_idata(model, step, chains, plan)
     if hooks.sink is not None and hooks.key is not None:
@@ -357,6 +637,7 @@ def _tune(
     initial_points: Any,
     names: list[str],
     seeds: list[np.random.SeedSequence],
+    live: _LiveChains | None = None,
 ) -> _Chains:
     initial_state = step.sampling_state
     chains = _Chains(
@@ -379,7 +660,9 @@ def _tune(
         for i in range(plan.tune):
             if i % 16 == 0:
                 hooks.check()
-            point, _ = step.step(point)
+            point, stats = step.step(point)
+            if live is not None:
+                live.draw(c, stats[0])
             hooks.report(
                 (c * plan.tune + i + 1) / total,
                 ChainProgress(c, plan.chains, i + 1, plan.tune, True).message(),
@@ -522,10 +805,19 @@ def _sample_pymc_compound(model: pm.Model, plan: EnginePlan, hooks: EngineHooks)
     """Models with discrete variables: plain ``pm.sample`` (compound steps, no segments)."""
     total = plan.chains * (plan.tune + plan.draws)
     counts = [0] * plan.chains
+    tuning = [bool(plan.tune)] * plan.chains
+
+    def snapshot() -> list[ChainProgress]:
+        return [
+            ChainProgress(c, plan.chains, counts[c], plan.tune + plan.draws, tuning[c])
+            for c in range(plan.chains)
+        ]
 
     def callback(trace: Any, draw: Any) -> None:
         counts[draw.chain] += 1
+        tuning[draw.chain] = bool(draw.tuning)
         hooks.check()
+        hooks.chains_every(snapshot)
         hooks.report(
             sum(counts) / total,
             ChainProgress(
@@ -553,6 +845,7 @@ def _sample_pymc_compound(model: pm.Model, plan: EnginePlan, hooks: EngineHooks)
             compute_convergence_checks=False,
             **kwargs,
         )
+    hooks.chains_every(snapshot, force=True)
     notes = ["the model has non-continuous variables: sampled without segments"]
     return EngineResult(idata, plan, notes=notes)
 
@@ -564,21 +857,11 @@ def _sample_nutpie(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Eng
     import nutpie
 
     latest: list[Any] = []
+    report = nutpie_progress(hooks)
 
     def on_progress(progress: list[Any]) -> None:
         latest[:] = list(progress)
-        total = sum(int(p.total_draws) for p in progress) or 1
-        done = sum(int(p.finished_draws) for p in progress)
-        lagging = min(progress, key=lambda p: int(p.finished_draws))
-        msg = ChainProgress(
-            progress.index(lagging),
-            len(progress),
-            int(lagging.finished_draws),
-            int(lagging.total_draws),
-            bool(lagging.tuning),
-            int(lagging.divergences),
-        ).message()
-        hooks.report(done / total, msg)
+        report(progress)
 
     notes: list[str] = []
     if hooks.sink is not None and hooks.key is not None:
@@ -638,6 +921,100 @@ def _sample_nutpie(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Eng
     keep = {k: trace[k] for k in ("posterior", "sample_stats") if k in trace.children}
     idata = xr.DataTree.from_dict({f"/{k}": v.to_dataset(inherit=False) for k, v in keep.items()})
     return EngineResult(idata, plan, checkpoints=saved, notes=notes)
+
+
+def nutpie_progress(hooks: EngineHooks) -> Callable[[list[Any]], None]:
+    """A handler for nutpie's ``progress_callback`` (a list of nutpie ``ChainProgress``).
+
+    Reports the slowest chain as the progress message and, with a tracker, every chain's
+    progress plus the ``step_size``/``num_steps``/``divergences`` step metrics of each chain
+    that finished draws since the last call. It runs on nutpie's sampler thread and never
+    raises (a failure is logged once).
+    """
+    last_done: dict[int, int] = {}
+    failed = False
+
+    def handle(progress: list[Any]) -> None:
+        nonlocal failed
+        if not progress:
+            return
+        try:
+            n = len(progress)
+            total = sum(int(p.total_draws) for p in progress) or 1
+            done = sum(int(p.finished_draws) for p in progress)
+            lagging = min(range(n), key=lambda c: int(progress[c].finished_draws))
+            if hooks.tracker is not None:
+                chains = [_nutpie_chain(c, n, p) for c, p in enumerate(progress)]
+                hooks.chains(chains)
+                for ch in chains:
+                    if ch.done > last_done.get(ch.chain, 0):
+                        last_done[ch.chain] = ch.done
+                        values = {"divergences": float(ch.divergences)}
+                        if ch.step_size is not None:
+                            values["step_size"] = ch.step_size
+                        if ch.num_steps is not None:
+                            values["num_steps"] = float(ch.num_steps)
+                        hooks.metrics(values, step=ch.done, labels={"chain": str(ch.chain)})
+                msg = chains[lagging].message()
+            else:
+                msg = _nutpie_chain(lagging, n, progress[lagging]).message()
+            hooks.report(done / total, msg)
+        except Exception as exc:  # never break nutpie's sampler thread
+            if not failed:
+                failed = True
+                _log.warning("nutpie progress handler failed: %s", exc, exc_info=True)
+
+    return handle
+
+
+def _nutpie_chain(c: int, n: int, p: Any) -> ChainProgress:
+    steps = getattr(p, "latest_num_steps", None)
+    return ChainProgress(
+        c,
+        n,
+        int(p.finished_draws),
+        int(p.total_draws),
+        bool(p.tuning),
+        int(p.divergences),
+        _finite(getattr(p, "step_size", None)),
+        int(steps) if steps is not None else None,
+    )
+
+
+@contextmanager
+def pymc_nutpie_progress(callback: Callable[[list[Any]], None]) -> Iterator[None]:
+    """Receive nutpie's per-chain progress when PyMC drives nutpie (``pm.sample(nuts_sampler=
+    "nutpie")``).
+
+    PyMC passes its own ``progress_callback`` to nutpie, so a caller cannot pass one. Inside
+    this block ``pymc.sampling.mcmc.NutpieProgressBarManager`` is replaced by a subclass whose
+    ``update`` first calls ``callback`` (exceptions are logged, never raised). The patch is
+    process-global: use it around one fit at a time. With a PyMC that has no such class the
+    block runs without live progress.
+    """
+    global _no_live_progress_logged
+    mcmc = importlib.import_module("pymc.sampling.mcmc")
+    base: Any = getattr(mcmc, "NutpieProgressBarManager", None)
+    if base is None:
+        if not _no_live_progress_logged:
+            _no_live_progress_logged = True
+            _log.info("live sampler progress is not available with this PyMC version")
+        yield
+        return
+
+    class _LiveProgress(base):
+        def update(self, chain_progresses: Any) -> None:
+            try:
+                callback(list(chain_progresses))
+            except Exception as exc:
+                _log.warning("nutpie progress callback failed: %s", exc, exc_info=True)
+            super().update(chain_progresses)
+
+    setattr(mcmc, "NutpieProgressBarManager", _LiveProgress)  # noqa: B010
+    try:
+        yield
+    finally:
+        setattr(mcmc, "NutpieProgressBarManager", base)  # noqa: B010
 
 
 def _finished(sampler: Any) -> bool:
@@ -717,11 +1094,20 @@ def _find_map(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineRe
 
 def _advi(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult:
     steps = plan.tune
+    every = max(1, math.ceil(steps / MAX_HISTORY_POINTS))
 
     def callback(approx: Any, losses: Any, i: int) -> None:
         if i % 50 == 0:
             hooks.check()
         hooks.report(i / max(steps, 1), f"ADVI step {i}/{steps}")
+        if (
+            hooks.tracker is not None
+            and losses is not None
+            and len(losses)
+            and (i % every == 0 or i == steps)
+            and (loss := _finite(losses[-1])) is not None
+        ):
+            hooks.metrics({"loss": loss}, step=i)
 
     with model, warnings.catch_warnings():
         warnings.simplefilter("ignore")

@@ -125,6 +125,30 @@ describe("followRunEvents", () => {
     expect(calls).toEqual([null]);
   });
 
+  it("hands v0.11 tracking frames to onTracking, never to onEvent, without moving the resume point", async () => {
+    const calls: (string | null)[] = [];
+    const summary = { key: "step_size", labels: { chain: "0" }, attempt: 1, count: 3, last: 0.12, last_step: 30, min: 0.12, max: 0.6, first_ts: "t", last_ts: "t" };
+    const responses = [
+      sse(frame("state", event(6), 6) + frame("tracking", { run_id: "run_1", series: [summary], params: true, tags: false }) + frame("tracking", { series: [] })),
+      sse(frame("end", run("succeeded"))),
+    ];
+    const fetchImpl = vi.fn(async (_u: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(new Headers(init?.headers).get("Last-Event-ID"));
+      return responses.shift()!;
+    });
+    const onEvent = vi.fn();
+    const onTracking = vi.fn();
+    await followRunEvents("run_1", { onSnapshot: vi.fn(), onEvent, onEnd: vi.fn(), onTracking }, {
+      signal: new AbortController().signal,
+      fetchImpl,
+      sleep: async () => undefined,
+    });
+    expect(onEvent.mock.calls.map((c) => (c[0] as RunEventView).id)).toEqual([6]);
+    expect(onTracking).toHaveBeenCalledTimes(1); // the malformed frame (no run_id) is dropped
+    expect(onTracking).toHaveBeenCalledWith({ run_id: "run_1", series: [summary], params: true, tags: false });
+    expect(calls).toEqual([null, "6"]);
+  });
+
   it("backs off on errors and gives up on 404", async () => {
     const delays: number[] = [];
     const responses = [new Response("x", { status: 502 }), new Response("x", { status: 502 }), new Response("nope", { status: 404 })];

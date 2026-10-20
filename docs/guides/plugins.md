@@ -157,6 +157,46 @@ does this. Follow these rules:
   and ESS, and add the diagnostics of your sampler. `sci.cmb_field` adds `CG_NOT_CONVERGED`.
 - Give each draw of a score its own generator, seeded from the seed of the score, the chain
   and the draw. Then declare `deterministic_given_seed=True`.
+- From v0.11, report the progress of each chain with `ctx.chains([...])` (a list of
+  `mapi_spec.run.ChainProgress`). Log the step metrics of your sampler with the label
+  `chain`, for example `ctx.log_metrics({"step_size": eps}, step=i, labels={"chain": str(c)})`.
+  Do this only when `ctx.tracking` is true.
+
+### Log metrics, params and tags <span class="mapi-badge">v0.11</span> { #tracking }
+
+`FitContext` and `ScoreContext` have logging methods. The run page shows the values, and the
+fit keeps the stepped metrics in the bundle group `metrics_history`. Thus `core.loss_curve`
+can draw them.
+
+```python
+def fit(self, data, ctx):
+    ctx.log_params({"solver": "lbfgs", "max_iter": 200})
+    for i in range(1, n_iter + 1):
+        loss = step()
+        if i % 10 == 0:
+            ctx.log_metric("loss", loss, step=i)
+    ctx.log_metric("rmse", rmse, labels={"split": "train"})   # a scalar: no step
+    ctx.set_tag("converged", "yes" if ok else "no")
+    if not ok:
+        ctx.log_line("the solver did not converge", level="warning", fields={"iterations": n_iter})
+```
+
+Follow these rules:
+
+- Metric keys match `^[a-z][a-z0-9_]{0,63}$`. Put qualifiers in labels: write `loss` with
+  `labels={"split": "val"}`, not `val/loss`.
+- A bad key, a bad label or a negative step raises `ValueError` at the call, also without a
+  run. The SDK ignores NaN and infinity.
+- A param does not change. A second, different value for the same key raises `ValueError`.
+- The methods are thread-safe. You can call them from the callback of a sampler.
+- Use `ctx.tracking` to skip metrics that take a long time to calculate.
+- The fit already logs the params of the spec (`model`, `fit.*`, `settings.*`). Do not log
+  them again.
+
+To see the values in a test, give the fit a recorder:
+`fit_spec(spec, data, hooks=FitHooks(tracker=MetricRecorder()))`. The recorder keeps the
+points, the params, the tags and the log lines (`mapi_sdk.MetricRecorder`). See
+[Track metrics, params and tags](tracking.md) for the full API.
 
 ### Data for a case study (`mapi-plugin-science`)
 

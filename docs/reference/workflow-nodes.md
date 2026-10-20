@@ -940,7 +940,7 @@ Fits a model with each combination of the settings that you list. It scores each
 Result fields (`nodes.<id>.<field>` in conditions): `best_settings` (object), `best_score` (number), `n_points` (integer), `nested` (boolean), `outer_scores` (array), `selected_per_fold` (array).
 
 ??? note "Expert detail"
-    Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often.
+    Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often. From v0.11, the search run of the node logs each grid point. The search run is the first of the node's child runs; the node's run is the refit of the winner. A param such as trial.3.adstock/l_max gives a setting of point 3. The scores are metrics with the point number as the step. The search run also gets a metric such as best_rmse and the tag grid.best_point. The Metrics and Params tabs of its run page show them.
 
 ### `search.sarima_order` — Find seasonal orders
 
@@ -1030,6 +1030,9 @@ Fits a model again on each fold of a split plan and measures its forecast error 
 | `join` | `exact` \\| `inner` \\| `outer` | `"exact"` | Tree datasets: how the coords of the selected nodes align (data.join) |
 
 Result fields (`nodes.<id>.<field>` in conditions): `metrics` (object), `by_horizon` (object), `n_folds` (integer).
+
+??? note "Expert detail"
+    From v0.11, the node run logs the metrics of each fold as scalar metrics with the label fold. The Metrics tab of the run page shows them.
 
 ### `model.fit` — Fit a model
 

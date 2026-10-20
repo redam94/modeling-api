@@ -5,7 +5,9 @@ full :class:`~mapi_spec.api.Run`, no id) first on every connection, then the per
 events (``id:`` = :attr:`RunEventView.id`) after ``Last-Event-ID``, then live events, and
 finally ``end`` (the final run) before closing. ``: keepalive`` comments are heartbeats.
 ``progress`` and ``log`` frames are live and unpersisted: they carry no ``id:`` and are
-never replayed after a reconnect (:class:`RunLiveFrame`).
+never replayed after a reconnect (:class:`RunLiveFrame`). ``tracking`` frames (v0.11, no id)
+tell which metric series changed and whether params or tags changed
+(:class:`RunTrackingFrame`).
 
 ``GET /v1/workflow-runs/{run_id}/events`` follows the same pattern for workflow runs
 (v0.5): ``snapshot`` (the :class:`~mapi_spec.workflow.WorkflowRun` with every node), one
@@ -20,7 +22,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final
 
-from mapi_spec.api import Id, Run, RunEventView, SseEventName
+from mapi_spec.api import Id, Run, RunEventView, SseEventName, TrackingFrame
 from mapi_spec.executor import RunEventType
 from mapi_spec.workflow import WorkflowEvent, WorkflowEventType, WorkflowRun, WorkflowRunStatus
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError
@@ -33,6 +35,7 @@ __all__ = [
     "RunLiveFrame",
     "RunSnapshot",
     "RunStreamItem",
+    "RunTrackingFrame",
     "SseDecoder",
     "SseEvent",
     "WorkflowEnd",
@@ -170,13 +173,21 @@ class RunLiveFrame:
 
 
 @dataclass(frozen=True, slots=True)
+class RunTrackingFrame:
+    """A live ``tracking`` frame (v0.11, no event id): the metric series that changed since
+    the last frame (their summaries) and whether params or tags changed (fetch them again)."""
+
+    frame: TrackingFrame
+
+
+@dataclass(frozen=True, slots=True)
 class RunEnd:
     """The run is terminal; the server closes the stream after this frame."""
 
     run: Run
 
 
-RunStreamItem = RunSnapshot | RunEventFrame | RunLiveFrame | RunEnd
+RunStreamItem = RunSnapshot | RunEventFrame | RunLiveFrame | RunTrackingFrame | RunEnd
 
 
 def to_stream_item(frame: SseEvent) -> RunStreamItem | None:
@@ -190,6 +201,8 @@ def to_stream_item(frame: SseEvent) -> RunStreamItem | None:
             return RunSnapshot(Run.model_validate_json(frame.data))
         if name is SseEventName.END:
             return RunEnd(Run.model_validate_json(frame.data))
+        if name is SseEventName.TRACKING:
+            return RunTrackingFrame(TrackingFrame.model_validate_json(frame.data))
         if name in LIVE_FRAMES and frame.id is None:
             return RunLiveFrame(name, LiveEventView.model_validate_json(frame.data))
         return RunEventFrame(name, RunEventView.model_validate_json(frame.data))

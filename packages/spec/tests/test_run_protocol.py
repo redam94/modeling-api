@@ -30,8 +30,12 @@ from mapi_spec.run import (
     FailureClass,
     InvalidEvent,
     LogPayload,
+    MetricBatchPayload,
     MetricPayload,
+    MetricSeriesBatch,
     OutputManifest,
+    ParamItem,
+    ParamsPayload,
     ProgressPayload,
     RunEvent,
     RunEventType,
@@ -42,6 +46,8 @@ from mapi_spec.run import (
     RunnerPhase,
     RunSpec,
     StatePayload,
+    TagItem,
+    TagsPayload,
     WarningPayload,
     canonical_bytes,
     catalog_digest,
@@ -220,6 +226,12 @@ PAYLOADS = [
     ErrorPayload(
         code=ErrorCode.USER_CODE_ERROR, failure_class=FailureClass.USER, message="model failed"
     ),
+    MetricBatchPayload(
+        t0=datetime(2026, 10, 15, tzinfo=UTC),
+        series=[MetricSeriesBatch(key="loss", steps=[1, 2], values=[0.5, 0.4], ts_ms=[0, 10])],
+    ),
+    ParamsPayload(params=[ParamItem(key="fit.draws", value=1000)]),
+    TagsPayload(tags=[TagItem(key="stage", value="candidate")]),
 ]
 
 

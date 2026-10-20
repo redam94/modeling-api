@@ -117,6 +117,14 @@ from mapi_sdk.summarise import (
     thin_index,
     wrap_signed,
 )
+from mapi_sdk.tracking import (
+    METRICS_HISTORY,
+    MetricRecorder,
+    TeeTracker,
+    Tracker,
+    spec_params,
+    with_labels,
+)
 from mapi_sdk.tree import (
     infer_tree_schema,
     select_nodes,
@@ -147,12 +155,17 @@ class FitHooks:
 
     ``checkpoint_sink`` is handed to the model's :class:`~mapi_sdk.models.FitContext` so
     engines with segmented sampling can checkpoint (and resume) long fits.
+
+    ``tracker`` (v0.11) receives the metrics, params, tags and log lines the model logs
+    (``FitContext.tracker`` / ``ScoreContext.tracker``) plus the spec params of a fit; the
+    runner attaches one that streams them as run events.
     """
 
     log: Callable[[str], None] | None = None
     on_progress: Callable[[float, str], None] | None = None
     cancel: CancelToken | None = None
     checkpoint_sink: Any | None = None
+    tracker: Tracker | None = None
 
     def progress(self, fraction: float, message: str) -> None:
         if self.on_progress is not None:
@@ -468,6 +481,8 @@ class _FitEnv:
     """M4: the tree dataset under its dataset names (``None`` for a plain dataset)."""
     bound_tree: xr.DataTree | None = None
     """M4: the bound tree handed to a tree-input model (``None`` otherwise)."""
+    record_metrics: bool = True
+    """v0.11: record what the model logs into the bundle's ``metrics_history`` group."""
 
 
 def fit_spec(
@@ -482,6 +497,7 @@ def fit_spec(
     hash_data: bool = True,
     tree_schema: TreeSchema | None = None,
     tree: xr.DataTree | None = None,
+    record_metrics: bool = True,
 ) -> Bundle:
     """Fit ``spec`` on ``data`` and return the production :class:`~mapi_sdk.bundle.Bundle`.
 
@@ -496,6 +512,11 @@ def fit_spec(
     ``tree`` (dataset names) stands in for it when ``data`` was already selected from a tree
     (a refit on modified flat data). With a ``data.split`` the evaluation fit and the
     holdout score see only their part of the tree.
+
+    Run tracking (v0.11): the spec params (:func:`mapi_sdk.tracking.spec_params`) go to
+    ``hooks.tracker`` once; what the model logs goes to ``hooks.tracker`` (an evaluation
+    fit's metrics with the label ``fit=evaluation``) and, with ``record_metrics``, into each
+    bundle's ``metrics_history`` model group.
     """
     spec = load_model_spec(spec) if isinstance(spec, str) else spec
     registry = registry or default_registry()
@@ -538,10 +559,13 @@ def fit_spec(
         bound_tree=_bound_tree(
             given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
         ),
+        record_metrics=record_metrics,
     )
     # the model's own settings checks (cross-field rules the JSON schema cannot state) refuse
     # the spec before any data is transformed, split or fitted
     plugin.parse_settings(env.settings)
+    if hooks.tracker is not None:
+        hooks.tracker.log_params(spec_params(spec, env.settings, manifest))
     raw = BindingMap(resolved.binding).apply(data)
 
     split = spec.data.split
@@ -694,6 +718,10 @@ def _fit_from(
     manifest = type(env.plugin).manifest()
     s = env.plugin.parse_settings(env.settings)
     model_coords = coords.get(rs.model_stage, xr.Dataset())
+    outer = hooks.tracker
+    if role == "evaluation" and env.spec.model.fit.mode is FitMode.EVALUATE_THEN_REFIT:
+        outer = with_labels(outer, {"fit": "evaluation"}, param_prefix="evaluation.")
+    recorder = MetricRecorder() if env.record_metrics else None
     fctx = FitContext(
         seed=env.seed,
         schema=model_schema,
@@ -707,6 +735,7 @@ def _fit_from(
         calibration=_calibration_for(env.spec, manifest),
         to_original=_to_original(env.pipeline, states, env.side_tables),
         tree=env.bound_tree,
+        tracker=TeeTracker(recorder, outer) if recorder is not None else outer,
     )
     try:
         out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
@@ -728,6 +757,10 @@ def _fit_from(
     postprocess = getattr(env.plugin, "postprocess", None)
     if callable(postprocess):
         out = postprocess(out, model_ds, s)
+    if recorder is not None and METRICS_HISTORY not in out.groups:
+        history = recorder.history()
+        if history is not None:
+            out.groups[METRICS_HISTORY] = history
     assert_no_pickle(out.native)
     fitted = Fitted(
         manifest=manifest,
@@ -977,6 +1010,7 @@ def _fit_derived(
         cancel=env.hooks.cancel,
         to_original=_to_original(env.pipeline, states, env.side_tables),
         tree=env.bound_tree,
+        tracker=env.hooks.tracker,
     )
     model_id = fitted.manifest.id
     out: dict[str, xr.Dataset] = {}
@@ -1167,6 +1201,7 @@ def _residuals(env: _FitEnv, bundle: Bundle, model_ds: xr.Dataset) -> dict[str, 
         seed=env.seed,
         schema=rs.model.input_schema,
         tree=env.bound_tree,
+        tracker=env.hooks.tracker,
     )
     tree = env.plugin.score(bundle.model, canon, req, ctx)
     pred = plan.restore(_predictions(tree))
@@ -1773,6 +1808,7 @@ def score_bundle(
             log=hooks.log,
             cancel=hooks.cancel,
             tree=_bound_tree(payload_tree, binding, wants_tree),
+            tracker=hooks.tracker,
         )
         actuals: ForecastActuals | None = None
         if forecast:

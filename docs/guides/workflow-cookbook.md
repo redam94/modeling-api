@@ -1077,6 +1077,40 @@ A run on a laptop checked the mock lens of `sci.strong_lens` (24 × 24 pixels, 2
 draws for the test). 92% of the pixels were in the 90% ranges, the PIT distance was 0.03
 (limit 0.06) and `ok` was true.
 
+## Read a grid search in the run page <span class="mapi-badge">v0.11</span> { #grid-search-tracking }
+
+A `search.grid` node logs each grid point in its search run. Thus you can see the scores of
+the points while the search runs, and compare them after it ends.
+
+A sandboxed `search.grid` node has two runs. The search run comes first. It does the
+backtest of each grid point and keeps the data in the table below. Then the node fits the
+winner again on all the data in a second run, the refit run. After the search, the `run_id`
+of the node is the refit run. The refit run does not have the grid data. The search run is
+always the first item in the `child_runs` of the node.
+
+| What | Name in the run |
+|---|---|
+| The settings of point `i` | The params `trial.<i>.<pointer>`, for example `trial.3.adstock/l_max = 4` |
+| The search | The params `grid.metric`, `grid.direction`, `grid.points` and `grid.nested` |
+| The scores of point `i` | The metrics `mae`, `rmse`, `mape`, `smape`, `mase` and `coverage_90` (when present), with step `i` |
+| Nested search | The inner scores have the labels `stage=inner` and `fold=<j>`. The outer scores have `stage=outer` and step `j`. |
+| The winner | The metric `best_<metric>` (for example `best_rmse`) and the tag `grid.best_point` |
+| A point that failed | A `warning` log line with the field `point` |
+
+On the workflow run page, open the node. Then open the first run in **Runs** (the search
+run). The **Metrics** tab shows the score of each point as a curve over the point number.
+The **Params** tab lists the `trial.*` params. Type `trial.3.` in the filter to see the
+settings of one point. With the CLI:
+
+```bash
+mapi workflows node "$RUN" grid               # "child runs": the search run comes first
+SEARCH_RUN=$(mapi --json workflows node "$RUN" grid | jq -r '.child_runs[0]')
+mapi runs metrics "$SEARCH_RUN" --key rmse    # the score of each grid point
+mapi runs params "$SEARCH_RUN"                # the trial.* params
+```
+
+A `model.backtest` node logs the metrics of each fold as scalars with the label `fold`.
+
 ## Make your own
 
 1. Start from the recipe that is nearest to your analysis. Use

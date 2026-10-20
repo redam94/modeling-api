@@ -19,6 +19,7 @@ sequenceDiagram
     S->>W: spawn (scrubbed env, uid 10001), start message over a socketpair
     W->>G: range-read inputs (signed GET)
     W-->>S: state / progress / diagnostic / metric / checkpoint messages
+    W-->>S: metrics / params / tags / user_log messages (v0.11)
     W-->>S: stdout + stderr (pipes, captured as log lines)
     S-->>X: stdout: {"mapi_event": …} (HMAC + seq per line)
     S->>G: POST outputs (policy), PUT manifest.json
@@ -82,6 +83,13 @@ only about the image. They never contain secrets:
   in `untrusted_text`.
 - **The supervisor coalesces progress.** It sends a maximum of one `progress` event in each
   `limits.progress_interval_s` (2 s). The newest value wins.
+- **Tracking data has budgets (v0.11).** The supervisor counts each `metrics`, `params`,
+  `tags` and `user_log` message against `limits.tracking` (`TrackingLimits`). It does not keep
+  points or items that are more than a budget, and it counts them. At the end of the run, it
+  sends one `TRACKING_BUDGET` warning. More than `tracking_bytes` (64 MiB) of tracking
+  messages is `SANDBOX_VIOLATION` (tracking flood). The supervisor cleans the strings of each
+  message. It divides each payload with `split_for_events`, thus no event is larger than
+  `limits.max_event_bytes`. Tracking messages do not go through the progress coalescer.
 - **The supervisor uploads outputs only from regular files.** It opens each file with
   `O_NOFOLLOW`, relative to directories that it opened before. A symlink, FIFO or device in
   the outputs tree is a violation. The reserved names `manifest.json` and `checkpoints/` are
@@ -94,6 +102,27 @@ only about the image. They never contain secrets:
 - **The supervisor enforces the scratch budget.** It measures the scratch directory each 2 s.
   The worker refuses all inputs that are larger than the remaining space. If the run uses
   more than `limits.scratch_bytes`, the result is `RESOURCE_EXHAUSTED`.
+
+## Tracking in the worker <span class="mapi-badge">v0.11</span> { #tracking-in-the-worker }
+
+The worker gives a tracker to the model code (`WorkerContext.tracker`, a `WorkerTracker`).
+The harness puts it on `FitContext.tracker`, `ScoreContext.tracker` and, for workflow node
+runs, on `NodeContext.tracker`. The tracker has these properties:
+
+- It is thread-safe. A sampler callback on a different thread can log points.
+- It collects points for each series. A background thread sends them each
+  `flush_interval_s` (1 s). When 1000 points wait, the tracker sends them immediately.
+- It does the same budget checks as the supervisor, thus a correct worker never gets to the
+  limits of the supervisor.
+- It sends params and tags with the next flush. It sends a `user` log line immediately.
+- `chains()` keeps the newest per-chain progress. The next `progress` message has it in
+  `chains`.
+
+Before the worker sends its `result` or `error` message, it closes the tracker. Thus the last
+points are sent. When the tracker did not keep some points, it sends one `TRACKING_BUDGET`
+warning. The end-of-run metrics (`metric` events, for example the holdout `rmse`) are also
+kept as scalar series. The guide [Track metrics, params and tags](../guides/tracking.md) shows
+the API that model code uses.
 
 ## SIGTERM, the deadline and checkpoints
 

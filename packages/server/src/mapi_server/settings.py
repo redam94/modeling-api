@@ -411,6 +411,13 @@ class Settings(BaseSettings):
     housekeeping_interval_s: float = Field(
         300.0, gt=0, description="Sweep of expired upload intents and other expiring rows"
     )
+    tracking_retention_days: int | None = Field(
+        None,
+        ge=1,
+        le=36500,
+        description="Days after a run finishes that its metric points and user log lines are "
+        "kept (unset: kept with the run). Summaries, params, tags and notes are always kept",
+    )
 
     # ---------------------------------------------------------------------- catalog / signing
     catalog_path: Path | None = Field(

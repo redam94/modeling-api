@@ -48,6 +48,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 from mapi_sdk.actuals import ForecastActuals
 from mapi_sdk.errors import BundleError
 from mapi_sdk.steps import CancelToken
+from mapi_sdk.tracking import Tracker, TrackingMixin
 
 __all__ = [
     "PREDICTIONS",
@@ -77,7 +78,7 @@ class ModelSettings(BaseModel):
 
 
 @dataclass(slots=True)
-class FitContext:
+class FitContext(TrackingMixin):
     """Everything a plugin's ``fit`` may use besides data, settings and fit config.
 
     ``schema`` is the model's resolved input schema (its template); ``stage_schema`` is the
@@ -98,6 +99,11 @@ class FitContext:
     (:meth:`~mapi_sdk.binding.BindingMap.apply_tree`), for models whose capabilities declare
     ``input="tree"`` and were fitted from a tree dataset; ``None`` otherwise. ``ds`` is still
     the flat pipeline output (the nodes ``data.nodes`` selects, preprocessed).
+
+    ``tracker`` (v0.11) receives what the plugin logs with the
+    :class:`~mapi_sdk.tracking.TrackingMixin` methods (``log_metric``, ``log_params``,
+    ``set_tag``, ``log_line``, ``chains``); the harness attaches one that records the
+    bundle's ``metrics_history`` group and forwards to the runner. ``None``: validate only.
     """
 
     seed: int = 0
@@ -113,7 +119,9 @@ class FitContext:
     calibration: Calibration | None = None
     to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
     tree: xr.DataTree | None = None
+    tracker: Tracker | None = None
     rng: np.random.Generator = field(init=False)
+    _logged_params: dict[str, Any] = field(init=False, default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         self.rng = np.random.default_rng(self.seed)
@@ -209,7 +217,7 @@ class Fitted:
 
 
 @dataclass(slots=True)
-class ScoreContext:
+class ScoreContext(TrackingMixin):
     """Everything a plugin's ``score`` may use besides the fitted model and data.
 
     The dataset handed to ``score`` is canonicalised: fixed and new-level dims are in fit
@@ -225,6 +233,8 @@ class ScoreContext:
     ``tree`` (M4) is the bound tree dataset the payload came from, for models whose
     capabilities declare ``input="tree"`` (as :attr:`FitContext.tree`); ``None`` when the
     payload is a flat dataset or the model reads datasets only.
+
+    ``tracker`` (v0.11): as :attr:`FitContext.tracker` (score runs log through it too).
     """
 
     mode: ScoreMode = "predict"
@@ -238,7 +248,9 @@ class ScoreContext:
     cancel: CancelToken | None = None
     to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
     tree: xr.DataTree | None = None
+    tracker: Tracker | None = None
     rng: np.random.Generator = field(init=False)
+    _logged_params: dict[str, Any] = field(init=False, default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         self.rng = np.random.default_rng(self.seed)
