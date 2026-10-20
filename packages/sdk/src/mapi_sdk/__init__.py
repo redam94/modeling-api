@@ -10,6 +10,8 @@ entry points:
 * :class:`Bundle` - fitted artifacts; :mod:`mapi_sdk.wire` - payload formats;
 * :class:`Registry` / :func:`default_registry` - entry-point discovery;
 * :class:`InprocExecutor` - the in-process executor;
+* :mod:`mapi_sdk.tracking` - run tracking (v0.11): :class:`Tracker`, :class:`MetricRecorder`,
+  :class:`TeeTracker`, :func:`with_labels`;
 * :mod:`mapi_sdk.tree` - tree datasets (M4): :func:`select_nodes`, :func:`infer_tree_schema`,
   :func:`validate_tree`;
 * :mod:`mapi_sdk.testing` - the contract kit for plugin authors.
@@ -65,6 +67,14 @@ if TYPE_CHECKING:
     from mapi_sdk.split import SplitResult, split_dataset
     from mapi_sdk.steps import CancelToken, Step, StepContext, StepSettings, StepState, states_equal
     from mapi_sdk.summarise import aggregate, hdi, thin_index
+    from mapi_sdk.tracking import (
+        METRICS_HISTORY,
+        MetricRecorder,
+        TeeTracker,
+        Tracker,
+        TrackingMixin,
+        with_labels,
+    )
     from mapi_sdk.tree import infer_tree_schema, select_nodes, validate_tree
     from mapi_sdk.wire import (
         read_datatree_zip,
@@ -91,6 +101,8 @@ _LAZY: dict[str, str] = {
     "FitOutput": "mapi_sdk.models",
     "Fitted": "mapi_sdk.models",
     "InprocExecutor": "mapi_sdk.executors",
+    "METRICS_HISTORY": "mapi_sdk.tracking",
+    "MetricRecorder": "mapi_sdk.tracking",
     "MetricsReport": "mapi_sdk.bundle",
     "ModelPlugin": "mapi_sdk.models",
     "ModelSettings": "mapi_sdk.models",
@@ -109,6 +121,9 @@ _LAZY: dict[str, str] = {
     "StepError": "mapi_sdk.errors",
     "StepSettings": "mapi_sdk.steps",
     "StepState": "mapi_sdk.steps",
+    "TeeTracker": "mapi_sdk.tracking",
+    "Tracker": "mapi_sdk.tracking",
+    "TrackingMixin": "mapi_sdk.tracking",
     "WireFormatError": "mapi_sdk.errors",
     "aggregate": "mapi_sdk.summarise",
     "build_manifest": "mapi_sdk.models",
@@ -137,6 +152,7 @@ _LAZY: dict[str, str] = {
     "unstack_rows": "mapi_sdk.wire",
     "validate_dataset": "mapi_sdk.schema",
     "validate_tree": "mapi_sdk.tree",
+    "with_labels": "mapi_sdk.tracking",
     "write_datatree_zip": "mapi_sdk.wire",
     "write_zarr_zip": "mapi_sdk.wire",
 }
@@ -161,6 +177,7 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "METRICS_HISTORY",
     "PREDICTIONS",
     "BindingMap",
     "Bundle",
@@ -177,6 +194,7 @@ __all__ = [
     "Fitted",
     "ForecastActuals",
     "InprocExecutor",
+    "MetricRecorder",
     "MetricsReport",
     "ModelPlugin",
     "ModelSettings",
@@ -194,6 +212,9 @@ __all__ = [
     "StepError",
     "StepSettings",
     "StepState",
+    "TeeTracker",
+    "Tracker",
+    "TrackingMixin",
     "WireFormatError",
     "__version__",
     "aggregate",
@@ -223,6 +244,7 @@ __all__ = [
     "unstack_rows",
     "validate_dataset",
     "validate_tree",
+    "with_labels",
     "write_datatree_zip",
     "write_zarr_zip",
 ]

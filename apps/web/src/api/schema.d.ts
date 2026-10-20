@@ -1911,7 +1911,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Runs */
+        /**
+         * List Runs
+         * @description Runs of the project, newest first by default.
+         *
+         *     ``name`` is a case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
+         *     (the run has the tag) or ``key:value``; ``filter`` (repeatable, at most 8) compares a
+         *     metric series summary, a param, a tag or the name (``metric.rmse < 0.5``); ``order_by``
+         *     sorts on one ref (``-metric.rmse``; runs without the value sort last); ``column``
+         *     (repeatable, at most 16) returns those values in ``Run.columns``.
+         */
         get: operations["list_runs"];
         put?: never;
         /** Create Run */
@@ -1936,7 +1945,12 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Run
+         * @description Merge patch: a field left out is unchanged, ``null`` clears the name or the note, and
+         *     a tag set to ``null`` is deleted. The note text is never written to the audit log.
+         */
+        patch: operations["update_run"];
         trace?: never;
     };
     "/v1/runs/{run_id}/events": {
@@ -1968,11 +1982,90 @@ export interface paths {
         };
         /**
          * Run Logs
-         * @description Captured lines, oldest first. ``line`` is untrusted text: render it as text only.
+         * @description Captured and user lines, oldest first. ``line`` and ``fields`` are untrusted text:
+         *     render them as text only. ``level`` is the minimum level (``debug < info < warning <
+         *     error``); lines without a level count as ``info``.
+         *
+         *     ``user`` lines come back only with ``stream=user`` or ``include_user=true``: a client
+         *     older than v0.11 knows only the streams ``stdout``, ``stderr`` and ``system``.
          */
         get: operations["run_logs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Metrics
+         * @description The run's metric series, ordered by key and labels. Without ``attempt`` each series is
+         *     summarised for the newest attempt that wrote it; with it, for that attempt only.
+         */
+        get: operations["list_run_metrics"];
+        put?: never;
+        /**
+         * Log Run Metrics
+         * @description Log metric points (for example business KPIs measured after the fit) into the run's
+         *     current attempt. A stepped point already stored is kept (``duplicates``); a scalar point
+         *     replaces an older one.
+         */
+        post: operations["log_run_metrics"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/metrics/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Metric History
+         * @description Every series of ``key`` (at most 64, by labels), downsampled to ``max_points`` per
+         *     series (LTTB over step and value; the first and the last point are always kept).
+         *     ``label=k:v`` (repeatable) keeps the series with that label value.
+         */
+        get: operations["get_metric_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/params": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Params
+         * @description The run's params, ordered by key. ``value`` is untrusted text: render it as text.
+         */
+        get: operations["list_run_params"];
+        put?: never;
+        /**
+         * Log Run Params
+         * @description Log params. A param is write-once: logging the stored value again is ``unchanged``;
+         *     a different value refuses the whole write (409 ``CONFLICT``, nothing is written).
+         */
+        post: operations["log_run_params"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3686,7 +3779,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -4265,6 +4358,16 @@ export interface components {
             draws_done: number;
             /** Draws Total */
             draws_total: number;
+            /**
+             * Num Steps
+             * @description Leapfrog steps of the latest draw (v0.11)
+             */
+            num_steps?: number | null;
+            /**
+             * Step Size
+             * @description Current step size (v0.11)
+             */
+            step_size?: number | null;
             /**
              * Tuning
              * @default false
@@ -7203,6 +7306,7 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "explore",
+         *         "name": "weekly sales, adstock 4",
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -7211,6 +7315,10 @@ export interface components {
          *         "spec_revision": 2,
          *         "started_at": "2026-10-15T09:30:05Z",
          *         "state": "succeeded",
+         *         "tags": {
+         *           "stage": "candidate",
+         *           "team": "growth"
+         *         },
          *         "tenant_id": "default",
          *         "timeout": "45m",
          *         "updated_at": "2026-10-15T09:31:00Z"
@@ -9481,10 +9589,34 @@ export interface components {
          *       "stream": "stderr",
          *       "ts": "2026-10-15T09:30:00Z"
          *     }
+         * @example {
+         *       "attempt": 1,
+         *       "fields": {
+         *         "point": 3
+         *       },
+         *       "level": "warning",
+         *       "line": "grid point 3 failed: the model did not converge",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "seq": 121,
+         *       "stream": "user",
+         *       "ts": "2026-10-15T09:30:00Z"
+         *     }
          */
         LogLine: {
             /** Attempt */
             attempt: number;
+            /**
+             * Fields
+             * @description Structured fields of a 'user' line (v0.11)
+             */
+            fields?: {
+                [key: string]: boolean | number | string | null;
+            } | null;
+            /**
+             * Level
+             * @description Only on stream 'user' (v0.11)
+             */
+            level?: ("debug" | "info" | "warning" | "error") | null;
             /** Line */
             line: string;
             /**
@@ -9498,7 +9630,7 @@ export interface components {
              * Stream
              * @enum {string}
              */
-            stream: "stdout" | "stderr" | "system";
+            stream: "stdout" | "stderr" | "system" | "user";
             /**
              * Truncated
              * @default false
@@ -9513,15 +9645,30 @@ export interface components {
         /**
          * LogPayload
          * @description ``log``: one captured worker output line (ANSI/control sequences already stripped).
+         *
+         *     Stream ``user`` (v0.11) is a structured line the model code wrote through the tracking
+         *     API; only those lines carry a ``level`` and ``fields``.
          */
         LogPayload: {
+            /**
+             * Fields
+             * @default null
+             */
+            fields?: {
+                [key: string]: boolean | number | string | null;
+            } | null;
+            /**
+             * Level
+             * @default null
+             */
+            level?: ("debug" | "info" | "warning" | "error") | null;
             /** Line */
             line: string;
             /**
              * Stream
              * @enum {string}
              */
-            stream: "stdout" | "stderr" | "system";
+            stream: "stdout" | "stderr" | "system" | "user";
             /**
              * Truncated
              * @default false
@@ -9869,6 +10016,107 @@ export interface components {
             time?: string;
         };
         /**
+         * MetricHistory
+         * @description ``GET /v1/runs/{run_id}/metrics/{key}``: every series of one metric key.
+         * @example {
+         *       "key": "step_size",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "series": [
+         *         {
+         *           "attempt": 1,
+         *           "count": 3,
+         *           "downsampled": false,
+         *           "labels": {
+         *             "chain": "0"
+         *           },
+         *           "steps": [
+         *             1,
+         *             2,
+         *             3
+         *           ],
+         *           "ts": [
+         *             "2026-10-15T09:30:00Z",
+         *             "2026-10-15T09:30:00Z",
+         *             "2026-10-15T09:30:00Z"
+         *           ],
+         *           "values": [
+         *             0.9,
+         *             0.6,
+         *             0.45
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        MetricHistory: {
+            /** Key */
+            key: string;
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Series */
+            series?: components["schemas"]["MetricHistorySeries"][];
+            /**
+             * Truncated
+             * @description More series exist than were returned
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * MetricHistorySeries
+         * @description The points of one series, in step order (downsampled to ``max_points`` with LTTB).
+         * @example {
+         *       "attempt": 1,
+         *       "count": 3,
+         *       "downsampled": false,
+         *       "labels": {
+         *         "chain": "0"
+         *       },
+         *       "steps": [
+         *         1,
+         *         2,
+         *         3
+         *       ],
+         *       "ts": [
+         *         "2026-10-15T09:30:00Z",
+         *         "2026-10-15T09:30:00Z",
+         *         "2026-10-15T09:30:00Z"
+         *       ],
+         *       "values": [
+         *         0.9,
+         *         0.6,
+         *         0.45
+         *       ]
+         *     }
+         */
+        MetricHistorySeries: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Count
+             * @description Stored points (before downsampling)
+             */
+            count: number;
+            /**
+             * Downsampled
+             * @default false
+             */
+            downsampled?: boolean;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Steps */
+            steps: (number | null)[];
+            /** Ts */
+            ts: string[];
+            /** Values */
+            values: number[];
+        };
+        /**
          * MetricPayload
          * @description ``metric``: a scalar metric (holdout error, elpd, ...).
          */
@@ -9886,6 +10134,141 @@ export interface components {
             step?: number | null;
             /** Value */
             value: number;
+        };
+        /**
+         * MetricPointIn
+         * @description One metric point written through the API (``step`` null = a scalar, newest wins).
+         * @example {
+         *       "key": "revenue_lift",
+         *       "labels": {
+         *         "region": "north"
+         *       },
+         *       "value": 0.042
+         *     }
+         * @example {
+         *       "key": "loss",
+         *       "step": 400,
+         *       "value": 1.23
+         *     }
+         */
+        MetricPointIn: {
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Step */
+            step?: number | null;
+            /**
+             * Ts
+             * @description Defaults to the time of the request
+             */
+            ts?: string | null;
+            /** Value */
+            value: number;
+        };
+        /**
+         * MetricSeries
+         * @description Summary of one metric series (key + labels) of a run; the newest attempt that logged it.
+         * @example {
+         *       "attempt": 1,
+         *       "count": 1400,
+         *       "first_ts": "2026-10-15T09:30:00Z",
+         *       "key": "step_size",
+         *       "labels": {
+         *         "chain": "0"
+         *       },
+         *       "last": 0.31,
+         *       "last_step": 1400,
+         *       "last_ts": "2026-10-15T09:31:00Z",
+         *       "max": 1.2,
+         *       "min": 0.02
+         *     }
+         * @example {
+         *       "attempt": 1,
+         *       "count": 1,
+         *       "first_ts": "2026-10-15T09:30:00Z",
+         *       "key": "rmse",
+         *       "last": 12.7,
+         *       "last_ts": "2026-10-15T09:30:00Z",
+         *       "max": 12.7,
+         *       "min": 12.7
+         *     }
+         */
+        MetricSeries: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Count
+             * @description Stored points
+             */
+            count: number;
+            /**
+             * First Ts
+             * Format: date-time
+             */
+            first_ts: string;
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Last
+             * @description Value of the newest point (by time, then step)
+             */
+            last: number;
+            /**
+             * Last Step
+             * @description Step of the newest point; null for a scalar
+             */
+            last_step?: number | null;
+            /**
+             * Last Ts
+             * Format: date-time
+             */
+            last_ts: string;
+            /** Max */
+            max: number;
+            /** Min */
+            min: number;
+        };
+        /**
+         * MetricsWrite
+         * @description ``POST /v1/runs/{run_id}/metrics``: log metric points to a run (any state).
+         * @example {
+         *       "metrics": [
+         *         {
+         *           "key": "revenue_lift",
+         *           "value": 0.042
+         *         },
+         *         {
+         *           "key": "loss",
+         *           "step": 400,
+         *           "value": 1.23
+         *         }
+         *       ]
+         *     }
+         */
+        MetricsWrite: {
+            /** Metrics */
+            metrics: components["schemas"]["MetricPointIn"][];
+        };
+        /**
+         * MetricsWriteResult
+         * @description Points stored, and points that repeated an existing (series, step) and were ignored.
+         * @example {
+         *       "accepted": 2,
+         *       "duplicates": 0
+         *     }
+         */
+        MetricsWriteResult: {
+            /** Accepted */
+            accepted: number;
+            /** Duplicates */
+            duplicates: number;
         };
         /**
          * MffOptions
@@ -10946,6 +11329,7 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "optimize",
+         *         "name": "weekly sales, adstock 4",
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -10954,6 +11338,10 @@ export interface components {
          *         "spec_revision": 2,
          *         "started_at": "2026-10-15T09:30:05Z",
          *         "state": "succeeded",
+         *         "tags": {
+         *           "stage": "candidate",
+         *           "team": "growth"
+         *         },
          *         "tenant_id": "default",
          *         "timeout": "45m",
          *         "updated_at": "2026-10-15T09:31:00Z"
@@ -11444,6 +11832,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[MetricSeries]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_MetricSeries_: {
+            /** Items */
+            items: components["schemas"]["MetricSeries"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[ModelCatalogEntry]
          * @example {
          *       "items": [],
@@ -11609,6 +12010,19 @@ export interface components {
         Page_RunEventView_: {
             /** Items */
             items: components["schemas"]["RunEventView"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[RunParam]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_RunParam_: {
+            /** Items */
+            items: components["schemas"]["RunParam"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -11819,6 +12233,36 @@ export interface components {
             items: components["schemas"]["Workflow"][];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /**
+         * ParamsWrite
+         * @description ``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409).
+         * @example {
+         *       "params": {
+         *         "analyst": "kim",
+         *         "holdout_weeks": 8
+         *       }
+         *     }
+         */
+        ParamsWrite: {
+            /** Params */
+            params: {
+                [key: string]: boolean | number | string;
+            };
+        };
+        /**
+         * ParamsWriteResult
+         * @description Params stored, and params already stored with the same value.
+         * @example {
+         *       "accepted": 2,
+         *       "unchanged": 0
+         *     }
+         */
+        ParamsWriteResult: {
+            /** Accepted */
+            accepted: number;
+            /** Unchanged */
+            unchanged: number;
         };
         /**
          * PlotBindings
@@ -12096,6 +12540,7 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "render",
+         *         "name": "weekly sales, adstock 4",
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -12104,6 +12549,10 @@ export interface components {
          *         "spec_revision": 2,
          *         "started_at": "2026-10-15T09:30:05Z",
          *         "state": "succeeded",
+         *         "tags": {
+         *           "stage": "candidate",
+         *           "team": "growth"
+         *         },
          *         "tenant_id": "default",
          *         "timeout": "45m",
          *         "updated_at": "2026-10-15T09:31:00Z"
@@ -12511,6 +12960,7 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "translate_priors",
+         *         "name": "weekly sales, adstock 4",
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -12519,6 +12969,10 @@ export interface components {
          *         "spec_revision": 2,
          *         "started_at": "2026-10-15T09:30:05Z",
          *         "state": "succeeded",
+         *         "tags": {
+         *           "stage": "candidate",
+         *           "team": "growth"
+         *         },
          *         "tenant_id": "default",
          *         "timeout": "45m",
          *         "updated_at": "2026-10-15T09:31:00Z"
@@ -13392,6 +13846,7 @@ export interface components {
          *       "executor": "local-process",
          *       "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *       "kind": "fit",
+         *       "name": "weekly sales, adstock 4",
          *       "progress": {
          *         "chains": [
          *           {
@@ -13422,6 +13877,10 @@ export interface components {
          *       "spec_revision": 2,
          *       "started_at": "2026-10-15T09:30:05Z",
          *       "state": "running",
+         *       "tags": {
+         *         "stage": "candidate",
+         *         "team": "growth"
+         *       },
          *       "tenant_id": "default",
          *       "timeout": "45m",
          *       "updated_at": "2026-10-15T09:31:00Z"
@@ -13451,6 +13910,13 @@ export interface components {
         Run: {
             /** Attempt */
             attempt: number;
+            /**
+             * Columns
+             * @description Values of the requested `column` refs (list_runs only), keyed by RunRef.text()
+             */
+            columns?: {
+                [key: string]: number | string | null;
+            } | null;
             cost?: components["schemas"]["RunCost"];
             /**
              * Created At
@@ -13477,6 +13943,16 @@ export interface components {
             /** Model Version Id */
             model_version_id?: string | null;
             /**
+             * Name
+             * @description Display name (v0.11)
+             */
+            name?: string | null;
+            /**
+             * Note
+             * @description Free-text note (untrusted text, v0.11)
+             */
+            note?: string | null;
+            /**
              * Output Model Version Id
              * @description The model version a successful fit produced
              */
@@ -13501,6 +13977,13 @@ export interface components {
             /** Started At */
             started_at?: string | null;
             state: components["schemas"]["RunState"];
+            /**
+             * Tags
+             * @description Mutable run tags (v0.11; labels stay create-only)
+             */
+            tags?: {
+                [key: string]: string;
+            };
             /** Tenant Id */
             tenant_id: string;
             /**
@@ -13618,9 +14101,12 @@ export interface components {
         /**
          * RunEventType
          * @description Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).
+         *
+         *     ``metrics``, ``params`` and ``tags`` (v0.11) carry run tracking data: the control plane
+         *     writes them to the tracking tables, not to the stored event list.
          * @enum {string}
          */
-        RunEventType: "state" | "progress" | "log" | "diagnostic" | "warning" | "checkpoint" | "metric" | "complete" | "error";
+        RunEventType: "state" | "progress" | "log" | "diagnostic" | "warning" | "checkpoint" | "metric" | "complete" | "error" | "metrics" | "params" | "tags";
         /**
          * RunEventView
          * @description A persisted run event (``id`` is the SSE event id, increasing per run).
@@ -13668,6 +14154,66 @@ export interface components {
          * @enum {string}
          */
         RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect";
+        /**
+         * RunParam
+         * @description One run parameter. ``value`` is the text form; ``value_num`` is set for numbers.
+         * @example {
+         *       "key": "fit.draws",
+         *       "logged_at": "2026-10-15T09:30:00Z",
+         *       "source": "runner",
+         *       "value": "1000",
+         *       "value_num": 1000
+         *     }
+         * @example {
+         *       "key": "settings.adstock.l_max",
+         *       "logged_at": "2026-10-15T09:30:00Z",
+         *       "source": "runner",
+         *       "value": "4",
+         *       "value_num": 4
+         *     }
+         */
+        RunParam: {
+            /** Key */
+            key: string;
+            /**
+             * Logged At
+             * Format: date-time
+             */
+            logged_at: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "runner" | "api";
+            /** Value */
+            value: string;
+            /** Value Num */
+            value_num?: number | null;
+        };
+        /**
+         * RunPatch
+         * @description Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to
+         *     ``null`` is deleted.
+         * @example {
+         *       "name": "weekly sales, adstock 4",
+         *       "tags": {
+         *         "stage": "candidate"
+         *       }
+         *     }
+         * @example {
+         *       "note": "Holdout error is high in week 52 (holiday)."
+         *     }
+         */
+        RunPatch: {
+            /** Name */
+            name?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Tags */
+            tags?: {
+                [key: string]: string | null;
+            } | null;
+        };
         /**
          * RunRetry
          * @description ``POST /runs/{id}:retry``: a *new* run from a failed one, optionally one class up.
@@ -13930,6 +14476,7 @@ export interface components {
          *         "executor": "local-process",
          *         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
          *         "kind": "score",
+         *         "name": "weekly sales, adstock 4",
          *         "project_id": "default",
          *         "queued_at": "2026-10-15T09:30:00Z",
          *         "resource_class": "M",
@@ -13938,6 +14485,10 @@ export interface components {
          *         "spec_revision": 2,
          *         "started_at": "2026-10-15T09:30:05Z",
          *         "state": "succeeded",
+         *         "tags": {
+         *           "stage": "candidate",
+         *           "team": "growth"
+         *         },
          *         "tenant_id": "default",
          *         "timeout": "45m",
          *         "updated_at": "2026-10-15T09:31:00Z"
@@ -22739,6 +23290,12 @@ export interface operations {
                 kind?: components["schemas"]["RunKind"] | null;
                 state?: components["schemas"]["RunState"] | null;
                 spec_id?: string | null;
+                parent_run_id?: string | null;
+                name?: string | null;
+                tag?: string[] | null;
+                filter?: string[] | null;
+                order_by?: string | null;
+                column?: string[] | null;
             };
             header?: never;
             path?: never;
@@ -22841,6 +23398,41 @@ export interface operations {
             };
         };
     };
+    update_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_events: {
         parameters: {
             query?: {
@@ -22885,6 +23477,9 @@ export interface operations {
                 cursor?: string | null;
                 attempt?: number | null;
                 stream?: string | null;
+                level?: ("debug" | "info" | "warning" | "error") | null;
+                /** @description Also return the structured 'user' lines (v0.11) */
+                include_user?: boolean;
             };
             header?: never;
             path: {
@@ -22901,6 +23496,183 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_LogLine_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_metrics: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                key?: string | null;
+                attempt?: number | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MetricSeries_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_run_metrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetricsWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricsWriteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_metric_history: {
+        parameters: {
+            query?: {
+                max_points?: number;
+                attempt?: number | null;
+                label?: string[] | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricHistory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_params: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                prefix?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RunParam_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_run_params: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParamsWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParamsWriteResult"];
                 };
             };
             /** @description Validation Error */

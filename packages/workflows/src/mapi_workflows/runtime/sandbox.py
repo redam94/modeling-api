@@ -40,6 +40,7 @@ import xarray as xr
 from mapi_sdk.registry import Registry
 from mapi_sdk.schema import data_summary
 from mapi_sdk.steps import CancelToken
+from mapi_sdk.tracking import Tracker
 from mapi_sdk.wire import write_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.governance import GovernancePolicy
@@ -130,8 +131,12 @@ def execute_job(
     log: Callable[[str], None] | None = None,
     progress: Callable[[float, str], None] | None = None,
     cancel: CancelToken | None = None,
+    tracker: Tracker | None = None,
 ) -> NodeOutcome:
-    """Run the job's node on materialised inputs (raises ``MapiError`` on failure)."""
+    """Run the job's node on materialised inputs (raises ``MapiError`` on failure).
+
+    ``tracker`` receives what the node logs (``NodeContext.tracker``).
+    """
     impl = get_node(job.use)
     if impl is None:
         raise MapiError(f"unknown node implementation {job.use!r}", code=ErrorCode.NODE_UNKNOWN)
@@ -156,6 +161,7 @@ def execute_job(
         progress=progress,
         input_refs={},
         services={"governance": gov, "sandbox": True},
+        tracker=tracker,
     )
     return fn(ctx)
 

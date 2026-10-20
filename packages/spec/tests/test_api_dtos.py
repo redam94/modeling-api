@@ -169,8 +169,11 @@ def test_sse_frames() -> None:
         encode_sse("state", {}, id="a\nb")
     with pytest.raises(ValueError):
         encode_sse("bogus", {})
-    # every run-event type has an SSE event name
-    assert {t.value for t in RunEventType} <= {e.value for e in SseEventName}
+    # every stored run-event type has an SSE event name; the v0.11 tracking events are
+    # written to the tracking tables (never stored as events) and surface as `tracking` frames
+    tracking = {RunEventType.METRICS, RunEventType.PARAMS, RunEventType.TAGS}
+    assert {t.value for t in RunEventType if t not in tracking} <= {e.value for e in SseEventName}
+    assert {t.value for t in tracking}.isdisjoint({e.value for e in SseEventName})
 
 
 def test_idempotency_keys_and_error_pointers() -> None:

@@ -1107,7 +1107,12 @@ _node("search.grid", NodeKind.SEARCH, _a(
     "window and scores it on the outer test window; best_score pools those outer "
     "forecasts (the honest estimate of the tuned model, free of the selection bias of "
     "scoring the winner on the folds that chose it) and best_settings is the point the "
-    "outer folds chose most often.",
+    "outer folds chose most often. From v0.11, the search run of the node logs each grid "
+    "point. The search run is the first of the node's child runs; the node's run is the "
+    "refit of the winner. A param such as trial.3.adstock/l_max gives a setting of point 3. "
+    "The scores are metrics with the point number as the step. The search run also gets a "
+    "metric such as best_rmse and the tag grid.best_point. The Metrics and Params tabs of "
+    "its run page show them.",
 ), params={"model": {"type": "string", "description": "Catalog model ref (id@range)"},
            "settings": {"type": "object", "description": "The base settings"},
            "grid": {"type": "object", "description": "JSON pointer into settings -> values",
@@ -1198,6 +1203,8 @@ _node("model.backtest", NodeKind.MODEL, _a(
     _I, _LONG, "Ten folds of ARIMAX: MAPE 6% at 1 week, 11% at 8 weeks.",
     related=["split.expanding_window", "evaluate.baseline", "compare.models"],
     fits={"goal": ["forecast", "validate_model"]},
+    expert="From v0.11, the node run logs the metrics of each fold as scalar metrics with "
+    "the label fold. The Metrics tab of the run page shows them.",
 ), params={"model": _MODEL_REF, "settings": {"type": "object"}, "fit": {"type": "object"},
            "pipeline": {"type": "array", "maxItems": 64}, "bind": {"type": "object"},
            "metrics": {"type": "array", "items": {"type": "string"},

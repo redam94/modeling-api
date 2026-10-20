@@ -62,7 +62,11 @@ __all__ = [
     "RunAttempt",
     "RunEvent",
     "RunLog",
+    "RunMetric",
+    "RunMetricSummary",
+    "RunParam",
     "RunProgress",
+    "RunTag",
     "SavedPlot",
     "Signup",
     "Spec",
@@ -131,6 +135,11 @@ TENANT_TABLES: tuple[str, ...] = (
     "governance_policies",
     "model_validations",
     "validation_approvals",
+    # v0.11 run tracking (0015_run_tracking)
+    "run_metrics",
+    "run_metric_summary",
+    "run_params",
+    "run_tags",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -522,6 +531,8 @@ class Run(_Scoped, Base):
         Boolean, default=False, server_default=text("false")
     )
     estimate: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # CostEstimate at submit
+    name: Mapped[str | None] = mapped_column(String(200))  # v0.11: PATCH /v1/runs/{id}
+    note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     queued_at: Mapped[datetime | None] = mapped_column()
     started_at: Mapped[datetime | None] = mapped_column()
@@ -625,6 +636,96 @@ class RunLog(_Scoped, Base):
     stream: Mapped[str] = mapped_column(String(8))
     line: Mapped[str] = mapped_column(Text)
     truncated: Mapped[bool] = mapped_column(Boolean, default=False)
+    level: Mapped[str | None] = mapped_column(String(8))  # ``user`` lines only
+    fields: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # ``user`` lines only
+
+
+TRACKING_SEQ = "run_tracking_seq"
+"""The sequence behind ``seq`` of summaries, params and tags (live-stream cursor)."""
+
+
+def _tracking_seq() -> Any:
+    return text(f"nextval('{TRACKING_SEQ}')")
+
+
+class RunMetric(_Scoped, Base):
+    """One metric point. ``step`` is ``-1`` (``SCALAR_STEP``) for a point without a step."""
+
+    __tablename__ = "run_metrics"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    attempt: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    labels_key: Mapped[str] = mapped_column(String(1024), primary_key=True, server_default="")
+    step: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    ts: Mapped[datetime] = mapped_column()
+    value: Mapped[float] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(8))
+
+    __table_args__ = (CheckConstraint("source in ('runner','api')", name="source"),)
+
+
+class RunMetricSummary(_Scoped, Base):
+    """One series of a run (key + labels) in the newest attempt that wrote it."""
+
+    __tablename__ = "run_metric_summary"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    labels_key: Mapped[str] = mapped_column(String(1024), primary_key=True, server_default="")
+    labels: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    attempt: Mapped[int] = mapped_column(Integer)
+    count: Mapped[int] = mapped_column(BigInteger)
+    first_ts: Mapped[datetime] = mapped_column()
+    last_ts: Mapped[datetime] = mapped_column()
+    last: Mapped[float] = mapped_column(Float)
+    last_step: Mapped[int | None] = mapped_column(BigInteger)
+    min: Mapped[float] = mapped_column(Float)
+    max: Mapped[float] = mapped_column(Float)
+    seq: Mapped[int] = mapped_column(BigInteger, server_default=_tracking_seq())
+
+    __table_args__ = (
+        Index("ix_run_metric_summary_seq", "run_id", "seq"),
+        Index("ix_run_metric_summary_search", "tenant_id", "project_id", "key", "labels_key"),
+    )
+
+
+class RunParam(_Scoped, Base):
+    """A write-once run parameter (text, plus the number when it is numeric)."""
+
+    __tablename__ = "run_params"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(250), primary_key=True)
+    value_text: Mapped[str] = mapped_column(Text)
+    value_num: Mapped[float | None] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(8))
+    logged_at: Mapped[datetime] = mapped_column()
+    seq: Mapped[int] = mapped_column(BigInteger, server_default=_tracking_seq())
+
+    __table_args__ = (
+        CheckConstraint("source in ('runner','api')", name="source"),
+        Index("ix_run_params_seq", "run_id", "seq"),
+        Index("ix_run_params_search", "tenant_id", "project_id", "key", "value_num"),
+    )
+
+
+class RunTag(_Scoped, Base):
+    """A mutable run tag (the last value wins)."""
+
+    __tablename__ = "run_tags"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(String(1000))
+    updated_at: Mapped[datetime] = mapped_column()
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    seq: Mapped[int] = mapped_column(BigInteger, server_default=_tracking_seq())
+
+    __table_args__ = (
+        Index("ix_run_tags_seq", "run_id", "seq"),
+        Index("ix_run_tags_search", "tenant_id", "project_id", "key", "value"),
+    )
 
 
 # ======================================================================== models

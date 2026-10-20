@@ -26,7 +26,10 @@ gives ranges.
 from __future__ import annotations
 
 import copy
+import dataclasses
+import json
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
@@ -44,6 +47,7 @@ from mapi_spec.capabilities import Representation
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tracking import METRIC_KEY_RE, PARAM_KEY_RE, ParamValue
 from mapi_spec.tree import NodeSelect
 from mapi_workflows.binding import (
     auto_bind,
@@ -314,7 +318,9 @@ def fit_node(ctx: NodeContext) -> NodeOutcome:
     )
     ctx.info(f"fitting {spec.model.use} on {base.ref or 'the input data'}")
     data, extra = fit_input(base)
-    bundle = fit_spec(spec, data, registry=_registry(ctx), hooks=_hooks(ctx), **extra)
+    # the node's own fit reports to the node run (inner fits of backtests and grids do not)
+    hooks = dataclasses.replace(_hooks(ctx), tracker=ctx.tracker)
+    bundle = fit_spec(spec, data, registry=_registry(ctx), hooks=hooks, **extra)
     metrics = _metrics_of(bundle)
     ref = f"local://{ctx.node_id}/{bundle.bundle_id}"
     mv = ModelValue(
@@ -786,6 +792,8 @@ def backtest_node(ctx: NodeContext) -> NodeOutcome:
                 },
             }
         )
+    for j, fm in enumerate(cand.by_fold):
+        ctx.log_metrics({k: v for k, v in fm.items() if v is not None}, labels={"fold": str(j)})
     horizons = [int(h) for h in cand.by_horizon]
     payload = MetricsPayload(candidates=[cand], horizons=horizons)
     rows: list[dict[str, JsonValue]] = [
@@ -1041,6 +1049,51 @@ def grid_points(
     return out
 
 
+_METRIC_KEY = re.compile(METRIC_KEY_RE)
+_PARAM_KEY = re.compile(PARAM_KEY_RE)
+_TRIAL_JSON_CHARS: Final = 500
+
+
+def _trial_value(v: Any) -> ParamValue:
+    if isinstance(v, bool | int | float | str):
+        return v
+    return json.dumps(v, separators=(",", ":"), sort_keys=True, default=str)[:_TRIAL_JSON_CHARS]
+
+
+def trial_params(
+    points: Sequence[tuple[dict[str, Any], dict[str, Any]]],
+) -> tuple[dict[str, ParamValue], list[str]]:
+    """Run params ``trial.<i>.<pointer>`` for every grid point (pointer escapes decoded).
+
+    Returns the params and a note per key that is not a valid param key (skipped).
+    """
+    out: dict[str, ParamValue] = {}
+    bad: list[str] = []
+    for i, (_settings, point) in enumerate(points):
+        for ptr, v in point.items():
+            path = "/".join(
+                p.replace("~1", "/").replace("~0", "~") for p in str(ptr).lstrip("/").split("/")
+            )
+            key = f"trial.{i}.{path}"
+            if _PARAM_KEY.match(key) is None:
+                bad.append(key)
+                continue
+            out[key] = _trial_value(v)
+    notes = (
+        [f"{len(bad)} grid values were not logged as run params (invalid key, e.g. {bad[0]!r})"]
+        if bad
+        else []
+    )
+    return out, notes
+
+
+def _log_best(ctx: NodeContext, metric: str, score: float, point: int) -> None:
+    key = f"best_{metric}"
+    if _METRIC_KEY.match(key) is not None:
+        ctx.log_metric(key, score)
+    ctx.set_tag("grid.best_point", str(point))
+
+
 def grid_node(ctx: NodeContext) -> NodeOutcome:
     dv = ctx.dataset("data")
     assert dv is not None
@@ -1060,6 +1113,16 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         cap,
     )
     nested = str((plan.get("plan") or {}).get("kind") or "") == "nested"
+    trials, warns = trial_params(points)
+    ctx.log_params(
+        {
+            "grid.metric": metric,
+            "grid.direction": direction,
+            "grid.points": len(points),
+            "grid.nested": nested,
+            **trials,
+        }
+    )
     if nested:
         best_settings, best_score, result, rows, failed = _nested_grid(
             ctx, dv, plan, points, metric, direction
@@ -1067,7 +1130,7 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         title = "Grid search (nested: tuned on inner folds, scored on outer folds)"
     else:
         rows = []
-        best: tuple[float, dict[str, Any]] | None = None
+        best: tuple[float, int] | None = None
         failed = 0
         for i, (settings, point) in enumerate(points):
             ctx.check()
@@ -1080,19 +1143,26 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
                 rows.append(
                     {"point": i, **{k: _js(v) for k, v in point.items()}, "error": exc.detail[:200]}
                 )
+                ctx.log_line(
+                    f"grid point {i} failed: {exc.detail[:200]}",
+                    level="warning",
+                    fields={"point": i},
+                )
                 continue
             ms = fold_metrics(fcs)
             score = ms.get(metric)
             rows.append({"point": i, **{k: _js(v) for k, v in point.items()}, **ms})
+            ctx.log_metrics({k: v for k, v in ms.items() if v is not None}, step=i)
             if score is None or not math.isfinite(score):
                 continue
             key = score if direction == "min" else -score
             if best is None or key < best[0]:
-                best = (key, settings)
+                best = (key, i)
         if best is None:
             raise data_error(f"no grid point has a score for {metric!r}")
-        best_settings = best[1]
+        best_settings = points[best[1]][0]
         best_score = best[0] if direction == "min" else -best[0]
+        _log_best(ctx, metric, best_score, best[1])
         result = {}
         title = "Grid search"
     table = TablePayload(
@@ -1112,7 +1182,9 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
     }
     if ctx.services.get("sandbox"):
         # model versions come out of fit runs: the control plane refits the winner
-        return NodeOutcome(result=result, outputs={"table": table.model_dump(mode="json")})
+        return NodeOutcome(
+            result=result, outputs={"table": table.model_dump(mode="json")}, warnings_plain=warns
+        )
     spec, base_dv, _ = build_spec(
         ctx.params, dv, name=ctx.node_id, settings=best_settings, registry=_registry(ctx)
     )
@@ -1125,7 +1197,11 @@ def grid_node(ctx: NodeContext) -> NodeOutcome:
         model=str(spec.model.use),
         settings=dict(best_settings),
     )
-    return NodeOutcome(result=result, outputs={"table": table.model_dump(mode="json"), "best": mv})
+    return NodeOutcome(
+        result=result,
+        outputs={"table": table.model_dump(mode="json"), "best": mv},
+        warnings_plain=warns,
+    )
 
 
 def _nested_grid(
@@ -1161,10 +1237,21 @@ def _nested_grid(
                 fcs, _, _ = backtest_model(
                     ctx, dv, inner_plan, settings=settings, name=f"{ctx.node_id}-{j}-{i}"
                 )
-            except MapiError:
+            except MapiError as exc:
                 failed += 1
+                ctx.log_line(
+                    f"grid point {i} failed on outer fold {j}: {exc.detail[:200]}",
+                    level="warning",
+                    fields={"point": i, "fold": j},
+                )
                 continue
-            score = fold_metrics(fcs).get(metric)
+            ms = fold_metrics(fcs)
+            ctx.log_metrics(
+                {k: v for k, v in ms.items() if v is not None},
+                step=i,
+                labels={"stage": "inner", "fold": str(j)},
+            )
+            score = ms.get(metric)
             if score is None or not math.isfinite(score):
                 continue
             inner_sum.setdefault(i, []).append(score)
@@ -1182,6 +1269,8 @@ def _nested_grid(
         outer_fcs += fcs
         s = fold_metrics(fcs).get(metric)
         outer_scores.append(float(s) if s is not None else math.nan)
+        if s is not None and _METRIC_KEY.match(metric) is not None:
+            ctx.log_metric(metric, s, step=j, labels={"stage": "outer"})
     honest = fold_metrics(outer_fcs).get(metric)
     if honest is None or not math.isfinite(honest):
         raise data_error(f"the outer folds have no score for {metric!r}")
@@ -1207,6 +1296,7 @@ def _nested_grid(
         "selected_points": list(picks),
         "selection": "most often chosen by the outer folds' inner searches",
     }
+    _log_best(ctx, metric, float(honest), final)
     return points[final][0], float(honest), extra, rows, failed
 
 

@@ -11,6 +11,10 @@ directory or a key registered with :meth:`InprocExecutor.put_bundle` - and optio
 ``data``/``scenario``/``side_tables``; otherwise the request's ``data``/``scenario`` refs are
 used). A counterfactual resolves ``data`` as the baseline and ``scenario`` as the scenario.
 
+What the model logs through the tracking API (v0.11) is emitted as ``metrics``, ``params``
+and ``tags`` events (I-2 payload dicts; metric points batched per second) and ``log``
+events with stream ``user``.
+
 Never use this executor for untrusted code: it runs plugins in the caller's process.
 """
 
@@ -19,8 +23,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import threading
+import time
 import traceback
-from collections.abc import AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,14 +46,33 @@ from mapi_spec.executor import (
 )
 from mapi_spec.loader import load_model_spec, load_score_request, parse_document
 from mapi_spec.resources import ResourceClass
+from mapi_spec.run import (
+    ChainProgress,
+    MetricBatchPayload,
+    MetricSeriesBatch,
+    ParamItem,
+    ParamsPayload,
+    TagItem,
+    TagsPayload,
+)
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScoreRequest
+from mapi_spec.tracking import (
+    MAX_PARAMS_PER_EVENT,
+    MAX_POINTS_PER_EVENT,
+    MAX_TAGS_PER_RUN,
+    LogFieldValue,
+    LogLevel,
+    ParamValue,
+    labels_key,
+)
 
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.errors import RunCancelled
 from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.steps import CancelToken
+from mapi_sdk.tracking import Tracker
 from mapi_sdk.wire import read_zarr_zip
 
 __all__ = ["DataResolver", "InprocExecutor", "mapping_resolver"]
@@ -261,16 +285,24 @@ class InprocExecutor:
         else:
             self._finish(run, ExecState.SUCCEEDED, message="completed")
 
-    def _hooks(self, run: _Run) -> FitHooks:
+    def _hooks(self, run: _Run, tracker: Tracker | None = None) -> FitHooks:
         return FitHooks(
             log=lambda m: self._emit(run, RunEventType.LOG, {"message": m[:4000]}),
             on_progress=lambda f, m: self._emit(
                 run, RunEventType.PROGRESS, {"fraction": round(f, 4), "message": m[:500]}
             ),
             cancel=run.token,
+            tracker=tracker,
         )
 
     def _work(self, run: _Run) -> Any:
+        tracker = _EventTracker(lambda kind, payload: self._emit(run, kind, payload))
+        try:
+            return self._run_work(run, tracker)
+        finally:
+            tracker.flush()
+
+    def _run_work(self, run: _Run, tracker: Tracker) -> Any:
         rs = run.submit
         p = rs.payload
         run.token.check()
@@ -281,7 +313,12 @@ class InprocExecutor:
             raw = p.get("raw_schema")
             schema = DataSchema.model_validate(raw) if isinstance(raw, dict) else None
             bundle = fit_spec(
-                spec, data, tables, self.registry, raw_schema=schema, hooks=self._hooks(run)
+                spec,
+                data,
+                tables,
+                self.registry,
+                raw_schema=schema,
+                hooks=self._hooks(run, tracker),
             )
             if self.output_dir is not None:
                 bundle.write(self.output_dir / rs.run_id / f"a{rs.attempt}")
@@ -310,7 +347,7 @@ class InprocExecutor:
                 scenario=scenario,
                 side_tables=tables,
                 registry=self.registry,
-                hooks=self._hooks(run),
+                hooks=self._hooks(run, tracker),
                 metrics=[str(m) for m in metrics] if isinstance(metrics, list) else None,
             )
         raise MapiError(
@@ -329,6 +366,113 @@ class InprocExecutor:
         if not path.is_dir():
             raise MapiError(f"bundle {ref!r} is not available", code=ErrorCode.REF_UNRESOLVED)
         return Bundle.read(path, self.registry)
+
+
+class _EventTracker:
+    """Tracker emitting ``metrics``/``params``/``tags``/``log`` events of one in-process run.
+
+    Metric points are buffered per series and emitted at most once per second (or when
+    :data:`~mapi_spec.tracking.MAX_POINTS_PER_EVENT` points wait); :meth:`flush` empties the
+    buffer at the end of the run. Budgets are not enforced: this executor is for own code.
+    """
+
+    _INTERVAL_S = 1.0
+
+    def __init__(self, emit: Callable[[RunEventType, dict[str, Any]], None]) -> None:
+        self._emit = emit
+        self._lock = threading.Lock()
+        # (key, labels_key) -> (labels, steps, values); wall-clock times kept beside
+        self._buf: dict[tuple[str, str], tuple[dict[str, str], list[int | None], list[float]]] = {}
+        self._ts: dict[tuple[str, str], list[float]] = {}
+        self._n = 0
+        self._last = time.monotonic()
+
+    def log_metrics(
+        self,
+        values: Mapping[str, float],
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+    ) -> None:
+        lab = dict(labels or {})
+        lk = labels_key(lab)
+        now = time.time()
+        with self._lock:
+            for key, value in values.items():
+                entry = self._buf.setdefault((key, lk), (lab, [], []))
+                entry[1].append(step)
+                entry[2].append(float(value))
+                self._ts.setdefault((key, lk), []).append(now)
+                self._n += 1
+            due = self._n >= MAX_POINTS_PER_EVENT or (
+                time.monotonic() - self._last >= self._INTERVAL_S
+            )
+        if due:
+            self.flush()
+
+    def log_params(self, params: Mapping[str, ParamValue]) -> None:
+        items = [ParamItem(key=k, value=v) for k, v in params.items()]
+        for i in range(0, len(items), MAX_PARAMS_PER_EVENT):
+            part = ParamsPayload(params=items[i : i + MAX_PARAMS_PER_EVENT])
+            self._emit(RunEventType.PARAMS, part.model_dump(mode="json"))
+
+    def set_tags(self, tags: Mapping[str, str]) -> None:
+        items = [TagItem(key=k, value=v) for k, v in tags.items()]
+        for i in range(0, len(items), MAX_TAGS_PER_RUN):
+            part = TagsPayload(tags=items[i : i + MAX_TAGS_PER_RUN])
+            self._emit(RunEventType.TAGS, part.model_dump(mode="json"))
+
+    def log_line(
+        self,
+        message: str,
+        *,
+        level: LogLevel = "info",
+        fields: Mapping[str, LogFieldValue] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"stream": "user", "line": message[:4096], "level": level}
+        if fields:
+            payload["fields"] = dict(fields)
+        self._emit(RunEventType.LOG, payload)
+
+    def chains(self, chains: Sequence[ChainProgress]) -> None:
+        return None  # the in-process progress events carry no chains
+
+    def flush(self) -> None:
+        with self._lock:
+            buf, ts = self._buf, self._ts
+            self._buf, self._ts, self._n = {}, {}, 0
+            self._last = time.monotonic()
+        if not buf:
+            return
+        t0 = min(t[0] for t in ts.values())
+        series: list[MetricSeriesBatch] = []
+        for sk, (lab, steps, vals) in buf.items():
+            offs = [max(0, round((t - t0) * 1000)) for t in ts[sk]]
+            for i in range(0, len(steps), MAX_POINTS_PER_EVENT):
+                series.append(
+                    MetricSeriesBatch(
+                        key=sk[0],
+                        labels=lab,
+                        steps=steps[i : i + MAX_POINTS_PER_EVENT],
+                        values=vals[i : i + MAX_POINTS_PER_EVENT],
+                        ts_ms=offs[i : i + MAX_POINTS_PER_EVENT],
+                    )
+                )
+        start = datetime.fromtimestamp(t0, UTC)
+        part: list[MetricSeriesBatch] = []
+        n = 0
+        for sb in series:
+            if part and (n + len(sb.steps) > MAX_POINTS_PER_EVENT or len(part) >= 64):
+                self._send(start, part)
+                part, n = [], 0
+            part.append(sb)
+            n += len(sb.steps)
+        if part:
+            self._send(start, part)
+
+    def _send(self, t0: datetime, series: list[MetricSeriesBatch]) -> None:
+        payload = MetricBatchPayload(t0=t0, series=series)
+        self._emit(RunEventType.METRICS, payload.model_dump(mode="json"))
 
 
 def _mapping(value: Any) -> dict[str, Any]:

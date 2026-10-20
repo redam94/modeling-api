@@ -14,6 +14,7 @@ from mapi_client import _calls as c
 from mapi_client import _calls_m3 as m3
 from mapi_client import _calls_m4 as m4
 from mapi_client import _calls_m35 as m35
+from mapi_client import _calls_tracking as tr
 from mapi_client._http import Call
 from mapi_spec.api import (
     ALL_ENDPOINTS,
@@ -379,6 +380,15 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     # M4 tree datasets: upload inspection
     "inspect_upload": lambda: m4.inspect_upload("ds_1", "upl_1", None),
     "get_upload_inspection": lambda: m4.get_upload_inspection("ds_1", "upl_1"),
+    # v0.11 run tracking
+    "update_run": lambda: tr.update_run("run_1", tr.run_patch(name="weekly")),
+    "list_run_metrics": lambda: tr.list_run_metrics("run_1", None, None, key="loss"),
+    "get_metric_history": lambda: tr.get_metric_history("run_1", "loss", max_points=100),
+    "log_run_metrics": lambda: tr.log_run_metrics(
+        "run_1", tr.metrics_bodies(tr.metric_points({"loss": 1.0}))[0]
+    ),
+    "list_run_params": lambda: tr.list_run_params("run_1", None, None, prefix="fit."),
+    "log_run_params": lambda: tr.log_run_params("run_1", tr.params_bodies({"a": 1})[0]),
 }
 
 CLIENT_ENDPOINTS = ALL_ENDPOINTS
@@ -577,3 +587,103 @@ def test_m4_inspection_calls() -> None:
     assert get.path.endswith("/uploads/upl_1/inspection") and get.idempotent
     with pytest.raises(ValueError):
         m4.get_upload_inspection("ds_1", "..")
+
+
+# ------------------------------------------------------------------------ v0.11 run tracking
+
+
+def test_list_runs_search_parameters() -> None:
+    call = c.list_runs(
+        5,
+        None,
+        parent_run_id="run_0",
+        name="weekly",
+        tags={"stage": "candidate", "reviewed": None},
+        filters=["metric.rmse < 0.5", "param.fit.draws >= 1000"],
+        order_by="-metric.loss{split=val}.min",
+        columns=["metric.rmse", "param.fit.draws"],
+    )
+    assert call.params == {
+        "limit": 5,
+        "parent_run_id": "run_0",
+        "name": "weekly",
+        "tag": ["stage:candidate", "reviewed"],
+        "filter": ["metric.rmse < 0.5", "param.fit.draws >= 1000"],
+        "order_by": "-metric.loss{split=val}.min",
+        "column": ["metric.rmse", "param.fit.draws"],
+    }
+    assert c.list_runs(None, None, tags=["mapi.source:api", "x"]).params == {
+        "tag": ["mapi.source:api", "x"]
+    }
+    for bad in (
+        {"filters": ["metric.train/loss < 1"]},
+        {"filters": ["metric.rmse"]},
+        {"filters": ["metric.rmse < high"]},
+        {"filters": ["created_at > 1"]},
+        {"filters": "metric.rmse < 1"},
+        {"filters": ["metric.rmse < 1"] * 9},
+        {"order_by": "-metric.rmse.median"},
+        {"columns": ["nope"]},
+        {"columns": ["metric.rmse"] * 17},
+        {"tags": ["bad key"]},
+    ):
+        with pytest.raises(ValueError):
+            c.list_runs(None, None, **bad)
+
+
+def test_run_logs_level_and_user_stream() -> None:
+    call = c.run_logs("run_1", None, None, stream="user", level="warning")
+    assert call.params == {"stream": "user", "level": "warning"}
+    # the server sends user lines without a stream filter only when asked (old clients)
+    assert c.run_logs("run_1", None, None).params == {"include_user": "true"}
+    assert c.run_logs("run_1", None, None, include_user=False).params == {}
+    with pytest.raises(ValueError):
+        c.run_logs("run_1", None, None, level="fatal")
+
+
+def test_tracking_query_parameters() -> None:
+    hist = tr.get_metric_history(
+        "run_1", "step_size", max_points=500, attempt=2, labels={"chain": "0", "fit": "evaluation"}
+    )
+    assert hist.path == "/v1/runs/run_1/metrics/step_size"
+    assert hist.params == {
+        "max_points": 500,
+        "attempt": 2,
+        "label": ["chain:0", "fit:evaluation"],
+    }
+    for kwargs in ({"max_points": 5}, {"max_points": 10_001}, {"attempt": 0}):
+        with pytest.raises(ValueError):
+            tr.get_metric_history("run_1", "loss", **kwargs)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        tr.get_metric_history("run_1", "train/loss")
+    with pytest.raises(ValueError):
+        tr.get_metric_history("run_1", "loss", labels={"chain": "a b"})
+    metrics = tr.list_run_metrics("run_1", 50, "cur", key="loss", attempt=1)
+    assert metrics.params == {"limit": 50, "cursor": "cur", "key": "loss", "attempt": 1}
+    assert tr.list_run_params("run_1", None, None, prefix="settings.").params == {
+        "prefix": "settings."
+    }
+
+
+def test_run_patch_is_a_merge_patch() -> None:
+    call = tr.update_run("run_1", tr.run_patch(note=None, tags={"old": None, "stage": "a"}))
+    assert call.method == "PATCH" and call.idempotent
+    assert call.json == {"note": None, "tags": {"old": None, "stage": "a"}}
+    assert tr.update_run("run_1", tr.run_patch(name="  x ")).json == {"name": "x"}
+    with pytest.raises(ValueError):
+        tr.run_patch()
+    with pytest.raises(ValueError):
+        tr.run_patch(tags={"mapi.owner": "me"})
+
+
+def test_tracking_writes_split_into_bodies() -> None:
+    points = tr.metric_points({f"m{i}": float(i) for i in range(2500)}, step=3)
+    bodies = tr.metrics_bodies(points)
+    assert [len(b.metrics) for b in bodies] == [1000, 1000, 500]
+    assert tr.metric_points({"a": float("nan"), "b": float("inf"), "c": 1.0}) == [
+        tr.metric_points({"c": 1.0})[0]
+    ]
+    params = tr.params_bodies({f"p{i}": i for i in range(1200)})
+    assert [len(b.params) for b in params] == [500, 500, 200]
+    with pytest.raises(ValueError):
+        tr.params_bodies({"bad key": 1})

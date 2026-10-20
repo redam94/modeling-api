@@ -7,6 +7,7 @@
  * page is fetched twice, and every older page is fetched exactly once.
  */
 import { ApiError } from "./client";
+import { LOG_LEVELS, type LogLevel } from "./tracking";
 import type { LogLine, Page } from "./types";
 
 export type LogPageFetcher = (cursor: string | null) => Promise<Page<LogLine>>;
@@ -82,4 +83,18 @@ export function logPollDelay(s: { live: boolean; behind: boolean; error: unknown
   }
   if (s.error) return LOG_POLL_MS.error;
   return s.behind ? LOG_POLL_MS.behind : LOG_POLL_MS.idle;
+}
+
+/**
+ * Does a line pass the minimum `level` (v0.11)? Like the server's `level` query, a line
+ * without a level (captured stdout, stderr and system output) counts as `info`.
+ */
+export function atLeastLevel(level: LogLevel | null | undefined, min: LogLevel | null): boolean {
+  if (!min) return true;
+  return LOG_LEVELS.indexOf(level ?? "info") >= LOG_LEVELS.indexOf(min);
+}
+
+/** Lines at or above `min` (all lines for `null`). */
+export function filterByLevel<T extends { level?: LogLevel | null | undefined }>(lines: readonly T[], min: LogLevel | null): T[] {
+  return min ? lines.filter((l) => atLeastLevel(l.level, min)) : [...lines];
 }

@@ -8,6 +8,7 @@ sign-in routes under ``/auth`` and ``POST /internal/events`` are not for program
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Final
 
@@ -80,6 +81,7 @@ from mapi_spec.run import RunState
 from mapi_spec.tenancy import TenantStatus, TrustTier
 from mapi_spec.tokens import TokenStatus
 
+from mapi_client._calls_tracking import LOG_STREAMS, log_level, run_search_params
 from mapi_client._http import (
     Call,
     artifact_path,
@@ -329,14 +331,31 @@ def list_runs(
     kind: RunKind | str | None = None,
     state: RunState | str | None = None,
     spec_id: str | None = None,
+    parent_run_id: str | None = None,
+    name: str | None = None,
+    tags: Mapping[str, str | None] | Iterable[str] | None = None,
+    filters: Sequence[str] = (),
+    order_by: str | None = None,
+    columns: Sequence[str] = (),
 ) -> Call[Page[Run]]:
-    params = page_params(
-        limit,
-        cursor,
-        kind=RunKind(kind).value if kind is not None else None,
-        state=RunState(state).value if state is not None else None,
-        spec_id=spec_id,
-    )
+    # v0.11 search (tags, filters, order_by, columns): see _calls_tracking.run_search_params
+    params: dict[str, str | int | list[str]] = {
+        **page_params(
+            limit,
+            cursor,
+            kind=RunKind(kind).value if kind is not None else None,
+            state=RunState(state).value if state is not None else None,
+            spec_id=spec_id,
+        ),
+        **run_search_params(
+            parent_run_id=parent_run_id,
+            name=name,
+            tags=tags,
+            filters=filters,
+            order_by=order_by,
+            columns=columns,
+        ),
+    }
     return Call("GET", f"{V1}/runs", parse_model(Page[Run]), params=params)
 
 
@@ -370,10 +389,20 @@ def run_logs(
     *,
     attempt: int | None = None,
     stream: str | None = None,
+    level: str | None = None,
+    include_user: bool = True,
 ) -> Call[Page[LogLine]]:
-    if stream is not None and stream not in ("stdout", "stderr", "system"):
-        raise ValueError("stream must be one of stdout, stderr, system")
-    params = page_params(limit, cursor, attempt=attempt, stream=stream)
+    if stream is not None and stream not in LOG_STREAMS:
+        raise ValueError(f"stream must be one of {', '.join(LOG_STREAMS)}")
+    params = page_params(
+        limit,
+        cursor,
+        attempt=attempt,
+        stream=stream,
+        level=log_level(level),
+        # the server sends ``user`` lines only to a client that asks for them
+        include_user="true" if include_user and stream is None else None,
+    )
     return Call(
         "GET", f"{V1}/runs/{segment(run_id)}/logs", parse_model(Page[LogLine]), params=params
     )

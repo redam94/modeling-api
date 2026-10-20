@@ -1,8 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 
 import { qk, useProjectScope } from "@/api/queries";
 import { followRunEvents, type RunStreamEvent, type RunStreamStatus } from "@/api/sse";
+import type { TrackingFrame } from "@/api/tracking";
 import type { ProgressPayload, ProgressSnapshot, Run, RunEventView } from "@/api/types";
 import { isTerminal } from "@/lib/run-state";
 
@@ -13,12 +14,17 @@ export interface RunStreamState {
   events: RunEventView[];
   /** Latest live progress (not persisted server-side; the snapshot carries the last one). */
   progress: ProgressSnapshot | null;
+  /** v0.11: live `tracking` frames seen (they have no id and are never kept in `events`). */
+  trackingTick: number;
+  /** Metric keys the latest `tracking` frame changed. */
+  changedKeys: string[];
 }
 
 type Action =
   | { type: "status"; status: RunStreamStatus; detail?: string | undefined }
   | { type: "event"; event: RunEventView }
   | { type: "progress"; progress: ProgressSnapshot }
+  | { type: "tracking"; frame: TrackingFrame }
   | { type: "reset" };
 
 const MAX_EVENTS = 2000;
@@ -29,6 +35,8 @@ export function runStreamReducer(state: RunStreamState, action: Action): RunStre
       return { ...state, status: action.status, detail: action.detail ?? null };
     case "progress":
       return { ...state, progress: action.progress };
+    case "tracking":
+      return { ...state, trackingTick: state.trackingTick + 1, changedKeys: trackingKeys(action.frame) };
     case "event": {
       if (state.events.some((e) => e.id === action.event.id)) return state; // replay dedupe
       const events = [...state.events, action.event].sort((a, b) => a.id - b.id);
@@ -39,7 +47,28 @@ export function runStreamReducer(state: RunStreamState, action: Action): RunStre
   }
 }
 
-const initial: RunStreamState = { status: "connecting", detail: null, events: [], progress: null };
+const initial: RunStreamState = { status: "connecting", detail: null, events: [], progress: null, trackingTick: 0, changedKeys: [] };
+
+/** The distinct metric keys of a `tracking` frame, sorted. */
+export function trackingKeys(frame: TrackingFrame): string[] {
+  return [...new Set(frame.series.map((s) => s.key))].sort();
+}
+
+/** What changed since the last refetch: accumulated over the `tracking` frames of one throttle window. */
+export interface TrackingChanges {
+  keys: Set<string>;
+  params: boolean;
+  tags: boolean;
+}
+
+export function mergeTracking(prev: TrackingChanges | null, frame: TrackingFrame): TrackingChanges {
+  const keys = new Set(prev?.keys);
+  for (const k of trackingKeys(frame)) keys.add(k);
+  return { keys, params: Boolean(prev?.params) || frame.params, tags: Boolean(prev?.tags) || frame.tags };
+}
+
+/** Tracking refetches happen at most this often (a fit can send a frame every second). */
+export const TRACKING_REFETCH_MS = 2000;
 
 export function progressFromEvent(e: RunStreamEvent): ProgressSnapshot | null {
   if (e.type !== "progress") return null;
@@ -58,7 +87,8 @@ export function progressFromEvent(e: RunStreamEvent): ProgressSnapshot | null {
 
 /**
  * Follow a run over SSE. Snapshot/end frames refresh the cached `Run` (so every view of it
- * updates); persisted events accumulate here; progress frames update the live snapshot.
+ * updates); persisted events accumulate here; progress frames update the live snapshot;
+ * `tracking` frames refetch the changed metrics, params and tags (at most every 2 s).
  * Does nothing for terminal runs beyond loading the persisted events once.
  */
 export function useRunEvents(run: Run | undefined): RunStreamState {
@@ -67,6 +97,7 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
   const [state, dispatch] = useReducer(runStreamReducer, initial);
   const runId = run?.id;
   const terminal = run ? isTerminal(run.state) : false;
+  const pending = useRef<TrackingChanges | null>(null);
 
   useEffect(() => {
     dispatch({ type: "reset" });
@@ -75,6 +106,19 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
   useEffect(() => {
     if (!runId) return;
     const ctrl = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastFlush = 0;
+    const flush = () => {
+      timer = null;
+      lastFlush = Date.now();
+      const c = pending.current;
+      pending.current = null;
+      if (!c) return;
+      if (c.keys.size) void qc.invalidateQueries({ queryKey: qk.runMetrics(scope.key, runId) });
+      for (const key of c.keys) void qc.invalidateQueries({ queryKey: qk.metricHistory(scope.key, runId, key) });
+      if (c.params) void qc.invalidateQueries({ queryKey: qk.runParams(scope.key, runId) });
+      if (c.tags) void qc.invalidateQueries({ queryKey: qk.run(scope.key, runId), exact: true });
+    };
     const setRun = (r: Run) => {
       qc.setQueryData(qk.run(scope.key, r.id), r);
       if (r.progress) dispatch({ type: "progress", progress: r.progress });
@@ -86,6 +130,15 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
         onEnd: (r) => {
           setRun(r);
           void qc.invalidateQueries({ queryKey: qk.runLists(scope.key) });
+          // The runner flushes its last metric batch before the run ends.
+          void qc.invalidateQueries({ queryKey: qk.runMetricData(scope.key, runId) });
+        },
+        onTracking: (frame) => {
+          if (frame.run_id !== runId) return;
+          dispatch({ type: "tracking", frame });
+          pending.current = mergeTracking(pending.current, frame);
+          if (timer) return;
+          timer = setTimeout(flush, Math.max(0, lastFlush + TRACKING_REFETCH_MS - Date.now()));
         },
         onEvent: (e) => {
           const progress = progressFromEvent(e);
@@ -104,7 +157,11 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
       },
       { signal: ctrl.signal, headers: scope.headers },
     );
-    return () => ctrl.abort();
+    return () => {
+      ctrl.abort();
+      if (timer) clearTimeout(timer);
+      pending.current = null;
+    };
     // `terminal` restarts nothing: a terminal run's stream replays its events then ends.
   }, [runId, qc, scope]);
 

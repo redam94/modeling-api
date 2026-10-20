@@ -121,7 +121,16 @@ const runsRoute = createRoute({
   }),
 });
 
-const runRoute = createRoute({ getParentRoute: () => rootRoute, path: "/runs/$runId", component: lazyRouteComponent(page.runDetail, "RunDetailPage") });
+/** v0.11 tabs of the run page (Overview is the default, without `?tab=`). */
+export const RUN_TABS = ["metrics", "params", "logs", "notes"] as const;
+export type RunTab = (typeof RUN_TABS)[number];
+
+const runRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/runs/$runId",
+  component: lazyRouteComponent(page.runDetail, "RunDetailPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: RunTab | undefined } => ({ tab: oneOf(s.tab, RUN_TABS) }),
+});
 
 const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage") });
 

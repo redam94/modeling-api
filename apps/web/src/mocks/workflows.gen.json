@@ -5988,7 +5988,7 @@
      "model.backtest"
     ],
     "references": [],
-    "expert_notes": "Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often.",
+    "expert_notes": "Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often. From v0.11, the search run of the node logs each grid point. The search run is the first of the node's child runs; the node's run is the refit of the winner. A param such as trial.3.adstock/l_max gives a setting of point 3. The scores are metrics with the point number as the step. The search run also gets a metric such as best_rmse and the tag grid.best_point. The Metrics and Params tabs of its run page show them.",
     "fits": {
      "goal": [
       "forecast",
@@ -6286,6 +6286,7 @@
      "compare.models"
     ],
     "references": [],
+    "expert_notes": "From v0.11, the node run logs the metrics of each fold as scalar metrics with the label fold. The Metrics tab of the run page shows them.",
     "fits": {
      "goal": [
       "forecast",

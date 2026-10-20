@@ -4,7 +4,10 @@
  */
 import { tableToIPC, tableFromArrays } from "apache-arrow";
 
+import type { RunParam } from "@/api/tracking";
+
 import type {
+  ChainProgress,
   Dataset,
   DatasetVersion,
   LogLine,
@@ -30,6 +33,8 @@ export const MV_ID = "mv_01jaf3e1f2g3h4j5k6m7n8p9q0";
 export const RUN_RUNNING = "run_01jaf3q2x8m9v7k5h4g3f2e1d0";
 export const RUN_DONE = "run_01jaf3q2x8m9v7k5h4g3f2e1a1";
 export const RUN_FAILED = "run_01jaf3q2x8m9v7k5h4g3f2e1b2";
+/** v0.11: a finished `search.grid` node run with trial params and rmse per grid point. */
+export const RUN_GRID = "run_01jaf3q2x8m9v7k5h4g3f2e1g5";
 
 const base = { tenant_id: "default", project_id: "default" } as const;
 
@@ -237,6 +242,14 @@ function run(id: string, patch: Partial<Run>): Run {
 
 export const PRICE_VERSION = "cloudrun-list-2026-10";
 
+/** The four chains of the running PyMC (nutpie) fit, with the sampler's step size (v0.11). */
+export const RUNNING_CHAINS: ChainProgress[] = [
+  { chain: 0, draws_done: 400, draws_total: 1000, tuning: false, divergences: 0, step_size: 0.12 },
+  { chain: 1, draws_done: 380, draws_total: 1000, tuning: false, divergences: 2, step_size: 0.135 },
+  { chain: 2, draws_done: 395, draws_total: 1000, tuning: false, divergences: 0, step_size: 0.15 },
+  { chain: 3, draws_done: 390, draws_total: 1000, tuning: false, divergences: 1, step_size: 0.165 },
+];
+
 export const runRunning = run(RUN_RUNNING, {
   state: "running",
   cost: { estimated: true, estimate_micros: 31_200, currency: "USD", price_version: PRICE_VERSION },
@@ -248,10 +261,7 @@ export const runRunning = run(RUN_RUNNING, {
     fraction: 0.4,
     message: "drawing samples",
     eta_seconds: 95,
-    chains: [
-      { chain: 0, draws_done: 400, draws_total: 1000, tuning: false, divergences: 0 },
-      { chain: 1, draws_done: 380, draws_total: 1000, tuning: false, divergences: 2 },
-    ],
+    chains: RUNNING_CHAINS,
     updated_at: T0,
   },
 });
@@ -280,7 +290,24 @@ export const runFailed = run(RUN_FAILED, {
   },
 });
 
-export const runs: Run[] = [runRunning, runDone, runFailed];
+export const runGrid: Run = {
+  ...run(RUN_GRID, {
+    kind: "workflow_node",
+    state: "succeeded",
+    spec_id: null,
+    spec_revision: null,
+    spec_hash: null,
+    resource_class: "S",
+    started_at: "2026-10-15T10:00:05Z",
+    finished_at: "2026-10-15T10:06:30Z",
+    cost: { estimated: false, amount_micros: 12_480, currency: "USD", price_version: PRICE_VERSION, vcpu_seconds: 385, gib_seconds: 770, usd: 0.01248, attempts_billed: 1 },
+  }),
+  name: "Grid search: adstock and saturation",
+  note: "12 grid points. Point 4 has the smallest RMSE.",
+  tags: { "grid.best_point": "4", team: "growth", "mapi.workflow": "wf_mock" },
+};
+
+export const runs: Run[] = [runRunning, runDone, runFailed, runGrid];
 
 export function events(runId: string): RunEventView[] {
   return [
@@ -303,7 +330,113 @@ export function logLines(runId: string): LogLine[] {
     { run_id: runId, attempt: 1, seq: 1, ts: "2026-10-15T09:30:06Z", stream: "system", line: "bootstrap ok", truncated: false },
     { run_id: runId, attempt: 1, seq: 2, ts: "2026-10-15T09:30:20Z", stream: "stderr", line: "\u001b[32mSampling\u001b[0m 4 chains for 400 tune and 1000 draw iterations", truncated: false },
     { run_id: runId, attempt: 1, seq: 3, ts: "2026-10-15T09:30:21Z", stream: "stdout", line: "<img src=x onerror=alert(1)> plain text only", truncated: false },
+    // v0.11 structured lines (`log_line`): a level, and fields shown as chips (untrusted text).
+    { run_id: runId, attempt: 1, seq: 4, ts: "2026-10-15T09:30:22Z", stream: "user", line: "compiled the model", level: "debug", fields: { seconds: 3.2 } },
+    { run_id: runId, attempt: 1, seq: 5, ts: "2026-10-15T09:30:23Z", stream: "user", line: "sampler started", level: "info", fields: { chains: 4, draws: 1000 } },
+    { run_id: runId, attempt: 1, seq: 6, ts: "2026-10-15T09:31:00Z", stream: "user", line: "step size of chain 1 is small", level: "warning", fields: { chain: 1, step_size: 0.012, note: "<b>not bold</b>" } },
+    { run_id: runId, attempt: 1, seq: 7, ts: "2026-10-15T09:31:30Z", stream: "user", line: "grid point 7 failed: singular matrix", level: "error", fields: { point: 7 } },
   ];
+}
+
+// ------------------------------------------------------------------------- v0.11 run tracking
+
+/** A stored metric series of the mock: points in step order (step `null` for a scalar). */
+export interface MockSeries {
+  key: string;
+  labels: Record<string, string>;
+  attempt: number;
+  points: { step: number | null; value: number; ts: string }[];
+}
+
+export interface MockTracking {
+  series: MockSeries[];
+  params: RunParam[];
+}
+
+const at = (base: string, seconds: number) => new Date(Date.parse(base) + seconds * 1000).toISOString();
+
+/** Step size of a nutpie chain at draw `step` (1-based): adapts during 300 tuning draws, then stays. */
+export function mockStepSize(chain: number, step: number): number {
+  const final = 0.12 + 0.015 * chain;
+  if (step > 300) return final;
+  return Number((final + 0.6 * Math.exp(-step / 45) + 0.02 * Math.sin(step / 7 + chain)).toFixed(4));
+}
+
+/** Cumulative divergences of a chain at draw `step` (chain 1: two, chain 3: one, after tuning). */
+export function mockDivergences(chain: number, step: number): number {
+  const hits = chain === 1 ? [330, 365] : chain === 3 ? [350] : [];
+  return hits.filter((s) => s <= step).length;
+}
+
+function fitTracking(): MockTracking {
+  const series: MockSeries[] = [];
+  for (let c = 0; c < 4; c++) {
+    const draws = RUNNING_CHAINS[c]?.draws_done ?? 400;
+    const steps = Array.from({ length: Math.floor(draws / 5) }, (_, i) => (i + 1) * 5);
+    const labels = { chain: String(c) };
+    series.push({ key: "step_size", labels, attempt: 1, points: steps.map((st) => ({ step: st, value: mockStepSize(c, st), ts: at("2026-10-15T09:30:20Z", st * 0.2) })) });
+    series.push({ key: "divergences", labels, attempt: 1, points: steps.map((st) => ({ step: st, value: mockDivergences(c, st), ts: at("2026-10-15T09:30:20Z", st * 0.2) })) });
+  }
+  const param = (key: string, value: string, value_num: number | null = null): RunParam => ({ key, value, value_num, source: "runner", logged_at: "2026-10-15T09:30:08Z" });
+  return {
+    series,
+    params: [
+      param("model", "mmm.bayesian@1.0.0"),
+      param("fit.engine", "nutpie"),
+      param("fit.draws", "1000", 1000),
+      param("fit.tune", "300", 300),
+      param("fit.chains", "4", 4),
+      param("fit.target_accept", "0.9", 0.9),
+      param("fit.seed", "20261014", 20261014),
+      param("data.split", "holdout"),
+      param("settings.adstock.l_max", "8", 8),
+      param("settings.saturation.kind", "hill"),
+      param("settings.note", "<b>not bold</b> <img src=x onerror=alert(1)>"),
+    ],
+  };
+}
+
+const GRID_POINTS = Array.from({ length: 12 }, (_, i) => ({ l_max: 2 + (i % 6) * 2, kind: i < 6 ? "hill" : "logistic" }));
+
+function gridTracking(): MockTracking {
+  const t0 = "2026-10-15T10:00:10Z";
+  const rmse = GRID_POINTS.map((_, i) => Number((380 + 45 * Math.abs(i - 4) + (i >= 6 ? 30 : 0)).toFixed(1)));
+  const mae = rmse.map((v) => Number((v * 0.78).toFixed(1)));
+  const stepped = (key: string, values: number[]): MockSeries => ({
+    key,
+    labels: {},
+    attempt: 1,
+    points: values.map((value, i) => ({ step: i, value, ts: at(t0, 30 * i) })),
+  });
+  const param = (key: string, value: string, value_num: number | null = null): RunParam => ({ key, value, value_num, source: "runner", logged_at: t0 });
+  return {
+    series: [
+      stepped("rmse", rmse),
+      stepped("mae", mae),
+      { key: "best_rmse", labels: {}, attempt: 1, points: [{ step: null, value: Math.min(...rmse), ts: at(t0, 370) }] },
+    ],
+    params: [
+      param("grid.metric", "rmse"),
+      param("grid.direction", "minimize"),
+      param("grid.points", "12", 12),
+      param("grid.nested", "false"),
+      ...GRID_POINTS.flatMap((p, i) => [param(`trial.${i}.adstock/l_max`, String(p.l_max), p.l_max), param(`trial.${i}.saturation/kind`, p.kind)]),
+    ],
+  };
+}
+
+function doneTracking(): MockTracking {
+  const scalar = (key: string, value: number): MockSeries => ({ key, labels: {}, attempt: 1, points: [{ step: null, value, ts: "2026-10-15T09:12:30Z" }] });
+  return { series: [scalar("elpd_loo", -1234.5), scalar("rmse", 412.5), scalar("mape", 14)], params: [] };
+}
+
+/** Tracking data of the mock runs (the others have none). */
+export function trackingFixtures(): Map<string, MockTracking> {
+  return new Map([
+    [RUN_RUNNING, fitTracking()],
+    [RUN_GRID, gridTracking()],
+    [RUN_DONE, doneTracking()],
+  ]);
 }
 
 export const model: Model = {

@@ -8,7 +8,7 @@ import json
 from typing import Any
 
 import pytest
-from mapi_spec import Capabilities, Catalog, DataSchema, ModelSpec
+from mapi_spec import Capabilities, Catalog, DataSchema, ModelSpec, api
 from mapi_spec.api import (
     ALL_ENDPOINTS,
     ENDPOINTS,
@@ -583,7 +583,9 @@ def test_dataset_version_layout_fields() -> None:
 
 
 def test_m4_endpoints_and_access() -> None:
-    assert ALL_ENDPOINTS == ENDPOINTS and ENDPOINTS[-len(M4_ENDPOINTS) :] == M4_ENDPOINTS
+    assert ALL_ENDPOINTS == ENDPOINTS
+    m4_end = len(ENDPOINTS) - len(api.V011_ENDPOINTS)  # the v0.11 rows follow the M4 rows
+    assert ENDPOINTS[m4_end - len(M4_ENDPOINTS) : m4_end] == M4_ENDPOINTS
     by_op = {e.operation_id: e for e in M4_ENDPOINTS}
     post, get = by_op["inspect_upload"], by_op["get_upload_inspection"]
     assert (post.method, post.success, post.response) == ("POST", 202, "Run")

@@ -925,7 +925,9 @@
           "model.deprecate",
           "model.evidence_export",
           "endpoint.promote_not_validated",
-          "dataset.about_update"
+          "dataset.about_update",
+          "run.update",
+          "run.log"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -1992,6 +1994,32 @@
             "minimum": 0.0,
             "title": "Draws Total",
             "type": "integer"
+          },
+          "num_steps": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leapfrog steps of the latest draw (v0.11)",
+            "title": "Num Steps"
+          },
+          "step_size": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current step size (v0.11)",
+            "title": "Step Size"
           },
           "tuning": {
             "default": false,
@@ -7459,6 +7487,7 @@
               "executor": "local-process",
               "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "kind": "explore",
+              "name": "weekly sales, adstock 4",
               "project_id": "default",
               "queued_at": "2026-10-15T09:30:00Z",
               "resource_class": "M",
@@ -7467,6 +7496,10 @@
               "spec_revision": 2,
               "started_at": "2026-10-15T09:30:05Z",
               "state": "succeeded",
+              "tags": {
+                "stage": "candidate",
+                "team": "growth"
+              },
               "tenant_id": "default",
               "timeout": "45m",
               "updated_at": "2026-10-15T09:31:00Z"
@@ -11882,6 +11915,18 @@
             "seq": 120,
             "stream": "stderr",
             "ts": "2026-10-15T09:30:00Z"
+          },
+          {
+            "attempt": 1,
+            "fields": {
+              "point": 3
+            },
+            "level": "warning",
+            "line": "grid point 3 failed: the model did not converge",
+            "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "seq": 121,
+            "stream": "user",
+            "ts": "2026-10-15T09:30:00Z"
           }
         ],
         "properties": {
@@ -11889,6 +11934,56 @@
             "minimum": 1.0,
             "title": "Attempt",
             "type": "integer"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Structured fields of a 'user' line (v0.11)",
+            "title": "Fields"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "info",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only on stream 'user' (v0.11)",
+            "title": "Level"
           },
           "line": {
             "maxLength": 4096,
@@ -11912,7 +12007,8 @@
             "enum": [
               "stdout",
               "stderr",
-              "system"
+              "system",
+              "user"
             ],
             "title": "Stream",
             "type": "string"
@@ -11941,8 +12037,61 @@
       },
       "LogPayload": {
         "additionalProperties": false,
-        "description": "``log``: one captured worker output line (ANSI/control sequences already stripped).",
+        "description": "``log``: one captured worker output line (ANSI/control sequences already stripped).\n\nStream ``user`` (v0.11) is a structured line the model code wrote through the tracking\nAPI; only those lines carry a ``level`` and ``fields``.",
         "properties": {
+          "fields": {
+            "anyOf": [
+              {
+                "maxProperties": 16,
+                "patternProperties": {
+                  "^[a-z][a-z0-9_]{0,31}$": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fields"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "debug",
+                  "info",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Level"
+          },
           "line": {
             "maxLength": 4096,
             "title": "Line",
@@ -11952,7 +12101,8 @@
             "enum": [
               "stdout",
               "stderr",
-              "system"
+              "system",
+              "user"
             ],
             "title": "Stream",
             "type": "string"
@@ -12696,6 +12846,166 @@
         "title": "MeridianColumns",
         "type": "object"
       },
+      "MetricHistory": {
+        "description": "``GET /v1/runs/{run_id}/metrics/{key}``: every series of one metric key.",
+        "examples": [
+          {
+            "key": "step_size",
+            "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "series": [
+              {
+                "attempt": 1,
+                "count": 3,
+                "downsampled": false,
+                "labels": {
+                  "chain": "0"
+                },
+                "steps": [
+                  1,
+                  2,
+                  3
+                ],
+                "ts": [
+                  "2026-10-15T09:30:00Z",
+                  "2026-10-15T09:30:00Z",
+                  "2026-10-15T09:30:00Z"
+                ],
+                "values": [
+                  0.9,
+                  0.6,
+                  0.45
+                ]
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "run_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/MetricHistorySeries"
+            },
+            "maxItems": 64,
+            "title": "Series",
+            "type": "array"
+          },
+          "truncated": {
+            "default": false,
+            "description": "More series exist than were returned",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_id",
+          "key"
+        ],
+        "title": "MetricHistory",
+        "type": "object"
+      },
+      "MetricHistorySeries": {
+        "description": "The points of one series, in step order (downsampled to ``max_points`` with LTTB).",
+        "examples": [
+          {
+            "attempt": 1,
+            "count": 3,
+            "downsampled": false,
+            "labels": {
+              "chain": "0"
+            },
+            "steps": [
+              1,
+              2,
+              3
+            ],
+            "ts": [
+              "2026-10-15T09:30:00Z",
+              "2026-10-15T09:30:00Z",
+              "2026-10-15T09:30:00Z"
+            ],
+            "values": [
+              0.9,
+              0.6,
+              0.45
+            ]
+          }
+        ],
+        "properties": {
+          "attempt": {
+            "minimum": 1.0,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "count": {
+            "description": "Stored points (before downsampling)",
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "downsampled": {
+            "default": false,
+            "title": "Downsampled",
+            "type": "boolean"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "steps": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "ts": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": "Ts",
+            "type": "array"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "attempt",
+          "count",
+          "steps",
+          "values",
+          "ts"
+        ],
+        "title": "MetricHistorySeries",
+        "type": "object"
+      },
       "MetricPayload": {
         "additionalProperties": false,
         "description": "``metric``: a scalar metric (holdout error, elpd, ...).",
@@ -12736,6 +13046,240 @@
           "value"
         ],
         "title": "MetricPayload",
+        "type": "object"
+      },
+      "MetricPointIn": {
+        "additionalProperties": false,
+        "description": "One metric point written through the API (``step`` null = a scalar, newest wins).",
+        "examples": [
+          {
+            "key": "revenue_lift",
+            "labels": {
+              "region": "north"
+            },
+            "value": 0.042
+          },
+          {
+            "key": "loss",
+            "step": 400,
+            "value": 1.23
+          }
+        ],
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "labels": {
+            "maxProperties": 8,
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,31}$": {
+                "pattern": "^[A-Za-z0-9_.\\-]{1,63}$",
+                "type": "string"
+              }
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the time of the request",
+            "title": "Ts"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "MetricPointIn",
+        "type": "object"
+      },
+      "MetricSeries": {
+        "description": "Summary of one metric series (key + labels) of a run; the newest attempt that logged it.",
+        "examples": [
+          {
+            "attempt": 1,
+            "count": 1400,
+            "first_ts": "2026-10-15T09:30:00Z",
+            "key": "step_size",
+            "labels": {
+              "chain": "0"
+            },
+            "last": 0.31,
+            "last_step": 1400,
+            "last_ts": "2026-10-15T09:31:00Z",
+            "max": 1.2,
+            "min": 0.02
+          },
+          {
+            "attempt": 1,
+            "count": 1,
+            "first_ts": "2026-10-15T09:30:00Z",
+            "key": "rmse",
+            "last": 12.7,
+            "last_ts": "2026-10-15T09:30:00Z",
+            "max": 12.7,
+            "min": 12.7
+          }
+        ],
+        "properties": {
+          "attempt": {
+            "minimum": 1.0,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "count": {
+            "description": "Stored points",
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "first_ts": {
+            "format": "date-time",
+            "title": "First Ts",
+            "type": "string"
+          },
+          "key": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "last": {
+            "description": "Value of the newest point (by time, then step)",
+            "title": "Last",
+            "type": "number"
+          },
+          "last_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Step of the newest point; null for a scalar",
+            "title": "Last Step"
+          },
+          "last_ts": {
+            "format": "date-time",
+            "title": "Last Ts",
+            "type": "string"
+          },
+          "max": {
+            "title": "Max",
+            "type": "number"
+          },
+          "min": {
+            "title": "Min",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "attempt",
+          "count",
+          "last",
+          "min",
+          "max",
+          "first_ts",
+          "last_ts"
+        ],
+        "title": "MetricSeries",
+        "type": "object"
+      },
+      "MetricsWrite": {
+        "additionalProperties": false,
+        "description": "``POST /v1/runs/{run_id}/metrics``: log metric points to a run (any state).",
+        "examples": [
+          {
+            "metrics": [
+              {
+                "key": "revenue_lift",
+                "value": 0.042
+              },
+              {
+                "key": "loss",
+                "step": 400,
+                "value": 1.23
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/MetricPointIn"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Metrics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metrics"
+        ],
+        "title": "MetricsWrite",
+        "type": "object"
+      },
+      "MetricsWriteResult": {
+        "description": "Points stored, and points that repeated an existing (series, step) and were ignored.",
+        "examples": [
+          {
+            "accepted": 2,
+            "duplicates": 0
+          }
+        ],
+        "properties": {
+          "accepted": {
+            "minimum": 0.0,
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "duplicates": {
+            "minimum": 0.0,
+            "title": "Duplicates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "duplicates"
+        ],
+        "title": "MetricsWriteResult",
         "type": "object"
       },
       "MffOptions": {
@@ -14657,6 +15201,7 @@
               "executor": "local-process",
               "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "kind": "optimize",
+              "name": "weekly sales, adstock 4",
               "project_id": "default",
               "queued_at": "2026-10-15T09:30:00Z",
               "resource_class": "M",
@@ -14665,6 +15210,10 @@
               "spec_revision": 2,
               "started_at": "2026-10-15T09:30:05Z",
               "state": "succeeded",
+              "tags": {
+                "stage": "candidate",
+                "team": "growth"
+              },
               "tenant_id": "default",
               "timeout": "45m",
               "updated_at": "2026-10-15T09:31:00Z"
@@ -15803,6 +16352,39 @@
         "title": "Page[Membership]",
         "type": "object"
       },
+      "Page_MetricSeries_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MetricSeries"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[MetricSeries]",
+        "type": "object"
+      },
       "Page_ModelCatalogEntry_": {
         "examples": [
           {
@@ -16230,6 +16812,39 @@
           "items"
         ],
         "title": "Page[RunEventView]",
+        "type": "object"
+      },
+      "Page_RunParam_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunParam"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[RunParam]",
         "type": "object"
       },
       "Page_Run_": {
@@ -16758,6 +17373,77 @@
           "items"
         ],
         "title": "Page[Workflow]",
+        "type": "object"
+      },
+      "ParamsWrite": {
+        "additionalProperties": false,
+        "description": "``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409).",
+        "examples": [
+          {
+            "params": {
+              "analyst": "kim",
+              "holdout_weeks": 8
+            }
+          }
+        ],
+        "properties": {
+          "params": {
+            "maxProperties": 500,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "maxLength": 6000,
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "params"
+        ],
+        "title": "ParamsWrite",
+        "type": "object"
+      },
+      "ParamsWriteResult": {
+        "description": "Params stored, and params already stored with the same value.",
+        "examples": [
+          {
+            "accepted": 2,
+            "unchanged": 0
+          }
+        ],
+        "properties": {
+          "accepted": {
+            "minimum": 0.0,
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "unchanged": {
+            "minimum": 0.0,
+            "title": "Unchanged",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "unchanged"
+        ],
+        "title": "ParamsWriteResult",
         "type": "object"
       },
       "PlotBindings": {
@@ -17391,6 +18077,7 @@
               "executor": "local-process",
               "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "kind": "render",
+              "name": "weekly sales, adstock 4",
               "project_id": "default",
               "queued_at": "2026-10-15T09:30:00Z",
               "resource_class": "M",
@@ -17399,6 +18086,10 @@
               "spec_revision": 2,
               "started_at": "2026-10-15T09:30:05Z",
               "state": "succeeded",
+              "tags": {
+                "stage": "candidate",
+                "team": "growth"
+              },
               "tenant_id": "default",
               "timeout": "45m",
               "updated_at": "2026-10-15T09:31:00Z"
@@ -18058,6 +18749,7 @@
               "executor": "local-process",
               "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "kind": "translate_priors",
+              "name": "weekly sales, adstock 4",
               "project_id": "default",
               "queued_at": "2026-10-15T09:30:00Z",
               "resource_class": "M",
@@ -18066,6 +18758,10 @@
               "spec_revision": 2,
               "started_at": "2026-10-15T09:30:05Z",
               "state": "succeeded",
+              "tags": {
+                "stage": "candidate",
+                "team": "growth"
+              },
               "tenant_id": "default",
               "timeout": "45m",
               "updated_at": "2026-10-15T09:31:00Z"
@@ -19966,6 +20662,7 @@
             "executor": "local-process",
             "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
             "kind": "fit",
+            "name": "weekly sales, adstock 4",
             "progress": {
               "chains": [
                 {
@@ -19996,6 +20693,10 @@
             "spec_revision": 2,
             "started_at": "2026-10-15T09:30:05Z",
             "state": "running",
+            "tags": {
+              "stage": "candidate",
+              "team": "growth"
+            },
             "tenant_id": "default",
             "timeout": "45m",
             "updated_at": "2026-10-15T09:31:00Z"
@@ -20027,6 +20728,31 @@
             "minimum": 1.0,
             "title": "Attempt",
             "type": "integer"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Values of the requested `column` refs (list_runs only), keyed by RunRef.text()",
+            "title": "Columns"
           },
           "cost": {
             "$ref": "#/components/schemas/RunCost"
@@ -20116,6 +20842,32 @@
               }
             ],
             "title": "Model Version Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Display name (v0.11)",
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Free-text note (untrusted text, v0.11)",
+            "title": "Note"
           },
           "output_model_version_id": {
             "anyOf": [
@@ -20255,6 +21007,14 @@
           },
           "state": {
             "$ref": "#/components/schemas/RunState"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Mutable run tags (v0.11; labels stay create-only)",
+            "title": "Tags",
+            "type": "object"
           },
           "tenant_id": {
             "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
@@ -20541,7 +21301,7 @@
         "type": "object"
       },
       "RunEventType": {
-        "description": "Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).",
+        "description": "Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).\n\n``metrics``, ``params`` and ``tags`` (v0.11) carry run tracking data: the control plane\nwrites them to the tracking tables, not to the stored event list.",
         "enum": [
           "state",
           "progress",
@@ -20551,7 +21311,10 @@
           "checkpoint",
           "metric",
           "complete",
-          "error"
+          "error",
+          "metrics",
+          "params",
+          "tags"
         ],
         "title": "RunEventType",
         "type": "string"
@@ -20647,6 +21410,136 @@
         ],
         "title": "RunKind",
         "type": "string"
+      },
+      "RunParam": {
+        "description": "One run parameter. ``value`` is the text form; ``value_num`` is set for numbers.",
+        "examples": [
+          {
+            "key": "fit.draws",
+            "logged_at": "2026-10-15T09:30:00Z",
+            "source": "runner",
+            "value": "1000",
+            "value_num": 1000.0
+          },
+          {
+            "key": "settings.adstock.l_max",
+            "logged_at": "2026-10-15T09:30:00Z",
+            "source": "runner",
+            "value": "4",
+            "value_num": 4.0
+          }
+        ],
+        "properties": {
+          "key": {
+            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "logged_at": {
+            "format": "date-time",
+            "title": "Logged At",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "runner",
+              "api"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "value_num": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Num"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "source",
+          "logged_at"
+        ],
+        "title": "RunParam",
+        "type": "object"
+      },
+      "RunPatch": {
+        "additionalProperties": false,
+        "description": "Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to\n``null`` is deleted.",
+        "examples": [
+          {
+            "name": "weekly sales, adstock 4",
+            "tags": {
+              "stage": "candidate"
+            }
+          },
+          {
+            "note": "Holdout error is high in week 52 (holiday)."
+          }
+        ],
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "maxProperties": 100,
+                "patternProperties": {
+                  "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,127}$": {
+                    "anyOf": [
+                      {
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "title": "RunPatch",
+        "type": "object"
       },
       "RunRetry": {
         "additionalProperties": false,
@@ -21236,6 +22129,7 @@
               "executor": "local-process",
               "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
               "kind": "score",
+              "name": "weekly sales, adstock 4",
               "project_id": "default",
               "queued_at": "2026-10-15T09:30:00Z",
               "resource_class": "M",
@@ -21244,6 +22138,10 @@
               "spec_revision": 2,
               "started_at": "2026-10-15T09:30:05Z",
               "state": "succeeded",
+              "tags": {
+                "stage": "candidate",
+                "team": "growth"
+              },
               "tenant_id": "default",
               "timeout": "45m",
               "updated_at": "2026-10-15T09:31:00Z"
@@ -38016,6 +38914,7 @@
     },
     "/v1/runs": {
       "get": {
+        "description": "Runs of the project, newest first by default.\n\n``name`` is a case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``\n(the run has the tag) or ``key:value``; ``filter`` (repeatable, at most 8) compares a\nmetric series summary, a param, a tag or the name (``metric.rmse < 0.5``); ``order_by``\nsorts on one ref (``-metric.rmse``; runs without the value sort last); ``column``\n(repeatable, at most 16) returns those values in ``Run.columns``.",
         "operationId": "list_runs",
         "parameters": [
           {
@@ -38092,6 +38991,113 @@
                 }
               ],
               "title": "Spec Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parent_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Column"
             }
           }
         ],
@@ -38232,6 +39238,58 @@
         "tags": [
           "runs"
         ]
+      },
+      "patch": {
+        "description": "Merge patch: a field left out is unchanged, ``null`` clears the name or the note, and\na tag set to ``null`` is deleted. The note text is never written to the audit log.",
+        "operationId": "update_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Run",
+        "tags": [
+          "runs"
+        ]
       }
     },
     "/v1/runs/{run_id}/events": {
@@ -38326,7 +39384,7 @@
     },
     "/v1/runs/{run_id}/logs": {
       "get": {
-        "description": "Captured lines, oldest first. ``line`` is untrusted text: render it as text only.",
+        "description": "Captured and user lines, oldest first. ``line`` and ``fields`` are untrusted text:\nrender them as text only. ``level`` is the minimum level (``debug < info < warning <\nerror``); lines without a level count as ``info``.\n\n``user`` lines come back only with ``stream=user`` or ``include_user=true``: a client\nolder than v0.11 knows only the streams ``stdout``, ``stderr`` and ``system``.",
         "operationId": "run_logs",
         "parameters": [
           {
@@ -38391,7 +39449,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "pattern": "^(stdout|stderr|system)$",
+                  "pattern": "^(stdout|stderr|system|user)$",
                   "type": "string"
                 },
                 {
@@ -38399,6 +39457,40 @@
                 }
               ],
               "title": "Stream"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "debug",
+                    "info",
+                    "warning",
+                    "error"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          },
+          {
+            "description": "Also return the structured 'user' lines (v0.11)",
+            "in": "query",
+            "name": "include_user",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also return the structured 'user' lines (v0.11)",
+              "title": "Include User",
+              "type": "boolean"
             }
           }
         ],
@@ -38425,6 +39517,408 @@
           }
         },
         "summary": "Run Logs",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/v1/runs/{run_id}/metrics": {
+      "get": {
+        "description": "The run's metric series, ordered by key and labels. Without ``attempt`` each series is\nsummarised for the newest attempt that wrote it; with it, for that attempt only.",
+        "operationId": "list_run_metrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z][a-z0-9_]{0,63}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Key"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attempt",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Attempt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_MetricSeries_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Run Metrics",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "description": "Log metric points (for example business KPIs measured after the fit) into the run's\ncurrent attempt. A stepped point already stored is kept (``duplicates``); a scalar point\nreplaces an older one.",
+        "operationId": "log_run_metrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricsWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsWriteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Log Run Metrics",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/v1/runs/{run_id}/metrics/{key}": {
+      "get": {
+        "description": "Every series of ``key`` (at most 64, by labels), downsampled to ``max_points`` per\nseries (LTTB over step and value; the first and the last point are always kept).\n``label=k:v`` (repeatable) keeps the series with that label value.",
+        "operationId": "get_metric_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_points",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 10000,
+              "minimum": 10,
+              "title": "Max Points",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "attempt",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Attempt"
+            }
+          },
+          {
+            "in": "query",
+            "name": "label",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Metric History",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/v1/runs/{run_id}/params": {
+      "get": {
+        "description": "The run's params, ordered by key. ``value`` is untrusted text: render it as text.",
+        "operationId": "list_run_params",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prefix",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 250,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RunParam_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Run Params",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "description": "Log params. A param is write-once: logging the stored value again is ``unchanged``;\na different value refuses the whole write (409 ``CONFLICT``, nothing is written).",
+        "operationId": "log_run_params",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamsWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParamsWriteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Log Run Params",
         "tags": [
           "runs"
         ]

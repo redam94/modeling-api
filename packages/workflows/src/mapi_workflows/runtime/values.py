@@ -25,6 +25,7 @@ import xarray as xr
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.registry import Registry
 from mapi_sdk.steps import CancelToken
+from mapi_sdk.tracking import Tracker, TrackingMixin
 from mapi_sdk.tree import (
     infer_tree_schema,
     select_nodes,
@@ -187,8 +188,13 @@ class NodeOutcome:
 
 
 @dataclass(slots=True)
-class NodeContext:
-    """Everything a node implementation may use."""
+class NodeContext(TrackingMixin):
+    """Everything a node implementation may use.
+
+    ``tracker`` (v0.11) receives what the node logs with the
+    :class:`~mapi_sdk.tracking.TrackingMixin` methods (a ``search.grid`` node's trial
+    params and scores, for example); ``None``: validate only.
+    """
 
     node_id: str
     use: str
@@ -202,6 +208,8 @@ class NodeContext:
     input_refs: dict[str, list[NodeOutputRef]] = field(default_factory=dict)
     services: dict[str, Any] = field(default_factory=dict)
     """Driver-provided hooks (e.g. ``governance``: the policy resolver and check runners)."""
+    tracker: Tracker | None = None
+    _logged_params: dict[str, Any] = field(init=False, default_factory=dict, repr=False)
 
     def one(self, port: str) -> Value | None:
         vals = self.inputs.get(port) or []

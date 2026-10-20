@@ -69,6 +69,22 @@ describe("LogsViewer", () => {
   });
 });
 
+describe("LogsViewer levels (v0.11)", () => {
+  it("shows level badges and field chips, and the level filter hides info lines", async () => {
+    withQuery(<LogsViewer runId={RUN_RUNNING} live={false} />);
+    const log = await screen.findByRole("log", { name: "Run logs" });
+    await waitFor(() => expect(log.textContent).toContain("sampler started"));
+    expect(log.textContent).toContain("step_size=0.012");
+    expect(log.textContent).toContain("note=<b>not bold</b>");
+    expect(log.querySelector("b")).toBeNull();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Level" }), "warning");
+    await waitFor(() => expect(log.textContent).not.toContain("sampler started"));
+    expect(log.textContent).not.toContain("bootstrap ok"); // no level: counts as info
+    expect(log.textContent).toContain("step size of chain 1 is small");
+    expect(log.textContent).toContain("grid point 7 failed");
+  });
+});
+
 describe("ProblemNotice", () => {
   it("keeps untrusted text out of the markup", async () => {
     const problem: Problem = {

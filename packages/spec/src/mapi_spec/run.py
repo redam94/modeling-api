@@ -28,11 +28,12 @@ import binascii
 import hashlib
 import hmac as _hmac
 import json
+import math
 import re
 import secrets
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import IntEnum, StrEnum
 from typing import Annotated, Any, Final, Literal
 
@@ -74,6 +75,23 @@ from mapi_spec.storage import (
     SignedGet,
     SignedPut,
     check_object_name,
+)
+from mapi_spec.tracking import (
+    MAX_LOG_FIELDS,
+    MAX_PARAMS_PER_EVENT,
+    MAX_POINTS_PER_EVENT,
+    MAX_TAG_VALUE_CHARS,
+    MAX_TAGS_PER_RUN,
+    RESERVED_TAG_PREFIX,
+    LogFieldKey,
+    LogFieldValue,
+    LogLevel,
+    MetricKey,
+    MetricLabels,
+    ParamKey,
+    ParamValue,
+    TagKey,
+    TrackingLimits,
 )
 from mapi_spec.tree import DataLayout
 
@@ -120,9 +138,13 @@ __all__ = [
     "LogPayload",
     "ManifestObject",
     "ManifestSignature",
+    "MetricBatchPayload",
     "MetricPayload",
+    "MetricSeriesBatch",
     "OutputManifest",
     "OutputTarget",
+    "ParamItem",
+    "ParamsPayload",
     "ProgressPayload",
     "RunEvent",
     "RunEventType",
@@ -136,6 +158,8 @@ __all__ = [
     "RunnerExit",
     "RunnerPhase",
     "StatePayload",
+    "TagItem",
+    "TagsPayload",
     "TransitionRule",
     "VerificationResult",
     "WarningPayload",
@@ -159,6 +183,7 @@ __all__ = [
     "sign_bundle_manifest",
     "sign_event",
     "sign_output_manifest",
+    "split_for_events",
     "transition",
     "verify_bundle_manifest",
     "verify_event",
@@ -536,6 +561,10 @@ class ChainProgress(StrictModel):
     draws_total: int = Field(..., ge=0)
     tuning: bool = False
     divergences: int = Field(0, ge=0)
+    step_size: float | None = Field(None, ge=0, description="Current step size (v0.11)")
+    num_steps: int | None = Field(
+        None, ge=0, description="Leapfrog steps of the latest draw (v0.11)"
+    )
 
 
 class ProgressPayload(_Payload):
@@ -549,11 +578,23 @@ class ProgressPayload(_Payload):
 
 
 class LogPayload(_Payload):
-    """``log``: one captured worker output line (ANSI/control sequences already stripped)."""
+    """``log``: one captured worker output line (ANSI/control sequences already stripped).
 
-    stream: Literal["stdout", "stderr", "system"]
+    Stream ``user`` (v0.11) is a structured line the model code wrote through the tracking
+    API; only those lines carry a ``level`` and ``fields``.
+    """
+
+    stream: Literal["stdout", "stderr", "system", "user"]
     line: str = Field(..., max_length=4096)
     truncated: bool = False
+    level: LogLevel | None = None
+    fields: dict[LogFieldKey, LogFieldValue] | None = Field(None, max_length=MAX_LOG_FIELDS)
+
+    @model_validator(mode="after")
+    def _user_only(self) -> LogPayload:
+        if self.stream != "user" and (self.level is not None or self.fields is not None):
+            raise ValueError("level and fields are only valid for stream 'user'")
+        return self
 
 
 class WarningPayload(_Payload):
@@ -621,6 +662,86 @@ class ErrorPayload(_Payload):
         return self
 
 
+# ------------------------------------------------------------------------------ tracking (v0.11)
+
+
+class MetricSeriesBatch(StrictModel):
+    """One series (key + labels) of a ``metrics`` event, columnar."""
+
+    key: MetricKey
+    labels: MetricLabels = Field(default_factory=dict)
+    steps: list[Annotated[int, Field(ge=0)] | None] = Field(
+        ..., min_length=1, max_length=MAX_POINTS_PER_EVENT
+    )
+    values: list[float]
+    ts_ms: list[Annotated[int, Field(ge=0)]] = Field(
+        ..., description="Milliseconds after the payload's t0"
+    )
+
+    @model_validator(mode="after")
+    def _columns(self) -> MetricSeriesBatch:
+        if not len(self.steps) == len(self.values) == len(self.ts_ms):
+            raise ValueError("steps, values and ts_ms must have the same length")
+        if not all(math.isfinite(v) for v in self.values):
+            raise ValueError("metric values must be finite (NaN and infinity are refused)")
+        return self
+
+
+class MetricBatchPayload(_Payload):
+    """``metrics``: points of user-defined metrics, grouped by series (at most 1000 points)."""
+
+    t0: AwareDatetime
+    series: list[MetricSeriesBatch] = Field(..., min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def _bounded(self) -> MetricBatchPayload:
+        n = sum(len(s.steps) for s in self.series)
+        if n > MAX_POINTS_PER_EVENT:
+            raise ValueError(
+                f"a metrics event carries at most {MAX_POINTS_PER_EVENT} points, got {n}"
+            )
+        return self
+
+    def points(self) -> Iterator[tuple[str, dict[str, str], int | None, float, datetime]]:
+        """Every point as ``(key, labels, step, value, ts)``, series by series."""
+        for s in self.series:
+            for step, value, ms in zip(s.steps, s.values, s.ts_ms, strict=True):
+                yield s.key, dict(s.labels), step, value, self.t0 + timedelta(milliseconds=ms)
+
+
+class ParamItem(StrictModel):
+    """One run parameter."""
+
+    key: ParamKey
+    value: ParamValue
+
+
+class ParamsPayload(_Payload):
+    """``params``: run parameters (write-once per key: the first value wins)."""
+
+    params: list[ParamItem] = Field(..., min_length=1, max_length=MAX_PARAMS_PER_EVENT)
+
+
+class TagItem(StrictModel):
+    """One run tag (keys under ``mapi.`` are platform-only and refused)."""
+
+    key: TagKey
+    value: str = Field(..., max_length=MAX_TAG_VALUE_CHARS)
+
+    @field_validator("key")
+    @classmethod
+    def _not_reserved(cls, v: str) -> str:
+        if v.startswith(RESERVED_TAG_PREFIX):
+            raise ValueError(f"tag key {v!r} is reserved (prefix {RESERVED_TAG_PREFIX!r})")
+        return v
+
+
+class TagsPayload(_Payload):
+    """``tags``: run tags (the last value wins)."""
+
+    tags: list[TagItem] = Field(..., min_length=1, max_length=MAX_TAGS_PER_RUN)
+
+
 EVENT_PAYLOAD_MODELS: Final[Mapping[RunEventType, type[BaseModel]]] = {
     RunEventType.STATE: StatePayload,
     RunEventType.PROGRESS: ProgressPayload,
@@ -631,6 +752,9 @@ EVENT_PAYLOAD_MODELS: Final[Mapping[RunEventType, type[BaseModel]]] = {
     RunEventType.METRIC: MetricPayload,
     RunEventType.COMPLETE: CompletePayload,
     RunEventType.ERROR: ErrorPayload,
+    RunEventType.METRICS: MetricBatchPayload,
+    RunEventType.PARAMS: ParamsPayload,
+    RunEventType.TAGS: TagsPayload,
 }
 """The payload model of each event type."""
 
@@ -704,6 +828,71 @@ def event_from_log_payload(json_payload: Mapping[str, Any]) -> RunEvent:
         raise InvalidEvent("malformed run event", untrusted_text=str(exc)[:8000]) from exc
 
 
+_EVENT_ENVELOPE_BYTES: Final = 2048
+"""Headroom :func:`split_for_events` keeps for the event envelope (run_id, seq, ts, hmac)."""
+
+
+def _payload_bytes(payload: BaseModel) -> int:
+    return len(
+        json.dumps(
+            payload.model_dump(mode="json"), separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+    )
+
+
+def _halves(items: list[Any]) -> tuple[list[Any], list[Any]]:
+    mid = len(items) // 2
+    return items[:mid], items[mid:]
+
+
+def split_for_events[P: (MetricBatchPayload, ParamsPayload, TagsPayload)](
+    payload: P, max_event_bytes: int = MAX_EVENT_LINE_BYTES
+) -> list[P]:
+    """Split a tracking payload so each part fits in one event line of ``max_event_bytes``.
+
+    Metric batches split by series first, then by points; params and tags by items. Each
+    part is halved until its JSON plus 2048 bytes of envelope headroom fits. Order is kept
+    and no part is empty. A single point or item that cannot fit raises :class:`ValueError`.
+    """
+    budget = max_event_bytes - _EVENT_ENVELOPE_BYTES
+    if _payload_bytes(payload) <= budget:
+        return [payload]
+    parts: list[Any]
+    if isinstance(payload, MetricBatchPayload):
+        if len(payload.series) > 1:
+            parts = [payload.model_copy(update={"series": h}) for h in _halves(payload.series)]
+        else:
+            s = payload.series[0]
+            if len(s.steps) == 1:
+                raise ValueError(f"one point of metric {s.key!r} exceeds {budget} bytes")
+            mid = len(s.steps) // 2
+            parts = [
+                payload.model_copy(
+                    update={
+                        "series": [
+                            s.model_copy(
+                                update={
+                                    "steps": s.steps[a:b],
+                                    "values": s.values[a:b],
+                                    "ts_ms": s.ts_ms[a:b],
+                                }
+                            )
+                        ]
+                    }
+                )
+                for a, b in ((0, mid), (mid, len(s.steps)))
+            ]
+    elif isinstance(payload, ParamsPayload):
+        if len(payload.params) == 1:
+            raise ValueError(f"param {payload.params[0].key!r} exceeds {budget} bytes")
+        parts = [payload.model_copy(update={"params": h}) for h in _halves(payload.params)]
+    else:
+        if len(payload.tags) == 1:
+            raise ValueError(f"tag {payload.tags[0].key!r} exceeds {budget} bytes")
+        parts = [payload.model_copy(update={"tags": h}) for h in _halves(payload.tags)]
+    return [q for part in parts for q in split_for_events(part, max_event_bytes)]
+
+
 def decode_event_line(line: str | bytes) -> RunEvent | None:
     """Parse one stdout line. Non-JSON lines and JSON without ``mapi_event`` return ``None``
     (they are not events); a present-but-invalid event raises :class:`InvalidEvent`."""
@@ -749,6 +938,9 @@ class RunLimits(StrictModel):
     max_output_bytes: int = Field(..., ge=0, description="Sum of all uploaded output objects")
     max_output_objects: int = Field(10_000, ge=1)
     scratch_bytes: int | None = Field(None, ge=0, description="In-memory filesystem budget")
+    tracking: TrackingLimits = Field(
+        default_factory=TrackingLimits, description="Run tracking budgets (v0.11)"
+    )
 
     @classmethod
     def for_class(cls, resource_class: ResourceClass, **overrides: Any) -> RunLimits:

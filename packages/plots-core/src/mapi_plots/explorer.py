@@ -1412,8 +1412,16 @@ def _backtest(v: Mapping[str, Any]) -> list[Plot]:
         for f in v.get("folds", [])
         if f["metrics"].get("mae") is not None
     ]
-    if not rows:
-        return []
+    out: list[Plot] = []
+    if rows:
+        out.append(_backtest_folds(v, rows))
+    horizons = _backtest_horizons(v)
+    if horizons is not None:
+        out.append(horizons)
+    return out
+
+
+def _backtest_folds(v: Mapping[str, Any], rows: list[Row]) -> Plot:
     layers: list[dict[str, Any]] = [
         {
             "data": {"name": "bt"},
@@ -1437,16 +1445,67 @@ def _backtest(v: Mapping[str, Any]) -> list[Plot]:
                 "encoding": {"y": _q("mae"), "color": _n("name", "Benchmark")},
             }
         )
-    return [
-        _plot(
-            "backtest",
-            "folds",
-            "Backtest error by fold",
-            {"layer": layers},
-            {"bt": rows, "bench": bench},
-            v.get("caption_plain"),
-        )
+    return _plot(
+        "backtest",
+        "folds",
+        "Backtest error by fold",
+        {"layer": layers},
+        {"bt": rows, "bench": bench},
+        v.get("caption_plain"),
+    )
+
+
+def _horizon(key: Any) -> int | None:
+    try:
+        h = int(key)
+    except (TypeError, ValueError):
+        return None
+    return h if h >= 1 else None
+
+
+def _backtest_horizons(v: Mapping[str, Any]) -> Plot | None:
+    """Pooled MAE over the horizon (line + points) with one light line per fold; only when
+    at least two horizons have a pooled MAE."""
+    found: dict[int, Any] = {}
+    for k, m in (v.get("by_horizon") or {}).items():
+        h = _horizon(k)
+        if h is not None and isinstance(m, Mapping) and m.get("mae") is not None:
+            found[h] = m["mae"]
+    pooled = [{"h": h, "mae": found[h]} for h in sorted(found)]
+    if len(pooled) < 2:
+        return None
+    per_fold = [
+        {"h": h, "fold": str(f["fold"]["index"]), "mae": m.get("mae")}
+        for f in v.get("folds", [])
+        for k, m in (f.get("by_horizon") or {}).items()
+        if (h := _horizon(k)) is not None and isinstance(m, Mapping) and m.get("mae") is not None
     ]
+    x = _q("h", "Horizon (periods ahead)", axis={"tickMinStep": 1})
+    layers: list[dict[str, Any]] = []
+    if per_fold:
+        layers.append(
+            {
+                "data": {"name": "folds"},
+                "mark": {"type": "line", "opacity": 0.3, "color": "#888"},
+                "encoding": {"x": x, "y": _q("mae", "Error (MAE)"), "detail": _n("fold")},
+            }
+        )
+    layers.append(
+        {
+            "data": {"name": "pooled"},
+            "mark": {"type": "line", "point": True},
+            "encoding": {"x": x, "y": _q("mae", "Error (MAE)")},
+        }
+    )
+    return _plot(
+        "backtest",
+        "horizons",
+        "Backtest error by horizon",
+        {"layer": layers},
+        {"pooled": pooled, "folds": per_fold},
+        "Shows the error for each number of periods ahead. The error usually increases with "
+        "the horizon.",
+    )
 
 
 def _comparison(v: Mapping[str, Any]) -> list[Plot]:

@@ -9,6 +9,7 @@ already written stay with the supervisor.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import signal
 import socket
 import sys
@@ -81,9 +82,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     ctx = WorkerContext(start, sock, cancel=token, registry_ref=args.registry)
     try:
         run_kind(ctx)
+        ctx.close()  # the last tracking points go out before the result
     except BaseException as exc:  # report everything; the supervisor classifies it
         if isinstance(exc, KeyboardInterrupt | SystemExit) and not token.cancelled:
             raise
+        with contextlib.suppress(Exception):
+            ctx.close()
         msg = _error(exc)
         if token.cancelled:
             msg = ErrorMessage(code=ErrorCode.CANCELLED, message="the run was cancelled")

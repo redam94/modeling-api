@@ -3,7 +3,9 @@
 * store demand (sklearn/xgboost quantiles): CSV ingest with a column mapping, a fit with
   ``evaluate_then_refit``, then a 4-week forecast with a store the model never saw;
 * E02 radon (PyMC): zarr ingest, a checkpointed fit stopped by SIGTERM (PARTIAL), a resumed
-  second attempt that finishes from the checkpoint, then scoring a new county.
+  second attempt that finishes from the checkpoint, then scoring a new county;
+* E02 tracking (v0.11): a tiny fit streams signed ``metrics`` and ``params`` events and
+  progress with per-chain lanes.
 """
 
 from __future__ import annotations
@@ -31,8 +33,11 @@ from mapi_spec.run import (
     CheckpointPayload,
     CompletePayload,
     LogPayload,
+    MetricBatchPayload,
     MetricPayload,
     OutputManifest,
+    ParamsPayload,
+    ProgressPayload,
     RunnerExit,
     verify_output_manifest,
     verify_output_objects,
@@ -343,6 +348,50 @@ def test_e02_zarr_ingest_checkpointed_fit_sigterm_partial_resume_and_score(gcs: 
     assert out["summary"].to_dataset()["y_hat"].sizes["home"] == 6
     issues = json.loads(score.output("result.json"))["issues"]
     assert any(i["code"] == "UNSEEN_LEVELS" for i in issues)
+
+
+def test_e02_fit_streams_metrics_params_and_chains(gcs: ShimGcs) -> None:
+    data, _ = e02.generate(0, "tiny")
+    data.attrs["mapi_schema"] = e02.schema().model_dump_json()
+    gcs.put(gcs.buckets.quarantine, "t/default/uploads/radon", write_zarr_zip(data) or b"")
+    ingest = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.INGEST,
+            {"format": "zarr_zip"},
+            inputs={"upload": (gcs.buckets.quarantine, "t/default/uploads/radon")},
+        )
+    )
+    _ok(ingest)
+    spec = _spec("e02", fit={"tune": 50, "draws": 50, "chains": 2})
+    fit = run_supervisor(
+        make_run(
+            gcs,
+            RunKind.FIT,
+            spec,
+            inputs={"dataset": (gcs.buckets.runs, ingest.run.prefix + "data.zarr.zip")},
+            limits={"progress_interval_s": 0.5},
+        )
+    )
+    _ok(fit)  # every event, the tracking ones included, is signed and in sequence
+    params = {
+        i.key: i.value
+        for e in fit.of("params")
+        for i in ParamsPayload.model_validate(e.payload).params
+    }
+    assert str(params["model"]).startswith("tabular.hierarchical_glm@")
+    assert params["fit.draws"] == 50 and params["fit.chains"] == 2
+    points = [
+        p for e in fit.of("metrics") for p in MetricBatchPayload.model_validate(e.payload).points()
+    ]
+    assert points, "step metrics are streamed"
+    chains_seen = {labels.get("chain") for _, labels, _, _, _ in points}
+    assert {"0", "1"} <= chains_seen
+    assert all(step is None or step >= 1 for _, _, step, _, _ in points)
+    lanes = [ProgressPayload.model_validate(e.payload).chains for e in fit.of("progress")]
+    assert any(lanes), "progress carries per-chain lanes"
+    assert {c.chain for lane in lanes for c in lane} == {0, 1}
+    assert not [e for e in fit.of("warning") if e.payload.get("code") == "TRACKING_BUDGET"]
 
 
 def test_mff_ingest_and_an_invalid_spec_dry_run(gcs: ShimGcs) -> None:

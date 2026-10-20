@@ -23,6 +23,15 @@ import { scopeKey, useScope } from "@/stores/scope";
 import { ApiError, api, newIdempotencyKey, PROJECT_HEADER, unwrap, unwrapVoid, unwrapWithStatus } from "./client";
 import { advanceLogTail, EMPTY_LOG_TAIL, logPollDelay, type LogTail } from "./logs";
 import { fetchSession } from "./session";
+import {
+  fetchMetricHistory,
+  fetchRunMetrics,
+  fetchRunParams,
+  patchRun,
+  type LogLevel,
+  type LogStream,
+  type MetricHistoryQuery,
+} from "./tracking";
 import type {
   ArtifactLink,
   AuditAction,
@@ -45,6 +54,7 @@ import type {
   QuotaScope,
   Run,
   RunCreate,
+  RunPatch,
   RunKind,
   RunRetry,
   RunState,
@@ -108,8 +118,16 @@ export const qk = {
   runs: (p: string, filters: RunFilters) => ["p", p, "runs", "list", filters] as const,
   run: (p: string, id: string) => ["p", p, "runs", id] as const,
   runEvents: (p: string, id: string) => ["p", p, "runs", id, "events"] as const,
-  runLogs: (p: string, id: string, stream: string | null) => ["p", p, "runs", id, "logs", stream] as const,
+  runLogs: (p: string, id: string, stream: string | null, level: string | null = null) => ["p", p, "runs", id, "logs", stream, level] as const,
   runPlots: (p: string, id: string) => ["p", p, "runs", id, "plots"] as const,
+  // v0.11 tracking. `qk.run` is a prefix of these: invalidate it with `exact: true` for the run only.
+  /** Prefix of the summaries and every history of a run. */
+  runMetricData: (p: string, id: string) => ["p", p, "runs", id, "metrics"] as const,
+  runMetrics: (p: string, id: string) => ["p", p, "runs", id, "metrics", "summary"] as const,
+  /** Without `q`: the prefix of every history query of `key` (for invalidation). */
+  metricHistory: (p: string, id: string, key: string, q?: MetricHistoryQuery) =>
+    q ? (["p", p, "runs", id, "metrics", "history", key, q] as const) : (["p", p, "runs", id, "metrics", "history", key] as const),
+  runParams: (p: string, id: string) => ["p", p, "runs", id, "params"] as const,
   models: (p: string) => ["p", p, "models"] as const,
   model: (p: string, id: string) => ["p", p, "models", id] as const,
   modelVersions: (p: string, id: string) => ["p", p, "models", id, "versions"] as const,
@@ -497,11 +515,11 @@ export const MAX_LOG_LINES = 10_000;
  * pages exist that are not loaded yet; a live run catches up one page per poll (paced to fit
  * the tenant's request rate, backing off on 429), otherwise `refetch()` loads the next batch.
  */
-export function useRunLogs(id: string, stream: "stdout" | "stderr" | "system" | null, live: boolean) {
+export function useRunLogs(id: string, stream: LogStream | null, live: boolean, level: LogLevel | null = null) {
   const qc = useQueryClient();
   const s = useProjectScope();
   return useQuery({
-    queryKey: qk.runLogs(s.key, id, stream),
+    queryKey: qk.runLogs(s.key, id, stream, level),
     queryFn: ({ queryKey, signal }): Promise<LogTail> =>
       advanceLogTail(
         qc.getQueryData<LogTail>(queryKey) ?? EMPTY_LOG_TAIL,
@@ -510,7 +528,9 @@ export function useRunLogs(id: string, stream: "stdout" | "stderr" | "system" | 
             api.GET("/v1/runs/{run_id}/logs", {
               params: {
                 path: { run_id: id },
-                query: { limit: 200, ...(stream ? { stream } : {}), ...(cursor ? { cursor } : {}) },
+                // without a stream filter, ask for the `user` lines too (the server leaves
+                // them out for clients older than v0.11)
+                query: { limit: 200, ...(stream ? { stream } : { include_user: true }), ...(level ? { level } : {}), ...(cursor ? { cursor } : {}) },
               },
               headers: s.headers,
               signal,
@@ -574,6 +594,75 @@ export function useRetryRun() {
           body,
         }),
       ),
+    onSuccess: (run) => setRun(qc, s.key, run),
+  });
+}
+
+// ------------------------------------------------------------------------- run tracking (v0.11)
+
+/** Metric series of a run (summaries). The run page refetches them on SSE `tracking` frames. */
+export function useRunMetrics(runId: string | undefined) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runMetrics(s.key, runId ?? ""),
+    queryFn: ({ signal }) => fetchRunMetrics(runId ?? "", { headers: s.headers, signal }),
+    enabled: Boolean(runId),
+  });
+}
+
+/** The (downsampled) history of one metric key, every series of it. */
+export function useMetricHistory(runId: string | undefined, key: string, q: MetricHistoryQuery = {}) {
+  const s = useProjectScope();
+  const query: MetricHistoryQuery = { ...(q.maxPoints ? { maxPoints: q.maxPoints } : {}), ...(q.attempt ? { attempt: q.attempt } : {}) };
+  return useQuery({
+    queryKey: qk.metricHistory(s.key, runId ?? "", key, query),
+    queryFn: ({ signal }) => fetchMetricHistory(runId ?? "", key, query, { headers: s.headers, signal }),
+    enabled: Boolean(runId && key),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useRunParams(runId: string | undefined) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runParams(s.key, runId ?? ""),
+    queryFn: ({ signal }) => fetchRunParams(runId ?? "", { headers: s.headers, signal }),
+    enabled: Boolean(runId),
+  });
+}
+
+/** The cached run with a patch applied (what the server answers, applied ahead of it). */
+export function applyRunPatch(run: Run, patch: RunPatch): Run {
+  const next: Run = { ...run };
+  if ("name" in patch) next.name = patch.name ?? null;
+  if ("note" in patch) next.note = patch.note ?? null;
+  if (patch.tags) {
+    const tags = { ...(run.tags ?? {}) };
+    for (const [k, v] of Object.entries(patch.tags)) {
+      if (v === null) delete tags[k];
+      else tags[k] = v;
+    }
+    next.tags = tags;
+  }
+  return next;
+}
+
+/** `PATCH /v1/runs/{id}` (name, note, tags), applied to the cached run at once and undone on failure. */
+export function useUpdateRun() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: RunPatch }) => patchRun(id, patch, { headers: s.headers }),
+    onMutate: async ({ id, patch }) => {
+      const key = qk.run(s.key, id);
+      await qc.cancelQueries({ queryKey: key, exact: true });
+      const previous = qc.getQueryData<Run>(key);
+      if (previous) qc.setQueryData(key, applyRunPatch(previous, patch));
+      return { previous };
+    },
+    onError: (_err, { id }, ctx) => {
+      if (ctx?.previous) qc.setQueryData(qk.run(s.key, id), ctx.previous);
+    },
     onSuccess: (run) => setRun(qc, s.key, run),
   });
 }

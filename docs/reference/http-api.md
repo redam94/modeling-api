@@ -145,16 +145,19 @@ The stream sends these frames, in this order:
    60-minute request limit on Cloud Run.
 3. Live frames when the events occur: `state`, `progress`, `log`, `diagnostic`, `warning`,
    `checkpoint`, `metric`, `complete` and `error`. The `data:` of each frame is one line of
-   compact JSON (`RunEventView`).
+   compact JSON (`RunEventView`). From v0.11, the stream also sends `tracking` frames (see
+   [Run tracking](#run-tracking)).
 4. `event: end` when the run is terminal (data: the final `Run`). Then the server closes the
    stream. A client that gets `end` must not connect again.
 
-When the state of the run changes, the server also sends a new `event: snapshot` (no `id:`).
+When the state, the name or the note of the run changes, the server also sends a new
+`event: snapshot` (no `id:`).
 Thus, a client can show the latest `Run` again and does not have to assemble it from events.
 The server does *not* persist `progress` and `log` frames. It sends them live without an
 `id:` (data: `{run_id,
 attempt, seq, ts, type, payload}`) and does not replay them. `Last-Event-ID` applies only to
-persisted events.
+persisted events. From v0.11, the payload of a `log` frame also has `level` and `fields` when
+the line has stream `user`.
 
 Between events, the server writes a heartbeat comment (`: keepalive`) each 15 seconds. The
 first frame also has `retry: 3000`.
@@ -265,10 +268,10 @@ How validation gives its results:
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
 | `POST /v1/runs` | Submit a run. It returns 200 on an idempotent replay. Accepts `Idempotency-Key`. | `RunCreate` | `Run` | 201 | `NOT_FOUND`, `IDEMPOTENCY_CONFLICT`, `QUOTA_EXCEEDED`, `MODE_NOT_SUPPORTED`, `LEAKAGE_RISK`, `UNSEEN_LEVELS`, `COORD_NOT_ALLOWED`, `HORIZON_EXCEEDS_FIT`, `MISSING_FUTURE_COVARIATE`, `RECURSIVE_UNSUPPORTED` |
-| `GET /v1/runs` | List the runs (filters: `kind`, `state`, `spec_id`) | — | `Page[Run]` | 200 | — |
+| `GET /v1/runs` | List the runs. Filters: `kind`, `state`, `spec_id`. From v0.11 also `parent_run_id`, `name`, `tag`, `filter`, `order_by` and `column` (see [Search runs](#search-runs)) | — | `Page[Run]` | 200 | `SCHEMA_INVALID` (a `filter`, `order_by` or `column` value that is not correct) |
 | `GET /v1/runs/{run_id}` | Get a run: state, failure class and problem, attempt, progress snapshot and cost. The cost has placeholders in v0.2. From v0.3, the platform meters it | — | `Run` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/events` | An SSE stream or a JSON page of the persisted events (see [Run events](#run-events-server-sent-events)). Accepts `Last-Event-ID`. | — | `Page[RunEventView]` | 200 | `NOT_FOUND` |
-| `GET /v1/runs/{run_id}/logs` | The captured log lines. Filters: `attempt`, `stream` | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/logs` | The captured log lines. Filters: `attempt`, `stream` and, from v0.11, `level` (the minimum level) and `include_user` (see [Log levels](#log-levels)) | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/plots` | The plots that a run rendered (`plots.json`: forecast fans, counterfactual bands, classifier plots). The response comes from the newest attempt that has a verified `plots.json`. Thus succeeded and partial runs have plots, and so do failed or cancelled runs with an earlier partial attempt that wrote plots (v0.10). The plot sanitizer does a check of them at each read. The response does not include rejected plots. The list is empty while no attempt has plots, for example while the run is active. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
 | `POST /v1/runs/{run_id}:cancel` | Request cancellation. It is idempotent. It returns the run in `cancelling`, or in its terminal state if the run is already complete. The API does not change a `finalizing` run and returns it as it is, because its execution is already complete. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` |
 | `POST /v1/runs/{run_id}:resume` | Resume a `partial` run from its checkpoints (new attempt) | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the run is not `partial`) |
@@ -412,6 +415,8 @@ The scope of each v0.2 endpoint (by operation id) and the permission that the AP
 | Project | `create_run`, `dry_run_spec`, `resume_run`, `retry_run` | `create` `run` (runner). Runs on a model version also need `run` `model`. |
 | Project | `cancel_run` | `cancel` `run` (runner) |
 | Project | `list_runs`, `get_run`, `run_events`, `run_logs`, `list_run_plots` | `read` `run` |
+| Project | `list_run_metrics`, `get_metric_history`, `list_run_params` (v0.11) | `read` `run` |
+| Project | `update_run`, `log_run_metrics`, `log_run_params` (v0.11) | `update` `run` (runner). A token needs the `runs:write` scope. |
 | Project | `list_models`, `get_model`, `list_model_versions`, `get_model_version`, `get_model_artifact` | `read` `model` |
 | Project | `score_model` | `run` `model` (runner) |
 | Project | `list_plots`, `get_plot`, `validate_plot` | `read` `plot` |
@@ -948,6 +953,141 @@ The full guide, with examples, is
 | `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/inspect` | List the groups and arrays of an upload (an `inspect` run). The server returns the current run, or the run of a finished inspection. Accepts `Idempotency-Key`. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the file did not arrive, the upload expired, or a version used the upload before an inspection), `QUOTA_EXCEEDED` |
 | `GET /v1/datasets/{dataset_id}/uploads/{upload_id}/inspection` | What the inspect run found | — | `UploadInspection` | 200 | `NOT_FOUND` (never inspected, or the run ended without an inspection: the `problem` of the run tells why), `NOT_READY` (409, the run has not finished) |
 
+## Run tracking <span class="mapi-badge">v0.11</span> { #run-tracking }
+
+A run keeps a log of what happened in it. The log has these parts:
+
+- **Metrics.** A metric is a series of points. A series has a key (for example `loss`) and
+  labels (for example `{"chain": "0"}`). A point has a value, a time and, if it is part of a
+  curve, a step. A point without a step is a scalar. For a scalar, the newest value is kept.
+- **Params.** A param is a key and a value that does not change: the first value is kept.
+  The runner logs the params of the spec (`model`, `fit.*`, `settings.*`) automatically.
+- **Tags.** A tag is a key and a text value that you can change at any time. Tag keys that
+  start with `mapi.` are for the platform only.
+- **The name and the note.** A run can have a display name (a maximum of 200 characters) and
+  a note (free text, a maximum of 20 000 characters).
+- **Structured log lines.** Model code can write log lines with a `level` (`debug`, `info`,
+  `warning` or `error`) and `fields`. These lines have stream `user` in `LogLine`.
+
+Metric keys must match `^[a-z][a-z0-9_]{0,63}$`. Do not write qualifiers such as
+`train/loss` in the key. Use labels: key `loss` with `labels={"split": "train"}`. Label keys
+match `^[a-z][a-z0-9_]{0,31}$`, label values match `^[A-Za-z0-9_.\-]{1,63}$`, and a series has
+a maximum of 8 labels. Param keys and tag keys can have `.`, `-` and `/`. The guide
+[Track metrics, params and tags](../guides/tracking.md) shows how to log from model code,
+workflow nodes and notebooks.
+
+### Endpoints { #tracking-endpoints }
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `PATCH /v1/runs/{run_id}` | Set the name, the note or the tags of a run. This is a merge patch: a field that is not in the body does not change. `null` clears the name or the note. A tag with the value `null` is deleted. A run has a maximum of 100 tags. The labels of a run do not change. | `RunPatch` | `Run` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
+| `GET /v1/runs/{run_id}/metrics` | The metric series of a run, with a summary of each (`count`, `last`, `last_step`, `min`, `max`). The order is key, then labels. Filters: `key`, `attempt` | — | `Page[MetricSeries]` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/metrics/{key}` | The points of one metric key, for each series (a maximum of 64 series). The server downsamples each series to `max_points` (10 to 10 000, default 1000) with LTTB and keeps the first and the last point. Filters: `attempt`, `label` (`k:v`, repeatable, all must match) | — | `MetricHistory` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
+| `POST /v1/runs/{run_id}/metrics` | Log metric points to a run. The run can be in any state, thus you can log a KPI after the run finished. A maximum of 1000 points for each request. A point that repeats a stored (series, step) is ignored and counted in `duplicates`. | `MetricsWrite` | `MetricsWriteResult` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `QUOTA_EXCEEDED` (the tracking budget of the run is full) |
+| `GET /v1/runs/{run_id}/params` | The params of a run, in key order. Filter: `prefix` | — | `Page[RunParam]` | 200 | `NOT_FOUND` |
+| `POST /v1/runs/{run_id}/params` | Log params to a run (a maximum of 500 for each request). A param that has the same value again is `unchanged`. | `ParamsWrite` | `ParamsWriteResult` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `CONFLICT` (a key has a different stored value: the server writes nothing and names a maximum of 10 keys), `QUOTA_EXCEEDED` |
+
+The write endpoints need `update` on `run` (the runner role or higher). An API token needs the
+`runs:write` scope: `runs:create` does not give it. Each write makes an audit event:
+`run.update` for `PATCH` (the changed fields and the number of tags, never the note text), and
+`run.log` for metric and param writes (the number of points or params).
+
+`Run` has the fields `name`, `note` and `tags` (v0.11). `MetricSeries` gives the newest
+attempt that logged the series. `MetricHistorySeries` has three lists of equal length:
+`steps`, `values` and `ts`. A scalar series has one point with the step `null`.
+`MetricPointIn` has `key`, `value` (a finite number), `step` (optional, 0 or more), `ts`
+(optional, the default is the time of the request) and `labels`.
+
+### Search runs { #search-runs }
+
+`GET /v1/runs` has these query parameters for search (v0.11):
+
+| Parameter | Value |
+|---|---|
+| `parent_run_id` | Only the child runs of this run (for example, the node runs of a workflow run). |
+| `name` | The runs whose name contains this text (case-insensitive). |
+| `tag` | `key` (the run has the tag) or `key:value` (exact value). Repeatable: all must match. |
+| `filter` | A comparison, for example `metric.rmse < 0.5`. Repeatable, a maximum of 8: all must match. |
+| `order_by` | One ref. A `-` before the ref gives descending order. The default is `-created_at`. |
+| `column` | A ref whose value the server adds to `Run.columns`. Repeatable, a maximum of 16. |
+
+A ref has one of these forms:
+
+```text
+metric.KEY[{label=value,...}][.AGG]     AGG: last (default), min, max, count
+param.KEY
+tag.KEY
+name
+created_at                              (only in order_by and column)
+```
+
+A filter is `ref OP value`. The operators are `<`, `<=`, `>`, `>=`, `=`, `!=` and `~`.
+`~` finds text that contains the value (case-insensitive).
+
+| Ref | Operators | Value |
+|---|---|---|
+| `metric.…` | `<` `<=` `>` `>=` `=` `!=` | A number. The server compares it with the summary of that exact series. `metric.loss` is the series without labels. `metric.loss{split=val}` is the series with exactly that label. |
+| `param.…` | `=` `!=` `~` | Text, compared with the text form of the param. |
+| `param.…` | `<` `<=` `>` `>=` | A number, compared with the numeric value of the param. |
+| `tag.…` | `=` `!=` `~` | Text. |
+| `name` | `=` `~` | Text. |
+
+A run that does not have the series, the param or the tag does not match the filter. This is
+also true for `!=`. Runs that do not have the value of `order_by` come last. Equal values sort
+by run id (descending). When `order_by` is a param, the server sorts by the numeric value of
+the param first, then by its text. `Run.columns` uses the canonical text of each ref as its key (labels
+in key order, `.last` left out), for example `metric.loss{chain=0,split=val}`. The server
+returns `422 SCHEMA_INVALID` for a value that does not have this grammar.
+`mapi_spec.tracking.parse_run_filter`, `parse_run_order` and `parse_run_ref` implement the
+grammar. The Python client and the CLI use them to do a check of the values before they send
+the request.
+
+```bash
+curl -G "$MAPI/v1/runs" -H "Authorization: Bearer $MAPI_TOKEN" \
+  --data-urlencode 'filter=metric.rmse < 12' \
+  --data-urlencode 'filter=param.fit.engine = nutpie' \
+  --data-urlencode 'order_by=metric.rmse' \
+  --data-urlencode 'column=metric.rmse' --data-urlencode 'column=param.settings.adstock.l_max'
+```
+
+### Log levels { #log-levels }
+
+`GET /v1/runs/{run_id}/logs?level=warning` returns the lines with the level `warning` or
+`error`. The order of the levels is `debug`, `info`, `warning`, `error`. A line without a
+level (stdout, stderr and system lines) counts as `info`. `LogLine` has `level` and `fields`
+only for stream `user`.
+
+The server sends the lines of stream `user` only when the request has `stream=user` or
+`include_user=true`. A client before v0.11 knows only the streams `stdout`, `stderr` and
+`system`, thus it continues to read the logs of all runs. The v0.11 Python client, the CLI
+and the web app send `include_user=true`.
+
+### The `tracking` frame { #tracking-frame }
+
+The event stream (`GET /v1/runs/{run_id}/events`, SSE) sends `event: tracking` when the
+metrics, the params or the tags of the run change. The `data:` is a `TrackingFrame`:
+
+- `series`: the `MetricSeries` summaries that changed after the last frame (a maximum of
+  200).
+- `params` and `tags`: `true` if the params or the tags changed. Get them again.
+
+A `tracking` frame has no `id:`, and the server does not replay it. A client that connects
+again gets the current values from the endpoints above. The run events `metrics`, `params` and
+`tags` (see [Run protocol](run-protocol.md#tracking-events)) are not persisted as events. Thus,
+they are not in `Page[RunEventView]` and have no frame name of their own.
+
+```text
+event: tracking
+data: {"run_id":"run_01jaf3q2x8m9v7k5h4g3f2e1d0","series":[{"key":"step_size","labels":{"chain":"0"},"attempt":1,"count":1400,"last":0.31,"last_step":1400, …}],"params":false,"tags":false}
+```
+
+### Retention { #tracking-retention }
+
+The setting `MAPI_TRACKING_RETENTION_DAYS` (no default: keep all) deletes the metric points
+and the `user` log lines of runs that finished more days ago than the setting. The server
+keeps the summaries, the params, the tags, the name and the note. Thus, search and comparison
+of old runs continue to work. See [Configuration](../operations/configuration.md).
+
 ## DTO index
 
 All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
@@ -960,6 +1100,7 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 | Datasets | `DatasetCreate`, `Dataset`, `UploadCreate`, `UploadSession`, `IngestMapping`, `DimMapping`, `VarMapping`, `DatasetVersionCreate`, `DatasetVersion`, `DatasetVersionStatus` |
 | Specs | `SpecCreate`, `SpecDoc`, `SpecRevisionCreate`, `SpecRevision`, `ValidateRequest`, `ValidateResponse`, `StageSchema` |
 | Runs | `RunCreate`, `RunRetry`, `Run`, `RunCost`, `ProgressSnapshot`, `RunEventView`, `LogLine`, `SseEventName` |
+| Run tracking (v0.11) | `RunPatch`, `MetricSeries`, `MetricHistory`, `MetricHistorySeries`, `MetricPointIn`, `MetricsWrite`, `MetricsWriteResult`, `RunParam`, `ParamsWrite`, `ParamsWriteResult`, `TrackingFrame`, `TrackingLimits`, `RunRef`, `RunFilter`, `RunOrder` (`mapi_spec.tracking`) |
 | Models | `Model`, `ModelVersion`, `Scorecard`, `ScorecardItem`, `Lineage`, `ScoreCall`, `ScoreInline`, `ScoreCallResult`, `ModelInputSchema`, `BundleManifest` (`mapi_spec.run`) |
 | Plots and catalog | `PlotListItem`, `PlotSpec` (`mapi_spec`), `PlotValidateResponse`, `CatalogResponse`, `ModelCatalogEntry`, `StepCatalogEntry`, `PlotCatalogEntry` (`mapi_spec`) |
 | Identity (v0.3) | `Me`, `MeTenant`, `MeProject`, `Tenant`, `TenantCreate`, `TenantUpdate`, `TenantAdminUpdate`, `ProjectCreate`, `ProjectUpdate`, `Membership`, `MembershipCreate`, `MembershipUpdate`, `Principal` (`mapi_spec.tenancy`) |

@@ -135,7 +135,7 @@ describe("builtin plot specs", () => {
 });
 
 describe("run stream reducer", () => {
-  const initial: RunStreamState = { status: "connecting", detail: null, events: [], progress: null };
+  const initial: RunStreamState = { status: "connecting", detail: null, events: [], progress: null, trackingTick: 0, changedKeys: [] };
   const ev = (id: number) => ({ id, run_id: "r", attempt: 1, seq: id, ts: "t", type: "state" as const, payload: {} });
 
   it("dedupes replayed events and keeps them ordered", () => {

@@ -186,6 +186,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_DEADLINE_GRACE_S` | `60` | The extra time after the timeout of a run before the reconciler stops it |
 | `MAPI_MAX_INFRA_RETRIES` | `2` | The automatic retries after infrastructure failures |
 | `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | The sweep of expired upload intents (the server deletes their quarantine objects), expired browser sessions and abandoned sign-ins |
+| `MAPI_TRACKING_RETENTION_DAYS` | unset | v0.11. The days after a run finishes that the server keeps its metric points and its `user` log lines (1 to 36500). The housekeeping sweep deletes older rows in batches. The server always keeps the metric summaries, the value of each metric without a step, the params, the tags, the name and the note, thus search and comparison continue to work. If you do not set it, the server keeps the points while it keeps the run. See [Track metrics, params and tags](../guides/tracking.md#retention). |
 | `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has continued for longer than this time |
 | `MAPI_AUTO_RETRY_COST_FACTOR` | `2` | No automatic retry when the cost of a run is this multiple of its estimate |
 | `MAPI_FINALIZE_MAX_ATTEMPTS` | `5` | The attempts of the finalizer job before a run fails |

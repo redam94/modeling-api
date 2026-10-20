@@ -142,6 +142,7 @@ def run_workflow_node(ctx: WorkerContext, job: WorkflowNodeJob) -> None:
         log=ctx.log,
         progress=ctx.progress,
         cancel=ctx.cancel,
+        tracker=ctx.tracker,
     )
     ctx.state(RunnerPhase.UPLOAD, "writing the node's results")
     sidecar, files = output_files(job, outcome)

@@ -775,7 +775,7 @@ class TuringPatternModel(CustomModel[TuringPatternSettings]):
             result = run_engine(
                 sample_model,
                 plan,
-                EngineHooks(progress=report, cancel=ctx.cancel, log=ctx.log, sink=sink, key=key),
+                EngineHooks.for_context(ctx, progress=report, sink=sink, key=key),
             )
         ctx.check_cancelled()
         raw = result.group("posterior")
