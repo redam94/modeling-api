@@ -92,7 +92,7 @@ test("the catalog browses every item by its About card", async ({ page }) => {
 test("the catalog shows every plot as a card with an example", async ({ page }) => {
   await page.goto("/catalog?tab=plots");
   const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
-  await expect(cards).toHaveCount(36);
+  await expect(cards).toHaveCount(40); // v0.10: core.roc_pr, core.confusion, core.loss_curve, core.loo_pit
   // the first card's thumbnail renders in the sandbox (Vega-Lite)
   const first = page.getByTestId("plot-card").first();
   await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });

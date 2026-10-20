@@ -97,6 +97,7 @@ __all__ = [
     "INPUT_EVALUATION",
     "INPUT_EVALUATION_MANIFEST",
     "INPUT_HISTORY",
+    "INPUT_METRICS_SUFFIX",
     "INPUT_PLOTS",
     "INPUT_SCENARIO",
     "INPUT_SCHEMA",
@@ -159,6 +160,10 @@ INPUT_EVALUATION_MANIFEST: Final = "evaluation.manifest"
 INPUT_COMPARE_PREFIX: Final = "compare."
 """M3.5 (``explore``): ``compare.<k>`` (+ ``compare.<k>.manifest``) are the bundles of the
 other model versions in a comparison, in request order."""
+INPUT_METRICS_SUFFIX: Final = ".metrics"
+"""v0.10 (``explore``): ``<bundle input>.metrics`` (``bundle.metrics``,
+``compare.<k>.metrics``) is the ``metrics.json`` sidecar of that bundle (holdout metrics and
+elpd estimates), which the bundle archive does not hold."""
 SIDE_TABLE_PREFIX: Final = "side."
 PLOT_DATA_INPUT_PREFIX: Final = "plotdata."
 """``render`` runs: a ``data_ref`` dataset whose ``path`` is ``plotdata.<n>`` is read from the

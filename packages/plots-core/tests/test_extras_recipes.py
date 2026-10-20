@@ -15,7 +15,7 @@ pytest.importorskip("altair")
 from mapi_plots import examples as ex  # noqa: E402
 from mapi_plots.convert import arrow_to_frame  # noqa: E402
 from mapi_plots.recipes import RecipeDataError, get_recipe, standard_recipes  # noqa: E402
-from mapi_plots.recipes.extras import _ecdf_envelope  # noqa: E402
+from mapi_plots.recipes._stats import ecdf_envelope  # noqa: E402
 from mapi_plots.sanitize import sanitize_plot  # noqa: E402
 from mapi_spec.plots import PlotSpec  # noqa: E402
 
@@ -45,12 +45,15 @@ def check(plot: PlotSpec, rid: str) -> None:
 
 def test_the_recipes_are_in_the_core_pack() -> None:
     ids = [r.id for r in standard_recipes()]
-    assert ids[-5:] == IDS
+    start = ids.index(IDS[0])
+    assert ids[start : start + len(IDS)] == IDS
     for rid in IDS:
         entry = get_recipe(rid).catalog_entry()
         assert entry.about is not None and entry.summary
     assert get_recipe("core.pair").catalog_entry().requires_groups == ["posterior"]
     assert get_recipe("core.calibration").tags == ("diagnostic",)
+    reps = get_recipe("core.calibration").catalog_entry().requires_representation
+    assert [r.value for r in reps] == ["draws", "point"]
 
 
 @pytest.mark.parametrize("rid", IDS)
@@ -194,7 +197,7 @@ def test_rank_matrix_limits() -> None:
 def test_ecdf_envelope_covers_uniform_samples() -> None:
     n = 100
     z = np.arange(1, 101) / 101
-    lo, hi = _ecdf_envelope(n, z, 0.95, 2000, 0)
+    lo, hi = ecdf_envelope(n, z, 0.95, 2000, 0)
     assert np.all(lo < 0) and np.all(hi > 0) and np.allclose(lo, -hi)
     rng = np.random.default_rng(9)
     inside = 0
@@ -327,3 +330,117 @@ def test_state_sequence_accepts_summary_probabilities() -> None:
     assert np.allclose(states.groupby("t")["prob"].sum(), 1.0)
     first = states[(states["state"] == "0") & (states["t"] == 0)]["prob"].item()
     assert first == pytest.approx(0.9)
+
+
+def _hmm_tree() -> xr.DataTree:
+    """HMM-like bundle: ``hidden_states.state_prob(chain, draw, animal=3, step, state)`` and
+    ``observed_data.y(animal, step)`` padded with NaN after each shorter series."""
+    rng = np.random.default_rng(11)
+    n_a, n_s = 3, 40
+    p1 = rng.uniform(0.0, 1.0, (2, 10, n_a, n_s, 1))
+    probs = np.concatenate([p1, 1 - p1], axis=-1)
+    y = rng.normal(size=(n_a, n_s))
+    y[0, 30:] = np.nan
+    coords = {"animal": ["a1", "a2", "a3"], "step": np.arange(n_s), "state": ["rest", "move"]}
+    return xr.DataTree.from_dict(
+        {
+            "/model/hidden_states": xr.Dataset(
+                {"state_prob": (("chain", "draw", "animal", "step", "state"), probs)}, coords
+            ),
+            "/model/observed_data": xr.Dataset(
+                {"y": (("animal", "step"), y)},
+                {"animal": coords["animal"], "step": coords["step"]},
+            ),
+        }
+    )
+
+
+def test_state_sequence_reads_hmm_hidden_states_and_auto_selects() -> None:
+    plot = get_recipe("core.state_sequence").render(_hmm_tree())
+    check(plot, "core.state_sequence")
+    states = frame(plot, "states")
+    assert set(states["state"]) == {"rest", "move"} and states["t"].nunique() == 40
+    obs = frame(plot, "observed")
+    assert len(obs) == 30 and np.isfinite(obs["value"]).all()  # NaN padding dropped
+    cap = plot.caption_plain or ""
+    assert "The plot shows animal = a1. Set `select` to show another animal." in cap
+    other = get_recipe("core.state_sequence").render(_hmm_tree(), select={"animal": "a2"})
+    assert len(frame(other, "observed")) == 40
+    assert "Set `select`" not in (other.caption_plain or "")
+    with pytest.raises(RecipeDataError, match="no level"):
+        get_recipe("core.state_sequence").render(_hmm_tree(), select={"animal": "zebra"})
+
+
+def test_state_sequence_reads_markov_regimes() -> None:
+    rng = np.random.default_rng(12)
+    times = pd.date_range("2020-01-31", periods=60, freq="ME")
+    p0 = rng.uniform(size=60)
+    regimes = xr.Dataset(
+        {
+            "filtered_prob": (("time", "regime"), np.c_[p0, 1 - p0]),
+            "smoothed_prob": (("time", "regime"), np.c_[1 - p0, p0]),
+            "transition": (("regime", "regime_to"), np.array([[0.9, 0.1], [0.2, 0.8]])),
+            "expected_duration": (("regime",), np.array([10.0, 5.0])),
+        },
+        coords={"time": times, "regime": [0, 1], "regime_to": [0, 1]},
+    )
+    obs = xr.Dataset({"y": (("time",), rng.normal(size=60))}, {"time": times})
+    tree = {"model/regimes": regimes, "model/observed_data": obs}
+    plot = get_recipe("core.state_sequence").render(tree)
+    states = frame(plot, "states")
+    first = states[(states["state"] == "1") & (states["order"] == 1)]["prob"].to_numpy()
+    assert np.allclose(first, p0)  # smoothed_prob, not filtered_prob
+    assert "smoothed_prob (regimes)" in (plot.caption_plain or "")
+    assert '"title":"regime"' in json.dumps(plot.spec, separators=(",", ":"))
+    only_transition = {"model/regimes": regimes[["transition", "expected_duration"]]}
+    with pytest.raises(RecipeDataError, match="no state variable"):
+        get_recipe("core.state_sequence").render(only_transition)
+    explicit = get_recipe("core.state_sequence").render(tree, var="filtered_prob")
+    assert len(frame(explicit, "states")) == 120
+
+
+def test_state_sequence_reads_a_score_summary() -> None:
+    rng = np.random.default_rng(13)
+    p1 = rng.uniform(size=(2, 25, 1))
+    probs = np.concatenate([p1, 1 - p1], axis=-1)
+    stack = np.stack([probs, probs * 0.5, probs * 2.0])  # mean, sd, hdi_90_upper
+    summary = xr.Dataset(
+        {"state_prob": (("stat", "animal", "step", "state"), stack)},
+        coords={"stat": ["mean", "sd", "hdi_90_upper"], "animal": [7, 9], "state": [0, 1]},
+    )
+    plot = get_recipe("core.state_sequence").render({"summary": summary})
+    states = frame(plot, "states")
+    got = states[states["state"] == "0"].sort_values("t")["prob"].to_numpy()
+    assert np.allclose(got, p1[0, :, 0])
+    assert "animal = 7" in (plot.caption_plain or "")
+    no_mean = summary.sel(stat=["sd"])
+    with pytest.raises(RecipeDataError, match="no mean, median or point"):
+        get_recipe("core.state_sequence").render({"summary": no_mean})
+
+
+def test_calibration_reads_point_probabilities() -> None:
+    rng = np.random.default_rng(14)
+    n = 400
+    p = rng.uniform(size=n)
+    y = (rng.uniform(size=n) < p).astype(float)
+    tree = {
+        "predictions": xr.Dataset({"y_hat": (("row",), p)}),
+        "observed": xr.Dataset({"churn": (("row",), y)}),
+    }
+    plot = get_recipe("core.calibration").render(tree, bins=5)
+    check(plot, "core.calibration")
+    rel = frame(plot, "reliability")
+    assert rel["count"].sum() == n
+    assert "Brier score" in (plot.caption_plain or "")
+    summary = xr.Dataset(
+        {"y_hat": (("stat", "row"), np.stack([p, p * 0.1]))}, {"stat": ["mean", "sd"]}
+    )
+    from_summary = get_recipe("core.calibration").render(
+        {"summary": summary, "observed": tree["observed"]}
+    )
+    assert frame(from_summary, "reliability")["count"].sum() == n
+    cont = {**tree, "observed": xr.Dataset({"churn": (("row",), rng.normal(size=n))})}
+    with pytest.raises(RecipeDataError, match="0/1 target for the reliability diagram"):
+        get_recipe("core.calibration").render(cont)
+    with pytest.raises(RecipeDataError, match="needs predictive draws"):
+        get_recipe("core.calibration").render(tree, kind="continuous")

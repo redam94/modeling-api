@@ -3,9 +3,27 @@
 Point metrics (``rmse``, ``mae``, ``mape``, ``smape``, ``wape``, ``bias``, ``r2``) use the
 representation's point estimate; ``coverage_<p>``/``interval_width_<p>`` use central
 intervals (ETIs for draws and quantiles, the stored interval, normal intervals for
-moments); ``crps`` needs draws. ``elpd_loo``/``elpd_waic`` come from ArviZ on the fitted
+moments); ``crps`` needs draws. ``mase`` divides the MAE by the in-sample (seasonal) naive
+MAE of the training data (:func:`mase_scale`), which the caller passes as ``scale``; without
+it ``mase`` is skipped. ``elpd_loo``/``elpd_waic`` come from ArviZ on the fitted
 model's ``log_likelihood`` group when ArviZ is installed; otherwise they are skipped with a
 reason. Unknown or unsupported metrics are skipped, never silently zero.
+
+**Binary targets** (v0.10, classifiers): when every observed value is 0 or 1 (or the target
+holds exactly two values; the larger one is the positive class) and the point prediction is
+a probability in ``[0, 1]`` (the mean over draws), these metrics are computed on it:
+
+==================  =========================================================================
+``auc``             area under the ROC curve (Mann-Whitney, ties count one half); skipped
+                    when the holdout has one class only
+``brier``           mean ``(p - y)^2`` (0 is perfect)
+``log_score``       mean ``log p`` of the observed class (``p`` floored at 1e-12)
+``accuracy``        hit rate of ``p >= 0.5``
+==================  =========================================================================
+
+The binary Brier score is ``mean((p - y)^2)``; the categorical one below sums over both
+classes, so for two classes it is twice as large. The point metrics (``rmse``, ...) are still
+computed on the probabilities (``rmse`` is the root of the Brier score).
 
 **Categorical targets** (M3, choice models): when the observed target holds labels (text)
 and the prediction carries one probability per category along a dim the target lacks
@@ -44,6 +62,7 @@ from statistics import NormalDist
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from mapi_spec.capabilities import Diagnostic, Representation
 from mapi_spec.errors import CapabilityError
@@ -51,12 +70,15 @@ from mapi_spec.errors import CapabilityError
 from mapi_sdk.summarise import interp_quantile
 
 __all__ = [
+    "BINARY_METRICS",
     "CATEGORICAL_METRICS",
     "MAX_POINTWISE_ELPD",
     "MetricResult",
+    "binary_auc",
     "categorical_dim",
     "compute_metrics",
     "elpd",
+    "mase_scale",
     "point_estimate",
 ]
 
@@ -73,6 +95,13 @@ CATEGORICAL_METRICS: tuple[str, ...] = (
     "brier",
 )
 """Holdout metrics of categorical targets (see the module doc)."""
+BINARY_METRICS: tuple[str, ...] = ("auc", "brier", "log_score", "accuracy")
+"""Holdout metrics of binary (0/1) targets with probability predictions (see the module doc)."""
+_AUC_REASON = "AUC needs a 0/1 target and predicted probabilities in [0, 1]"
+_MASE_REASON = (
+    "MASE needs the in-sample naive error of the training data (a fit with a time holdout)"
+)
+_PROB_TOL = 1e-9
 _SAMPLE_DIMS = frozenset({"chain", "draw", "sample", "quantile", "bound", "moment"})
 _LOG_FLOOR = 1e-12
 _KEY = re.compile(r"[^a-z0-9]+")
@@ -224,6 +253,71 @@ def _categorical_metrics(
     return values, skipped
 
 
+def mase_scale(train: np.ndarray, m: int | None) -> float | None:
+    """In-sample seasonal-naive MAE of a training block (``m`` falls back to 1).
+
+    Axis 0 of ``train`` is time; any trailing axes are cells, pooled. Tries lag ``m``, then
+    lag 1 (``m`` ``None`` or below 1: lag 1 only); ``None`` when no lag gives a finite,
+    positive mean absolute difference.
+    """
+    for lag in (m, 1) if m is not None and m >= 1 else (1,):
+        if lag < train.shape[0]:
+            d = np.abs(train[lag:] - train[:-lag])
+            d = d[np.isfinite(d)]
+            if d.size and float(d.mean()) > 0:
+                return float(d.mean())
+    return None
+
+
+def binary_auc(p: np.ndarray, y: np.ndarray) -> float | None:
+    """ROC AUC of scores ``p`` for 0/1 labels ``y`` (Mann-Whitney U with average ranks).
+
+    Tied scores share their average rank, so a tie between a positive and a negative counts
+    one half. ``None`` when either class is missing.
+    """
+    p = np.asarray(p, dtype=np.float64).reshape(-1)
+    y = np.asarray(y, dtype=np.float64).reshape(-1)
+    pos = y == 1
+    n1 = int(pos.sum())
+    n0 = int(y.size - n1)
+    if n1 == 0 or n0 == 0:
+        return None
+    ranks = pd.Series(p).rank(method="average").to_numpy()
+    u = float(ranks[pos].sum()) - n1 * (n1 + 1) / 2
+    return u / (n1 * n0)
+
+
+def _binary_scores(
+    point: xr.DataArray, obs: xr.DataArray, valid: xr.DataArray
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """``(p, y)`` over the valid cells when the target is binary and ``point`` holds
+    probabilities, else ``None``.
+
+    Binary: the observed values are a non-empty subset of {0, 1}, or exactly two values (the
+    larger is the positive class). Cells with a non-finite prediction do not count.
+    """
+    if obs.dtype.kind not in "fiub" or not set(point.dims) <= set(obs.dims):
+        return None
+    dims = list(obs.dims)
+    keep = np.asarray(valid.broadcast_like(obs).transpose(*dims).values, dtype=bool)
+    o = np.asarray(obs.values, dtype=np.float64)[keep]
+    p = np.asarray(point.broadcast_like(obs).transpose(*dims).values, dtype=np.float64)[keep]
+    ok = np.isfinite(o) & np.isfinite(p)
+    o, p = o[ok], p[ok]
+    if o.size == 0:
+        return None
+    levels = np.unique(o)
+    if set(levels.tolist()) <= {0.0, 1.0}:
+        y = o
+    elif levels.size == 2:
+        y = (o == levels[1]).astype(np.float64)
+    else:
+        return None
+    if float(p.min()) < -_PROB_TOL or float(p.max()) > 1 + _PROB_TOL:
+        return None
+    return np.clip(p, 0.0, 1.0), y
+
+
 def compute_metrics(
     pred: xr.DataArray,
     observed: xr.DataArray,
@@ -232,14 +326,17 @@ def compute_metrics(
     *,
     mask: xr.DataArray | None = None,
     period: float | None = None,
+    scale: float | None = None,
 ) -> MetricResult:
     """Holdout metrics of ``pred`` (representation-shaped) against ``observed``.
 
     ``mask`` (bool, broadcastable to ``observed``) restricts the cells that count.
     Returns ``(values, skipped)`` where ``skipped`` maps metric -> reason. A probability
     prediction for a categorical target (:func:`categorical_dim`) gets the categorical
-    metrics (see the module doc). ``period`` (one turn, for a circular output such as a
-    direction) switches to the circular metrics (:func:`_circular_metrics`).
+    metrics, and one for a binary target the binary metrics (see the module doc). ``period``
+    (one turn, for a circular output such as a direction) switches to the circular metrics
+    (:func:`_circular_metrics`). ``scale`` is the MASE denominator (:func:`mase_scale` of the
+    training data); without it ``mase`` is skipped.
     """
     if period is not None:
         return _circular_metrics(pred, observed, rep, names, float(period), mask)
@@ -260,6 +357,9 @@ def compute_metrics(
     err = (point - obs_a).where(valid_a)
     o = obs_a.where(valid_a)
     n = int(valid_a.sum())
+    binary = (
+        _binary_scores(point, obs_a, valid_a) if any(nm in BINARY_METRICS for nm in names) else None
+    )
     for name in names:
         if name in values or name in skipped:
             continue
@@ -289,6 +389,28 @@ def compute_metrics(
                     ss_res = float((err**2).sum())
                     ss_tot = float(((o - o.mean()) ** 2).sum())
                     values[name] = None if ss_tot == 0 else 1 - ss_res / ss_tot
+                case "mase":
+                    if scale is None or not scale > 0:
+                        skipped[name] = _MASE_REASON
+                    else:
+                        values[name] = float(abs(err).mean()) / scale
+                case "auc":
+                    auc = None if binary is None else binary_auc(*binary)
+                    if binary is None:
+                        skipped[name] = _AUC_REASON
+                    elif auc is None:
+                        skipped[name] = "AUC needs both classes in the holdout"
+                    else:
+                        values[name] = auc
+                case _ if name in BINARY_METRICS and binary is not None:
+                    p, y = binary
+                    if name == "brier":
+                        values[name] = float(np.mean((p - y) ** 2))
+                    elif name == "log_score":
+                        p_obs = np.where(y == 1, p, 1 - p)
+                        values[name] = float(np.mean(np.log(np.maximum(p_obs, _LOG_FLOOR))))
+                    else:  # accuracy
+                        values[name] = float(np.mean((p >= 0.5) == (y == 1)))
                 case _ if name in CATEGORICAL_METRICS:
                     skipped[name] = "defined for categorical targets only"
                 case "crps":
@@ -443,7 +565,20 @@ def _elpd_detail(res: Any) -> dict[str, Any]:
         "p": _finite(getattr(res, "p", None)),
         "n": n,
         "pointwise": pw,
+        "pareto_k": _pareto_k(res),
     }
+
+
+def _pareto_k(res: Any) -> list[float] | None:
+    """PSIS Pareto k per observation of a LOO result (``None`` for WAIC, a non-finite k or
+    more than :data:`MAX_POINTWISE_ELPD` points), in the order of ``pointwise``."""
+    raw = getattr(res, "pareto_k", None)
+    if raw is None:
+        return None
+    k = np.asarray(getattr(raw, "values", raw), dtype=float).ravel()
+    if k.size > MAX_POINTWISE_ELPD or not bool(np.all(np.isfinite(k))):
+        return None
+    return [float(f"{v:.4g}") for v in k.tolist()]
 
 
 def elpd(
@@ -458,9 +593,9 @@ def elpd(
 
     Returns ``(values, skipped, diagnostics)``; high Pareto k values become a
     ``PARETO_K_HIGH`` diagnostic instead of a warning on stderr. When ``detail`` is given,
-    it receives ``{name: {elpd, se, p, n, pointwise}}`` for each computed estimate (the
-    fields of :class:`mapi_sdk.bundle.ElpdDetail`; ``pointwise`` is ``None`` above
-    :data:`MAX_POINTWISE_ELPD` points).
+    it receives ``{name: {elpd, se, p, n, pointwise, pareto_k}}`` for each computed estimate
+    (the fields of :class:`mapi_sdk.bundle.ElpdDetail`; ``pointwise`` and ``pareto_k`` are
+    ``None`` above :data:`MAX_POINTWISE_ELPD` points, ``pareto_k`` also for WAIC).
     """
     values: dict[str, float | None] = {}
     skipped: dict[str, str] = {}

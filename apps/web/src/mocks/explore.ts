@@ -418,10 +418,18 @@ export function createExploreHandlers(shared: ExploreMockShared, state: ExploreM
       const comparison = JSON.parse(text) as Json & { models: string[]; table: Record<string, unknown> };
       comparison.models = comparison.models.filter((r) => !r.endsWith("#unused"));
       comparison.table = Object.fromEntries(Object.entries(comparison.table).filter(([k]) => !k.endsWith("#unused")));
+      // v0.10: the runner adds the elpd plot of the versions to the section's plots.
+      const examples = (await import("./plot-examples.gen.json")).default as unknown as { plots: Record<string, Json | undefined> };
+      const elpd = examples.plots["core.model_comparison@1.0.0"];
       const part: Part = {
-        index: { format: "mapi.explorer-index/v1", target: "model", ref: refs[0]!, sections: [{ section: "comparison", view: "ui/explore/comparison.json", status: "ok" }] },
+        index: {
+          format: "mapi.explorer-index/v1",
+          target: "model",
+          ref: refs[0]!,
+          sections: [{ section: "comparison", view: "ui/explore/comparison.json", status: "ok", ...(elpd ? { plots: "ui/explore/plots/comparison.json" } : {}) }],
+        },
         views: { comparison },
-        plots: {},
+        plots: elpd ? { comparison: [{ ...(elpd as object), id: "core.model_comparison" }] } : {},
       };
       const { id, rec, cached } = start(`compare:${JSON.stringify(body)}`, () => exploreRec("model", refs[0]!, part, ["comparison"], `compare-run:${state.seq + 1}`));
       await delay(80);

@@ -8,7 +8,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, Path, Query, Request, status
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -408,18 +408,26 @@ async def list_run_plots(
     limit: Limit = DEFAULT_LIMIT,
     cursor: str | None = None,
 ) -> Page[PlotSpec]:
-    """Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on
-    every read; plots it rejects are left out. Empty while the run is not ``succeeded``.
-
-    The control plane decodes nothing but this size-capped JSON, read at the generation the
-    finalizer verified.
+    """Plots a run rendered (``plots.json``) in its newest attempt that has them: succeeded
+    and partial runs, and failed or cancelled runs whose earlier partial attempt wrote plots.
+    Every read passes the plot sanitizer; plots it rejects are left out. Empty while no
+    attempt has plots. The control plane decodes nothing but this size-capped JSON, read at
+    the generation the finalizer verified.
     """
     run = await load_run(session, ctx.scope, run_id)
-    if run.state != RunState.SUCCEEDED.value:
-        return Page[PlotSpec](items=[], next_cursor=None)
-    att = await session.get(m.RunAttempt, (run.id, run.attempt))
-    meta = (att.outputs or {}).get(RUN_PLOTS_OUTPUT) if att is not None else None
-    if not isinstance(meta, dict):
+    # only the finalizer writes ``outputs`` (verified objects), so a running attempt has none
+    attempts = await session.scalars(
+        select(m.RunAttempt)
+        .where(m.RunAttempt.run_id == run.id, m.RunAttempt.attempt <= run.attempt)
+        .order_by(m.RunAttempt.attempt.desc())
+    )
+    meta: dict[str, Any] | None = None
+    for att in attempts:
+        got = (att.outputs or {}).get(RUN_PLOTS_OUTPUT)
+        if isinstance(got, dict):
+            meta = got
+            break
+    if meta is None:
         return Page[PlotSpec](items=[], next_cursor=None)
     cap = ctx.settings.max_sidecar_bytes
     if int(meta.get("size", 0)) > cap:

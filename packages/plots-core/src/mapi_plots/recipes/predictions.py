@@ -499,7 +499,12 @@ def _components(
     ds: xr.Dataset, s: DecompositionSettings, default_component: str | None
 ) -> tuple[list[tuple[str, xr.DataArray]], str | None, bool]:
     """``(components, component dim, whether every component is a label of that dim)``."""
-    names = s.vars or [str(v) for v in ds.data_vars if np.issubdtype(ds[v].dtype, np.number)]
+    # a var marked attrs["decomposition"] = "exclude" (a slope state) is not a stacked part
+    names = s.vars or [
+        str(v)
+        for v in ds.data_vars
+        if np.issubdtype(ds[v].dtype, np.number) and ds[v].attrs.get("decomposition") != "exclude"
+    ]
     if not names:
         raise RecipeDataError("the contributions group has no numeric variables")
     unknown = [n for n in names if n not in ds.data_vars]

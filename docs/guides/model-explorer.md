@@ -75,6 +75,11 @@ The page shows these items:
   advantage that is more than chance.
 - The ranking for each metric.
 - The fit statistics of each version.
+- **Which version predicts new data best?** (v0.10): the `core.model_comparison` plot. It shows
+  the expected log predictive density (elpd) of each version and its difference to the best
+  version. The card shows only when two or more versions have `elpd_loo` (or `elpd_waic`) on
+  the same number of observations. The description of the card tells you which of the two
+  estimates the plot shows.
 
 Time-series forecasters (statsmodels and the other `ts` models) forecast the full held-out
 period from one origin. Thus their errors make a single path, and no test of equal accuracy is
@@ -169,6 +174,11 @@ This call explores the first version with the other versions as `compare_with`. 
 - Pairwise **Diebold-Mariano** tests on the held-out periods of the first version. The tests
   use the Harvey-Leybourne-Newbold small-sample correction and a Newey-West number of
   autocovariances. They answer the question "is the difference in accuracy more than chance?".
+- The `core.model_comparison` plot (v0.10), in `ui/explore/plots/comparison.json` after the
+  metric bars. The view adds it when two or more versions have `elpd_loo` estimates on the same
+  number of observations (else `elpd_waic`). The difference to the best version has a standard
+  error when the two versions keep their pointwise values. To get `elpd_loo`, fit each version
+  with `keep: {log_likelihood: true}` and `evaluate.metrics: [elpd_loo]`.
 
 If a version forecasts the held-out periods from one origin (time-series forecasters), the
 view does not include the tests. It gives a warning. For more sections, add

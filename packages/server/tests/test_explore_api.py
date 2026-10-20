@@ -201,6 +201,8 @@ async def test_model_exploration_and_comparison(
     async with ctx.db.session() as s:
         run = await s.get(m.Run, ex["run"]["id"])
         assert run is not None and {"bundle", "dataset"} <= set(run.inputs)
+        # the fit's metrics.json rides along (the archive does not hold the metrics)
+        assert "bundle.metrics" in run.inputs
         assert run.model_version_id == mv.id
     cmp = await client.post(
         "/v1/models:compare",
@@ -209,7 +211,7 @@ async def test_model_exploration_and_comparison(
     assert cmp.status_code == 202, cmp.text
     async with ctx.db.session() as s:
         crun = await s.get(m.Run, cmp.json()["run"]["id"])
-        assert crun is not None and "compare.0" in crun.inputs
+        assert crun is not None and {"compare.0", "compare.0.metrics"} <= set(crun.inputs)
         assert crun.payload["model"]["compare_with"] == ["model://default/trend@v2"]
     unknown = await client.post(
         "/v1/models:compare",

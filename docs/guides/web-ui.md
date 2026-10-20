@@ -186,6 +186,12 @@ After a disconnect, it continues from the point where it stopped.
   also shows the spec hash, the run that it retried and its cost (`Not metered locally`).
 - **Events**: each persisted event, with diagnostics and metrics. On a laptop, this includes
   the `DEV_MODE_ISOLATION` warning.
+- **Plots** (v0.10): the plots of a finished run, under **Progress**. A fit shows the plots of
+  its model version. A score, evaluate or other run shows the plots that it rendered. A
+  partial run, and a failed or cancelled run with an earlier partial attempt, also show their
+  plots. Some plots of a run keep their data in a file of the run. The page cannot open this
+  file, so the plot shows the note "The data of this plot is in a file of the run. Open the
+  model version to see the plot." The card does not show when the run has no plots.
 
 **Actions:**
 
@@ -346,6 +352,11 @@ The run returns the actuals that it used in `ScoreSummary.actuals`.
     - a grid: a map with a slider over the frame dim (for example `quarter`), the mean, the
       bands and the draws. This map comes from `ui/fields.json`, and replaces the
       `sci.field_map` and `sci.vector_field` plots in the list above;
+    - a map of areas (v0.10): the `sci.area_map` plot of an areal output, for example the
+      cases of `sci.areal_bym2`;
+    - a classification (v0.10): the `core.roc_pr`, `core.confusion` and `core.calibration`
+      plots of an evaluate run with a 0/1 target. If the run did not make a plot, the view
+      shows "The run did not make this plot.";
     - a time series: a line with the band;
     - an output with categorical dims: the mean and the band for each level;
     - a scalar: tiles with the mean and the band.
@@ -355,7 +366,14 @@ The run returns the actuals that it used in `ScoreSummary.actuals`.
   A dim with numeric labels stays a key column, for example the grid positions `y_cm` and
   `x_cm` of `sci.heat_plate`. Thus a grid output keeps one row for each cell. The summary
   table names its dims in the schema metadata `mapi.dims`.
-- A quick chart. You can plot it again by a different column.
+- A quick chart. You can plot it again by a different column. If the table has more dims
+  than the x axis and the colour, for example a grid with `row` and `col`, select one cell in
+  **Cell** (v0.10). The chart then shows one line for that cell, not one line through all the
+  cells.
+
+The view of one output starts with a grid, then a map of areas, then a classification, then a
+time series. The summary table of an output names the plots that draw it (`plots`). The page
+does not show these plots two times: they are only in the view of the output.
 
 If the model did not see a market before (for example FR above), the platform draws it from
 the fitted hierarchy. Thus, its band is wider. The `issues` of the result tell this.

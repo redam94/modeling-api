@@ -65,6 +65,7 @@ from typing import Any, Final
 import numpy as np
 import xarray as xr
 from mapi_sdk.bundle import Bundle
+from mapi_sdk.metrics import mase_scale
 from mapi_sdk.registry import Registry
 from mapi_spec.errors import MapiError
 from mapi_spec.governance import (
@@ -1166,10 +1167,10 @@ def _beats_naive(env: GovernanceEnv, check: PolicyCheck) -> CheckResult:
         fc = stats.naive_forecasts(hist, h, season=season, methods=methods)  # type: ignore[arg-type]
         for m, f in fc.items():
             bench_err[m].append(obs[held, j] - f)
-        m_ = season if season and stats.finite(hist).size > season else 1
         hf = stats.finite(hist)
-        if hf.size > m_:
-            scale_parts.append(float(np.mean(np.abs(hf[m_:] - hf[:-m_]))))
+        part = mase_scale(hf, season if season and hf.size > season else 1)
+        if part is not None:
+            scale_parts.append(part)
     l_model = _loss(model_err, metric)
     losses: dict[str, float] = {}
     for m, v in bench_err.items():

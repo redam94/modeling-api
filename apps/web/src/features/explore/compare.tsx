@@ -1,8 +1,9 @@
 /**
  * Several model versions side by side (M3.5): `POST /v1/models:compare` explores the first
  * version with the others to compare and writes the comparison view (holdout metrics, a
- * ranking per metric and pairwise Diebold-Mariano tests), and every version's own fit
- * diagnostics are read next to it.
+ * ranking per metric and pairwise Diebold-Mariano tests; v0.10: the elpd plot
+ * `core.model_comparison` among the section's plots when the versions have LOO or WAIC
+ * estimates), and every version's own fit diagnostics are read next to it.
  */
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Plus, Trophy, X } from "lucide-react";
@@ -13,10 +14,11 @@ import type { Model } from "@/api/types";
 import { ErrorNotice, LoadingRows, Mono } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Badge, NativeSelect } from "@/components/ui/primitives";
+import { PlotFrame } from "@/features/plots/plot-frame";
 import { fetchArtifactJson } from "@/lib/artifacts";
 import { cn } from "@/lib/utils";
 
-import { exploreKeys, type Exploration } from "./api";
+import { explorationPlotsName, exploreKeys, recipeBody, recipePlots, type Exploration, type RecipePlot } from "./api";
 import { comparisonReading, dmPair } from "./plain";
 import { num, pValue, PlainSummary, SectionCard, Statistics, StatTable, TestDecision, ViewNotes } from "./ui";
 import { parseView, viewName, type ComparisonView, type ModelDiagnosticsView } from "./views";
@@ -124,6 +126,36 @@ function useComparisonView(exploration: Exploration | undefined) {
   });
 }
 
+/** The id of the elpd comparison plot the runner adds to the comparison section's plots. */
+export const MODEL_COMPARISON_PLOT = "core.model_comparison";
+
+/**
+ * The description of the elpd card: the information criterion the plot shows. The runner uses
+ * PSIS-LOO, else WAIC when the first version has no LOO estimate; the recipe names it in the
+ * `ic` column of its `comparison` dataset.
+ */
+export function elpdSourceText(plot: Pick<RecipePlot, "datasets">): string {
+  const ic = plot.datasets.comparison?.[0]?.ic;
+  const what = "The expected log predictive density (elpd) of each version";
+  if (ic === "loo") return `${what}, from leave-one-out cross-validation (PSIS-LOO).`;
+  if (ic === "waic") return `${what}, from the widely applicable information criterion (WAIC). The versions have no leave-one-out estimate.`;
+  return `${what}.`;
+}
+
+/** The `core.model_comparison` plot of the comparison section (`null`: the run did not make it). */
+function useComparisonPlot(exploration: Exploration | undefined) {
+  const s = useProjectScope();
+  const name = explorationPlotsName(exploration, "comparison");
+  const link = name ? exploration?.views?.find((l) => l.name === name) : undefined;
+  return useQuery({
+    queryKey: ["p", s.key, "explorations", exploration?.run.id ?? "", "comparison", "plots"],
+    enabled: Boolean(link),
+    staleTime: 10 * 60_000,
+    queryFn: async ({ signal }): Promise<RecipePlot | null> =>
+      (await recipePlots(await fetchArtifactJson(link!, { signal }))).find((p) => p.plot.id === MODEL_COMPARISON_PLOT) ?? null,
+  });
+}
+
 /** Each version's fit-time diagnostics (AIC/BIC, R-hat, convergence) from its own explorer views. */
 function useDiagnostics(refs: readonly string[]) {
   const s = useProjectScope();
@@ -153,6 +185,7 @@ function useDiagnostics(refs: readonly string[]) {
 
 export function ComparisonResult({ exploration, refs, expert }: { exploration: Exploration; refs: readonly string[]; expert: boolean }) {
   const view = useComparisonView(exploration);
+  const elpd = useComparisonPlot(exploration);
   const diags = useDiagnostics(refs);
   if (!exploration.done) return null;
   if (view.isError) return <ErrorNotice error={view.error} title="The app could not load the comparison" />;
@@ -190,6 +223,14 @@ export function ComparisonResult({ exploration, refs, expert }: { exploration: E
         />
         <ViewNotes caption={v.caption_plain} warnings={v.warnings_plain} />
       </SectionCard>
+      {elpd.data ? (
+        <SectionCard title="Which version predicts new data best?" description={elpdSourceText(elpd.data)}>
+          <div className="grid gap-1.5">
+            <PlotFrame kind={elpd.data.kind} spec={recipeBody(elpd.data.plot)} datasets={elpd.data.datasets} title={elpd.data.plot.title} exportName={elpd.data.plot.id} />
+            {elpd.data.plot.caption_plain ? <p className="text-xs text-muted-foreground">{elpd.data.plot.caption_plain}</p> : null}
+          </div>
+        </SectionCard>
+      ) : null}
       <SectionCard title="Is the difference more than chance?" description="Diebold-Mariano tests on the shared held-out periods (with the small-sample correction).">
         <StatTable
           label="Diebold-Mariano tests"

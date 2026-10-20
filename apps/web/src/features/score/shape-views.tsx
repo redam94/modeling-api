@@ -1,13 +1,16 @@
 /**
  * "Results by output": one view per score output, chosen by its shape (`shape.ts`). An output
  * on a grid is a map with a slider over its frames (the runner's `ui/fields.json`, drawn by the
- * Model Explorer's field viewer), an output over time a line with its band, an output by
- * category an interval per cell, and a single value tiles. Charts render in the plot sandbox.
+ * Model Explorer's field viewer), an output on areas or of a classifier the run's own plots
+ * that draw it (area map; ROC/PR, confusion and calibration), an output over time a line with
+ * its band, an output by category an interval per cell, and a single value tiles. Charts render
+ * in the plot sandbox.
  */
 import { useQuery } from "@tanstack/react-query";
 import { ChartSpline } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { useRunPlots } from "@/api/queries";
 import type { ArtifactLink, ScoreSummary } from "@/api/types";
 import { ErrorNotice, LoadingRows, Mono } from "@/components/common";
 import { Field, NativeSelect } from "@/components/ui/primitives";
@@ -17,6 +20,7 @@ import { ExplorerPlot, Picker, ViewNotes } from "@/features/explore/ui";
 import { facetLabel, parseView, type FieldEntry, type FieldsView } from "@/features/explore/views";
 import { quickChart } from "@/features/plots/builtin-specs";
 import { PlotFrame } from "@/features/plots/plot-frame";
+import { outputLinks, RunPlot } from "@/features/runs/run-plots";
 import { fetchArtifactJson } from "@/lib/artifacts";
 import { formatNumber } from "@/lib/format";
 import type { Row } from "@mapi/plot-sandbox/protocol";
@@ -28,7 +32,7 @@ const MAX_INTERVALS = 50;
 /** The most facet levels offered in the picker of an output over time. */
 const MAX_FACETS = 200;
 
-export function ScoreShapeViews({ summary, outputs }: { summary?: ScoreSummary | null | undefined; outputs: ArtifactLink[] }) {
+export function ScoreShapeViews({ summary, outputs, runId }: { summary?: ScoreSummary | null | undefined; outputs: ArtifactLink[]; runId?: string | undefined }) {
   const link = outputs.find((o) => o.name === SCORE_FIELDS_VIEW);
   const fields = useQuery({
     queryKey: ["artifact", link?.url ?? "", "fields"],
@@ -38,7 +42,10 @@ export function ScoreShapeViews({ summary, outputs }: { summary?: ScoreSummary |
   });
   const shapes = useMemo(() => shapesOf(summary, fields.data), [summary, fields.data]);
   const [pick, setPick] = useState<string | null>(null);
-  const shape = shapes.find((s) => s.variable === pick) ?? shapes.find((s) => s.kind === "grid") ?? shapes.find((s) => s.kind === "time") ?? shapes[0];
+  const shape =
+    shapes.find((s) => s.variable === pick) ??
+    (["grid", "areal", "classification", "time"] as const).map((k) => shapes.find((s) => s.kind === k)).find(Boolean) ??
+    shapes[0];
   const table: Table | undefined = (summary?.tables ?? []).find((t) => t.variable === shape?.variable);
 
   return (
@@ -67,6 +74,8 @@ export function ScoreShapeViews({ summary, outputs }: { summary?: ScoreSummary |
         link && fields.isPending ? <LoadingRows rows={4} /> : null
       ) : shape.kind === "grid" ? (
         <GridView key={shape.variable} fields={shape.fields} view={fields.data} />
+      ) : shape.kind === "areal" || shape.kind === "classification" ? (
+        <RunPlotsView key={shape.variable} ids={shape.plots} runId={runId} outputs={outputs} />
       ) : table ? (
         <TableView key={shape.variable} shape={shape} table={table} />
       ) : null}
@@ -89,7 +98,31 @@ function GridView({ fields, view }: { fields: FieldEntry[]; view: FieldsView | u
   );
 }
 
-function TableView({ shape, table }: { shape: Exclude<OutputShape, { kind: "grid" }>; table: Table }) {
+/** The run's own plots of an output (an area map, a classifier's curves), each with its caption. */
+function RunPlotsView({ ids, runId, outputs }: { ids: readonly string[]; runId: string | undefined; outputs: ArtifactLink[] }) {
+  const plots = useRunPlots(runId);
+  const resolveLink = useMemo(() => outputLinks(outputs), [outputs]);
+  const linksKey = useMemo(() => outputs.map((o) => o.url).join("|"), [outputs]);
+  if (plots.isError) return <ErrorNotice error={plots.error} title="Cannot load the plots of the run" />;
+  if (runId && plots.isPending) return <LoadingRows rows={4} />;
+  const items = plots.data?.items ?? [];
+  return (
+    <div className="grid gap-5">
+      {ids.map((id) => {
+        const plot = items.find((p) => p.id === id);
+        return plot ? (
+          <RunPlot key={id} runId={runId ?? ""} plot={plot} resolveLink={resolveLink} linksKey={linksKey} />
+        ) : (
+          <p key={id} className="text-[13px] text-muted-foreground">
+            <Mono>{id}</Mono>: The run did not make this plot.
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function TableView({ shape, table }: { shape: Extract<OutputShape, { kind: "time" | "categorical" | "scalar" }>; table: Table }) {
   if (shape.kind === "time") return <TimeView table={table} time={shape.time} series={shape.series} />;
   if (shape.kind === "scalar") return <ScalarView table={table} />;
   return <IntervalsView table={table} dims={shape.dims} />;

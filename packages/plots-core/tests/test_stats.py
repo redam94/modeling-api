@@ -95,3 +95,33 @@ def test_hdi_eti_kde_pit_coverage_waic() -> None:
     brute = np.log(np.mean(np.exp(ll), axis=0)) - np.var(ll, axis=0, ddof=1)
     np.testing.assert_allclose(pw, brute, rtol=1e-10)
     assert np.isnan(_stats.waic(ll[:, :1])[1])
+
+
+def _loo_example(seed: int, draws: int) -> np.ndarray:
+    """``(S, N)`` log-likelihood of a normal model with one outlier."""
+    rng = np.random.default_rng(seed)
+    y = rng.normal(size=30)
+    y[5] = 6.0
+    mu = rng.normal(y.mean(), 0.2, draws)
+    sigma = np.abs(rng.normal(1.3, 0.15, draws))
+    return -0.5 * ((y[None] - mu[:, None]) / sigma[:, None]) ** 2 - np.log(sigma[:, None])
+
+
+@pytest.mark.parametrize("draws", [120, 1000])
+def test_psis_matches_arviz(draws: int) -> None:
+    pytest.importorskip("arviz")
+    array_stats = pytest.importorskip("arviz_stats.base").array_stats
+    ll = _loo_example(3, draws)
+    log_w, k = _stats.psis(-ll)
+    _, ak = array_stats.psislw(ll.T, r_eff=1, axis=-1)
+    assert np.max(np.abs(k - np.asarray(ak))) < 0.05
+    assert np.allclose(np.exp(log_w).sum(axis=0), 1.0)
+    assert k[5] == k.max() and k[5] > 0.7
+
+
+def test_psis_short_tail_and_flat_weights() -> None:
+    log_w, k = _stats.psis(np.zeros((10, 3)))  # 10 draws: tail too short to fit
+    assert np.isinf(k).all() and np.allclose(np.exp(log_w), 0.1)
+    rng = np.random.default_rng(0)
+    log_w, k = _stats.psis(rng.normal(scale=0.01, size=(500, 4)))
+    assert (k < 0.5).all() and np.allclose(np.exp(log_w).sum(axis=0), 1.0)

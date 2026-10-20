@@ -1988,11 +1988,11 @@ export interface paths {
         };
         /**
          * List Run Plots
-         * @description Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on
-         *     every read; plots it rejects are left out. Empty while the run is not ``succeeded``.
-         *
-         *     The control plane decodes nothing but this size-capped JSON, read at the generation the
-         *     finalizer verified.
+         * @description Plots a run rendered (``plots.json``) in its newest attempt that has them: succeeded
+         *     and partial runs, and failed or cancelled runs whose earlier partial attempt wrote plots.
+         *     Every read passes the plot sanitizer; plots it rejects are left out. Empty while no
+         *     attempt has plots. The control plane decodes nothing but this size-capped JSON, read at
+         *     the generation the finalizer verified.
          */
         get: operations["list_run_plots"];
         put?: never;
@@ -14169,7 +14169,9 @@ export interface components {
          *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
          *     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
          *     circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
-         *     which one is time; a server that predates them leaves both out.
+         *     which one is time; a server that predates them leaves both out. ``plots``: the recipe ids
+         *     of the run's rendered plots (``plots.json``) that draw this variable, so a client can show
+         *     them next to the table.
          * @example {
          *       "columns": [
          *         "geo",
@@ -14208,6 +14210,11 @@ export interface components {
              * @description Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)
              */
             period?: number | null;
+            /**
+             * Plots
+             * @description Recipe ids of the run's plots that draw this output (sci.area_map, core.roc_pr, ...)
+             */
+            plots?: string[] | null;
             /** Rows */
             rows: (string | number | boolean | null)[][];
             /**

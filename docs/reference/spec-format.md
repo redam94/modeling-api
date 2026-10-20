@@ -48,8 +48,55 @@ execution: {resource_class: M, timeout: 45m}
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
 | `model` | The plugin `use`, its `settings` and the `fit` block |
 | `outputs` | Derived quantities, plot recipes and the number of draws that the UI keeps |
-| `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, ...). `elpd_loo` and `elpd_waic` need a `log_likelihood` group, for example `model.fit.keep: {log_likelihood: true}`. If not, `metrics.json` gives the reason in `skipped`. A [circular output](sdk.md#circular-outputs) gets circular metrics and skips `mape`, `smape`, `wape` and `r2` |
+| `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, `auc`, `mase` and [more](#evaluate-metrics)). `elpd_loo` and `elpd_waic` need a `log_likelihood` group, for example `model.fit.keep: {log_likelihood: true}`. If not, `metrics.json` gives the reason in `skipped`. A [circular output](sdk.md#circular-outputs) gets circular metrics and skips `mape`, `smape`, `wape` and `r2` |
 | `execution` | The resource class (`S`, `M`, `L`, `XL`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest class that holds the upload. |
+
+## Metrics in `evaluate` <span class="mapi-badge">v0.10</span> { #evaluate-metrics }
+
+`evaluate.metrics` names the metrics that the fit calculates on the holdout data. The fit
+writes them in `metrics.json`. If the fit cannot calculate a metric, `metrics.json` gives the
+metric and the reason in `skipped`. The fit does not fail.
+
+| Metric | What it measures | Needs |
+|---|---|---|
+| `mape`, `smape`, `wape`, `rmse`, `mae`, `r2`, `bias` | The error of the point prediction (the mean or the median) | Actual values on the holdout |
+| `mase` | `mae` divided by the mean absolute error of a seasonal naive forecast on the training data | A fit with a time holdout. The season length comes from the frequency of the time dim. |
+| `crps`, `coverage_N`, `interval_width_N`, `log_score` | The quality of the predicted distribution | Draws, quantiles or intervals |
+| `elpd_loo`, `elpd_waic` | The expected log predictive density | A `log_likelihood` group |
+| `auc`, `brier`, `log_score`, `accuracy` | The quality of a 0/1 prediction (see below) | A 0/1 target and a predicted probability |
+| `accuracy_naive`, `accuracy_lift` | The accuracy of the most frequent class, and the gain of the model over it | A categorical target |
+
+**Targets with two values.** If the target has exactly two values and the prediction is a
+probability from 0 to 1, the fit uses these definitions. The larger target value is the
+positive class.
+
+| Metric | Definition |
+|---|---|
+| `auc` | The area under the ROC curve (the Mann-Whitney statistic, with the average rank for ties) |
+| `brier` | `mean((p - y)^2)`. For two classes, the categorical Brier score is two times larger, because it adds the error of the two classes. |
+| `log_score` | `mean(log(p_y))`, where `p_y` is the probability that the model gave to the actual class (minimum 1e-12) |
+| `accuracy` | The share of rows where `p >= 0.5` agrees with the target |
+
+A prediction with draws uses the mean of the draws as `p`. A classifier that gives one
+probability for each row (for example `sklearn.tabular_classifier`) also gets `rmse`, `mae` and
+the other point metrics on the probability. `rmse` is then the root of the Brier score.
+
+**Reasons in `skipped`.** `metrics.json` gives these texts:
+
+- `auc` on a target that is not 0/1: "AUC needs a 0/1 target and predicted probabilities in
+  [0, 1]".
+- `auc` when the holdout has only one of the two classes: "AUC needs both classes in the
+  holdout".
+- `mase` without the training data: "MASE needs the in-sample naive error of the training data
+  (a fit with a time holdout)". Only the evaluation of a fit has the training data. Thus an
+  evaluate run from the **Score** page skips `mase`.
+- `brier`, `log_score` and `accuracy` on a target that is not 0/1 or categorical: "defined for
+  categorical targets only".
+
+!!! note "A known limit"
+    Validation refuses `log_score` for a model that gives only point predictions, because the
+    metric usually needs uncertainty. Thus a point classifier cannot request `log_score` in
+    v0.10. Use `brier` or `auc`.
 
 ## Tree datasets in a spec <span class="mapi-badge">v0.8</span> { #tree-datasets-in-a-spec }
 

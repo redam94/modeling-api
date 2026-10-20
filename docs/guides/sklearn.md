@@ -199,6 +199,48 @@ Contributions are additive in **model space** (`output: {units: model}`). Throug
 inverse, for example `log1p`, the inverse of each component is not a decomposition. If you want
 a sum of the parts that is correct, request model units.
 
+## Default plots and metrics <span class="mapi-badge">v0.10</span> { #default-plots-and-metrics }
+
+Each sklearn plugin now declares its standard plots. The fit run draws only the plots that the
+spec lists in `outputs.plots`. Thus, add the plots that you want to `outputs.plots`. In the spec
+editor, the **Insert** panel shows the plots of the model first.
+
+```yaml
+outputs:
+  plots: [core.calibration, core.roc_pr, core.confusion, ml.feature_importance]
+```
+
+An evaluate run from the **Score** page does not need this list. It draws the plots for the shape
+of each output: a classifier gets `core.calibration`, `core.roc_pr` and `core.confusion`.
+
+| Plugins | Plots |
+|---|---|
+| Regressor, quantiles, bootstrap, conformal | `core.fit_vs_actual`, `core.residuals_over_time`, `ml.feature_importance` |
+| Classifier | `core.calibration`, `core.roc_pr`, `core.confusion`, `ml.feature_importance` |
+
+The three classifier plots read the probability in `y_hat` and the 0/1 target. They do not need
+draws. `core.calibration` shows a reliability diagram: do the predicted probabilities agree
+with how often the positive class occurs? `core.roc_pr` shows how well the model puts the
+positive rows before the negative rows. `core.confusion` counts the errors at the threshold
+0.5. Refer to [the plot guide](plots.md#plots-for-classifiers-training-and-states).
+
+**Classifier metrics.** The fit pairs the probability in `y_hat` with the target. Thus
+`evaluate.metrics` can include `auc`, `brier` and `accuracy`:
+
+```yaml
+evaluate: {metrics: [auc, brier, accuracy]}
+```
+
+Before v0.10, the fit calculated no metric for a classifier. `metrics.json` was empty. The
+point metrics (`rmse`, `mae` and the other point metrics) use the probability too. Thus `rmse` is
+the root of the Brier score. Refer to
+[Metrics in `evaluate`](../reference/spec-format.md#evaluate-metrics) for the definitions.
+
+!!! note "A known limit"
+    Validation refuses `log_score` for the classifier, because the plugin gives point
+    predictions. Use `brier`. A regression target that has only the values 0 and 1 also gets
+    the classifier plots on the Score page.
+
 ## Persistence and safety
 
 The bundle keeps the fitted estimators in its `/native` group. It never uses pickle:
@@ -235,7 +277,7 @@ Before you publish, run the contract kit on synthetic data:
 
 * Forecasts are direct only. You must give the future features, or the pipeline must calculate
   them.
-* Classification is binary.
+* Classification is binary. The positive class is the larger target value.
 * The platform declares all row dims other than `time_dim` as categorical. Thus groups with
   integer labels (numeric store ids) need string labels.
 * Contributions are not available for the quantile plugins or the conformal plugins.

@@ -22,6 +22,10 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 ``core.rank_matrix``          P(rank = k) per item and pairwise P(i above j)
 ``core.calibration``          PIT-ECDF difference with an envelope, or a reliability diagram
 ``core.state_sequence``       observed series above stacked state probabilities
+``core.roc_pr``               ROC and precision-recall curves of a binary classifier
+``core.confusion``            2 x 2 confusion matrix at a probability threshold
+``core.loss_curve``           loss of an iterative fit (ADVI) per step, moving average
+``core.loo_pit``              LOO-PIT calibration and the PSIS Pareto k per observation
 ============================  ==========================================================
 
 The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
@@ -50,10 +54,12 @@ from mapi_plots.recipes._base import (
     recipe,
 )
 from mapi_plots.recipes.batch import RenderReport, render_plots
+from mapi_plots.recipes.classification import confusion, roc_pr
 from mapi_plots.recipes.comparison import model_comparison
 from mapi_plots.recipes.data import data_overview
 from mapi_plots.recipes.diagnostics import convergence, posterior_forest, ppc, prior_predictive
 from mapi_plots.recipes.extras import calibration, pair, rank_matrix, ridge, state_sequence
+from mapi_plots.recipes.loo import loo_pit
 from mapi_plots.recipes.predictions import (
     counterfactual,
     decision_distribution,
@@ -63,6 +69,7 @@ from mapi_plots.recipes.predictions import (
     residuals_over_time,
 )
 from mapi_plots.recipes.templating import builtin_templates, infer_schema, render_template
+from mapi_plots.recipes.training import loss_curve
 
 __all__ = [
     "Figure",
@@ -101,6 +108,10 @@ _STANDARD: tuple[Recipe[Any], ...] = (
     rank_matrix,
     calibration,
     state_sequence,
+    roc_pr,
+    confusion,
+    loss_curve,
+    loo_pit,
 )
 
 

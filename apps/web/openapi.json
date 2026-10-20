@@ -21649,7 +21649,7 @@
         "type": "object"
       },
       "ScoreSummaryTable": {
-        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and\nwhich one is time; a server that predates them leaves both out.",
+        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and\nwhich one is time; a server that predates them leaves both out. ``plots``: the recipe ids\nof the run's rendered plots (``plots.json``) that draw this variable, so a client can show\nthem next to the table.",
         "examples": [
           {
             "columns": [
@@ -21713,6 +21713,23 @@
             ],
             "description": "Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)",
             "title": "Period"
+          },
+          "plots": {
+            "anyOf": [
+              {
+                "items": {
+                  "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+                  "type": "string"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Recipe ids of the run's plots that draw this output (sci.area_map, core.roc_pr, ...)",
+            "title": "Plots"
           },
           "rows": {
             "items": {
@@ -38415,7 +38432,7 @@
     },
     "/v1/runs/{run_id}/plots": {
       "get": {
-        "description": "Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on\nevery read; plots it rejects are left out. Empty while the run is not ``succeeded``.\n\nThe control plane decodes nothing but this size-capped JSON, read at the generation the\nfinalizer verified.",
+        "description": "Plots a run rendered (``plots.json``) in its newest attempt that has them: succeeded\nand partial runs, and failed or cancelled runs whose earlier partial attempt wrote plots.\nEvery read passes the plot sanitizer; plots it rejects are left out. Empty while no\nattempt has plots. The control plane decodes nothing but this size-capped JSON, read at\nthe generation the finalizer verified.",
         "operationId": "list_run_plots",
         "parameters": [
           {

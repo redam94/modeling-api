@@ -66,7 +66,7 @@ from pydantic import BaseModel
 from mapi_pymc.checkpoint import CheckpointSink, fit_key
 from mapi_pymc.context import BuildContext
 from mapi_pymc.diagnostics import convergence_diagnostics
-from mapi_pymc.engines import EngineHooks, EnginePlan, EngineResult, run_engine
+from mapi_pymc.engines import FIT_HISTORY, EngineHooks, EnginePlan, EngineResult, run_engine
 from mapi_pymc.frozen import FrozenPredictor, FrozenPredictorSpec, create_frozen_predictor
 
 __all__ = ["DEFAULT_CAPABILITIES", "PyMCModel"]
@@ -242,6 +242,9 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
         stats = result.group("sample_stats")
         if stats is not None:
             groups["sample_stats"] = _clean(stats.drop_vars(_DROP_STATS, errors="ignore"), engine)
+        history = result.group(FIT_HISTORY)
+        if history is not None:  # built by the engine: plain floats, attrs worth keeping
+            groups[FIT_HISTORY] = history
         if bctx.observed_values:
             groups["observed_data"] = _clean(
                 _named(bctx.observed_values, bctx.observed_vars, ds), engine

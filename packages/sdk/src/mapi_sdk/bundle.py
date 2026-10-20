@@ -103,7 +103,12 @@ class ElpdDetail(BaseModel):
     """M5: an ``elpd_loo``/``elpd_waic`` estimate with its standard error, its effective
     number of parameters and (up to :data:`mapi_sdk.metrics.MAX_POINTWISE_ELPD` points) the
     pointwise values, in the order of the flattened ``log_likelihood`` variable. Workflow
-    nodes use the pointwise values for stacking weights (``compare.stacking``)."""
+    nodes use the pointwise values for stacking weights (``compare.stacking``).
+
+    v0.10: ``pareto_k`` holds the PSIS Pareto k of each observation (``elpd_loo`` only), in
+    the order of ``pointwise`` and under the same cap; ``None`` for WAIC, when a k is not
+    finite or above the cap. k above 0.7 marks an observation the LOO estimate cannot
+    approximate well."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -112,6 +117,7 @@ class ElpdDetail(BaseModel):
     p: float | None = None
     n: int = 0
     pointwise: list[float] | None = None
+    pareto_k: list[float] | None = None
 
 
 class MetricsReport(BaseModel):

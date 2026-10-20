@@ -1,0 +1,35 @@
+"""The plot About cards stand on their own: complete, related only to other plot cards.
+
+``mapi_plots`` checks the cards against its recipes (``test_plot_catalog.py``); this checks
+what the spec package alone can, including the v0.10 classifier, training and LOO cards."""
+
+from __future__ import annotations
+
+import pytest
+from mapi_spec.about import about_issues
+from mapi_spec.plot_abouts import PLOT_ABOUTS
+
+pytestmark = pytest.mark.unit
+
+V010_CARDS = ("core.roc_pr", "core.confusion", "core.loss_curve", "core.loo_pit")
+
+
+@pytest.mark.parametrize("plot_id", sorted(PLOT_ABOUTS))
+def test_every_plot_card_is_complete_and_relates_to_plot_cards(plot_id: str) -> None:
+    assert not about_issues(PLOT_ABOUTS[plot_id], known_ids=PLOT_ABOUTS)
+
+
+@pytest.mark.parametrize("plot_id", V010_CARDS)
+def test_the_v010_cards_cite_their_method_and_name_their_settings(plot_id: str) -> None:
+    about = PLOT_ABOUTS[plot_id]
+    assert about.references and all(r.url for r in about.references)
+    assert about.expert_notes and "`" in about.expert_notes
+
+
+def test_changed_cards_describe_the_new_inputs() -> None:
+    calibration = " ".join(PLOT_ABOUTS["core.calibration"].data_needs)
+    assert "one predicted probability" in calibration
+    state = PLOT_ABOUTS["core.state_sequence"].expert_notes or ""
+    for word in ("hidden_states", "regimes", "summary", "state_dim='auto'", "select"):
+        assert word in state
+    assert "decomposition='exclude'" in (PLOT_ABOUTS["core.decomposition"].expert_notes or "")

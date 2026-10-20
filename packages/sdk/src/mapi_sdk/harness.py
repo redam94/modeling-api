@@ -101,8 +101,8 @@ from mapi_sdk.coords import (
     next_label,
 )
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error, raise_for_issues
-from mapi_sdk.future import fill_future_covariates, fill_future_rows
-from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd
+from mapi_sdk.future import fill_future_covariates, fill_future_rows, season_length
+from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd, mase_scale
 from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
@@ -1026,6 +1026,61 @@ def _var_sources(fitted: Fitted, schema: DataSchema | None) -> dict[str, str]:
     return out
 
 
+def _probability_sources(
+    fitted: Fitted, schema: DataSchema | None, pred: xr.Dataset
+) -> list[tuple[str, str]]:
+    """``(output, target)`` pairs for outputs that declare their own ``units`` (so
+    :func:`_var_sources` leaves them out) but hold the probability of the single target's
+    positive class (scored array attr ``meaning == "probability"``; classifiers)."""
+    targets = schema.targets if schema is not None else []
+    if len(targets) != 1:
+        return []
+    paired = _var_sources(fitted, schema)
+    return [
+        (name, targets[0])
+        for name in fitted.manifest.outputs
+        if name not in paired and name in pred and pred[name].attrs.get("meaning") == "probability"
+    ]
+
+
+def _history_scale(
+    bundle: Bundle, pipeline: Pipeline, history: xr.Dataset, target: str, space: str | None
+) -> float | None:
+    """The MASE scale of ``target`` in ``history``: the training targets already mapped to
+    the output space ``space`` of the predictions (see :func:`_observed_output`).
+
+    The time dim is a ``time`` (or ``extend``) dim of the schema at that space (the model's
+    input schema for a model that owns ``inverse_units``), else of the raw schema; the season
+    is one year at its frequency (:func:`mapi_sdk.future.season_length`); cells are pooled.
+    """
+    if target not in history or history[target].dtype.kind not in "fiub":
+        return None
+    da = history[target]
+    rs = bundle.resolved
+    schemas = [
+        rs.model.input_schema if space == "model-owned" else pipeline.schema_at(space or RAW),
+        rs.model.input_schema,
+    ]
+    candidates = [
+        (str(name), d.freq)
+        for schema in schemas
+        if schema is not None
+        for name, d in schema.dims.items()
+        if d.kind == "time" or d.policy is DimPolicy.EXTEND
+    ] + [
+        (bundle.binding.to_canonical(name), d.freq)
+        for name, d in bundle.raw_schema.dims.items()
+        if d.kind == "time" or d.policy is DimPolicy.EXTEND
+    ]
+    for t, freq in candidates:
+        if t not in da.dims:
+            continue
+        others = [x for x in da.dims if x != t]
+        train = np.asarray(da.transpose(t, *others).values, dtype=np.float64)
+        return mase_scale(train.reshape(da.sizes[t], -1), season_length(freq))
+    return None
+
+
 def _categorical_sources(
     fitted: Fitted, schema: DataSchema | None, pred: xr.Dataset, observed: xr.Dataset
 ) -> list[tuple[str, str]]:
@@ -1194,6 +1249,7 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
         metric_mask=mask,
         observed=observed,
         tree=payload_tree,
+        metric_history=sr.train,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -1498,6 +1554,7 @@ def score_bundle(
     observed: xr.Dataset | xr.DataTree | None = None,
     history: xr.Dataset | xr.DataTree | None = None,
     tree: xr.DataTree | None = None,
+    metric_history: xr.Dataset | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -1522,6 +1579,13 @@ def score_bundle(
     capabilities declare ``input="tree"`` gets the payload's tree, bound, as
     ``ScoreContext.tree``; ``tree`` (dataset names) stands in for it when the payload is
     already flat (the evaluation of a fit from a tree dataset).
+
+    ``metric_history`` (v0.10) is the training data at ``req.inputs_stage`` (any names) of
+    an evaluation; ``mase`` takes its scale from it (:func:`mapi_sdk.metrics.mase_scale`).
+    Its targets go through the pipeline to the model stage and back to the output space
+    exactly like the observed values (or stay at the model stage for a model that owns
+    ``inverse_units``), so the naive error is in the units of the error it divides. Without
+    it, ``mase`` is skipped.
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -1884,7 +1948,33 @@ def score_bundle(
     if conditioning:
         attrs[CONDITIONING_ATTR] = conditioning[0].model_dump_json(exclude_none=True)
     if req.mode == "evaluate" or metrics is not None:
-        report = _score_metrics(bundle, pipeline, main, rep, metrics, metric_mask, tables)
+        history_observed: xr.Dataset | None = None
+        wanted = metrics if metrics is not None else DEFAULT_EVAL_METRICS
+        if metric_history is not None and "mase" in wanted:
+            # the training targets at the model stage, like `observe` (no context: the
+            # training data needs no look-back of its own)
+            h = binding.apply(normalise_dataset(metric_history), missing="ignore")
+            h = pipeline.transform(
+                _order_payload(h, entry_schema),
+                bundle.states,
+                start=req.inputs_stage,
+                replay=False,
+                side_tables=tables,
+                seed=seed,
+                cancel=hooks.cancel,
+                log=hooks.log,
+            ).data
+            history_observed = h[[t for t in targets if t in h]]
+        report = _score_metrics(
+            bundle,
+            pipeline,
+            main,
+            rep,
+            metrics,
+            metric_mask,
+            tables,
+            history=history_observed,
+        )
         attrs["metrics"] = report.model_dump_json()
         if return_full:
             groups["observed"] = _observed_output(bundle, pipeline, main, tables)
@@ -2002,7 +2092,13 @@ def _observed_output(
     bundle: Bundle, pipeline: Pipeline, scored: _Scored, tables: Mapping[str, xr.Dataset]
 ) -> xr.Dataset:
     """Observed targets mapped to the output space exactly like the predictions."""
-    obs = scored.observed
+    return _to_output_space(bundle, pipeline, scored.observed, tables)
+
+
+def _to_output_space(
+    bundle: Bundle, pipeline: Pipeline, obs: xr.Dataset, tables: Mapping[str, xr.Dataset]
+) -> xr.Dataset:
+    """Model-stage targets ``obs`` mapped to the output space of the predictions."""
     if not obs.data_vars:
         return obs
     caps = bundle.model.manifest.capabilities
@@ -2026,9 +2122,15 @@ def _score_metrics(
     metrics: Sequence[str] | None,
     mask: xr.DataArray | None,
     tables: Mapping[str, xr.Dataset],
+    *,
+    history: xr.Dataset | None = None,
 ) -> MetricsReport:
+    """The metrics of a scored evaluation; ``history`` holds the training targets at the
+    model stage (``mase`` takes its scale from them in the output space)."""
     names = list(metrics) if metrics is not None else list(DEFAULT_EVAL_METRICS)
     observed = _observed_output(bundle, pipeline, scored, tables)
+    if history is not None:
+        history = _to_output_space(bundle, pipeline, history, tables)
     report = MetricsReport()
     sources = _var_sources(bundle.model, bundle.resolved.model.input_schema)
     if "inverse_units" in bundle.model.manifest.capabilities.owns:
@@ -2048,8 +2150,11 @@ def _score_metrics(
             side_tables=tables,
         )
         pred_data, pred_spaces = inv.data, inv.space
-    pairs = list(sources.items()) + _categorical_sources(
-        bundle.model, bundle.resolved.model.input_schema, pred_data, observed
+    schema = bundle.resolved.model.input_schema
+    pairs = (
+        list(sources.items())
+        + _probability_sources(bundle.model, schema, pred_data)
+        + _categorical_sources(bundle.model, schema, pred_data, observed)
     )
     for var, src in pairs:
         if var not in pred_data or src not in observed:
@@ -2062,8 +2167,13 @@ def _score_metrics(
                 period = float(raw)
             except (TypeError, ValueError):
                 period = math.nan  # compute_metrics skips every metric with the reason
+        scale: float | None = None
+        if "mase" in names and history is not None:
+            # the training targets are in the output space of the observed values, so the
+            # naive error is in the units of the error it divides
+            scale = _history_scale(bundle, pipeline, history, src, pred_spaces.get(var))
         values, skipped = compute_metrics(
-            pred_data[var], observed[src], rep, names, mask=mask, period=period
+            pred_data[var], observed[src], rep, names, mask=mask, period=period, scale=scale
         )
         report.values.update(values)
         report.skipped.update(skipped)

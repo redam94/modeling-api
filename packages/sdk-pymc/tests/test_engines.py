@@ -12,9 +12,12 @@ import xarray as xr
 from mapi_pymc.checkpoint import MemoryCheckpointSink, SamplingCheckpoint
 from mapi_pymc.engines import (
     ENGINES,
+    FIT_HISTORY,
+    MAX_HISTORY_POINTS,
     ChainProgress,
     EngineHooks,
     EnginePlan,
+    _history_dataset,
     engine_available,
     resolve_engine,
     run_engine,
@@ -181,6 +184,37 @@ def test_map_and_advi_engines(linear_model: tuple) -> None:
     assert abs(float(post_a["beta"].mean()) - 2.0) < 0.7
     assert any(s.startswith("ADVI step") for s in events)
     assert "found the MAP estimate" in events and "ADVI finished" in events
+
+
+def test_advi_keeps_the_loss_of_every_step(linear_model: tuple) -> None:
+    a = run_engine(linear_model[0], _plan(engine="advi", tune=200, draws=50))
+    hist = a.group(FIT_HISTORY)
+    assert hist is not None and list(hist.data_vars) == ["loss"]
+    loss = hist["loss"]
+    assert loss.dims == ("step",) and loss.dtype == np.float64
+    assert hist["step"].dtype == np.int64
+    assert hist["step"].values.tolist() == list(range(1, 201))
+    assert loss.attrs == {"objective": "negative ELBO", "engine": "advi"}
+    assert "thinned_from" not in hist.attrs
+    assert np.isfinite(loss.values).all()
+
+
+def test_long_loss_histories_are_thinned_keeping_the_last_step() -> None:
+    hist = np.linspace(100.0, 1.0, 12_000)
+    hist[5] = np.inf
+    ds = _history_dataset(hist)
+    steps = ds["step"].values
+    assert ds.sizes["step"] == MAX_HISTORY_POINTS
+    assert steps[0] == 1 and steps[-1] == 12_000
+    assert (np.diff(steps) > 0).all()
+    assert ds.attrs["thinned_from"] == 12_000
+    assert ds["loss"].values[-1] == 1.0
+    expected = np.linspace(100.0, 1.0, 12_000)
+    expected[5] = np.nan
+    np.testing.assert_allclose(ds["loss"].values, expected[steps - 1])
+    short = _history_dataset(np.array([3.0, np.nan, np.inf, 1.0]))
+    assert short["step"].values.tolist() == [1, 2, 3, 4]
+    assert np.isnan(short["loss"].values[1:3]).all() and not short.attrs
 
 
 def test_discrete_models_fall_back_to_pm_sample() -> None:

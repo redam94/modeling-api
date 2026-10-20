@@ -14,7 +14,7 @@ import { maskWord, paintMask } from "./fields";
 import { clone, scienceExample } from "./science-examples.test-helper";
 import { groupField, modeCounts } from "./science-sections";
 import { circularReading, imageReading, mapReading, networkReading, pointsReading, profileReading, structureReading, treeReading } from "./plain";
-import { bestByMetric, parseModelRef } from "./compare";
+import { bestByMetric, elpdSourceText, parseModelRef } from "./compare";
 import { endOfHorizon, groupTests, paramLabel } from "./model-sections";
 import {
   backtestReading,
@@ -251,6 +251,27 @@ describe("scientific data: recipe plots", () => {
       { theta: 135, r: 4 },
     ]);
     expect(await recipePlots({ not: "a list" })).toEqual([]);
+  });
+
+  it("decodes the inline Arrow datasets of a Vega-Lite recipe plot (core.model_comparison)", async () => {
+    const data = b64(tableToIPC(tableFromArrays({ model: ["a@v1", "a@v2"], elpd_loo: Float64Array.from([-120.5, -118.25]) }), "stream"));
+    const elpd = { id: "core.model_comparison", kind: "vega-lite", title: "elpd", spec: { data: { name: "comparison" }, mark: "point" }, datasets: { comparison: { kind: "inline_arrow", data } } };
+    const linked = { ...elpd, id: "linked", datasets: { comparison: { kind: "path", path: "plots/c.arrow", format: "arrow" } } };
+    const plots = await recipePlots([elpd, linked]);
+    expect(plots.map((p) => p.plot.id)).toEqual(["core.model_comparison"]);
+    expect(plots[0]!.datasets.comparison).toEqual([
+      { model: "a@v1", elpd_loo: -120.5 },
+      { model: "a@v2", elpd_loo: -118.25 },
+    ]);
+  });
+
+  it("names the information criterion of the elpd plot: LOO, or WAIC when the versions have no LOO", () => {
+    const loo = { datasets: { comparison: [{ model: "a@v1", elpd: -120.5, ic: "loo" }] } };
+    const waic = { datasets: { comparison: [{ model: "a@v1", elpd: -120.5, ic: "waic" }] } };
+    expect(elpdSourceText(loo)).toMatch(/leave-one-out cross-validation \(PSIS-LOO\)\.$/);
+    expect(elpdSourceText(waic)).toMatch(/information criterion \(WAIC\)/);
+    expect(elpdSourceText(waic)).not.toMatch(/from leave-one-out/);
+    expect(elpdSourceText({ datasets: {} })).toBe("The expected log predictive density (elpd) of each version.");
   });
 });
 

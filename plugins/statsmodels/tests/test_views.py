@@ -8,8 +8,12 @@ import numpy as np
 import pytest
 import xarray as xr
 from mapi_plugin_statsmodels import PLUGIN_IDS, PLUGINS
+from mapi_plugin_statsmodels.datasets import sales_dataset, sales_schema
+from mapi_plugin_statsmodels.examples import SALES_BIND, example_spec
 from mapi_plugin_statsmodels.views import explorer_views
 from mapi_sdk.bundle import Bundle
+from mapi_sdk.harness import fit_spec
+from mapi_sdk.registry import Registry
 from mapi_spec.stattests import StatTestResult
 from mapi_spec.views import (
     MODEL_SECTIONS,
@@ -89,6 +93,52 @@ def test_unobserved_components_show_a_decomposition(bundles: dict[str, Bundle]) 
     dec = views["decomposition"]
     assert isinstance(dec, DecompositionView)
     assert "level" in dec.components and dec.warnings_plain  # a panel: first series shown
+
+
+def _fit(registry: Registry, model: str, settings: str, *, panel: bool = False) -> Bundle:
+    geos = ["north", "south"] if panel else None
+    data = sales_dataset(periods=70, geos=geos, seed=2)
+    spec = example_spec(model, settings, SALES_BIND)
+    return fit_spec(spec, data, registry=registry, raw_schema=sales_schema(geo=panel))
+
+
+def test_unobserved_components_mark_the_slope_as_not_a_part(registry: Registry) -> None:
+    settings = "{level: local linear trend, series_dims: [geo]}"
+    fitted = _fit(registry, "ts.unobserved_components", settings, panel=True).model
+    comps = fitted.groups["components"]  # stacked over geo: the attr survives
+    assert {"level", "trend"} <= set(comps.data_vars) and "geo" in comps.dims
+    assert comps["trend"].attrs == {"decomposition": "exclude"}
+    assert "decomposition" not in comps["level"].attrs
+    dec = explorer_views(fitted)["decomposition"]
+    assert isinstance(dec, DecompositionView) and {"level", "trend"} <= set(dec.components)
+
+
+def test_additive_ets_stores_its_components(registry: Registry) -> None:
+    fitted = _fit(registry, "ts.ets", "{trend: add, seasonal: add, seasonal_periods: 4}").model
+    comps = fitted.groups["components"]
+    assert list(comps.data_vars) == ["level", "slope", "season"]
+    assert comps["slope"].attrs == {"decomposition": "exclude"}
+    assert not comps["level"].attrs and not comps["season"].attrs
+    y = fitted.groups["observed_data"]["y"]
+    parts = (comps["level"] + comps["season"]).sel(t=y["t"])
+    # the stacked parts follow the series: same mean, smaller spread than the noise
+    assert np.isfinite(parts.values).all()
+    assert abs(float(parts.mean() - y.mean())) < 0.2 * float(y.std())
+    assert float((y - parts).std()) <= float(y.std())
+    dec = explorer_views(fitted)["decomposition"]
+    assert isinstance(dec, DecompositionView)
+    assert set(dec.components) == {"level", "slope", "season"}
+
+
+def test_ets_decomposition_view_and_multiplicative_models(
+    registry: Registry, bundles: dict[str, Bundle]
+) -> None:
+    fitted = bundles["ts.ets"].model  # damped additive trend, no season
+    assert list(fitted.groups["components"].data_vars) == ["level", "slope"]
+    assert isinstance(explorer_views(fitted)["decomposition"], DecompositionView)
+    mul = _fit(registry, "ts.ets", "{error: mul, trend: add}").model
+    assert "components" not in mul.groups
+    assert "decomposition" not in explorer_views(mul)
 
 
 def test_forecast_fans_per_series_from_a_score_run() -> None:

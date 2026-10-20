@@ -423,3 +423,18 @@ def test_score_summary_tables_name_their_dims_and_old_tables_still_parse() -> No
     with pytest.raises(ValidationError):
         ScoreSummaryTable.model_validate({**old, "dims": ["d"] * 65})
     assert SCORE_FIELDS_VIEW == "ui/fields.json"
+
+
+def test_score_summary_tables_name_the_plots_that_draw_them() -> None:
+    from mapi_spec.api import ScoreSummaryTable
+
+    old = {"variable": "y_hat", "columns": ["row", "mean"], "rows": [[0, 0.7]]}
+    assert ScoreSummaryTable.model_validate(old).plots is None
+    assert "plots" not in ScoreSummaryTable.model_validate(old).model_dump(mode="json")
+    ids = ["core.calibration", "core.roc_pr", "core.confusion"]
+    table = ScoreSummaryTable.model_validate({**old, "plots": ids})
+    assert table.model_dump(mode="json") == {**old, "plots": ids}
+    assert ScoreSummaryTable.model_validate({**old, "plots": []}).plots == []
+    for bad in (["core roc"], [""], ["x" * 129], ["core.roc_pr"] * 17):
+        with pytest.raises(ValidationError):
+            ScoreSummaryTable.model_validate({**old, "plots": bad})

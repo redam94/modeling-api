@@ -132,7 +132,7 @@ class HSGPTrendModel(PyMCModel[HSGPTrendSettings]):
     }
     expected: ClassVar[dict[str, str]] = {"y_hat": "mu", "trend": "trend_mu"}
     predictive: ClassVar[dict[str, str]] = {"y_hat": TARGET}
-    plots = ("core.ppc_fan", "core.convergence", "core.posterior_forest")
+    plots = ("core.ppc_fan", "core.convergence", "core.posterior_forest", "core.decomposition")
     default_engine = "pymc"
     pad_extend = False
 
@@ -227,10 +227,34 @@ class HSGPTrendModel(PyMCModel[HSGPTrendSettings]):
         for name, grp in list(out.groups.items()):
             if OBS_DIM in grp.dims and OBS_DIM not in grp.coords:
                 out.groups[name] = grp.assign_coords({OBS_DIM: observed})
+        components = self._components(out.groups["posterior"], ctx)
+        if components is not None:
+            out.groups["components"] = components
         n_missing = int((~np.isfinite(y)).sum())
         out.learned["missing_periods"] = n_missing
         out.learned["max_extension"] = s.max_extension
         return out
+
+    @staticmethod
+    def _components(posterior: xr.Dataset, ctx: FitContext) -> xr.Dataset | None:
+        """``trend`` and ``seasonality`` (``mu - trend``) draws in the units of the target.
+
+        ``mu`` and ``trend_mu`` live on the model stage (standardised when the pipeline has
+        ``core.standardize``); the fitted pipeline maps each back to the target's units, and
+        the seasonality is the difference of the converted series (an affine inverse would
+        add the mean to it twice).
+        """
+        if "trend_mu" not in posterior or "mu" not in posterior:
+            return None
+        trend, mu = posterior["trend_mu"], posterior["mu"]
+        if ctx.to_original is not None:
+            trend, mu = ctx.to_original(trend, TARGET), ctx.to_original(mu, TARGET)
+        parts = {"trend": trend.variable.copy()}
+        if "seasonality" in posterior:
+            parts["seasonality"] = (mu - trend).variable
+        for part in parts.values():
+            part.attrs = {}
+        return xr.Dataset(parts, coords=posterior["trend_mu"].coords)
 
 
 def fourier_features(x: np.ndarray, period: float, order: int) -> np.ndarray:

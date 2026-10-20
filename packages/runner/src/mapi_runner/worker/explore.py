@@ -54,7 +54,12 @@ from mapi_runner.worker.explore_data import (
     data_context,
     ingest_sections,
 )
-from mapi_runner.worker.explore_model import FIT_SECTIONS, MODEL_SECTION_FUNCS, ModelContext
+from mapi_runner.worker.explore_model import (
+    FIT_SECTIONS,
+    MODEL_SECTION_FUNCS,
+    ModelContext,
+    comparison_plots,
+)
 from mapi_runner.worker.explore_science import INGEST_IMAGE_CELLS, image_cells, science_plots
 from mapi_runner.worker.refit import Refitter
 
@@ -124,6 +129,8 @@ def write_sections(
             plots = explorer_plots(body)
             if data is not None and section in SCIENCE_SECTIONS:
                 plots += science_plots(section, data.ds, data.shapes)
+            if section == "comparison" and isinstance(context, ModelContext):
+                plots += comparison_plots(context)
             extra: dict[str, Any] = {}
             if plots:
                 ctx.write_json(plots_name, plots)

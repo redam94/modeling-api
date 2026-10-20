@@ -31,16 +31,18 @@ generic implementation is the fallback.
 from __future__ import annotations
 
 import itertools
+import json
 import math
+import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final
 
 import numpy as np
 import xarray as xr
-from mapi_sdk.bundle import Bundle
+from mapi_sdk.bundle import Bundle, ElpdDetail
 from mapi_sdk.harness import score_bundle
-from mapi_sdk.metrics import point_estimate
+from mapi_sdk.metrics import mase_scale, point_estimate
 from mapi_sdk.registry import Registry
 from mapi_spec.calibration import FanChart
 from mapi_spec.errors import MapiError
@@ -94,6 +96,7 @@ __all__ = [
     "FIT_SECTIONS",
     "MODEL_SECTION_FUNCS",
     "ModelContext",
+    "comparison_plots",
     "error_metrics",
 ]
 
@@ -113,6 +116,7 @@ once more, and only for models that declare a ``grid`` output)."""
 ERROR_METRICS: Final = ("rmse", "mae", "mape", "smape", "wape", "mase", "crps")
 """Metrics where lower is better (rankings sort them ascending)."""
 MAX_BACKTEST_FOLDS: Final = 10
+_MAX_PLOT_BYTES: Final = 2_000_000
 
 
 def _fv(x: Any) -> float | None:
@@ -705,11 +709,9 @@ def error_metrics(
 
 
 def _benchmark_scale(history: np.ndarray, season: int | None) -> float | None:
+    """The in-sample (seasonal-)naive MAE of a fold's training history (the MASE scale)."""
     h = stats.finite(history)
-    m = season if season and h.size > season else 1
-    if h.size <= m:
-        return None
-    return _fv(np.mean(np.abs(h[m:] - h[:-m])))
+    return mase_scale(h, season if season and h.size > season else 1)
 
 
 def backtest(c: ModelContext) -> BacktestView:
@@ -885,6 +887,58 @@ def comparison(c: ModelContext) -> ComparisonView:
         caption_plain="Shows some model versions side by side on held-out data (lower errors "
         "are better).",
     )
+
+
+def comparison_plots(c: ModelContext) -> list[dict[str, Any]]:
+    """``core.model_comparison`` (an elpd forest) of the compared versions that have a PSIS-LOO
+    estimate (else WAIC, as the first version with one) on the same number of observations,
+    as PlotSpec documents. Empty with fewer than two such versions, when the recipe fails or
+    when the plot is above 2 MB."""
+    found: list[tuple[str, str, ElpdDetail]] = []
+    for ref, b in [(c.ref, c.bundle), *c.compare]:
+        got = next((k for k in ("elpd_loo", "elpd_waic") if k in b.metrics.elpd), None)
+        if got is not None:
+            found.append((ref, got, b.metrics.elpd[got]))
+    if not found:
+        return []
+    ic, n = found[0][1], found[0][2].n
+    same = [(ref, d) for ref, k, d in found if k == ic and d.n == n]
+    if len(same) < 2:
+        return []
+    elpd = np.array([d.elpd for _r, d in same], dtype=float)
+    top = int(np.argmax(elpd))
+    best = same[top][1].pointwise
+    dse: list[float] = []
+    for i, (_r, d) in enumerate(same):
+        pw = d.pointwise
+        if i == top:
+            dse.append(0.0)
+        elif pw is not None and best is not None and len(pw) == len(best):
+            diff = np.asarray(pw, dtype=float) - np.asarray(best, dtype=float)
+            dse.append(float(np.sqrt(diff.size * np.var(diff))))
+        else:
+            dse.append(math.nan)
+    table = xr.Dataset(
+        {
+            ic: ("model", elpd),
+            "se": ("model", [math.nan if d.se is None else d.se for _r, d in same]),
+            "dse": ("model", dse),
+        },
+        coords={"model": [r for r, _d in same]},
+    )
+    try:
+        from mapi_plots.recipes._base import registered
+
+        recipe = registered()["core.model_comparison"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            spec = recipe.render(xr.DataTree.from_dict({"/comparison": table}))
+        doc = spec.model_dump(mode="json", exclude_none=True)
+    except Exception:  # a plot never fails the comparison
+        return []
+    if len(json.dumps(doc, separators=(",", ":"))) > _MAX_PLOT_BYTES:
+        return []
+    return [doc]
 
 
 _FORECAST_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime", "ts"})

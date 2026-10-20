@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { FieldEntry } from "@/features/explore/views";
 import { gridScoreSummary, scoreFieldsView } from "@/mocks/score-fields";
+import { arealSummary, classifierSummary } from "@/mocks/score-shapes";
 
-import { classify, gridOutputsOf, intervalRows, shapesOf, statsOf, tableDims, type Table } from "./shape";
+import { classify, gridOutputsOf, intervalRows, plotsShownAbove, shapesOf, shapeViewPlotIds, statsOf, tableDims, type Table } from "./shape";
 
 const NO_GRIDS = new Map<string, FieldEntry[]>();
 
@@ -67,5 +68,32 @@ describe("intervalRows", () => {
     };
     expect(statsOf(t)).toEqual({ center: "mean", band: { lower: "hdi_90_lower", upper: "hdi_90_upper", label: "hdi 90" } });
     expect(intervalRows(t, ["geo", "channel"])).toEqual([{ label: "de · tv", mean: 1.2, lower: 0.8, upper: 1.6 }]);
+  });
+});
+
+describe("areal and classification outputs (the plots a table names)", () => {
+  it("makes an output drawn by sci.area_map a map of areas, and one with classifier plots a classification", () => {
+    expect(shapesOf(arealSummary, null)).toEqual([
+      { kind: "areal", variable: "cases", plots: ["sci.area_map"] },
+      { kind: "categorical", variable: "rr", dims: ["area"] },
+    ]);
+    // the plots keep the order of the view (ROC/PR, confusion, calibration), not the table's
+    expect(shapesOf(classifierSummary, null)).toEqual([{ kind: "classification", variable: "y_hat", plots: ["core.roc_pr", "core.confusion", "core.calibration"] }]);
+  });
+
+  it("ignores plots that no view shows, and a grid output stays a grid", () => {
+    const fan: Table = { variable: "y", columns: ["time", "mean"], rows: [["2026-10-01", 1]], dims: ["time"], plots: ["core.ppc_fan"] };
+    expect(classify(fan, NO_GRIDS)).toEqual({ kind: "time", variable: "y", time: "time" });
+    const grids = gridOutputsOf(scoreFieldsView);
+    const gridTable = { ...gridScoreSummary.tables![0]!, plots: ["sci.area_map"] };
+    expect(classify(gridTable, grids).kind).toBe("grid");
+  });
+
+  it("hides the plots the shape views show, and the static maps when the field viewer is there", () => {
+    expect(shapeViewPlotIds(shapesOf(classifierSummary, null))).toEqual(["core.roc_pr", "core.confusion", "core.calibration"]);
+    expect(plotsShownAbove(arealSummary, false)).toEqual(["sci.area_map"]);
+    expect(plotsShownAbove(arealSummary, true)).toEqual(["sci.field_map", "sci.vector_field", "sci.area_map"]);
+    expect(plotsShownAbove(gridScoreSummary, false)).toEqual([]);
+    expect(plotsShownAbove(null, false)).toEqual([]);
   });
 });

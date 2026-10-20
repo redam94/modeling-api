@@ -16,6 +16,7 @@ import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
+import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { createTreeHandlers, createTreeState, TREE, treeSpecIssues } from "./tree";
 import { createTrustHandlers, createTrustState } from "./trust";
@@ -69,7 +70,7 @@ export function createState(): MockState {
     governance: seedGovernance(createGovernanceState()),
     tree: createTreeState(),
     sci: createSciState(),
-    runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
+    runs: new Map([...fx.runs, ...SHAPE_RUNS].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
     uploads: new Map(),
@@ -153,6 +154,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // v0.10: score results by output shape (grid summary table, classifier, areal output).
+    ...createShapeHandlers({ artifacts: state.artifacts }),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
     ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
     // The Data Explorer on scientific data (ds-sci-<case>), before the generic explorer routes.
@@ -324,6 +327,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       if ((request.headers.get("accept") ?? "").includes("text/event-stream")) return sseResponse(state, r, request);
       return page(fx.events(r.id));
     }),
+    // Plots a run rendered (the score runs of mocks/score-shapes.ts have their own).
+    http.get(`${API}/v1/runs/:id/plots`, ({ params }) => (state.runs.has(String(params.id)) ? page([]) : problem(404, "NOT_FOUND", "Not found", "no such run"))),
     http.get(`${API}/v1/runs/:id/logs`, ({ params }) => page(fx.logLines(String(params.id)))),
     http.post(new RegExp(`^${API_RE}/v1/runs/[^/]+:cancel$`), ({ request }) => {
       const id = decodeURIComponent(new URL(request.url).pathname.split("/").at(-1)!.split(":")[0]!);
