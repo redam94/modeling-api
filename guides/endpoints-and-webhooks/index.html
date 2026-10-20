@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6095,6 +6215,9 @@ promotion. It also has an example body that is valid:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="nt">"mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"forecast"</span><span class="p">,</span><span class="w"> </span><span class="nt">"horizon"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"dim"</span><span class="p">:</span><span class="w"> </span><span class="s2">"time"</span><span class="p">,</span><span class="w"> </span><span class="nt">"periods"</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">},</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w"> </span><span class="nt">"future_covariates"</span><span class="p">:</span><span class="w"> </span><span class="s2">"carry_last"</span><span class="p">,</span><span class="w"> </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"expected"</span><span class="p">,</span><span class="w"> </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"mean"</span><span class="p">,</span><span class="w"> </span><span class="s2">"hdi_90"</span><span class="p">]}}</span>
 </span></code></pre></div>
+<p>A score call never needs a side table that only the model reads, for example the pretrained
+weights of a <code>dl</code> model (v0.15). The model version keeps what the model learned from them.
+See <a href="../deep-learning/#pretrained-weights">Deep learning: pretrained weights</a>.</p>
 <p>Then score the endpoint. <code>Prefer: wait=60</code> waits for a maximum of one minute:</p>
 <ul>
 <li>If the run finished, the answer is <code>200</code> with links to the outputs.</li>
@@ -6110,6 +6233,9 @@ zarr or Arrow reader. If a result has more than 100,000 cells, the server cuts i
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">                        </span><span class="nt">"rows"</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="s2">"de"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2026-01-05"</span><span class="p">,</span><span class="w"> </span><span class="mf">1520.4</span><span class="p">,</span><span class="w"> </span><span class="mf">1402.1</span><span class="p">,</span><span class="w"> </span><span class="mf">1633.9</span><span class="p">]]}],</span>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">            </span><span class="nt">"truncated"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">}</span>
 </span></code></pre></div>
+<p>From v0.10, a table also has <code>dims</code> (the coordinate columns), <code>time_dim</code> (the dim that is
+time, when there is one) and <code>plots</code> (the ids of the plots of the run that draw the output).
+A server that predates these fields leaves them out.</p>
 <p>A table of a circular output (an angle, for example a wind direction) has the field <code>period</code>
 (one turn, for example 360). Its statistics are on the circle: <code>mean</code> is the circular mean,
 and each interval is centred on it. All values are from 0 to <code>period</code>. An interval with

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5714,8 +5834,8 @@ The full texts are in the repository root: <code>LICENSE.md</code>, <code>LICENS
 <h2 id="what-this-means-in-practice">What this means in practice<a class="headerlink" href="#what-this-means-in-practice" title="Permanent link">&para;</a></h2>
 <div class="admonition success">
 <p class="admonition-title">Plugins you write are yours</p>
-<p>A step, model or plot recipe that you write with <code>mapi-sdk</code>, <code>mapi-pymc</code> or
-<code>mapi-sklearn</code> uses Apache-2.0 libraries. You can use the licence that you want for it,
+<p>A step, model or plot recipe that you write with <code>mapi-sdk</code>, <code>mapi-pymc</code>,
+<code>mapi-sklearn</code> or <code>mapi-jax</code> uses Apache-2.0 libraries. You can use the licence that you want for it,
 and a proprietary licence is also possible.</p>
 </div>
 <div class="admonition success">
@@ -5735,7 +5855,10 @@ hold a commercial licence. For commercial terms, send an email to mattreda@mattr
 scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework (Apache-2.0).
 mmm-framework adds NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series models
 (<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.ets</code> and the other time-series models) run on statsmodels
-(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.15, the deep learning models
+(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.13, <code>ts.bsts</code>, the causal
+models (<code>mapi-plugin-causal</code>, Apache-2.0) and the Pathfinder engine use pymc-extras
+(Apache-2.0). From v0.14, the runner decodes images with Pillow (MIT-CMU), and the
+classifiers of the <code>gbm</code> extra use LightGBM (MIT) and CatBoost (Apache-2.0). From v0.15, the deep learning models
 (<code>mapi-jax</code>) use JAX, Flax and Optax (Apache-2.0). The <code>base-dl</code> image also has the NVIDIA
 CUDA runtime wheels from pip, which have the NVIDIA licence (NVIDIA Software License
 Agreement). <code>THIRD-PARTY-NOTICES.md</code> lists them.</p>

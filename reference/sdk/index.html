@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6302,6 +6422,11 @@ to shard i.</p>
 loader in <code>fit_batches</code> and <code>score_batches</code>. Any other model gets
 <code>collection_read(collection, spec.data.collection, seed=...)</code>. Read
 <a href="../../guides/plugins/#fit-batches">Train on batches</a>.</p>
+<p>A model can read a side table (v0.15). <code>CustomModel.side_table_params</code> names the settings
+keys whose value is a <code>data.side_tables</code> entry, for example the pretrained weights of
+<code>dl.finetune_classifier</code>. The harness gives these tables, raw, in <code>FitContext.side_tables</code>.
+A score request never needs a table that only the model reads. Read
+<a href="../../guides/plugins/#model-side-tables">Read a side table in a model</a>.</p>
 <h2 id="representations-and-summaries">Representations and summaries<a class="headerlink" href="#representations-and-summaries" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

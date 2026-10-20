@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6046,6 +6166,11 @@ sensor. The scorecard check <code>data.missing</code> then does not count these 
 gaps in observed series: the check must show them.</p>
 <p><code>FitOutput.native</code> is only for safe native formats (skops, xgboost JSON, safetensors). The
 platform rejects pickle when it writes a bundle and when it reads a bundle.</p>
+<p>From v0.10, a model can declare its standard plots in the class attribute <code>plots</code>, a list of
+recipe ids. For example, the statsmodels Markov switching model declares
+<code>core.state_sequence</code>. The spec editor shows these plots first in the <strong>Insert</strong> panel. A fit
+draws only the plots that the spec lists in <code>outputs.plots</code>. The contract kit renders each
+plot of the manifest.</p>
 <h3 id="settings-rules-that-need-no-data">Settings rules that need no data<a class="headerlink" href="#settings-rules-that-need-no-data" title="Permanent link">&para;</a></h3>
 <p>Put the rules that join two or more settings in a pydantic <code>model_validator</code> of your
 <code>ModelSettings</code> class. An example is "set <code>offset_adu</code> and <code>scale_adu</code> together" in
@@ -6198,6 +6323,9 @@ can draw them.</p>
 <li>The fit already logs the params of the spec (<code>model</code>, <code>fit.*</code>, <code>settings.*</code>). Do not log
   them again.</li>
 </ul>
+<p>From v0.14, the contexts also have <code>ctx.log_image</code>, <code>ctx.log_figure</code> and <code>ctx.log_table</code>.
+They put images, matplotlib figures and small tables on the <strong>Media</strong> tab of the run page.
+See <a href="../tracking/#log-images-figures-and-tables">Log images, figures and tables</a>.</p>
 <p>To see the values in a test, give the fit a recorder:
 <code>fit_spec(spec, data, hooks=FitHooks(tracker=MetricRecorder()))</code>. The recorder keeps the
 points, the params, the tags and the log lines (<code>mapi_sdk.MetricRecorder</code>). See

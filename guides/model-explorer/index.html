@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5899,6 +6019,9 @@ valid on it. For these models, the page shows the metrics and rankings. It tells
 compare their backtests. You can also run a <code>compare.diebold_mariano</code> workflow node on
 rolling-origin backtest errors.</p>
 <p><img alt="Three versions side by side with Diebold-Mariano tests" class="mapi-shot" src="../../assets/screenshots/explorer-model-compare.png" /></p>
+<p><strong>Compare</strong> compares model versions on held-out data. To compare the runs of a study (the
+metrics, params, curves and images that each run logged), use the compare page of the runs
+table. See <a href="../run-comparison/#compare-runs">Compare runs and use experiments</a>.</p>
 <p><strong>Optimise budget</strong> (<code>/models/&lt;model&gt;/versions/&lt;n&gt;/optimize</code>) is only for marketing-mix
 models. It asks for these items:</p>
 <ul>
@@ -6045,7 +6168,7 @@ view does not include the tests. It gives a warning. For more sections, add
 </tr>
 <tr>
 <td><code>fields</code></td>
-<td>Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data</td>
+<td>Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data. From v0.10, when the quantiles and draws go much wider than the posterior means, the colours cover the 1% to 99% range of the means. Thus a log-scale intensity does not look flat. <strong>Colours for the full range</strong> shows all of it.</td>
 <td>models with an output that has a <code>grid</code> (maps, images, space-time fields)</td>
 </tr>
 <tr>

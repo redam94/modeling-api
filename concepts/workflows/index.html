@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2197,6 +2233,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Runs, caching and automation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracking-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking and experiments in a workflow v0.11
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2312,6 +2365,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5788,6 +5925,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Runs, caching and automation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tracking-in-a-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking and experiments in a workflow v0.11
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -6101,6 +6255,30 @@ The server puts each plot output through the plot sanitizer when it collects the
 unsafe plot fails its node with <code>PLOT_UNSAFE</code>. <code>report.summary</code> has a <code>plots</code> input and puts
 each plot into a section of the report. The run view of the web app and the JSON report show
 these plots.</p>
+<h3 id="tracking-in-a-workflow">Tracking and experiments in a workflow <span class="mapi-badge">v0.11</span><a class="headerlink" href="#tracking-in-a-workflow" title="Permanent link">&para;</a></h3>
+<p>A workflow run and its node runs are usual runs. Thus they have the same tracking data as
+other runs (<a href="../run-tracking/">Run tracking and experiments</a>):</p>
+<ul>
+<li>A node implementation can log metrics, params, tags and log lines through its
+  <code>NodeContext</code>, with the same methods as a model (<code>log_metric</code>, <code>log_params</code>, <code>set_tag</code>,
+  <code>log_line</code>). From v0.14, it can also log images and tables.</li>
+<li><code>search.grid</code> logs each grid point in its search run: the params <code>trial.&lt;i&gt;.&lt;pointer&gt;</code> and
+  <code>grid.*</code>, the scores with the number of the point as the step, <code>best_&lt;metric&gt;</code> and the tag
+  <code>grid.best_point</code>.</li>
+<li><code>model.backtest</code> logs the metrics of each fold with the label <code>fold</code>.</li>
+</ul>
+<p>From v0.14, a workflow run can go into an <a href="../run-tracking/#experiments">experiment</a>. Give
+<code>experiment_id</code> when you start the run (<code>POST /v1/workflows/{workflow_id}/runs</code>,
+<code>api.workflows.run</code> or <code>mapi workflows run --experiment</code>). Each node run then goes into the
+same experiment. Schedules and triggers start their runs in no experiment.</p>
+<div class="admonition note">
+<p class="admonition-title">Use <code>search.grid</code>, not a <code>Sweep</code></p>
+<p>The <code>Sweep</code> document is retired in v0.14. The server refuses new <code>Sweep</code> documents. A
+workflow with a <code>search.grid</code> node does the same work, and its points are metrics that
+you can compare on the compare page.</p>
+</div>
+<p>The inputs of a workflow must be datasets. An image collection (v0.15) cannot be the input of
+a workflow (<a href="../image-collections/">Image data and collections</a>).</p>
 <h2 id="the-node-catalog">The node catalog<a class="headerlink" href="#the-node-catalog" title="Permanent link">&para;</a></h2>
 <p><code>GET /v1/catalog/workflow-nodes</code> lists all implementations. For each implementation, it gives
 its ports, parameter schema, result fields and an <a href="../about-and-choosing/">About card</a>.</p>

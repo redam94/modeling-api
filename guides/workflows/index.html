@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3658,6 +3778,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Watching a run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Put the runs in an experiment v0.14
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -6204,6 +6341,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Watching a run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Put the runs in an experiment v0.14
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -7231,6 +7385,20 @@ again. To calculate all nodes again, start a run with <code>"use_cache": false</
 node runs of a workflow run, use <code>GET /v1/runs?parent_run_id=&lt;run_id&gt;</code>. Code in a node logs
 with the same methods as a model (<code>ctx.log_metric</code>, <code>ctx.log_params</code>, <code>ctx.set_tag</code>,
 <code>ctx.log_line</code>). See <a href="../tracking/#workflow-nodes">Track metrics, params and tags</a>.</p>
+<h3 id="experiments">Put the runs in an experiment <span class="mapi-badge">v0.14</span><a class="headerlink" href="#experiments" title="Permanent link">&para;</a></h3>
+<p>An experiment is a named group of runs. Name the experiment when you start the workflow run.
+Then the workflow run and each node run that it starts go into that experiment:</p>
+<ul>
+<li>In the HTTP API, give <code>experiment_id</code> in <code>POST /v1/workflows/{workflow_id}/runs</code>.</li>
+<li>In Python, give <code>experiment_id=</code> to <code>api.workflows.run</code>.</li>
+<li>In the CLI, give <code>--experiment</code> (an id or a name) to <code>mapi workflows run</code>.</li>
+</ul>
+<p>Without an experiment, the run goes into the experiment of its parent run, if there is one.
+The server refuses an archived experiment. If you move a workflow run to a different
+experiment later, the node runs that it already started stay where they are. Schedules and
+triggers start their runs in no experiment. To group a run of a schedule, move it with
+<code>PATCH /v1/runs/{run_id}</code> before it starts its nodes. See
+<a href="../run-comparison/#experiments">Compare runs and use experiments</a>.</p>
 <p>When a run is complete, the server sends the <code>workflow.run.succeeded</code> or <code>workflow.run.failed</code>
 <a href="../endpoints-and-webhooks/">webhook</a>. The webhook contains the run id, the workflow revision,
 the status and the outputs.</p>
@@ -7367,6 +7535,12 @@ row-level security, as all other data are.</p>
 </li>
 <li>In the web editor, each browser keeps the node positions as a view preference. The document
   has no place for them. The ports of a sub-workflow show when the app loads its revision.</li>
+<li>Workflows do not take image collections (v0.15). The server refuses a collection as a
+  workflow input (<code>SCHEMA_INVALID</code>). Use an <code>image_folder</code> dataset, or fit a spec on the collection with a usual
+  fit run. See <a href="../image-data/">Image data</a>.</li>
+<li>Workflow backtests do not make stratified split plans (v0.14).</li>
+<li>The <code>Sweep</code> document is retired (v0.14). The server refuses new <code>Sweep</code> documents. Use a
+  <code>search.grid</code> node (see <a href="#search-model-settings-on-a-plan">Search model settings on a plan</a>).</li>
 <li>The <a href="../python-client/#workflows-governance-and-explorers">Python client</a> and the
   <a href="../cli/#workflows-governance-and-explorers">CLI</a> can do all workflow operations. The
   screens of the web app are in <a href="#in-the-web-app">In the web app</a>.</li>

@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6052,6 +6172,10 @@ different sizes, use a <a href="#large-image-sets-collections">collection</a> (v
 </thead>
 <tbody>
 <tr>
+<td><a href="../../concepts/image-collections/">Image data and collections</a></td>
+<td>The concepts: the two ways to keep images, and how models and runs read them</td>
+</tr>
+<tr>
 <td><a href="../../reference/spec-format/#image-folders">Spec format: image folders and splits</a></td>
 <td><code>ImageFolderOptions</code>, <code>uint8</code> and the split kinds</td>
 </tr>
@@ -6136,7 +6260,8 @@ ingest stops with an error. Convert the images to 8 bits first.</p>
 <ol>
 <li>Open <strong>Datasets</strong> and click <strong>Upload</strong>.</li>
 <li>Select the zip file.</li>
-<li>For <strong>Format</strong>, select <strong>image folder</strong>.</li>
+<li>Make sure that <strong>Format</strong> is <strong>image folder (zip)</strong>. The app selects it for a <code>.zip</code>
+   file.</li>
 <li>Type the name of the manifest and the names of the columns.</li>
 <li>If the images do not have the same size, set <strong>Size</strong> (height and width) and <strong>Resize</strong>.</li>
 <li>Click <strong>Upload</strong>.</li>
@@ -6304,7 +6429,7 @@ plots and the metrics.</p>
 <h2 id="look-at-the-images">Look at the images<a class="headerlink" href="#look-at-the-images" title="Permanent link">&para;</a></h2>
 <p>The Data Explorer of an image dataset starts with two sections:</p>
 <ul>
-<li><strong>Gallery</strong> shows small pictures (thumbnails) of the images. Click a chip of a label or of
+<li><strong>Image gallery</strong> shows small pictures (thumbnails) of the images. Click a chip of a label or of
   a split to show only these images. Click a thumbnail to see a larger picture and the values
   of the image. When the dataset has more than 240 images, the gallery shows an even sample
   of each label and split. A note above the gallery tells you this.</li>
@@ -6745,6 +6870,13 @@ keeps their aspect.</p>
 not delete its packs, because other versions can use them.</p>
 </div>
 <h2 id="what-comes-next">What comes next<a class="headerlink" href="#what-comes-next" title="Permanent link">&para;</a></h2>
+<p>The known gaps of image folders in v0.14:</p>
+<ul>
+<li>An <code>image_folder</code> upload has no inspect step. Errors about the columns of the manifest
+  come from the ingest run.</li>
+<li>Workflow backtests do not make stratified split plans.</li>
+<li>There is no calibration plot for multiclass predictions.</li>
+</ul>
 <p>The known gaps of image collections in v0.15:</p>
 <ul>
 <li>The client compares images only with a base version of the same dataset.</li>

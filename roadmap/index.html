@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5539,6 +5659,28 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-v010-to-v015-contain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What v0.10 to v0.15 contain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-v10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned: v1.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-v09-contains" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5643,6 +5785,13 @@ sandboxed runs with verified outputs.</p>
     v0.7 · scientific models : four sci models : outputs on a grid : Fields in the Model Explorer
     v0.8 · M4 · tree datasets : NetCDF-4 and HDF5 groups : versions from several files : data.nodes and tree-input models
     v0.9 · M5 · science gallery : 15 sci models in all : 14 plot recipes : Bayesian workflow nodes and six recipes : tutorials for the case studies
+    v0.10 · chart wiring : score plots by output shape : classifier plots and metrics : Data Explorer for scientific data
+    v0.11 · run tracking : metrics, params, tags and notes : live chains : run search
+    v0.12 · MMM pack : nested and multivariate MMMs : time-varying effects, counts and shares : ten plot recipes
+    v0.13 · causal and BSTS : causal impact, synthetic control, DiD : ts.bsts : geo-lift to MMM
+    v0.14 · run comparison : compare page, experiments, saved views : run media : image data and classification
+    v0.15 · deep learning : mapi-jax networks : image collections : GPU resource class
+    planned · v1.0 : MLflow export : system metrics : retention and hardening
     planned · expert plugins and MCP : plugin upload for allow-listed experts : curated MCP server : SBC as parent runs</code></pre>
 <table>
 <thead>
@@ -5715,6 +5864,48 @@ sandboxed runs with verified outputs.</p>
 <td><span class="mapi-badge">available</span></td>
 </tr>
 <tr>
+<td><strong>v0.10</strong></td>
+<td></td>
+<td>Chart wiring: score plots that follow the shape of each output, standard plots and metrics for classifiers, state models and ADVI fits, and the <a href="../guides/data-explorer/#scientific-data">Data Explorer for scientific data</a>.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v0.11</strong></td>
+<td></td>
+<td><a href="../guides/tracking/">Run tracking</a>: metrics, params, tags, notes and structured log lines for each run, live chains and run search.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v0.12</strong></td>
+<td></td>
+<td><a href="../models/mmm-framework/">The MMM pack</a>: <code>mmm.nested</code>, <code>mmm.multivariate</code>, effects that change over time, counts and shares, and ten plot recipes.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v0.13</strong></td>
+<td></td>
+<td><a href="../models/causal/">Causal models and BSTS</a>: <code>causal.impact</code>, <code>causal.synthetic_control</code>, <code>causal.did</code> and <code>ts.bsts</code>. A geo-lift test calibrates the MMM.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v0.14</strong></td>
+<td></td>
+<td><a href="../guides/run-comparison/">Run comparison</a>, experiments and saved views, run media, <a href="../guides/image-data/">image data</a> and a classification pack.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v0.15</strong></td>
+<td></td>
+<td><a href="../guides/deep-learning/">Deep learning</a> on JAX, image collections of up to 1 000 000 images, and the resource class <code>GPU</code>.</td>
+<td><span class="mapi-badge">available</span></td>
+</tr>
+<tr>
+<td><strong>v1.0</strong></td>
+<td></td>
+<td>Planned: an MLflow export of runs and experiments, system metrics for each run, retention for the tracking data, and hardening.</td>
+<td><span class="mapi-badge mapi-badge--soon">planned</span></td>
+</tr>
+<tr>
 <td>Not set</td>
 <td></td>
 <td><a href="expert-plugins/">Expert plugins and MCP</a>: plugin upload for allow-listed experts, a curated MCP server for AI agents, and SBC as parent runs.</td>
@@ -5729,6 +5920,54 @@ The releases used these names for tree datasets (M4) and the science gallery (M5
 upload, the MCP server and public code upload are not done. They have no release number
 yet.</p>
 </div>
+<h2 id="what-v010-to-v015-contain">What v0.10 to v0.15 contain<a class="headerlink" href="#what-v010-to-v015-contain" title="Permanent link">&para;</a></h2>
+<p><a href="../whats-new-0.15/">What's new in 0.10 to 0.15</a> tells about each release.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.10, chart wiring.</strong> Score plots follow the shape of each output: a map for a grid,
+      a fan for a time series. Four new core recipes (<code>core.roc_pr</code>, <code>core.confusion</code>,
+      <code>core.loss_curve</code>, <code>core.loo_pit</code>). The metrics <code>auc</code> and <code>mase</code> are calculated. The
+      Data Explorer shows images, profiles, maps, networks, trees, directions and points.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.11, run tracking.</strong> Model code, workflow nodes and API users log metrics, params,
+      tags, notes and structured log lines. The run page shows live curves and a lane for
+      each chain. <code>GET /v1/runs</code> searches by metric, param and tag
+      (<a href="../guides/tracking/">Track metrics, params and tags</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.12, the MMM pack.</strong> <code>mmm.nested</code>, <code>mmm.multivariate</code>, time-varying channel
+      effects, count and share likelihoods, and ten plot recipes
+      (<a href="../models/mmm-framework/">Marketing-mix models</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.13, causal models and BSTS.</strong> <code>causal.impact</code>, <code>causal.synthetic_control</code>,
+      <code>causal.did</code> and <code>ts.bsts</code>. The node <code>model.lift_test</code> and the recipe <code>geo_lift_mmm</code>
+      calibrate the MMM with a geo-lift test (<a href="../guides/causal/">Measure the effect of a change</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.14, run comparison and images.</strong> The compare page, experiments, saved views, and
+      images, figures and tables in a run (<a href="../guides/run-comparison/">Compare runs</a>).
+      The upload format <code>image_folder</code>, the image gallery, and a classification pack
+      (<a href="../guides/image-data/">Image data</a>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>v0.15, deep learning.</strong> <code>mapi-jax</code> with <code>dl.mlp</code>, <code>dl.cnn_classifier</code>,
+      <code>dl.finetune_classifier</code> and <code>dl.embed</code>. Image collections, resumable uploads,
+      pretrained weights as datasets, and the resource class <code>GPU</code>
+      (<a href="../guides/deep-learning/">Deep learning</a>).</li>
+</ul>
+<p>We did the web journeys of these releases in a browser on a local dev stack. These items are
+not done yet:</p>
+<ul>
+<li>The GPU path is not tested on a GPU or on Google Cloud. A GPU run on a laptop uses the CPU.</li>
+<li>One GPU for each run, and no training on more than one machine.</li>
+<li>The platform keeps media and image packs until you delete the tenant.</li>
+<li>Collections take no pipeline steps and no time splits. Workflows and side tables do not
+  take collections.</li>
+<li><code>mmm.nested</code> and <code>mmm.multivariate</code> use national data only.</li>
+</ul>
+<h2 id="planned-v10">Planned: v1.0<a class="headerlink" href="#planned-v10" title="Permanent link">&para;</a></h2>
+<p>The v1.0 release is planned to complete run tracking. These items are not available:</p>
+<ul>
+<li>An <strong>MLflow export</strong>: a sandboxed job writes the experiments, runs, params, metrics and
+  media in the MLflow layout, for download.</li>
+<li>A read-only subset of the <strong>MLflow REST API</strong>, with platform tokens.</li>
+<li><strong>System metrics</strong>: the CPU, the memory and the GPU of each run, as metrics.</li>
+<li><strong>Retention and partitions</strong> for run events and metric points, and quotas for the volume of
+  metrics and media.</li>
+<li><strong>Hardening</strong>: the full test suites and an end-to-end test of the journeys of each release
+  on a live stack.</li>
+</ul>
 <h2 id="what-v09-contains">What v0.9 contains<a class="headerlink" href="#what-v09-contains" title="Permanent link">&para;</a></h2>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <strong>Eleven new science models</strong> from the pymc-challenges case studies, 15 <code>sci.*</code> models
@@ -5884,7 +6123,7 @@ workflow nodes (v0.5). Sweeps are workflows with a <code>search.grid</code> node
 <p>The security suite must first be green for two weeks.
 2. <strong>Scale and depth</strong>. Each item comes when real usage needs it:
 - warm scorers for exact answers in less than one second
-- GPU and large-data executors
+- executors with more than one GPU, and for large data
 - other clouds
 - recursive forecasting
 - chained models (full-funnel and KPI graphs)

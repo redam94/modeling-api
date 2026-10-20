@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3530,6 +3650,17 @@
   
     <nav class="md-nav" aria-label="The fixtures">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#models-without-a-fixture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models without a fixture
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#deferred" class="md-nav__link">
@@ -5717,6 +5848,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#models-without-a-fixture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models without a fixture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#deferred" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5994,6 +6136,14 @@ the API of a stack that runs (<code>make dev</code>), as a user does: spec → <
 </tr>
 </tbody>
 </table>
+<h3 id="models-without-a-fixture">Models without a fixture<a class="headerlink" href="#models-without-a-fixture" title="Permanent link">&para;</a></h3>
+<p>Some models of v0.12 to v0.15 have no fixture in the corpus yet: <code>mmm.nested</code>,
+<code>mmm.multivariate</code>, <code>sklearn.multiclass_classifier</code>, <code>tabular.image_logistic</code> and the
+<code>dl.*</code> models of <code>mapi-jax</code>. The tests of their packages fit them. The contract kit tests
+<code>mmm.nested</code>, <code>mmm.multivariate</code>, <code>sklearn.multiclass_classifier</code> and
+<code>dl.cnn_classifier</code>. For a model that trains on batches, the kit runs the batch path one
+time when you give it a collection: <code>check_model(MyModel, fixture, collection=...)</code>. See
+<a href="../plugins/#fit-batches">Train on batches</a>.</p>
 <h3 id="deferred">Deferred<a class="headerlink" href="#deferred" title="Permanent link">&para;</a></h3>
 <p>The corpus of the plan also lists fixtures that need plugins or run kinds that do not exist
 yet. <code>mapi_conformance.fixtures.DEFERRED</code> lists them with the reason. A test makes sure that

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6043,10 +6163,13 @@ before you use it.</p>
 <ol>
 <li>Select a region that has Cloud Run GPUs (L4) and request the GPU quota for the project.</li>
 <li>Build and push the <code>base-dl</code> image. It is about 3 GB, because of the CUDA wheels.</li>
-<li>In Terraform, set <code>images["base-dl"]</code> and <code>gpu_jobs = true</code> in the <code>exec</code> module. The
-   default is <code>false</code>.</li>
-<li>Apply. Set <code>MAPI_CLOUDRUN_GPU_JOBS=true</code> on the orchestrator. Without it, the executor
-   does not offer the GPU class.</li>
+<li>In <code>infra/terraform/envs/&lt;env&gt;/main.tf</code>, set <code>gpu_jobs = true</code> (the default is
+   <code>false</code>). The <code>stack</code> module gives it to the <code>exec</code> module of each pool. The image
+   <code>images["base-dl"]</code> comes from <code>images.tfvars.json</code>, which <code>deploy/gcp/build-push.sh</code>
+   writes.</li>
+<li>Apply. The <code>exec</code> module then adds <code>GPU</code> to the classes of the inventory. Thus Terraform
+   sets <code>MAPI_CLOUDRUN_GPU_JOBS=true</code> on the orchestrator. Without this setting, the
+   executor does not offer the GPU class.</li>
 <li>Submit a small <code>dl.cnn_classifier</code> run of the class <code>GPU</code>.</li>
 <li>Open the run. Make sure that the param <code>dl.backend</code> is <code>gpu</code> and that the run has no
    <code>GPU_UNAVAILABLE</code> warning.</li>

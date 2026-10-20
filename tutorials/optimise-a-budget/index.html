@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1726,6 +1756,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2215,6 +2251,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5672,8 +5792,9 @@
 
 
 <h1 id="optimise-a-budget">Optimise a budget<a class="headerlink" href="#optimise-a-budget" title="Permanent link">&para;</a></h1>
-<p>You have a fitted marketing-mix model (<code>mmm.bayesian</code> or <code>mmm.frequentist</code>). You must divide
-the budget for the next quarter. The platform answers with the planning module of
+<p>You have a fitted marketing-mix model (<code>mmm.bayesian</code>, <code>mmm.frequentist</code>, or from v0.12
+<code>mmm.nested</code> or <code>mmm.multivariate</code>). You must divide the budget for the next quarter. The
+platform answers with the planning module of
 mmm-framework, directly from the posterior of the model. It tells you how much each channel
 must get and how sure that is. It also tells you what each extra euro would buy. You do not
 need an external optimiser or a copy of the model in a different location.</p>
@@ -5790,6 +5911,9 @@ like.</p>
   above the spend that the model has seen. Then the numbers of that channel extrapolate the
   response curve.</li>
 </ul>
+<p>For <code>mmm.multivariate</code>, the KPI of the plan is the weighted total of the outcomes. Set the
+weights in <code>outcomes[].weight</code> of the spec. A note of the plan gives the weights. See
+<a href="../../models/mmm-framework/#multivariate">The multivariate model</a>.</p>
 <p>The plot of the run, <code>mmm.budget_plans</code>, compares the current allocation and expected KPI
 with those of the plan (<code>GET /v1/runs/{run_id}/plots</code>).</p>
 <h2 id="3-check-it-with-a-forecast">3. Check it with a forecast<a class="headerlink" href="#3-check-it-with-a-forecast" title="Permanent link">&para;</a></h2>

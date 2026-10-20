@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5814,6 +5934,16 @@
   dispatch and finalization of each run. The server exports spans over OTLP/HTTP only when
   you configure a collector.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Run tracking is a different thing</p>
+<p>These signals tell about the platform. The metrics, params, tags, images and tables that
+a model logs in a run (v0.11 and v0.14) are run data. They go through the run protocol
+into the database and the bundles bucket, not to <code>/metrics</code>. Refer to
+<a href="../../guides/tracking/">Track metrics, params and tags</a> and
+<a href="../../guides/run-comparison/">Compare runs and use experiments</a>. The budgets of the run
+tracking give the warnings <code>TRACKING_BUDGET</code> and <code>MEDIA_BUDGET</code>
+(<a href="../troubleshooting/#warnings-on-a-run">Troubleshooting</a>).</p>
+</div>
 <p>Nothing goes out from inside a sandbox. Each execution gets the <code>traceparent</code> of the
 dispatching span in <code>MAPI_TRACEPARENT</code>. Thus you can join the stderr diagnostics of the
 supervisor to the trace of the run, and no telemetry goes out of the exec project.</p>

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -4165,6 +4285,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#media-images-and-the-gpu-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media, images and the GPU class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sigterm-the-deadline-and-checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5727,6 +5858,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#media-images-and-the-gpu-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media, images and the GPU class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sigterm-the-deadline-and-checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5835,6 +5977,7 @@
     W-&gt;&gt;G: range-read inputs (signed GET)
     W--&gt;&gt;S: state / progress / diagnostic / metric / checkpoint messages
     W--&gt;&gt;S: metrics / params / tags / user_log messages (v0.11)
+    W--&gt;&gt;S: media messages, files in {scratch}/media/ (v0.14)
     W--&gt;&gt;S: stdout + stderr (pipes, captured as log lines)
     S--&gt;&gt;X: stdout: {"mapi_event": …} (HMAC + seq per line)
     S-&gt;&gt;G: POST outputs (policy), PUT manifest.json
@@ -5970,6 +6113,27 @@ points are sent. When the tracker did not keep some points, it sends one <code>T
 warning. The end-of-run metrics (<code>metric</code> events, for example the holdout <code>rmse</code>) are also
 kept as scalar series. The guide <a href="../../guides/tracking/">Track metrics, params and tags</a> shows
 the API that model code uses.</p>
+<h2 id="media-images-and-the-gpu-class">Media, images and the GPU class<a class="headerlink" href="#media-images-and-the-gpu-class" title="Permanent link">&para;</a></h2>
+<p><strong>Media</strong> <span class="mapi-badge">v0.14</span>. <code>ctx.log_image</code>, <code>ctx.log_figure</code> and
+<code>ctx.log_table</code> write each item to <code>{scratch}/media/</code> and send a <code>media</code> message. The
+supervisor reads the file, does a check of it, and uploads it through the <code>media</code> POST
+policy of the attempt. Then it sends a <code>media</code> event. The supervisor counts the items and the
+bytes of the attempt against <code>media_items</code> and <code>media_bytes</code>. After the budget, it drops the
+items and sends one <code>MEDIA_BUDGET</code> warning. <a href="../run-protocol/#media">Run protocol: Media</a>
+gives each step and each warning.</p>
+<p><strong>Images</strong> <span class="mapi-badge">v0.14</span>. <code>mapi-runner</code> depends on Pillow. Only the
+worker decodes images: the <code>image_folder</code> ingest, the collection ingest (v0.15) and the
+decoded samples of a collection fit. The supervisor and the control plane read only the
+headers. The collection ingest reads the parts in ranges and makes sure that each image has
+the SHA-256 of its name (<a href="../run-protocol/#image-collections">Run protocol: Image collections</a>).
+A fit on a collection decodes a sample of a maximum of 500 images for its views and its
+scorecard. If that fails, the worker sends <code>VIEW_SAMPLE_FAILED</code>, and the fit continues.</p>
+<p><strong>The GPU class</strong> <span class="mapi-badge">v0.15</span>. When a run has the resource class
+<code>GPU</code> and the supervisor finds no NVIDIA device (<code>/dev/nvidia0</code> or <code>/dev/nvidiactl</code>), it
+sends one <code>GPU_UNAVAILABLE</code> warning. The run continues on the CPU. The supervisor gives the
+worker the JAX and XLA variables of the worker-environment allow-list (<code>JAX_PLATFORMS</code>,
+<code>XLA_FLAGS</code>, <code>XLA_PYTHON_CLIENT_PREALLOCATE</code>, <code>XLA_PYTHON_CLIENT_MEM_FRACTION</code> and
+<code>CUDA_VISIBLE_DEVICES</code>).</p>
 <h2 id="sigterm-the-deadline-and-checkpoints">SIGTERM, the deadline and checkpoints<a class="headerlink" href="#sigterm-the-deadline-and-checkpoints" title="Permanent link">&para;</a></h2>
 <p>The supervisor does these steps on SIGTERM, or when the time gets to the deadline minus the
 reserve:</p>
@@ -5989,6 +6153,11 @@ files with the <code>checkpoints</code> POST policy. It sends a <code>checkpoint
 resumed attempt gets the same names in <code>RunSpec.resume</code>: <strong>the resume names are equal to the
 object names relative to the checkpoint prefix</strong>. The runner downloads them before the fit
 starts, and the engine continues from them.</p>
+<p>From v0.15, a network that trains in epochs saves its checkpoints as files every
+<code>fit.checkpoint.every_epochs</code> epochs: <code>ckpt-&lt;key&gt;.weights.safetensors</code>,
+<code>ckpt-&lt;key&gt;.opt.safetensors</code> and <code>ckpt-&lt;key&gt;.meta.json</code>
+(<a href="../run-protocol/#checkpoints-of-networks">Checkpoints of networks</a>). If the <code>meta.json</code> is
+larger than 16 MiB, the worker does not save the checkpoint and sends <code>CHECKPOINT_SKIPPED</code>.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

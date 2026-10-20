@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3341,6 +3461,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Multiclass classification v0.14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classify-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classify images v0.14
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5895,6 +6032,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Multiclass classification v0.14">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classify-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classify images v0.14
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -6436,6 +6590,20 @@ matrix of the most probable class. The metrics <code>accuracy</code>, <code>brie
 one-vs-rest AUC of the classes) use the class probabilities. As for the binary classifier,
 validation refuses <code>log_score</code>, because the plugin gives point predictions.</p>
 <p><code>sklearn.tabular_classifier</code> (binary) also accepts the new estimators.</p>
+<h3 id="classify-images">Classify images <span class="mapi-badge">v0.14</span><a class="headerlink" href="#classify-images" title="Permanent link">&para;</a></h3>
+<p>An image dataset (<code>pixels(image, y, x, channel)</code> and <code>label(image)</code>) can go to
+<code>sklearn.multiclass_classifier</code> after a step that changes each image into features:</p>
+<ul>
+<li>From v0.15, the step <code>dl.embed</code> of <code>mapi-jax</code> gives the features of a frozen pretrained
+  network (<code>embedding(image, feature)</code>). A linear head, for example
+  <code>sklearn.LogisticRegression</code>, then learns the classes. This works with a few hundred
+  labelled images. See <a href="../deep-learning/#image-features-and-a-simple-head">Image features and a simple head</a>.</li>
+<li>Use a <code>stratified</code> split to hold out the same share of each class, or a <code>column</code> split to
+  hold out the images that a manifest column marks. See
+  <a href="../image-data/#hold-out-images-for-a-test">Hold out images for a test</a>.</li>
+</ul>
+<p>For thousands of images, or to train all the weights of a network, use the models of
+<a href="../deep-learning/">Deep learning</a>.</p>
 <h2 id="persistence-and-safety">Persistence and safety<a class="headerlink" href="#persistence-and-safety" title="Permanent link">&para;</a></h2>
 <p>The bundle keeps the fitted estimators in its <code>/native</code> group. It never uses pickle:</p>
 <ul>

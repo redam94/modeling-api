@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6184,7 +6304,7 @@ person edit a spec, but not start a 200-task sweep.</p>
 </tr>
 <tr>
 <td><code>runner</code></td>
-<td><strong>Spend compute</strong>: submit, cancel and retry runs, score models and endpoints, and render plots.</td>
+<td><strong>Spend compute</strong>: submit, cancel and retry runs, score models and endpoints, and render plots. From v0.11, change the name, the note and the tags of a run, and log metrics, params and (v0.14) images to a run. From v0.14, make, change and delete experiments and saved views of the runs table.</td>
 </tr>
 <tr>
 <td><code>admin</code></td>
@@ -7753,12 +7873,23 @@ explains each limit. Operators override the defaults of a tenant:</p>
 </span></code></pre></div>
 <p><code>set</code> <strong>replaces</strong> the policy. It removes the limits that you do not give. For those limits,
 the tier default applies again. <code>mapi admin quotas rm tenant acme</code> removes the override.</p>
+<p><strong>The largest resource class.</strong> The limit <code>max_resource_class</code> sets the largest class that a
+run can use. The <code>public</code> tier stops at class <code>S</code>, and the <code>verified</code> tier at class <code>L</code>. The
+classes are ordered <code>S &lt; M &lt; L &lt; XL &lt; GPU</code>. Thus a limit below <code>GPU</code> refuses the GPU class
+<span class="mapi-badge">v0.15</span>. The <code>internal</code> and <code>self-hosted-trusted</code> tiers have no
+such limit. To let a tenant use the GPU class, set <code>max_resource_class</code> to <code>GPU</code> in its
+policy. See <a href="../deep-learning/#use-the-gpu-class">Deep learning: use the GPU class</a>.</p>
+<p><strong>Storage</strong> <span class="mapi-badge">v0.15</span>. The storage quota counts an upload that is
+<code>pending</code> or <code>uploaded</code> until the housekeeper retires it. The housekeeper deletes an upload
+whose file arrived, but that no version used, 7 days after its PUT URL expired. The size of an image collection version is
+the size of the packs that it uses. The tenant keeps the packs until the tenant is deleted.</p>
 <p><img alt="The quota policies of the admin console" class="mapi-shot" src="../../assets/screenshots/admin-quotas.png" /></p>
 <h2 id="cost-and-usage">Cost and usage<a class="headerlink" href="#cost-and-usage" title="Permanent link">&para;</a></h2>
 <p>When you submit a run, the platform makes an estimate of its cost. It checks the estimate
 against the quotas. When each attempt ends, the platform meters the run. It uses the
 vCPU-seconds and GiB-seconds of the resource class of the run, at the versioned price table
-of the deployment. It writes the result to an append-only <strong>cost ledger</strong>. Amounts are exact
+of the deployment. From v0.15, a run of the <code>GPU</code> class also meters accelerator-seconds at
+the accelerator price of the table. It writes the result to an append-only <strong>cost ledger</strong>. Amounts are exact
 integer micros of a currency. Each amount names the price table that it used. The page of a
 run and <code>mapi runs get</code> show its cost. Usage pages add the costs.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mapi<span class="w"> </span>usage<span class="w"> </span>--group-by<span class="w"> </span>resource_class<span class="w">             </span><span class="c1"># the selected project, this UTC month</span>
@@ -7816,6 +7947,16 @@ execution backend:</p>
 </ul>
 <p><em>trusted tenants only</em> marks an executor that never gets runs of <code>verified</code> and <code>public</code>
 tenants.</p>
+<p><strong>The GPU class</strong> <span class="mapi-badge">v0.15</span>. On Cloud Run, the GPU class runs on
+the GPU Jobs of the <code>base-dl</code> image (see <a href="../../operations/cloud-run/#gpu-jobs">Cloud Run: GPU jobs</a>).
+The Docker executor asks Docker for a GPU only when <code>MAPI_DOCKER_GPUS=true</code>. Without a GPU,
+and with the local-process executor, a GPU run uses the CPU and gets the warning
+<code>GPU_UNAVAILABLE</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The GPU path is not tested on a GPU or on GCP. Do a test with a small run before you
+give the GPU class to tenants.</p>
+</div>
 <p><img alt="The executor health in the admin console: isolation, load, submit rate and conformance" class="mapi-shot" src="../../assets/screenshots/admin-executors.png" /></p>
 <h2 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h2>
 <p>The platform adds security-relevant actions to an audit log. These actions are:</p>
@@ -7825,6 +7966,11 @@ tenants.</p>
 <li>Token creation, revocation and failed use.</li>
 <li>Changes to quotas and kill switches, and quota denials.</li>
 <li>Run creation and cancellation.</li>
+<li>Changes to the name, the note and the tags of a run (<code>run.update</code>), and metrics, params
+  and images written through the API (<code>run.log</code>) <span class="mapi-badge">v0.11</span>.</li>
+<li>Changes to experiments and saved views (<code>experiment.create</code>, <code>experiment.update</code>,
+  <code>experiment.delete</code>, <code>run_view.save</code> and <code>run_view.delete</code>)
+  <span class="mapi-badge">v0.14</span>.</li>
 <li>Integrity failures.</li>
 <li>Artifact links and dataset downloads.</li>
 <li>Refused run events.</li>

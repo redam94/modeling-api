@@ -16,7 +16,7 @@
         <link rel="prev" href="../governance/">
       
       
-        <link rel="next" href="../../guides/web-ui/">
+        <link rel="next" href="../run-tracking/">
       
       
         
@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2237,6 +2273,90 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5829,11 +5949,11 @@ a complete card fails its checks. The built-in cards are in <code>mapi_spec.abou
 <tbody>
 <tr>
 <td><code>goal</code> - What do you want to do?</td>
-<td>measure what marketing adds, plan a budget, measure the effect of a campaign, a launch or a test (<code>measure_impact</code>, v0.13), forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model, make a map or an image from measurements (<code>map_fields</code>), fit a physical model to measurements (<code>fit_physics</code>)</td>
+<td>measure what marketing adds, plan a budget, measure the effect of a campaign, a launch or a test (<code>measure_impact</code>, v0.13), forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model, make a map or an image from measurements (<code>map_fields</code>), fit a physical model to measurements (<code>fit_physics</code>), put items or images into classes (<code>classify</code>, v0.14)</td>
 </tr>
 <tr>
 <td><code>data_shape</code> - What does your data look like?</td>
-<td>one series, a few related series, a panel (markets, stores), choices, a table, a map, an image or values on a regular grid (<code>grid</code>)</td>
+<td>one series, a few related series, a panel (markets, stores), choices, a table, a map, an image or values on a regular grid (<code>grid</code>), images: pictures of the same size (<code>images</code>, v0.14)</td>
 </tr>
 <tr>
 <td><code>frequency</code></td>
@@ -5887,6 +6007,11 @@ CHOOSER_ANSWER_INVALID</code>.</p>
 the <code>sci_image_model_check</code> and <code>sci_calibrate_then_design</code> workflow templates. The chooser
 shows a model only when the catalog has its plugin. For a comparison of the science models,
 see <a href="../../guides/choosing-a-model/#science-models-compared">Choosing a model</a>.</p>
+<p>The goal <code>classify</code> and the data shape <code>images</code> (v0.14) are for classifiers of images and
+items. For example, <code>goal=classify&amp;data_shape=images</code> ranks <code>tabular.image_logistic</code> and the
+<code>dl.*</code> image classifiers (v0.15) first. With <code>kind=step</code>, it ranks the step <code>dl.embed</code>. The goal <code>measure_impact</code>
+(v0.13) ranks the causal models and the Guided templates <code>campaign_impact</code> and <code>geo_lift</code>
+(<a href="../causal-effects/">Measure the effect of a change</a>).</p>
 <h2 id="in-the-web-app">In the web app<a class="headerlink" href="#in-the-web-app" title="Permanent link">&para;</a></h2>
 <p><strong>About cards everywhere.</strong> Each place where you select an item shows its card, with plain
 language first. The <strong>Browse</strong> tab of the catalog lists all items that a user can select.
@@ -5983,13 +6108,13 @@ models, preparation steps, governance checks or workflow nodes, not start points
         
         
           
-          <a href="../../guides/web-ui/" class="md-footer__link md-footer__link--next" aria-label="Next: The Expert web app">
+          <a href="../run-tracking/" class="md-footer__link md-footer__link--next" aria-label="Next: Run tracking and experiments">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                The Expert web app
+                Run tracking and experiments
               </div>
             </div>
             <div class="md-footer__button md-icon">

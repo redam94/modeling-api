@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5926,6 +6046,12 @@ not run anything. Problems show as wavy lines at the exact YAML path.</p>
   user for the model code. Containers and Cloud Run can.</li>
 <li>The progress bar and the message come directly from the sampler (<code>chain 1/2: sampling
   39/100</code>).</li>
+<li>From v0.11, the <strong>Overview</strong> tab also shows one lane for each chain, with its draws, its
+  divergences and its step size. The <strong>Metrics</strong> tab draws the step size of each chain, with
+  one colour for each chain.</li>
+<li>The <strong>Params</strong> tab shows the params of the spec, for example <code>fit.draws</code> and
+  <code>settings.&lt;path&gt;</code>. The fit logs them for you. See
+  <a href="../tracking/#what-the-platform-tracks-for-you">Track metrics, params and tags</a>.</li>
 </ul>
 <p><code>fit.mode: evaluate_then_refit</code> makes the run do three things:</p>
 <ol>
@@ -5940,7 +6066,11 @@ succeeds, the platform does three things:</p>
 <li>It copies the files to a location that the run cannot get to.</li>
 <li>It signs a manifest.</li>
 </ul>
-<p>When the run succeeds, click <strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
+<p>When the run succeeds, the <strong>Plots</strong> card of the <strong>Overview</strong> tab shows the plots of the
+model version (v0.10). The <strong>Metrics</strong> tab has a <strong>Values</strong> table with the summary of the
+MMM (v0.12): <code>roi</code>, <code>roi_p05</code>, <code>roi_p95</code>, <code>mroi</code> and <code>contribution_share</code> for each channel,
+and <code>baseline_share</code>. See <a href="../tracking/#mmm">What an MMM fit logs</a>.</p>
+<p>Click <strong>Inspect model://default/eu-geo-mmm@v1</strong>.</p>
 <h2 id="4-inspect-the-model">4. Inspect the model<a class="headerlink" href="#4-inspect-the-model" title="Permanent link">&para;</a></h2>
 <p>The <strong>Overview</strong> tab opens on the sanity scorecard, the holdout metrics and the things that the
 model can do.</p>
@@ -6031,6 +6161,10 @@ numbers. Thus the sampling noise does not hide the difference.</p>
 </ul>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
+<li><a href="../tracking/">Track metrics, params and tags</a>: add a name, tags and a note to the run, and
+  log a business KPI after you use the model.</li>
+<li><a href="../run-comparison/">Compare runs and use experiments</a>: fit the spec again with other
+  settings, then compare the runs side by side.</li>
 <li><a href="../mmm/">Marketing-mix models</a>: the model, its priors, derived quantities and budget plots.</li>
 <li><a href="../../reference/spec-format/">Spec format</a> and the <a href="../../reference/steps/">steps</a> that this guide uses.</li>
 <li><a href="../../reference/web-app/">Web app and plot sandbox</a>: all the pages, and how the app isolates plots.</li>

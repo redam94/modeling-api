@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2290,6 +2326,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6008,8 +6128,9 @@ audit log records this as a security signal (<code>webhook.url_blocked</code>).<
 <li><strong>Embed links</strong> are read-only links with a token and an expiry date, for BI tools, Slack and
   Notion. The platform shows the token one time. You can revoke links. <code>allowed_origins</code>
   limits the sites that can show them in a frame. You can embed only <strong>platform recipes</strong>.
-  These are plots that the recipes of the platform made from a model version. You cannot embed
-  plots that a plugin or a user wrote. A sandboxed iframe can still navigate itself. Thus
+  These are plots that the recipes of the platform made from a model version. From v0.13, the
+  <code>causal.*</code> recipes are also platform recipes. You cannot embed plots that a plugin or a user
+  wrote. A sandboxed iframe can still navigate itself. Thus
   shared views run only code that the platform wrote. Requests for other plots get
   <code>422 EMBED_NOT_ALLOWED</code>. Links that expired or that you revoked answer <code>410 LINK_EXPIRED</code>.
   The link opens the embed page of the plot sandbox. This page can get only the public embed

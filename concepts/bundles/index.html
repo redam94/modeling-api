@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1930,6 +1966,17 @@
     <span class="md-ellipsis">
       
         The model groups of a fit in steps and of a state model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-pack-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The groups of the model packs v0.12
       
     </span>
   </a>
@@ -2267,6 +2314,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5707,6 +5838,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#model-pack-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The groups of the model packs v0.12
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#metrics-history" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5860,11 +6002,11 @@ compares them with the manifest. If a bundle is damaged or changed without permi
 </tr>
 <tr>
 <td><code>/terminal_state</code></td>
-<td>Sequential models: the filtered state at the last fitted step</td>
+<td>Sequential models: the filtered state at the last fitted step. For example, a forecast of <code>ts.bsts</code> (v0.13) starts from it.</td>
 </tr>
 <tr>
 <td><code>/native</code></td>
-<td>Safe native artifacts: skops files, xgboost JSON, …</td>
+<td>Safe native artifacts: skops files, xgboost JSON and, from v0.15, the safetensors weights of a network</td>
 </tr>
 <tr>
 <td><code>/derived/&lt;name&gt;</code></td>
@@ -5916,7 +6058,7 @@ compares them with the manifest. If a bundle is damaged or changed without permi
 </tr>
 <tr>
 <td><code>components</code></td>
-<td>unobserved components, ETS, <code>ts.hsgp_trend</code></td>
+<td>unobserved components, ETS, <code>ts.hsgp_trend</code>, <code>ts.bsts</code> (v0.13)</td>
 <td>One variable for each part of the series. A variable with the attr <code>decomposition: exclude</code> (a trend slope) is not an additive part.</td>
 <td><code>core.decomposition</code></td>
 </tr>
@@ -5924,6 +6066,66 @@ compares them with the manifest. If a bundle is damaged or changed without permi
 </table>
 <p>Each data variable of <code>fit_history</code> is one curve over <code>step</code>. The other dims of a variable are
 labels: the plot draws one line for each level.</p>
+<h2 id="model-pack-groups">The groups of the model packs <span class="mapi-badge">v0.12</span><a class="headerlink" href="#model-pack-groups" title="Permanent link">&para;</a></h2>
+<p>The marketing-mix, causal and deep-learning models keep more groups under <code>/model</code>. Their
+plots and workflow nodes read these groups, not the posterior:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Plugins</th>
+<th>Holds</th>
+<th>Read by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lift_tests</code> (v0.12)</td>
+<td><code>mmm.bayesian</code>, when the fit used lift tests</td>
+<td>Each lift test (<code>observed(test)</code>, <code>observed_sd(test)</code>) and the estimate of the model for each draw (<code>model(chain, draw, test)</code>)</td>
+<td><code>mmm.lift_tests</code></td>
+</tr>
+<tr>
+<td><code>impact</code> (v0.13)</td>
+<td><code>causal.impact</code>, <code>causal.synthetic_control</code>, <code>causal.did</code></td>
+<td><code>actual</code>, <code>counterfactual</code>, <code>effect</code>, <code>cumulative_effect</code> and <code>post</code>, in the units of the target (<a href="../causal-effects/">Measure the effect of a change</a>)</td>
+<td><code>causal.impact</code>, <code>causal.pre_fit</code>, <code>model.lift_test</code></td>
+</tr>
+<tr>
+<td><code>donor_weights</code> (v0.13)</td>
+<td><code>causal.synthetic_control</code></td>
+<td><code>weight(sample, unit, donor)</code> and the error before the test, <code>pre_rmse(unit)</code></td>
+<td><code>causal.donor_weights</code></td>
+</tr>
+<tr>
+<td><code>event_study</code> (v0.13)</td>
+<td><code>causal.did</code></td>
+<td><code>coef(sample, event_time)</code>, <code>n_cells(event_time)</code> and the average effect after the change, <code>att(sample)</code></td>
+<td><code>causal.event_study</code></td>
+</tr>
+<tr>
+<td><code>training</code> (v0.15)</td>
+<td><code>dl.mlp</code>, <code>dl.cnn_classifier</code>, <code>dl.finetune_classifier</code></td>
+<td>Values along <code>epoch</code>: <code>train_loss</code>, <code>val_loss</code>, the training and validation metric (<code>accuracy</code> or <code>rmse</code>) and <code>lr</code>. A classifier also keeps <code>confusion(epoch, true_class, pred_class)</code>, and then only the epochs with a confusion matrix. The attrs give <code>best_epoch</code>, <code>stopped_early</code>, <code>epochs_run</code> and <code>steps</code>. The group keeps a maximum of 200 epochs (50 for a classifier), always with the first, the best and the last. The attr <code>thinned_from</code> gives the number of epochs before.</td>
+<td><code>ml.training_curves</code>, <code>ml.confusion_epochs</code></td>
+</tr>
+<tr>
+<td><code>misclassified</code> (v0.15)</td>
+<td><code>dl.cnn_classifier</code>, <code>dl.finetune_classifier</code></td>
+<td>Up to 32 validation images that the network classified incorrectly at the best epoch, as small thumbnails with the true and the predicted label</td>
+<td><code>ml.misclassified</code></td>
+</tr>
+<tr>
+<td><code>posterior</code> (v0.15)</td>
+<td>the <code>dl.*</code> models</td>
+<td><code>draw_id(chain, draw)</code>: one entry for each draw of the Laplace approximation or of MC dropout. The harness thins the draws of a score request from this group.</td>
+<td>the score path</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>dl.*</code> models keep the trained network in <code>/native</code>: <code>weights.safetensors</code> and, for the
+Laplace draws, <code>laplace.safetensors</code>. These are safetensors files, not pickle. The
+architecture of the network is in the metadata of the weights file.</p>
 <h2 id="metrics-history">The <code>metrics_history</code> group <span class="mapi-badge">v0.11</span><a class="headerlink" href="#metrics-history" title="Permanent link">&para;</a></h2>
 <p>When model code logs metrics during a fit (<code>ctx.log_metric</code>, see
 <a href="../../guides/tracking/">Track metrics, params and tags</a>), the fit also keeps them in the

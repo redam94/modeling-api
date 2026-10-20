@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5607,6 +5727,12 @@ Only the executor, the store and the identity provider change.</p>
 <td>Cloud Run Jobs, one new sandbox for each run</td>
 </tr>
 <tr>
+<td>A run of the class <code>GPU</code> (v0.15)</td>
+<td>uses the CPU (warning <code>GPU_UNAVAILABLE</code>)</td>
+<td>gets one NVIDIA GPU with the docker executor and <code>MAPI_DOCKER_GPUS=true</code>. If not, it uses the CPU</td>
+<td>the GPU Job of <code>base-dl</code> (<code>MAPI_CLOUDRUN_GPU_JOBS=true</code>, not verified)</td>
+</tr>
+<tr>
 <td>Code</td>
 <td>your working tree, with hot reload</td>
 <td>the <a href="images/">container images</a></td>
@@ -5659,8 +5785,8 @@ Only the executor, the store and the identity provider change.</p>
   how to work on one component, and the location of the state.</li>
 <li><a href="docker/">Docker Compose</a>: the compose stack, its network layout and how to select the
   executor.</li>
-<li><a href="images/">Container images</a>: the six images, how the build makes them, and the checks
-  that keep them correct.</li>
+<li><a href="images/">Container images</a>: the seven images (with the deep learning image <code>base-dl</code>),
+  how the build makes them, and the checks that keep them correct.</li>
 <li><a href="gcp-deployment/">Deploying to Google Cloud</a>: the [verify M0] checklist, then the Terraform and
   deploy scripts, step by step, until you have the first tenant.</li>
 <li><a href="security-hardening/">Security hardening on Google Cloud</a>: what each control does, and the

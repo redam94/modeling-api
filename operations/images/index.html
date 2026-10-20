@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -4815,6 +4935,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-deep-learning-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The deep learning image v0.15
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-the-python-images-are-built" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5692,6 +5823,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-deep-learning-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The deep learning image v0.15
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-the-python-images-are-built" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5791,7 +5933,7 @@
 
 
 <h1 id="container-images-v02">Container images <span class="mapi-badge">v0.2</span><a class="headerlink" href="#container-images-v02" title="Permanent link">&para;</a></h1>
-<p>The platform has six images (and a <code>worker</code> target). The build makes them from
+<p>The platform has seven images (and a <code>worker</code> target). The build makes them from
 <code>images/&lt;name&gt;/Dockerfile</code>, with the repository root as the build context. The images have
 three purposes:</p>
 <ul>
@@ -5816,13 +5958,19 @@ three purposes:</p>
 <tbody>
 <tr>
 <td><code>mapi/base-bayes</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code>, the <code>mmm.*</code>, <code>tabular.*</code> and <code>sci.*</code> plugins (<code>mapi-plugin-science</code>, which uses SciPy), a C++ compiler for PyTensor</td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code> with the <code>pathfinder</code> extra, the <code>mmm.*</code>, <code>tabular.*</code> and <code>sci.*</code> plugins (<code>mapi-plugin-science</code>, which uses SciPy), <code>mapi-jax</code> for the CPU (v0.15), a C++ compiler for PyTensor</td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
 <tr>
 <td><code>mapi/base-ml</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-sklearn</code> with the <code>gbm</code> extra (<code>sklearn.*</code> plugins, LightGBM and CatBoost from v0.14) and <code>libgomp1</code> (for LightGBM). <strong>No PyMC.</strong></td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-sklearn</code> with the <code>gbm</code> extra (<code>sklearn.*</code> plugins, LightGBM and CatBoost from v0.14) and <code>libgomp1</code> (for LightGBM), <code>mapi-jax</code> for the CPU (v0.15). <strong>No PyMC.</strong></td>
+<td><code>10001</code></td>
+<td><code>mapi-runner</code></td>
+</tr>
+<tr>
+<td><code>mapi/base-dl</code> (v0.15)</td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-jax</code> with the <code>cuda12</code> extra (the <code>dl.*</code> models and the step <code>dl.embed</code> on JAX, Flax and Optax, with the NVIDIA CUDA 12 wheels). <strong>No PyMC, no scikit-learn, no C++ compiler.</strong></td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
@@ -5866,6 +6014,30 @@ is larger than in v0.12. <code>mapi/base-bayes</code> also contains pymc-extras 
 images contain Pillow. Pillow decodes uploaded images only in the sandboxed ingest run, never
 in the control plane. LightGBM and CatBoost (about 150 MB) are only in <code>mapi/base-ml</code>.
 <code>tabular.image_logistic</code> runs in <code>mapi/base-bayes</code> and does not need Pillow.</p>
+<h3 id="the-deep-learning-image">The deep learning image <span class="mapi-badge">v0.15</span><a class="headerlink" href="#the-deep-learning-image" title="Permanent link">&para;</a></h3>
+<p><code>mapi/base-dl</code> runs the <code>dl.*</code> models of <code>mapi-jax</code>. JAX comes with its CUDA 12 wheels
+(<code>jax-cuda12-plugin</code> and the NVIDIA runtime wheels from pip) on the same <code>python:3.12-slim</code>
+base. There is no NVIDIA base image. The CUDA wheels make the image about 3 GB. Thus it is
+the largest image.</p>
+<ul>
+<li>Without a GPU, JAX uses the CPU. Each <code>dl.*</code> model continues to train, but slowly. The
+  runner sends the warning <code>GPU_UNAVAILABLE</code> when a run of the class <code>GPU</code> sees no NVIDIA
+  device (<a href="../troubleshooting/#warnings-on-a-run">Troubleshooting</a>).</li>
+<li>The image sets <code>XLA_PYTHON_CLIENT_PREALLOCATE=false</code> (JAX gets GPU memory when it needs
+  it) and <code>XLA_FLAGS=--xla_gpu_deterministic_ops=true</code> (a fit with a seed gives the same
+  result again). The build arguments <code>MAPI_XLA_PREALLOCATE</code> and <code>MAPI_XLA_FLAGS</code> set them.
+  The other images leave them empty.</li>
+<li><code>mapi/base-bayes</code> and <code>mapi/base-ml</code> contain <code>mapi-jax</code> for the CPU. Thus the step
+  <code>dl.embed</code> can run in front of their models, for example <code>tabular.image_logistic</code> or
+  <code>sklearn.multiclass_classifier</code>.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Not verified</p>
+<p>Nobody has built or run <code>mapi/base-dl</code> on a GPU. Do a test with a small run of the class
+<code>GPU</code> before you use it. Make sure that the param <code>dl.backend</code> of the run is <code>gpu</code>. Refer
+to <a href="../docker/">Docker Compose</a> and <a href="../cloud-run/#gpu-jobs">GPU jobs</a>.</p>
+</div>
+<p>The guide <a href="../../guides/deep-learning/">Deep learning</a> tells how to use the models.</p>
 <p><code>make docker-build IMAGES="server web"</code> builds a subset. <code>make docker-build</code> builds all
 images. It also builds <code>mapi/worker</code> when <code>base-bayes</code> is in the set. Each image has the OCI
 labels <code>title</code>, <code>version</code>, <code>revision</code> (git commit) and <code>created</code>.</p>
@@ -5904,7 +6076,11 @@ uses.</p>
   <code>lightgbm</code> and <code>catboost</code> (v0.14). <code>base-bayes</code> and <code>base-forecast</code> must contain <code>pillow</code>
   and must not contain <code>lightgbm</code> or <code>catboost</code>. <code>server</code> must not contain <code>numpy</code>, <code>xarray</code>,
   <code>pandas</code>, <code>scipy</code>, <code>pyarrow</code>, PyMC, <code>pillow</code>, <code>lightgbm</code>, <code>catboost</code>, <code>mapi_sdk</code>,
-  <code>mapi_runner</code> or a plugin.</li>
+  <code>mapi_runner</code> or a plugin. From v0.15, <code>base-bayes</code> and <code>base-ml</code> must contain <code>mapi-jax</code>,
+  <code>flax</code> and <code>optax</code>, and <code>base-forecast</code> must not contain them. <code>base-dl</code> must contain
+  <code>jax</code>, <code>jaxlib</code>, <code>flax</code>, <code>optax</code> and <code>jax-cuda12-plugin</code>, and must not contain
+  <code>mapi-pymc</code>, <code>mapi-sklearn</code>, <code>mapi-plugin-mmm</code>, <code>mapi-plugin-tabular</code>, <code>mapi-plugin-ts</code>,
+  <code>mapi-plugin-causal</code>, <code>mapi-plugin-science</code>, <code>torch</code> or <code>tensorflow</code>.</li>
 <li><strong>Import contracts in the control-plane image.</strong> The <code>contracts</code> stage of
   <code>images/server/Dockerfile</code> installs import-linter (hash-pinned from <code>uv.lock</code>) into a
   temporary copy of the environment. It runs the contracts of the repository against the
@@ -5929,7 +6105,9 @@ in-memory filesystem of Cloud Run. PyTensor accepts the moved entries and does n
 them again.</p>
 <p><code>HOME</code>, <code>PYTENSOR_FLAGS</code>, <code>NUMBA_CACHE_DIR</code> and <code>MPLCONFIGDIR</code> all point under <code>/tmp</code>. The
 first three are on the worker-environment allow-list of the runner
-(<code>mapi_spec.run.WORKER_ENV_ALLOWLIST</code>). Thus plugin code sees them after the supervisor
+(<code>mapi_spec.run.WORKER_ENV_ALLOWLIST</code>). The allow-list also has <code>XLA_FLAGS</code>. From v0.15, it also
+has <code>JAX_PLATFORMS</code>, <code>XLA_PYTHON_CLIENT_PREALLOCATE</code>, <code>XLA_PYTHON_CLIENT_MEM_FRACTION</code> and
+<code>CUDA_VISIBLE_DEVICES</code>, for the device and the GPU memory of JAX. Thus plugin code sees them after the supervisor
 removes the other variables from the environment. As a result, each image runs with
 <code>--read-only</code> and a tmpfs on <code>/tmp</code>.</p>
 <p><code>docker run mapi/base-bayes</code> runs the runner. The image gives arguments that start with <code>-</code>

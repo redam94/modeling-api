@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, fit science models of images, fields, maps and graphs, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.">
+        <meta name="description" content="Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, measure the effect of a change, train and compare models with full run tracking, fit science models and neural networks, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="whats-new-0.9/">
+        <link rel="next" href="whats-new-0.15/">
       
       
         
@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -532,6 +534,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1643,6 +1673,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2132,6 +2168,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5602,10 +5722,21 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#whats-new-in-v010-to-v015" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's new in v0.10 to v0.15
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#whats-new-in-v09" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What's new in v0.9
+        What came in v0.9
       
     </span>
   </a>
@@ -5731,36 +5862,57 @@
 <h1 id="trustworthy-modelsfrom-spreadsheet-to-endpoint">Trustworthy models,<br>from spreadsheet to endpoint.<a class="headerlink" href="#trustworthy-modelsfrom-spreadsheet-to-endpoint" title="Permanent link">&para;</a></h1>
 <p>modeling-api fits Bayesian and classical models of data that has <strong>named
 dimensions</strong> (market × channel × week, store × product × day, household × trip). It
-also fits science models of <strong>images, fields, maps and graphs</strong>. The models
-answer questions in the units that your business uses. An analyst uploads a spreadsheet and
+also fits science models of <strong>images, fields, maps and graphs</strong>, causal models
+that measure the <strong>effect of a change</strong>, and <strong>neural networks</strong> for
+tables and images. The models answer questions in the units that your business uses. An analyst uploads a spreadsheet and
 gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a small
 spec or some lines of Python and gets the same model behind a versioned endpoint. Each call
 uses the same fitted preprocessing again, exactly.</p>
 <p>Full analyses (tests, decisions, models and benchmarks) run as versioned
 <strong>workflows</strong>. A model goes live only after it is better than <strong>shuffled
-data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandbox, and each result tells how sure it is.</p>
+data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandbox, and each result tells how sure it is.
+Each run also keeps its <strong>metrics, params, tags and images</strong>, so that you can
+compare runs side by side.</p>
 <p><a class="md-button md-button--primary" href="guides/guided-tutorial/">Your first MMM in Guided mode</a>
 <a class="md-button" href="getting-started/quickstart/">Quickstart for data scientists</a>
-<a class="md-button" href="whats-new-0.9/">What's new in 0.9</a></p>
+<a class="md-button" href="whats-new-0.15/">What's new in 0.15</a></p>
 </div>
 <p><img alt="The modeling-api logo: a cube of labelled data" src="assets/logo.svg" /></p>
 </div>
 <div class="admonition success">
-<p class="admonition-title">v0.9: the science gallery</p>
-<p>The science plugin now has <strong>15 models</strong> from the pymc-challenges case studies, for
-images, fields, maps and graphs. <strong>14 new plot recipes</strong> draw maps, networks, trees,
-polar charts, image checks and colour swatches. <strong>New workflow nodes</strong> give posterior
-summaries, posterior predictive checks, stacking weights, scores and plots in a run.
-<strong>Six new recipes</strong> use them, for example a ladder of spatial models and a Bayesian
-workflow audit.</p>
-<p>Each ported case has a <strong>tutorial</strong> that does the analysis of the notebook in the web
-app. The <strong>export helper</strong> <code>python -m mapi_plugin_science.export</code> writes the data of a
-case to a file that you can upload.</p>
-<p><a href="whats-new-0.9/">What's new in 0.9</a> ·
-<a href="tutorials/pymc-challenges/">The science tutorials</a></p>
+<p class="admonition-title">v0.15: deep learning and image collections</p>
+<p>The new package <code>mapi-jax</code> trains <strong>neural networks</strong> for tables and images on JAX and
+Flax: <code>dl.mlp</code>, <code>dl.cnn_classifier</code> and <code>dl.finetune_classifier</code>. The training shows its
+curves while it runs, logs images of the predictions, stops early, saves checkpoints and
+gives draws. <strong>Image collections</strong> hold up to 1 000 000 images. The client uploads only
+the new images, and an upload that stops can continue. The resource class <strong><code>GPU</code></strong>
+gives a run one NVIDIA L4.</p>
+<p><a href="whats-new-0.15/">What's new in 0.10 to 0.15</a> ·
+<a href="guides/deep-learning/">Deep learning</a> ·
+<a href="guides/image-data/">Image data</a></p>
 </div>
 <div class="admonition info">
-<p class="admonition-title">Since 0.5</p>
+<p class="admonition-title">Since 0.9</p>
+<ul>
+<li><strong>v0.14:</strong> run comparison, experiments and saved views. Runs log images, figures and
+  tables. Image datasets and a classification pack
+  (<a href="guides/run-comparison/">Compare runs</a>, <a href="guides/image-data/">Image data</a>).</li>
+<li><strong>v0.13:</strong> causal models (<code>causal.impact</code>, <code>causal.synthetic_control</code>, <code>causal.did</code>)
+  and a Bayesian structural time series, <code>ts.bsts</code>
+  (<a href="guides/causal/">Measure the effect of a change</a>).</li>
+<li><strong>v0.12:</strong> the MMM pack: <code>mmm.nested</code>, <code>mmm.multivariate</code>, channel effects that change
+  over time, counts and shares, and ten new plot recipes
+  (<a href="models/mmm-framework/">Marketing-mix models</a>).</li>
+<li><strong>v0.11:</strong> run tracking. Each run keeps its metrics, params, tags, notes and log lines
+  (<a href="guides/tracking/">Track metrics, params and tags</a>).</li>
+<li><strong>v0.10:</strong> score plots by the shape of each output, and standard plots and metrics for
+  classifiers, state models and ADVI fits.</li>
+<li><strong>v0.9:</strong> the science gallery: 15 science models, 14 plot recipes and Bayesian
+  workflow nodes (<a href="whats-new-0.9/">What's new in 0.9</a>).</li>
+</ul>
+</div>
+<div class="admonition info">
+<p class="admonition-title">From 0.5 to 0.8</p>
 <ul>
 <li><strong>v0.6:</strong> a spec builder. The YAML editor completes names, and a Visual view shows the
   same spec as blocks (<a href="guides/web-ui/#build">Build</a>).</li>
@@ -5785,6 +5937,8 @@ case to a file that you can upload.</p>
 <li>Move the <strong>what-if sliders</strong>. Your browser gives the answers. The range stays honest when
   some channels move at the same time. "Run exact" asks the full model.</li>
 <li>Share a live chart, or put the model in a Google Sheet.</li>
+<li>Measure the effect of a campaign or a geo-lift test with the <em>Effect of a campaign</em> and
+  <em>Geo-lift test</em> templates. Use the result as a lift test for your marketing mix.</li>
 <li>If you are not sure which model to use, use <strong>Help me choose</strong>. It asks some questions and
   explains its recommendations. Each option has an <em>About</em> card in plain words.</li>
 </ul>
@@ -5792,11 +5946,14 @@ case to a file that you can upload.</p>
 </div>
 <div class="mapi-persona mapi-persona--expert">
 <h3 id="data-scientists"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 3a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2H3v2h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h2v-2H8v-5a2 2 0 0 0-2-2 2 2 0 0 0 2-2V5h2V3m6 0a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1v2h-1a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-2v-2h2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5h-2V3z"/></svg></span> Data scientists<a class="headerlink" href="#data-scientists" title="Permanent link">&para;</a></h3>
-<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
+<p class="mapi-promise">Any PyMC, scikit-learn, JAX or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
 <ul>
 <li>A PyMC model is one <code>build()</code> method. An sklearn model is one <code>estimator()</code>. Built-in
-  marketing-mix, forecasting, demand and choice models are ready to use. So are 15
-  science models for images, fields, maps and graphs.</li>
+  marketing-mix, forecasting, causal, demand, choice and classification models are ready to
+  use. So are 15 science models and three neural networks for tables and images.</li>
+<li>Each run logs its <strong>metrics, params, tags and images</strong>. Log your own from model code, a
+  notebook or <code>mapi runs log-metric</code>. Filter, sort and compare 2 to 10 runs side by side,
+  and group them in <strong>experiments</strong>.</li>
 <li>Steps <strong>learn on the training data only</strong>. At score time, the platform <strong>replays</strong> them
   and does not fit them again. This applies to forecasts, new markets and counterfactuals.</li>
 <li>Uncertainty is a primary part of each result: draws, quantiles or intervals. Each one has
@@ -5809,6 +5966,7 @@ case to a file that you can upload.</p>
 </ul>
 <p><a href="getting-started/quickstart/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Quickstart: zero to first model</a> ·
 <a href="guides/workflow-cookbook/">Workflow cookbook</a> ·
+<a href="guides/tracking/">Track and compare runs</a> ·
 <a href="tutorials/pymc-challenges/">Science tutorials</a></p>
 </div>
 </div>
@@ -5817,11 +5975,12 @@ changes of an expert come back to Guided mode with no loss.
 <a href="why/">Who it is for, and who it is not for</a>.</p>
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
-    D["Your data&lt;br/&gt;CSV · Parquet · MFF ·&lt;br/&gt;Meridian · NetCDF · HDF5"] --&gt; I["Sandboxed ingest&lt;br/&gt;checked, profiled,&lt;br/&gt;dims and roles"]
+    D["Your data&lt;br/&gt;CSV · Parquet · MFF ·&lt;br/&gt;Meridian · NetCDF · HDF5 ·&lt;br/&gt;images"] --&gt; I["Sandboxed ingest&lt;br/&gt;checked, profiled,&lt;br/&gt;dims and roles"]
     Q["Guided answers&lt;br/&gt;or a YAML spec"] --&gt; V{{"Static checks&lt;br/&gt;before any compute"}}
     I --&gt; V
     V --&gt; F["Fit in a fresh sandbox&lt;br/&gt;preprocessing learned&lt;br/&gt;on train only"]
     F --&gt; B[("Signed bundle&lt;br/&gt;states · posterior ·&lt;br/&gt;scorecard · grids")]
+    F -.-&gt; T["Run tracking&lt;br/&gt;metrics · params ·&lt;br/&gt;images · compare"]
     W["Workflow&lt;br/&gt;tests → decisions →&lt;br/&gt;search → backtest"] -.-&gt; F
     B --&gt; R["Report, explorers,&lt;br/&gt;what-if, budget plans"]
     B --&gt; G{{"Governance&lt;br/&gt;null tests · benchmarks ·&lt;br/&gt;second-person approval"}}
@@ -5847,6 +6006,8 @@ changes of an expert come back to Guided mode with no loss.
 <li><strong>Full analyses repeat automatically.</strong> A workflow runs the tests, decisions, fits and
    checks again each Monday, or when the data changes. It uses again each step whose inputs
    did not change.</li>
+<li><strong>Each run keeps its record.</strong> A run logs its metrics, params, tags and images while it
+   runs. You can search the runs, compare them side by side and group them in experiments.</li>
 </ol>
 <h2 id="your-first-mmm-in-guided-mode">Your first MMM in Guided mode<a class="headerlink" href="#your-first-mmm-in-guided-mode" title="Permanent link">&para;</a></h2>
 <p>This section shows the full path of a geo marketing-mix model. The path starts with a
@@ -5899,7 +6060,63 @@ full path took <strong>135 seconds</strong> from upload to scenario.</p>
 <figcaption>What if: instant answers from a response curve for each draw.</figcaption>
 </figure>
 </div>
-<h2 id="whats-new-in-v09">What's new in v0.9<a class="headerlink" href="#whats-new-in-v09" title="Permanent link">&para;</a></h2>
+<h2 id="whats-new-in-v010-to-v015">What's new in v0.10 to v0.15<a class="headerlink" href="#whats-new-in-v010-to-v015" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
+<ul>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m16 11.78 4.24-7.33 1.73 1-5.23 9.05-6.51-3.75L5.46 19H22v2H2V3h2v14.54L9.5 8z"/></svg></span> <strong>Track and compare runs</strong></p>
+<hr />
+<p>Each run keeps its metrics, params, tags, notes, log lines and images. Filter and sort
+the runs table by any metric, save the search as a view, and compare 2 to 10 runs side
+by side. An experiment groups the runs of one question.</p>
+<p><a href="guides/run-comparison/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Compare runs and use experiments</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20V8.8c.5-.2 1-.5 1.3-.9l3.5 1.3-2.9 6.8c-.5 2 1 3 3.5 3s4.1-1 3.5-3l-2.6-6.3.9.3.7-1.9L15 6c0-1.2-.7-2.4-2-2.9-1.2-.5-2.5 0-3.3.9L3.9 2l-.7 1.8 1.6.6L2.1 11c-.5 2 1 3 3.5 3s4.1-1 3.5-3L6.6 5.1 9 6c0 1.2.7 2.4 2 2.9V20H2v2h20v-2zm6.9-4h-3l1.5-3.8zM7.1 11h-3l1.5-3.8zm4-5.3c.2-.5.8-.8 1.3-.6s.8.8.6 1.3-.8.8-1.3.6-.8-.8-.6-1.3"/></svg></span> <strong>Measure the effect of a change</strong></p>
+<hr />
+<p><code>causal.impact</code>, <code>causal.synthetic_control</code> and <code>causal.did</code> measure the effect of a
+campaign, a launch or a geo-lift test. The result becomes a lift test for the marketing
+mix. <code>ts.bsts</code> is a Bayesian structural time series.</p>
+<p><a href="guides/causal/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Measure the effect of a change</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h1v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4h3l5 4V4zm3 7.6L13 14H4v-4h9l2-1.6zm6.5-3.6c0 1.71-.96 3.26-2.5 4V8c1.53.75 2.5 2.3 2.5 4"/></svg></span> <strong>The MMM pack</strong></p>
+<hr />
+<p><code>mmm.nested</code> for effects through visits or awareness, <code>mmm.multivariate</code> for related
+products, effects that change over time, counts and shares, and charts for ROI, mROAS,
+adstock and the contribution waterfall.</p>
+<p><a href="models/mmm-framework/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Marketing-mix models</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.33 12.91c.09 1.55-.62 3.04-1.89 3.95l.77 1.49c.23.45.26.98.06 1.45-.19.47-.58.84-1.06 1l-.79.25a1.687 1.687 0 0 1-1.86-.55L14.44 18c-.89-.15-1.73-.53-2.44-1.1-.5.15-1 .23-1.5.23-.88 0-1.76-.27-2.5-.79-.53.16-1.07.23-1.62.22-.79.01-1.57-.15-2.3-.45a4.1 4.1 0 0 1-2.43-3.61c-.08-.72.04-1.45.35-2.11-.29-.75-.32-1.57-.07-2.33C2.3 7.11 3 6.32 3.87 5.82c.58-1.69 2.21-2.82 4-2.7 1.6-1.5 4.05-1.66 5.83-.37.42-.11.86-.17 1.3-.17 1.36-.03 2.65.57 3.5 1.64 2.04.53 3.5 2.35 3.58 4.47.05 1.11-.25 2.2-.86 3.13.07.36.11.72.11 1.09m-5-1.41c.57.07 1.02.5 1.02 1.07a1 1 0 0 1-1 1h-.63c-.32.9-.88 1.69-1.62 2.29.25.09.51.14.77.21 5.13-.07 4.53-3.2 4.53-3.25a2.59 2.59 0 0 0-2.69-2.49 1 1 0 0 1-1-1 1 1 0 0 1 1-1c1.23.03 2.41.49 3.33 1.3.05-.29.08-.59.08-.89-.06-1.24-.62-2.32-2.87-2.53-1.25-2.96-4.4-1.32-4.4-.4-.03.23.21.72.25.75a1 1 0 0 1 1 1c0 .55-.45 1-1 1-.53-.02-1.03-.22-1.43-.56-.48.31-1.03.5-1.6.56-.57.05-1.04-.35-1.07-.9a.97.97 0 0 1 .88-1.1c.16-.02.94-.14.94-.77 0-.66.25-1.29.68-1.79-.92-.25-1.91.08-2.91 1.29C6.75 5 6 5.25 5.45 7.2 4.5 7.67 4 8 3.78 9c1.08-.22 2.19-.13 3.22.25.5.19.78.75.59 1.29-.19.52-.77.78-1.29.59-.73-.32-1.55-.34-2.3-.06-.32.27-.32.83-.32 1.27 0 .74.37 1.43 1 1.83.53.27 1.12.41 1.71.4q-.225-.39-.39-.81a1.038 1.038 0 0 1 1.96-.68c.4 1.14 1.42 1.92 2.62 2.05 1.37-.07 2.59-.88 3.19-2.13.23-1.38 1.34-1.5 2.56-1.5m2 7.47-.62-1.3-.71.16 1 1.25zm-4.65-8.61a1 1 0 0 0-.91-1.03c-.71-.04-1.4.2-1.93.67-.57.58-.87 1.38-.84 2.19a1 1 0 0 0 1 1c.57 0 1-.45 1-1 0-.27.07-.54.23-.76.12-.1.27-.15.43-.15.55.03 1.02-.38 1.02-.92"/></svg></span> <strong>Images and deep learning</strong></p>
+<hr />
+<p>Upload a zip of small images or a collection of up to 1 000 000 images. Classify them
+with scikit-learn, LightGBM, CatBoost, a Bayesian model or a neural network on JAX. The
+resource class <code>GPU</code> gives a run one NVIDIA L4.</p>
+<p><a href="guides/deep-learning/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Deep learning</a></p>
+</li>
+</ul>
+</div>
+<div class="mapi-shots">
+<figure>
+<p><a href="guides/run-comparison/"><img alt="The compare page with four runs and the loss of each run over the steps" class="mapi-shot" loading="lazy" src="assets/screenshots/whats-new-015-compare-curves.png" /></a></p>
+<figcaption>Compare runs: the curves of 2 to 10 runs in one chart.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/causal/"><img alt="The effect of an intervention: actual values, the values without the change, and the cumulative effect" class="mapi-shot" loading="lazy" src="assets/screenshots/whats-new-015-causal-impact.png" /></a></p>
+<figcaption>Causal impact: the effect of a change, with its range.</figcaption>
+</figure>
+<figure>
+<p><a href="models/mmm-framework/#nested"><img alt="The direct and mediated effects of each channel in mmm.nested" class="mapi-shot" loading="lazy" src="assets/screenshots/whats-new-015-mmm-mediation.png" /></a></p>
+<figcaption>Nested MMM: the effect of each channel through visits and awareness.</figcaption>
+</figure>
+<figure>
+<p><a href="guides/deep-learning/"><img alt="The training curves of a CNN for the train and val splits" class="mapi-shot" loading="lazy" src="assets/screenshots/whats-new-015-training-curves.png" /></a></p>
+<figcaption>Deep learning: the training curves of a CNN, while it trains.</figcaption>
+</figure>
+</div>
+<p><a href="whats-new-0.15/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Everything that is new in 0.10 to 0.15</a></p>
+<h2 id="whats-new-in-v09">What came in v0.9<a class="headerlink" href="#whats-new-in-v09" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
 <li>
@@ -6333,8 +6550,8 @@ kill switch.</p>
 <p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 13c-1.4 0-2.8 1.1-2.8 2.5V17c-.6 0-1.2.6-1.2 1.2v3.5c0 .7.6 1.3 1.2 1.3h5.5c.7 0 1.3-.6 1.3-1.2v-3.5c0-.7-.6-1.3-1.2-1.3v-1.5c0-1.4-1.4-2.5-2.8-2.5m0 1.2c.8 0 1.5.5 1.5 1.3V17h-3v-1.5c0-.8.7-1.3 1.5-1.3M6 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h6v-2H6V4h7v5h5v2c.7 0 1.4.2 2 .4V8l-6-6z"/></svg></span> <strong>No pickle, anywhere</strong></p>
 <hr />
 <p>Bundles are single zarr zips plus JSON sidecars. Native models are skops (allow-listed
-types) or xgboost JSON. Each file has CRC32C, MD5 and SHA-256 values. The platform
-verifies them when it reads the file.</p>
+types) or xgboost JSON. Network weights are safetensors files. Each file has CRC32C, MD5
+and SHA-256 values. The platform verifies them when it reads the file.</p>
 </li>
 </ul>
 </div>
@@ -6404,13 +6621,13 @@ compute. Operators manage the platform, but they never read the data of a tenant
         
         
           
-          <a href="whats-new-0.9/" class="md-footer__link md-footer__link--next" aria-label="Next: What&#39;s new in 0.9">
+          <a href="whats-new-0.15/" class="md-footer__link md-footer__link--next" aria-label="Next: What&#39;s new in 0.10 to 0.15">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                What's new in 0.9
+                What's new in 0.10 to 0.15
               </div>
             </div>
             <div class="md-footer__button md-icon">

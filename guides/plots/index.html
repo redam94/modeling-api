@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3482,6 +3602,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-plots-that-a-run-draws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The plots that a run draws v0.10
+      
+    </span>
+  </a>
   
 </li>
       
@@ -5754,6 +5885,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-plots-that-a-run-draws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The plots that a run draws v0.10
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#find-a-recipe-in-the-web-app" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6183,6 +6325,88 @@ draws. A recipe never adds quantiles or intervals. If a summary has an extra dim
 tells you to request an aggregated output. The recipe shows summed means without a band.
 Predicted-vs-actual plots and residual plots never need a total. Thus they compare these
 summaries cell by cell (one dot or line for each <code>store × sku</code>, with the color of the facet dim).</p>
+<h2 id="the-plots-that-a-run-draws">The plots that a run draws <span class="mapi-badge">v0.10</span><a class="headerlink" href="#the-plots-that-a-run-draws" title="Permanent link">&para;</a></h2>
+<p><strong>A fit</strong> draws only the plots in <code>outputs.plots</code> of the spec. Each model declares its
+standard plots, and the <strong>Insert</strong> panel of the spec editor shows them first. Some
+examples:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Standard plots</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>scikit-learn regressors (also the quantile, bootstrap and conformal plugins)</td>
+<td><code>core.fit_vs_actual</code>, <code>core.residuals_over_time</code>, <code>ml.feature_importance</code></td>
+</tr>
+<tr>
+<td><code>sklearn.tabular_classifier</code></td>
+<td><code>core.calibration</code>, <code>core.roc_pr</code>, <code>core.confusion</code>, <code>ml.feature_importance</code></td>
+</tr>
+<tr>
+<td><code>ts.gaussian_hmm</code>, the statsmodels Markov switching model</td>
+<td><code>core.state_sequence</code></td>
+</tr>
+<tr>
+<td>The unobserved components model, ETS, <code>ts.hsgp_trend</code></td>
+<td><code>core.decomposition</code></td>
+</tr>
+</tbody>
+</table>
+<p>The fit also adds some plots when the bundle has their data: <code>core.loss_curve</code> after an ADVI
+fit, and the <a href="#deep-learning">deep learning plots</a> after a <code>dl</code> fit.</p>
+<p><strong>A score run</strong> picks its default plots from the shape of each output. <code>job.plots</code> of the
+request replaces the defaults.</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Default plot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An output with a <code>grid</code></td>
+<td><code>sci.field_map</code>, with the frame dim (for example <code>quarter</code>) as the slider</td>
+</tr>
+<tr>
+<td>An output with a <code>grid</code> and a <code>component</code> dim of size 2</td>
+<td><code>sci.vector_field</code></td>
+</tr>
+<tr>
+<td>An output on the areas of a map</td>
+<td><code>sci.area_map</code></td>
+</tr>
+<tr>
+<td>Probabilities over a <code>state</code> or <code>regime</code> dim</td>
+<td><code>core.state_sequence</code></td>
+</tr>
+<tr>
+<td>Evaluate</td>
+<td><code>core.fit_vs_actual</code>, and <code>core.residuals_over_time</code> when an output is over time</td>
+</tr>
+<tr>
+<td>Evaluate, a 0/1 target</td>
+<td><code>core.calibration</code>, <code>core.roc_pr</code> and <code>core.confusion</code>, in place of <code>core.fit_vs_actual</code> and <code>core.residuals_over_time</code></td>
+</tr>
+<tr>
+<td>An output over time that is not a grid (predict and forecast)</td>
+<td><code>core.ppc_fan</code></td>
+</tr>
+<tr>
+<td>A counterfactual</td>
+<td><code>core.counterfactual</code></td>
+</tr>
+</tbody>
+</table>
+<p>A model with grid or area outputs gets the fan only when it also has an output over time
+that is not a grid. A fan of a map adds all the cells, thus it does not help. The run page
+shows the plots of a run in its <strong>Plots</strong> card. See <a href="../web-ui/#run-detail">The Expert web app</a>.</p>
+<p>Plots are different from the images that a run logs (<code>ctx.log_image</code>). The <strong>Media</strong> tab of
+the run shows the logged images. See
+<a href="../tracking/#log-images-figures-and-tables">Log images, figures and tables</a>.</p>
 <h2 id="find-a-recipe-in-the-web-app">Find a recipe in the web app<a class="headerlink" href="#find-a-recipe-in-the-web-app" title="Permanent link">&para;</a></h2>
 <p>The <strong>Plots</strong> tab of the <strong>Catalog</strong> shows a card for each recipe, with an example plot made
 from synthetic data. The buttons above the cards filter the recipes by pack:</p>
@@ -6194,8 +6418,9 @@ from synthetic data. The buttons above the cards filter the recipes by pack:</p>
 <li><strong>Science</strong> (<code>sci.*</code>)</li>
 <li><strong>Networks</strong> (<code>net.*</code>)</li>
 </ul>
-<p>A pack shows only when the catalog has a recipe of that pack. Type words in the search field to
-find a recipe by its id, title or About card. Click a card to see the About card and a larger
+<p>A pack shows only when the catalog has a recipe of that pack. A pack without a name in this
+list, for example the causal pack, shows its prefix (<code>causal</code>) as the label. Type words in the
+search field to find a recipe by its id, title or About card. Click a card to see the About card and a larger
 example.</p>
 <h2 id="plots-in-a-workflow">Plots in a workflow<a class="headerlink" href="#plots-in-a-workflow" title="Permanent link">&para;</a></h2>
 <p>A workflow can draw a recipe with the node <code>plot.render</code>. Set <code>recipe</code> to the id (for example

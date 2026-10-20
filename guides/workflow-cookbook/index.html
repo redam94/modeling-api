@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and six recipes for Bayesian science models (spatial and network ladders, a regression across species, calibrate-then-design, a workflow audit and an image model check).">
+        <meta name="description" content="Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and six recipes for Bayesian science models (spatial and network ladders, a regression across species, calibrate-then-design, a workflow audit and an image model check), a geo-lift test that calibrates an MMM, and how to read and group the runs of a workflow.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3905,6 +4025,17 @@
     <span class="md-ellipsis">
       
         Geo-lift test to a calibrated MMM v0.13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compare-workflow-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare the runs of a workflow in an experiment v0.14
       
     </span>
   </a>
@@ -6618,6 +6749,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compare-workflow-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare the runs of a workflow in an experiment v0.14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#make-your-own" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6646,7 +6788,7 @@
 
 
 <h1 id="workflow-cookbook-v05">Workflow cookbook <span class="mapi-badge">v0.5</span><a class="headerlink" href="#workflow-cookbook-v05" title="Permanent link">&para;</a></h1>
-<p>This page gives nine complete analyses. Each analysis is one YAML document. You can save,
+<p>This page gives ten complete analyses. Each analysis is one YAML document. You can save,
 run and schedule it, and give it to a colleague. The tests of the documentation validate each
 document on this page against the node catalog and run it from start to end. Thus the
 documents that you copy operate correctly. For the format, see
@@ -6703,6 +6845,8 @@ the <a href="../workflows/#cookbook">workflows guide</a>.</p>
 </tr>
 </tbody>
 </table>
+<p>Two more sections tell how to <a href="#grid-search-tracking">read a grid search in the run page</a>
+and how to <a href="#compare-workflow-runs">compare the runs of a workflow in an experiment</a>.</p>
 <h2 id="readiness-to-arimax">Readiness to ARIMAX<a class="headerlink" href="#readiness-to-arimax" title="Permanent link">&para;</a></h2>
 <p><strong>In plain words.</strong> Before you trust a forecast, you must know four things:</p>
 <ul>
@@ -8936,6 +9080,30 @@ document from this page:</p>
 <li>The time labels of the experiment must be dates.</li>
 </ul>
 <p>See <a href="../causal/">Measure the effect of a change</a> for the Guided version of this analysis.</p>
+<h2 id="compare-workflow-runs">Compare the runs of a workflow in an experiment <span class="mapi-badge">v0.14</span><a class="headerlink" href="#compare-workflow-runs" title="Permanent link">&para;</a></h2>
+<p><strong>In plain words.</strong> You run the same workflow some times with different parameters. You want
+to see the results next to each other. Put all the runs in one experiment. Then the runs table
+of the experiment shows the node runs, and the compare page shows 2 to 10 of them side by side.</p>
+<ol>
+<li>Make the experiment one time.</li>
+<li>Start each workflow run with <code>--experiment</code>. The workflow run and each node run that it
+   starts go into the experiment.</li>
+<li>List the runs of the experiment with the columns that you want to compare.</li>
+<li>Compare the node runs on the compare page, or with <code>mapi runs compare</code>.</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-44-1"><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>mapi<span class="w"> </span>experiments<span class="w"> </span>create<span class="w"> </span><span class="s2">"arimax drivers"</span><span class="w"> </span>--description<span class="w"> </span><span class="s2">"Readiness with and without promotions."</span>
+</span><span id="__span-44-2"><a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>ts-readiness-arimax<span class="w"> </span>-i<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-44-3"><a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'drivers=["price"]'</span><span class="w"> </span>--experiment<span class="w"> </span><span class="s2">"arimax drivers"</span><span class="w"> </span>--watch
+</span><span id="__span-44-4"><a id="__codelineno-44-4" name="__codelineno-44-4" href="#__codelineno-44-4"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>ts-readiness-arimax<span class="w"> </span>-i<span class="w"> </span><span class="nv">data</span><span class="o">=</span>dataset://growth/weekly_sales@latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-44-5"><a id="__codelineno-44-5" name="__codelineno-44-5" href="#__codelineno-44-5"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'drivers=["price", "promo"]'</span><span class="w"> </span>--experiment<span class="w"> </span><span class="s2">"arimax drivers"</span><span class="w"> </span>--watch
+</span><span id="__span-44-6"><a id="__codelineno-44-6" name="__codelineno-44-6" href="#__codelineno-44-6"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--experiment<span class="w"> </span><span class="s2">"arimax drivers"</span><span class="w">            </span><span class="c1"># the workflow runs and their node runs</span>
+</span><span id="__span-44-7"><a id="__codelineno-44-7" name="__codelineno-44-7" href="#__codelineno-44-7"></a>mapi<span class="w"> </span>runs<span class="w"> </span>compare<span class="w"> </span><span class="s2">"</span><span class="nv">$RUN_A</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$RUN_B</span><span class="s2">"</span><span class="w">                    </span><span class="c1"># two node runs, for example the backtests</span>
+</span></code></pre></div>
+<p>A <code>model.backtest</code> node run logs the metrics of each fold with the label <code>fold</code>. On the
+compare page, select the label <code>fold</code> to draw each fold with a different dash.</p>
+<p>From Python, give <code>experiment_id=</code> to <code>api.workflows.run</code>. Runs that a schedule or a trigger
+starts are in no experiment. See <a href="../workflows/#experiments">Put the runs in an experiment</a> and
+<a href="../run-comparison/">Compare runs and use experiments</a>.</p>
 <h2 id="make-your-own">Make your own<a class="headerlink" href="#make-your-own" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Start from the recipe that is nearest to your analysis. Use
@@ -8947,6 +9115,8 @@ document from this page:</p>
 <li>Save the workflow (<code>apply</code>).</li>
 <li>Run the workflow with <code>--watch</code>.</li>
 <li>Read the summary.</li>
+<li>To compare runs with different parameters, put them in an experiment
+   (<a href="#compare-workflow-runs">above</a>).</li>
 <li>Add a schedule or a dataset trigger to run the workflow automatically.</li>
 <li>Add a governance gate to the workflow.</li>
 </ol>

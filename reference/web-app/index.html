@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5737,7 +5857,7 @@ page describes. The <code>mapi/web</code> image uses nginx for this.</p>
 </tr>
 <tr>
 <td>Datasets</td>
-<td>Create a dataset. Preview a CSV file locally. Map columns to dims and variables. Upload through a signed PUT. Monitor the ingest run. See the schema tables, the coordinate browser, the missingness heatmap and the preview (<code>preview.json</code>, <code>profile.json</code>)</td>
+<td>Create a dataset. Preview a CSV file locally. Map columns to dims and variables. Upload through a signed PUT. Monitor the ingest run. See the schema tables, the coordinate browser, the missingness heatmap and the preview (<code>preview.json</code>, <code>profile.json</code>). Upload a zip of images (<code>image_folder</code>, v0.14). Upload a folder of images as an image collection with the step <strong>Folder of images</strong>: labels from the folders or from a manifest column, progress, retry and continue (v0.15). The version page of a collection shows its summary (v0.15). The Data Explorer has the <strong>Image gallery</strong> section for image datasets (v0.14). See <a href="../../guides/image-data/">Image data</a></td>
 </tr>
 <tr>
 <td>Build</td>
@@ -5745,7 +5865,15 @@ page describes. The <code>mapi/web</code> image uses nginx for this.</p>
 </tr>
 <tr>
 <td>Runs</td>
-<td>Filter by state and kind. See live progress over SSE (it continues with <code>Last-Event-ID</code>), a lane for each chain, the <code>STALLED</code> banner, the event timeline and the logs. Cancel a run. Resume a partial run. After <code>RESOURCE_EXHAUSTED</code>, retry with the next larger resource class</td>
+<td>Filter by state, kind and experiment. From v0.14, the filter bar takes the <a href="../http-api/#search-runs">search grammar</a>, the column picker adds tracked metrics, params and tags as columns, and you can sort by a column and save the search as a view. Select 2 to 10 runs with the check boxes to compare them or to add them to an experiment. The run page has the tabs <strong>Overview</strong>, <strong>Metrics</strong>, <strong>Params</strong>, <strong>Media</strong> (v0.14), <strong>Logs</strong> and <strong>Notes</strong> (v0.11). It shows live progress over SSE (it continues with <code>Last-Event-ID</code>), a lane for each chain, the <code>STALLED</code> banner, the event timeline and a <strong>Plots</strong> card for a finished run (v0.10). Cancel a run. Resume a partial run. After <code>RESOURCE_EXHAUSTED</code>, retry with the next larger resource class. See <a href="../../guides/tracking/">Track metrics, params and tags</a></td>
+</tr>
+<tr>
+<td>Compare runs</td>
+<td><code>/runs/compare</code> (v0.14): the metric curves, the metric bars, the params that are different, the plots side by side, and the images with a step slider, for 2 to 10 runs. See <a href="../../guides/run-comparison/">Compare runs and use experiments</a></td>
+</tr>
+<tr>
+<td>Experiments</td>
+<td><code>/experiments</code> and the page of an experiment (v0.14): make, rename, archive and delete experiments, and see their runs. The <strong>Notes</strong> tab of a run moves the run to an experiment</td>
 </tr>
 <tr>
 <td>Inspect</td>
@@ -5753,7 +5881,7 @@ page describes. The <code>mapi/web</code> image uses nginx for this.</p>
 </tr>
 <tr>
 <td>Score</td>
-<td>Set the mode (only the modes that the model can do), the horizon, <code>inputs_stage</code>, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends <code>Prefer: wait=30</code>, then follows the run over SSE. It shows the plots of the run (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox. It shows a view for each output by its shape (<code>ScoreSummaryTable.dims</code> and <code>time_dim</code>): a map with a frame slider for a grid output (from <code>ui/fields.json</code>, which then replaces the <code>sci.field_map</code> and <code>sci.vector_field</code> plots), a line with a band for a time series, intervals for a categorical output and tiles for a scalar. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart. The table keeps the dim columns that the <code>mapi.dims</code> metadata names as keys, also when they are numeric (v0.9). The <strong>No new data</strong> option shows only for Forecast, or when a scenario dataset gives the values (v0.9). For the other modes, a note tells why the option is not there</td>
+<td>Set the mode (only the modes that the model can do), the horizon, <code>inputs_stage</code>, the input and scenario datasets, the side tables of the spec, the interventions and the output selector. Supplied side tables use the version from the fit by default. Pinned side tables use the same version again. The app sends <code>Prefer: wait=30</code>, then follows the run over SSE. It shows the plots of the run (<code>GET /v1/runs/{id}/plots</code>, sanitized) in the sandbox. It shows a view for each output by its shape (<code>ScoreSummaryTable.dims</code> and <code>time_dim</code>): a map with a frame slider for a grid output (from <code>ui/fields.json</code>, which then replaces the <code>sci.field_map</code> and <code>sci.vector_field</code> plots), a line with a band for a time series, intervals for a categorical output and tiles for a scalar. It shows Arrow outputs as a table (summaries pivoted by statistic) and a quick chart. The quick chart has a <strong>Cell</strong> picker for a table with more dims than the axis and the colour, for example a grid (v0.10). <em>Results by output</em> also shows a map of areas and a classification view from the plots of the run (v0.10). The table keeps the dim columns that the <code>mapi.dims</code> metadata names as keys, also when they are numeric (v0.9). The <strong>No new data</strong> option shows only for Forecast, or when a scenario dataset gives the values (v0.9). For the other modes, a note tells why the option is not there</td>
 </tr>
 <tr>
 <td>Guided</td>

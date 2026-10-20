@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6249,6 +6369,10 @@ gives the column of each dim and variable:</p>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload<span class="w"> </span>demo/eu_media_future.zarr.zip<span class="w"> </span>--name<span class="w"> </span>eu_media_future
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>ls
 </span></code></pre></div>
+<p>A zip of images with a manifest table (v0.14) also needs a mapping, with
+<code>format: image_folder</code>. Refer to <a href="../image-data/#upload-the-zip">Image data</a>. For a folder of
+images and for network weights (v0.15), use <code>mapi datasets upload-images</code> and
+<code>mapi datasets upload-weights</code> (see <a href="#v015">Image collections and weights</a>).</p>
 <h3 id="fit-and-follow">Fit and follow<a class="headerlink" href="#fit-and-follow" title="Permanent link">&para;</a></h3>
 <p><code>mapi fit SPEC --remote @</code> creates the spec. If the text changed, it adds a revision. Then it
 submits a fit run and follows its event stream until the run ends. It shows warnings,
@@ -6330,7 +6454,9 @@ options are in <a href="../image-data/#large-image-sets-collections">Image data:
 <p><code>upload-weights</code> uploads a safetensors file as a weights dataset (the mapping
 <code>{format: safetensors}</code>). <code>--arch</code> gives the architecture when the file has no <code>mapi_arch</code>
 metadata. Read <a href="../deep-learning/#pretrained-weights">Deep learning</a>.</p>
-<p><code>--resource-class</code> accepts <code>GPU</code> wherever the CLI offers the option.</p>
+<p><code>--resource-class</code> accepts <code>GPU</code> wherever the CLI offers the option, for example
+<code>mapi runs retry RUN --resource-class GPU</code>. Use it only for a model that uses a GPU. See
+<a href="../deep-learning/#use-the-gpu-class">Deep learning: use the GPU class</a>.</p>
 <h3 id="score">Score<a class="headerlink" href="#score" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>cat<span class="w"> </span>&gt;<span class="w"> </span>forecast.yaml<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="s">apiVersion: mapi/v1</span>
@@ -6443,6 +6569,10 @@ and some sample values of each column. They send only those summaries, as the we
 (<code>--mapping-out</code>) and fit. <code>priors preview</code> changes ROI ranges or contribution-share ranges
 into model priors in a sandboxed run. It shows what the model then believes, for each channel
 (<a href="../guided-modelling/">Guided modelling</a>).</p>
+<p>v0.12 and v0.13 add the templates <code>mediated_mmm</code>, <code>multi_kpi_mmm</code>, <code>campaign_impact</code> and
+<code>geo_lift</code> (see <a href="../causal/">Measure the effect of a change</a>). Upgrade the CLI to v0.13 or
+later. A v0.12 CLI cannot read the list of templates from a v0.13 server: <code>mapi guided
+templates</code> fails.</p>
 <h3 id="sign-up-and-your-workspace">Sign-up and your workspace <span class="mapi-badge">v0.4</span><a class="headerlink" href="#sign-up-and-your-workspace" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>signup<span class="w"> </span>--email<span class="w"> </span>ana@acme.example<span class="w"> </span>--name<span class="w"> </span><span class="s2">"Ana Analyst"</span><span class="w"> </span>--accept-terms
 </span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>mapi<span class="w"> </span>--url<span class="w"> </span>https://api.mapi.example<span class="w"> </span>verify-email<span class="w"> </span>mev_…<span class="w">   </span><span class="c1"># the token from the e-mail link</span>
@@ -6545,6 +6675,9 @@ Start each one with <code>mapi workflows init &lt;id&gt;</code>. The cookbook sh
 </tr>
 </tbody>
 </table>
+<p>From v0.13, the template <code>geo_lift_mmm</code> measures a geo-lift test and gives the result to
+<code>mmm.bayesian</code> as a lift test. See
+<a href="../causal/#with-the-workflow-template-geo_lift_mmm">Measure the effect of a change</a>.</p>
 <p>To get the data of a science case study, use <code>python -m mapi_plugin_science.export &lt;case&gt;</code>.
 Then upload the file with <code>mapi datasets upload</code>.</p>
 <p><strong>Governance</strong>: the check catalog, policies, validations and approval by a second person.

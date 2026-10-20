@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1894,6 +1924,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2383,6 +2419,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6493,6 +6613,11 @@ the model is good.</p>
 fit, the median of the sum of the cells was 14 events for each quarter. The 90% range went from
 4 to 39 events in 2020 Q1 to 1 to 141 events in 2021 Q4. The range increases with each quarter
 because the random walk adds uncertainty.</p>
+<p>From v0.10, <strong>Results by output</strong> shows each output by its shape. Select <code>rate</code> to see a map
+of the cells with a slider over the forecast quarters. Select <code>total</code> to see a line with a
+band. The default plot of the grid output is <code>sci.field_map</code>, not a forecast fan of the sum
+over the grid. The run also writes <code>ui/fields.json</code>, and the map of the page replaces the
+<code>sci.field_map</code> plot in the plot list.</p>
 <p>A horizon of 9 or more quarters stops the score with <code>HORIZON_EXCEEDS_FIT</code>. To forecast
 further, fit again with a larger <code>max_extension</code>. The model also accepts <code>predict</code> (the fitted
 quarters) and <code>evaluate</code> (new actual counts with metrics).</p>

@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5939,6 +6059,10 @@ find the runs that you need, how to compare them, and how to keep related runs t
 </thead>
 <tbody>
 <tr>
+<td><a href="../../concepts/run-tracking/">Run tracking and experiments</a></td>
+<td>The concepts: what a run records, experiments, saved views and the compare page</td>
+</tr>
+<tr>
 <td><a href="../../reference/http-api/#v014">HTTP API: Comparison, experiments and saved views</a></td>
 <td>The endpoints and the DTOs</td>
 </tr>
@@ -6078,6 +6202,17 @@ a run. The page has these sections:</p>
 </table>
 <p>The server sends a maximum of 300 points for each curve. It keeps the shape of the curve, the
 first point and the last point.</p>
+<p>To compare the training of two networks, select the runs and look at <strong>Curves</strong> with the
+label <code>split</code>. The <code>dl</code> models log <code>loss</code> and <code>accuracy</code> (or <code>rmse</code>) for <code>split=train</code> and
+<code>split=val</code> (see <a href="../deep-learning/#read-the-training">Deep learning</a>). To compare the
+estimates of causal models, add the column <code>metric.effect_total</code> (see
+<a href="../tracking/#what-a-causal-fit-logs">What a causal fit logs</a>).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The compare page compares runs. To compare model versions on held-out data, with
+Diebold-Mariano tests and the elpd, use <strong>Compare</strong> in the
+<a href="../model-explorer/#compare-model-versions">Model Explorer</a>.</p>
+</div>
 <h3 id="compare-runs-from-python-and-the-command-line">Compare runs from Python and the command line<a class="headerlink" href="#compare-runs-from-python-and-the-command-line" title="Permanent link">&para;</a></h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
@@ -6144,6 +6279,9 @@ views. To move one run, open the run, go to the <strong>Notes</strong> tab and s
   <code>experiment_id=</code> in <code>api.workflows.run</code>, or <code>mapi workflows run --experiment</code>. If you move
   a workflow run later, the node runs that it already started stay where they are.</li>
 <li>A retry goes into the experiment of the run that it retries.</li>
+<li>Workflow schedules and triggers start their runs in no experiment. To group such a run,
+  move it with <code>PATCH /v1/runs/{run_id}</code> before it starts its nodes. The node runs that
+  started before the move stay where they are.</li>
 <li>An archived experiment does not accept new runs. You can still list, filter and compare its
   runs. To add runs again, unarchive it. This includes retries: the server refuses to retry a
   run of an archived experiment (<code>409</code>).</li>

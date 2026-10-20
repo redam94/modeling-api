@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1924,6 +1960,17 @@
     <span class="md-ellipsis">
       
         Counterfactuals share their noise
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are differences v0.13
       
     </span>
   </a>
@@ -2245,6 +2292,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5707,6 +5838,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs that are differences v0.13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#circular-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5753,7 +5895,7 @@ prediction has no uncertainty to summarise.</p>
 <tr>
 <td><code>draws</code></td>
 <td><code>(chain, draw, …)</code> joint samples</td>
-<td>PyMC (MCMC, VI), bootstrap</td>
+<td>PyMC (MCMC, VI), bootstrap, the <code>dl.*</code> networks (Laplace or MC dropout, v0.15)</td>
 <td><code>mean</code>, <code>sd</code>, <code>median</code>, <code>hdi_&lt;p&gt;</code>, <code>eti_&lt;p&gt;</code>, <code>q&lt;p&gt;</code></td>
 <td><strong>any</strong>, per draw</td>
 </tr>
@@ -5850,6 +5992,14 @@ Thus, a Guided-mode slider that combines them keeps correct uncertainty bands.</
 <code>baseline/</code> and <code>delta/</code> groups. Bayesian plugins use <strong>common random numbers</strong>. The
 predictive noise of the two runs is the same draw. Thus, the delta shows the effect of the
 intervention, not the difference between two independent noise samples.</p>
+<h2 id="differences">Outputs that are differences <span class="mapi-badge">v0.13</span><a class="headerlink" href="#differences" title="Permanent link">&para;</a></h2>
+<p>Some outputs are a difference between two values, for example the effect <code>y - y_hat</code> of
+<code>causal.impact</code>. The inverse transform of a difference is not the difference of the inverse
+transforms. For example, <code>exp(a - b)</code> is not <code>exp(a) - exp(b)</code>. Thus the model sets the attr
+<code>difference_of</code> on the scored array. The attr names the reference output. With
+<code>output.units: original</code>, the harness changes the level and the reference to the output
+units, then subtracts them. This applies to draws and to point outputs. See
+<a href="../causal-effects/#differences">Measure the effect of a change</a>.</p>
 <h2 id="circular-outputs">Circular outputs<a class="headerlink" href="#circular-outputs" title="Permanent link">&para;</a></h2>
 <p>An angle wraps at one turn. Thus a summary on a line is not correct for an angle. For draws
 at 350 and 10 degrees, the linear mean is 180 degrees, but the correct mean is 0 degrees. A

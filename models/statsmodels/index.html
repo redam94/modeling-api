@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3535,6 +3655,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#standard-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard plots v0.10
+      
+    </span>
+  </a>
   
 </li>
       
@@ -6062,6 +6193,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#standard-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard plots v0.10
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-is-stored-and-why-there-is-no-pickle" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6749,6 +6891,34 @@ of the drivers inline (an <code>xr.Dataset</code> with the future rows):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mapi<span class="w"> </span>endpoints<span class="w"> </span>score<span class="w"> </span>weekly-sales<span class="w"> </span>--data<span class="w"> </span>plan.json<span class="w"> </span>--periods<span class="w"> </span><span class="m">8</span><span class="w"> </span>-o<span class="w"> </span>forecast.zarr.zip
 </span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>mapi<span class="w"> </span>explore<span class="w"> </span>model<span class="w"> </span>model://growth/weekly-sales@v3<span class="w"> </span>-s<span class="w"> </span>forecast<span class="w"> </span>-s<span class="w"> </span>residuals<span class="w"> </span>--horizon<span class="w"> </span><span class="m">8</span>
 </span></code></pre></div>
+<h2 id="standard-plots">Standard plots <span class="mapi-badge">v0.10</span><a class="headerlink" href="#standard-plots" title="Permanent link">&para;</a></h2>
+<p>Each model declares its standard plots. The <strong>Insert</strong> panel of the spec editor shows them
+first. A fit draws only the plots that the spec lists in <code>outputs.plots</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Models</th>
+<th>Standard plots</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All twelve models</td>
+<td><code>core.ppc_fan</code>, <code>core.fit_vs_actual</code>, <code>core.residuals_over_time</code></td>
+</tr>
+<tr>
+<td><code>ts.unobserved_components</code>, <code>ts.ets</code></td>
+<td>Also <code>core.decomposition</code>. It stacks the level, the seasonal part and the other parts from the <code>components</code> group. It does not stack the slope of a trend, because a slope is a rate.</td>
+</tr>
+<tr>
+<td><code>ts.markov_switching</code></td>
+<td>Also <code>core.state_sequence</code>. It reads <code>smoothed_prob</code> in the <code>regimes</code> group over the <code>regime</code> dim.</td>
+</tr>
+</tbody>
+</table>
+<p><code>ts.ets</code> keeps a <code>components</code> group only when its error, trend and season are additive. A
+multiplicative model has no decomposition. For the plots of a score run, see
+<a href="../../guides/time-series/#plots-of-hidden-states">Plots of hidden states</a>.</p>
 <h2 id="what-is-stored-and-why-there-is-no-pickle">What is stored, and why there is no pickle<a class="headerlink" href="#what-is-stored-and-why-there-is-no-pickle" title="Permanent link">&para;</a></h2>
 <p>The plugin never keeps a statsmodels results object, because pickles cannot cross the
 sandbox boundary. A bundle keeps these items:</p>

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2021,10 +2057,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#score-plots-by-output-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The default plots of a score run follow the outputs v0.10
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-the-science-models" class="md-nav__link">
     <span class="md-ellipsis">
       
         Example: the science models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-the-causal-and-deep-learning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: the causal and deep-learning models
       
     </span>
   </a>
@@ -2245,6 +2303,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5685,10 +5827,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#score-plots-by-output-shape" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The default plots of a score run follow the outputs v0.10
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-the-science-models" class="md-nav__link">
     <span class="md-ellipsis">
       
         Example: the science models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-the-causal-and-deep-learning-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: the causal and deep-learning models
       
     </span>
   </a>
@@ -5811,7 +5975,7 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>checkpointable</code></td>
-<td>Long fits can write checkpoints and resume.</td>
+<td>Long fits can write checkpoints and resume. A sampler saves a checkpoint every N draws (<code>fit.checkpoint.every_draws</code>). From v0.15, a network saves one every N epochs (<code>fit.checkpoint.every_epochs</code>). If a spec sets <code>every_epochs</code> for a model that cannot save checkpoints, validation shows a warning.</td>
 </tr>
 <tr>
 <td><code>calibration</code></td>
@@ -5858,7 +6022,7 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>plots</code></td>
-<td>The plot recipes that the report of this model shows by default</td>
+<td>The standard plots of the model. The <strong>Insert</strong> panel of the spec editor shows them first (v0.10). A declared plot is not drawn automatically. A fit draws the plots in <code>outputs.plots</code> of the spec. It also adds the plots of a training history that the bundle keeps: <code>core.loss_curve</code> (ADVI) and, from v0.15, <code>ml.training_curves</code>, <code>ml.confusion_epochs</code> and <code>ml.misclassified</code>.</td>
 </tr>
 <tr>
 <td><code>resources</code></td>
@@ -5870,7 +6034,7 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>about</code>, <code>family</code></td>
-<td>The <a href="../about-and-choosing/">About card</a> in plain language, and the model family that governance policies match (<code>mmm</code>, <code>forecast</code>, <code>ts_multivariate</code>, <code>tabular</code>, <code>choice</code>, <code>regime</code>). If <code>family</code> is not set, it is the namespace of the id.</td>
+<td>The <a href="../about-and-choosing/">About card</a> in plain language, and the model family that governance policies match (<code>mmm</code>, <code>forecast</code>, <code>ts_multivariate</code>, <code>tabular</code>, <code>choice</code>, <code>regime</code>). If <code>family</code> is not set, it is the namespace of the id, for example <code>causal</code> or <code>dl</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -5937,6 +6101,65 @@ the circle:</p>
 <li>The score summaries of draws use the circular mean and intervals centred on it
   (<a href="../representations/#circular-outputs">Circular outputs</a>).</li>
 </ul>
+<h2 id="score-plots-by-output-shape">The default plots of a score run follow the outputs <span class="mapi-badge">v0.10</span><a class="headerlink" href="#score-plots-by-output-shape" title="Permanent link">&para;</a></h2>
+<p>A score run draws default plots when the job names no plots. Before v0.10, each mode had one
+default, for example a forecast fan for <code>predict</code> and <code>forecast</code>. A fan of a map adds the map
+over all cells, so it hides the result. From v0.10, the runner selects the defaults from the
+declaration and the dims of each output:</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Default plot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A <code>grid</code> output (the result has the <code>y</code> and <code>x</code> dims of the grid)</td>
+<td><code>sci.field_map</code>. The <code>frame</code> dim (for example <code>quarter</code>) is the slider.</td>
+</tr>
+<tr>
+<td>A <code>grid</code> output with a <code>component</code> of size 2</td>
+<td><code>sci.vector_field</code></td>
+</tr>
+<tr>
+<td>An output on areas (the bundle has the polygons <code>ring_x</code>, <code>ring_y</code>)</td>
+<td><code>sci.area_map</code></td>
+</tr>
+<tr>
+<td>Probabilities over a dim named <code>state</code> or <code>regime</code> (each cell has a sum of 1)</td>
+<td><code>core.state_sequence</code></td>
+</tr>
+<tr>
+<td><code>evaluate</code>: an output with exactly two different observed values and mean predictions in [0, 1]</td>
+<td><code>core.calibration</code>, <code>core.roc_pr</code> and <code>core.confusion</code>, in place of <code>core.fit_vs_actual</code> and <code>core.residuals_over_time</code></td>
+</tr>
+<tr>
+<td>An output over time that is not a grid, with a maximum of one other dim</td>
+<td><code>core.ppc_fan</code> (<code>predict</code> and <code>forecast</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>These rules also apply:</p>
+<ul>
+<li>A model with grid or area outputs gets the fan only for an output over time, for example
+  <code>total[period]</code>. A model without such an output gets no fan.</li>
+<li>A model with no grid or area outputs always gets the fan for <code>predict</code> and <code>forecast</code>.</li>
+<li><code>evaluate</code> adds <code>core.residuals_over_time</code> only when an output is over time.</li>
+<li><code>counterfactual</code> keeps <code>core.counterfactual</code>.</li>
+<li>A list of plots in the score job replaces all defaults.</li>
+</ul>
+<p>A dim named <code>state</code> is a hidden state only when its values are probabilities. Thus a panel
+dim such as a US <code>state</code> with sales does not get <code>core.state_sequence</code>.</p>
+<p>A predict, forecast or evaluate run of a model with grid outputs also writes
+<code>ui/fields.json</code> (<code>FieldsView</code>). This is the same field view as in the
+<a href="../../guides/model-explorer/">Model Explorer</a>, made from the predictions. The output
+variables of a grid in <code>score.zarr.zip</code> carry the attr <code>grid</code> (the <code>GridDecl</code> as JSON). Thus
+you can draw a downloaded result as a map. Each table of <code>summary.json</code>
+(<code>ScoreSummaryTable</code>) gives the ids of the plots that draw it (<code>plots</code>), its coordinate
+columns (<code>dims</code>) and its time dim (<code>time_dim</code>). The <strong>Score</strong> page of the web app uses these
+fields to show a view for each output: a map with a frame slider, a line with a band,
+intervals or tiles (<a href="../../guides/web-ui/#score">The web app</a>).</p>
 <h2 id="example-the-science-models">Example: the science models<a class="headerlink" href="#example-the-science-models" title="Permanent link">&para;</a></h2>
 <p>The 15 models of <code>mapi-plugin-science</code> all use <code>inference: mcmc</code> and <code>representation: draws</code>.
 Their score modes are different:</p>
@@ -5974,6 +6197,93 @@ Their score modes are different:</p>
 <p>A score request for a mode that the model does not declare gives <code>MODE_NOT_SUPPORTED</code>. The
 platform refuses it before it does work for that mode. The
 <a href="../../reference/models/">models reference</a> gives the outputs and settings of each model.</p>
+<h2 id="example-the-causal-and-deep-learning-models">Example: the causal and deep-learning models<a class="headerlink" href="#example-the-causal-and-deep-learning-models" title="Permanent link">&para;</a></h2>
+<p>The models of v0.13 and v0.15 show the capabilities for draws without MCMC, for batches and
+for the GPU:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th><code>inference</code></th>
+<th>Score modes</th>
+<th><code>input</code></th>
+<th><code>resources.gpu</code></th>
+<th><code>loo_valid</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ts.bsts</code></td>
+<td><code>mcmc</code></td>
+<td><code>predict</code>, <code>forecast</code>, <code>filter</code>, <code>evaluate</code></td>
+<td><code>dataset</code></td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>causal.impact</code></td>
+<td><code>mcmc</code></td>
+<td><code>predict</code>, <code>forecast</code></td>
+<td><code>dataset</code></td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>causal.synthetic_control</code></td>
+<td><code>mcmc</code></td>
+<td><code>predict</code></td>
+<td><code>dataset</code></td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>causal.did</code></td>
+<td><code>mcmc</code></td>
+<td><code>predict</code>, <code>counterfactual</code></td>
+<td><code>dataset</code></td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>dl.mlp</code></td>
+<td><code>custom</code></td>
+<td><code>predict</code>, <code>evaluate</code></td>
+<td><code>dataset</code></td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>dl.cnn_classifier</code></td>
+<td><code>custom</code></td>
+<td><code>predict</code>, <code>evaluate</code></td>
+<td><code>collection</code></td>
+<td>yes</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>dl.finetune_classifier</code></td>
+<td><code>custom</code></td>
+<td><code>predict</code>, <code>evaluate</code></td>
+<td><code>collection</code></td>
+<td>yes</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>Some notes on these models:</p>
+<ul>
+<li>All of them have <code>representation: draws</code> and <code>checkpointable: true</code>. The <code>dl.*</code> models get
+  their draws from a Laplace approximation of the last layer or from MC dropout, not from a
+  sampler (<a href="../../guides/deep-learning/#draws">Deep learning</a>).</li>
+<li>The <code>dl.*</code> models declare <code>deterministic_given_seed: true</code>. The samplers of the other
+  models do not.</li>
+<li><code>dl.finetune_classifier</code> has <code>side_table_params: [pretrained]</code>. Its <code>pretrained</code> setting
+  names the weights dataset that it reads (<a href="../image-collections/#weights">Image data and collections</a>).</li>
+<li><code>resources.gpu: true</code> lets a spec select the <code>GPU</code> class. Validation refuses the <code>GPU</code>
+  class for a model without it, because the GPU Job runs only these models
+  (<a href="../quotas-and-cost/#resource-classes">Quotas and cost</a>).</li>
+<li>The causal models write the <code>impact</code> group (<a href="../causal-effects/">Measure the effect of a change</a>).</li>
+</ul>
 <h2 id="steps-have-manifests-too">Steps have manifests too<a class="headerlink" href="#steps-have-manifests-too" title="Permanent link">&para;</a></h2>
 <p>Each step exports a <strong>catalog entry</strong>. The entry contains these items:</p>
 <ul>

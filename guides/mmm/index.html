@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3365,6 +3485,17 @@
     <span class="md-ellipsis">
       
         Live progress and cancel v0.11
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compare-fits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare MMM fits v0.14
       
     </span>
   </a>
@@ -5885,6 +6016,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compare-fits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare MMM fits v0.14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-fast-frequentist-model" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6430,6 +6572,17 @@ for each posterior draw.</p>
 <code>mmm.nested</code> and <code>mmm.multivariate</code> send the same progress and step metrics. Each MMM fit
 also logs summary metrics, such as the ROI of each channel (see
 <a href="../tracking/#mmm">What an MMM fit logs</a>).</p>
+<h2 id="compare-fits">Compare MMM fits <span class="mapi-badge">v0.14</span><a class="headerlink" href="#compare-fits" title="Permanent link">&para;</a></h2>
+<p>Each MMM fit logs the return on spend of each channel and other summaries (see
+<a href="../tracking/#mmm">What an MMM fit logs</a>). Use these values to compare fits:</p>
+<ol>
+<li>Put the fits of a study in an experiment, for example the fits with adstock lengths 4, 6
+   and 8: <code>mapi fit spec.yaml --remote @ --experiment "adstock study"</code>.</li>
+<li>In the runs table, add the columns <code>metric.roi{channel=tv}</code> and <code>metric.baseline_share</code>.</li>
+<li>Select 2 to 10 runs and click <strong>Compare</strong>. The compare page shows the metrics, the params
+   that are different and the plots of the runs side by side.</li>
+</ol>
+<p>See <a href="../run-comparison/">Compare runs and use experiments</a>.</p>
 <h2 id="the-fast-frequentist-model">The fast frequentist model<a class="headerlink" href="#the-fast-frequentist-model" title="Permanent link">&para;</a></h2>
 <p><code>mmm.frequentist</code> takes the same data and settings, and answers in seconds:</p>
 <ul>

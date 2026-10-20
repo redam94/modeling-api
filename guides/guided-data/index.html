@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5837,6 +5957,26 @@ is bound to the project. The examples use the single-tenant development server.<
 <td>One row for each market and week: the result, one spend column for each channel, and optional controls</td>
 </tr>
 <tr>
+<td><code>mediated_mmm</code> (v0.12)</td>
+<td><code>mmm.nested</code> (mmm-framework)</td>
+<td>One row for each week: the national result, one spend column for each channel, and one column for each intermediate measure (visits, awareness). A measure can have empty weeks.</td>
+</tr>
+<tr>
+<td><code>multi_kpi_mmm</code> (v0.12)</td>
+<td><code>mmm.multivariate</code> (mmm-framework)</td>
+<td>One row for each week: one column for each national result (two or more) and one spend column for each channel</td>
+</tr>
+<tr>
+<td><code>campaign_impact</code> (v0.13)</td>
+<td><code>causal.impact</code></td>
+<td>One row for each week (or day): the result and optional control series. You also give the start date and the optional end date of the change.</td>
+</tr>
+<tr>
+<td><code>geo_lift</code> (v0.13)</td>
+<td><code>causal.synthetic_control</code></td>
+<td>One row for each market and week: the result. You also give the names of the test markets and the start and end dates of the test.</td>
+</tr>
+<tr>
 <td><code>weekly_forecast</code></td>
 <td><code>ts.hsgp_trend</code></td>
 <td>One row for each week (or day): the series to forecast</td>
@@ -5853,6 +5993,11 @@ is bound to the project. The examples use the single-tenant development server.<
 </tr>
 </tbody>
 </table>
+<p>The <code>family</code> of a template is <code>mmm</code>, <code>forecast</code>, <code>tabular</code>, <code>choice</code> or <code>causal</code> (v0.13).
+A client older than v0.13 cannot read the list of templates from a v0.13 server. Upgrade the
+CLI and <code>mapi-client</code>. <a href="../guided-modelling/#mmm-templates">Guided modelling</a> tells what each
+marketing-mix template asks, and <a href="../causal/">Measure the effect of a change</a> tells the same
+for the causal templates.</p>
 <p><code>GET /v1/guided/templates/{id}</code> gives one template with these items:</p>
 <ul>
 <li>Its questions.</li>
@@ -5943,6 +6088,15 @@ use comma, semicolon, tab or <code>|</code> separators. It must be UTF-8, and it
 with groups become tree datasets, a raw HDF5 file (<code>hdf5</code>) needs a mapping of its arrays, and
 one version can come from several files. Refer to
 <a href="../tree-data/">Tree datasets, HDF5 and multi-file versions</a>.</p>
+<p>Image data has its own upload formats. They are not for Guided templates:</p>
+<ul>
+<li><code>image_folder</code> (v0.14): a zip of PNG, JPEG or TIFF images and a manifest table. See
+  <a href="../image-data/">Image data</a>.</li>
+<li>An image collection (v0.15): a large set of images that the client uploads in parts. See
+  <a href="../image-data/#large-image-sets-collections">Large image sets: collections</a>.</li>
+<li><code>safetensors</code> (v0.15): a file of network weights that becomes a weights dataset. See
+  <a href="../deep-learning/#pretrained-weights">Deep learning</a>.</li>
+</ul>
 <table>
 <thead>
 <tr>

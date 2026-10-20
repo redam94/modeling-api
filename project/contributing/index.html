@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5799,6 +5919,35 @@
 </tr>
 </tbody>
 </table>
+<p><code>make install</code> installs all workspace packages. This includes <code>mapi-jax</code> with the CPU build
+of JAX (v0.15), <code>mapi-sklearn</code> with the <code>gbm</code> extra (LightGBM and CatBoost, v0.14) and
+pymc-extras (a dependency of <code>mapi-plugin-ts</code>, v0.13). Two extras are for installs outside
+the workspace: the <code>cuda12</code> extra of <code>mapi-jax</code> (only the <code>mapi/base-dl</code> image uses it) and
+the <code>pathfinder</code> extra of <code>mapi-pymc</code> (pymc-extras for the Pathfinder engine). Do not add <code>torch</code> or <code>tensorflow</code>. The build
+of <code>mapi/base-dl</code> fails if they are in it (<a href="../../operations/images/#build-time-guards">Container images</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Where</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mapi-jax</code> (v0.15)</td>
+<td><code>packages/sdk-jax</code></td>
+<td>The <code>dl.*</code> models and the step <code>dl.embed</code> on JAX, Flax and Optax</td>
+</tr>
+<tr>
+<td><code>mapi-plugin-causal</code> (v0.13)</td>
+<td><code>plugins/causal</code></td>
+<td><code>causal.impact</code>, <code>causal.synthetic_control</code> and <code>causal.did</code></td>
+</tr>
+</tbody>
+</table>
+<p>The control plane and the supervisor of the runner must not import <code>mapi_jax</code>, <code>jax</code>, <code>flax</code>
+or <code>optax</code>. <code>make lint</code> makes sure of this rule.</p>
 <h2 id="branching-model">Branching model<a class="headerlink" href="#branching-model" title="Permanent link">&para;</a></h2>
 <p>We use git flow with two permanent branches, <code>main</code> and <code>develop</code>.</p>
 <pre class="mermaid"><code>gitGraph
@@ -5884,9 +6033,11 @@ scope:</p>
   <code>conformance/tests/test_docs_platform.py</code>. Shell snippets use the same section markers.</li>
 <li><strong>Scripts make the reference pages.</strong> <code>scripts/gen_docs_catalog.py</code> writes the pages for the
   steps, models, plot recipes, spec schema and error codes. <code>scripts/gen_docs_reference.py</code>
-  writes the CLI reference, the server settings and a copy of <code>apps/web/openapi.json</code>. The
-  two scripts write into <code>docs/reference/generated/</code>, which git ignores. An MkDocs hook runs
-  the two scripts before each build.</li>
+  writes the CLI reference, the server settings and a copy of <code>apps/web/openapi.json</code>.
+  <code>scripts/gen_docs_platform.py</code> writes the permissions, the environment variables and the
+  tables of the observability page. The three scripts write into <code>docs/reference/generated/</code>,
+  which git ignores. An MkDocs hook runs them before each build. <code>make docs-catalog</code> runs
+  them. To change a generated page, change the code or the script, not the output.</li>
 <li><strong>New <code>MAPI_*</code> variables go into the configuration reference</strong>
   (<code>docs/operations/configuration.md</code>). A test looks for these variables in the source tree.</li>
 <li>

@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2055,6 +2091,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resource classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-gpu-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The GPU class v0.15
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#three-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2234,6 +2298,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5652,6 +5800,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resource-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resource classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-gpu-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The GPU class v0.15
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#three-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5714,7 +5890,7 @@
 
 <h1 id="quotas-and-cost-v03">Quotas and cost <span class="mapi-badge">v0.3</span><a class="headerlink" href="#quotas-and-cost-v03" title="Permanent link">&para;</a></h1>
 <p>Compute is the largest cost risk for a public modelling platform. Examples are an accidental
-500-task sweep, a leaked token, or a person who mines on free fits. From v0.3, the platform
+500-task backtest, a leaked token, or a person who mines on free fits. From v0.3, the platform
 does these steps for each run:</p>
 <ol>
 <li>It estimates the cost of the run before the run starts.</li>
@@ -5750,17 +5926,17 @@ at this level.</p>
 <tr>
 <td><code>max_fanout_tasks</code></td>
 <td>Per submission</td>
-<td>The maximum for one sweep, backtest or SBC (<code>taskCount</code>)</td>
+<td>The maximum for one fan-out submission, for example a backtest or an SBC (<code>taskCount</code>)</td>
 </tr>
 <tr>
 <td><code>max_resource_class</code></td>
 <td>Per submission</td>
-<td>For example, the free tier runs on class S only. The classes are in the sequence S &lt; M &lt; L &lt; XL &lt; GPU (v0.15), so a maximum below <code>GPU</code> refuses the GPU class. By default, only the internal and the self-hosted tiers allow it.</td>
+<td>For example, the <code>public</code> tier runs on class S only. The classes are in the sequence S &lt; M &lt; L &lt; XL &lt; GPU (v0.15), so a maximum below <code>GPU</code> refuses the GPU class. By default, only the <code>internal</code> and the <code>self-hosted-trusted</code> tiers allow it. See <a href="#resource-classes">Resource classes</a>.</td>
 </tr>
 <tr>
 <td><code>storage_bytes</code></td>
 <td>Cumulative</td>
-<td>Dataset versions, uploads in progress and model bundles (the stored objects of all model versions)</td>
+<td>Dataset versions, uploads in progress and model bundles (the stored objects of all model versions). An upload counts while it is <code>pending</code> or <code>uploaded</code> (v0.15). A collection version counts the packs that it uses, also packs that it shares with other versions (<a href="../image-collections/#storage-and-the-quota">Image data and collections</a>).</td>
 </tr>
 <tr>
 <td><code>egress_bytes_per_month</code></td>
@@ -5774,6 +5950,115 @@ at this level.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="resource-classes">Resource classes<a class="headerlink" href="#resource-classes" title="Permanent link">&para;</a></h2>
+<p>Each run has a <strong>resource class</strong>. The class sets the CPU, the memory, the scratch space and
+the size limits of the run. It also sets the price of each second.</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>vCPU</th>
+<th>Memory</th>
+<th>Scratch</th>
+<th>Input data</th>
+<th>Bundle</th>
+<th>Accelerator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>S</code></td>
+<td>2</td>
+<td>8 GiB</td>
+<td>3 GiB</td>
+<td>0.5 GB</td>
+<td>1 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>M</code></td>
+<td>4</td>
+<td>16 GiB</td>
+<td>6 GiB</td>
+<td>2 GB</td>
+<td>4 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>L</code></td>
+<td>8</td>
+<td>32 GiB</td>
+<td>12 GiB</td>
+<td>5 GB</td>
+<td>8 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>XL</code></td>
+<td>(GKE)</td>
+<td>(GKE)</td>
+<td>(GKE)</td>
+<td>50 GB</td>
+<td>50 GB</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>GPU</code> <span class="mapi-badge">v0.15</span></td>
+<td>8</td>
+<td>32 GiB</td>
+<td>12 GiB</td>
+<td>50 GB</td>
+<td>8 GB</td>
+<td>1 NVIDIA L4</td>
+</tr>
+</tbody>
+</table>
+<p>The manifest of a model gives its minimum and default class (<code>resources</code>). A spec can select
+a class in <code>execution.resource_class</code>. After <code>RESOURCE_EXHAUSTED</code>, the platform offers the
+next CPU class (<code>S</code> to <code>M</code> to <code>L</code> to <code>XL</code>). <code>XL</code> has no next class. It never offers <code>GPU</code> as a retry. The <code>GPU</code> class has
+the same memory as <code>L</code>.</p>
+<h3 id="the-gpu-class">The GPU class <span class="mapi-badge">v0.15</span><a class="headerlink" href="#the-gpu-class" title="Permanent link">&para;</a></h3>
+<p>The class <code>GPU</code> is the last class in the sequence. Thus a quota whose maximum is a CPU class
+refuses it. These rules keep GPU time for the models that use it:</p>
+<ul>
+<li>Validation refuses <code>GPU</code> for a model whose manifest does not set <code>resources.gpu</code>. The GPU
+  Job of Cloud Run has only the runner image <code>base-dl</code>, so it can run only these models.</li>
+<li>Validation shows a note when a model can use a GPU and the spec selects a CPU class.</li>
+<li>In v0.15, <code>dl.cnn_classifier</code> and <code>dl.finetune_classifier</code> set <code>resources.gpu</code>
+  (<a href="../../guides/deep-learning/#use-the-gpu-class">Deep learning</a>).</li>
+</ul>
+<p>The executor decides if the run gets a GPU:</p>
+<table>
+<thead>
+<tr>
+<th>Executor</th>
+<th>A run of class <code>GPU</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cloudrun-jobs</code></td>
+<td>Runs in the GPU Job of <code>base-dl</code>, when the deployment has it (Terraform <code>gpu_jobs</code>, off by default)</td>
+</tr>
+<tr>
+<td><code>docker</code></td>
+<td>Asks Docker for a GPU when <code>MAPI_DOCKER_GPUS=true</code></td>
+</tr>
+<tr>
+<td><code>docker</code> without <code>MAPI_DOCKER_GPUS</code>, <code>local-process</code></td>
+<td>Runs on the CPU</td>
+</tr>
+</tbody>
+</table>
+<p>When a run of class <code>GPU</code> sees no NVIDIA device, the supervisor writes the warning
+<code>GPU_UNAVAILABLE</code>, and the run continues on the CPU. The ledger meters a run of class <code>GPU</code>
+with the price of its class, also when the run used the CPU.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The GPU path is not tested. The <code>base-dl</code> CUDA image and the GPU Job of Cloud Run are not
+tested against GCP or on a GPU. Do a test with a small run before you use them. See
+<a href="../../operations/cloud-run/#gpu-jobs">Cloud Run</a>.</p>
+</div>
 <h2 id="three-levels">Three levels<a class="headerlink" href="#three-levels" title="Permanent link">&para;</a></h2>
 <p>The platform compares each request with a maximum of three policies. It starts with the
 most specific policy:</p>
@@ -5937,9 +6222,10 @@ dispatcher submits the run one time only when the limit clears.</p>
 </ul>
 <p>The prices come from a versioned <strong>price table</strong>. The default uses the list prices of Cloud
 Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. From v0.15 the
-class <code>GPU</code> also costs 0.0001867 USD for each accelerator-second (the Cloud Run L4 list price;
-not verified against a GCP bill). A deployment can set its own prices. Unit prices are integer nanos. Amounts are integer <strong>micros</strong>
-(1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
+class <code>GPU</code> also costs 0.0001867 USD for each accelerator-second. This is the Cloud Run list
+price of one L4 GPU. We did not compare it with a GCP bill. Class <code>XL</code> has no default price.
+A deployment can set its own prices. Unit prices are integer nanos. Amounts are integer
+<strong>micros</strong> (1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
 its ledger row.</p>
 <p>Each amount names the version of the price table that the platform used. New prices never
 change old costs.</p>

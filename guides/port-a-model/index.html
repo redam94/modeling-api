@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3177,6 +3297,17 @@
     <span class="md-ellipsis">
       
         What the notebook models of science needed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-platform-can-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the platform can show from your model v0.10–v0.15
       
     </span>
   </a>
@@ -5776,6 +5907,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#what-the-platform-can-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the platform can show from your model v0.10–v0.15
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5887,7 +6029,7 @@ other code.</p>
 <tr>
 <td><strong><code>SklearnModel</code></strong></td>
 <td><code>estimator(settings)</code></td>
-<td>It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions</td>
+<td>It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops, xgboost JSON, LightGBM text, CatBoost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions</td>
 </tr>
 <tr>
 <td><strong><code>CustomModel</code></strong></td>
@@ -5908,10 +6050,13 @@ other code.</p>
 <h2 id="1-pick-a-base-class-03-min">1. Pick a base class (0–3 min)<a class="headerlink" href="#1-pick-a-base-class-03-min" title="Permanent link">&para;</a></h2>
 <ul>
 <li>If your model is a <strong>PyMC</strong> model, use <code>mapi_pymc.PyMCModel</code>.</li>
-<li>If your model is an <strong>sklearn or xgboost estimator</strong> on a design matrix, use
-  <code>mapi_sklearn.SklearnModel</code> (or the quantile, bootstrap, conformal or classifier variants).</li>
+<li>If your model is an <strong>sklearn, xgboost, LightGBM or CatBoost estimator</strong> on a design matrix,
+  use <code>mapi_sklearn.SklearnModel</code> (or the quantile, bootstrap, conformal or classifier
+  variants). LightGBM and CatBoost need the extra <code>mapi-sklearn[gbm]</code>.</li>
 <li>For all other models (statsmodels, JAX, a Kalman filter, closed-form mathematics), use
-  <code>mapi_sdk.CustomModel</code>.</li>
+  <code>mapi_sdk.CustomModel</code>. A neural network that trains on many images also uses
+  <code>CustomModel</code>, with the hooks <code>fit_batches</code> and <code>score_batches</code> (see
+  <a href="../plugins/#fit-batches">Train on batches</a> and <a href="../deep-learning/">Deep learning</a>).</li>
 </ul>
 <h2 id="2-declare-the-data-contract-36-min">2. Declare the data contract (3–6 min)<a class="headerlink" href="#2-declare-the-data-contract-36-min" title="Permanent link">&para;</a></h2>
 <p>Write the dims and the variables that your model needs, in <strong>canonical names</strong>. For each dim,
@@ -6156,6 +6301,54 @@ three steps above. If your model is similar, see these sections:</p>
 <td>Users must upload the data of a case study</td>
 <td>An export case in <code>mapi_plugin_science.export.EXPORTS</code></td>
 <td><a href="../plugins/#data-for-a-case-study-mapi-plugin-science">Data for a case study</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-the-platform-can-show">What the platform can show from your model <span class="mapi-badge">v0.10–v0.15</span><a class="headerlink" href="#what-the-platform-can-show" title="Permanent link">&para;</a></h3>
+<p>These items are optional. Each one makes the run page or the model version show more:</p>
+<table>
+<thead>
+<tr>
+<th>You want</th>
+<th>What to use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard plots for the model</td>
+<td>The class attribute <code>plots</code>, a list of recipe ids. The <strong>Insert</strong> panel of the spec editor shows them first. A fit draws only the plots in <code>outputs.plots</code>.</td>
+<td><a href="../sklearn/#default-plots-and-metrics">Default plots and metrics</a></td>
+</tr>
+<tr>
+<td>Curves and values on the run page</td>
+<td><code>ctx.log_metric</code>, <code>ctx.log_params</code>, <code>ctx.set_tag</code> and <code>ctx.log_line</code> in <code>fit</code> and <code>score</code></td>
+<td><a href="../plugins/#tracking">Log metrics, params and tags</a></td>
+</tr>
+<tr>
+<td>The progress of each chain of your own sampler</td>
+<td><code>ctx.chains([...])</code>, and step metrics with the label <code>chain</code></td>
+<td><a href="../plugins/#a-model-with-its-own-sampler">A model with its own sampler</a></td>
+</tr>
+<tr>
+<td>Images, figures and small tables on the run page</td>
+<td><code>ctx.log_image</code>, <code>ctx.log_figure</code> and <code>ctx.log_table</code></td>
+<td><a href="../tracking/#log-images-figures-and-tables">Log images, figures and tables</a></td>
+</tr>
+<tr>
+<td>Training on many images without all of them in memory</td>
+<td><code>Capabilities(input="collection")</code>, <code>fit_batches</code> and <code>score_batches</code></td>
+<td><a href="../plugins/#fit-batches">Train on batches</a></td>
+</tr>
+<tr>
+<td>Checkpoints that a run can continue from</td>
+<td><code>ctx.fit_key</code> and <code>ctx.checkpoint_sink</code></td>
+<td><a href="../plugins/#fit-batches">Train on batches</a></td>
+</tr>
+<tr>
+<td>A side table that only the model reads, for example pretrained weights</td>
+<td><code>side_table_params</code> and <code>ctx.side_tables</code></td>
+<td><a href="../plugins/#model-side-tables">Read a side table in a model</a></td>
 </tr>
 </tbody>
 </table>
@@ -6426,13 +6619,15 @@ be a class, a tuple of classes or a function that returns them:</p>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>grid</code> on outputs that are images or maps, and <code>circular: true</code> (with a <code>period</code>
   attribute) on outputs that are angles</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>score_modes</code> that list only the modes that <code>score</code> can do</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>plots</code> with the standard plots of the model, if it has them</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> rules that join settings in a <code>model_validator</code>, not in <code>fit</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a <code>log_likelihood</code> group if users compare variants by <code>elpd_loo</code>, or
   <code>loo_valid=False</code> with a reason</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> settings as a <code>ModelSettings</code> subclass with defaults and descriptions (they become
   the form in the UI)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> a tiny spec, and <code>check_model</code> passes in CI</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> no pickle: native artifacts as skops, xgboost JSON or safetensors</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> no pickle: native artifacts as skops, xgboost JSON, LightGBM text, CatBoost JSON or
+  safetensors</li>
 </ul>
 </div>
 <p>For the full guides with examples, see <a href="../pymc/">PyMC</a>, <a href="../sklearn/">scikit-learn and xgboost</a>

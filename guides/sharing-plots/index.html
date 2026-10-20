@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5990,6 +6110,20 @@ version, not from what a plot tells about itself. Existing links to these plots 
 show them.</p>
 <p>An embed also contains its data inline. Thus you cannot embed a dataset that is larger than
 1.5 MB.</p>
+<p>The newer recipes follow the same rule:</p>
+<ul>
+<li>The classifier plots (<code>core.roc_pr</code>, <code>core.confusion</code>, v0.10), the MMM plots (<code>mmm.roi</code> and
+  the other <code>mmm.*</code> plots of v0.12) and the causal plots (<code>causal.*</code>, v0.13) are platform
+  recipes. You can embed them. The share step of Guided mode also offers the <code>causal.*</code>
+  plots.</li>
+<li>The deep-learning plots (<code>ml.training_curves</code>, <code>ml.confusion_epochs</code> and
+  <code>ml.misclassified</code>, v0.15) are in the <code>ml</code> pack. <code>ml.misclassified</code> is a Plotly plot. Thus
+  a render of it needs <code>MAPI_RENDER_PLOTLY_ENABLED</code> (see the note above).</li>
+</ul>
+<p>You save and share the plots of a model version. The images and tables that a run logs (the
+<strong>Media</strong> tab, v0.14) are not plots. To get their files, use <code>mapi runs media RUN --download
+DIR</code> or <code>api.runs.download_media</code> (see
+<a href="../tracking/#log-images-figures-and-tables">Log images, figures and tables</a>).</p>
 <h3 id="the-embed-page">The embed page<a class="headerlink" href="#the-embed-page" title="Permanent link">&para;</a></h3>
 <p>The link opens a page of the plot sandbox (<code>/embed/&lt;token&gt;</code>). The page reads the plot from the
 public <code>GET /v1/embeds/{token}</code> of the API. It draws the plot with the same safeguards as the

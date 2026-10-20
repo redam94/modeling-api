@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5773,6 +5893,22 @@ installed CLI makes that page.</p>
 <td><code>update</code>, <code>log_metric</code>, <code>log_metrics</code>, <code>log_params</code>, <code>set_tags</code>, <code>track</code>, <code>metrics</code>, <code>metric_history</code>, <code>params</code>; <code>list</code> also takes <code>parent_run_id</code>, <code>name</code>, <code>tags</code>, <code>filters</code>, <code>order_by</code> and <code>columns</code></td>
 </tr>
 <tr>
+<td><code>runs</code> media and comparison (v0.14)</td>
+<td><code>media</code>, <code>media_keys</code>, <code>get_media</code>, <code>download_media</code>, <code>log_image</code>, <code>log_table</code>, <code>keys</code>, <code>compare</code>; <code>create</code>, <code>fit</code> and <code>list</code> also take <code>experiment_id</code>, and <code>update</code> can move a run (<code>experiment_id</code>)</td>
+</tr>
+<tr>
+<td><code>experiments</code> (v0.14)</td>
+<td><code>list</code>, <code>get</code>, <code>find</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>add_runs</code>, <code>remove_runs</code></td>
+</tr>
+<tr>
+<td><code>run_views</code> (v0.14)</td>
+<td><code>list</code>, <code>find</code>, <code>create</code>, <code>update</code>, <code>delete</code></td>
+</tr>
+<tr>
+<td><code>datasets</code> uploads and collections (v0.15)</td>
+<td><code>get_upload</code>, <code>renew_upload</code>, <code>missing_images</code>, <code>upload_collection</code>, <code>upload_weights</code></td>
+</tr>
+<tr>
 <td><code>models</code></td>
 <td><code>list</code>, <code>get</code>, <code>versions</code>, <code>version</code>, <code>artifact</code>, <code>download</code>, <code>score</code></td>
 </tr>
@@ -6196,6 +6332,110 @@ commands with examples:</p>
 </tr>
 </tbody>
 </table>
+<p>Media, comparison, experiments and saved views (v0.14).
+<a href="../../guides/run-comparison/">Compare runs and use experiments</a> shows these commands with
+examples:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>--experiment<span class="w"> </span>EXP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--view<span class="w"> </span>VIEW<span class="o">]</span><span class="w"> </span>...
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>mapi<span class="w"> </span>runs<span class="w"> </span>media<span class="w"> </span>RUN<span class="w"> </span><span class="o">[</span>--key<span class="w"> </span>KEY<span class="o">]</span><span class="w"> </span><span class="o">[</span>--download<span class="w"> </span>DIR<span class="o">]</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-image<span class="w"> </span>RUN<span class="w"> </span>KEY<span class="w"> </span>FILE<span class="w"> </span><span class="o">[</span>--step<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--label<span class="w"> </span><span class="nv">K</span><span class="o">=</span>V<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>--caption<span class="w"> </span>TEXT<span class="o">]</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>mapi<span class="w"> </span>runs<span class="w"> </span>compare<span class="w"> </span>RUN<span class="w"> </span>RUN...<span class="w"> </span><span class="o">[</span>-k<span class="w"> </span>KEY<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>--agg<span class="w"> </span>last<span class="p">|</span>min<span class="p">|</span>max<span class="o">]</span><span class="w"> </span><span class="o">[</span>--all-params<span class="o">]</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>mapi<span class="w"> </span>runs<span class="w"> </span>views<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>-e<span class="w"> </span>EXP<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>save<span class="w"> </span>NAME<span class="w"> </span><span class="o">[</span>-f<span class="w"> </span>EXPR<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>-c<span class="w"> </span>REF<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>--order-by<span class="w"> </span>REF<span class="o">]</span><span class="w"> </span><span class="o">[</span>--tag<span class="w"> </span>K<span class="o">[=</span>V<span class="o">]]</span>...<span class="w"> </span><span class="o">[</span>-e<span class="w"> </span>EXP<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>rm<span class="w"> </span>VIEW<span class="w"> </span><span class="o">[</span>-y<span class="o">]</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>mapi<span class="w"> </span>experiments<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>--name<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--archived<span class="w"> </span><span class="p">|</span><span class="w"> </span>--active<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>create<span class="w"> </span>NAME<span class="w"> </span><span class="o">[</span>--description<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>show<span class="w"> </span>EXP
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>mapi<span class="w"> </span>experiments<span class="w"> </span>rename<span class="w"> </span>EXP<span class="w"> </span>NAME<span class="w"> </span><span class="p">|</span><span class="w"> </span>archive<span class="w"> </span>EXP<span class="w"> </span><span class="p">|</span><span class="w"> </span>unarchive<span class="w"> </span>EXP<span class="w"> </span><span class="p">|</span><span class="w"> </span>rm<span class="w"> </span>EXP<span class="w"> </span><span class="o">[</span>-y<span class="o">]</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>mapi<span class="w"> </span>experiments<span class="w"> </span>add<span class="w"> </span>EXP<span class="w"> </span>RUN...<span class="w"> </span><span class="p">|</span><span class="w"> </span>remove<span class="w"> </span>EXP<span class="w"> </span>RUN...
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>mapi<span class="w"> </span>fit<span class="w"> </span>spec.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--experiment<span class="w"> </span>EXP
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>mapi<span class="w"> </span>workflows<span class="w"> </span>run<span class="w"> </span>WF<span class="w"> </span>--experiment<span class="w"> </span>EXP
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runs ls --experiment</code>, <code>--view</code></td>
+<td><code>--experiment</code> (<code>-e</code>) takes an id or a name. <code>--view</code> uses the search of a saved view. Other options add to that search or replace a part of it</td>
+</tr>
+<tr>
+<td><code>runs media</code></td>
+<td>Lists the images and tables of the run. <code>--download DIR</code> writes each file as <code>KEY-LABELS-STEP.EXT</code></td>
+</tr>
+<tr>
+<td><code>runs log-image</code></td>
+<td>Adds a PNG or JPEG file (a maximum of 4 MB) to the run, also after the run ended. Needs the runner role (a token needs <code>runs:write</code>)</td>
+</tr>
+<tr>
+<td><code>runs compare</code></td>
+<td>Prints a table of metric values, then the params that are different. The default keys are the metrics that most of the runs have. <code>--all-params</code> also shows the params that are the same</td>
+</tr>
+<tr>
+<td><code>runs views save</code></td>
+<td>Replaces a view that has the same name. With <code>-e</code>, the view shows only the runs of that experiment</td>
+</tr>
+<tr>
+<td><code>experiments rm</code></td>
+<td>The runs stay, without an experiment. The saved views of the experiment are deleted. Asks you first (<code>--yes</code> skips this step)</td>
+</tr>
+<tr>
+<td><code>experiments add</code></td>
+<td>A run moves out of its previous experiment. An archived experiment accepts no runs</td>
+</tr>
+</tbody>
+</table>
+<p>Image collections and weights (v0.15). <a href="../../guides/image-data/#large-image-sets-collections">Image data</a>
+and <a href="../../guides/deep-learning/">Deep learning</a> show these commands with examples:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload-images<span class="w"> </span>DATASET<span class="w"> </span>DIR<span class="w"> </span><span class="o">[</span>--label-from-folder<span class="w"> </span><span class="p">|</span><span class="w"> </span>--manifest<span class="w"> </span>FILE<span class="w"> </span>--label-column<span class="w"> </span>C<span class="o">]</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="o">[</span>--id-column<span class="w"> </span>C<span class="o">]</span><span class="w"> </span><span class="o">[</span>--split-column<span class="w"> </span>C<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path-column<span class="w"> </span>C<span class="o">]</span><span class="w"> </span><span class="o">[</span>--size<span class="w"> </span>HxW<span class="o">]</span><span class="w"> </span><span class="o">[</span>--resize<span class="w"> </span>stretch<span class="p">|</span>crop<span class="p">|</span>pad<span class="o">]</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="o">[</span>--mode<span class="w"> </span>auto<span class="p">|</span>gray<span class="p">|</span>rgb<span class="o">]</span><span class="w"> </span><span class="o">[</span>--base-version<span class="w"> </span>N<span class="w"> </span><span class="p">|</span><span class="w"> </span>--no-base<span class="o">]</span><span class="w"> </span><span class="o">[</span>--part-size<span class="w"> </span>256MB<span class="o">]</span><span class="w"> </span><span class="o">[</span>--state<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--wait<span class="o">]</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>missing-images<span class="w"> </span>DATASET<span class="w"> </span>DIR<span class="w"> </span><span class="o">[</span>--manifest<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--base-version<span class="w"> </span>N<span class="w"> </span><span class="p">|</span><span class="w"> </span>--no-base<span class="o">]</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>mapi<span class="w"> </span>datasets<span class="w"> </span>upload-weights<span class="w"> </span>DATASET<span class="w"> </span>FILE.safetensors<span class="w"> </span><span class="o">[</span>--arch<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--no-wait<span class="o">]</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>mapi<span class="w"> </span>fit<span class="w"> </span>spec.yaml<span class="w"> </span>--remote<span class="w"> </span>@<span class="w"> </span>--resource-class<span class="w"> </span>GPU
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>datasets upload-images</code></td>
+<td>Calculates the SHA-256 of each image and uploads only the images that the base version does not have, in zip parts. With <code>--state</code>, run the same command again to continue an upload that stopped. Makes the dataset if it is not there</td>
+</tr>
+<tr>
+<td><code>datasets missing-images</code></td>
+<td>Shows how many images of the folder the dataset does not have. It uploads nothing</td>
+</tr>
+<tr>
+<td><code>datasets upload-weights</code></td>
+<td>Makes a weights dataset version from a <code>.safetensors</code> file. A model reads it as a side table. <code>--arch</code> gives the architecture JSON when the file does not have it. Waits for the ingest run by default</td>
+</tr>
+<tr>
+<td><code>--resource-class GPU</code></td>
+<td><code>fit --remote</code> and <code>workflows run</code> accept <code>GPU</code> (one NVIDIA L4). Only the models that use a GPU (<code>dl.cnn_classifier</code> and <code>dl.finetune_classifier</code>) run on it</td>
+</tr>
+</tbody>
+</table>
+<p><strong>v0.14.</strong> <code>runs.download_media</code> does a check of the size, the CRC32C and the SHA-256 of the
+item. <code>runs.log_image</code> accepts PNG or JPEG bytes or a file path. With <code>mapi-sdk</code>, it also
+accepts an array, a Pillow image or a <code>DataArray</code>. An item has a maximum of 4 MiB. The client
+can log media also after the run finished. <code>runs.compare</code> takes 2 to 10 run ids.
+<code>workflows.run(..., experiment_id=...)</code> puts the workflow run and each node run in the
+experiment. <a href="../../guides/run-comparison/">Compare runs and use experiments</a> shows these
+calls.</p>
+<p><strong>v0.15.</strong> <code>datasets.upload_collection(dataset, root, ...)</code> uploads a folder of images as a
+new collection version. It calculates the SHA-256 of each image. It asks the server for the
+images that the base version does not have (<code>missing_images</code>), and it uploads only these.
+The images go in deterministic zip parts of a maximum of <code>part_bytes</code>. With <code>state_file</code>, an
+upload that stopped continues: the client skips the parts that arrived and renews the
+upload links that expired. <code>base_version=None</code> compares with the latest ready collection
+version, and <code>base_version=0</code> uploads all images. <code>datasets.upload_weights(path, ...)</code>
+uploads a <code>.safetensors</code> file of network weights as a dataset version. Refer to
+<a href="../../guides/image-data/#large-image-sets-collections">Image data</a> and
+<a href="../../guides/deep-learning/#pretrained-weights">Deep learning</a>.</p>
 <p>Errors: for <code>QUOTA_EXCEEDED</code> and <code>RATE_LIMITED</code>, the CLI prints when to try again
 (<code>retry after 1h 30m</code>). With <code>--json</code>, the error document contains <code>retry_after_seconds</code>. No
 command prints a token. Tokens show as <code>mapi_&lt;prefix&gt;_…</code>.</p>
@@ -6251,8 +6491,8 @@ use the <code>local-process</code> executor with the real <code>mapi-runner</cod
 <p><code>mapi-plugin-science</code> has its own command. It writes the dataset of a pymc-challenges case
 study to a file that you can upload (<code>mapi datasets upload</code>, or <strong>Datasets → New dataset</strong> in
 the web app). It is not a <code>mapi</code> command:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>CASE<span class="w"> </span><span class="o">[</span>--challenges<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--out<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--spec<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--synthetic<span class="o">]</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>CASE<span class="w"> </span><span class="o">[</span>--challenges<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--out<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--spec<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--synthetic<span class="o">]</span>
 </span></code></pre></div>
 <table>
 <thead>

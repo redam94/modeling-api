@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5866,7 +5986,10 @@ draws), and the matrices of the model.</p>
 periods, and the prediction continues over them. The <code>core.decomposition</code> chart shows the
 level, the seasonal parts and the effect of the drivers from the <code>components</code> group. See
 <a href="../../models/causal/#tsbsts-bayesian-structural-time-series">Causal models and Bayesian structural time series</a>.
-<code>causal.impact</code> uses the same model to measure the effect of a change.</p>
+<code>causal.impact</code> uses the same model to measure the effect of a change (see
+<a href="../causal/">Measure the effect of a change</a>). Each fit of <code>ts.bsts</code> logs its structure as
+<code>bsts.*</code> params, and the noise and the error of the one-step-ahead predictions as metrics.
+See <a href="../tracking/#what-a-causal-fit-logs">What a causal fit logs</a>.</p>
 <h2 id="plots-of-hidden-states">Plots of hidden states <span class="mapi-badge">v0.10</span><a class="headerlink" href="#plots-of-hidden-states" title="Permanent link">&para;</a></h2>
 <p><code>ts.gaussian_hmm</code> and the statsmodels Markov switching model now include <code>core.state_sequence</code>
 in their standard plots. The plot shows the observed series above the probability of each state

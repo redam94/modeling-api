@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3972,6 +4092,17 @@
     <span class="md-ellipsis">
       
         The frequentist model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run tracking v0.11
       
     </span>
   </a>
@@ -5977,6 +6108,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#run-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run tracking v0.11
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#current-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6344,6 +6486,12 @@ carry-over together.</p>
 <p><code>geo</code> limits the measurement to that geo. The plugin skips a test after the data. It also
 skips a test that the fit window cuts (a holdout fit that ends in the test). It puts the
 skipped tests in a list.</p>
+<p>From v0.13, a geo-lift test that <code>causal.synthetic_control</code> measured can become a lift test.
+The workflow node <code>model.lift_test</code> makes the entry from the <code>impact</code> group of the causal
+model version. The workflow template <code>geo_lift_mmm</code> does the test, the lift test and the
+calibrated fit in one run. The report of the Guided template <code>geo_lift</code> shows the same entry
+to copy. See <a href="../../guides/causal/#feed-the-result-to-the-marketing-mix-model">Feed the result to the marketing mix model</a>
+and <a href="../causal/#from-a-geo-lift-test-to-a-lift-test-for-the-mmm">From a geo-lift test to a lift test for the MMM</a>.</p>
 <h2 id="derived-quantities">Derived quantities<a class="headerlink" href="#derived-quantities" title="Permanent link">&para;</a></h2>
 <p>Ask for them in <code>outputs.derived</code>. The plugin calculates them at fit time over the first
 <code>outputs.ui_draws</code> draws. It keeps them in the bundle:</p>
@@ -6939,6 +7087,18 @@ results, and it fits in seconds.</p>
 <p><code>estimator: constrained</code> (a convex program) needs the optional <code>cvxpy</code> dependency of
 mmm-framework. The images of the platform do not install it. Thus, the fit fails with
 <code>CAPABILITY_UNSUPPORTED</code>.</p>
+<h2 id="run-tracking">Run tracking <span class="mapi-badge">v0.11</span><a class="headerlink" href="#run-tracking" title="Permanent link">&para;</a></h2>
+<p>Each fit logs params and metrics to its run (v0.12). The params tell the version of
+mmm-framework, the number of channels, periods and cells, and the link. The metrics give the
+return on spend of each channel with a range (<code>roi</code>, <code>roi_p05</code>, <code>roi_p95</code>), the marginal
+return (<code>mroi</code>), the share of each channel and the baseline share. Thus you can search, sort
+and compare MMM runs by the return of a channel:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--filter<span class="w"> </span><span class="s2">"metric.roi{channel=tv} &gt; 2"</span><span class="w"> </span>--column<span class="w"> </span><span class="s2">"metric.roi{channel=tv}"</span>
+</span></code></pre></div>
+<p>The NUTS fits of <code>mmm.bayesian</code>, <code>mmm.nested</code> and <code>mmm.multivariate</code> also send the progress
+of each chain and the step metrics. See <a href="../../guides/tracking/#mmm">What an MMM fit logs</a>,
+<a href="../../guides/mmm/#live-progress">Live progress and cancel</a> and
+<a href="../../guides/run-comparison/">Compare runs and use experiments</a>.</p>
 <h2 id="current-limits">Current limits<a class="headerlink" href="#current-limits" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The platform does not give these mmm-framework features: the multiplicative (log-log)

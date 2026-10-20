@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5929,6 +6049,10 @@ compare runs and to group them into experiments, see
 </thead>
 <tbody>
 <tr>
+<td><a href="../../concepts/run-tracking/">Run tracking and experiments</a></td>
+<td>The concepts: what a run records, and how the platform stores and searches it</td>
+</tr>
+<tr>
 <td><a href="../../reference/http-api/#run-tracking">HTTP API: Run tracking</a></td>
 <td>The endpoints, the DTOs and the search grammar</td>
 </tr>
@@ -6024,6 +6148,8 @@ become scalar series.</p>
 <a href="#mmm">What an MMM fit logs</a>.</p>
 <p><strong>Causal models and <code>ts.bsts</code>.</strong> Each fit logs the effect of the change and the fit before
 the change. See <a href="#what-a-causal-fit-logs">What a causal fit logs</a>.</p>
+<p><strong>Neural networks.</strong> The <code>dl</code> models log their training curves, a log line for each epoch
+and images of the predictions. See <a href="#what-a-network-fit-logs">What a network fit logs</a>.</p>
 <p><strong>Workflows.</strong> The <code>search.grid</code> node logs each grid point and its scores. The
 <code>model.backtest</code> node logs the metrics of each fold. See <a href="#workflow-nodes">Workflow nodes</a>.</p>
 <h2 id="mmm">What an MMM fit logs <span class="mapi-badge">v0.12</span><a class="headerlink" href="#mmm" title="Permanent link">&para;</a></h2>
@@ -6288,6 +6414,8 @@ the target.</p>
 </tr>
 </tbody>
 </table>
+<p>For the models, see <a href="../../models/causal/">Causal models and Bayesian structural time series</a>.
+For the procedures, see <a href="../causal/">Measure the effect of a change</a>.</p>
 <p>Find the geo-lift tests with an effect that is more than zero with a probability of 95% or
 more:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--filter<span class="w"> </span><span class="s2">"metric.p_effect_positive &gt;= 0.95"</span><span class="w"> </span>--column<span class="w"> </span>metric.effect_total
@@ -6301,8 +6429,8 @@ more:</p>
 <li>one log line for each epoch, with the fields <code>epoch</code>, <code>train_loss</code>, <code>val_loss</code> and
   <code>images_per_second</code>;</li>
 <li>the params <code>dl.arch.*</code>, <code>dl.train.*</code>, <code>dl.backend</code>, <code>dl.device</code> and <code>dl.parameters</code>;</li>
-<li>the media <code>val_predictions</code> and <code>confusion</code> (label <code>split=val</code>) at a maximum of 20
-  evaluations.</li>
+<li>for a classification, the media <code>val_predictions</code> and <code>confusion</code> (label <code>split=val</code>) at a
+  maximum of 20 evaluations.</li>
 </ul>
 <p>See <a href="../deep-learning/#read-the-training">Deep learning</a>.</p>
 <h2 id="keys-labels-and-values">Keys, labels and values<a class="headerlink" href="#keys-labels-and-values" title="Permanent link">&para;</a></h2>
@@ -6340,7 +6468,8 @@ more:</p>
   <code>settings.adstock.l_max</code>). A param value is a boolean, a number or a text of a maximum of
   6000 characters.</li>
 <li>A param does not change. If you log a param again with the same value, nothing occurs. A
-  different value is an error.</li>
+  different value through the API is an error (409). A different value from the runner is
+  dropped, and the first value stays.</li>
 <li>A tag value is a text of a maximum of 1000 characters. The last value is kept. Tag keys
   that start with <code>mapi.</code> are for the platform only.</li>
 <li>A step is an integer, 0 or more. For a stepped series, the first value of a step is kept.

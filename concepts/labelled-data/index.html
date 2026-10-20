@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1912,6 +1948,17 @@
     <span class="md-ellipsis">
       
         Tree datasets v0.8
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images-and-collections-v014" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images and collections v0.14
       
     </span>
   </a>
@@ -2289,6 +2336,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5795,6 +5926,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#images-and-collections-v014" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images and collections v0.14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#wire-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5932,7 +6074,7 @@ The schema of your data and the <code>dim_policies</code> of the spec can only m
 <tbody>
 <tr>
 <td><code>dims</code>, <code>dtype</code></td>
-<td>The shape contract (<code>float64</code>, <code>int64</code>, <code>bool</code>, <code>str</code>, <code>datetime64[ns]</code>, …)</td>
+<td>The shape contract: <code>float64</code>, <code>float32</code>, <code>int64</code>, <code>int32</code>, <code>uint8</code> (v0.14, 8-bit image pixels), <code>bool</code>, <code>str</code> or <code>datetime64[ns]</code></td>
 </tr>
 <tr>
 <td><code>role</code></td>
@@ -6117,6 +6259,13 @@ platform merges their variables into that dataset before the pipeline
 (<code>TreeSchema.flat</code> statically, <code>mapi_sdk.tree.select_nodes</code> on the arrays). A model that
 declares <code>capabilities.input = "tree"</code> also gets the whole tree. Refer to
 <a href="../../guides/tree-data/">Tree datasets, HDF5 and multi-file versions</a>.</p>
+<h2 id="images-and-collections-v014">Images and collections <span class="mapi-badge">v0.14</span><a class="headerlink" href="#images-and-collections-v014" title="Permanent link">&para;</a></h2>
+<p>An image dataset is also labelled data: <code>pixels(image, y, x, channel)</code> with the dtype <code>uint8</code>
+and the target <code>label(image)</code>. A small set of images of one size is one array (an image
+folder). From v0.15, a large image set is an <strong>image collection</strong>: a dataset version with the
+layout <code>collection</code>. It keeps each image as a file in packs that the tenant shares between
+versions. A dataset version thus has one of three layouts: <code>dataset</code> (one <code>xr.Dataset</code>),
+<code>tree</code> (an <code>xr.DataTree</code>) or <code>collection</code>. See <a href="../image-collections/">Image data and collections</a>.</p>
 <h2 id="wire-formats">Wire formats<a class="headerlink" href="#wire-formats" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

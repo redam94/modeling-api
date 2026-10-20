@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6314,7 +6434,7 @@ files:</p>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">health</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">api</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">base_url</span><span class="p">,</span> <span class="n">health</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">health</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>http://127.0.0.1:8000 ok 0.15.0
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>http://127.0.0.1:8000 ok 0.15.1
 </span></code></pre></div>
 <p><code>Client()</code> finds its settings in the same sequence as the CLI:</p>
 <ol>
@@ -6346,7 +6466,10 @@ files:</p>
    ingest.</li>
 </ol>
 <p>It accepts a path, <code>bytes</code> or an <code>xr.Dataset</code> (with the <code>xarray</code> extra). CSV and Parquet files
-need a <code>mapping=IngestMapping(…)</code>. Zarr zips and netCDF files describe themselves.</p>
+need a <code>mapping=IngestMapping(…)</code>. Zarr zips and netCDF files describe themselves. A zip of
+images needs <code>IngestMapping(format="image_folder", …)</code> (v0.14, see
+<a href="../image-data/#upload-the-zip">Image data</a>). A folder of images goes up as a collection with
+<code>datasets.upload_collection</code> (v0.15, see <a href="#v015">below</a>).</p>
 <p>The version has the schema that the ingest run checked:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">schema</span> <span class="o">=</span> <span class="n">versions</span><span class="p">[</span><span class="s2">"eu_media_daily"</span><span class="p">]</span><span class="o">.</span><span class="n">data_schema</span>  <span class="c1"># the DataSchema the ingest run checked</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">print</span><span class="p">({</span><span class="n">dim</span><span class="p">:</span> <span class="n">spec</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">dim</span><span class="p">,</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">dims</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
@@ -6452,7 +6575,7 @@ weeks. Then it does an evaluation on the holdout. Then it fits again on all the 
 <tr>
 <td><code>RunTrackingFrame</code></td>
 <td><code>tracking</code> (v0.11): the metric series, params or tags changed</td>
-<td>Live only. A <code>TrackingFrame</code> with the changed series summaries.</td>
+<td>Live only. A <code>TrackingFrame</code> with the changed series summaries. From v0.14, its field <code>media</code> is <code>True</code> when the run logged new images or tables.</td>
 </tr>
 <tr>
 <td><code>RunEnd</code></td>
@@ -6977,8 +7100,8 @@ role. An API token needs the <code>runs:write</code> scope.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>runs.update(run_id, name=…, note=…, tags=…)</code></td>
-<td><code>PATCH /v1/runs/{run_id}</code>. Only the arguments that you give change. <code>None</code> clears the name or the note.</td>
+<td><code>runs.update(run_id, name=…, note=…, tags=…, experiment_id=…)</code></td>
+<td><code>PATCH /v1/runs/{run_id}</code>. Only the arguments that you give change. <code>None</code> clears the name, the note or (v0.14) the experiment.</td>
 </tr>
 <tr>
 <td><code>runs.log_metric(run_id, key, value, step=None, labels=None, ts=None)</code></td>
@@ -7094,6 +7217,10 @@ and (v0.14) <code>experiment_id</code>. For the grammar, see
 <td>Compare 2 to 10 runs (<code>RunCompare</code>)</td>
 </tr>
 <tr>
+<td><code>runs.create(run, experiment_id=None)</code>, <code>runs.fit(spec_id, revision, experiment_id=None)</code></td>
+<td>Start a run in an experiment</td>
+</tr>
+<tr>
 <td><code>experiments.list(name=None, archived=None)</code>, <code>get</code>, <code>find(name_or_id)</code></td>
 <td>Find experiments</td>
 </tr>
@@ -7162,6 +7289,10 @@ and (v0.14) <code>experiment_id</code>. For the grammar, see
 <td><code>datasets.renew_upload(dataset_id, upload_id)</code></td>
 <td>A fresh signed PUT for an upload whose file did not arrive</td>
 </tr>
+<tr>
+<td><code>datasets.upload_weights(source, *, dataset=None, dataset_id=None, arch=None, message=None, wait=True, timeout=None)</code></td>
+<td>Upload a <code>.safetensors</code> file of network weights as a weights dataset. <code>arch</code> is a dict or a JSON file, for a file without <code>mapi_arch</code> metadata. See <a href="../deep-learning/#pretrained-weights">Deep learning</a>.</td>
+</tr>
 </tbody>
 </table>
 <p><code>mapi_client.collections</code> has the parts of <code>upload_collection</code> that do not need a server:
@@ -7226,7 +7357,7 @@ are zip files with no compression. The same images always give the same bytes.</
 </tr>
 <tr>
 <td><code>datasets</code></td>
-<td><code>create</code>, <code>list</code>, <code>get</code>, <code>find</code>, <code>ensure</code>, <code>create_upload</code>, <code>create_version</code>, <code>versions</code>, <code>version</code>, <code>wait_version</code>, <code>upload</code>, <code>artifact</code>, <code>download</code></td>
+<td><code>create</code>, <code>list</code>, <code>get</code>, <code>find</code>, <code>ensure</code>, <code>create_upload</code>, <code>create_version</code>, <code>versions</code>, <code>version</code>, <code>wait_version</code>, <code>upload</code>, <code>artifact</code>, <code>download</code>; v0.8: <code>upload_files</code>, <code>inspect</code>, <code>inspect_file</code>; v0.15: <code>upload_collection</code>, <code>missing_images</code>, <code>get_upload</code>, <code>renew_upload</code>, <code>upload_weights</code></td>
 </tr>
 <tr>
 <td><code>specs</code></td>
@@ -7234,7 +7365,15 @@ are zip files with no compression. The same images always give the same bytes.</
 </tr>
 <tr>
 <td><code>runs</code></td>
-<td><code>create</code>, <code>fit</code>, <code>get</code>, <code>list</code>, <code>wait</code>, <code>stream_events</code>, <code>events</code>, <code>logs</code>, <code>plots</code>, <code>cancel</code>, <code>resume</code>, <code>retry</code>; v0.11: <code>update</code>, <code>log_metric</code>, <code>log_metrics</code>, <code>log_params</code>, <code>set_tags</code>, <code>track</code>, <code>metrics</code>, <code>metric_history</code>, <code>params</code></td>
+<td><code>create</code>, <code>fit</code>, <code>get</code>, <code>list</code>, <code>wait</code>, <code>stream_events</code>, <code>events</code>, <code>logs</code>, <code>plots</code>, <code>cancel</code>, <code>resume</code>, <code>retry</code>; v0.11: <code>update</code>, <code>log_metric</code>, <code>log_metrics</code>, <code>log_params</code>, <code>set_tags</code>, <code>track</code>, <code>metrics</code>, <code>metric_history</code>, <code>params</code>; v0.14: <code>media</code>, <code>media_keys</code>, <code>get_media</code>, <code>download_media</code>, <code>log_image</code>, <code>log_table</code>, <code>keys</code>, <code>compare</code></td>
+</tr>
+<tr>
+<td><code>experiments</code> (v0.14)</td>
+<td><code>list</code>, <code>get</code>, <code>find</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>add_runs</code>, <code>remove_runs</code></td>
+</tr>
+<tr>
+<td><code>run_views</code> (v0.14)</td>
+<td><code>list</code>, <code>find</code>, <code>create</code>, <code>update</code>, <code>delete</code></td>
 </tr>
 <tr>
 <td><code>models</code></td>

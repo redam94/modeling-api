@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1877,6 +1913,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Where the split happens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kinds-of-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kinds of split
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2278,6 +2331,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5715,6 +5852,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Where the split happens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kinds-of-split" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kinds of split
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5957,6 +6111,49 @@ Then the evaluation is too optimistic. Validation reports this:</p>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">#    its state would be learned from holdout data</span>
 </span></code></pre></div>
 <p>To change the error to a warning that you accept, set <code>allow_leakage: true</code> on the split.</p>
+<h3 id="kinds-of-split">Kinds of split<a class="headerlink" href="#kinds-of-split" title="Permanent link">&para;</a></h3>
+<p><code>data.split.kind</code> selects how the platform holds out data:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Holds out</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>time_holdout</code></td>
+<td>The end of an ordered dim: the <code>last</code> periods, a <code>fraction</code> or the periods <code>after</code> a coordinate</td>
+</tr>
+<tr>
+<td><code>last_per_group</code></td>
+<td>The last rows along a dim in each group</td>
+</tr>
+<tr>
+<td><code>as_of</code></td>
+<td>The coordinates after <code>as_of</code>, with an optional <code>gap</code></td>
+</tr>
+<tr>
+<td><code>leave_group_out</code></td>
+<td>Full groups of a dim: the <code>groups</code> that you name, or <code>n</code> random groups</td>
+</tr>
+<tr>
+<td><code>mask_block</code></td>
+<td>Random blocks over some dims, for a <code>fraction</code> of the cells</td>
+</tr>
+<tr>
+<td><code>column</code> <span class="mapi-badge">v0.14</span></td>
+<td>The rows with a value of a column that is in <code>holdout</code>, for example <code>split = test</code></td>
+</tr>
+<tr>
+<td><code>stratified</code> <span class="mapi-badge">v0.14</span></td>
+<td>The same random <code>fraction</code> of the rows in each level of a class label (<code>by</code>). A level with one row stays in training.</td>
+</tr>
+</tbody>
+</table>
+<p>An <a href="../image-collections/">image collection</a> takes only the row splits <code>column</code>,
+<code>stratified</code> and <code>leave_group_out</code>. For the fields of each kind, see the
+<a href="../../reference/spec-format/#column-and-stratified-splits">spec format</a>.</p>
 <h2 id="evaluate-the-way-you-will-forecast">Evaluate the way you will forecast<a class="headerlink" href="#evaluate-the-way-you-will-forecast" title="Permanent link">&para;</a></h2>
 <p><code>fit.mode: evaluate_then_refit</code> (the default) does these steps:</p>
 <pre class="mermaid"><code>sequenceDiagram

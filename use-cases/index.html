@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Seven problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.">
+        <meta name="description" content="Nine problems modeling-api is built for - marketing-mix budget planning on mmm-framework, the effect of a campaign or a geo-lift test, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice, image classification with deep learning and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -532,6 +534,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -696,6 +726,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#effect-of-a-campaign-or-a-geo-lift-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effect of a campaign or a geo-lift test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#governed-forecasting-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -744,6 +785,17 @@
     <span class="md-ellipsis">
       
         Customer choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-classification-and-deep-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image classification and deep learning
       
     </span>
   </a>
@@ -1778,6 +1830,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2267,6 +2325,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5685,6 +5827,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#effect-of-a-campaign-or-a-geo-lift-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effect of a campaign or a geo-lift test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#governed-forecasting-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5733,6 +5886,17 @@
     <span class="md-ellipsis">
       
         Customer choice
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-classification-and-deep-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image classification and deep learning
       
     </span>
   </a>
@@ -5801,6 +5965,12 @@ scorecard, governance policies, the explorers, endpoints, snippets, webhooks and
 <td>What does each channel bring in, and where must the next euro go?</td>
 </tr>
 <tr>
+<td><a href="#effect-of-a-campaign-or-a-geo-lift-test">Effect of a campaign</a></td>
+<td>Guided <em>Effect of a campaign</em> or <em>Geo-lift test</em>, or the <code>geo_lift_mmm</code> workflow</td>
+<td><code>causal.impact</code>, <code>causal.synthetic_control</code> or <code>causal.did</code></td>
+<td>Did the campaign work, how large was the effect, and how sure are we?</td>
+</tr>
+<tr>
 <td><a href="#governed-forecasting-pipeline">Governed forecasting pipeline</a></td>
 <td>The <code>ts_readiness_arimax</code> workflow, scheduled</td>
 <td><code>ts.sarimax</code> (ARIMAX), checked against naive forecasts</td>
@@ -5831,6 +6001,12 @@ scorecard, governance policies, the explorers, endpoints, snippets, webhooks and
 <td>Which product does a shopper pick, and how does a price change shift that?</td>
 </tr>
 <tr>
+<td><a href="#image-classification-and-deep-learning">Image classification</a></td>
+<td><code>mapi datasets upload-images</code>, or <strong>Folder of images</strong> in the web app</td>
+<td><code>dl.cnn_classifier</code>, <code>dl.finetune_classifier</code>, <code>tabular.image_logistic</code> or <code>sklearn.multiclass_classifier</code></td>
+<td>Which class is in each image, and how sure is the model?</td>
+</tr>
+<tr>
 <td><a href="#science-models-images-fields-maps-and-graphs">Science models</a></td>
 <td>A pymc-challenges tutorial, then a science recipe (for example <code>sci_spatial_ladder</code>)</td>
 <td>15 <code>sci.*</code> models, for example <code>sci.areal_bym2</code>, <code>sci.heat_plate</code> and <code>sci.network_latent_space</code></td>
@@ -5857,16 +6033,59 @@ start. The platform recognises MFF long tables and Meridian-shaped tables direct
   the allocation in your bounds, the uplift and the probability that it helps. It also gives
   the stability of each move and the efficient frontier. A planning tool can call an
   <strong>endpoint</strong> for the plan.</li>
-<li><strong>Proof before the plan.</strong> The default marketing-mix policy fits the model again on
+<li>
+<p><strong>Proof before the plan.</strong> The default marketing-mix policy fits the model again on
   shuffled sales and with fake noise channels. It checks the effect signs and the holdout
   error, and records the evidence. The <code>mmm_governed</code> workflow does all of this in one run:
-  collinearity check, fit, policy, report and evidence pack.</li>
+  collinearity check, fit, policy, report and evidence pack.</p>
+</li>
+<li>
+<p><strong>More shapes of the problem</strong> (v0.12). <code>mmm.nested</code> measures effects that go through an
+  intermediate measure, for example visits or awareness. <code>mmm.multivariate</code> measures the
+  effects on two or more related products, with halo or cannibalization effects.
+  <code>mmm.bayesian</code> can have channel effects that change over time, and counts or shares as
+  the result. The nested and the multivariate models have Guided templates.</p>
+</li>
+<li><strong>Charts for the marketing team</strong>: ROI with mROAS, adstock decay, the contribution
+  waterfall, spend share against effect share, and lift tests next to the estimates of the
+  model.</li>
+<li><strong>A record of each fit.</strong> Each MMM fit logs its ROI, mROI and contribution share for each
+  channel. You can compare the fits on the compare page.</li>
 </ul>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">Your first MMM in Guided mode</a> →
 <a href="../guides/guided-modelling/">Priors, lift tests and the scorecard</a> →
 <a href="../tutorials/optimise-a-budget/">Optimise a budget</a>.
 Writing your own MMM spec: <a href="../guides/mmm/">the marketing-mix guide</a> and <a href="../models/mmm-framework/">mmm-framework on the platform</a>.</p>
+<h2 id="effect-of-a-campaign-or-a-geo-lift-test">Effect of a campaign or a geo-lift test<a class="headerlink" href="#effect-of-a-campaign-or-a-geo-lift-test" title="Permanent link">&para;</a></h2>
+<p><strong>The question.</strong> A campaign, a launch or a price change started on a known date. Did it
+change the result? How large was the effect, and how sure are we? If the campaign ran in some
+markets only, what does the test tell the marketing mix?</p>
+<p><strong>The data.</strong> One of these:</p>
+<ul>
+<li>One series with a date column, and optional control series that the change did not
+  affect. Start a minimum of 3 periods before the change. Two years is better.</li>
+<li>The same number for many markets. The campaign ran in some markets only.</li>
+<li>The same number for many units. Some units got the change, and some units never got it.</li>
+</ul>
+<p><strong>What you get.</strong></p>
+<ul>
+<li>The actual values against a prediction of the values <strong>without</strong> the change, with a 90%
+  band. The effect in each period, the cumulative effect, the relative effect and the
+  probability that the effect is more than zero.</li>
+<li><code>causal.pre_fit</code>: the fit before the change. Before the change, the actual values must be
+  in the band of the prediction.</li>
+<li>For a geo-lift test, the weights of the other markets (<code>causal.donor_weights</code>). The report
+  of the <em>Geo-lift test</em> template has a card that makes the lift-test entry for your
+  marketing mix. The <code>geo_lift_mmm</code> workflow does the test, makes the lift test and fits
+  <code>mmm.bayesian</code> with it.</li>
+<li>For difference-in-differences, an event study with one coefficient for each period before
+  and after the change.</li>
+</ul>
+<p><strong>Start here.</strong>
+<a href="../guides/causal/">Measure the effect of a change</a> →
+<a href="../models/causal/">Causal models and BSTS</a> →
+<a href="../models/mmm-framework/#lift-tests">Lift tests</a>.</p>
 <h2 id="governed-forecasting-pipeline">Governed forecasting pipeline<a class="headerlink" href="#governed-forecasting-pipeline" title="Permanent link">&para;</a></h2>
 <p><strong>The question.</strong> Finance publishes a weekly demand forecast. Other teams use it for their
 plans. Each Monday, Finance must update it with the latest data. The person who approves it
@@ -6003,6 +6222,31 @@ trip.</p>
 <p><strong>Start here.</strong>
 <a href="../guides/guided-tutorial/">The Guided tutorial</a> (pick <em>Customer choice</em>) →
 <a href="../reference/models/">Built-in models</a>.</p>
+<h2 id="image-classification-and-deep-learning">Image classification and deep learning<a class="headerlink" href="#image-classification-and-deep-learning" title="Permanent link">&para;</a></h2>
+<p><strong>The question.</strong> Which class is in each image: a product type, a defect, a cell type or a
+species? How sure is the model, and which images does it get wrong?</p>
+<p><strong>The data.</strong> A folder of PNG, JPEG or TIFF images. The first folder of each path gives the
+label, or a manifest table gives the label and the split. Upload a few thousand small images
+as a zip (<code>image_folder</code>), or up to 1 000 000 images as an image collection. The client
+uploads only the images that the dataset does not have, and an upload that stops can
+continue.</p>
+<p><strong>What you get.</strong></p>
+<ul>
+<li><code>dl.cnn_classifier</code> (a small ResNet) and <code>dl.finetune_classifier</code> (from pretrained
+  weights) on JAX. The run page shows the training and validation curves while the network
+  trains. The run logs images of the predictions and the confusion matrix. Early stopping,
+  checkpoints and draws from a Laplace approximation or MC dropout.</li>
+<li><code>tabular.image_logistic</code>, a small Bayesian model on the main patterns of the images, with
+  a range for each probability. <code>dl.embed</code> gives image features to a simple head.</li>
+<li>Plots for classes: one-vs-rest ROC curves, the confusion matrix, the confusion over the
+  epochs and a grid of the wrong validation images.</li>
+<li>The <strong>Image gallery</strong> of the Data Explorer, with an even sample for each label and split.</li>
+<li>The resource class <code>GPU</code> for large training runs. The GPU path is not tested yet.</li>
+</ul>
+<p><strong>Start here.</strong>
+<a href="../guides/image-data/">Image data</a> →
+<a href="../guides/deep-learning/">Deep learning</a> →
+<a href="../guides/run-comparison/">Compare runs and use experiments</a>.</p>
 <h2 id="science-models-images-fields-maps-and-graphs">Science models: images, fields, maps and graphs<a class="headerlink" href="#science-models-images-fields-maps-and-graphs" title="Permanent link">&para;</a></h2>
 <p><strong>The question.</strong> A research notebook fits a Bayesian model to an image, a field, a map or
 a graph. For example: which districts have a high risk of a disease, and does a covariate

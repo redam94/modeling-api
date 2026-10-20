@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1863,6 +1899,17 @@
     <span class="md-ellipsis">
       
         Uploads and the HDF5 guard v0.8
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-media-and-uploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run media and uploads v0.14
       
     </span>
   </a>
@@ -2339,6 +2386,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5824,6 +5955,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#run-media-and-uploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run media and uploads v0.14
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#outputs-are-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6032,6 +6174,21 @@ behaviour against a real Cloud Run Jobs execution (see
 <tr>
 <td>Make the sandbox read other files or load code with a crafted HDF5 file (v0.8)</td>
 <td>The <a href="#uploads-and-the-hdf5-guard">HDF5 guard</a> refuses links to other files, external storage, virtual datasets and filter plugins before a reader opens the file.</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Forge the images or tables that a run logs, or make the API decode a hostile image (v0.14)</td>
+<td>The supervisor uploads each media item through a create-only POST policy on the <code>media/</code> prefix of its attempt. The server downloads the object, calculates its SHA-256 again and reads only the PNG or JPEG header. It never decodes the pixels. It copies the verified bytes create-only to the bundles bucket. See <a href="#run-media-and-uploads">Run media and uploads</a>.</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Change the images of a collection, or make a version read images that it does not own (v0.15)</td>
+<td>Each pack has an address from the size, CRC32C and MD5 that the store calculated. The platform trusts no hash from the client. The packs of a tenant are under the prefix of that tenant. Each read of an image makes sure that its SHA-256 is correct.</td>
+<td><strong>Enforced</strong></td>
+</tr>
+<tr>
+<td>Stop the sandbox with an image that is very large when it is decoded</td>
+<td>The ingest reads the size from the header of each image before it decodes the image. It refuses images of more than 4096 × 4096 pixels and datasets that are more than the budget.</td>
 <td><strong>Enforced</strong></td>
 </tr>
 <tr>
@@ -6281,6 +6438,48 @@ file with <code>INGEST_UNSAFE_FILE</code> when the file has:</p>
 <p>The supervisor also points <code>HDF5_PLUGIN_PATH</code> at an empty directory in the environment of the
 worker. The inspect run uses the same guard and reads only metadata. Refer to
 <a href="../../guides/tree-data/#security-the-hdf5-guard">Tree datasets, HDF5 and multi-file versions</a>.</p>
+<h3 id="run-media-and-uploads">Run media and uploads <span class="mapi-badge">v0.14</span><a class="headerlink" href="#run-media-and-uploads" title="Permanent link">&para;</a></h3>
+<p>From v0.14, more bytes come into the platform: the images and tables that a run logs, image
+uploads, and from v0.15 image collections and network weights. The same rules apply to all
+of them. The API reads only small JSON and headers. A sandbox opens the files. The control
+plane compares each object with the values that the store calculated.</p>
+<p><strong>Run media.</strong> The worker writes each item to its scratch directory and sends a message to
+the supervisor. The supervisor reads the file with <code>O_NOFOLLOW</code> (a regular file only), with a
+size limit of 8 MiB. It calculates the SHA-256 and does a check of the format. Then it
+uploads the bytes through a create-only POST policy on the <code>media/</code> prefix of the attempt
+(<code>RunSpec.media_prefix</code>). The sandbox never writes to a shared path. When the server gets the
+<code>media</code> event, it does these steps:</p>
+<ol>
+<li>It downloads the object from the runs bucket (a maximum of 8 MiB).</li>
+<li>It calculates the SHA-256 again and does a check of the size and the CRC32C.</li>
+<li>It does a check of the format with <code>check_media</code>. An image must be PNG or JPEG, with a
+   maximum of 4096 pixels on each side. <code>sniff_image</code> reads the size from the header and
+   does not decode the pixels. A table must be JSON that validates as a <code>MediaTable</code>.</li>
+<li>It writes the bytes create-only to the bundles bucket, at
+   <code>t/{tenant}/run-media/{run}/&lt;sha256&gt;.&lt;ext&gt;</code>.</li>
+</ol>
+<p>If a check fails, the server keeps nothing and writes the warning <code>MEDIA_REJECTED</code>. A caption
+is untrusted text. An item that you log through the API (<code>POST /v1/runs/{run_id}/media</code>, a
+maximum of 4 MiB) goes through the same checks.</p>
+<p><strong>Image folders</strong> (v0.14). Only the ingest run opens the zip. It refuses a path that is
+absolute, that contains <code>..</code> or a backslash, or that is not in the zip. It reads the size of
+each image from its header before it decodes the image. It refuses images of more than
+4096 × 4096 pixels, images with more than 8 bits, files of more than 32 MiB and datasets that
+need more values than the budget.</p>
+<p><strong>Image collections</strong> (v0.15). The client uploads the manifest and the parts with signed PUT
+URLs for one object each. The collection ingest run reads each part in ranges. It never
+downloads a part in full. For each entry, it makes sure that the CRC-32 and the SHA-256 agree
+with the name of the entry, and it reads the header of the image. The finalizer calculates
+the address of each part again from the stored size, CRC32C and MD5 of the pinned
+generation. Then it copies the part create-only to <code>t/{tenant}/blobs/packs/{digest}.zip</code>.
+Each later run calculates the address of each pack again before it reads it, and each read of
+an image makes sure that its SHA-256 is correct. A pack with a different address stops the
+run with <code>INTEGRITY_FAILURE</code>. <code>get_upload</code> and <code>renew_upload</code> need <code>update</code> on the dataset,
+because their answer holds a signed PUT URL.</p>
+<p><strong>Network weights</strong> (v0.15). A <code>safetensors</code> upload has a JSON header and raw tensors. It
+cannot run code when it loads. The ingest refuses a header of more than 8 MiB, more than 4096
+tensors and more parameters than the limit of the upload. The SDK reads safetensors files
+with numpy only.</p>
 <h3 id="outputs-are-claims">Outputs are claims<a class="headerlink" href="#outputs-are-claims" title="Permanent link">&para;</a></h3>
 <p>A run can write only under the prefix of its own attempt, through a POST policy with a size
 range. When the run finishes, the control plane does not read its outputs. It lists them. It
@@ -6333,6 +6532,10 @@ The CLI removes escape sequences before it prints.</p>
   image must not contain numpy, xarray, PyMC, the SDK or a plugin. The import-linter
   contracts run against the installed packages in the server image build.</li>
 <li>The web image installs JavaScript dependencies with <code>--frozen-lockfile --ignore-scripts</code>.</li>
+<li>From v0.15, the import-linter contracts also forbid <code>mapi_jax</code>, <code>jax</code>, <code>flax</code> and <code>optax</code> in
+  the control plane and in the supervisor. The build of the <code>base-dl</code> runner image fails if
+  it contains <code>mapi-pymc</code>, <code>mapi-sklearn</code>, one of the plugin packages <code>mapi-plugin-mmm</code>,
+  <code>-tabular</code>, <code>-ts</code>, <code>-causal</code> or <code>-science</code>, <code>torch</code> or <code>tensorflow</code>.</li>
 <li>The OpenAPI explorer of this documentation site loads a vendored, hash-pinned Redoc bundle.
   It sends no request outside the site.</li>
 </ul>
@@ -6363,6 +6566,11 @@ The CLI removes escape sequences before it prints.</p>
   Redoc from a public CDN. Use the <a href="../../reference/openapi/">OpenAPI explorer</a> or
   <code>/openapi.json</code> instead.</li>
 <li>The Vite dev server does not enforce the CSP of the app (see the table).</li>
+<li>The platform keeps run media and the image packs of collections until the tenant is
+  deleted. A deleted dataset version does not delete its packs, because other versions can
+  use them (v0.14, v0.15).</li>
+<li>The GPU path (the <code>base-dl</code> CUDA image and the GPU Job of Cloud Run) is not tested against
+  GCP or on a GPU (v0.15).</li>
 <li>With the <code>local-process</code> executor, run code runs as the uid of the orchestrator. Thus, it
   can read the control key of the shim and the bundle-signing key. The orchestrator is
   non-dumpable and logs a warning at start-up. Run only trusted plugin code in this mode. See

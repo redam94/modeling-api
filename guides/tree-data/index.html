@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6131,6 +6251,12 @@ drops a group without a warning.</p>
 <td><code>tree_schema.json</code> (<code>TreeSchema</code>: one <code>DataSchema</code> for each node)</td>
 <td>A file with groups, or a version with sources below the root</td>
 </tr>
+<tr>
+<td><code>collection</code> (v0.15)</td>
+<td><code>manifest.parquet</code>, <code>collection.json</code> and packs of images that the versions share</td>
+<td><code>schema.json</code></td>
+<td>A large set of images. It is not a tree. See <a href="../image-data/#large-image-sets-collections">Large image sets: collections</a>.</td>
+</tr>
 </tbody>
 </table>
 <p>A <code>DatasetVersion</code> gives the layout in <code>layout</code>. A tree version also has <code>tree_schema</code>, and
@@ -6912,6 +7038,7 @@ full list of controls.</p>
   <code>side_tables.node</code>.</li>
 <li><a href="../../reference/http-api/#m4">HTTP API reference</a>: the inspect endpoints and the DTOs.</li>
 <li><a href="../plugins/">Write a step or model plugin</a>: the contract kit.</li>
+<li><a href="../image-data/">Image data</a>: image folders and image collections (v0.14 and v0.15).</li>
 </ul>
 
 

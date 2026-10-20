@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2132,6 +2168,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5653,7 +5773,26 @@ never ignores the actuals.</p>
 <p><strong><a href="capabilities/">Capabilities and manifests</a></strong></p>
 <p>The static data that a model declares about itself: representation, score modes,
 outputs, derived quantities and the preprocessing that it owns. An output can be a field
-on a grid or an angle on a circle.</p>
+on a grid or an angle on a circle. The default plots of a score run follow the shape of
+each output (v0.10).</p>
+</li>
+<li>
+<p><strong><a href="run-tracking/">Run tracking and experiments</a></strong> <span class="mapi-badge">v0.11</span></p>
+<p>Each run keeps its metrics, params, tags, notes, log lines and (v0.14) images and
+tables. Search runs by their results. Group them in experiments, save views of the runs
+table and compare 2 to 10 runs.</p>
+</li>
+<li>
+<p><strong><a href="image-collections/">Image data and collections</a></strong> <span class="mapi-badge">v0.14</span></p>
+<p>An image folder becomes one <code>uint8</code> array. An image collection (v0.15) keeps up to
+1 000 000 images in shared packs, uploads only new images and gives batches to the
+networks.</p>
+</li>
+<li>
+<p><strong><a href="causal-effects/">Measure the effect of a change</a></strong> <span class="mapi-badge">v0.13</span></p>
+<p>Actual values against a prediction of the values without the change. Three causal
+designs, the <code>impact</code> group and the path from a geo-lift test to a calibrated marketing
+mix model.</p>
 </li>
 <li>
 <p><strong><a href="tenancy-and-auth/">Tenancy and authentication</a></strong> <span class="mapi-badge">v0.3</span></p>
@@ -5663,7 +5802,8 @@ the platform authorizes each request.</p>
 <li>
 <p><strong><a href="quotas-and-cost/">Quotas and cost</a></strong> <span class="mapi-badge">v0.3</span></p>
 <p>Quotas in vCPU-seconds for each token, each tenant and the full platform. Priority for
-interactive and batch runs. The exact cost of each run, from a versioned price table.</p>
+interactive and batch runs. The exact cost of each run, from a versioned price table.
+The resource classes, with the <code>GPU</code> class of v0.15.</p>
 </li>
 <li>
 <p><strong><a href="guided-mode/">Guided mode</a></strong> <span class="mapi-badge">v0.4</span></p>
@@ -5736,6 +5876,30 @@ deterministic <em>Help me choose</em> ranking.</p>
 <tr>
 <td><strong>Run</strong></td>
 <td>A unit of work (<code>fit</code>, <code>score</code>, …) that the platform sends to an executor as JSON.</td>
+</tr>
+<tr>
+<td><strong>Metric, param, tag</strong></td>
+<td>The tracking data of a run (v0.11). A metric is a series of points with a key and labels. A param does not change. A tag can change.</td>
+</tr>
+<tr>
+<td><strong>Experiment</strong></td>
+<td>A named group of runs in a project (v0.14). A run is in one experiment or in no experiment.</td>
+</tr>
+<tr>
+<td><strong>Media</strong></td>
+<td>The images, figures and small tables that a run logs (v0.14)</td>
+</tr>
+<tr>
+<td><strong>Resource class</strong></td>
+<td>The size of the machine of a run: <code>S</code>, <code>M</code>, <code>L</code>, <code>XL</code> or, from v0.15, <code>GPU</code></td>
+</tr>
+<tr>
+<td><strong>Image collection</strong></td>
+<td>A dataset version with the layout <code>collection</code> (v0.15): a manifest of images and packs of image files, shared in the tenant</td>
+</tr>
+<tr>
+<td><strong>Counterfactual</strong></td>
+<td>The values without a change, which a model predicts. The effect of the change is the actual value minus the counterfactual. Also the score mode that scores a scenario against a baseline.</td>
 </tr>
 <tr>
 <td><strong>Workflow</strong></td>

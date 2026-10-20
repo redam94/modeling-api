@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2290,6 +2326,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6151,6 +6271,10 @@ specs, models and plots) through the API. No role or flag gives this access.</p>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">can</span><span class="p">(</span><span class="n">ProjectRole</span><span class="o">.</span><span class="n">RUNNER</span><span class="p">,</span> <span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="o">.</span><span class="n">RUN</span><span class="p">))</span>  <span class="c1"># True</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">can</span><span class="p">(</span><span class="n">ProjectRole</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">,</span> <span class="n">Action</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="o">.</span><span class="n">KILL_SWITCH</span><span class="p">))</span>  <span class="c1"># False: operators only</span>
 </span></code></pre></div>
+<p><strong>Uploads</strong> <span class="mapi-badge">v0.15</span>: <code>get_upload</code> and <code>renew_upload</code> need
+<code>update</code> on the dataset, as <code>create_upload</code>, because their answer holds a signed PUT URL. A
+person who can only read the dataset can ask which images a collection does not have
+(<code>blobs/missing</code>), but cannot write its uploads.</p>
 <p><strong>Experiments and saved views</strong> <span class="mapi-badge">v0.14</span> have no permissions of
 their own. They use the permissions of runs: a viewer can read them, and a runner (or a token
 with <code>runs:write</code>) can make, change and delete them.</p>

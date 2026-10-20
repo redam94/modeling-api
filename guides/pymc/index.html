@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -3272,6 +3392,17 @@
     <span class="md-ellipsis">
       
         Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plots-for-bayesian-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots for Bayesian checks
       
     </span>
   </a>
@@ -5826,6 +5957,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#plots-for-bayesian-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plots for Bayesian checks
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -6145,6 +6287,42 @@ message in plain language and a suggested action:</p>
 <li><code>DIVERGENCES</code></li>
 <li><code>TREE_DEPTH</code></li>
 </ul>
+<h3 id="plots-for-bayesian-checks">Plots for Bayesian checks<a class="headerlink" href="#plots-for-bayesian-checks" title="Permanent link">&para;</a></h3>
+<p>These plots of the core pack read the groups of a PyMC bundle. They are not default plots.
+Add them to <code>outputs.plots</code>, or in the plot builder:</p>
+<table>
+<thead>
+<tr>
+<th>Plot</th>
+<th>What it shows</th>
+<th>The fit must keep</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core.loo_pit</code> (v0.10)</td>
+<td>The LOO-PIT check of calibration and the PSIS Pareto k of each observation</td>
+<td><code>keep: {log_likelihood: true, posterior_predictive: ...}</code></td>
+</tr>
+<tr>
+<td><code>core.energy</code> (v0.12)</td>
+<td>The energy plot of the sampler and the BFMI of each chain</td>
+<td>Nothing more: an MCMC fit writes <code>energy</code> to <code>sample_stats</code></td>
+</tr>
+<tr>
+<td><code>core.prior_posterior</code> (v0.12)</td>
+<td>The prior and the posterior of each parameter, with their overlap</td>
+<td>The <code>prior</code> group: <code>prior_predictive: {draws: N}</code> or <code>keep: {prior: true}</code></td>
+</tr>
+</tbody>
+</table>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">outputs</span><span class="p">:</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">plots</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">core.convergence</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">core.loo_pit</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">core.energy</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">core.prior_posterior</span><span class="p p-Indicator">]</span>
+</span></code></pre></div>
+<p>When two or more versions of a model have <code>elpd_loo</code> (or <code>elpd_waic</code>), <strong>Compare</strong> in the
+Model Explorer shows the <code>core.model_comparison</code> plot (v0.10). See
+<a href="../model-explorer/#compare-model-versions">Compare model versions</a> and
+<a href="../plots/#the-standard-catalog">the plot catalog</a>.</p>
 <h2 id="expected-vs-predictive-and-counterfactuals">Expected vs predictive, and counterfactuals<a class="headerlink" href="#expected-vs-predictive-and-counterfactuals" title="Permanent link">&para;</a></h2>
 <p><code>output.kind: expected</code> returns the Deterministic that you named in <code>expected</code> (without
 observation noise). <code>output.kind: predictive</code> returns draws of the observed variable.</p>
@@ -6165,52 +6343,52 @@ is skipped. Thus give real predictive draws, also for counts.</p>
 <p>If you declare a <code>FrozenPredictorSpec</code>, the platform can compile one PyTensor function. This
 function calculates your responses for many inputs and scenarios at the same time. Use it for
 response curves and what-if grids:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">RADON_SCHEMA</span><span class="p">,</span> <span class="n">RADON_SPEC_YAML</span><span class="p">,</span> <span class="n">RadonModel</span><span class="p">,</span> <span class="n">radon_dataset</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_fast_score</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span><span class="p">,</span> <span class="n">fit_spec</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">Registry</span><span class="p">()</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">RadonModel</span><span class="p">)</span>  <span class="c1"># declares fast_score_spec = FrozenPredictorSpec(</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1">#                                  response_exprs={"y": "mu"}, input_vars=["floor"])</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">data</span> <span class="o">=</span> <span class="n">radon_dataset</span><span class="p">()</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">RADON_SPEC_YAML</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">RADON_SCHEMA</span><span class="p">)</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RadonModel</span><span class="p">()</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="n">predictor</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">frozen_predictor</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">floors</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"obs"</span><span class="p">])),</span>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="s2">"scenario"</span><span class="p">,</span> <span class="s2">"obs"</span><span class="p">],</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">"scenario"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"basement"</span><span class="p">,</span> <span class="s2">"mixed"</span><span class="p">,</span> <span class="s2">"ground floor"</span><span class="p">]},</span>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="p">)</span>
-</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="n">grid</span> <span class="o">=</span> <span class="n">predictor</span><span class="o">.</span><span class="n">predict</span><span class="p">({</span><span class="s2">"floor"</span><span class="p">:</span> <span class="n">floors</span><span class="p">})</span>  <span class="c1"># one compiled call for every scenario</span>
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="nb">print</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>  <span class="c1"># ('sample', 'scenario', 'obs')</span>
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="n">report</span> <span class="o">=</span> <span class="n">check_fast_score</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>  <span class="c1"># fast path == exact path within MCSE</span>
-</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">)</span>  <span class="c1"># True</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">RADON_SCHEMA</span><span class="p">,</span> <span class="n">RADON_SPEC_YAML</span><span class="p">,</span> <span class="n">RadonModel</span><span class="p">,</span> <span class="n">radon_dataset</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_fast_score</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span><span class="p">,</span> <span class="n">fit_spec</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">Registry</span><span class="p">()</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">RadonModel</span><span class="p">)</span>  <span class="c1"># declares fast_score_spec = FrozenPredictorSpec(</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1">#                                  response_exprs={"y": "mu"}, input_vars=["floor"])</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">data</span> <span class="o">=</span> <span class="n">radon_dataset</span><span class="p">()</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">fit_spec</span><span class="p">(</span><span class="n">RADON_SPEC_YAML</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">RADON_SCHEMA</span><span class="p">)</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">model</span> <span class="o">=</span> <span class="n">RadonModel</span><span class="p">()</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">predictor</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">frozen_predictor</span><span class="p">(</span><span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">floors</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s2">"obs"</span><span class="p">])),</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="s2">"scenario"</span><span class="p">,</span> <span class="s2">"obs"</span><span class="p">],</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s2">"scenario"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"basement"</span><span class="p">,</span> <span class="s2">"mixed"</span><span class="p">,</span> <span class="s2">"ground floor"</span><span class="p">]},</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="p">)</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="n">grid</span> <span class="o">=</span> <span class="n">predictor</span><span class="o">.</span><span class="n">predict</span><span class="p">({</span><span class="s2">"floor"</span><span class="p">:</span> <span class="n">floors</span><span class="p">})</span>  <span class="c1"># one compiled call for every scenario</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="nb">print</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="s2">"y"</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>  <span class="c1"># ('sample', 'scenario', 'obs')</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="n">report</span> <span class="o">=</span> <span class="n">check_fast_score</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">bundle</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>  <span class="c1"># fast path == exact path within MCSE</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">)</span>  <span class="c1"># True</span>
 </span></code></pre></div>
 <p>The contract check <code>mapi_pymc.testing.check_fast_score(plugin, fitted, ds)</code> makes sure that the
 fast path agrees with the exact scores within the Monte Carlo error.</p>
 <h2 id="test-it">Test it<a class="headerlink" href="#test-it" title="Permanent link">&para;</a></h2>
 <p>Use the contract kit of the SDK:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">radon_dataset</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">check_model</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">SPEC</span> <span class="o">=</span> <span class="s2">"""</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="s2">apiVersion: mapi/v1</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="s2">kind: ModelSpec</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="s2">metadata: {name: radon, project: demo}</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="s2">data: {dataset: dataset://demo/radon@latest}</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="s2">model:</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="s2">  use: acme.radon@^1</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="s2">  fit: {mode: train_only, engine: pymc, tune: 100, draws: 100, chains: 2, seed: 3}</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="s2">"""</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">report</span> <span class="o">=</span> <span class="n">check_model</span><span class="p">(</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">Radon</span><span class="p">,</span> <span class="n">ModelFixture</span><span class="p">(</span><span class="n">spec</span><span class="o">=</span><span class="n">SPEC</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">radon_dataset</span><span class="p">(),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">RADON_SCHEMA</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">Registry</span><span class="p">())</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="p">)</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_pymc.examples</span><span class="w"> </span><span class="kn">import</span> <span class="n">radon_dataset</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registry</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_sdk.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFixture</span><span class="p">,</span> <span class="n">check_model</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">SPEC</span> <span class="o">=</span> <span class="s2">"""</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="s2">apiVersion: mapi/v1</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="s2">kind: ModelSpec</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="s2">metadata: {name: radon, project: demo}</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="s2">data: {dataset: dataset://demo/radon@latest}</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="s2">model:</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="s2">  use: acme.radon@^1</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="s2">  fit: {mode: train_only, engine: pymc, tune: 100, draws: 100, chains: 2, seed: 3}</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="s2">"""</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">report</span> <span class="o">=</span> <span class="n">check_model</span><span class="p">(</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    <span class="n">Radon</span><span class="p">,</span> <span class="n">ModelFixture</span><span class="p">(</span><span class="n">spec</span><span class="o">=</span><span class="n">SPEC</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">radon_dataset</span><span class="p">(),</span> <span class="n">raw_schema</span><span class="o">=</span><span class="n">RADON_SCHEMA</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">Registry</span><span class="p">())</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="p">)</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
 </span></code></pre></div>
 <p>Keep the test fits very small (<code>tune: 100, draws: 100, chains: 2</code>, <code>engine: pymc</code>). Then the
 tests are fast and give the same result each time.</p>

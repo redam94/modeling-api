@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1803,6 +1833,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2292,6 +2328,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5868,6 +5988,22 @@ it needs, and what you can do with the result.</p>
 <td>What each channel adds to your results for each market, ROI for each channel, what-if budgets</td>
 </tr>
 <tr>
+<td>Marketing mix with an intermediate measure (v0.12)</td>
+<td>What each channel adds to one national result, and how much of the effect goes through a measure such as visits or awareness</td>
+</tr>
+<tr>
+<td>Marketing mix for related products (v0.12)</td>
+<td>What each channel adds to two or more national results at the same time, with one budget plan for all of them</td>
+</tr>
+<tr>
+<td>Effect of a campaign (v0.13)</td>
+<td>The effect of a campaign, a launch or a price change on one series, with a range</td>
+</tr>
+<tr>
+<td>Geo-lift test (v0.13)</td>
+<td>The effect of a campaign that ran only in some markets. The result can calibrate a marketing mix model.</td>
+</tr>
+<tr>
 <td>Weekly forecast</td>
 <td>One weekly or daily series, forecast with a probable range</td>
 </tr>
@@ -5881,6 +6017,11 @@ it needs, and what you can do with the result.</p>
 </tr>
 </tbody>
 </table>
+<p>If you are not sure which template applies, use the <strong>Help me choose</strong> panel above the cards.
+It asks some plain questions and gives the applicable analyses and models, with the reasons
+(see <a href="../choosing-a-model/">Choosing a model</a>). The two marketing-mix templates of v0.12 are in
+<a href="../guided-modelling/#mmm-templates">The marketing-mix templates</a>. The two causal templates
+are in <a href="../causal/">Measure the effect of a change</a>.</p>
 <p>Select <strong>Geo marketing mix</strong>.</p>
 <h2 id="2-your-data">2. Your data<a class="headerlink" href="#2-your-data" title="Permanent link">&para;</a></h2>
 <ol>
@@ -5927,7 +6068,9 @@ optional.</p>
   media.</li>
 <li><strong>Experiments you have run</strong> take lift tests or geo holdouts. For each experiment, give the
   channel and the market, the dates, the change in spend, and the measured change in results
-  with its uncertainty. The model uses each experiment as extra evidence.</li>
+  with its uncertainty. The model uses each experiment as extra evidence. If you measured a
+  geo-lift test with the <strong>Geo-lift test</strong> template, its report gives the values to type
+  here (see <a href="../guided-modelling/#lift-test-from-a-geo-lift-fit">A lift test from a geo-lift fit</a>).</li>
 </ul>
 <p><strong>Preview what this means</strong> runs a quick simulation in the sandbox. It shows what your beliefs
 mean before a fit:</p>

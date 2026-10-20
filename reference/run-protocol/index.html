@@ -475,6 +475,8 @@
       
         
       
+        
+      
     
     
     
@@ -527,6 +529,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1638,6 +1668,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2127,6 +2163,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -6585,7 +6705,7 @@ from one domain is never valid in a different domain.</p>
 <tr>
 <td><code>warning</code></td>
 <td><code>WarningPayload{code, message, untrusted_text?}</code></td>
-<td>v0.15: <code>GPU_UNAVAILABLE</code> when a run of the GPU class sees no NVIDIA device. The run continues on the CPU.</td>
+<td>The run continues. v0.11: <code>TRACKING_BUDGET</code> (<a href="#tracking-budgets">Tracking budgets</a>). v0.14: the media warnings (<a href="#media">Media</a>). v0.15: <code>GPU_UNAVAILABLE</code> when a run of the GPU class sees no NVIDIA device (the run continues on the CPU), <code>VIEW_SAMPLE_FAILED</code> when a collection fit cannot decode the sample for its views, and <code>CHECKPOINT_SKIPPED</code> (<a href="#checkpoints-of-networks">Checkpoints of networks</a>). <a href="../../operations/troubleshooting/#warnings-on-a-run">Troubleshooting</a> tells what to do.</td>
 </tr>
 <tr>
 <td><code>checkpoint</code></td>
@@ -7013,7 +7133,9 @@ The names in <code>checkpoint_prefix</code> are:</p>
 <p><code>&lt;key&gt;</code> has 16 to 64 lowercase hex characters (the fit key). The <code>checkpoint</code> event has
 <code>segment</code> = the epochs done and no <code>draws_done</code>. The samplers keep the names
 <code>ckpt-&lt;key&gt;.draws.zarr.zip</code> and <code>ckpt-&lt;key&gt;.meta.json</code>. The supervisor uploads
-<code>.safetensors</code> files with the content type <code>application/octet-stream</code>.</p>
+<code>.safetensors</code> files with the content type <code>application/octet-stream</code>. A <code>meta.json</code> has a
+maximum of 16 MiB. If it is larger, the worker does not save the checkpoint and sends the
+warning <code>CHECKPOINT_SKIPPED</code>. A resume ignores a <code>meta.json</code> that is larger.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <p>The supervisor exits with <code>0</code> only after it uploads the manifest and sends the <code>complete</code>
 event. <code>failure_class_for_exit()</code> gives the failure class of the code. All other non-zero

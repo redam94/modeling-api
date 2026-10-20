@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The problems modeling-api solves, and a fair comparison with notebooks plus an ad-hoc Flask app, with workflow orchestrators, with marketing-mix vendors and libraries, and with generic ML model serving - including when you should use something else.">
+        <meta name="description" content="The problems modeling-api solves, and a fair comparison with notebooks plus an ad-hoc Flask app, with workflow orchestrators, with experiment trackers, with marketing-mix vendors and libraries, and with generic ML model serving - including when you should use something else.">
       
       
         <meta name="author" content="Matthew Reda">
@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -532,6 +534,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -683,6 +713,17 @@
     <span class="md-ellipsis">
       
         Compared with workflow orchestrators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compared-with-experiment-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compared with experiment trackers
       
     </span>
   </a>
@@ -1767,6 +1808,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2256,6 +2303,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -5696,6 +5827,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compared-with-experiment-trackers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compared with experiment trackers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compared-with-marketing-mix-vendors-and-libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5817,6 +5959,16 @@ production. Their analysis must be repeatable and defensible.</p>
 <td>Posterior summaries, posterior predictive checks, stacking weights and plots are <strong>workflow nodes</strong>. The <code>bayes_workflow_audit</code> recipe runs the checks of a careful Bayesian workflow for each model that gives draws. Model ladders compare variants by <code>elpd_loo</code> (<a href="../tutorials/complex-workflows/">Complex workflows</a>)</td>
 </tr>
 <tr>
+<td><strong>Nobody knows which run was the best</strong></td>
+<td>The loss curves are in the output of a notebook. The settings of the best run are in the memory of one person</td>
+<td>Each run keeps its <strong>metrics, params, tags, notes and images</strong>. Model code, workflow nodes and you can log to it. Filter and sort the runs by a metric, save the search as a view, compare 2 to 10 runs side by side and group them in experiments (<a href="../guides/tracking/">Track metrics</a>, <a href="../guides/run-comparison/">Compare runs</a>)</td>
+</tr>
+<tr>
+<td><strong>Nobody can tell if the campaign worked</strong></td>
+<td>Someone compares the weeks before and after the campaign, and the season gives the "effect"</td>
+<td><strong>Causal models</strong> compare the actual values with a prediction of the values without the change, with a range: CausalImpact, a synthetic control for geo-lift tests, and difference-in-differences. The result of a geo-lift test becomes a lift test for the MMM (<a href="../guides/causal/">Measure the effect of a change</a>)</td>
+</tr>
+<tr>
 <td><strong>You find data problems after the model</strong></td>
 <td>Gaps, a constant driver or a series that wanders show in the residuals one week later</td>
 <td>The <strong>Data Explorer</strong> makes a profile of each upload in the sandbox. It shows quality warnings, the stationarity of each series, cross-correlation with the KPI by lag, STL and collinearity (<a href="../guides/data-explorer/">Explore a dataset</a>)</td>
@@ -5857,7 +6009,7 @@ production. Their analysis must be repeatable and defensible.</p>
 <tr>
 <td>Freedom</td>
 <td>Any library, any code</td>
-<td>Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, demand and choice, and 15 science models for images, fields, maps and graphs. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment is planned for a later release, first for allow-listed teams (<a href="../roadmap/">roadmap</a>)</td>
+<td>Any PyMC or scikit-learn model through the plugin contract. Built-in models for MMM (mmm-framework), twelve statsmodels time-series models, forecasting, causal effects, demand, choice and classification, 15 science models for images, fields, maps and graphs, and neural networks on JAX for tables and images. Your own plugins run now on a deployment that you control (installed into its runner). Upload to a shared deployment is planned for a later release, first for allow-listed teams (<a href="../roadmap/">roadmap</a>)</td>
 </tr>
 <tr>
 <td>Preprocessing at score time</td>
@@ -5868,6 +6020,11 @@ production. Their analysis must be repeatable and defensible.</p>
 <td>Forecasts and new groups</td>
 <td>The result depends on what the code does with a row or date that it did not see</td>
 <td>Declared for each dim and checked before compute, with typed errors (<code>UNSEEN_LEVELS</code>, <code>HORIZON_EXCEEDS_FIT</code>, …)</td>
+</tr>
+<tr>
+<td>Run history</td>
+<td>Cell outputs that the next run replaces</td>
+<td>Metrics, params, tags, notes and images of each run, with search, saved views, experiments and a compare page</td>
 </tr>
 <tr>
 <td>How to repeat the analysis</td>
@@ -5920,7 +6077,7 @@ are the <em>statistics</em> of one analysis, not a data pipeline.</p>
 <tr>
 <td>A step is</td>
 <td>Any Python function or container</td>
-<td>A node from a catalog (56 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, scores, posterior summaries, predictive checks, comparisons and stacking weights, governance, reports and plots) or a saved sub-workflow</td>
+<td>A node from a catalog (57 nodes: 17 statistical tests, transforms, 7 train/test plans, order searches, fits, backtests, scores, posterior summaries, predictive checks, comparisons and stacking weights, lift tests from causal models, governance, reports and plots) or a saved sub-workflow</td>
 </tr>
 <tr>
 <td>Between steps</td>
@@ -5952,6 +6109,48 @@ are the <em>statistics</em> of one analysis, not a data pipeline.</p>
 <p>Use an orchestrator to move data between systems and to call modeling-api. Use a workflow
 for the analysis. The two tools work well together. For example, an orchestrator uploads the
 data of the new week, and the dataset trigger runs the workflow.</p>
+<h2 id="compared-with-experiment-trackers">Compared with experiment trackers<a class="headerlink" href="#compared-with-experiment-trackers" title="Permanent link">&para;</a></h2>
+<p>MLflow Tracking, Weights &amp; Biases and similar tools are very good at the log of an
+experiment. They work with almost any code and any framework. In modeling-api, run tracking
+is part of the platform. It is not a separate server.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Experiment tracker</th>
+<th>modeling-api run tracking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What logs</td>
+<td>Your code, with the client of the tracker</td>
+<td>The platform logs the params of each spec, the progress of each chain, the loss and the holdout metrics. Model code, workflow nodes and you can add metrics, params, tags, notes and images</td>
+</tr>
+<tr>
+<td>Where the run occurs</td>
+<td>Where your code runs</td>
+<td>In a new sandbox. The run sends its log through the run protocol, with budgets for each run</td>
+</tr>
+<tr>
+<td>Link to the model</td>
+<td>An artifact that you log</td>
+<td>The run makes a signed model version. The same version goes to the scorecard, governance and endpoints</td>
+</tr>
+<tr>
+<td>Compare runs</td>
+<td>Yes</td>
+<td>Yes: filters, saved views, experiments and a compare page for 2 to 10 runs</td>
+</tr>
+<tr>
+<td>Export</td>
+<td>Native</td>
+<td>An MLflow export is planned for v1.0</td>
+</tr>
+</tbody>
+</table>
+<p>Use a tracker for code that runs outside the platform. Use run tracking for the models that
+the platform fits and serves.</p>
 <h2 id="compared-with-marketing-mix-vendors-and-libraries">Compared with marketing-mix vendors and libraries<a class="headerlink" href="#compared-with-marketing-mix-vendors-and-libraries" title="Permanent link">&para;</a></h2>
 <p>Marketing-mix models are the first domain pack, thus users ask about this comparison most.
 modeling-api is <strong>not</strong> a new MMM methodology. It does not compete with the statistics of the
@@ -5995,13 +6194,13 @@ same platform, and connect the result to your own tools.</p>
 <td>The model</td>
 <td>The model of the vendor</td>
 <td>Your model, in code</td>
-<td>The Bayesian (or fast frequentist) MMM of mmm-framework, national or pooled over geos and products, or your own plugin</td>
+<td>The Bayesian (or fast frequentist) MMM of mmm-framework, national or pooled over geos and products. Also effects through an intermediate measure (<code>mmm.nested</code>), several related results (<code>mmm.multivariate</code>) and effects that change over time. Or your own plugin</td>
 </tr>
 <tr>
 <td>Priors and calibration</td>
 <td>Different for each vendor, frequently hidden</td>
 <td>Your priors, in code</td>
-<td>Business priors as ROI or share ranges, and lift tests. You can see all of them in the spec</td>
+<td>Business priors as ROI or share ranges, and lift tests. A geo-lift test on the platform can make the lift test. You can see all of them in the spec</td>
 </tr>
 <tr>
 <td>Proof that it does not fit noise</td>
@@ -6025,7 +6224,7 @@ same platform, and connect the result to your own tools.</p>
 <td>Other models on the same platform</td>
 <td>No</td>
 <td>No</td>
-<td>Forecasting, macro systems (VAR/VECM), store demand, customer choice, science models, your own</td>
+<td>Forecasting, causal effects, macro systems (VAR/VECM), store demand, customer choice, classification, science models, neural networks, your own</td>
 </tr>
 <tr>
 <td>Who owns the posterior</td>
@@ -6088,12 +6287,12 @@ trade-offs.</p>
 <tr>
 <td>Latency</td>
 <td>Milliseconds, warm replicas, autoscaling, GPUs</td>
-<td>Batch: one sandboxed run for each call (seconds, plus cold start in the cloud). Instant what-if from grids that the platform calculates before. No GPUs and no warm scorers yet</td>
+<td>Batch: one sandboxed run for each call (seconds, plus cold start in the cloud). Instant what-if from grids that the platform calculates before. A <code>GPU</code> class gives a training run one GPU. No warm scorers yet</td>
 </tr>
 <tr>
 <td>Frameworks</td>
 <td>Almost any</td>
-<td>PyMC, scikit-learn, xgboost, statsmodels, mmm-framework and hand-written models through the plugin contract</td>
+<td>PyMC, scikit-learn, xgboost, LightGBM, CatBoost, statsmodels, mmm-framework, JAX and Flax, and hand-written models through the plugin contract</td>
 </tr>
 <tr>
 <td>Who it is for</td>
@@ -6108,7 +6307,9 @@ trade-offs.</p>
 <li><strong>You need answers from the exact model in less than one second</strong>, or thousands of
   requests each second. Use a model server. modeling-api answers sliders immediately from
   grids that it calculates before. But an exact score is a sandboxed run.</li>
-<li><strong>Deep learning or GPU work</strong>. The platform does not support it before the scale milestone.</li>
+<li><strong>Large deep learning.</strong> The platform trains small networks on JAX, with one GPU for each
+  run. It does not train on more than one GPU or more than one machine, and it does not read
+  PyTorch checkpoints. Use a training platform for large networks.</li>
 <li><strong>General data pipelines</strong> (move data between systems, join across databases, call APIs).
   Use an orchestrator. Workflows are for the statistics of an analysis. They use catalog
   nodes, and they run without network access.</li>
@@ -6120,15 +6321,18 @@ trade-offs.</p>
   your own plugins now.</li>
 </ul>
 <h2 id="where-it-stands">Where it stands<a class="headerlink" href="#where-it-stands" title="Permanent link">&para;</a></h2>
-<p>v0.9 is complete, and we tested it on a laptop. We did the E18, E51 and E21 science
-tutorials in the web app on a local dev stack, with the real data of the notebooks. The
-<code>sci_spatial_ladder</code> recipe also ran from start to end in a browser. The other five new
-recipes run through the server orchestrator in a slow test, with small fits. The v0.5
-workflow, governance, mmm-framework, explorer and CLI journeys passed end to end against a
-live stack. The numbers on the <a href="../#measured-not-promised">home page</a> come from those
-runs. Two items are still open. We test the cloud controls against fakes until they meet a
-real Google Cloud project. Also, the study with five non-technical testers did not run yet.
-See <a href="../whats-new-0.9/#what-is-not-in-09-yet">What's new in 0.9</a>,
+<p>v0.15 is complete, and we tested it on a laptop. We did the web journeys of v0.10 to v0.15
+(run tracking, run comparison, the MMM pack, the causal templates, image data and deep
+learning) in a browser on a local dev stack, with real fits in the sandboxed runner. The
+GPU path is not tested: the project has no GPU and no Google Cloud project to test it. On a
+laptop, a GPU run uses the CPU. We did the E18, E51 and E21 science tutorials of v0.9 in the
+web app with the real data of the notebooks. The v0.5 workflow, governance, mmm-framework,
+explorer and CLI journeys passed end to end against a live stack. The numbers on the
+<a href="../#measured-not-promised">home page</a> come from those runs.</p>
+<p>Two items are still open. We test the cloud controls against fakes until they meet a real
+Google Cloud project. Also, the study with five non-technical testers did not run yet. See
+<a href="../whats-new-0.15/#what-is-not-in-015-yet">What's new in 0.10 to 0.15</a>,
+<a href="../whats-new-0.9/#what-is-not-in-09-yet">What's new in 0.9</a>,
 <a href="../operations/m35-verification/">M3.5 verification</a>, <a href="../operations/m3-verification/">M3 verification</a>
 and the <a href="../roadmap/">roadmap</a>.</p>
 

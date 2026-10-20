@@ -477,6 +477,8 @@
       
         
       
+        
+      
     
     
     
@@ -529,6 +531,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.10 to 0.15
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1640,6 +1670,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2129,6 +2165,90 @@
     
   
     About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/run-tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run tracking and experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/causal-effects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal effects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/image-collections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data and collections
   
 
     
@@ -2832,7 +2952,7 @@
   <a href="#gallery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gallery and colour images v0.14
+        Image gallery and colour images v0.14
       
     </span>
   </a>
@@ -5851,7 +5971,7 @@
   <a href="#gallery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gallery and colour images v0.14
+        Image gallery and colour images v0.14
       
     </span>
   </a>
@@ -6363,8 +6483,8 @@ use them in the statistics (distributions, unusual values, correlations and qual
 <td>Look for frames that are not the same as the others, and for many cells at the maximum value (a saturated detector). A colour map with two colours (blue and red) shows values on the two sides of zero.</td>
 </tr>
 <tr>
-<td><code>gallery</code> (Gallery, v0.14)</td>
-<td>Thumbnails of the images of one variable (a maximum of 64 pixels on each side), with chips for each label and split, and the number of images for each value. See <a href="#gallery">Gallery</a>.</td>
+<td><code>gallery</code> (Image gallery, v0.14)</td>
+<td>Thumbnails of the images of one variable (a maximum of 64 pixels on each side), with chips for each label and split, and the number of images for each value. See <a href="#gallery">Image gallery</a>.</td>
 <td>Look for images with the wrong label, empty images and classes with few images.</td>
 </tr>
 <tr>
@@ -6409,8 +6529,8 @@ use them in the statistics (distributions, unusual values, correlations and qual
 <p>In Expert mode, <em>All series</em> also shows the export plots of the science plot recipes: the
 map (<code>sci.area_map</code>), the network (<code>net.graph</code>) and the roses (<code>sci.rose</code>). These plots are
 Plotly plots. The other export plots are Vega-Lite plots.</p>
-<h3 id="gallery">Gallery and colour images <span class="mapi-badge">v0.14</span><a class="headerlink" href="#gallery" title="Permanent link">&para;</a></h3>
-<p>The <strong>Gallery</strong> section shows small pictures (thumbnails) of the images of a dataset, for
+<h3 id="gallery">Image gallery and colour images <span class="mapi-badge">v0.14</span><a class="headerlink" href="#gallery" title="Permanent link">&para;</a></h3>
+<p>The <strong>Image gallery</strong> section shows small pictures (thumbnails) of the images of a dataset, for
 example a dataset from an <a href="../image-data/">image folder upload</a>. It applies when a variable is
 an image with a frame dim of 2 or more levels, for example <code>pixels</code> on <code>image</code>, <code>y</code>, <code>x</code> and
 <code>channel</code>.</p>
@@ -6427,6 +6547,11 @@ an image with a frame dim of 2 or more levels, for example <code>pixels</code> o
 <li>The gallery shows 48 thumbnails on each page. Click a thumbnail to see a larger picture and
   its values. The values come from your data. The app shows them as text only.</li>
 </ul>
+<p><strong>Image collections</strong> <span class="mapi-badge">v0.15</span>. For an
+<a href="../image-data/#explore-a-collection">image collection</a>, the explorer reads a sample of up to
+2000 images, with the same share of each label. The gallery and <strong>Images and fields</strong> show
+this sample. The sample has the size of the collection, or the most frequent size with a
+maximum of 64 × 64 pixels.</p>
 <p><strong>Colour images.</strong> When the channel dim of an image has 3 or 4 levels, or the levels <code>r</code>,
 <code>g</code> and <code>b</code> (<code>red</code>, <code>green</code> and <code>blue</code>), <strong>Images and fields</strong> shows the image in colour. A
 fourth channel (alpha) is not used. The statistics and the histogram use the brightness
