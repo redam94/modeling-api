@@ -51,7 +51,7 @@ CatBoost, hierarchical GLMs), customer choice, science models and neural network
 documentation (`make docs-serve`) starts at `docs/index.md`. See
 `docs/whats-new-0.15.md` for the details of v0.10 to v0.15.
 
-> Status: under active development. The latest release is v0.15.0 (Deep learning and image collections). See [CHANGELOG.md](CHANGELOG.md).
+> Status: under active development. The latest release is v0.15.1 (Docs refresh for 0.10 to 0.15). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 

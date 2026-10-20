@@ -1,6 +1,6 @@
 [project]
 name = "mapi-jax"
-version = "0.15.0"
+version = "0.15.1"
 description = "JAX / flax deep-learning trainer, dl.* models and the dl.embed step for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"

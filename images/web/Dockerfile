@@ -15,7 +15,7 @@
 # MAPI_GCS_ENDPOINT) rendered into the CSP at container start. Read-only root filesystem
 # friendly: everything nginx writes goes to /tmp. Build from the repository root:
 #
-#   docker build -f images/web/Dockerfile -t mapi/web:0.15.0 .
+#   docker build -f images/web/Dockerfile -t mapi/web:0.15.1 .
 #
 # See docs/operations/docker.md.
 

@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.15.1] — Docs refresh for 0.10 to 0.15 — 2026-10-20
+
 This release updates the documentation for v0.10.0 to v0.15.0. It has no code changes.
 
 ### Changed

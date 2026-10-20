@@ -1,6 +1,6 @@
 [project]
 name = "mapi-workflows"
-version = "0.15.0"
+version = "0.15.1"
 description = "Workflow engine for modeling-api: the JSON-only DAG engine (control plane safe) and the node runtime (statistical tests, transforms, splits, searches, model fits)"
 readme = "README.md"
 requires-python = ">=3.12"
