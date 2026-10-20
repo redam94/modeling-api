@@ -1,0 +1,17 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: monthly-sales-bsts, project: retail, labels: {corpus: e13}}
+data:
+  dataset: dataset://retail/monthly_sales@latest
+  bind:
+    dims: {t: date}
+    vars: {y: sales}
+  split: {kind: time_holdout, dim: t, last: 12}
+model:
+  use: ts.bsts@^1
+  settings:
+    regressors: [price]
+    seasonality: [{period: 12}]
+  fit: {mode: evaluate_then_refit, seed: 13, tune: 500, draws: 500, chains: 4, engine: nutpie}
+evaluate: {metrics: [rmse, mape, coverage_90]}
+outputs: {plots: [core.ppc_fan, core.decomposition, core.convergence, core.posterior_forest]}

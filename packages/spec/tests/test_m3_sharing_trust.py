@@ -55,6 +55,8 @@ PLOT = PlotSpec.model_json_schema()["examples"][0]
         ("core.ppc_fan@1.0.0", True),
         ("mmm.response_curves", True),
         ("ml.feature_importance@2", True),
+        ("causal.impact@1.0.0", True),  # v0.13: the causal pack ships in mapi_plots
+        ("sci.heatmap@1", False),
         ("acme.custom_plot@1", False),
         ("t/acme/x.plot@1", False),
         ("core", False),

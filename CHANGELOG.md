@@ -5,6 +5,99 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.13.0] — Causal models and Bayesian state space — 2026-10-20
+
+### Causal inference and Bayesian state space
+
+The platform can now measure the effect of a campaign, a launch or a test. Three new causal
+models compare the actual values with a prediction of the values without the change: on one
+series (`causal.impact`), in test markets against a mix of the other markets
+(`causal.synthetic_control`) and in units with and without a change (`causal.did`). The result
+of a geo-lift test becomes a lift test for `mmm.bayesian`. A new Bayesian structural time
+series (`ts.bsts`) forecasts one series from its level, trend, seasonal patterns and drivers.
+Each fit logs its results with the v0.11 tracking API.
+
+#### Added
+- `ts.bsts` (`mapi-plugin-ts`): a Bayesian structural time series on the state-space models of
+  pymc-extras. It has a level, a trend (`level`, `local_linear` or `smooth`), a maximum of
+  three seasonal patterns (one effect for each season, or harmonics) and drivers with one
+  effect for all periods. The fit uses the exact Kalman likelihood. Missing periods are
+  permitted. The bundle keeps a `terminal_state` group. `forecast` starts from it, and the
+  `filter` mode adds new periods without a new fit. The `components` group shows the level,
+  the seasonal parts and the drivers with `core.decomposition`.
+- A new plugin package, `mapi-plugin-causal` (Apache-2.0), with three models. Each model
+  writes the effect to the bundle group `impact` (actual values, values without the change,
+  the effect in each period and the cumulative effect, in the units of the target):
+    - `causal.impact`: CausalImpact (Brodersen et al. 2015) on the `ts.bsts` core. The model
+      fits the periods before the change, with optional control series. Without control
+      series, it is an interrupted time series.
+    - `causal.synthetic_control`: a Bayesian synthetic control for geo-lift tests. The
+      weights of the other markets are positive with a sum of 1 (`simplex`), or have a
+      horseshoe prior. The bundle group `donor_weights` keeps the weights.
+    - `causal.did`: difference-in-differences and event study (Bayesian two-way fixed
+      effects). The bundle group `event_study` keeps one coefficient for each period before
+      and after the change. The `counterfactual` mode sets the treatment to 0.
+- New plot recipes, each with an About card and example data: `causal.impact` (the actual
+  values against the values without the change, the effect in each period and the cumulative
+  effect), `causal.pre_fit` (the fit before the change), `causal.donor_weights` and
+  `causal.event_study`.
+- The workflow node `model.lift_test` makes a lift test for `mmm.bayesian` from the `impact`
+  group of a causal model version. `model.fit` has a new parameter `calibration`.
+- The workflow template `geo_lift_mmm`: a geo-lift test, its lift test, `mmm.bayesian`
+  calibrated with the lift test, the plots and a report.
+- Guided templates `campaign_impact` (*Effect of a campaign*, `causal.impact`) and `geo_lift`
+  (*Geo-lift test*, `causal.synthetic_control`), with About cards. The report of `geo_lift`
+  has a card that makes the lift-test entry for your marketing mix.
+- *Help me choose* has a new goal: "Measure the effect of a campaign, a launch or a test"
+  (`measure_impact`). The four new models have About cards.
+- Run tracking: `ts.bsts` logs its structure (`bsts.*` params), the noise and the error of the
+  one-step-ahead predictions. The causal models log the total effect with its interval, the
+  relative effect, the probability that the effect is more than zero and the error before the
+  change. Synthetic control also logs the donor weights. DiD also logs the average effect and
+  the event-study coefficients.
+- Conformance fixtures `e13_bsts` (the plan fixture E13 is no longer deferred),
+  `causal_impact`, `geo_lift` and `did_event_study`.
+- Documentation: the pages *Causal models and Bayesian structural time series* and *Measure
+  the effect of a change*.
+
+#### Changed
+- pymc-extras is now a declared dependency: of `mapi-plugin-ts`, and of the new extra
+  `mapi-pymc[pathfinder]` for the `pathfinder` engine. The error message for a missing engine
+  names the extra. Pathfinder does not write a progress table to the output.
+- The runner image `mapi/base-forecast` has pymc-extras and `mapi-plugin-causal`. The
+  `causal.*` models run in it. `mapi/base-bayes` has pymc-extras for Pathfinder.
+- `GuidedTemplate.family` has the new value `causal`. **Upgrade the CLI and `mapi-client`
+  to v0.13.** A v0.12 client cannot read the list of Guided templates from a v0.13 server
+  (`mapi guided templates` fails for all templates). From v0.13, a client keeps a family that
+  it does not know as text.
+- The `causal.*` plot recipes are platform recipes: you can embed them, and the Guided share
+  step offers them. Only the platform distributions can register ids in the `causal` and
+  `choice` namespaces.
+- A score output can be a difference (the scored array attr `difference_of` names the
+  reference output). With `output.units: original`, the harness changes the level and the
+  reference to the output units, then subtracts them. The `effect` of `causal.impact` uses this,
+  thus it is `y - y_hat` in the units of the data also when the pipeline transforms the target.
+- The Guided steps of `campaign_impact` and `geo_lift` do not include the scenarios step
+  (the templates have no tasks). The lift-test card of the `geo_lift` report uses the test
+  markets of the revision that the last fit used.
+- `causal.did` scores a payload with only some periods: the periods that the payload does not
+  have take the adoption of the fit. `causal.impact` refuses periods that are not evenly spaced
+  (`SCHEMA_INVALID`), as `ts.bsts` does. An impossible date in `intervention_start` or
+  `intervention_end` (for example `2024-02-30`) is `SETTINGS_INVALID`. Two units or donors
+  whose names give the same tracking label get different labels (`_2`, `_3`).
+
+#### Known gaps
+- `ts.bsts` takes one series. Each driver has one effect for all periods. A forecast does not
+  use actual values that you know (use the `filter` mode). A seasonal pattern with one effect
+  for each season has a maximum period of 24 (use harmonics for longer periods).
+- `causal.impact` fits the periods before the change only.
+- `causal.synthetic_control` has no placebo tests and does not design a test (the choice of
+  the markets, the power).
+- A lift test from two or more test markets is national.
+- The time effects of `causal.did` are fixed, thus the model does not forecast. When the units
+  got the change at different times, the estimates can be wrong.
+- The lift-test card of the Guided report does not write into the MMM spec. Copy the entry.
+
 ## [0.12.0] — MMM pack — 2026-10-20
 
 ### MMM pack

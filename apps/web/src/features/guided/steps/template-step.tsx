@@ -1,6 +1,6 @@
 /** Step 1, "What do you want to learn?": the templates as friendly cards, plus the analyses in progress. */
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BarChart3, Clock, Info, LineChart, Megaphone, ShoppingBasket, Store } from "lucide-react";
+import { ArrowRight, BarChart3, Clock, FlaskConical, Info, LineChart, Megaphone, ShoppingBasket, Store } from "lucide-react";
 import { useState } from "react";
 
 import { useSpecs } from "@/api/queries";
@@ -15,19 +15,21 @@ import { guidedSessions, useGuidedTemplates } from "../api";
 import { guidedTemplateOf, hasTask } from "../session";
 import type { GuidedTemplate } from "../types";
 
-const ICONS = { mmm: Megaphone, forecast: LineChart, tabular: Store, choice: ShoppingBasket } as const;
+const ICONS = { mmm: Megaphone, forecast: LineChart, tabular: Store, choice: ShoppingBasket, causal: FlaskConical } as const;
 
 const FOR: Record<string, string[]> = {
   geo_mmm: ["Weekly spend per channel and results per market", "ROI per channel, what-if budgets"],
   mediated_mmm: ["Weekly spend per channel, results and a measure in between such as visits", "Direct and indirect effect of each channel"],
   multi_kpi_mmm: ["Weekly spend per channel and results for two or more products", "Effect of each channel on each product"],
+  campaign_impact: ["One weekly or daily result before and after a campaign or a launch", "The effect of the campaign with its range"],
+  geo_lift: ["Weekly results per market, some markets with the campaign", "The lift in the test markets, ready for your marketing mix"],
   weekly_forecast: ["One weekly or daily series", "A forecast with a likely range"],
   store_demand: ["Units per store and week, with prices or promotions", "Low, likely and high demand"],
   customer_choice: ["Shopping trips per household with prices per product", "Which product wins, and why"],
 };
 
-/** The plan's order (§11): the marketing mix first (geo, mediated, several KPIs), then forecasts, demand and choice. */
-const ORDER = ["geo_mmm", "mediated_mmm", "multi_kpi_mmm", "weekly_forecast", "store_demand", "customer_choice"];
+/** The plan's order (§11): the marketing mix first (geo, mediated, several KPIs), then campaign effects and geo tests, then forecasts, demand and choice. */
+const ORDER = ["geo_mmm", "mediated_mmm", "multi_kpi_mmm", "campaign_impact", "geo_lift", "weekly_forecast", "store_demand", "customer_choice"];
 
 export function sortTemplates(items: readonly GuidedTemplate[]): GuidedTemplate[] {
   const rank = (id: string) => (ORDER.includes(id) ? ORDER.indexOf(id) : ORDER.length);

@@ -1058,6 +1058,7 @@ Fits a model from the catalog to the data and saves it as a model version. It ca
 | `pipeline` | array |  | Preprocessing steps |
 | `bind` | object |  | Binding to canonical names |
 | `evaluate` | object |  | Evaluation block (metrics) |
+| `calibration` | object |  | The calibration block of the model (business priors and lift tests); lift tests can come from model.lift_test |
 | `nodes` | object |  | Tree datasets: the nodes merged into the model input (data.nodes: {name: {path, vars?, prefix?}}). If not given, the node reads the root node |
 | `join` | `exact` \\| `inner` \\| `outer` | `"exact"` | Tree datasets: how the coords of the selected nodes align (data.join) |
 
@@ -1086,6 +1087,34 @@ Uses a fitted model version to forecast the future periods. It uses future drive
 | `summary` | array | `["mean", "hdi_90"]` |  |
 
 Result fields (`nodes.<id>.<field>` in conditions): `total` (number).
+
+### `model.lift_test` — Make a lift test from a causal model
+
+Adds the effect that a causal model measured in the test period and gives it as a lift test. A marketing mix model can use this lift test as calibration.
+
+*Runs in* a sandboxed `workflow_node` run. *Difficulty:* intermediate. *Typical runtime:* seconds.
+
+**Use it when:** You measured a campaign or a geo test with causal.synthetic_control, causal.impact or causal.did and you want the marketing mix model to agree with the result; You want the total effect of a test with its uncertainty in one table.
+
+**Avoid it when:** The model is not a causal model (the node needs the impact group of the model); The periods of the data are not dates (a lift test needs the start and end dates).
+
+**Example:** TV in market geo_03 for six weeks with 50 000 extra spend: KPI change 4 100, 90% range 2 300 to 5 900.
+
+**Inputs:** `model` (model_version).
+
+**Outputs:** `table` (table).
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `channel` | string | **required** | The marketing channel of the test (a channel of the marketing mix model) |
+| `spend_delta` | number | **required** | The extra spend during the test, in spend units (a negative number for a holdout) |
+| `id` | string |  | The id of the lift test (optional) |
+| `hdi_prob` | number | `0.9` | The probability inside the range of kpi_delta |
+
+Result fields (`nodes.<id>.<field>` in conditions): `lift_test` (object), `kpi_delta` (number), `se` (number), `hdi_low` (number), `hdi_high` (number), `p_positive` (number), `excludes_zero` (boolean), `relative_effect` (number), `start` (string), `end` (string), `geo` (string), `n_treated` (integer), `n_cells` (integer), `n_missing` (integer), `hdi_prob` (number), `model` (string).
+
+??? note "Expert detail"
+    The node reads only the impact group of the bundle. kpi_delta is the posterior mean of the sum of effect over the post cells and the treated units, se its standard deviation, and ci the HDI at hdi_prob (ci_level = hdi_prob). The test dates are the first and the last post period. geo is the treated unit when exactly one unit has post cells; with more units the lift test is national (geo null) and the node gives a warning. The effect includes the observation noise of the counterfactual (predictive draws), so the range is wide on purpose.
 
 ### `model.score` — Score a model
 

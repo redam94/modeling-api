@@ -28,13 +28,16 @@ __all__ = [
     "counterfactual_tree",
     "cross_effects_dataset",
     "decision_dataset",
+    "donor_weights_dataset",
     "effectiveness_dataset",
     "ensemble_tree",
+    "event_study_dataset",
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
     "group_effects_tree",
     "image_tree",
+    "impact_dataset",
     "lift_tests_dataset",
     "loo_tree",
     "loss_history_tree",
@@ -1085,6 +1088,105 @@ def point_pattern_tree() -> xr.DataTree:
     )
 
 
+CAUSAL_SAMPLES = 200
+
+
+def impact_dataset(units: list[str] | None = None, *, staggered: bool = False) -> xr.Dataset:
+    """``impact`` of a causal fit over 30 weeks, with the intervention at week 22.
+
+    Without ``units``: like ``causal.impact`` (no unit dim, a 4-week effect window). With
+    ``units``: like synthetic control (``post(time)``), or DiD with staggered adoption
+    (``post(unit, time)``, a later start for every next unit, an open end)."""
+    rng = _rng(31)
+    weeks = pd.date_range("2024-01-07", periods=30, freq="W-SUN")
+    start, end = 22, 25
+    t = np.arange(30)
+    names = units or ["_"]
+    n = len(names)
+    level = 100 + 10 * np.arange(n)[:, None] + 3 * np.sin(2 * np.pi * t / 13)
+    if staggered:
+        adopt = np.array([start + 2 * i for i in range(n)])[:, None]
+        post = t[None, :] >= adopt
+    else:
+        post = np.broadcast_to((t >= start) & (t <= end), (n, 30)).copy()
+    actual = level + rng.normal(0, 1.5, (n, 30)) + np.where(post, 8.0, 0.0)
+    noise = rng.normal(0, 2.0, (CAUSAL_SAMPLES, n, 30))
+    cf = level[None] + rng.normal(0, 0.8, (CAUSAL_SAMPLES, 1, 1)) + noise
+    effect = actual[None] - cf
+    cum = np.where(post[None], np.cumsum(np.where(post[None], effect, 0.0), axis=-1), np.nan)
+    attrs = {
+        "intervention_start": str(weeks[start].date()),
+        "intervention_end": "" if staggered else str(weeks[end].date()),
+        "model": "causal.did@1.0.0" if staggered else "causal.impact@1.0.0",
+        "units": "units sold",
+        "effect_kind": "predictive",
+    }
+    if units is None:
+        return xr.Dataset(
+            {
+                "actual": (("time",), actual[0]),
+                "counterfactual": (("sample", "time"), cf[:, 0]),
+                "effect": (("sample", "time"), effect[:, 0]),
+                "cumulative_effect": (("sample", "time"), cum[:, 0]),
+                "post": (("time",), post[0]),
+            },
+            coords={"sample": np.arange(CAUSAL_SAMPLES), "time": weeks},
+            attrs=attrs,
+        )
+    return xr.Dataset(
+        {
+            "actual": (("unit", "time"), actual),
+            "counterfactual": (("sample", "unit", "time"), cf),
+            "effect": (("sample", "unit", "time"), effect),
+            "cumulative_effect": (("sample", "unit", "time"), cum),
+            "post": (("unit", "time"), post) if staggered else (("time",), post[0]),
+        },
+        coords={"sample": np.arange(CAUSAL_SAMPLES), "unit": names, "time": weeks},
+        attrs=attrs,
+    )
+
+
+def donor_weights_dataset(units: list[str] | None = None) -> xr.Dataset:
+    """``donor_weights`` of a synthetic control: three donors carry most of the weight."""
+    units = units or ["geo_03", "geo_07"]
+    donors = [f"geo_{i:02d}" for i in range(12) if f"geo_{i:02d}" not in units]
+    rng = _rng(32)
+    conc = np.full(len(donors), 0.3)
+    conc[[0, 3, 5]] = [6.0, 4.0, 2.5]
+    w = np.stack(
+        [rng.dirichlet(np.roll(conc, 2 * i), CAUSAL_SAMPLES) for i in range(len(units))], axis=1
+    )
+    return xr.Dataset(
+        {
+            "weight": (("sample", "unit", "donor"), w),
+            "pre_rmse": (("unit",), 2.1 + 1.3 * np.arange(len(units))),
+        },
+        coords={"sample": np.arange(CAUSAL_SAMPLES), "unit": units, "donor": donors},
+        attrs={"prior": "simplex"},
+    )
+
+
+def event_study_dataset(design: str = "event_study") -> xr.Dataset:
+    """``event_study`` of a DiD fit: flat before the start, an effect that grows after it."""
+    rng = _rng(33)
+    ev = np.array([-1, 0]) if design == "did" else np.arange(-4, 9)
+    truth = np.where(ev >= 0, 2.0 + 0.4 * np.clip(ev, 0, None), 0.0)
+    if design == "did":
+        truth = np.where(ev >= 0, 3.0, 0.0)
+    coef = truth[None] + rng.normal(0, 0.6, (CAUSAL_SAMPLES, ev.size))
+    coef[:, ev == -1] = 0.0
+    post = ev >= 0
+    return xr.Dataset(
+        {
+            "coef": (("sample", "event_time"), coef),
+            "n_cells": (("event_time",), np.where(ev == -1, 0, 12).astype(np.int64)),
+            "att": (("sample",), coef[:, post].mean(axis=1)),
+        },
+        coords={"sample": np.arange(CAUSAL_SAMPLES), "event_time": ev.astype(np.int64)},
+        attrs={"reference": -1, "binned": 0 if design == "did" else 1, "design": design},
+    )
+
+
 def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
@@ -1144,4 +1246,8 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "sci.power_spectrum": (spectrum_tree(), {"theory": "theory_dl"}),
         "sci.point_pattern": (point_pattern_tree(), {}),
         "net.graph": (network_tree(), {}),
+        "causal.impact": ({"impact": impact_dataset()}, {}),
+        "causal.pre_fit": ({"impact": impact_dataset(["geo_03", "geo_07"])}, {}),
+        "causal.donor_weights": ({"donor_weights": donor_weights_dataset()}, {}),
+        "causal.event_study": ({"event_study": event_study_dataset()}, {}),
     }

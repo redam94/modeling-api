@@ -13,6 +13,10 @@ id                          what it automates
                             tests -> report
 ``mmm_governed``            driver collinearity check -> mmm-framework marketing mix model
                             with a holdout -> governance policy -> report + evidence pack
+``geo_lift_mmm``            Bayesian synthetic control of a geo-lift test (treated markets
+                            against donor markets) -> the test's total effect as a lift test
+                            (model.lift_test) -> mmm-framework marketing mix model calibrated
+                            with that lift test -> impact and lift-test plots -> report
 ``forecast_bakeoff``        one expanding-window backtest for SARIMAX, ETS, Theta and the
                             smooth-trend model against naive benchmarks -> compare -> select
                             the winner -> refit it -> report
@@ -413,6 +417,104 @@ MMM_GOVERNED = WorkflowTemplate(
                  "pack": "pack.report"},
     ),
     tags=["mmm", "mmm-framework", "governance"],
+)  # fmt: skip
+
+GEO_LIFT_MMM = WorkflowTemplate(
+    id="geo_lift_mmm",
+    about=About(
+        title="Geo-lift test to a calibrated marketing mix",
+        summary_plain="Measures the effect of a geo-lift test: it compares the markets of the "
+        "test with a synthetic copy made from the other markets. Then it gives the result to "
+        "the marketing mix model as a lift test, so the model agrees with the test.",
+        use_when=["You ran a test on one channel in some markets (more spend, or no spend) "
+                  "and you have a marketing mix model of the same KPI",
+                  "You want the marketing mix model to agree with the result of the test"],
+        avoid_when=["The test markets are very different from all the other markets (the "
+                    "synthetic copy cannot follow them)",
+                    "Other changes occurred in the test markets during the test"],
+        data_needs=["The KPI for each market and week, before and during the test, for the "
+                    "test markets and for markets without the test",
+                    "The weekly data of the marketing mix model (KPI, spend for each "
+                    "channel and controls)",
+                    "The channel of the test, its markets, its dates and the extra spend"],
+        assumptions=["Without the test, the test markets follow a weighted mix of the other "
+                     "markets, as before the test",
+                     "The test changed only the spend of one channel"],
+        outputs=["The effect of the test with its range, for each week and in total",
+                 "A lift test for the calibration of the marketing mix model",
+                 "A marketing mix model calibrated with the test",
+                 "Plots of the test and of the calibration, and a report"],
+        difficulty=Difficulty.INTERMEDIATE,
+        typical_runtime=TypicalRuntime.LONG,
+        example="TV off in geo_03 for six weeks (-50 000 spend): the KPI fell by 4 100 "
+        "(90% range -5 900 to -2 300). The calibrated model gives TV an ROI that agrees with "
+        "the test.",
+        related=["causal.synthetic_control", "model.lift_test", MMM_MODEL_ID, "causal.impact"],
+        references=[AboutReference(title="Abadie, Diamond & Hainmueller (2010), Synthetic "
+                                   "control methods for comparative case studies", url=None)],
+        expert_notes="The geolift node fits causal.synthetic_control on the experiment data "
+        "(train_only). model.lift_test adds the effect over the post cells of every treated "
+        "market per draw: kpi_delta is the mean, ci the 90% HDI. With one treated market the "
+        "lift test has that geo; with more markets it is national. The MMM gets "
+        "calibration.lift_tests = [nodes.lift.lift_test]. The test dates must be inside the "
+        "MMM data, and a geo of the test must be a geo of the MMM data.",
+        fits={"goal": ["measure_impact", "explain_marketing"], "data_shape": ["panel"],
+              "history": ["medium", "long"]},
+    ),
+    document=_doc(
+        "geo-lift-mmm",
+        params={
+            "treated": {"type": "array", "required": True,
+                        "description": "The markets of the test (labels of the market "
+                                       "dimension of the experiment data)"},
+            "test_start": {"type": "string", "required": True,
+                           "description": "The first date of the test (YYYY-MM-DD)"},
+            "test_end": {"type": "string", "required": True,
+                         "description": "The last date of the test (YYYY-MM-DD)"},
+            "channel": {"type": "string", "required": True,
+                        "description": "The marketing channel of the test (a channel of "
+                                       "the marketing mix model)"},
+            "spend_delta": {"type": "number", "required": True,
+                            "description": "The extra spend in the test (a negative number "
+                                           "for a holdout)"},
+        },
+        inputs={"experiment": {"type": "dataset",
+                               "description": "The KPI by market and week around the test"},
+                "data": {"type": "dataset",
+                         "description": "The data of the marketing mix model"}},
+        nodes=[
+            {"id": "geolift", "use": "model.fit", "label": "Geo-lift test",
+             "inputs": {"data": "inputs.experiment"},
+             "with": {"model": "causal.synthetic_control@^1",
+                      "settings": {"treated": _p("treated"),
+                                   "intervention_start": _p("test_start"),
+                                   "intervention_end": _p("test_end")},
+                      "fit": {"mode": "train_only", "tune": 1000, "draws": 1000,
+                              "chains": 4, "seed": 20261020}}},
+            {"id": "lift", "use": "model.lift_test", "label": "Lift test",
+             "inputs": {"model": "geolift.model"},
+             "with": {"channel": _p("channel"), "spend_delta": _p("spend_delta")}},
+            {"id": "impact_plot", "use": "plot.render", "label": "Effect of the test",
+             "inputs": {"model": "geolift.model"},
+             "with": {"recipe": "causal.impact", "source": "model"}},
+            {"id": "mmm", "use": "model.fit", "label": "Calibrated marketing mix",
+             "inputs": {"data": "inputs.data"},
+             "with": {"model": f"{MMM_MODEL_ID}@^1",
+                      "settings": copy.deepcopy(MMM_TEMPLATE_SETTINGS),
+                      "calibration": {"lift_tests": _x("[nodes.lift.lift_test]")}}},
+            {"id": "lift_plot", "use": "plot.render", "label": "Model against the test",
+             "inputs": {"model": "mmm.model"},
+             "with": {"recipe": "mmm.lift_tests", "source": "model"}},
+            {"id": "report", "use": "report.summary",
+             "inputs": {"items": ["lift.table"], "metrics": ["mmm.metrics"],
+                        "plots": ["impact_plot.plot", "lift_plot.plot"],
+                        "model": "mmm.model"},
+             "with": {"title": "Geo-lift test and calibrated marketing mix"}},
+        ],
+        outputs={"experiment": "geolift.model", "model": "mmm.model",
+                 "report": "report.report"},
+    ),
+    tags=["causal", "mmm", "calibration"],
 )  # fmt: skip
 
 _BT = {"inputs": {"data": "inputs.data", "split": "folds.plan"}}
@@ -1361,6 +1463,7 @@ WORKFLOW_TEMPLATES: Final[dict[str, WorkflowTemplate]] = {
         TS_READINESS_ARIMAX,
         VAR_VECM,
         MMM_GOVERNED,
+        GEO_LIFT_MMM,
         FORECAST_BAKEOFF,
         SCI_SPATIAL_LADDER,
         SCI_NETWORK_LADDER,

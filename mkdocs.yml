@@ -204,6 +204,7 @@ nav:
           - "Guided modelling: priors, lift tests, scorecard": guides/guided-modelling.md
           - Forecasting and sequential models: guides/time-series.md
           - statsmodels time-series models: models/statsmodels.md
+          - "Measure the effect of a change": guides/causal.md
           - "Workflows: tests, decisions, models, automation": guides/workflows.md
           - Workflow cookbook: guides/workflow-cookbook.md
           - Plots, recipes and templates: guides/plots.md
@@ -217,6 +218,7 @@ nav:
       - Steps catalog: reference/generated/steps-catalog.md
       - Built-in models: reference/models.md
       - "Marketing-mix models (mmm-framework)": models/mmm-framework.md
+      - "Causal models and Bayesian structural time series": models/causal.md
       - Models catalog: reference/generated/models-catalog.md
       - Workflow nodes: reference/workflow-nodes.md
       - Governance checks: reference/generated/governance-checks.md

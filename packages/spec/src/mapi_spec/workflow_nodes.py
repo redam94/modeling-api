@@ -19,7 +19,8 @@ split          ``split.holdout``, ``rolling_origin``, ``expanding_window``, ``bl
 search         ``search.arma_order``, ``sarima_order``, ``var_lag_order``, ``coint_rank``,
                ``grid``
 model          ``model.fit`` (any catalog model id), ``model.backtest``, ``model.forecast``,
-               ``model.summary``, ``model.score``
+               ``model.summary``, ``model.score``, ``model.lift_test`` (a causal model's
+               effect as an MMM lift test)
 evaluate       ``evaluate.metrics``, ``evaluate.baseline``, ``evaluate.residuals``,
                ``evaluate.ppc``
 compare        ``compare.models``, ``compare.diebold_mariano``, ``compare.stacking``
@@ -1180,6 +1181,9 @@ _node("model.fit", NodeKind.MODEL, _a(
            "pipeline": {"type": "array", "maxItems": 64, "description": "Preprocessing steps"},
            "bind": {"type": "object", "description": "Binding to canonical names"},
            "evaluate": {"type": "object", "description": "Evaluation block (metrics)"},
+           "calibration": {"type": "object",
+                           "description": "The calibration block of the model (business "
+                           "priors and lift tests); lift tests can come from model.lift_test"},
            "nodes": _TREE_NODES, "join": _TREE_JOIN},
    required=["model"],
    inputs={"data": PortSpec(type=PortType.DATASET),
@@ -1672,6 +1676,66 @@ _node("model.summary", NodeKind.MODEL, _a(
            "focus": _f("object", "The value that focus names: name, mean, sd, hdi_low, "
                                  "hdi_high, p_positive (the share of draws above zero) and "
                                  "excludes_zero (null without focus)")},
+   )  # fmt: skip
+
+_node("model.lift_test", NodeKind.MODEL, _a(
+    "Make a lift test from a causal model",
+    "Adds the effect that a causal model measured in the test period and gives it as a lift "
+    "test. A marketing mix model can use this lift test as calibration.",
+    ["You measured a campaign or a geo test with causal.synthetic_control, causal.impact or "
+     "causal.did and you want the marketing mix model to agree with the result",
+     "You want the total effect of a test with its uncertainty in one table"],
+    ["The model is not a causal model (the node needs the impact group of the model)",
+     "The periods of the data are not dates (a lift test needs the start and end dates)"],
+    ["A fitted causal model version",
+     "The channel of the test and the extra spend during the test (a negative number for a "
+     "holdout)"],
+    ["The causal model measured the effect of the spend change on this channel only",
+     "The marketing mix model has the same KPI in the same units"],
+    ["A lift test (channel, dates, market, KPI change and its range) and a table"],
+    _I, _SEC, "TV in market geo_03 for six weeks with 50 000 extra spend: KPI change 4 100, "
+    "90% range 2 300 to 5 900.",
+    related=["model.fit", "causal.synthetic_control", "causal.impact", "causal.did",
+             "mmm.bayesian"],
+    fits={"goal": ["measure_impact", "explain_marketing"],
+          "data_shape": ["panel", "one_series"]},
+    expert="The node reads only the impact group of the bundle. kpi_delta is the posterior "
+    "mean of the sum of effect over the post cells and the treated units, se its standard "
+    "deviation, and ci the HDI at hdi_prob (ci_level = hdi_prob). The test dates are the "
+    "first and the last post period. geo is the treated unit when exactly one unit has post "
+    "cells; with more units the lift test is national (geo null) and the node gives a "
+    "warning. The effect includes the observation noise of the counterfactual (predictive "
+    "draws), so the range is wide on purpose.",
+), params={"channel": {"type": "string", "minLength": 1, "maxLength": 128,
+                       "description": "The marketing channel of the test (a channel of the "
+                       "marketing mix model)"},
+           "spend_delta": {"type": "number",
+                           "description": "The extra spend during the test, in spend units "
+                           "(a negative number for a holdout)"},
+           "id": {"type": "string", "pattern": r"^[a-z0-9][a-z0-9_-]{0,62}$",
+                  "description": "The id of the lift test (optional)"},
+           "hdi_prob": _num("The probability inside the range of kpi_delta", 0.9, 0.5, 0.999)},
+   required=["channel", "spend_delta"],
+   inputs={"model": PortSpec(type=PortType.MODEL_VERSION,
+                             description="A fitted causal model version")},
+   outputs={"table": PortType.TABLE},
+   fields={"lift_test": _f("object", "The lift test (the LiftTest of a calibration block)"),
+           "kpi_delta": _f("number", "The total effect in the test period (posterior mean)"),
+           "se": _f("number", "The standard deviation of the total effect"),
+           "hdi_low": _f("number", "The low bound of the range of the total effect"),
+           "hdi_high": _f("number", "The high bound of the range of the total effect"),
+           "p_positive": _f("number", "The probability that the total effect is above zero"),
+           "excludes_zero": _f("boolean", "True if the range does not include zero"),
+           "relative_effect": _f("number", "The total effect divided by the total of the "
+                                           "counterfactual (null if that total is zero)"),
+           "start": _f("string", "The first date of the test"),
+           "end": _f("string", "The last date of the test"),
+           "geo": _f("string", "The market of the test (null for a national test)"),
+           "n_treated": _f("integer", "The number of units with test periods"),
+           "n_cells": _f("integer", "The number of cells (unit and period) in the test"),
+           "n_missing": _f("integer", "The cells of the test without an observed value"),
+           "hdi_prob": _f("number", "The probability inside the range"),
+           "model": _f("string", "The causal model (id@version)")},
    )  # fmt: skip
 
 _node("evaluate.ppc", NodeKind.EVALUATE, _a(

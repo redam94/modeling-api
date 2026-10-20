@@ -43,8 +43,9 @@ describe("Workflows", () => {
     await user.click(screen.getByRole("tab", { name: "Templates" }));
     const gallery = await screen.findByTestId("template-gallery", undefined, { timeout: 3000 });
     const cards = within(gallery).getAllByTestId("about-card");
-    expect(cards).toHaveLength(10);
+    expect(cards).toHaveLength(11);
     expect(gallery).toHaveTextContent("Time-series readiness to ARIMAX");
+    expect(gallery).toHaveTextContent("Geo-lift test to a calibrated marketing mix");
     expect(gallery).toHaveTextContent("Disease map: which spatial model?");
     expect(gallery).toHaveTextContent("Bayesian workflow audit");
     expect(within(cards[0]!).getByText("Use it when")).toBeInTheDocument();

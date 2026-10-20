@@ -98,6 +98,36 @@ data: dataset://ecology/tracks_live@v1
 The result has `predictions` (the one-step-ahead `y_hat` and the filtered `state_prob`). It also
 has a `terminal_state` group. Its `attrs.step` is the last filtered step.
 
+### A Bayesian structural time series <span class="mapi-badge">v0.13</span> { #bsts }
+
+`ts.bsts` is a Kalman filter model: a level, a trend, seasonal patterns and drivers. It keeps
+the state at the end of the fit in its `terminal_state` group, as `ts.gaussian_hmm` does. The
+group has the mean and the covariance of the state for each kept draw (a maximum of 250
+draws), and the matrices of the model.
+
+* In the fitted range, `predict` gives the one-step-ahead prediction. This is the value that
+  the model expected before it saw the period.
+* `forecast` starts from the terminal state. The model propagates the state and adds the
+  noise of each period. A forecast thus has a range that becomes wider with the horizon.
+  The drivers need their future values.
+* `filter` continues the Kalman filter over new periods. It returns the one-step-ahead
+  predictions and an updated `terminal_state`. Then a forecast starts from the latest period
+  without a new fit.
+
+```yaml
+apiVersion: mapi/v1
+kind: ScoreRequest
+model: endpoint://retail/monthly-sales-bsts
+mode: filter
+data: dataset://retail/sales_last_3_months@v1
+```
+
+The model accepts periods without a value. The filter does not update the state in these
+periods, and the prediction continues over them. The `core.decomposition` chart shows the
+level, the seasonal parts and the effect of the drivers from the `components` group. See
+[Causal models and Bayesian structural time series](../models/causal.md#tsbsts-bayesian-structural-time-series).
+`causal.impact` uses the same model to measure the effect of a change.
+
 ## Plots of hidden states <span class="mapi-badge">v0.10</span> { #plots-of-hidden-states }
 
 `ts.gaussian_hmm` and the statsmodels Markov switching model now include `core.state_sequence`
@@ -115,7 +145,7 @@ over time.
   not a state output.
 
 **Decomposition.** The unobserved components model, exponential smoothing (ETS) and
-`ts.hsgp_trend` now include `core.decomposition`. The plot stacks the level, the seasonal part
+`ts.hsgp_trend` now include `core.decomposition` (`ts.bsts` too, from v0.13). The plot stacks the level, the seasonal part
 and the other parts over time. The slope of a trend is a rate, not a part of the level. Thus the
 plot does not stack it. An ETS model has a components group only when its error, trend and
 season are additive.

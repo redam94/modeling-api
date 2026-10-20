@@ -348,6 +348,8 @@ class TestRunnerImages:
             "mapi-plugin-mmm",
             "mapi-plugin-ts",
             "mapi-plugin-tabular",
+            "mapi-plugin-causal",
+            "pymc-extras",
             "mapi-sklearn",
             "docker",
         ):
@@ -396,6 +398,8 @@ def test_control_plane_image_has_no_science_dependencies() -> None:
         "mapi-plugin-ts",
         "mapi-plugin-tabular",
         "mapi-plugin-statsmodels",
+        "mapi-plugin-causal",
+        "pymc-extras",
         "statsmodels",
     }
     assert not names & forbidden

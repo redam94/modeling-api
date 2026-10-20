@@ -24,7 +24,8 @@ import type { Endpoint, PlotEmbedCreated } from "../types";
 import { StatusBadge } from "../ui";
 import type { GuidedSession } from "../use-session";
 
-const PLATFORM_NAMESPACES = ["core", "mmm", "ml", "ts", "choice"];
+// keep in step with PLATFORM_RECIPE_NAMESPACES (mapi_spec.sharing)
+const PLATFORM_NAMESPACES = ["core", "mmm", "ml", "ts", "choice", "causal"];
 
 export function isPlatformRecipe(recipe: string | null | undefined): boolean {
   if (!recipe) return false;
@@ -172,6 +173,10 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
 
 /** Charts people share first: results before the sampler's diagnostics (offered last). */
 const SHARE_FIRST = [
+  "causal.impact",
+  "causal.event_study",
+  "causal.donor_weights",
+  "causal.pre_fit",
   "mmm.roi",
   "mmm.response_curves",
   "mmm.waterfall",

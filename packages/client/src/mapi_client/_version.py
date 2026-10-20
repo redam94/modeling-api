@@ -5,4 +5,4 @@ from importlib import metadata as _metadata
 try:
     __version__ = _metadata.version("mapi-client")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.12.0"
+    __version__ = "0.13.0"

@@ -30,12 +30,13 @@ services:
     environment:
       MAPI_EXECUTOR: docker
       MAPI_DOCKER_NETWORK: container:mapi-gcs-shim
-      MAPI_DOCKER_IMAGE: mapi/base-bayes:${MAPI_VERSION:-0.12.0}
+      MAPI_DOCKER_IMAGE: mapi/base-bayes:${MAPI_VERSION:-0.13.0}
       MAPI_DOCKER_IMAGES: >-
-        {"mmm": "mapi/base-bayes:${MAPI_VERSION:-0.12.0}",
-        "tabular": "mapi/base-bayes:${MAPI_VERSION:-0.12.0}",
-        "sklearn": "mapi/base-ml:${MAPI_VERSION:-0.12.0}",
-        "ts": "mapi/base-forecast:${MAPI_VERSION:-0.12.0}"}
+        {"mmm": "mapi/base-bayes:${MAPI_VERSION:-0.13.0}",
+        "tabular": "mapi/base-bayes:${MAPI_VERSION:-0.13.0}",
+        "sklearn": "mapi/base-ml:${MAPI_VERSION:-0.13.0}",
+        "ts": "mapi/base-forecast:${MAPI_VERSION:-0.13.0}",
+        "causal": "mapi/base-forecast:${MAPI_VERSION:-0.13.0}"}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 

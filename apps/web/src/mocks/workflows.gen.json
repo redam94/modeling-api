@@ -6049,6 +6049,10 @@
       "type": "object",
       "description": "Evaluation block (metrics)"
      },
+     "calibration": {
+      "type": "object",
+      "description": "The calibration block of the model (business priors and lift tests); lift tests can come from model.lift_test"
+     },
      "nodes": {
       "type": "object",
       "maxProperties": 64,
@@ -7932,6 +7936,167 @@
    }
   },
   {
+   "id": "model.lift_test",
+   "version": "1.0.0",
+   "kind": "model",
+   "inputs": {
+    "model": {
+     "type": "model_version",
+     "required": true,
+     "multiple": false,
+     "description": "A fitted causal model version"
+    }
+   },
+   "outputs": {
+    "table": "table"
+   },
+   "params_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+     "channel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "The marketing channel of the test (a channel of the marketing mix model)"
+     },
+     "spend_delta": {
+      "type": "number",
+      "description": "The extra spend during the test, in spend units (a negative number for a holdout)"
+     },
+     "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$",
+      "description": "The id of the lift test (optional)"
+     },
+     "hdi_prob": {
+      "type": "number",
+      "description": "The probability inside the range of kpi_delta",
+      "default": 0.9,
+      "minimum": 0.5,
+      "maximum": 0.999
+     }
+    },
+    "required": [
+     "channel",
+     "spend_delta"
+    ]
+   },
+   "result_fields": {
+    "lift_test": {
+     "type": "object",
+     "description": "The lift test (the LiftTest of a calibration block)"
+    },
+    "kpi_delta": {
+     "type": "number",
+     "description": "The total effect in the test period (posterior mean)"
+    },
+    "se": {
+     "type": "number",
+     "description": "The standard deviation of the total effect"
+    },
+    "hdi_low": {
+     "type": "number",
+     "description": "The low bound of the range of the total effect"
+    },
+    "hdi_high": {
+     "type": "number",
+     "description": "The high bound of the range of the total effect"
+    },
+    "p_positive": {
+     "type": "number",
+     "description": "The probability that the total effect is above zero"
+    },
+    "excludes_zero": {
+     "type": "boolean",
+     "description": "True if the range does not include zero"
+    },
+    "relative_effect": {
+     "type": "number",
+     "description": "The total effect divided by the total of the counterfactual (null if that total is zero)"
+    },
+    "start": {
+     "type": "string",
+     "description": "The first date of the test"
+    },
+    "end": {
+     "type": "string",
+     "description": "The last date of the test"
+    },
+    "geo": {
+     "type": "string",
+     "description": "The market of the test (null for a national test)"
+    },
+    "n_treated": {
+     "type": "integer",
+     "description": "The number of units with test periods"
+    },
+    "n_cells": {
+     "type": "integer",
+     "description": "The number of cells (unit and period) in the test"
+    },
+    "n_missing": {
+     "type": "integer",
+     "description": "The cells of the test without an observed value"
+    },
+    "hdi_prob": {
+     "type": "number",
+     "description": "The probability inside the range"
+    },
+    "model": {
+     "type": "string",
+     "description": "The causal model (id@version)"
+    }
+   },
+   "runs_in": "sandbox",
+   "cacheable": true,
+   "about": {
+    "title": "Make a lift test from a causal model",
+    "summary_plain": "Adds the effect that a causal model measured in the test period and gives it as a lift test. A marketing mix model can use this lift test as calibration.",
+    "use_when": [
+     "You measured a campaign or a geo test with causal.synthetic_control, causal.impact or causal.did and you want the marketing mix model to agree with the result",
+     "You want the total effect of a test with its uncertainty in one table"
+    ],
+    "avoid_when": [
+     "The model is not a causal model (the node needs the impact group of the model)",
+     "The periods of the data are not dates (a lift test needs the start and end dates)"
+    ],
+    "data_needs": [
+     "A fitted causal model version",
+     "The channel of the test and the extra spend during the test (a negative number for a holdout)"
+    ],
+    "assumptions": [
+     "The causal model measured the effect of the spend change on this channel only",
+     "The marketing mix model has the same KPI in the same units"
+    ],
+    "outputs": [
+     "A lift test (channel, dates, market, KPI change and its range) and a table"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "seconds",
+    "example": "TV in market geo_03 for six weeks with 50 000 extra spend: KPI change 4 100, 90% range 2 300 to 5 900.",
+    "related": [
+     "model.fit",
+     "causal.synthetic_control",
+     "causal.impact",
+     "causal.did",
+     "mmm.bayesian"
+    ],
+    "references": [],
+    "expert_notes": "The node reads only the impact group of the bundle. kpi_delta is the posterior mean of the sum of effect over the post cells and the treated units, se its standard deviation, and ci the HDI at hdi_prob (ci_level = hdi_prob). The test dates are the first and the last post period. geo is the treated unit when exactly one unit has post cells; with more units the lift test is national (geo null) and the node gives a warning. The effect includes the observation noise of the counterfactual (predictive draws), so the range is wide on purpose.",
+    "fits": {
+     "goal": [
+      "measure_impact",
+      "explain_marketing"
+     ],
+     "data_shape": [
+      "panel",
+      "one_series"
+     ]
+    }
+   }
+  },
+  {
    "id": "evaluate.ppc",
    "version": "1.0.0",
    "kind": "evaluate",
@@ -9484,6 +9649,247 @@
     "mmm",
     "mmm-framework",
     "governance"
+   ]
+  },
+  {
+   "id": "geo_lift_mmm",
+   "version": "1.0.0",
+   "about": {
+    "title": "Geo-lift test to a calibrated marketing mix",
+    "summary_plain": "Measures the effect of a geo-lift test: it compares the markets of the test with a synthetic copy made from the other markets. Then it gives the result to the marketing mix model as a lift test, so the model agrees with the test.",
+    "use_when": [
+     "You ran a test on one channel in some markets (more spend, or no spend) and you have a marketing mix model of the same KPI",
+     "You want the marketing mix model to agree with the result of the test"
+    ],
+    "avoid_when": [
+     "The test markets are very different from all the other markets (the synthetic copy cannot follow them)",
+     "Other changes occurred in the test markets during the test"
+    ],
+    "data_needs": [
+     "The KPI for each market and week, before and during the test, for the test markets and for markets without the test",
+     "The weekly data of the marketing mix model (KPI, spend for each channel and controls)",
+     "The channel of the test, its markets, its dates and the extra spend"
+    ],
+    "assumptions": [
+     "Without the test, the test markets follow a weighted mix of the other markets, as before the test",
+     "The test changed only the spend of one channel"
+    ],
+    "outputs": [
+     "The effect of the test with its range, for each week and in total",
+     "A lift test for the calibration of the marketing mix model",
+     "A marketing mix model calibrated with the test",
+     "Plots of the test and of the calibration, and a report"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "long",
+    "example": "TV off in geo_03 for six weeks (-50 000 spend): the KPI fell by 4 100 (90% range -5 900 to -2 300). The calibrated model gives TV an ROI that agrees with the test.",
+    "related": [
+     "causal.synthetic_control",
+     "model.lift_test",
+     "mmm.bayesian",
+     "causal.impact"
+    ],
+    "references": [
+     {
+      "title": "Abadie, Diamond & Hainmueller (2010), Synthetic control methods for comparative case studies"
+     }
+    ],
+    "expert_notes": "The geolift node fits causal.synthetic_control on the experiment data (train_only). model.lift_test adds the effect over the post cells of every treated market per draw: kpi_delta is the mean, ci the 90% HDI. With one treated market the lift test has that geo; with more markets it is national. The MMM gets calibration.lift_tests = [nodes.lift.lift_test]. The test dates must be inside the MMM data, and a geo of the test must be a geo of the MMM data.",
+    "fits": {
+     "goal": [
+      "measure_impact",
+      "explain_marketing"
+     ],
+     "data_shape": [
+      "panel"
+     ],
+     "history": [
+      "medium",
+      "long"
+     ]
+    }
+   },
+   "document": {
+    "apiVersion": "mapi/v1",
+    "kind": "Workflow",
+    "metadata": {
+     "name": "geo-lift-mmm",
+     "project": "templates"
+    },
+    "params": {
+     "treated": {
+      "type": "array",
+      "required": true,
+      "description": "The markets of the test (labels of the market dimension of the experiment data)"
+     },
+     "test_start": {
+      "type": "string",
+      "required": true,
+      "description": "The first date of the test (YYYY-MM-DD)"
+     },
+     "test_end": {
+      "type": "string",
+      "required": true,
+      "description": "The last date of the test (YYYY-MM-DD)"
+     },
+     "channel": {
+      "type": "string",
+      "required": true,
+      "description": "The marketing channel of the test (a channel of the marketing mix model)"
+     },
+     "spend_delta": {
+      "type": "number",
+      "required": true,
+      "description": "The extra spend in the test (a negative number for a holdout)"
+     }
+    },
+    "inputs": {
+     "experiment": {
+      "type": "dataset",
+      "description": "The KPI by market and week around the test"
+     },
+     "data": {
+      "type": "dataset",
+      "description": "The data of the marketing mix model"
+     }
+    },
+    "nodes": [
+     {
+      "id": "geolift",
+      "use": "model.fit",
+      "label": "Geo-lift test",
+      "inputs": {
+       "data": "inputs.experiment"
+      },
+      "with": {
+       "model": "causal.synthetic_control@^1",
+       "settings": {
+        "treated": {
+         "$param": "treated"
+        },
+        "intervention_start": {
+         "$param": "test_start"
+        },
+        "intervention_end": {
+         "$param": "test_end"
+        }
+       },
+       "fit": {
+        "mode": "train_only",
+        "tune": 1000,
+        "draws": 1000,
+        "chains": 4,
+        "seed": 20261020
+       }
+      }
+     },
+     {
+      "id": "lift",
+      "use": "model.lift_test",
+      "label": "Lift test",
+      "inputs": {
+       "model": "geolift.model"
+      },
+      "with": {
+       "channel": {
+        "$param": "channel"
+       },
+       "spend_delta": {
+        "$param": "spend_delta"
+       }
+      }
+     },
+     {
+      "id": "impact_plot",
+      "use": "plot.render",
+      "label": "Effect of the test",
+      "inputs": {
+       "model": "geolift.model"
+      },
+      "with": {
+       "recipe": "causal.impact",
+       "source": "model"
+      }
+     },
+     {
+      "id": "mmm",
+      "use": "model.fit",
+      "label": "Calibrated marketing mix",
+      "inputs": {
+       "data": "inputs.data"
+      },
+      "with": {
+       "model": "mmm.bayesian@^1",
+       "settings": {
+        "adstock": {
+         "kind": "geometric",
+         "l_max": 8
+        },
+        "saturation": {
+         "kind": "hill"
+        },
+        "trend": {
+         "kind": "linear"
+        },
+        "seasonality": {
+         "yearly_order": 3
+        },
+        "hierarchy": {
+         "pool_over": [
+          "geo"
+         ]
+        }
+       },
+       "calibration": {
+        "lift_tests": {
+         "$expr": "[nodes.lift.lift_test]"
+        }
+       }
+      }
+     },
+     {
+      "id": "lift_plot",
+      "use": "plot.render",
+      "label": "Model against the test",
+      "inputs": {
+       "model": "mmm.model"
+      },
+      "with": {
+       "recipe": "mmm.lift_tests",
+       "source": "model"
+      }
+     },
+     {
+      "id": "report",
+      "use": "report.summary",
+      "inputs": {
+       "items": [
+        "lift.table"
+       ],
+       "metrics": [
+        "mmm.metrics"
+       ],
+       "plots": [
+        "impact_plot.plot",
+        "lift_plot.plot"
+       ],
+       "model": "mmm.model"
+      },
+      "with": {
+       "title": "Geo-lift test and calibrated marketing mix"
+      }
+     }
+    ],
+    "outputs": {
+     "experiment": "geolift.model",
+     "model": "mmm.model",
+     "report": "report.report"
+    }
+   },
+   "tags": [
+    "causal",
+    "mmm",
+    "calibration"
    ]
   },
   {
@@ -15543,6 +15949,65 @@
      ],
      "data_shape": [
       "one_series"
+     ],
+     "history": [
+      "medium",
+      "long"
+     ]
+    }
+   }
+  },
+  {
+   "kind": "workflow_template",
+   "id": "workflow.geo_lift_mmm",
+   "about": {
+    "title": "Geo-lift test to a calibrated marketing mix",
+    "summary_plain": "Measures the effect of a geo-lift test: it compares the markets of the test with a synthetic copy made from the other markets. Then it gives the result to the marketing mix model as a lift test, so the model agrees with the test.",
+    "use_when": [
+     "You ran a test on one channel in some markets (more spend, or no spend) and you have a marketing mix model of the same KPI",
+     "You want the marketing mix model to agree with the result of the test"
+    ],
+    "avoid_when": [
+     "The test markets are very different from all the other markets (the synthetic copy cannot follow them)",
+     "Other changes occurred in the test markets during the test"
+    ],
+    "data_needs": [
+     "The KPI for each market and week, before and during the test, for the test markets and for markets without the test",
+     "The weekly data of the marketing mix model (KPI, spend for each channel and controls)",
+     "The channel of the test, its markets, its dates and the extra spend"
+    ],
+    "assumptions": [
+     "Without the test, the test markets follow a weighted mix of the other markets, as before the test",
+     "The test changed only the spend of one channel"
+    ],
+    "outputs": [
+     "The effect of the test with its range, for each week and in total",
+     "A lift test for the calibration of the marketing mix model",
+     "A marketing mix model calibrated with the test",
+     "Plots of the test and of the calibration, and a report"
+    ],
+    "difficulty": "intermediate",
+    "typical_runtime": "long",
+    "example": "TV off in geo_03 for six weeks (-50 000 spend): the KPI fell by 4 100 (90% range -5 900 to -2 300). The calibrated model gives TV an ROI that agrees with the test.",
+    "related": [
+     "causal.synthetic_control",
+     "model.lift_test",
+     "mmm.bayesian",
+     "causal.impact"
+    ],
+    "references": [
+     {
+      "title": "Abadie, Diamond & Hainmueller (2010), Synthetic control methods for comparative case studies"
+     }
+    ],
+    "expert_notes": "The geolift node fits causal.synthetic_control on the experiment data (train_only). model.lift_test adds the effect over the post cells of every treated market per draw: kpi_delta is the mean, ci the 90% HDI. With one treated market the lift test has that geo; with more markets it is national. The MMM gets calibration.lift_tests = [nodes.lift.lift_test]. The test dates must be inside the MMM data, and a geo of the test must be a geo of the MMM data.",
+    "fits": {
+     "goal": [
+      "measure_impact",
+      "explain_marketing"
+     ],
+     "data_shape": [
+      "panel"
      ],
      "history": [
       "medium",

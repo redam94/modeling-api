@@ -8428,10 +8428,19 @@ export interface components {
          *     * ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``
          *       along ``wide_dim`` (one label per column, e.g. spend per channel);
          *     * ``role`` without ``wide_dim`` (``columns``): each column is its own variable.
+         *
+         *     A ``text`` answer fills its placeholder as typed (stripped); with ``as_list`` it is split
+         *     at the commas into a list of names (a required one must keep a name).
          */
         GuidedQuestion: {
             /** Accepts */
             accepts?: ("number" | "integer" | "string" | "date" | "boolean")[];
+            /**
+             * As List
+             * @description v0.13: a text answer is a list of names separated by commas (the placeholder becomes the list, for example the treated markets of a geo-lift test)
+             * @default false
+             */
+            as_list?: boolean;
             /** As Var */
             as_var?: string | null;
             /** Choices */
@@ -8487,6 +8496,7 @@ export interface components {
          *     ``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields
          *     are kept but not shown; Expert edits round-trip). ``plugin_available`` is false while
          *     the template's built-in plugin is not shipped (``plugin_note`` says what is missing).
+         *     A ``family`` this version does not know (added by a newer server) is kept as text.
          * @example {
          *       "description_plain": "Forecast one series a few weeks ahead.",
          *       "family": "forecast",
@@ -8572,7 +8582,7 @@ export interface components {
              * Family
              * @enum {string}
              */
-            family: "mmm" | "forecast" | "tabular" | "choice";
+            family: "mmm" | "forecast" | "tabular" | "choice" | "causal";
             /** Id */
             id: string;
             /** Lookups */

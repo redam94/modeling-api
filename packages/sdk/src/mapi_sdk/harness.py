@@ -103,7 +103,15 @@ from mapi_sdk.coords import (
 from mapi_sdk.errors import SchemaValidationError, StepError, plugin_error, raise_for_issues
 from mapi_sdk.future import fill_future_covariates, fill_future_rows, season_length
 from mapi_sdk.metrics import categorical_dim, compute_metrics, elpd, mase_scale
-from mapi_sdk.models import PREDICTIONS, FitContext, FitOutput, Fitted, ModelPlugin, ScoreContext
+from mapi_sdk.models import (
+    DIFFERENCE_ATTR,
+    PREDICTIONS,
+    FitContext,
+    FitOutput,
+    Fitted,
+    ModelPlugin,
+    ScoreContext,
+)
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.schema import check_dataset, infer_schema
@@ -1131,6 +1139,57 @@ def _categorical_sources(
     return out
 
 
+def _difference_refs(pred: xr.Dataset, rep: Representation) -> dict[str, xr.DataArray]:
+    """``{output: reference values}`` (model stage) of the difference outputs in ``pred``.
+
+    Only draws and point outputs: the moments of a difference are not the difference of the
+    moments, so those outputs keep the plain inverse.
+    """
+    if rep not in (Representation.DRAWS, Representation.POINT):
+        return {}
+    out: dict[str, xr.DataArray] = {}
+    for v in pred.data_vars:
+        ref = pred[v].attrs.get(DIFFERENCE_ATTR)
+        if isinstance(ref, str) and ref != v and ref in pred:
+            out[str(v)] = pred[ref]
+    return out
+
+
+def _difference_levels(
+    pred: xr.Dataset, refs: Mapping[str, xr.DataArray], sources: Mapping[str, str]
+) -> tuple[xr.Dataset, dict[str, str]]:
+    """Replace each difference output by its level (``difference + reference``) and add the
+    reference as ``<output>__ref``; returns the helpers' sources for the inverse."""
+    helpers: dict[str, str] = {}
+    out = pred
+    for v, ref in refs.items():
+        if v not in out or v not in sources:
+            continue
+        helper = f"{v}__ref"
+        level = out[v] + ref
+        level.attrs = dict(out[v].attrs)
+        out = out.assign({v: level, helper: ref})
+        helpers[helper] = sources[v]
+    return out, helpers
+
+
+def _difference_back(
+    pred: xr.Dataset, helpers: Mapping[str, str], space: dict[str, str], retrans: dict[str, str]
+) -> tuple[xr.Dataset, dict[str, str], dict[str, str]]:
+    """Turn the inverted levels of :func:`_difference_levels` back into differences."""
+    if not helpers:
+        return pred, space, retrans
+    out = pred
+    for helper in helpers:
+        v = helper.removesuffix("__ref")
+        diff = out[v] - out[helper]
+        diff.attrs = dict(out[v].attrs)
+        out = out.assign({v: diff}).drop_vars(helper)
+        space.pop(helper, None)
+        retrans.pop(helper, None)
+    return out, space, retrans
+
+
 def _decompositions(fitted: Fitted) -> list[str]:
     """Outputs that decompose a prediction along a ``component`` dim (contributions).
 
@@ -1879,16 +1938,19 @@ def score_bundle(
             sel = {binding.to_canonical(k): v for k, v in req.select.items()}
             sel = {k: v for k, v in sel.items() if k in pred.dims}
             pred = pred.sel({k: _labels(pred, k, v) for k, v in sel.items()})
+        refs = _difference_refs(pred, rep)
         if req.output.vars:
             keep = [v for v in req.output.vars if v in pred]
             pred = pred[keep]
         space: dict[str, str] = {}
         retrans: dict[str, str] = {}
         if req.output.units == "original" and "inverse_units" not in caps.owns:
+            sources = _var_sources(bundle.model, rs.model.input_schema)
+            pred, helpers = _difference_levels(pred, refs, sources)
             inv = pipeline.inverse_outputs(
                 pred,
                 bundle.states,
-                _var_sources(bundle.model, rs.model.input_schema),
+                {**sources, **helpers},
                 representation=rep,
                 retransform="smearing"
                 if bundle.model.settings.get("retransform") == "smearing"
@@ -1897,7 +1959,7 @@ def score_bundle(
                 side_tables=tables,
                 decompositions=_decompositions(bundle.model),
             )
-            pred, space, retrans = inv.data, inv.space, inv.retransform
+            pred, space, retrans = _difference_back(inv.data, helpers, inv.space, inv.retransform)
             for var, steps in inv.kept.items():
                 if var in kept_reported:
                     continue

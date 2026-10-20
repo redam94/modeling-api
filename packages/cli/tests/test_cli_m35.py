@@ -485,8 +485,8 @@ def test_choose_asks_the_questions_and_shows_about_cards(
     result = example(ChooserResult)
     result["items"][0]["about"] = example(CatalogAbout)["about"]
     rec = api.get(f"{V1}/catalog/recommendations").respond(200, json=result)
-    # goal: 3 (forecast) and 9; data_shape: a typo first, then 1; Enter skips the rest
-    answers = "3,9\nx\n1\n" + "\n" * 6
+    # goal: 4 (forecast) and 10; data_shape: a typo first, then 1; Enter skips the rest
+    answers = "4,10\nx\n1\n" + "\n" * 6
     res = mapi(*CONN, "choose", input=answers)
     assert res.exit_code == 0, res.output
     params = rec.calls.last.request.url.params

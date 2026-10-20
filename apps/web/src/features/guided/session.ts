@@ -30,6 +30,11 @@ export function hasTask(template: Pick<GuidedTemplate, "tasks">, task: NonNullab
   return (template.tasks ?? []).includes(task);
 }
 
+/** The explore step has content (what-if, scenarios or a forecast); the causal templates have none. */
+export function hasExplore(template: Pick<GuidedTemplate, "tasks">): boolean {
+  return hasTask(template, "whatif") || hasTask(template, "forecast") || hasTask(template, "counterfactual");
+}
+
 export function exploreTitle(template: Pick<GuidedTemplate, "tasks" | "family">): string {
   if (hasTask(template, "whatif")) return "What if…";
   if (hasTask(template, "forecast")) return "Forecast";
@@ -45,7 +50,7 @@ export function priorsSections(template: Pick<GuidedTemplate, "tasks">): { belie
   return { beliefs: hasTask(template, "business_priors"), lifts: hasTask(template, "lift_tests") };
 }
 
-/** The steps of a template's flow (business priors only where the template takes them). */
+/** The steps of a template's flow (business priors only where the template takes them, the explore step only where it has content). */
 export function stepsFor(template: Pick<GuidedTemplate, "tasks" | "family">): StepDef[] {
   const steps: StepDef[] = [{ id: "data", title: "Your data", question: "What does each column contain?" }];
   if (hasTask(template, "business_priors") || hasTask(template, "lift_tests")) {
@@ -54,9 +59,11 @@ export function stepsFor(template: Pick<GuidedTemplate, "tasks" | "family">): St
   steps.push(
     { id: "run", title: "Fit the model", question: "Let the model learn from your data" },
     { id: "report", title: "Results", question: "What did the model find? Can you trust it?" },
-    { id: "explore", title: exploreTitle(template), question: hasTask(template, "whatif") ? "What happens if you change the budget?" : "What comes next?" },
-    { id: "share", title: "Share", question: "Use the result" },
   );
+  if (hasExplore(template)) {
+    steps.push({ id: "explore", title: exploreTitle(template), question: hasTask(template, "whatif") ? "What happens if you change the budget?" : "What comes next?" });
+  }
+  steps.push({ id: "share", title: "Share", question: "Use the result" });
   return steps;
 }
 
@@ -139,6 +146,7 @@ const DATA_SHAPES: Partial<Record<GuidedTemplate["family"], string>> = {
   forecast: "A CSV file or a Parquet file with one row for each week (or day). Each row has a value of the series to forecast.",
   tabular: "A CSV file or a Parquet file with one row for each store and week. Each row has the sales and the drivers of the sales: prices, promotions and the calendar.",
   choice: "A CSV file or a Parquet file with one row for each shopping trip. Each row has the customer, the selected product and a price column for each product. It can also have a promotion column for each product.",
+  causal: "A CSV file or a Parquet file with one row for each week (or day), before and after the start of the campaign. Each row has the result. It can also have control columns that the campaign did not change, such as the sales of other regions or search traffic.",
 };
 
 /** Templates whose data differs from the rest of their family (national, more columns). */
@@ -147,6 +155,8 @@ const TEMPLATE_SHAPES: Record<string, string> = {
     "A CSV file or a Parquet file with one row for each week (or day) for the whole country. Each row has the result, a spend column for each channel and a column for each intermediate measure, such as visits or awareness. An intermediate measure can have empty rows, for example a monthly survey.",
   multi_kpi_mmm:
     "A CSV file or a Parquet file with one row for each week (or day) for the whole country. Each row has a result column for each product or KPI, in the same units, and a spend column for each channel.",
+  geo_lift:
+    "A CSV file or a Parquet file with one row for each market and week (or day), before and after the start of the test. Each row has the result. Some markets got the campaign and the other markets did not.",
 };
 
 /** What the upload should look like for this template, in plain words. */

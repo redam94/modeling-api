@@ -51,14 +51,13 @@ FIXTURES: list[str] = [
     "e19_ggm",
     "e23_phylo",
     "e81_circular",
+    "e13_bsts",
+    "causal_impact",
+    "geo_lift",
+    "did_event_study",
 ]
 
 DEFERRED: dict[str, str] = {
-    "E13": (
-        "state-space model on pymc_extras: needs a state-space plugin with the 'filter' score "
-        "mode and loo_valid=False, which no built-in plugin provides in M1 (vetted-plugin "
-        "ports, M4)"
-    ),
     "E82-slim": (
         "GP Bayesian optimisation: needs the 'recommend' mode and plugin-owned Campaign runs, "
         "which the plan schedules with Campaign loops (M6)"

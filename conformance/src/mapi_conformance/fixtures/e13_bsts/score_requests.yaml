@@ -1,0 +1,28 @@
+# E13: forecasts start from the terminal state and need the planned prices; filter mode
+# continues the fitted series and returns an updated terminal state.
+- name: forecast_12
+  request: {mode: forecast, horizon: {dim: t, periods: 12}, output: {draws: 20}}
+  payload: future
+  expect: {groups: [summary, draws], vars: [y_hat, level], sizes: {date: 12}}
+- name: forecast_12_predictive
+  request: {mode: forecast, horizon: {dim: t, periods: 12}, output: {kind: predictive}}
+  payload: future
+  expect: {vars: [y_hat], sizes: {date: 12}}
+- name: filter_new_months
+  request: {mode: filter, data: "dataset://retail/monthly_sales_live@v1"}
+  payload: live
+  drop_targets: false
+  expect: {groups: [summary, terminal_state], vars: [y_hat, level], sizes: {date: 3}}
+- name: filter_inside_fit
+  request: {mode: filter, data: "dataset://retail/monthly_sales@v1"}
+  payload: "tail:3"
+  drop_targets: false
+  expect_error: COORD_NOT_ALLOWED
+- name: forecast_without_price
+  request: {mode: forecast, horizon: {dim: t, periods: 12}}
+  payload: future_without_price
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: price, multiply: 1.1}]}
+  payload: "tail:3"
+  expect_error: MODE_NOT_SUPPORTED

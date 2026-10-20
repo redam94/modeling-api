@@ -1,0 +1,35 @@
+[project]
+name = "mapi-plugin-causal"
+version = "0.12.0"
+description = "Causal inference model plugins (CausalImpact, Bayesian synthetic control, difference-in-differences)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-sdk",
+  "mapi-spec",
+  "mapi-pymc",
+  # causal.impact reuses the ts.bsts state-space core (mapi_plugin_ts.bsts / ss_math).
+  "mapi-plugin-ts",
+  "numpy>=2.0",
+  "pandas>=2.2",
+  "xarray>=2025.1",
+  "scipy>=1.13",
+]
+
+[project.entry-points."mapi.models"]
+causal = "mapi_plugin_causal:PLUGINS"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_plugin_causal"]
+
+[tool.uv.sources]
+mapi-sdk = { workspace = true }
+mapi-spec = { workspace = true }
+mapi-pymc = { workspace = true }
+mapi-plugin-ts = { workspace = true }

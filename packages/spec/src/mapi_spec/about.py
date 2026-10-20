@@ -486,6 +486,7 @@ CHOOSER_QUESTIONS: Final[tuple[ChooserQuestion, ...]] = (
     _q("goal", "What do you want to do?", [
         ("explain_marketing", "Measure what my marketing adds"),
         ("plan_budget", "Plan or split a marketing budget"),
+        ("measure_impact", "Measure the effect of a campaign, a launch or a test"),
         ("forecast", "Forecast the future"),
         ("explain_drivers", "Understand what causes changes in a number"),
         ("predict_values", "Predict a value for each store, product or customer"),

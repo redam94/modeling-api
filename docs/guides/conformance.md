@@ -84,6 +84,10 @@ The contract kit does not run in this mode. It needs the plugin in-process.
 | `mmm_frequentist` | `mmm.frequentist` | The ridge estimator of mmm-framework with bootstrap draws. A model that `owns` scaling, carry-over and units. A score window is equal to the same weeks of the full series. |
 | `e84_lite` | `choice.multinomial_logit` | A ragged household × trip panel with a text target. `last_per_group` split. Products off the shelf. New households from the fitted spread. A price-rise counterfactual. Next trips. Categorical holdout metrics (hit rate against the naive guess, log score, Brier). |
 | `guided_mmm` | `mmm.bayesian` | The draft of the `geo_mmm` Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset. |
+| `e13_bsts` <span class="mapi-badge">v0.13</span> | `ts.bsts` | The plan fixture E13. Monthly sales with missing months and a price driver. A forecast with future prices, predictive draws, the `filter` mode that returns an updated terminal state, `MODE_NOT_SUPPORTED` for counterfactual, `MISSING_FUTURE_COVARIATE` without future prices. LOO that is not valid. |
+| `causal_impact` <span class="mapi-badge">v0.13</span> | `causal.impact` | Weekly sales with two control series and a simulated lift. The `impact` group and a total effect more than zero. `predict` over the data (the values without the change and the effect), a forecast of 4 weeks with the control series, `MISSING_FUTURE_COVARIATE` without them, `MODE_NOT_SUPPORTED` for counterfactual |
+| `geo_lift` <span class="mapi-badge">v0.13</span> | `causal.synthetic_control` | Weekly sales of 12 markets. One test market is a mix of the other markets. The `impact` and `donor_weights` groups and the simulated lift. A score needs the donors without gaps. A new market is refused. No forecast. |
+| `did_event_study` <span class="mapi-badge">v0.13</span> | `causal.did` | Monthly sales of stores, some with a new layout. The event-study coefficients, the counterfactual mode (treatment set to 0), no month after the fit (the time effects are fixed), a missing treatment. No forecast. |
 | `sm_arimax` | `ts.sarimax` | Weekly sales for each geo with price and promotion drivers. An ARIMAX model for each series (statsmodels) |
 | `sm_vecm_macro` | `ts.vecm` | US real GDP, consumption and investment in log levels. A VECM with the Johansen cointegration rank |
 | `e07_lgcp` | `sci.lgcp_grid` | Earthquake counts on a space-time grid. A log-Gaussian Cox process with a 2-D HSGP map |
@@ -110,7 +114,6 @@ the list of the plan, the fixtures and the deferrals agree:
 
 | Plan fixture | Waits for |
 |---|---|
-| E13 state-space | A state-space plugin with the `filter` mode (vetted plugins, planned) |
 | E82-slim GP Bayesian optimisation | The `recommend` mode and Campaign runs (planned) |
 | E45 | A plugin for its model (vetted plugins, planned) |
 

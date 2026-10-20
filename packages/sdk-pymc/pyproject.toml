@@ -1,6 +1,6 @@
 [project]
 name = "mapi-pymc"
-version = "0.12.0"
+version = "0.13.0"
 description = "PyMC model base classes for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,10 @@ dependencies = [
   "arviz>=1.0",
   "nutpie>=0.16",
 ]
+
+[project.optional-dependencies]
+# Apache-2.0. The ``pathfinder`` engine (pymc_extras.fit); imported lazily by engines.py.
+pathfinder = ["pymc-extras>=0.12.1,<0.13"]
 
 [build-system]
 requires = ["hatchling>=1.25"]

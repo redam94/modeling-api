@@ -11,7 +11,8 @@ def test_entry_point_registers_every_plugin() -> None:
     for plugin in mapi_plugin_ts.PLUGINS:
         assert reg.model(f"{plugin.id}@^1") is plugin
     ids = {m.manifest.id for m in reg.catalog().models}
-    assert {"ts.hsgp_trend", "ts.gaussian_hmm"} <= ids
+    assert {"ts.hsgp_trend", "ts.gaussian_hmm", "ts.bsts"} <= ids
+    assert [p.id for p in mapi_plugin_ts.PLUGINS] == ["ts.hsgp_trend", "ts.gaussian_hmm", "ts.bsts"]
 
 
 def test_every_plugin_has_a_complete_about_card() -> None:

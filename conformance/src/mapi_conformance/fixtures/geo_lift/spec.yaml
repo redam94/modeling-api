@@ -1,0 +1,16 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: geo-lift-test, project: marketing, labels: {corpus: geo-lift}}
+data:
+  dataset: dataset://marketing/weekly_sales_by_geo@latest
+  bind:
+    dims: {unit: geo, time: week}
+    vars: {y: sales}
+model:
+  use: causal.synthetic_control@^1
+  settings:
+    treated: [geo_03]
+    intervention_start: "2024-02-26"
+    intervention_end: "2024-05-13"
+  fit: {mode: train_only, seed: 7, tune: 500, draws: 500, chains: 4}
+outputs: {plots: [causal.impact, causal.donor_weights, causal.pre_fit, core.convergence]}

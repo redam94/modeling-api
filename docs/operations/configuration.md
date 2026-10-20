@@ -165,7 +165,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_RUNNER_COMMAND` | `mapi-runner` next to the interpreter | The command line of the supervisor (shell-quoted) for `local-process` |
 | `MAPI_EXECUTOR_WORKDIR` | `$MAPI_DATA_DIR/executions` | The scratch directory of the local executor for each run |
 | `MAPI_DOCKER_IMAGE` | `mapi/base-bayes:<version>` | The runner image of the docker executors for runs without a mapped plugin (ingest, describe) |
-| `MAPI_DOCKER_IMAGES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to runner image (JSON), with the tag of the workspace version |
+| `MAPI_DOCKER_IMAGES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`, `causal`: `base-forecast` | Plugin namespace to runner image (JSON), with the tag of the workspace version |
 | `MAPI_DOCKER_NETWORK` | `none` | The network of the run containers: `container:<gcs-shim container>`, or an internal network that contains only the shim. The server refuses `none` while the bootstrap URL is HTTP |
 | `MAPI_DOCKER_NETWORK_ISOLATED` | `false` | Declare that `MAPI_DOCKER_NETWORK` is an internal network with only the shim. Then `docker-gvisor` reports enforced egress and DNS. `verified` and `public` tenants also need a recorded security-suite run in which the network probes were stopped ([docker](docker.md)) |
 | `MAPI_DOCKER_RUNTIME_GVISOR` | `runsc` | The OCI runtime of `docker-gvisor` |
@@ -213,7 +213,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | The region of the inventory |
 | `MAPI_DEFAULT_RESIDENCY` | derived | The data residency of the platform tenant, of tenants that the migrations adopt, and of tenants that you make without a residency. Default: with `cloudrun-jobs`, the multi-region of `MAPI_CLOUDRUN_REGION` (`eu` for `europe-west1`). If not, `us` |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | The rule for Job ids. It must agree with the Jobs that the infrastructure makes |
-| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base image family (JSON) |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`, `causal`: `base-forecast` | Plugin namespace to base image family (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | The base for runs without a mapped plugin (ingest, describe) |
 | `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | The token bucket in front of `jobs.run` for each orchestrator (maximum 180, the regional quota) |
 | `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | The number of `429` answers in sequence before a submit fails |
@@ -435,7 +435,7 @@ Use `docker build --build-arg NAME=value`. The Makefile gives `VERSION`, `VCS_RE
 | Argument | Meaning |
 |---|---|
 | `MAPI_PACKAGES` | The workspace packages that the build installs into the image (`mapi-runner mapi-steps mapi-pymc …`) |
-| `MAPI_WORKER_PACKAGES` | The packages that the `worker` target adds to `base-bayes` (`mapi-plugin-ts mapi-server[docker]`) |
+| `MAPI_WORKER_PACKAGES` | The packages that the `worker` target adds to `base-bayes` (`mapi-plugin-ts mapi-plugin-causal mapi-server[docker]`) |
 | `MAPI_NO_INSTALL` | The distributions that the build never installs (the 300 MB `nvidia-nccl-cu13`) |
 | `MAPI_APT_PACKAGES` | The system packages of the runtime stage (`tini`, and `g++` for PyTensor) |
 | `MAPI_ASSERT_PRESENT`, `MAPI_ASSERT_ABSENT` | The distributions that must be installed, and that must not be installed. If not, the build fails |

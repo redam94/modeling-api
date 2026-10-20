@@ -23,6 +23,7 @@ the [workflows guide](workflows.md#cookbook).
 | [Can I trust a calibration to design with it?](#calibrate-then-design) | What are the material and the losses of a heated plate? Does the calibration predict a run that it did not see? What temperature field does a new heater layout give? |
 | [Can I trust this Bayesian model?](#bayesian-workflow-audit) | Do the priors make sense? Do the chains agree? Does the model make data like my data? Do the priors set the results? Does the model find known values? |
 | [Where does my image model go wrong?](#image-model-check) | Do the predicted images look like the observed image? Where on the image are the residuals large? |
+| [What did my geo-lift test show, and does the MMM agree?](#geo-lift-test-to-a-calibrated-mmm) | What did a campaign in some markets add? Does the marketing mix model agree with the test after it uses the test as a lift test? |
 
 ## Readiness to ARIMAX
 
@@ -1110,6 +1111,42 @@ mapi runs params "$SEARCH_RUN"                # the trial.* params
 ```
 
 A `model.backtest` node logs the metrics of each fold as scalars with the label `fold`.
+
+## Geo-lift test to a calibrated MMM <span class="mapi-badge">v0.13</span> { #geo-lift-test-to-a-calibrated-mmm }
+
+**In plain words.** You ran a test on one channel in some markets: more spend, or no spend.
+The workflow measures what the test changed, against a mix of the markets without the test.
+Then it gives the result to the marketing mix model as a lift test, so that the model agrees
+with the test.
+
+**For the statistician.** `geolift` fits `causal.synthetic_control` (simplex weights,
+`train_only`) on the experiment data. `lift` (`model.lift_test`) sums the effect over the
+post cells and the treated markets for each draw. `kpi_delta` is the mean, `se` the sd and
+`ci` the 90% HDI. `mmm` fits `mmm.bayesian` with `calibration.lift_tests` set from
+`nodes.lift.lift_test`. `lift_plot` shows the test next to the estimate of the model
+(`mmm.lift_tests`).
+
+This recipe is the gallery template `geo_lift_mmm`. Start from the template. Do not copy the
+document from this page:
+
+```bash
+mapi workflows create --template geo_lift_mmm
+mapi workflows run geo-lift-mmm \
+  -i experiment=dataset://growth/geo_test@latest \
+  -i data=dataset://growth/eu_media_weekly@latest \
+  -p 'treated=["geo_03"]' -p test_start=2024-03-04 -p test_end=2024-04-14 \
+  -p channel=tv -p spend_delta=-50000 --watch
+mapi workflows node "$RUN" lift       # the lift test: kpi_delta, se, hdi_low, hdi_high, geo
+```
+
+To see the document, use `mapi workflows init geo_lift_mmm`. These rules apply:
+
+- The dates of the test must be in the data of the marketing mix model.
+- With one test market, the lift test has the geo of that market. That geo must be in the data
+  of the marketing mix model. With two or more test markets, the lift test is national.
+- The time labels of the experiment must be dates.
+
+See [Measure the effect of a change](causal.md) for the Guided version of this analysis.
 
 ## Make your own
 

@@ -35,7 +35,9 @@ __all__ = [
 
 ENTRY_POINT_GROUPS = ("mapi.steps", "mapi.models", "mapi.plots")
 
-BUILTIN_NAMESPACES: frozenset[str] = frozenset({"core", "mmm", "ml", "sklearn", "ts", "tabular"})
+BUILTIN_NAMESPACES: frozenset[str] = frozenset(
+    {"core", "mmm", "ml", "sklearn", "ts", "tabular", "choice", "causal"}
+)
 """Id namespaces of the built-in (T0) plugins; other distributions never register in them."""
 BUILTIN_DISTRIBUTIONS: frozenset[str] = frozenset(
     {
@@ -48,6 +50,7 @@ BUILTIN_DISTRIBUTIONS: frozenset[str] = frozenset(
         "mapi-plugin-ts",
         "mapi-plugin-tabular",
         "mapi-plugin-statsmodels",
+        "mapi-plugin-causal",
         "mapi-conformance",
     }
 )

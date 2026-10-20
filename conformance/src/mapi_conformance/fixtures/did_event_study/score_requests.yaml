@@ -1,0 +1,24 @@
+# DiD: predictions with the treatment, and without it (the platform intervention treatment = 0).
+- name: predict_in_sample
+  request: {mode: predict}
+  payload: fit_data
+  expect: {groups: [summary], vars: [y_hat], sizes: {store: 20, month: 24}}
+- name: no_treatment_counterfactual
+  request: {mode: counterfactual, interventions: [{var: treatment, set: 0}]}
+  payload: fit_data
+  expect: {groups: [summary, baseline/summary, delta/summary], vars: [y_hat]}
+- name: predict_predictive_draws
+  request: {mode: predict, output: {kind: predictive, draws: 20}}
+  payload: fit_data
+  expect: {groups: [summary, draws], vars: [y_hat]}
+- name: month_after_the_fit
+  request: {mode: predict}
+  payload: new_month
+  expect_error: UNSEEN_LEVELS
+- name: missing_treatment
+  request: {mode: predict}
+  payload: without_treatment
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: time, periods: 3}}
+  expect_error: MODE_NOT_SUPPORTED

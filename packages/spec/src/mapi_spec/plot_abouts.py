@@ -1,4 +1,5 @@
-"""About cards of the built-in plot recipes: the core, MMM, ML, science and network packs.
+"""About cards of the built-in plot recipes: the core, MMM, ML, science, network and causal
+packs.
 
 The text is written for people who read the charts, not for people who make them: the summary
 says what the chart shows for them, the lists say when to open it, what the model or run must
@@ -48,6 +49,25 @@ _SAITO = (
 )
 _BDA3 = ("Gelman et al. (2013), Bayesian Data Analysis, 3rd edition", None)
 _MMM_DOCS = ("mmm-framework documentation", "https://redam94.github.io/mmm-framework/")
+_BRODERSEN = (
+    "Brodersen et al. (2015), Inferring causal impact using Bayesian structural time-series models",
+    "https://doi.org/10.1214/14-AOAS788",
+)
+_ABADIE = (
+    "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for comparative case "
+    "studies",
+    "https://doi.org/10.1198/jasa.2009.ap08746",
+)
+_SUN_ABRAHAM = (
+    "Sun and Abraham (2021), Estimating dynamic treatment effects in event studies with "
+    "heterogeneous treatment effects",
+    "https://doi.org/10.1016/j.jeconom.2020.09.006",
+)
+_GOODMAN_BACON = (
+    "Goodman-Bacon (2021), Difference-in-differences with variation in treatment timing",
+    "https://doi.org/10.1016/j.jeconom.2021.03.014",
+)
+_IMPACT = {"goal": ["measure_impact"]}
 
 _DRAWS_OR_SUMMARY = (
     "Predictions with draws (posterior_predictive, predictions or draws group), or a score "
@@ -2170,5 +2190,181 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "`max_cells` (8) per variable and `max_vars` (12) variables. Overlap above `little` "
         "(0.8) is reported as 'the data adds little'.",
         refs=[_GABRY, _ARVIZ],
+    ),
+    # ============================================================ causal pack
+    "causal.impact": _a(
+        "Effect of the intervention",
+        "Shows the actual values beside the values that the model expects without the "
+        "campaign, launch or test. The difference is the effect, per period and in total.",
+        [
+            "You ran a campaign, a launch or a test and want to know what it added",
+            "You want to show the effect and its range to other people",
+            "You want to see when the effect started and if it stopped after the end",
+        ],
+        [
+            "The model did not follow the period before the start (look at Fit before the "
+            "intervention first)",
+            "Other changes started at the same time as the intervention",
+        ],
+        [
+            "An impact group from a causal model (causal.impact, causal.synthetic_control or "
+            "causal.did): the actual values, the values without the intervention as draws, "
+            "and the cells of the effect window",
+        ],
+        [
+            "Without the intervention, the target would continue to follow the model",
+            "Nothing else changed the target in the effect window",
+            "For more than one treated unit, the chart adds the units together unless you "
+            "select one",
+        ],
+        [
+            "Three panels with the same time axis: the actual values and the values without "
+            "the intervention with their 90% range, the effect per period, and the cumulative "
+            "effect in the effect window",
+            "A red line at the start and a dashed red line at the end",
+            "A caption with the total effect, its range, the relative effect and the "
+            "probability that the effect is above zero",
+        ],
+        _B,
+        _NOW,
+        "In the 4 weeks of the campaign the total effect is +28 units (90% interval 19 to "
+        "36). This is +7% of the sales without the campaign. The probability that the effect "
+        "is above zero is 100%, so you can report the effect.",
+        related=["causal.pre_fit", "causal.donor_weights", "causal.event_study"],
+        expert="Reads the `impact` group: `actual([unit,] time)`, "
+        "`counterfactual(sample, [unit,] time)` (predictive draws, observation noise "
+        "included), `effect` and `post([unit,] time)`, with attrs `intervention_start` and "
+        "`intervention_end`. Lines are medians and bands HDIs at `hdi_prob` (0.9). `unit` "
+        "selects one treated unit; without it the draws are summed over units. The cumulative "
+        "effect is recomputed per draw as the cumulative sum of `effect` over the `post` cells "
+        "(per unit for staggered adoption). The total is its last value, the relative effect "
+        "the total divided by the summed counterfactual of the post cells. `panels` selects "
+        "series, pointwise and cumulative.",
+        refs=[_BRODERSEN, _ABADIE],
+        fits=_IMPACT,
+    ),
+    "causal.pre_fit": _a(
+        "Fit before the intervention",
+        "Shows how well the model follows the actual values before the start. If it does not "
+        "follow them, do not trust the effect after the start.",
+        [
+            "You want to know if you can trust the effect of a campaign or a test",
+            "You want to compare two sets of controls or donors",
+        ],
+        [
+            "The data has no period before the start",
+            "You want to see the effect itself (use Effect of the intervention)",
+        ],
+        [
+            "An impact group from a causal model with some periods before the start",
+        ],
+        [
+            "A model that follows the period before the start gives a good value without the "
+            "intervention after the start",
+            "About 90% of the actual values are inside a good 90% band",
+        ],
+        [
+            "The actual values before the start as dots (red when they are outside the band)",
+            "The median and the 90% range of the model without the intervention",
+            "A caption with the typical difference (RMSE), the mean percentage error (MAPE) "
+            "and the share of actual values inside the band",
+        ],
+        _B,
+        _NOW,
+        "Before the start, the typical difference is 1.9 units and 100% of the actual values "
+        "are inside the band. The model follows the history, so you can use it after the "
+        "start. With 60% inside, add controls or use a longer history.",
+        related=["causal.impact", "causal.donor_weights", "core.ppc_fan"],
+        expert="The pre-period is the cells before the first `post` cell that are in no "
+        "effect window. RMSE and MAPE compare `actual` with the mean of `counterfactual` per "
+        "period. Coverage is the share of finite actual values inside the HDI at `hdi_prob` "
+        "(0.9); the caption flags coverage below 80%. For `causal.impact` the pre-period "
+        "values are one-step-ahead predictions, for synthetic control the synthetic copy and "
+        "for DiD the fitted values without the treatment terms. `unit` as in causal.impact.",
+        refs=[_BRODERSEN, _ABADIE],
+        fits=_IMPACT,
+    ),
+    "causal.donor_weights": _a(
+        "Donor weights",
+        "Shows which markets the model uses to make a copy of each treated market. A large "
+        "weight means that the copy follows that market closely.",
+        [
+            "You ran a geo test and want to know which markets make the comparison",
+            "A result looks strange and you want to find a donor that is not a good match",
+        ],
+        [
+            "The model is not a synthetic control",
+            "You want to see the effect (use Effect of the intervention)",
+        ],
+        [
+            "A donor_weights group from causal.synthetic_control: the weight of each donor "
+            "for each treated unit as draws",
+        ],
+        [
+            "The donors did not get the campaign",
+            "With the simplex prior the weights are positive and add up to 1",
+        ],
+        [
+            "One bar for each donor with the mean weight, from the largest to the smallest",
+            "A line for the 90% range of each weight",
+            "One row for the donors that are not in the top 15, added together",
+            "One panel for each treated unit, up to 4 units",
+        ],
+        _I,
+        _NOW,
+        "The copy of geo_03 uses three donors: geo_00 (39%), geo_04 (30%) and geo_06 (17%). "
+        "The other donors have small weights. If geo_00 had a campaign of its own, the "
+        "copy is not correct.",
+        related=["causal.impact", "causal.pre_fit"],
+        expert="Reads `weight(sample, unit, donor)` (or chain/draw) and `pre_rmse(unit)`, attr "
+        "`prior` (simplex: Dirichlet; horseshoe: unconstrained). Bars are posterior means, "
+        "rules HDIs at `hdi_prob` (0.9). Donors are ranked by |mean|; the first `top` (15) "
+        "are shown and the rest are summed per draw. `unit` selects one treated unit; "
+        "without it up to 4 units get a panel each, else the first unit is shown.",
+        refs=[_ABADIE],
+        fits=_IMPACT,
+    ),
+    "causal.event_study": _a(
+        "Effect by period since the start",
+        "Shows the effect in each period before and after the start. Before the start the "
+        "effects must be near zero, else the comparison groups were already different.",
+        [
+            "Stores or markets started the treatment at different times",
+            "You want to see if the effect grows, stays or goes away after the start",
+            "You want to do a check of the trends before the start",
+        ],
+        [
+            "The model is not a difference-in-differences model",
+            "Only one unit got the treatment (use a synthetic control)",
+        ],
+        [
+            "An event_study group from causal.did: the effect of each period relative to "
+            "the start as draws, and the average effect after the start",
+        ],
+        [
+            "Without the treatment, treated and other units would follow the same trend",
+            "The period before the start (-1) is the reference, so its effect is 0",
+            "With different start times, the effect is the same for every start time",
+        ],
+        [
+            "A dot for the median effect in each period and a line for its 90% range",
+            "A zero line and a dashed red line at the start",
+            "A caption with the average effect after the start and a check of the trends "
+            "before the start",
+        ],
+        _I,
+        _NOW,
+        "The effect is near zero in the four periods before the start, so there is no sign "
+        "of different trends. After the start it grows from +2 to +5 units. The average "
+        "effect after the start is +3.6 (90% interval 3.3 to 4.0).",
+        related=["causal.impact", "causal.pre_fit", "core.posterior_forest"],
+        expert="Reads `coef(sample, event_time)` (the reference period is exactly 0), "
+        "`n_cells(event_time)` and `att(sample)`, attrs `reference` (-1), `binned` and "
+        "`design` (`did`: event times -1 and 0 only). Dots are medians and rules HDIs at "
+        "`hdi_prob` (0.9). The pre-trend check flags each lead whose HDI excludes 0. With "
+        "staggered adoption a two-way fixed effects event study can mix the effects of early "
+        "and late units (Goodman-Bacon 2021; Sun and Abraham 2021).",
+        refs=[_SUN_ABRAHAM, _GOODMAN_BACON],
+        fits=_IMPACT,
     ),
 }

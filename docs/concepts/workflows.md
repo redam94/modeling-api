@@ -208,7 +208,7 @@ its ports, parameter schema, result fields and an [About card](about-and-choosin
 | Data processing | `transform.difference`, `transform.seasonal_difference`, `transform.log`, `transform.box_cox`, `transform.steps` (all catalog preprocessing steps), `transform.select` |
 | Train/test plans | `split.holdout`, `split.rolling_origin`, `split.expanding_window`, `split.blocked_kfold`, `split.purged_kfold`, `split.geo_holdout`, `split.nested` |
 | Searches | `search.arma_order`, `search.sarima_order`, `search.var_lag_order`, `search.coint_rank`, `search.grid` |
-| Models | `model.fit` (all catalog models), `model.backtest`, `model.forecast`, `model.summary`, `model.score` |
+| Models | `model.fit` (all catalog models), `model.backtest`, `model.forecast`, `model.summary`, `model.score`, `model.lift_test` |
 | Evaluation | `evaluate.metrics`, `evaluate.baseline`, `evaluate.residuals`, `evaluate.ppc` |
 | Comparison and selection | `compare.models`, `compare.diebold_mariano`, `compare.stacking`, `select.best`, `select.threshold` |
 | Governance | `governance.policy`, `governance.check` (see [Governance](governance.md)) |
@@ -238,6 +238,12 @@ Five nodes work on the draws of a Bayesian fit:
 | `compare.stacking` | Stacking weights (or pseudo-BMA+ weights) of some fits, from the pointwise `elpd_loo` that `model.fit` keeps for data of up to 10 000 points |
 | `model.score` | A score mode (`predict`, `simulate`, `forecast` or `counterfactual`) as a dataset that later nodes can use |
 | `plot.render` | Any recipe of the plot catalog as a `plot` output. `source` is `auto`, `data`, `model` or `predictions`. |
+
+`model.lift_test` <span class="mapi-badge">v0.13</span> reads the `impact` group of a causal
+model version (`causal.impact`, `causal.synthetic_control` or `causal.did`). It gives a
+`LiftTest` for the calibration of `mmm.bayesian`: the total effect over the effect window,
+with its sd and HDI. The `calibration` parameter of `model.fit` takes it, for example
+`{lift_tests: {$expr: "[nodes.lift.lift_test]"}}`.
 
 Validation finds the `recipe` of `plot.render` in the bundled recipes and in the plot catalog.
 An unknown recipe gives `REF_UNRESOLVED`.
@@ -280,6 +286,7 @@ outer training window, for correct tuning.
 | `ts_readiness_arimax` | Unit-root tests, differencing that branches decide, order search, an expanding-window backtest against naive benchmarks, selection, governance and a report |
 | `var_vecm_cointegration` | A Johansen test. If the series are tied together, a VECM with the selected rank. If not, differences, a lag search and a VAR. Granger tests and a report. |
 | `mmm_governed` | Driver collinearity, the mmm-framework marketing mix model with a holdout, the governance policy, a report and an evidence pack |
+| `geo_lift_mmm` | A Bayesian synthetic control of a geo-lift test, the lift test that it gives (`model.lift_test`), `mmm.bayesian` calibrated with that lift test, the plots of the test and of the calibration, and a report. See [the cookbook](../guides/workflow-cookbook.md#geo-lift-test-to-a-calibrated-mmm). |
 | `forecast_bakeoff` | A backtest of SARIMAX, ETS, Theta and the smooth-trend model on the same folds, against benchmarks. The platform fits the best model again. |
 | `sci_spatial_ladder` | `sci.areal_bym2` with iid, ICAR and BYM2 area effects, compared by `elpd_loo` and stacking weights. The best model, the range of its covariate effect, fits with wider and narrower priors when the effect is clear, a convergence check, a risk map and a report. See [the cookbook](../guides/workflow-cookbook.md#disease-map-which-spatial-model). |
 | `sci_network_ladder` | `sci.network_latent_space` with covariates, sociality and a latent space, compared by `elpd_loo` and stacking weights. The pair effects of the best model, a network plot, simulated networks with their statistics and a report. See [the cookbook](../guides/workflow-cookbook.md#network-ties-which-model). |

@@ -104,6 +104,16 @@ From v0.12, the pack also has these plots:
 `mmm.decomposition` and `mmm.waterfall` show one outcome of a model with an `outcome` dim:
 the primary outcome, or the outcome that you set in `outcome`.
 
+The **causal pack** (`causal.*`, v0.13) draws the results of the
+[causal models](../models/causal.md):
+
+| Recipe | What it shows | Reads |
+|---|---|---|
+| `causal.impact` | The actual values and the values without the change (with a range), the effect in each period and the cumulative effect | `impact` |
+| `causal.pre_fit` | The fit of the model before the change, with its error | `impact` |
+| `causal.donor_weights` | The weight of each market in the synthetic control, with a range | `donor_weights` |
+| `causal.event_study` | The effect for each period before and after the change, with a range | `event_study` |
+
 The **tabular pack** (`ml.*`) adds `ml.feature_importance`. This plot shows ranked tree
 importances, or signed coefficients for linear estimators. It reads them from the groups that
 the scikit-learn plugin and the xgboost plugin keep in their bundles.

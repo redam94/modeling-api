@@ -56,7 +56,7 @@ Set `model.fit.engine` in the spec:
 | `pymc` | The NUTS of PyMC. A seed makes the result the same. It has **segmented sampling**. |
 | `map` | `pm.find_MAP`: one point (1 chain, 1 draw). |
 | `advi` | Mean-field ADVI. `tune` is the number of optimization steps (default 10,000). |
-| `pathfinder` | Pathfinder from pymc-extras, if the image has it. |
+| `pathfinder` | Pathfinder from pymc-extras (one chain). Install the extra `mapi-pymc[pathfinder]`. The runner images `mapi/base-bayes` and `mapi/base-forecast` have it. Without the extra, the fit stops with `CAPABILITY_UNSUPPORTED`. |
 | `numpyro`, `blackjax` | The JAX bridges of PyMC, if the image has them. |
 
 ```yaml

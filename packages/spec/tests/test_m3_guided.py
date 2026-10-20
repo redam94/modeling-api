@@ -54,16 +54,18 @@ GEO_COLUMNS = [
 # ------------------------------------------------------------------------------- templates
 
 
-def test_the_six_built_in_templates() -> None:
-    assert set(GUIDED_TEMPLATES) == {"geo_mmm", "mediated_mmm", "multi_kpi_mmm",
-                                     "weekly_forecast", "store_demand",
-                                     "customer_choice"}  # fmt: skip
+def test_the_eight_built_in_templates() -> None:
+    assert list(GUIDED_TEMPLATES) == ["geo_mmm", "mediated_mmm", "multi_kpi_mmm",
+                                      "campaign_impact", "geo_lift", "weekly_forecast",
+                                      "store_demand", "customer_choice"]  # fmt: skip
     plugins = {t.id: (t.plugin, t.plugin_available) for t in GUIDED_TEMPLATES.values()}
     assert plugins["geo_mmm"] == ("mmm.bayesian@^1", True)
     assert plugins["mediated_mmm"] == ("mmm.nested@^1", True)
     assert plugins["multi_kpi_mmm"] == ("mmm.multivariate@^1", True)
     assert plugins["weekly_forecast"] == ("ts.hsgp_trend@^1", True)
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
+    assert plugins["campaign_impact"] == ("causal.impact@^1", True)
+    assert plugins["geo_lift"] == ("causal.synthetic_control@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
     assert (choice.plugin, choice.plugin_available) == ("choice.multinomial_logit@^1", True)
     assert choice.plugin_note is None and choice.version == "1.2.0"
@@ -80,8 +82,10 @@ def test_every_template_is_consistent(template: GuidedTemplate) -> None:
     # the template round-trips through its own JSON (what GET /v1/guided/templates serves)
     again = GuidedTemplate.model_validate_json(template.model_dump_json())
     assert again == template
-    # evaluate_then_refit is the default for promotable models (Q13)
-    assert template.spec_template["model"]["fit"]["mode"] == "evaluate_then_refit"
+    # evaluate_then_refit is the default for promotable models (Q13); a causal model's
+    # effect is the result of its fit, so it fits once on every period (v0.13)
+    mode = "train_only" if template.family == "causal" else "evaluate_then_refit"
+    assert template.spec_template["model"]["fit"]["mode"] == mode  # type: ignore[index,call-overload]
 
 
 def test_template_validation_catches_unsourced_placeholders() -> None:
@@ -410,3 +414,61 @@ def test_the_mmm_templates_of_v012() -> None:
     )
     k = multi.question("kpis")
     assert (k.wide_dim, k.as_var, k.role.value if k.role else None) == ("outcome", "y", "target")
+
+
+def test_the_causal_templates_of_v013() -> None:
+    """v0.13: campaign_impact (causal.impact) and geo_lift (causal.synthetic_control) fill
+    the dates, the control columns and the treated markets from text and column answers."""
+    impact = get_template("campaign_impact")
+    assert impact.family == "causal" and impact.tasks == []
+    assert impact.question("controls").required is False
+    assert impact.question("end").required is False
+    req = GuidedAnswers(
+        template_id="campaign_impact", name="tv", dataset="sales",
+        answers={"kpi": "Sales", "date": "Week", "controls": ["Sales DE", "searches"],
+                 "start": " 2024-03-04 "},
+    )  # fmt: skip
+    draft = build_draft(impact, req, project="growth")
+    spec = ModelSpec.model_validate(draft.spec)
+    assert spec.data.bind.dims == {"time": "week"} and spec.data.bind.vars == {"y": "sales"}
+    assert draft.mapping.vars["sales_de"].role.value == "covariate"
+    assert spec.model.settings == {
+        "controls": ["sales_de", "searches"], "intervention_start": "2024-03-04",
+        "intervention_end": "", "seasonality": [{"period": 52.18, "harmonics": 3}],
+    }  # fmt: skip
+    assert spec.outputs.plots[0].id == "causal.impact"
+    daily = build_draft(
+        impact,
+        GuidedAnswers(template_id="campaign_impact", name="tv", dataset="sales",
+                      answers={"kpi": "Sales", "date": "Day", "frequency": "daily",
+                               "start": "2024-03-04", "end": "2024-03-31"}),
+        project="growth",
+    )  # fmt: skip
+    settings = daily.spec["model"]["settings"]  # type: ignore[index]
+    assert settings["controls"] == [] and settings["intervention_end"] == "2024-03-31"  # type: ignore[index,call-overload]
+    assert settings["seasonality"] == [{"period": 7, "harmonics": 3}]  # type: ignore[index,call-overload]
+
+    geo = get_template("geo_lift")
+    assert geo.question("geo").dim == "unit" and geo.question("end").required
+    answers = {"kpi": "Sales", "date": "Week", "geo": "Market", "treated": "Leeds, Bristol",
+               "start": "2024-03-04", "end": "2024-04-14"}  # fmt: skip
+    draft = build_draft(
+        geo, GuidedAnswers(template_id="geo_lift", name="lift", dataset="sales",
+                           answers=answers), project="growth"
+    )  # fmt: skip
+    spec = ModelSpec.model_validate(draft.spec)
+    assert spec.data.bind.dims == {"unit": "market", "time": "week"}
+    assert draft.mapping.dims["market"].spec.policy.value == "fixed"
+    assert spec.model.settings["treated"] == ["Leeds", "Bristol"]  # as_list: split at commas
+    assert spec.model.settings["intervention_end"] == "2024-04-14"
+    assert [p.id for p in spec.outputs.plots[:2]] == ["causal.impact", "causal.donor_weights"]
+    with pytest.raises(ValidationError, match="only a text question"):
+        geo.question("geo").model_validate({**geo.question("geo").model_dump(), "as_list": True})
+    assert "as_list" not in geo.question("start").model_dump(mode="json")  # off the wire
+    for bad in ({"end": "  "}, {"treated": " , "}, {"start": None}):
+        with pytest.raises(MapiError) as exc:
+            build_draft(
+                geo, GuidedAnswers(template_id="geo_lift", name="lift", dataset="sales",
+                                   answers={**answers, **bad}), project="growth"
+            )  # fmt: skip
+        assert exc.value.pointer == f"/answers/{next(iter(bad))}"

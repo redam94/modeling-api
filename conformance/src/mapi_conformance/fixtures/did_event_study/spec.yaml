@@ -1,0 +1,13 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: store-remodel-did, project: retail, labels: {corpus: did-event-study}}
+data:
+  dataset: dataset://retail/monthly_sales_by_store@latest
+  bind:
+    dims: {unit: store, time: month}
+    vars: {y: sales}
+model:
+  use: causal.did@^1
+  settings: {design: event_study, leads: 4, lags: 6}
+  fit: {mode: train_only, seed: 7, tune: 500, draws: 500, chains: 4}
+outputs: {plots: [causal.event_study, causal.impact, causal.pre_fit, core.convergence]}

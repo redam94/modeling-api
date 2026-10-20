@@ -382,7 +382,15 @@ def test_the_node_catalog() -> None:
     }  # fmt: skip
     expected |= {"model.summary", "evaluate.ppc", "compare.stacking"}  # M5
     expected |= {"model.score", "plot.render"}  # M5
+    expected |= {"model.lift_test"}  # v0.13
     assert set(NODE_IMPLEMENTATIONS) == expected
+    lift = NODE_IMPLEMENTATIONS["model.lift_test"]
+    assert lift.runs_in == "sandbox" and lift.cacheable
+    assert lift.inputs["model"].type is PortType.MODEL_VERSION
+    assert lift.outputs == {"table": PortType.TABLE}
+    assert {"lift_test", "kpi_delta", "se", "geo", "start", "end"} <= set(lift.result_fields)
+    assert set(lift.params_schema["required"]) == {"channel", "spend_delta"}
+    assert "calibration" in NODE_IMPLEMENTATIONS["model.fit"].params_schema["properties"]
     for impl in NODE_IMPLEMENTATIONS.values():
         assert impl.about.title and impl.params_schema.get("type") == "object", impl.id
         if impl.kind is NodeKind.TEST:
@@ -420,6 +428,22 @@ def test_the_canonical_readiness_to_arimax_workflow() -> None:
     assert order.index("select") < order.index("governance")
     folds = next(n for n in spec.nodes if n.id == "folds")
     assert folds.with_["gap"] == {"$param": "gap"}
+
+
+def test_the_geo_lift_to_mmm_calibration_workflow() -> None:
+    t = WORKFLOW_TEMPLATES["geo_lift_mmm"]
+    assert set(t.tags) == {"causal", "mmm", "calibration"}
+    assert {"measure_impact", "explain_marketing"} <= set(t.about.fits["goal"])
+    spec = t.spec
+    nodes = {n.id: n for n in spec.nodes}
+    assert nodes["geolift"].with_["model"] == "causal.synthetic_control@^1"
+    assert nodes["lift"].impl_id == "model.lift_test"
+    assert nodes["mmm"].with_["calibration"] == {"lift_tests": {"$expr": "[nodes.lift.lift_test]"}}
+    order = validate_workflow(t.document).order
+    assert order.index("geolift") < order.index("lift") < order.index("mmm")
+    assert order.index("mmm") < order.index("lift_plot") < order.index("report")
+    assert {"treated", "test_start", "test_end", "channel", "spend_delta"} <= set(spec.params)
+    assert set(spec.inputs) == {"experiment", "data"}
 
 
 def test_run_dtos_schedules_and_triggers() -> None:

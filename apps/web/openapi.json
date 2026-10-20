@@ -9581,7 +9581,7 @@
         "type": "object"
       },
       "GuidedQuestion": {
-        "description": "One plain-language question. Column questions name what the column becomes:\n\n* ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder\n  ``{{<id>}}`` is the dataset dim name;\n* ``role`` (``column``): the column is a data variable with that role; the placeholder is\n  the dataset variable name;\n* ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``\n  along ``wide_dim`` (one label per column, e.g. spend per channel);\n* ``role`` without ``wide_dim`` (``columns``): each column is its own variable.",
+        "description": "One plain-language question. Column questions name what the column becomes:\n\n* ``dim``: the column labels a dataset dim (``dim_spec`` describes it); the placeholder\n  ``{{<id>}}`` is the dataset dim name;\n* ``role`` (``column``): the column is a data variable with that role; the placeholder is\n  the dataset variable name;\n* ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``\n  along ``wide_dim`` (one label per column, e.g. spend per channel);\n* ``role`` without ``wide_dim`` (``columns``): each column is its own variable.\n\nA ``text`` answer fills its placeholder as typed (stripped); with ``as_list`` it is split\nat the commas into a list of names (a required one must keep a name).",
         "properties": {
           "accepts": {
             "items": {
@@ -9596,6 +9596,12 @@
             },
             "title": "Accepts",
             "type": "array"
+          },
+          "as_list": {
+            "default": false,
+            "description": "v0.13: a text answer is a list of names separated by commas (the placeholder becomes the list, for example the treated markets of a geo-lift test)",
+            "title": "As List",
+            "type": "boolean"
           },
           "as_var": {
             "anyOf": [
@@ -9767,7 +9773,7 @@
         "type": "object"
       },
       "GuidedTemplate": {
-        "description": "A guided task: questions, the spec they fill and what to check afterwards.\n\n``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields\nare kept but not shown; Expert edits round-trip). ``plugin_available`` is false while\nthe template's built-in plugin is not shipped (``plugin_note`` says what is missing).",
+        "description": "A guided task: questions, the spec they fill and what to check afterwards.\n\n``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields\nare kept but not shown; Expert edits round-trip). ``plugin_available`` is false while\nthe template's built-in plugin is not shipped (``plugin_note`` says what is missing).\nA ``family`` this version does not know (added by a newer server) is kept as text.",
         "examples": [
           {
             "description_plain": "Forecast one series a few weeks ahead.",
@@ -9870,7 +9876,8 @@
               "mmm",
               "forecast",
               "tabular",
-              "choice"
+              "choice",
+              "causal"
             ],
             "title": "Family",
             "type": "string"
@@ -29252,7 +29259,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.12.0"
+    "version": "0.13.0"
   },
   "openapi": "3.1.0",
   "paths": {

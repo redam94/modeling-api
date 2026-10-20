@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from typing import Final
 
 from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, SUBWORKFLOW_NODE
+from mapi_workflows.runtime.causal import CAUSAL_NODES
 from mapi_workflows.runtime.evaluate import EVALUATE_NODES
 from mapi_workflows.runtime.governance import GOVERNANCE_NODES
 from mapi_workflows.runtime.models import MODEL_NODES
@@ -44,6 +45,7 @@ def builtin_nodes() -> dict[str, NodeFn]:
         EVALUATE_NODES,
         GOVERNANCE_NODES,
         POSTERIOR_NODES,
+        CAUSAL_NODES,
         SCORE_NODES,
         PLOT_NODES,
     ):
