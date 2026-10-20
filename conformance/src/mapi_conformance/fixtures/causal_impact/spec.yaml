@@ -1,0 +1,16 @@
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: campaign-impact, project: marketing, labels: {corpus: causal_impact}}
+data:
+  dataset: dataset://marketing/weekly_sales_with_controls@latest
+  bind:
+    dims: {time: week}
+    vars: {y: sales}
+model:
+  use: causal.impact@^1
+  settings:
+    controls: [control_a, control_b]
+    intervention_start: "2024-01-01"
+    trend: level
+  fit: {mode: train_only, seed: 7, tune: 500, draws: 500, chains: 4, engine: nutpie}
+outputs: {plots: [causal.impact, causal.pre_fit, core.convergence]}

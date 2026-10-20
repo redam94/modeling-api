@@ -1,0 +1,28 @@
+# Geo lift: the synthetic copy of the treated market from the donors' values; donors are NaN.
+- name: predict_in_sample
+  request: {mode: predict}
+  payload: fit_data
+  drop_targets: false
+  expect: {groups: [summary], vars: [y_hat], sizes: {geo: 12, week: 78}, finite: false}
+- name: predict_predictive_draws
+  request: {mode: predict, output: {kind: predictive, draws: 20}}
+  payload: "tail:12"
+  drop_targets: false
+  expect: {groups: [summary, draws], vars: [y_hat], sizes: {week: 12}, finite: false}
+- name: predict_needs_the_donors
+  request: {mode: predict}
+  payload: fit_data
+  expect_error: SCHEMA_INVALID
+- name: predict_with_a_donor_gap
+  request: {mode: predict}
+  payload: donor_gap
+  drop_targets: false
+  expect_error: SCHEMA_INVALID
+- name: new_geo_is_rejected
+  request: {mode: predict}
+  payload: new_geo
+  drop_targets: false
+  expect_error: UNSEEN_LEVELS
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: time, periods: 4}}
+  expect_error: MODE_NOT_SUPPORTED

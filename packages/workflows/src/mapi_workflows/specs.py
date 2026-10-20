@@ -10,6 +10,9 @@ an ordinary, scoreable version of the model of that name.
 For a tree dataset the node's optional ``nodes`` and ``join`` parameters become
 ``data.nodes`` and ``data.join`` (the nodes merged into the flat pipeline input); without
 them the spec reads the root node.
+
+A non-empty ``calibration`` parameter becomes the spec's ``calibration`` block (business
+priors and lift tests, e.g. ``[nodes.lift.lift_test]`` from a ``model.lift_test`` node).
 """
 
 from __future__ import annotations
@@ -97,4 +100,8 @@ def model_spec_document(
     ev = params.get("evaluate")
     if isinstance(ev, dict):
         doc["evaluate"] = dict(ev)
+    cal = params.get("calibration")
+    if isinstance(cal, dict) and cal:
+        # business priors and lift tests (for example the lift_test of a model.lift_test node)
+        doc["calibration"] = dict(cal)
     return doc

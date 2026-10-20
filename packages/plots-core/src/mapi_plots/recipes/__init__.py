@@ -36,9 +36,11 @@ The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
 :mod:`mapi_plots.packs.sci`, with the map, tree and polar recipes in
 :mod:`mapi_plots.packs.sci_maps`, the image and spectrum recipes in
 :mod:`mapi_plots.packs.sci_images` and ``sci.point_pattern`` in
-:mod:`mapi_plots.packs.sci_points`, and the network pack (``net.graph``; Plotly) in
-:mod:`mapi_plots.packs.net`. All are exposed through the
-``mapi.plots`` entry-point group, so ``mapi_sdk.registry.default_registry()`` finds them.
+:mod:`mapi_plots.packs.sci_points`, the network pack (``net.graph``; Plotly) in
+:mod:`mapi_plots.packs.net`, and the causal pack (``causal.impact``, ``causal.pre_fit``,
+``causal.donor_weights``, ``causal.event_study``) in :mod:`mapi_plots.packs.causal`. All are
+exposed through the ``mapi.plots`` entry-point group, so
+``mapi_sdk.registry.default_registry()`` finds them.
 """
 
 from __future__ import annotations
@@ -127,12 +129,20 @@ def standard_recipes() -> list[Recipe[Any]]:
 
 def all_recipes() -> list[Recipe[Any]]:
     """Core catalog plus the bundled domain packs."""
+    from mapi_plots.packs.causal import causal_recipes
     from mapi_plots.packs.ml import ml_recipes
     from mapi_plots.packs.mmm import mmm_recipes
     from mapi_plots.packs.net import net_recipes
     from mapi_plots.packs.sci import sci_recipes
 
-    return [*_STANDARD, *mmm_recipes(), *ml_recipes(), *sci_recipes(), *net_recipes()]
+    return [
+        *_STANDARD,
+        *mmm_recipes(),
+        *ml_recipes(),
+        *sci_recipes(),
+        *net_recipes(),
+        *causal_recipes(),
+    ]
 
 
 def get_recipe(id: str) -> Recipe[Any]:

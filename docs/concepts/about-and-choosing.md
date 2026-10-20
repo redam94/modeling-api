@@ -88,7 +88,7 @@ a complete card fails its checks. The built-in cards are in `mapi_spec.abouts`.
 
 | Question | Answers |
 |---|---|
-| `goal` - What do you want to do? | measure what marketing adds, plan a budget, forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model, make a map or an image from measurements (`map_fields`), fit a physical model to measurements (`fit_physics`) |
+| `goal` - What do you want to do? | measure what marketing adds, plan a budget, measure the effect of a campaign, a launch or a test (`measure_impact`, v0.13), forecast, understand drivers, predict per item, understand choices, find regimes, compare series, check data, validate a model, make a map or an image from measurements (`map_fields`), fit a physical model to measurements (`fit_physics`) |
 | `data_shape` - What does your data look like? | one series, a few related series, a panel (markets, stores), choices, a table, a map, an image or values on a regular grid (`grid`) |
 | `frequency` | daily, weekly, monthly, not over time |
 | `history` | less than a year, one to three years, more |

@@ -160,7 +160,7 @@ PLAN_CORPUS = {
     "E02": "e02",
     "C08": "c08",
     "E24": "e24",
-    "E13": None,
+    "E13": "e13_bsts",
     "E84-lite": "e84_lite",
     "E82-slim": None,
     "E45": None,
@@ -187,4 +187,4 @@ def test_every_plan_fixture_is_registered_or_explicitly_deferred() -> None:
 def test_cli_list_shows_the_deferred_fixtures(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["list", "--deferred"]) == 0
     out = capsys.readouterr().out
-    assert "E13" in out and "deferred" in out
+    assert "E82-slim" in out and "deferred" in out

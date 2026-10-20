@@ -63,3 +63,22 @@ def test_the_outcome_selection_is_described_where_it_applies() -> None:
     assert "main outcome" in " ".join(PLOT_ABOUTS["mmm.waterfall"].assumptions)
     assert "`breakeven`" in (PLOT_ABOUTS["mmm.roi"].expert_notes or "")
     assert "`bfmi_threshold`" in (PLOT_ABOUTS["core.energy"].expert_notes or "")
+
+
+CAUSAL_CARDS = ("causal.impact", "causal.pre_fit", "causal.donor_weights", "causal.event_study")
+
+
+@pytest.mark.parametrize("plot_id", CAUSAL_CARDS)
+def test_the_causal_cards_fit_measure_impact_and_cite_their_method(plot_id: str) -> None:
+    about = PLOT_ABOUTS[plot_id]
+    assert about.fits == {"goal": ["measure_impact"]}
+    assert about.references and all(r.url for r in about.references)
+    assert set(about.related) <= set(PLOT_ABOUTS) and about.related
+    assert "`hdi_prob`" in (about.expert_notes or "")
+
+
+def test_the_impact_card_names_its_unit_and_panel_settings() -> None:
+    notes = PLOT_ABOUTS["causal.impact"].expert_notes or ""
+    for word in ("`unit`", "`panels`", "`post", "`intervention_start`"):
+        assert word in notes
+    assert "staggered" in (PLOT_ABOUTS["causal.event_study"].expert_notes or "")

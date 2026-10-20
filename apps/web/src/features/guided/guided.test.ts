@@ -12,7 +12,7 @@ import { amount, band, etaText, holdoutFraction, multiplierText, phaseSlot, sign
 import { fanPlot, distributionPlot } from "./plots";
 import { beliefProblems, beliefsKey, coverageSentence, formFromCalibration, newLiftRow, toBusinessPriors, toLiftTests, withCalibration, withMode } from "./priors";
 import { columnKind, detectFrequency, detectMeridian, detectMff, profileTable, profilesFromNames, seriesFor, tableFromText, tableProblems } from "./profile";
-import { advancedChanges, datasetNameOf, defaultSessionName, guidedTemplateOf, priorsSections, slugify, stepsFor, timeDimOf, valueAt, wideVarOf } from "./session";
+import { advancedChanges, datasetNameOf, defaultSessionName, guidedTemplateOf, hasExplore, priorsSections, slugify, stepsFor, timeDimOf, valueAt, wideVarOf } from "./session";
 import type { GuidedTemplate } from "./types";
 import { parseCounterfactualView, parseForecastView } from "./views";
 
@@ -203,6 +203,15 @@ describe("sessions", () => {
     expect(stepsFor(tpl("geo_mmm")).map((s) => s.id)).toEqual(["data", "priors", "run", "report", "explore", "share"]);
     expect(stepsFor(tpl("weekly_forecast")).map((s) => s.title)).toEqual(["Your data", "Fit the model", "Results", "Forecast", "Share"]);
     expect(stepsFor(tpl("customer_choice")).find((s) => s.id === "explore")?.title).toBe("Scenarios");
+  });
+
+  it("leaves out the explore step when the template has nothing to explore (the causal templates)", () => {
+    // regression: campaign_impact and geo_lift showed an empty "Scenarios" step
+    for (const id of ["campaign_impact", "geo_lift"]) {
+      expect(hasExplore(tpl(id))).toBe(false);
+      expect(stepsFor(tpl(id)).map((s) => s.id)).toEqual(["data", "run", "report", "share"]);
+    }
+    for (const t of TEMPLATES.filter((x) => x.family !== "causal")) expect(stepsFor(t).map((s) => s.id)).toContain("explore");
   });
 
   it("finds the bound time dim and the wide variable", () => {

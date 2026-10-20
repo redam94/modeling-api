@@ -142,6 +142,7 @@ DEFAULT_PLUGIN_BASES: Final[Mapping[str, Base]] = {
     "tabular": Base.BAYES,
     "sklearn": Base.ML,
     "ts": Base.FORECAST,
+    "causal": Base.FORECAST,
 }
 """Plugin namespace (:data:`~mapi_spec.executor.PLUGIN_LABEL`) → the base that ships it."""
 

@@ -883,6 +883,9 @@ def test_build_from_settings(tmp_path: Path) -> None:
     ex = build_cloudrun_executor(settings, api=fake)
     assert ex.inventory.project == "mapi-exec-paid" and ex.caps().allows_public_tenants()
     assert ex.inventory.jobs()[0].startswith("projects/mapi-exec-paid/locations/us-central1/")
+    # causal.impact needs mapi-plugin-ts: the settings map sends causal.* to base-forecast
+    causal = ex.inventory.select(_rs(plugin="causal", rc=ResourceClass.S))
+    assert causal.endswith("/mapi-prod-base-forecast-s")
     assert ex.bucket.per_minute == pytest.approx(120)
     with pytest.raises(ValueError):
         Settings(**common, cloudrun_submits_per_minute=500)  # above the regional quota

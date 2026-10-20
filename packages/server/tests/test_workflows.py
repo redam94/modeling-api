@@ -97,7 +97,7 @@ async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> N
     page = (await client.get("/v1/catalog/workflow-nodes", params={"limit": 200})).json()
     ids = [n["id"] for n in page["items"]]
     assert "test.adf" in ids and "model.fit" in ids and set(ids) == set(NODE_IMPLEMENTATIONS)
-    assert len(ids) == 56  # pinned: a catalog change updates this count on purpose
+    assert len(ids) == 57  # pinned: a catalog change updates this count on purpose
     tests = (await client.get("/v1/catalog/workflow-nodes", params={"kind": "test"})).json()
     assert all(n["kind"] == "test" for n in tests["items"])
     adf = (await client.get("/v1/catalog/workflow-nodes/test.adf")).json()
@@ -115,6 +115,7 @@ async def test_node_catalog_and_template_gallery(client: httpx.AsyncClient) -> N
         "ts_readiness_arimax",
         "var_vecm_cointegration",
         "mmm_governed",
+        "geo_lift_mmm",
         "forecast_bakeoff",
         "sci_spatial_ladder",
         "sci_network_ladder",

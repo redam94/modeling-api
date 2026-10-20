@@ -44,3 +44,46 @@ describe("spec starters for the marketing-mix models", () => {
     expect(doc.outputs.plots).not.toContain("mmm.mediation");
   });
 });
+
+describe("spec starters for the causal and state-space models", () => {
+  const load = (id: string) => parse(specStarterFor(id, { version: "1.0.0" })) as Doc & { model: { fit: Record<string, unknown> } };
+
+  it("binds the t dim and a seasonality for ts.bsts", () => {
+    const doc = load("ts.bsts");
+    expect(doc.model.use).toBe("ts.bsts@^1");
+    expect(doc.data.bind.dims).toEqual({ t: "date" });
+    expect(Object.keys(doc.data.bind.vars)).toEqual(["y"]);
+    expect(doc.data.split.dim).toBe("t");
+    expect(doc.model.settings).toMatchObject({ trend: "local_linear", regressors: [] });
+    expect(doc.outputs.plots).toContain("core.decomposition");
+  });
+
+  it("gives causal.impact a start date and no holdout", () => {
+    const doc = load("causal.impact");
+    expect(doc.model.use).toBe("causal.impact@^1");
+    expect(doc.data.bind.dims).toEqual({ time: "week" });
+    expect(doc.data).not.toHaveProperty("split");
+    expect(doc.model.settings.intervention_start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(doc.model.settings.controls).toEqual([]);
+    expect(doc.model.fit.mode).toBe("train_only");
+    expect(doc.outputs.plots[0]).toBe("causal.impact");
+  });
+
+  it("binds a unit dim and the treated markets for causal.synthetic_control", () => {
+    const doc = load("causal.synthetic_control");
+    expect(Object.keys(doc.data.bind.dims).sort()).toEqual(["time", "unit"]);
+    expect(doc.model.settings).toMatchObject({ treated: ["geo_03"] });
+    expect(doc.model.settings.intervention_start).toBeTruthy();
+    expect(doc.model.settings.intervention_end).toBeTruthy();
+    expect(doc.outputs.plots).toContain("causal.donor_weights");
+  });
+
+  it("binds the treatment column for causal.did", () => {
+    const doc = load("causal.did");
+    expect(Object.keys(doc.data.bind.dims).sort()).toEqual(["time", "unit"]);
+    expect(Object.keys(doc.data.bind.vars).sort()).toEqual(["treatment", "y"]);
+    expect(doc.model.settings).toMatchObject({ design: "event_study" });
+    expect(doc.model.settings).not.toHaveProperty("intervention_start");
+    expect(doc.outputs.plots[0]).toBe("causal.event_study");
+  });
+});

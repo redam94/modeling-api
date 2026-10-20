@@ -1,8 +1,840 @@
 {
  "catalog": {
-  "digest": "sha256:485607a8cac2c12c5ba373270905d3edcef3402d31cdb608ec77867c2995c2fa",
+  "digest": "sha256:347189b1f675ff48b302c2e85e2eb3521aaf34b0e6f3afa55368ed6940991160",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Without the change, all units move in parallel",
+       "A unit does not stop the change after it starts"
+      ],
+      "avoid_when": [
+       "All units got the change",
+       "The units got the change at different times and the effect is different for each group (the result can be wrong)",
+       "You want to forecast (the time effects are only for the periods of the data)"
+      ],
+      "data_needs": [
+       "The same number for each unit over time",
+       "A column that is 1 from the period when a unit got the change, else 0",
+       "At least one unit that never got the change"
+      ],
+      "difficulty": "intermediate",
+      "example": "A new store layout in 12 of 30 stores added 5% to monthly sales, and the stores moved together before the change.",
+      "expert_notes": "Bayesian two-way fixed effects: unit and time effects (ZeroSumNormal; time effects iid or a random walk) plus event-time dummies (reference period -1, endpoints binned at -leads/+lags) or one treatment dummy (design 'did'). Under staggered adoption with effects that differ between cohorts, TWFE estimates can be biased (Goodman-Bacon 2021, Sun and Abraham 2021): the model emits a STAGGERED_ADOPTION warning. Counterfactual mode sets treatment to 0.",
+      "fits": {
+       "data_shape": [
+        "panel"
+       ],
+       "frequency": [
+        "daily",
+        "weekly",
+        "monthly"
+       ],
+       "goal": [
+        "measure_impact"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The average effect of the change with a range",
+       "The effect for each period before and after the change",
+       "A warning when the units got the change at different times"
+      ],
+      "references": [
+       {
+        "title": "Goodman-Bacon (2021), Difference-in-differences with variation in treatment timing, Journal of Econometrics",
+        "url": "https://doi.org/10.1016/j.jeconom.2021.03.014"
+       },
+       {
+        "title": "Sun and Abraham (2021), Estimating dynamic treatment effects in event studies with heterogeneous treatment effects, Journal of Econometrics",
+        "url": "https://doi.org/10.1016/j.jeconom.2020.09.006"
+       }
+      ],
+      "related": [
+       "causal.synthetic_control",
+       "causal.impact"
+      ],
+      "summary_plain": "Measures the effect of a change that some stores or markets got and others did not. It shows the effect for each period before and after the change.",
+      "title": "Before and after, with a comparison group",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "Some units got a change and other units never got it",
+       "The units got the change at the same time or at different times",
+       "You want to see if the groups moved the same way before the change"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "event_coef",
+       "sigma"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "counterfactual",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Bayesian difference-in-differences and event study on a panel of units over time: unit and period effects plus one effect per period relative to the adoption of the treatment, compared with units that never got it.",
+     "fit_schema": {},
+     "id": "causal.did",
+     "outputs": {
+      "y_hat": {
+       "description": "Expected value or predictive draw of y; with the intervention treatment = 0, the outcome without the treatment",
+       "dims": [
+        "unit",
+        "time"
+       ],
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "causal.event_study",
+      "causal.impact",
+      "causal.pre_fit",
+      "core.convergence",
+      "core.posterior_forest"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "covariates": {
+        "default": [],
+        "required": false,
+        "type": "string_list"
+       }
+      },
+      "template": {
+       "dims": {
+        "time": {
+         "kind": "time",
+         "policy": "fixed"
+        },
+        "unit": {
+         "kind": "categorical",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "treatment": {
+         "bounds": [
+          0.0,
+          1.0
+         ],
+         "dims": [
+          "unit",
+          "time"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        },
+        "y": {
+         "dims": [
+          "unit",
+          "time"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "{*covariates as x}": {
+         "dims": [
+          "unit",
+          "time"
+         ],
+         "dtype": "float64",
+         "role": "covariate"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``causal.did`` (priors on the standardised target).",
+      "properties": {
+       "bin_endpoints": {
+        "default": true,
+        "description": "The first lead and the last lag also take the periods further out",
+        "title": "Bin Endpoints",
+        "type": "boolean"
+       },
+       "covariates": {
+        "description": "Control variables over (unit, time)",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 16,
+        "title": "Covariates",
+        "type": "array"
+       },
+       "design": {
+        "default": "event_study",
+        "description": "event_study: one effect per period relative to the adoption; did: one effect for all treated cells (x-ui-level: basic)",
+        "enum": [
+         "event_study",
+         "did"
+        ],
+        "title": "Design",
+        "type": "string"
+       },
+       "effect_sigma": {
+        "default": 1.0,
+        "description": "Prior sd of the event effects",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Effect Sigma",
+        "type": "number"
+       },
+       "lags": {
+        "default": 8,
+        "description": "Periods after the adoption with an effect",
+        "maximum": 104,
+        "minimum": 0,
+        "title": "Lags",
+        "type": "integer"
+       },
+       "leads": {
+        "default": 4,
+        "description": "Periods before the adoption with an effect",
+        "maximum": 52,
+        "minimum": 0,
+        "title": "Leads",
+        "type": "integer"
+       },
+       "likelihood": {
+        "default": "normal",
+        "enum": [
+         "normal",
+         "student_t"
+        ],
+        "title": "Likelihood",
+        "type": "string"
+       },
+       "noise_sigma": {
+        "default": 0.5,
+        "description": "Half-normal scale of sigma",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Noise Sigma",
+        "type": "number"
+       },
+       "time_effects": {
+        "default": "iid",
+        "description": "iid: independent period effects; random_walk: smooth period effects",
+        "enum": [
+         "iid",
+         "random_walk"
+        ],
+        "title": "Time Effects",
+        "type": "string"
+       }
+      },
+      "title": "DiDSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Without the change, the series continues as the model of the period before it predicts",
+       "The change did not touch the control series"
+      ],
+      "avoid_when": [
+       "The change also changed the control series",
+       "Other events occurred at the same time as the change",
+       "You have fewer than about 10 periods before the change",
+       "You have the same series for many markets (use the synthetic control)"
+      ],
+      "data_needs": [
+       "One number over time at a regular frequency, before and after the change",
+       "The start date of the change, and an end date if it stopped",
+       "Optional control series for the full period"
+      ],
+      "difficulty": "intermediate",
+      "example": "A TV campaign from 1 March added 4,200 sales in 8 weeks (range 2,900 to 5,500).",
+      "expert_notes": "CausalImpact (Brodersen et al. 2015) on the ts.bsts core: a Bayesian structural time series with the controls as static regressors is fitted on the pre-period only. The counterfactual is the one-step-ahead prediction in the pre-period and a predictive forecast from the terminal state after the start (common random numbers). The effect is actual minus counterfactual, per draw; the cumulative effect sums the post cells. Interrupted time series is the case without controls.",
+      "fits": {
+       "data_shape": [
+        "one_series",
+        "several_series"
+       ],
+       "frequency": [
+        "daily",
+        "weekly",
+        "monthly"
+       ],
+       "goal": [
+        "measure_impact"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Actual values and the values without the change, with a range",
+       "The effect in each period and the total effect",
+       "The probability that the effect is more than zero",
+       "A chart of the fit before the change"
+      ],
+      "references": [
+       {
+        "title": "Brodersen et al. (2015), Inferring causal impact using Bayesian structural time-series models, Annals of Applied Statistics",
+        "url": "https://doi.org/10.1214/14-AOAS788"
+       }
+      ],
+      "related": [
+       "ts.bsts",
+       "causal.synthetic_control",
+       "causal.did"
+      ],
+      "summary_plain": "Measures the effect of a campaign, a launch or a change on one series. It compares the actual values with the values that the model predicts without the change.",
+      "title": "Effect of a campaign on one series",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "A campaign, a launch or a price change started on a known date",
+       "You have other series that the change did not touch (for example the sales in other countries, or searches for the category)",
+       "You want the effect with a range, for each period and in total"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "CausalImpact / interrupted time series: a Bayesian structural time series fitted on the periods before an intervention, with control series as regressors, predicts the series without the intervention; the effect is actual minus that counterfactual.",
+     "fit_schema": {},
+     "id": "causal.impact",
+     "outputs": {
+      "effect": {
+       "description": "The effect of the intervention: y minus what y would be without it",
+       "dims": [
+        "time"
+       ],
+       "units_of": "y"
+      },
+      "y_hat": {
+       "description": "What y would be without the intervention",
+       "dims": [
+        "time"
+       ],
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "causal.impact",
+      "causal.pre_fit",
+      "core.decomposition",
+      "core.convergence",
+      "core.posterior_forest"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "controls": {
+        "default": [],
+        "required": false,
+        "type": "string_list"
+       }
+      },
+      "template": {
+       "dims": {
+        "time": {
+         "kind": "time",
+         "policy": "extend"
+        }
+       },
+       "vars": {
+        "y": {
+         "dims": [
+          "time"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "{*controls as x}": {
+         "dims": [
+          "time"
+         ],
+         "dtype": "float64",
+         "future_required": true,
+         "role": "covariate"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "SeasonSettings": {
+        "additionalProperties": false,
+        "description": "One seasonal pattern.",
+        "properties": {
+         "harmonics": {
+          "anyOf": [
+           {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Number of sine/cosine pairs. Empty: one effect per season (needs a whole-number period of at most 24)",
+          "title": "Harmonics"
+         },
+         "period": {
+          "description": "Length of the cycle in periods of the time dim (12 for monthly data with a yearly cycle, 52.18 for weekly data, 7 for daily data)",
+          "exclusiveMinimum": 1,
+          "maximum": 1000,
+          "title": "Period",
+          "type": "number"
+         },
+         "sigma": {
+          "default": 0.05,
+          "description": "Half-normal scale of the seasonal changes (standardised)",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Sigma",
+          "type": "number"
+         },
+         "stochastic": {
+          "default": false,
+          "description": "Let the seasonal pattern change over time",
+          "title": "Stochastic",
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "period"
+        ],
+        "title": "SeasonSettings",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``causal.impact``: the BSTS structure, the window and the controls.",
+      "properties": {
+       "controls": {
+        "description": "Control series that the intervention did not affect (other regions, competitors, search interest); their values are needed for every period",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 32,
+        "title": "Controls",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "initial_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the initial states and seasonal effects",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Initial Sd",
+        "type": "number"
+       },
+       "intervention_end": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Last period of the intervention (inclusive); empty: until the end of the data",
+        "title": "Intervention End"
+       },
+       "intervention_start": {
+        "description": "First period of the intervention: an ISO date (YYYY-MM-DD) or a period number",
+        "pattern": "^(\\d{4}-\\d{2}-\\d{2}|-?\\d+)$",
+        "title": "Intervention Start",
+        "type": "string"
+       },
+       "level_sigma": {
+        "default": 0.1,
+        "description": "Half-normal scale of level changes",
+        "exclusiveMinimum": 0,
+        "maximum": 5,
+        "title": "Level Sigma",
+        "type": "number"
+       },
+       "obs_sigma": {
+        "default": 0.5,
+        "description": "Half-normal scale of the noise",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Obs Sigma",
+        "type": "number"
+       },
+       "regression_prior": {
+        "default": "normal",
+        "description": "normal: every driver has an effect; horseshoe: most drivers have none",
+        "enum": [
+         "normal",
+         "horseshoe"
+        ],
+        "title": "Regression Prior",
+        "type": "string"
+       },
+       "regression_sigma": {
+        "default": 1.0,
+        "description": "Prior scale of the driver effects (standardised)",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Regression Sigma",
+        "type": "number"
+       },
+       "seasonality": {
+        "description": "Seasonal patterns (at most three)",
+        "items": {
+         "$ref": "#/$defs/SeasonSettings"
+        },
+        "maxItems": 3,
+        "title": "Seasonality",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "slope_sigma": {
+        "default": 0.02,
+        "description": "Half-normal scale of slope changes",
+        "exclusiveMinimum": 0,
+        "maximum": 5,
+        "title": "Slope Sigma",
+        "type": "number"
+       },
+       "trend": {
+        "default": "local_linear",
+        "description": "level: a level that wanders; local_linear: a level and a slope that both wander; smooth: a slope that wanders slowly (a smooth trend)",
+        "enum": [
+         "level",
+         "local_linear",
+         "smooth"
+        ],
+        "title": "Trend",
+        "type": "string",
+        "x-ui-level": "basic"
+       }
+      },
+      "required": [
+       "intervention_start"
+      ],
+      "title": "ImpactSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Before the test, a weighted mix of the other markets follows each test market",
+       "Without the campaign, this mix continues to follow the test market"
+      ],
+      "avoid_when": [
+       "The test markets are very different from all other markets (for example the largest market)",
+       "The campaign also changed the other markets",
+       "You have fewer than about 10 periods before the test"
+      ],
+      "data_needs": [
+       "The same number for each market over time, before and during the test",
+       "The names of the test markets, and the start and end dates of the test",
+       "At least two markets without the campaign, with no missing values before the test"
+      ],
+      "difficulty": "intermediate",
+      "example": "TV in Leeds and Bristol for 6 weeks added 3% to sales (range 1% to 5%), compared with a mix of 10 other markets.",
+      "expert_notes": "Bayesian synthetic control (Abadie, Diamond and Hainmueller 2010): for each treated unit, y_pre ~ Normal|StudentT(alpha + Y_donor,pre @ w, sigma) on the pre-period, with w on the simplex (Dirichlet) or a regularised horseshoe (can extrapolate). Units are divided by their pre-period mean. The counterfactual is the predictive draw alpha + Y_donor @ w + noise. There are no placebo tests and no test design (market choice, power) yet. A lift test from several markets is national.",
+      "fits": {
+       "data_shape": [
+        "panel"
+       ],
+       "frequency": [
+        "daily",
+        "weekly",
+        "monthly"
+       ],
+       "goal": [
+        "measure_impact"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Actual values and the values without the campaign for each test market, with a range",
+       "The total effect and the effect in each period",
+       "The weight of each market in the mix",
+       "A lift test for the marketing mix model"
+      ],
+      "references": [
+       {
+        "title": "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for comparative case studies, JASA",
+        "url": "https://doi.org/10.1198/jasa.2009.ap08746"
+       },
+       {
+        "title": "Kim, Lee and Gupta (2020), Bayesian synthetic control methods, Journal of Marketing Research",
+        "url": "https://doi.org/10.1177/0022243720936230"
+       }
+      ],
+      "related": [
+       "causal.impact",
+       "causal.did",
+       "mmm.bayesian"
+      ],
+      "summary_plain": "Measures the effect of a campaign in some markets. It compares each test market with a weighted mix of the other markets that did not get the campaign.",
+      "title": "Geo-lift test",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You did a test in some markets and kept the other markets as they were",
+       "You have the same number for many markets, before and during the test",
+       "You want a lift test to calibrate a marketing mix model"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "weights",
+       "sigma"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the likelihood covers only the pre-period of the treated units, so pointwise leave-one-out does not describe the scored data",
+      "loo_valid": false,
+      "owns": [
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Bayesian synthetic control for geo-lift tests: each treated market is a weighted mix of untreated markets fitted before the test; the mix after the start is the counterfactual, and the difference to the actual sales is the effect.",
+     "fit_schema": {},
+     "id": "causal.synthetic_control",
+     "outputs": {
+      "y_hat": {
+       "description": "The synthetic control: what y of a treated unit would be without the intervention (NaN for donor units)",
+       "dims": [
+        "unit",
+        "time"
+       ],
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "causal.impact",
+      "causal.pre_fit",
+      "causal.donor_weights",
+      "core.convergence"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "time": {
+         "kind": "time",
+         "policy": "extend"
+        },
+        "unit": {
+         "kind": "categorical",
+         "policy": "fixed"
+        }
+       },
+       "vars": {
+        "y": {
+         "dims": [
+          "unit",
+          "time"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``causal.synthetic_control`` (priors on the normalised scale).",
+      "properties": {
+       "concentration": {
+        "default": 1.0,
+        "description": "Dirichlet concentration of simplex weights (< 1: sparse)",
+        "exclusiveMinimum": 0,
+        "maximum": 100,
+        "title": "Concentration",
+        "type": "number"
+       },
+       "donors": {
+        "anyOf": [
+         {
+          "items": {
+           "type": "string"
+          },
+          "maxItems": 500,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Units to build the synthetic copy from; default: every unit that is not treated",
+        "title": "Donors"
+       },
+       "intercept": {
+        "default": true,
+        "description": "Allow a level shift between a unit and its synthetic copy",
+        "title": "Intercept",
+        "type": "boolean"
+       },
+       "intervention_end": {
+        "anyOf": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Last period of the intervention (inclusive); empty: until the end of the data",
+        "title": "Intervention End"
+       },
+       "intervention_start": {
+        "description": "First period of the intervention: an ISO date (YYYY-MM-DD) or a period number",
+        "pattern": "^(\\d{4}-\\d{2}-\\d{2}|-?\\d+)$",
+        "title": "Intervention Start",
+        "type": "string"
+       },
+       "likelihood": {
+        "default": "normal",
+        "enum": [
+         "normal",
+         "student_t"
+        ],
+        "title": "Likelihood",
+        "type": "string"
+       },
+       "noise_sigma": {
+        "default": 0.5,
+        "description": "Half-normal scale of sigma",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Noise Sigma",
+        "type": "number"
+       },
+       "normalize": {
+        "default": "mean",
+        "description": "mean: divide each unit by its pre-period mean before the fit",
+        "enum": [
+         "mean",
+         "none"
+        ],
+        "title": "Normalize",
+        "type": "string"
+       },
+       "treated": {
+        "description": "Labels of the units (markets) that got the intervention; a text 'a, b' is split at the commas (x-ui-level: basic)",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "title": "Treated",
+        "type": "array"
+       },
+       "weights": {
+        "default": "simplex",
+        "description": "simplex: positive weights that sum to 1 (classic synthetic control); horseshoe: sparse weights of any sign (can extrapolate)",
+        "enum": [
+         "simplex",
+         "horseshoe"
+        ],
+        "title": "Weights",
+        "type": "string"
+       }
+      },
+      "required": [
+       "intervention_start",
+       "treated"
+      ],
+      "title": "SyntheticControlSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
    {
     "manifest": {
      "about": {
@@ -20312,6 +21144,314 @@
     "manifest": {
      "about": {
       "assumptions": [
+       "The level and the trend change by small random steps",
+       "Each driver has the same effect in all periods"
+      ],
+      "avoid_when": [
+       "You have many related series (this model takes one series)",
+       "The effect of a driver changes over time (the effect is the same in all periods)",
+       "You need results in seconds"
+      ],
+      "data_needs": [
+       "One number over time at a regular frequency",
+       "Optional drivers (for example the price). You must know their future values to forecast."
+      ],
+      "difficulty": "intermediate",
+      "example": "Monthly sales divide into a slow increase, a December peak and a price effect of -0.3 units for each euro.",
+      "expert_notes": "Bayesian structural time series on pymc-extras statespace: local level, local linear or smooth trend, dummy or Fourier seasonal components (fixed or with innovations), static regression (normal or horseshoe prior; the regression states start with zero variance, so the coefficients are static). Exact Kalman likelihood (NUTS). Scores re-run a numpy Kalman filter for each kept draw: one-step-ahead inside the fit, a forecast from the terminal state after it, and a 'filter' mode that continues the fit with new data. Leave-one-out is not defined.",
+      "fits": {
+       "data_shape": [
+        "one_series"
+       ],
+       "frequency": [
+        "daily",
+        "weekly",
+        "monthly"
+       ],
+       "goal": [
+        "forecast"
+       ],
+       "history": [
+        "medium",
+        "long"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "A forecast with a range",
+       "The level and the seasonal parts over time",
+       "The effect of each driver with a range",
+       "A filter mode that adds new periods to the fit state"
+      ],
+      "references": [
+       {
+        "title": "Harvey (1989), Forecasting, Structural Time Series Models and the Kalman Filter"
+       },
+       {
+        "title": "Durbin and Koopman (2012), Time Series Analysis by State Space Methods"
+       },
+       {
+        "title": "Scott and Varian (2014), Predicting the present with Bayesian structural time series"
+       }
+      ],
+      "related": [
+       "ts.unobserved_components",
+       "ts.hsgp_trend",
+       "causal.impact"
+      ],
+      "summary_plain": "Divides one series into a level, a trend, seasonal patterns and the effect of drivers that you know. It forecasts the series with a range of probable values.",
+      "title": "Bayesian trend, season and drivers",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You forecast one regular series and you want an honest range",
+       "The level, the trend or the seasonal pattern can change over time",
+       "Some values are missing (the model continues over the gaps)",
+       "You want to update the forecast with new periods without a new fit"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "sigma_obs"
+      ],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+      "loo_valid": false,
+      "owns": [
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "filter",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A Bayesian structural time series: a trend, seasonal patterns and drivers, fitted with the Kalman filter of pymc-extras. Forecasts and filters start from the stored terminal state.",
+     "fit_schema": {},
+     "id": "ts.bsts",
+     "outputs": {
+      "level": {
+       "description": "The trend and level component (expected)",
+       "dims": [
+        "t"
+       ],
+       "units_of": "y"
+      },
+      "y_hat": {
+       "description": "Expected value or predictive draw: one-step-ahead inside the fitted range, a forecast after it",
+       "dims": [
+        "t"
+       ],
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "core.ppc_fan",
+      "core.decomposition",
+      "core.convergence",
+      "core.posterior_forest"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "regressors": {
+        "default": [],
+        "required": false,
+        "type": "string_list"
+       }
+      },
+      "template": {
+       "dims": {
+        "t": {
+         "kind": "time",
+         "policy": "extend"
+        }
+       },
+       "vars": {
+        "y": {
+         "dims": [
+          "t"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        },
+        "{*regressors as x}": {
+         "dims": [
+          "t"
+         ],
+         "dtype": "float64",
+         "future_required": true,
+         "role": "covariate"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "SeasonSettings": {
+        "additionalProperties": false,
+        "description": "One seasonal pattern.",
+        "properties": {
+         "harmonics": {
+          "anyOf": [
+           {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Number of sine/cosine pairs. Empty: one effect per season (needs a whole-number period of at most 24)",
+          "title": "Harmonics"
+         },
+         "period": {
+          "description": "Length of the cycle in periods of the time dim (12 for monthly data with a yearly cycle, 52.18 for weekly data, 7 for daily data)",
+          "exclusiveMinimum": 1,
+          "maximum": 1000,
+          "title": "Period",
+          "type": "number"
+         },
+         "sigma": {
+          "default": 0.05,
+          "description": "Half-normal scale of the seasonal changes (standardised)",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Sigma",
+          "type": "number"
+         },
+         "stochastic": {
+          "default": false,
+          "description": "Let the seasonal pattern change over time",
+          "title": "Stochastic",
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "period"
+        ],
+        "title": "SeasonSettings",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``ts.bsts``.",
+      "properties": {
+       "initial_sd": {
+        "default": 1.0,
+        "description": "Prior sd of the initial states and seasonal effects",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Initial Sd",
+        "type": "number"
+       },
+       "level_sigma": {
+        "default": 0.1,
+        "description": "Half-normal scale of level changes",
+        "exclusiveMinimum": 0,
+        "maximum": 5,
+        "title": "Level Sigma",
+        "type": "number"
+       },
+       "obs_sigma": {
+        "default": 0.5,
+        "description": "Half-normal scale of the noise",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Obs Sigma",
+        "type": "number"
+       },
+       "regression_prior": {
+        "default": "normal",
+        "description": "normal: every driver has an effect; horseshoe: most drivers have none",
+        "enum": [
+         "normal",
+         "horseshoe"
+        ],
+        "title": "Regression Prior",
+        "type": "string"
+       },
+       "regression_sigma": {
+        "default": 1.0,
+        "description": "Prior scale of the driver effects (standardised)",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Regression Sigma",
+        "type": "number"
+       },
+       "regressors": {
+        "description": "Driver variables (prices, promotions) whose future values are supplied for forecasts",
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 32,
+        "title": "Regressors",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "seasonality": {
+        "description": "Seasonal patterns (at most three)",
+        "items": {
+         "$ref": "#/$defs/SeasonSettings"
+        },
+        "maxItems": 3,
+        "title": "Seasonality",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "slope_sigma": {
+        "default": 0.02,
+        "description": "Half-normal scale of slope changes",
+        "exclusiveMinimum": 0,
+        "maximum": 5,
+        "title": "Slope Sigma",
+        "type": "number"
+       },
+       "trend": {
+        "default": "local_linear",
+        "description": "level: a level that wanders; local_linear: a level and a slope that both wander; smooth: a slope that wanders slowly (a smooth trend)",
+        "enum": [
+         "level",
+         "local_linear",
+         "smooth"
+        ],
+        "title": "Trend",
+        "type": "string",
+        "x-ui-level": "basic"
+       }
+      },
+      "title": "BSTSSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
        "Some common factors explain most of the joint movement"
       ],
       "avoid_when": [
@@ -23726,6 +24866,246 @@
    }
   ],
   "plots": [
+   {
+    "about": {
+     "assumptions": [
+      "The donors did not get the campaign",
+      "With the simplex prior the weights are positive and add up to 1"
+     ],
+     "avoid_when": [
+      "The model is not a synthetic control",
+      "You want to see the effect (use Effect of the intervention)"
+     ],
+     "data_needs": [
+      "A donor_weights group from causal.synthetic_control: the weight of each donor for each treated unit as draws"
+     ],
+     "difficulty": "intermediate",
+     "example": "The copy of geo_03 uses three donors: geo_00 (39%), geo_04 (30%) and geo_06 (17%). The other donors have small weights. If geo_00 had a campaign of its own, the copy is not correct.",
+     "expert_notes": "Reads `weight(sample, unit, donor)` (or chain/draw) and `pre_rmse(unit)`, attr `prior` (simplex: Dirichlet; horseshoe: unconstrained). Bars are posterior means, rules HDIs at `hdi_prob` (0.9). Donors are ranked by |mean|; the first `top` (15) are shown and the rest are summed per draw. `unit` selects one treated unit; without it up to 4 units get a panel each, else the first unit is shown.",
+     "fits": {
+      "goal": [
+       "measure_impact"
+      ]
+     },
+     "outputs": [
+      "One bar for each donor with the mean weight, from the largest to the smallest",
+      "A line for the 90% range of each weight",
+      "One row for the donors that are not in the top 15, added together",
+      "One panel for each treated unit, up to 4 units"
+     ],
+     "references": [
+      {
+       "title": "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for comparative case studies",
+       "url": "https://doi.org/10.1198/jasa.2009.ap08746"
+      }
+     ],
+     "related": [
+      "causal.impact",
+      "causal.pre_fit"
+     ],
+     "summary_plain": "Shows which markets the model uses to make a copy of each treated market. A large weight means that the copy follows that market closely.",
+     "title": "Donor weights",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You ran a geo test and want to know which markets make the comparison",
+      "A result looks strange and you want to find a donor that is not a good match"
+     ]
+    },
+    "id": "causal.donor_weights",
+    "persona": "both",
+    "requires_groups": [
+     "donor_weights"
+    ],
+    "requires_representation": [],
+    "summary": "The weight of each donor market in the synthetic copy of a treated market.",
+    "title": "Donor weights",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "Without the treatment, treated and other units would follow the same trend",
+      "The period before the start (-1) is the reference, so its effect is 0",
+      "With different start times, the effect is the same for every start time"
+     ],
+     "avoid_when": [
+      "The model is not a difference-in-differences model",
+      "Only one unit got the treatment (use a synthetic control)"
+     ],
+     "data_needs": [
+      "An event_study group from causal.did: the effect of each period relative to the start as draws, and the average effect after the start"
+     ],
+     "difficulty": "intermediate",
+     "example": "The effect is near zero in the four periods before the start, so there is no sign of different trends. After the start it grows from +2 to +5 units. The average effect after the start is +3.6 (90% interval 3.3 to 4.0).",
+     "expert_notes": "Reads `coef(sample, event_time)` (the reference period is exactly 0), `n_cells(event_time)` and `att(sample)`, attrs `reference` (-1), `binned` and `design` (`did`: event times -1 and 0 only). Dots are medians and rules HDIs at `hdi_prob` (0.9). The pre-trend check flags each lead whose HDI excludes 0. With staggered adoption a two-way fixed effects event study can mix the effects of early and late units (Goodman-Bacon 2021; Sun and Abraham 2021).",
+     "fits": {
+      "goal": [
+       "measure_impact"
+      ]
+     },
+     "outputs": [
+      "A dot for the median effect in each period and a line for its 90% range",
+      "A zero line and a dashed red line at the start",
+      "A caption with the average effect after the start and a check of the trends before the start"
+     ],
+     "references": [
+      {
+       "title": "Sun and Abraham (2021), Estimating dynamic treatment effects in event studies with heterogeneous treatment effects",
+       "url": "https://doi.org/10.1016/j.jeconom.2020.09.006"
+      },
+      {
+       "title": "Goodman-Bacon (2021), Difference-in-differences with variation in treatment timing",
+       "url": "https://doi.org/10.1016/j.jeconom.2021.03.014"
+      }
+     ],
+     "related": [
+      "causal.impact",
+      "causal.pre_fit",
+      "core.posterior_forest"
+     ],
+     "summary_plain": "Shows the effect in each period before and after the start. Before the start the effects must be near zero, else the comparison groups were already different.",
+     "title": "Effect by period since the start",
+     "typical_runtime": "instant",
+     "use_when": [
+      "Stores or markets started the treatment at different times",
+      "You want to see if the effect grows, stays or goes away after the start",
+      "You want to do a check of the trends before the start"
+     ]
+    },
+    "id": "causal.event_study",
+    "persona": "both",
+    "requires_groups": [
+     "event_study"
+    ],
+    "requires_representation": [],
+    "summary": "The effect for each period before and after the start, with the reference period at zero.",
+    "title": "Effect by period since the start",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "Without the intervention, the target would continue to follow the model",
+      "Nothing else changed the target in the effect window",
+      "For more than one treated unit, the chart adds the units together unless you select one"
+     ],
+     "avoid_when": [
+      "The model did not follow the period before the start (look at Fit before the intervention first)",
+      "Other changes started at the same time as the intervention"
+     ],
+     "data_needs": [
+      "An impact group from a causal model (causal.impact, causal.synthetic_control or causal.did): the actual values, the values without the intervention as draws, and the cells of the effect window"
+     ],
+     "difficulty": "beginner",
+     "example": "In the 4 weeks of the campaign the total effect is +28 units (90% interval 19 to 36). This is +7% of the sales without the campaign. The probability that the effect is above zero is 100%, so you can report the effect.",
+     "expert_notes": "Reads the `impact` group: `actual([unit,] time)`, `counterfactual(sample, [unit,] time)` (predictive draws, observation noise included), `effect` and `post([unit,] time)`, with attrs `intervention_start` and `intervention_end`. Lines are medians and bands HDIs at `hdi_prob` (0.9). `unit` selects one treated unit; without it the draws are summed over units. The cumulative effect is recomputed per draw as the cumulative sum of `effect` over the `post` cells (per unit for staggered adoption). The total is its last value, the relative effect the total divided by the summed counterfactual of the post cells. `panels` selects series, pointwise and cumulative.",
+     "fits": {
+      "goal": [
+       "measure_impact"
+      ]
+     },
+     "outputs": [
+      "Three panels with the same time axis: the actual values and the values without the intervention with their 90% range, the effect per period, and the cumulative effect in the effect window",
+      "A red line at the start and a dashed red line at the end",
+      "A caption with the total effect, its range, the relative effect and the probability that the effect is above zero"
+     ],
+     "references": [
+      {
+       "title": "Brodersen et al. (2015), Inferring causal impact using Bayesian structural time-series models",
+       "url": "https://doi.org/10.1214/14-AOAS788"
+      },
+      {
+       "title": "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for comparative case studies",
+       "url": "https://doi.org/10.1198/jasa.2009.ap08746"
+      }
+     ],
+     "related": [
+      "causal.pre_fit",
+      "causal.donor_weights",
+      "causal.event_study"
+     ],
+     "summary_plain": "Shows the actual values beside the values that the model expects without the campaign, launch or test. The difference is the effect, per period and in total.",
+     "title": "Effect of the intervention",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You ran a campaign, a launch or a test and want to know what it added",
+      "You want to show the effect and its range to other people",
+      "You want to see when the effect started and if it stopped after the end"
+     ]
+    },
+    "id": "causal.impact",
+    "persona": "both",
+    "requires_groups": [
+     "impact"
+    ],
+    "requires_representation": [],
+    "summary": "The actual values beside the values without the intervention, with the effect per period and the cumulative effect.",
+    "title": "Effect of the intervention",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "A model that follows the period before the start gives a good value without the intervention after the start",
+      "About 90% of the actual values are inside a good 90% band"
+     ],
+     "avoid_when": [
+      "The data has no period before the start",
+      "You want to see the effect itself (use Effect of the intervention)"
+     ],
+     "data_needs": [
+      "An impact group from a causal model with some periods before the start"
+     ],
+     "difficulty": "beginner",
+     "example": "Before the start, the typical difference is 1.9 units and 100% of the actual values are inside the band. The model follows the history, so you can use it after the start. With 60% inside, add controls or use a longer history.",
+     "expert_notes": "The pre-period is the cells before the first `post` cell that are in no effect window. RMSE and MAPE compare `actual` with the mean of `counterfactual` per period. Coverage is the share of finite actual values inside the HDI at `hdi_prob` (0.9); the caption flags coverage below 80%. For `causal.impact` the pre-period values are one-step-ahead predictions, for synthetic control the synthetic copy and for DiD the fitted values without the treatment terms. `unit` as in causal.impact.",
+     "fits": {
+      "goal": [
+       "measure_impact"
+      ]
+     },
+     "outputs": [
+      "The actual values before the start as dots (red when they are outside the band)",
+      "The median and the 90% range of the model without the intervention",
+      "A caption with the typical difference (RMSE), the mean percentage error (MAPE) and the share of actual values inside the band"
+     ],
+     "references": [
+      {
+       "title": "Brodersen et al. (2015), Inferring causal impact using Bayesian structural time-series models",
+       "url": "https://doi.org/10.1214/14-AOAS788"
+      },
+      {
+       "title": "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for comparative case studies",
+       "url": "https://doi.org/10.1198/jasa.2009.ap08746"
+      }
+     ],
+     "related": [
+      "causal.impact",
+      "causal.donor_weights",
+      "core.ppc_fan"
+     ],
+     "summary_plain": "Shows how well the model follows the actual values before the start. If it does not follow them, do not trust the effect after the start.",
+     "title": "Fit before the intervention",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You want to know if you can trust the effect of a campaign or a test",
+      "You want to compare two sets of controls or donors"
+     ]
+    },
+    "id": "causal.pre_fit",
+    "persona": "both",
+    "requires_groups": [
+     "impact"
+    ],
+    "requires_representation": [],
+    "summary": "How well the values without the intervention follow the actual values in the period before the start.",
+    "title": "Fit before the intervention",
+    "version": "1.0.0",
+    "yanked": false
+   },
    {
     "about": {
      "assumptions": [

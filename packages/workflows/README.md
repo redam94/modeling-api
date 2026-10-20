@@ -30,7 +30,7 @@ Each node runs in one of three places (`NodeImplementation.runs_in`):
 | Runs in | Nodes |
 |---|---|
 | `orchestrator` | `compare.models`, `select.best`, `select.threshold`, `report.summary`, `branch.if` |
-| `sandbox` | `test.*`, `transform.*`, `split.*`, `search.*` (not `search.grid`), `evaluate.*`, `compare.diebold_mariano`, `compare.stacking`, `model.score`, `model.summary`, `plot.render` |
+| `sandbox` | `test.*`, `transform.*`, `split.*`, `search.*` (not `search.grid`), `evaluate.*`, `compare.diebold_mariano`, `compare.stacking`, `model.score`, `model.summary`, `model.lift_test`, `plot.render` |
 | `child_run` | `model.fit`, `model.backtest`, `model.forecast`, `search.grid`, `governance.policy`, `governance.check`, `report.evidence_pack`, `subworkflow.run` |
 
 On the server, `model.fit` is a `fit` child run, `subworkflow.run` is a child workflow run and
@@ -42,6 +42,14 @@ one `focus` value), `evaluate.ppc` (coverage, PIT KS distance and Bayesian p-val
 `compare.stacking` (stacking and pseudo-BMA+ weights from the pointwise elpd that `model.fit`
 keeps). `model.score` gives a score mode as a dataset. `plot.render` gives any catalog recipe
 as a `plot` output. `model.fit` and `model.backtest` take `nodes` and `join` for tree datasets.
+
+`model.lift_test` (v0.13) reads the `impact` group of a causal model (`causal.impact`,
+`causal.synthetic_control`, `causal.did`) and gives the total effect in the test window as a
+`LiftTest`: the mean, the standard deviation and the HDI of the sum of the effect over the
+test cells. It never imports plugin code. With one treated unit the lift test has that `geo`;
+with more units it is national. `model.fit` takes a `calibration` block, so a workflow can
+give the lift test to an MMM: `calibration: {lift_tests: {$expr: "[nodes.lift.lift_test]"}}`
+(the `geo_lift_mmm` template).
 
 ## Run a workflow locally
 

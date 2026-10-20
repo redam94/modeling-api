@@ -5,7 +5,8 @@ section (as an ``explore`` run computes them), then measured by the governance c
 need no refits. No section and no check may fail with an error: each one either produces
 its view or result, or says plainly why it does not apply to the model. The families:
 statsmodels (forecast, ts_multivariate), mmm-framework (Bayesian and frequentist), PyMC time
-series, tabular (GLM, gradient boosting, scikit-learn) and choice models.
+series (incl. the Bayesian structural time series), tabular (GLM, gradient boosting,
+scikit-learn), choice models and the causal models.
 """
 
 from __future__ import annotations
@@ -58,6 +59,10 @@ EXPECTED: dict[str, tuple[str, set[str], tuple[Any, ...]]] = {
     "e19_ggm": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
     "e23_phylo": ("sci", {"params", "diagnostics"}, (_SLOW,)),
     "e81_circular": ("sci", {"params", "diagnostics", "fields"}, (_SLOW,)),
+    "e13_bsts": ("ts", TIME, (_SLOW,)),
+    "causal_impact": ("causal", TIME, (_SLOW,)),
+    "geo_lift": ("causal", BASE | {"backtest"}, (_SLOW,)),
+    "did_event_study": ("causal", BASE, (_SLOW,)),
 }
 CHEAP_CHECKS = (
     "convergence",

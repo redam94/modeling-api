@@ -57,6 +57,9 @@ become scalar series.
 **Marketing-mix models.** Each MMM fit logs a summary of its result. See
 [What an MMM fit logs](#mmm).
 
+**Causal models and `ts.bsts`.** Each fit logs the effect of the change and the fit before
+the change. See [What a causal fit logs](#what-a-causal-fit-logs).
+
 **Workflows.** The `search.grid` node logs each grid point and its scores. The
 `model.backtest` node logs the metrics of each fold. See [Workflow nodes](#workflow-nodes).
 
@@ -103,6 +106,63 @@ Find the runs where TV returns more than 2:
 
 ```bash
 mapi runs ls --filter "metric.roi{channel=tv} > 2" --column "metric.roi{channel=tv}"
+```
+
+## What a causal fit logs <span class="mapi-badge">v0.13</span> { #what-a-causal-fit-logs }
+
+At the end of a fit, `ts.bsts` and the causal models (`causal.impact`,
+`causal.synthetic_control` and `causal.did`) log params and scalar metrics (no step). Their
+samplers also send live chains and step metrics, as the other PyMC models do. The causal
+metrics come from the `impact` group of the bundle (a maximum of 500 draws), in the units of
+the target.
+
+**Params of `ts.bsts` and `causal.impact`.**
+
+| Param | Value |
+|---|---|
+| `bsts.trend` | `level`, `local_linear` or `smooth` |
+| `bsts.seasonality` | The seasonal periods, separated by commas. `x3` gives the harmonics, for example `12,52.18x3`. |
+| `bsts.regressors` | The drivers (the control series of `causal.impact`), separated by commas |
+| `bsts.n_states` | The number of states of the model |
+| `bsts.n_periods`, `bsts.missing_periods` | The number of periods of the fit, and the number of periods without a value |
+
+**Metrics of `ts.bsts`.**
+
+| Metric | Value |
+|---|---|
+| `sigma_obs`, `sigma_level` | The posterior means of the observation noise and of the level innovations, in the units of the target |
+| `one_step_rmse` | The error of the one-step-ahead predictions in the fitted range |
+| `one_step_coverage_90` | The part of the observed values in the 90% interval of the one-step-ahead predictions |
+
+**Params of the causal models.**
+
+| Param | Models | Value |
+|---|---|---|
+| `causal.intervention_start`, `causal.intervention_end` | all | The dates (or period numbers) of the change. The end is empty when the change did not stop. |
+| `causal.n_pre`, `causal.n_post` | all | The number of periods before the start and in the effect window |
+| `causal.n_treated` | all | The number of treated units (1 for `causal.impact`) |
+| `causal.n_donors`, `causal.weights` | `causal.synthetic_control` | The number of donor markets, and `simplex` or `horseshoe` |
+| `causal.design`, `causal.staggered`, `causal.leads`, `causal.lags` | `causal.did` | The design, if the units got the change at different times, and the event window |
+
+**Metrics of the causal models.**
+
+| Metric | Labels | Value |
+|---|---|---|
+| `effect_total` | none (`unit` with two or more treated units) | The mean of the total effect over the effect window |
+| `effect_total_sd`, `effect_total_p05`, `effect_total_p95` | none | The sd, the 5th and the 95th percentile of the total effect |
+| `effect_average` | none | The mean effect in one period |
+| `effect_relative` | none (`unit` with two or more treated units) | The total effect divided by the total of the values without the change |
+| `p_effect_positive` | none (`unit` with two or more treated units) | The probability that the total effect is more than zero |
+| `pre_rmse`, `pre_mape` | none | The error of the model before the change |
+| `donor_weight` | `unit`, `donor` | `causal.synthetic_control`: the posterior mean of the weight, for the 10 largest donors of each treated unit |
+| `att`, `att_p05`, `att_p95` | none | `causal.did`: the average effect after the change, with its interval |
+| `event_coef` | `event_time` | `causal.did`: the posterior mean of the coefficient for each period relative to the change |
+
+Find the geo-lift tests with an effect that is more than zero with a probability of 95% or
+more:
+
+```bash
+mapi runs ls --filter "metric.p_effect_positive >= 0.95" --column metric.effect_total
 ```
 
 ## Keys, labels and values

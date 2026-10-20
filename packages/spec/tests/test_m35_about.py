@@ -19,6 +19,7 @@ from mapi_spec.about import (
     recommend,
 )
 from mapi_spec.abouts import (
+    CAUSAL_MODEL_IDS,
     MODEL_ABOUTS,
     PLANNED_MODEL_IDS,
     SCIENCE_MODEL_IDS,
@@ -136,7 +137,11 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
         "sci.phylo_regression",
         "sci.circular_regression",
     } == SCIENCE_MODEL_IDS
-    assert set(MODEL_ABOUTS) == SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS
+    assert {"ts.bsts", "causal.impact", "causal.synthetic_control",
+            "causal.did"} == CAUSAL_MODEL_IDS  # fmt: skip
+    assert set(MODEL_ABOUTS) == (
+        SURVIVING_MODEL_IDS | PLANNED_MODEL_IDS | SCIENCE_MODEL_IDS | CAUSAL_MODEL_IDS
+    )
     for template in GUIDED_TEMPLATES.values():
         assert template.about == TEMPLATE_ABOUTS[template.id]
 

@@ -340,6 +340,15 @@ def test_every_draft_passes_the_guided_lock(template: str) -> None:
         "customer_choice": _answers("customer_choice", CHOICE_COLUMNS),
         "mediated_mmm": _answers("mediated_mmm", MEDIATED_COLUMNS),
         "multi_kpi_mmm": _answers("multi_kpi_mmm", MULTI_KPI_COLUMNS),
+        "campaign_impact": {"kpi": "sales", "date": "week", "start": "2024-03-04"},
+        "geo_lift": {
+            "kpi": "sales",
+            "date": "week",
+            "geo": "market",
+            "treated": "a, b",
+            "start": "2024-03-04",
+            "end": "2024-04-14",
+        },
     }[template]
     req = GuidedAnswers(template_id=template, name="n", dataset="d", answers=answers)
     draft = build_draft(GUIDED_TEMPLATES[template], req, project="p")

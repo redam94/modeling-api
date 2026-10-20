@@ -23,6 +23,12 @@ id                 plugin                      for
                                                (visits, awareness)
 ``multi_kpi_mmm``  ``mmm.multivariate``        national marketing mix of several KPI
                                                columns with cross-effects between them
+``campaign_impact````causal.impact``           the effect of a campaign or a change on one
+                                               series (CausalImpact on a Bayesian
+                                               structural time series, controls optional)
+``geo_lift``       ``causal.synthetic_control``the effect of a campaign in test markets
+                                               against a weighted mix of the other markets
+                                               (its result is a lift test for the MMM)
 ``weekly_forecast````ts.hsgp_trend``           one weekly series, forecast ahead
 ``store_demand``   ``tabular.regressor``       demand per store and week (quantiles)
 ``customer_choice````choice.multinomial_logit``which product customers choose on each
@@ -36,9 +42,16 @@ from __future__ import annotations
 import copy
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, get_args
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import (
+    Field,
+    JsonValue,
+    ValidationError,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+    model_validator,
+)
 
 from mapi_spec._dto import RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Slug
@@ -63,6 +76,7 @@ from mapi_spec.views import ProfileView
 
 __all__ = [
     "BUILDER_VALUES",
+    "GUIDED_FAMILIES",
     "GUIDED_LABEL",
     "GUIDED_TEMPLATES",
     "ColumnKind",
@@ -70,6 +84,7 @@ __all__ = [
     "DetectRolesRequest",
     "GuidedAnswers",
     "GuidedDraft",
+    "GuidedFamily",
     "GuidedQuestion",
     "GuidedTemplate",
     "QuestionChoice",
@@ -92,6 +107,9 @@ __all__ = [
 ]
 
 UiLevel = Literal["basic", "advanced", "hidden"]
+GuidedFamily = Literal["mmm", "forecast", "tabular", "choice", "causal"]
+GUIDED_FAMILIES: Final[frozenset[str]] = frozenset(get_args(GuidedFamily))
+"""The families of the built-in templates (:data:`GUIDED_TEMPLATES` uses only these)."""
 ColumnKind = Literal["number", "integer", "string", "date", "boolean"]
 GuidedTask = Literal["whatif", "forecast", "counterfactual", "business_priors", "lift_tests"]
 
@@ -119,6 +137,9 @@ class GuidedQuestion(ResponseModel):
     * ``role`` + ``wide_dim`` (``columns``): the columns become *one* variable ``as_var``
       along ``wide_dim`` (one label per column, e.g. spend per channel);
     * ``role`` without ``wide_dim`` (``columns``): each column is its own variable.
+
+    A ``text`` answer fills its placeholder as typed (stripped); with ``as_list`` it is split
+    at the commas into a list of names (a required one must keep a name).
     """
 
     id: str = Field(..., pattern=r"^[a-z][a-z0-9_]{0,31}$")
@@ -144,6 +165,12 @@ class GuidedQuestion(ResponseModel):
         "(default forbid; 'allow' for ragged panels such as shopping trips per household)",
         exclude_if=lambda v: v is None,
     )
+    as_list: bool = Field(
+        False,
+        description="v0.13: a text answer is a list of names separated by commas (the "
+        "placeholder becomes the list, for example the treated markets of a geo-lift test)",
+        exclude_if=lambda v: not v,
+    )
 
     @model_validator(mode="after")
     def _shape(self) -> GuidedQuestion:
@@ -156,6 +183,8 @@ class GuidedQuestion(ResponseModel):
             raise ValueError(f"{self.id}: only column questions map columns")
         if self.kind == "choice" and not self.choices:
             raise ValueError(f"{self.id}: a choice question needs choices")
+        if self.as_list and self.kind != "text":
+            raise ValueError(f"{self.id}: only a text question can be a list")
         return self
 
 
@@ -172,13 +201,14 @@ class GuidedTemplate(ResponseModel):
     ``ui_levels`` maps JSON pointers of the spec to ``x-ui-level`` hints (``hidden`` fields
     are kept but not shown; Expert edits round-trip). ``plugin_available`` is false while
     the template's built-in plugin is not shipped (``plugin_note`` says what is missing).
+    A ``family`` this version does not know (added by a newer server) is kept as text.
     """
 
     id: Slug
     version: str = Field("1.0.0", pattern=r"^\d+\.\d+\.\d+$")
     title: str = Field(..., max_length=120)
     description_plain: str = Field(..., max_length=1000)
-    family: Literal["mmm", "forecast", "tabular", "choice"]
+    family: GuidedFamily
     plugin: str = Field(..., description="UseRef of the built-in plugin (id@range)")
     plugin_available: bool = True
     plugin_note: str | None = Field(None, max_length=500)
@@ -193,6 +223,18 @@ class GuidedTemplate(ResponseModel):
     about: About | None = Field(
         None, description="M3.5: the plain-language About card (every built-in has one)"
     )
+
+    @field_validator("family", mode="wrap")
+    @classmethod
+    def _open_family(cls, v: Any, handler: ValidatorFunctionWrapHandler) -> Any:
+        # an older client must not reject the whole template list when a newer server adds
+        # a family (v0.12 clients fail on "causal"): an unknown family stays as text
+        try:
+            return handler(v)
+        except ValidationError:
+            if isinstance(v, str) and re.fullmatch(r"[a-z][a-z0-9_]{0,31}", v):
+                return v
+            raise
 
     model_config = dto_examples(
         {
@@ -591,6 +633,152 @@ MULTI_KPI_MMM = GuidedTemplate(
     ui_levels=_EXT_UI_LEVELS,
 )  # fmt: skip
 
+_CAUSAL_FIT: Final = {"mode": "train_only", "tune": 500, "draws": 500, "chains": 4,
+                      "seed": 20261020}  # fmt: skip
+"""The fit of the causal templates: the effect is the result of the fit, so nothing is held
+back (no holdout, no refit)."""
+_CAUSAL_CHECKS: Final = ["convergence.rhat", "convergence.ess", "convergence.divergences",
+                         "data.missing"]  # fmt: skip
+_CAUSAL_UI_LEVELS: Final[dict[str, UiLevel]] = {
+    "/model/settings/intervention_start": "basic", "/model/settings/intervention_end": "basic",
+    "/model/fit": "advanced", "/execution": "advanced",
+}  # fmt: skip
+_START = GuidedQuestion(
+    id="start",
+    prompt_plain="On which date did the campaign or change start?",
+    help_plain="Give the date as YYYY-MM-DD.",
+    kind="text",
+)
+_END = GuidedQuestion(
+    id="end",
+    prompt_plain="On which date did the campaign or change stop?",
+    help_plain="Give the date as YYYY-MM-DD. If it did not stop, leave this empty.",
+    kind="text",
+    required=False,
+    default="",
+)
+
+CAMPAIGN_IMPACT = GuidedTemplate(
+    id="campaign_impact",
+    title="Effect of a campaign",
+    description_plain="Measure the effect of a campaign, a launch or a price change on one "
+    "series. The model predicts the series without the change and compares it with the actual "
+    "values.",
+    family="causal",
+    plugin="causal.impact@^1",
+    questions=[
+        GuidedQuestion(
+            id="kpi", prompt_plain="Which column shows the result that the change can affect?",
+            kind="column", role=Role.TARGET, accepts=["number", "integer"],
+            keywords=_KPI_WORDS,
+        ),
+        GuidedQuestion(
+            id="date", prompt_plain="Which column holds the date or week?", kind="column",
+            dim="time", dim_spec=_TIME_DIM, accepts=["date"], keywords=_DATE_WORDS,
+        ),
+        GuidedQuestion(
+            id="controls",
+            prompt_plain="Which columns show series that the change did not affect?",
+            help_plain="For example the sales in other countries, searches for the category or "
+            "the sales of a competitor. The model uses them to predict the result without the "
+            "change. You can select no column.",
+            kind="columns", role=Role.COVARIATE, required=False,
+            accepts=["number", "integer"],
+            keywords=["control", "benchmark", "competitor", "other", "region", "search",
+                      "traffic", "index"],
+        ),
+        _START,
+        _END,
+        _FREQ,
+    ],
+    spec_template={
+        "apiVersion": API_VERSION,
+        "kind": "ModelSpec",
+        "metadata": {"name": "{{name}}", "project": "{{project}}",
+                     "labels": {"family": "causal", "guided": "campaign_impact"}},
+        "data": {
+            "dataset": "{{dataset}}",
+            "bind": {"dims": {"time": "{{date}}"}, "vars": {"y": "{{kpi}}"}},
+        },
+        "model": {
+            "use": "causal.impact@^1",
+            "settings": {"controls": "{{controls}}", "intervention_start": "{{start}}",
+                         "intervention_end": "{{end}}",
+                         "seasonality": [{"period": "{{season_period}}", "harmonics": 3}]},
+            "fit": _CAUSAL_FIT,
+        },
+        "outputs": {"plots": ["causal.impact", "causal.pre_fit", "core.convergence"]},
+        "execution": {"resource_class": "S", "timeout": "30m"},
+    },
+    defaults={"frequency": "weekly", "end": ""},
+    lookups={"season_period": TemplateLookup(source="frequency",
+                                             map={"weekly": 52.18, "daily": 7})},
+    scorecard_checks=_CAUSAL_CHECKS,
+    ui_levels={**_CAUSAL_UI_LEVELS, "/model/settings/controls": "basic",
+               "/model/settings/seasonality": "advanced"},
+)  # fmt: skip
+
+GEO_LIFT = GuidedTemplate(
+    id="geo_lift",
+    title="Geo-lift test",
+    description_plain="Measure the effect of a campaign that ran only in some markets. The "
+    "model compares each test market with a mix of the other markets. The result can "
+    "calibrate a marketing mix model.",
+    family="causal",
+    plugin="causal.synthetic_control@^1",
+    questions=[
+        GuidedQuestion(
+            id="kpi", prompt_plain="Which column shows the result that the campaign can affect?",
+            kind="column", role=Role.TARGET, accepts=["number", "integer"],
+            keywords=_KPI_WORDS,
+        ),
+        GuidedQuestion(
+            id="date", prompt_plain="Which column holds the date or week?", kind="column",
+            dim="time", dim_spec=_TIME_DIM, accepts=["date"], keywords=_DATE_WORDS,
+        ),
+        GuidedQuestion(
+            id="geo", prompt_plain="Which column names the market?", kind="column",
+            dim="unit", dim_spec=DimSpec(kind="categorical", policy="fixed"),
+            accepts=["string", "integer"], keywords=_GEO_WORDS,
+        ),
+        GuidedQuestion(
+            id="treated", prompt_plain="Which markets got the campaign? Separate the names "
+            "with commas.",
+            help_plain="Type the names as they are in the market column, for example "
+            "Leeds, Bristol. The other markets make the comparison.",
+            kind="text",
+            as_list=True,
+        ),
+        _START,
+        _END.model_copy(update={"required": True, "default": None,
+                                "help_plain": "Give the date as YYYY-MM-DD."}),
+        _FREQ,
+    ],
+    spec_template={
+        "apiVersion": API_VERSION,
+        "kind": "ModelSpec",
+        "metadata": {"name": "{{name}}", "project": "{{project}}",
+                     "labels": {"family": "causal", "guided": "geo_lift"}},
+        "data": {
+            "dataset": "{{dataset}}",
+            "bind": {"dims": {"unit": "{{geo}}", "time": "{{date}}"},
+                     "vars": {"y": "{{kpi}}"}},
+        },
+        "model": {
+            "use": "causal.synthetic_control@^1",
+            "settings": {"treated": "{{treated}}", "intervention_start": "{{start}}",
+                         "intervention_end": "{{end}}"},
+            "fit": _CAUSAL_FIT,
+        },
+        "outputs": {"plots": ["causal.impact", "causal.donor_weights", "causal.pre_fit",
+                              "core.convergence"]},
+        "execution": {"resource_class": "S", "timeout": "30m"},
+    },
+    defaults={"frequency": "weekly"},
+    scorecard_checks=_CAUSAL_CHECKS,
+    ui_levels={**_CAUSAL_UI_LEVELS, "/model/settings/treated": "basic"},
+)  # fmt: skip
+
 WEEKLY_FORECAST = GuidedTemplate(
     id="weekly_forecast",
     title="Weekly forecast",
@@ -780,7 +968,16 @@ CUSTOMER_CHOICE = GuidedTemplate(
 
 GUIDED_TEMPLATES: Final[dict[str, GuidedTemplate]] = {
     t.id: t.model_copy(update={"about": TEMPLATE_ABOUTS[t.id]})
-    for t in (GEO_MMM, MEDIATED_MMM, MULTI_KPI_MMM, WEEKLY_FORECAST, STORE_DEMAND, CUSTOMER_CHOICE)
+    for t in (
+        GEO_MMM,
+        MEDIATED_MMM,
+        MULTI_KPI_MMM,
+        CAMPAIGN_IMPACT,
+        GEO_LIFT,
+        WEEKLY_FORECAST,
+        STORE_DEMAND,
+        CUSTOMER_CHOICE,
+    )
 }
 """The built-in guided templates, by id (``GET /v1/guided/templates``)."""
 
@@ -1404,7 +1601,13 @@ def build_draft(
                 raise _bad(q.id, f"give a number from {q.minimum} to {q.maximum}")
             values[q.id] = value
         else:
-            values[q.id] = str(value)
+            text = str(value).strip()
+            answer: str | list[str] = (
+                [x.strip() for x in text.split(",") if x.strip()] if q.as_list else text
+            )
+            if q.required and not answer:
+                raise _bad(q.id, f"answer {q.prompt_plain!r}")
+            values[q.id] = answer
     for name, lk in template.lookups.items():
         src = values.get(lk.source)
         if str(src) not in lk.map:
