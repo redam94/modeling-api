@@ -166,7 +166,7 @@ _LAZY: dict[str, str] = {
 try:
     __version__ = _metadata.version("mapi-sdk")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.13.0"
+    __version__ = "0.14.0"
 
 
 def __getattr__(name: str) -> Any:

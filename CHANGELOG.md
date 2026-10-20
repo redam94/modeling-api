@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.14.0] — Run comparison, media and image data — 2026-10-20
+
 ### Run comparison, media, image data and classification
 
 You can now compare runs and group them. The runs table shows metrics, params and tags as
