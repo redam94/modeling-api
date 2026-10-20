@@ -178,9 +178,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.9.1-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.9.1-mock", contract_version: "0.2" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).

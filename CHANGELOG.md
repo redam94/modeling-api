@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.10.0] — Chart wiring and score plots by output shape — 2026-10-20
+
 ### Chart wiring and metric correctness
 
 More models now get the plots that apply to them, and the metrics that a spec requests are

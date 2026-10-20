@@ -25,7 +25,7 @@ them. Each ported case has a tutorial in `docs/tutorials/pymc-challenges/`, and
 `python -m mapi_plugin_science.export` writes the data of a case to a file that you can upload.
 The documentation (`make docs-serve`) starts at `docs/index.md`.
 
-> Status: under active development. The latest release is v0.9.1 (Science gallery docs). See [CHANGELOG.md](CHANGELOG.md).
+> Status: under active development. The latest release is v0.10.0 (Chart wiring and score plots by output shape). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 

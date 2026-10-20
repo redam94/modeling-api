@@ -15,7 +15,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.9.1"
+__version__ = "0.10.0"
 
 __all__ = ["PLUGINS", "MMMBayesian", "MMMFrequentist", "__version__"]
 
