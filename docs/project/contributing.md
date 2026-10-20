@@ -25,6 +25,21 @@ make help             # every developer entry point
 | `make release-check` | Does a check of version consistency, the changelog entry, plan files (there must be none), pinned images and current third-party notices |
 | `make notices` | Makes `THIRD-PARTY-NOTICES.md` again after a change to `uv.lock` or `pnpm-lock.yaml` ([Licensing](licensing.md#third-party-libraries)) |
 
+`make install` installs all workspace packages. This includes `mapi-jax` with the CPU build
+of JAX (v0.15), `mapi-sklearn` with the `gbm` extra (LightGBM and CatBoost, v0.14) and
+pymc-extras (a dependency of `mapi-plugin-ts`, v0.13). Two extras are for installs outside
+the workspace: the `cuda12` extra of `mapi-jax` (only the `mapi/base-dl` image uses it) and
+the `pathfinder` extra of `mapi-pymc` (pymc-extras for the Pathfinder engine). Do not add `torch` or `tensorflow`. The build
+of `mapi/base-dl` fails if they are in it ([Container images](../operations/images.md#build-time-guards)).
+
+| Package | Where | What it holds |
+|---|---|---|
+| `mapi-jax` (v0.15) | `packages/sdk-jax` | The `dl.*` models and the step `dl.embed` on JAX, Flax and Optax |
+| `mapi-plugin-causal` (v0.13) | `plugins/causal` | `causal.impact`, `causal.synthetic_control` and `causal.did` |
+
+The control plane and the supervisor of the runner must not import `mapi_jax`, `jax`, `flax`
+or `optax`. `make lint` makes sure of this rule.
+
 ## Branching model
 
 We use git flow with two permanent branches, `main` and `develop`.
@@ -110,9 +125,11 @@ The site uses MkDocs Material. `mkdocs.yml` is at the repository root, and the p
   `conformance/tests/test_docs_platform.py`. Shell snippets use the same section markers.
 - **Scripts make the reference pages.** `scripts/gen_docs_catalog.py` writes the pages for the
   steps, models, plot recipes, spec schema and error codes. `scripts/gen_docs_reference.py`
-  writes the CLI reference, the server settings and a copy of `apps/web/openapi.json`. The
-  two scripts write into `docs/reference/generated/`, which git ignores. An MkDocs hook runs
-  the two scripts before each build.
+  writes the CLI reference, the server settings and a copy of `apps/web/openapi.json`.
+  `scripts/gen_docs_platform.py` writes the permissions, the environment variables and the
+  tables of the observability page. The three scripts write into `docs/reference/generated/`,
+  which git ignores. An MkDocs hook runs them before each build. `make docs-catalog` runs
+  them. To change a generated page, change the code or the script, not the output.
 - **New `MAPI_*` variables go into the configuration reference**
   (`docs/operations/configuration.md`). A test looks for these variables in the source tree.
 - **Screenshots** are in `docs/assets/screenshots/`. Each screenshot must be 300 KB or less,

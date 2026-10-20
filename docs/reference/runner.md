@@ -20,6 +20,7 @@ sequenceDiagram
     W->>G: range-read inputs (signed GET)
     W-->>S: state / progress / diagnostic / metric / checkpoint messages
     W-->>S: metrics / params / tags / user_log messages (v0.11)
+    W-->>S: media messages, files in {scratch}/media/ (v0.14)
     W-->>S: stdout + stderr (pipes, captured as log lines)
     S-->>X: stdout: {"mapi_event": …} (HMAC + seq per line)
     S->>G: POST outputs (policy), PUT manifest.json
@@ -124,6 +125,31 @@ warning. The end-of-run metrics (`metric` events, for example the holdout `rmse`
 kept as scalar series. The guide [Track metrics, params and tags](../guides/tracking.md) shows
 the API that model code uses.
 
+## Media, images and the GPU class { #media-images-and-the-gpu-class }
+
+**Media** <span class="mapi-badge">v0.14</span>. `ctx.log_image`, `ctx.log_figure` and
+`ctx.log_table` write each item to `{scratch}/media/` and send a `media` message. The
+supervisor reads the file, does a check of it, and uploads it through the `media` POST
+policy of the attempt. Then it sends a `media` event. The supervisor counts the items and the
+bytes of the attempt against `media_items` and `media_bytes`. After the budget, it drops the
+items and sends one `MEDIA_BUDGET` warning. [Run protocol: Media](run-protocol.md#media)
+gives each step and each warning.
+
+**Images** <span class="mapi-badge">v0.14</span>. `mapi-runner` depends on Pillow. Only the
+worker decodes images: the `image_folder` ingest, the collection ingest (v0.15) and the
+decoded samples of a collection fit. The supervisor and the control plane read only the
+headers. The collection ingest reads the parts in ranges and makes sure that each image has
+the SHA-256 of its name ([Run protocol: Image collections](run-protocol.md#image-collections)).
+A fit on a collection decodes a sample of a maximum of 500 images for its views and its
+scorecard. If that fails, the worker sends `VIEW_SAMPLE_FAILED`, and the fit continues.
+
+**The GPU class** <span class="mapi-badge">v0.15</span>. When a run has the resource class
+`GPU` and the supervisor finds no NVIDIA device (`/dev/nvidia0` or `/dev/nvidiactl`), it
+sends one `GPU_UNAVAILABLE` warning. The run continues on the CPU. The supervisor gives the
+worker the JAX and XLA variables of the worker-environment allow-list (`JAX_PLATFORMS`,
+`XLA_FLAGS`, `XLA_PYTHON_CLIENT_PREALLOCATE`, `XLA_PYTHON_CLIENT_MEM_FRACTION` and
+`CUDA_VISIBLE_DEVICES`).
+
 ## SIGTERM, the deadline and checkpoints
 
 The supervisor does these steps on SIGTERM, or when the time gets to the deadline minus the
@@ -144,6 +170,12 @@ files with the `checkpoints` POST policy. It sends a `checkpoint` event for each
 resumed attempt gets the same names in `RunSpec.resume`: **the resume names are equal to the
 object names relative to the checkpoint prefix**. The runner downloads them before the fit
 starts, and the engine continues from them.
+
+From v0.15, a network that trains in epochs saves its checkpoints as files every
+`fit.checkpoint.every_epochs` epochs: `ckpt-<key>.weights.safetensors`,
+`ckpt-<key>.opt.safetensors` and `ckpt-<key>.meta.json`
+([Checkpoints of networks](run-protocol.md#checkpoints-of-networks)). If the `meta.json` is
+larger than 16 MiB, the worker does not save the checkpoint and sends `CHECKPOINT_SKIPPED`.
 
 ## Exit codes
 

@@ -205,6 +205,12 @@ loader in `fit_batches` and `score_batches`. Any other model gets
 `collection_read(collection, spec.data.collection, seed=...)`. Read
 [Train on batches](../guides/plugins.md#fit-batches).
 
+A model can read a side table (v0.15). `CustomModel.side_table_params` names the settings
+keys whose value is a `data.side_tables` entry, for example the pretrained weights of
+`dl.finetune_classifier`. The harness gives these tables, raw, in `FitContext.side_tables`.
+A score request never needs a table that only the model reads. Read
+[Read a side table in a model](../guides/plugins.md#model-side-tables).
+
 ## Representations and summaries
 
 | Representation | Shape | Summaries | Aggregation |

@@ -54,6 +54,47 @@ models. The charts `causal.impact` and `causal.pre_fit` and the workflow node
 `IMPACT_SPEC_YAML`; `mapi_plugin_causal._common` the window parser, the `impact` group
 builder, the effect summary and the tracking helper the three models share.
 
+## `causal.synthetic_control`
+
+* Canonical inputs: dims `unit` (categorical, fixed) and `time` (time, extend);
+  `y(unit, time)` target (missing values allowed). `settings.treated` names the test markets;
+  every other unit (or `settings.donors`) is a donor.
+* For each treated unit, the pre-period is fitted as a weighted mix of the donors:
+  `weights: simplex` (a Dirichlet with `concentration`, the classic convex synthetic control)
+  or `weights: horseshoe` (sparse, signed, can extrapolate). `normalize: mean` divides each
+  unit by its pre-period mean.
+* Groups: `impact` and `donor_weights` (the weights per draw and the pre-period RMSE of each
+  treated unit). Score output: `y_hat(unit, time)` for the treated units from the payload's
+  donor values (donor rows are NaN). No pointwise LOO.
+* Tracking: the shared effect summary, `causal.n_donors`, `causal.weights`, and the metric
+  `donor_weight` (labels `unit` and `donor`) for the largest donors.
+
+## `causal.did`
+
+* Canonical inputs: dims `unit` and `time` (both fixed); `y(unit, time)` target,
+  `treatment(unit, time)` (0/1, 1 from the adoption period on) and the covariates in
+  `settings.covariates`.
+* Two-way fixed effects: `design: event_study` (one coefficient per period relative to the
+  adoption, `leads` and `lags`, `bin_endpoints`) or `design: did` (one treatment effect).
+* Groups: `impact` (treated units) and `event_study` (the coefficients with the reference
+  period at 0, and the ATT). `counterfactual` mode sets `treatment` to 0. A payload may cover
+  only some periods. Staggered adoption gives the diagnostic `STAGGERED_ADOPTION`.
+* Tracking: the shared effect summary, `causal.design`, `causal.staggered`,
+  `causal.leads`, `causal.lags`, the metrics `att` (+ `_p05`, `_p95`) and `event_coef`
+  (label `event_time`).
+
+## Plots, templates and the MMM
+
+The plot recipes `causal.impact`, `causal.pre_fit`, `causal.donor_weights` and
+`causal.event_study` (`mapi-plots[recipes]`) read the groups above. The workflow node
+`model.lift_test` turns the `impact` group into a lift test for `mmm.bayesian` (the workflow
+template `geo_lift_mmm`), and the Guided templates `campaign_impact` and `geo_lift` use
+`causal.impact` and `causal.synthetic_control`. The models run in the `mapi/base-forecast`
+runner image (with `mapi-plugin-ts` and pymc-extras).
+
+Documentation: `docs/models/causal.md` (the models) and `docs/guides/causal.md` (measure the
+effect of a change).
+
 ## Known gaps
 
 * The counterfactual is only as good as the controls: a control that the intervention

@@ -5,7 +5,7 @@ description: How the multi-tenant platform limits compute, schedules interactive
 # Quotas and cost <span class="mapi-badge">v0.3</span>
 
 Compute is the largest cost risk for a public modelling platform. Examples are an accidental
-500-task sweep, a leaked token, or a person who mines on free fits. From v0.3, the platform
+500-task backtest, a leaked token, or a person who mines on free fits. From v0.3, the platform
 does these steps for each run:
 
 1. It estimates the cost of the run before the run starts.
@@ -26,11 +26,57 @@ at this level.
 |---|---|---|
 | `vcpu_seconds_per_day`, `vcpu_seconds_per_month` | Cumulative, UTC day and month | The platform compares the limit with the estimate of the run at submit. |
 | `concurrent_runs` | Live count | Runs between `queued` and a terminal state |
-| `max_fanout_tasks` | Per submission | The maximum for one sweep, backtest or SBC (`taskCount`) |
-| `max_resource_class` | Per submission | For example, the free tier runs on class S only. The classes are in the sequence S < M < L < XL < GPU (v0.15), so a maximum below `GPU` refuses the GPU class. By default, only the internal and the self-hosted tiers allow it. |
-| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (the stored objects of all model versions) |
+| `max_fanout_tasks` | Per submission | The maximum for one fan-out submission, for example a backtest or an SBC (`taskCount`) |
+| `max_resource_class` | Per submission | For example, the `public` tier runs on class S only. The classes are in the sequence S < M < L < XL < GPU (v0.15), so a maximum below `GPU` refuses the GPU class. By default, only the `internal` and the `self-hosted-trusted` tiers allow it. See [Resource classes](#resource-classes). |
+| `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (the stored objects of all model versions). An upload counts while it is `pending` or `uploaded` (v0.15). A collection version counts the packs that it uses, also packs that it shares with other versions ([Image data and collections](image-collections.md#storage-and-the-quota)). |
 | `egress_bytes_per_month` | Cumulative, UTC month | Downloads. This is the size of each object that the API gives a signed link for: dataset and model artifacts, `ui/` views, and score and render outputs. It also includes public embed views. The platform charges the bytes when it mints the link. The platform never charges GDPR exports. |
 | `requests_per_minute` | Rate | API calls |
+
+## Resource classes { #resource-classes }
+
+Each run has a **resource class**. The class sets the CPU, the memory, the scratch space and
+the size limits of the run. It also sets the price of each second.
+
+| Class | vCPU | Memory | Scratch | Input data | Bundle | Accelerator |
+|---|---|---|---|---|---|---|
+| `S` | 2 | 8 GiB | 3 GiB | 0.5 GB | 1 GB | — |
+| `M` | 4 | 16 GiB | 6 GiB | 2 GB | 4 GB | — |
+| `L` | 8 | 32 GiB | 12 GiB | 5 GB | 8 GB | — |
+| `XL` | (GKE) | (GKE) | (GKE) | 50 GB | 50 GB | — |
+| `GPU` <span class="mapi-badge">v0.15</span> | 8 | 32 GiB | 12 GiB | 50 GB | 8 GB | 1 NVIDIA L4 |
+
+The manifest of a model gives its minimum and default class (`resources`). A spec can select
+a class in `execution.resource_class`. After `RESOURCE_EXHAUSTED`, the platform offers the
+next CPU class (`S` to `M` to `L` to `XL`). `XL` has no next class. It never offers `GPU` as a retry. The `GPU` class has
+the same memory as `L`.
+
+### The GPU class <span class="mapi-badge">v0.15</span> { #the-gpu-class }
+
+The class `GPU` is the last class in the sequence. Thus a quota whose maximum is a CPU class
+refuses it. These rules keep GPU time for the models that use it:
+
+- Validation refuses `GPU` for a model whose manifest does not set `resources.gpu`. The GPU
+  Job of Cloud Run has only the runner image `base-dl`, so it can run only these models.
+- Validation shows a note when a model can use a GPU and the spec selects a CPU class.
+- In v0.15, `dl.cnn_classifier` and `dl.finetune_classifier` set `resources.gpu`
+  ([Deep learning](../guides/deep-learning.md#use-the-gpu-class)).
+
+The executor decides if the run gets a GPU:
+
+| Executor | A run of class `GPU` |
+|---|---|
+| `cloudrun-jobs` | Runs in the GPU Job of `base-dl`, when the deployment has it (Terraform `gpu_jobs`, off by default) |
+| `docker` | Asks Docker for a GPU when `MAPI_DOCKER_GPUS=true` |
+| `docker` without `MAPI_DOCKER_GPUS`, `local-process` | Runs on the CPU |
+
+When a run of class `GPU` sees no NVIDIA device, the supervisor writes the warning
+`GPU_UNAVAILABLE`, and the run continues on the CPU. The ledger meters a run of class `GPU`
+with the price of its class, also when the run used the CPU.
+
+!!! warning
+    The GPU path is not tested. The `base-dl` CUDA image and the GPU Job of Cloud Run are not
+    tested against GCP or on a GPU. Do a test with a small run before you use them. See
+    [Cloud Run](../operations/cloud-run.md#gpu-jobs).
 
 ## Three levels
 
@@ -109,9 +155,10 @@ The platform calculates the cost of each run from its resource class and its wal
 
 The prices come from a versioned **price table**. The default uses the list prices of Cloud
 Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. From v0.15 the
-class `GPU` also costs 0.0001867 USD for each accelerator-second (the Cloud Run L4 list price;
-not verified against a GCP bill). A deployment can set its own prices. Unit prices are integer nanos. Amounts are integer **micros**
-(1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
+class `GPU` also costs 0.0001867 USD for each accelerator-second. This is the Cloud Run list
+price of one L4 GPU. We did not compare it with a GCP bill. Class `XL` has no default price.
+A deployment can set its own prices. Unit prices are integer nanos. Amounts are integer
+**micros** (1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
 its ledger row.
 
 Each amount names the version of the price table that the platform used. New prices never

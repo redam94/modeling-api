@@ -24,7 +24,7 @@ flowchart TB
     subgraph control["Control plane: JSON only, never imports plugins"]
         api["API<br/>/v1 · OpenAPI · SSE"]
         orch["Orchestrator<br/>dispatcher · reconciler ·<br/>finalizer · event ingestion"]
-        pg[("PostgreSQL<br/>runs · queue · events ·<br/>registry · catalog")]
+        pg[("PostgreSQL<br/>runs · queue · events ·<br/>tracking · registry · catalog")]
     end
     subgraph exec["Run sandbox: one per run"]
         sup["Supervisor<br/>(trusted, holds the run's URLs)"]
@@ -54,7 +54,7 @@ flowchart TB
 | **Orchestrator** | `mapi-server` (`mapi-server worker`) | The dispatcher, the reconciler, event ingestion and the finalizer. They use a procrastinate queue in the same PostgreSQL | Decode a dataset or a bundle. It reads only object *metadata* and JSON sidecars with a size limit |
 | **Executor** | `mapi_server.executors` | Starts a runner for a run: `local-process` (a subprocess), `docker` / `docker-gvisor` (a container), and Cloud Run Jobs in v0.3 | Send data other than the run id and a nonce |
 | **Runner** | `mapi-runner` | A trusted *supervisor*. It gets the instructions of the run, starts an untrusted *worker*, uploads outputs and signs events | Let the worker use credentials, the network of the store or its stdout |
-| **SDK and plugins** | `mapi-sdk`, `mapi-steps`, `mapi-pymc`, `mapi-sklearn`, `mapi-plugin-*` | The runtime for models: pipelines with fitted state, models, coord plans, summaries and bundles | Run in a location other than the worker (on the platform) or your own process (as a library) |
+| **SDK and plugins** | `mapi-sdk`, `mapi-steps`, `mapi-pymc`, `mapi-sklearn`, `mapi-jax` (v0.15), `mapi-plugin-*` (for example `mapi-plugin-causal`, v0.13) | The runtime for models: pipelines with fitted state, models, coord plans, summaries, tracking and bundles | Run in a location other than the worker (on the platform) or your own process (as a library) |
 | **Contracts** | `mapi-spec` | All the shapes that the two sides agree on: specs, schemas, DTOs, the run protocol and error codes | Import numpy, xarray or pandas |
 | **Object store** | `mapi-gcs-shim` locally, Cloud Storage later | Buckets with object generations, CRC32C and MD5 that the server calculates, signed URLs and POST policies, and permissions for each principal | — |
 | **Web app**, **plot sandbox** | `apps/web`, `apps/plot-sandbox` | The Guided and Expert UI and the Integrations hub. The plot sandbox is the only location where Vega-Lite and Plotly specs render, also for shared embed pages | Render a plot on the origin of the app |
@@ -105,7 +105,9 @@ flowchart LR
   [Storage and integrity](#storage-and-integrity)).
 - **Events**: the orchestrator verifies them and removes duplicates on `(run, attempt, seq)`.
   It keeps one `run_progress` row for each run. It also keeps `run_events` for state changes,
-  warnings, diagnostics and metrics. A PostgreSQL `NOTIFY` starts the SSE streams of each API
+  warnings, diagnostics and metrics. From v0.11, it writes the `metrics`, `params`, `tags`
+  and (v0.14) `media` events to the tracking tables, not to `run_events` (see
+  [Run tracking](run-tracking.md)). A PostgreSQL `NOTIFY` starts the SSE streams of each API
   process again.
 
 The [Run protocol](../reference/run-protocol.md#run-states) gives the state machine, all the
@@ -183,8 +185,8 @@ flowchart LR
 | `quarantine` | Browsers and clients, through a signed PUT for one object | Ingest runs, through a signed GET |
 | `bootstrap` | The dispatcher | The supervisor, with a principal that can only *get and delete* there (no list) |
 | `runs` | Runs, through a POST policy with a limit to their attempt prefix and a size range | The finalizer (metadata) |
-| `bundles` | Only the finalizer, with a server-side copy. Write-once under a retention lock | Clients and runs, through signed GETs that the platform makes after verification |
-| `data` | The finalizer, with a server-side copy of ingest outputs | Runs, through signed GETs |
+| `bundles` | Only the finalizer, with a server-side copy. Write-once under a retention lock. From v0.14, also the server, with a create-only copy of each verified media item of a run (`t/{tenant}/run-media/`) | Clients and runs, through signed GETs that the platform makes after verification |
+| `data` | The finalizer, with a server-side copy of ingest outputs. From v0.15, also the image packs of collections, one time for each tenant (`t/{tenant}/blobs/packs/`) | Runs, through signed GETs. A run reads a pack in ranges. |
 
 **Outputs are claims.** When a run ends, the finalizer lists the attempt prefix. It reads the
 metadata of each object: the size, CRC32C, MD5 and *generation* that the store calculated. It
@@ -215,12 +217,53 @@ flowchart LR
     SSE --> C(("web app ·<br/>CLI · client"))
 ```
 
+The tracking events of v0.11 (`metrics`, `params`, `tags`) and v0.14 (`media`) take the same
+path to the verification. Then the orchestrator writes them to the tracking tables, and the
+SSE stream of the run sends a `tracking` frame. For a `media` event, the server first
+downloads the object, verifies it and copies it to the bundles bucket.
+
 Locally, the executor reads events directly from the stdout of the supervisor. In the cloud,
 the same lines go through Cloud Logging and Pub/Sub to `POST /internal/events`. The
 verification is the same. The platform combines progress into one event every two or three
 seconds and keeps it as one row. Thus, a long fit does not write thousands of rows. The
 platform keeps only state changes, warnings, diagnostics, checkpoints, metrics and terminal
 events. It sends these events again to a client that connects again.
+
+## Data in PostgreSQL
+
+All tables have forced row-level security with a policy for each tenant that fails closed.
+The schema migrations are in `mapi_server/migrations`. The releases v0.11 to v0.15 add these
+migrations:
+
+| Migration | Release | Adds |
+|---|---|---|
+| `0015_run_tracking` | v0.11 | `run_metrics` (each metric point), `run_metric_summary` (one row for each series, for search and sort), `run_params`, `run_tags`, and the columns `runs.name`, `runs.note`, `run_logs.level` and `run_logs.fields` |
+| `0016_experiments_media` | v0.14 | `experiments`, `run_views` (saved views of the runs table), `run_media` (the images and tables of a run, with the bucket, object and generation of the verified copy), and the column `runs.experiment_id` |
+| `0017_collections` | v0.15 | The layout `collection` for `dataset_versions.layout`, and the column `dataset_versions.collection` (the `CollectionInfo` of a collection version) |
+
+The rows of the tracking tables and of `run_media` go with their run. The request path can
+add and change these rows, but it cannot delete metrics, summaries, params or media. The
+gateway role (the lookups before the API knows the tenant) gets no access to the new
+tables. An older server cannot read a collection version. Thus the downgrade of
+`0017_collections` refuses while collection versions exist.
+
+## Runner images
+
+The worker runs in a runner image. Each image contains the runner, the SDK, the built-in
+steps, the plot recipes and some model plugins. The image of a run comes from the model of
+its spec. The control plane validates each spec against the catalog of that image.
+
+| Image | Models |
+|---|---|
+| `mapi/base-bayes` | `mapi-pymc`, the `mmm.*`, `tabular.*` and `sci.*` models |
+| `mapi/base-ml` | `mapi-sklearn` with LightGBM and CatBoost (v0.14). No PyMC. |
+| `mapi/base-forecast` | The `ts.*` models and, from v0.13, the `causal.*` models and pymc-extras |
+| `mapi/base-dl` <span class="mapi-badge">v0.15</span> | The `dl.*` models on JAX, Flax and Optax (`mapi-jax[cuda12]`). No PyMC and no scikit-learn. |
+
+`mapi/base-bayes` and `mapi/base-ml` also contain `mapi-jax` for the CPU. Thus the step
+`dl.embed` can make image features in front of their models. The `base-dl` image uses its
+GPU only in a run of the class `GPU` ([Quotas and cost](quotas-and-cost.md#the-gpu-class)).
+For the full contents, see [Container images](../operations/images.md).
 
 ## The integration paths (v0.4)
 

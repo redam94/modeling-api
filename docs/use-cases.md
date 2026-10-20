@@ -1,5 +1,5 @@
 ---
-description: Seven problems modeling-api is built for - marketing-mix budget planning on mmm-framework, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.
+description: Nine problems modeling-api is built for - marketing-mix budget planning on mmm-framework, the effect of a campaign or a geo-lift test, a governed forecasting pipeline, macro and VAR/VECM analysis, weekly forecasting, demand by store, customer choice, image classification with deep learning and science models of images, fields, maps and graphs - with the data each needs, what you get and the tutorials that walk through them.
 ---
 
 # Use cases
@@ -13,11 +13,13 @@ scorecard, governance policies, the explorers, endpoints, snippets, webhooks and
 | Use case | Start from | Model | The question it answers |
 |---|---|---|---|
 | [Budget planning](#marketing-mix-budget-planning) | Guided *Geo marketing mix*, or the `mmm_governed` workflow | `mmm.bayesian` (or `mmm.frequentist`), on mmm-framework | What does each channel bring in, and where must the next euro go? |
+| [Effect of a campaign](#effect-of-a-campaign-or-a-geo-lift-test) | Guided *Effect of a campaign* or *Geo-lift test*, or the `geo_lift_mmm` workflow | `causal.impact`, `causal.synthetic_control` or `causal.did` | Did the campaign work, how large was the effect, and how sure are we? |
 | [Governed forecasting pipeline](#governed-forecasting-pipeline) | The `ts_readiness_arimax` workflow, scheduled | `ts.sarimax` (ARIMAX), checked against naive forecasts | Can we publish this forecast each Monday? Can we prove that it is better than a naive forecast? |
 | [Macro and VAR analysis](#macro-and-var-analysis) | The `var_vecm_cointegration` workflow | `ts.vecm` or `ts.var` (also `ts.varmax`, `ts.dynamic_factor`) | Do these series move together, and what happens to one when another is shocked? |
 | [Weekly forecasting](#weekly-forecasting) | Guided *Weekly forecast* | `ts.hsgp_trend` | What will this series do over the next weeks, and how sure are we? |
 | [Store demand](#demand-by-store) | Guided *Demand by store* | `tabular.regressor` (xgboost, quantiles) | How much will each store sell, including a store that opens next month? |
 | [Customer choice](#customer-choice) | Guided *Customer choice* | `choice.multinomial_logit` | Which product does a shopper pick, and how does a price change shift that? |
+| [Image classification](#image-classification-and-deep-learning) | `mapi datasets upload-images`, or **Folder of images** in the web app | `dl.cnn_classifier`, `dl.finetune_classifier`, `tabular.image_logistic` or `sklearn.multiclass_classifier` | Which class is in each image, and how sure is the model? |
 | [Science models](#science-models-images-fields-maps-and-graphs) | A pymc-challenges tutorial, then a science recipe (for example `sci_spatial_ladder`) | 15 `sci.*` models, for example `sci.areal_bym2`, `sci.heat_plate` and `sci.network_latent_space` | What does the model of a research notebook tell, and can the analysis repeat with the same checks? |
 
 ## Marketing-mix budget planning
@@ -47,11 +49,54 @@ start. The platform recognises MFF long tables and Meridian-shaped tables direct
   error, and records the evidence. The `mmm_governed` workflow does all of this in one run:
   collinearity check, fit, policy, report and evidence pack.
 
+- **More shapes of the problem** (v0.12). `mmm.nested` measures effects that go through an
+  intermediate measure, for example visits or awareness. `mmm.multivariate` measures the
+  effects on two or more related products, with halo or cannibalization effects.
+  `mmm.bayesian` can have channel effects that change over time, and counts or shares as
+  the result. The nested and the multivariate models have Guided templates.
+- **Charts for the marketing team**: ROI with mROAS, adstock decay, the contribution
+  waterfall, spend share against effect share, and lift tests next to the estimates of the
+  model.
+- **A record of each fit.** Each MMM fit logs its ROI, mROI and contribution share for each
+  channel. You can compare the fits on the compare page.
+
 **Start here.**
 [Your first MMM in Guided mode](guides/guided-tutorial.md) →
 [Priors, lift tests and the scorecard](guides/guided-modelling.md) →
 [Optimise a budget](tutorials/optimise-a-budget.md).
 Writing your own MMM spec: [the marketing-mix guide](guides/mmm.md) and [mmm-framework on the platform](models/mmm-framework.md).
+
+## Effect of a campaign or a geo-lift test
+
+**The question.** A campaign, a launch or a price change started on a known date. Did it
+change the result? How large was the effect, and how sure are we? If the campaign ran in some
+markets only, what does the test tell the marketing mix?
+
+**The data.** One of these:
+
+- One series with a date column, and optional control series that the change did not
+  affect. Start a minimum of 3 periods before the change. Two years is better.
+- The same number for many markets. The campaign ran in some markets only.
+- The same number for many units. Some units got the change, and some units never got it.
+
+**What you get.**
+
+- The actual values against a prediction of the values **without** the change, with a 90%
+  band. The effect in each period, the cumulative effect, the relative effect and the
+  probability that the effect is more than zero.
+- `causal.pre_fit`: the fit before the change. Before the change, the actual values must be
+  in the band of the prediction.
+- For a geo-lift test, the weights of the other markets (`causal.donor_weights`). The report
+  of the *Geo-lift test* template has a card that makes the lift-test entry for your
+  marketing mix. The `geo_lift_mmm` workflow does the test, makes the lift test and fits
+  `mmm.bayesian` with it.
+- For difference-in-differences, an event study with one coefficient for each period before
+  and after the change.
+
+**Start here.**
+[Measure the effect of a change](guides/causal.md) →
+[Causal models and BSTS](models/causal.md) →
+[Lift tests](models/mmm-framework.md#lift-tests).
 
 ## Governed forecasting pipeline
 
@@ -211,6 +256,35 @@ trip.
 **Start here.**
 [The Guided tutorial](guides/guided-tutorial.md) (pick *Customer choice*) →
 [Built-in models](reference/models.md).
+
+## Image classification and deep learning
+
+**The question.** Which class is in each image: a product type, a defect, a cell type or a
+species? How sure is the model, and which images does it get wrong?
+
+**The data.** A folder of PNG, JPEG or TIFF images. The first folder of each path gives the
+label, or a manifest table gives the label and the split. Upload a few thousand small images
+as a zip (`image_folder`), or up to 1 000 000 images as an image collection. The client
+uploads only the images that the dataset does not have, and an upload that stops can
+continue.
+
+**What you get.**
+
+- `dl.cnn_classifier` (a small ResNet) and `dl.finetune_classifier` (from pretrained
+  weights) on JAX. The run page shows the training and validation curves while the network
+  trains. The run logs images of the predictions and the confusion matrix. Early stopping,
+  checkpoints and draws from a Laplace approximation or MC dropout.
+- `tabular.image_logistic`, a small Bayesian model on the main patterns of the images, with
+  a range for each probability. `dl.embed` gives image features to a simple head.
+- Plots for classes: one-vs-rest ROC curves, the confusion matrix, the confusion over the
+  epochs and a grid of the wrong validation images.
+- The **Image gallery** of the Data Explorer, with an even sample for each label and split.
+- The resource class `GPU` for large training runs. The GPU path is not tested yet.
+
+**Start here.**
+[Image data](guides/image-data.md) →
+[Deep learning](guides/deep-learning.md) →
+[Compare runs and use experiments](guides/run-comparison.md).
 
 ## Science models: images, fields, maps and graphs
 

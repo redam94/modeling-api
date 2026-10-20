@@ -85,7 +85,7 @@ make seed
 ```
 
 ```text
-API http://127.0.0.1:8000 is ok (version 0.15.0)
+API http://127.0.0.1:8000 is ok (version 0.15.1)
 uploading eu_media_daily (17 KiB) ...
   dataset://default/eu_media_daily@v1 ready
 uploading fx_daily (17 KiB) ...
@@ -140,6 +140,9 @@ Push **Fit**. The run page follows the run through server-sent events:
 - `DEV_MODE_ISOLATION` is usual on a laptop. The local executor cannot run the model code as
   a separate user. Containers and the cloud executor can.
 - The progress bar and the message come directly from the sampler.
+- The run page shows one lane for each chain, with its draws and divergences. The tabs
+  **Metrics**, **Params**, **Logs** and **Notes** show what the run logged
+  ([Track metrics, params and tags](../guides/tracking.md)).
 
 The spec uses very small sampler settings, so the fit takes much less than a minute. On a new
 machine, the first fit also compiles PyTensor code. When the fit succeeds, the platform does
@@ -213,6 +216,11 @@ make clean-local      # delete the local database and objects, start from scratc
 -   :material-language-python: **[Or from Python](../guides/python-client.md)**
 
     `mapi_client.Client`: uploads, live events, model versions and `xr.DataTree` results.
+
+-   :material-compare-horizontal: **[Compare runs](../guides/run-comparison.md)**
+
+    Fit the spec again with other settings. Then compare the runs side by side and group
+    them in an experiment.
 
 -   :material-book-open-variant: **[Understand what happened](../concepts/architecture.md)**
 

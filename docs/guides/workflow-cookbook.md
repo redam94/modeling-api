@@ -1,10 +1,10 @@
 ---
-description: Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and six recipes for Bayesian science models (spatial and network ladders, a regression across species, calibrate-then-design, a workflow audit and an image model check).
+description: Complete, tested workflow recipes - unit roots, differencing, AR/MA order search, a rolling-origin backtest against naive, selection and governance - with the Python client and the CLI commands to run them, plus VAR/VECM cointegration, a forecast bake-off and six recipes for Bayesian science models (spatial and network ladders, a regression across species, calibrate-then-design, a workflow audit and an image model check), a geo-lift test that calibrates an MMM, and how to read and group the runs of a workflow.
 ---
 
 # Workflow cookbook <span class="mapi-badge">v0.5</span>
 
-This page gives nine complete analyses. Each analysis is one YAML document. You can save,
+This page gives ten complete analyses. Each analysis is one YAML document. You can save,
 run and schedule it, and give it to a colleague. The tests of the documentation validate each
 document on this page against the node catalog and run it from start to end. Thus the
 documents that you copy operate correctly. For the format, see
@@ -24,6 +24,9 @@ the [workflows guide](workflows.md#cookbook).
 | [Can I trust this Bayesian model?](#bayesian-workflow-audit) | Do the priors make sense? Do the chains agree? Does the model make data like my data? Do the priors set the results? Does the model find known values? |
 | [Where does my image model go wrong?](#image-model-check) | Do the predicted images look like the observed image? Where on the image are the residuals large? |
 | [What did my geo-lift test show, and does the MMM agree?](#geo-lift-test-to-a-calibrated-mmm) | What did a campaign in some markets add? Does the marketing mix model agree with the test after it uses the test as a lift test? |
+
+Two more sections tell how to [read a grid search in the run page](#grid-search-tracking)
+and how to [compare the runs of a workflow in an experiment](#compare-workflow-runs).
 
 ## Readiness to ARIMAX
 
@@ -1148,6 +1151,35 @@ To see the document, use `mapi workflows init geo_lift_mmm`. These rules apply:
 
 See [Measure the effect of a change](causal.md) for the Guided version of this analysis.
 
+## Compare the runs of a workflow in an experiment <span class="mapi-badge">v0.14</span> { #compare-workflow-runs }
+
+**In plain words.** You run the same workflow some times with different parameters. You want
+to see the results next to each other. Put all the runs in one experiment. Then the runs table
+of the experiment shows the node runs, and the compare page shows 2 to 10 of them side by side.
+
+1. Make the experiment one time.
+2. Start each workflow run with `--experiment`. The workflow run and each node run that it
+   starts go into the experiment.
+3. List the runs of the experiment with the columns that you want to compare.
+4. Compare the node runs on the compare page, or with `mapi runs compare`.
+
+```bash
+mapi experiments create "arimax drivers" --description "Readiness with and without promotions."
+mapi workflows run ts-readiness-arimax -i data=dataset://growth/weekly_sales@latest \
+  -p 'drivers=["price"]' --experiment "arimax drivers" --watch
+mapi workflows run ts-readiness-arimax -i data=dataset://growth/weekly_sales@latest \
+  -p 'drivers=["price", "promo"]' --experiment "arimax drivers" --watch
+mapi runs ls --experiment "arimax drivers"            # the workflow runs and their node runs
+mapi runs compare "$RUN_A" "$RUN_B"                    # two node runs, for example the backtests
+```
+
+A `model.backtest` node run logs the metrics of each fold with the label `fold`. On the
+compare page, select the label `fold` to draw each fold with a different dash.
+
+From Python, give `experiment_id=` to `api.workflows.run`. Runs that a schedule or a trigger
+starts are in no experiment. See [Put the runs in an experiment](workflows.md#experiments) and
+[Compare runs and use experiments](run-comparison.md).
+
 ## Make your own
 
 1. Start from the recipe that is nearest to your analysis. Use
@@ -1159,5 +1191,7 @@ See [Measure the effect of a change](causal.md) for the Guided version of this a
 4. Save the workflow (`apply`).
 5. Run the workflow with `--watch`.
 6. Read the summary.
-7. Add a schedule or a dataset trigger to run the workflow automatically.
-8. Add a governance gate to the workflow.
+7. To compare runs with different parameters, put them in an experiment
+   ([above](#compare-workflow-runs)).
+8. Add a schedule or a dataset trigger to run the workflow automatically.
+9. Add a governance gate to the workflow.

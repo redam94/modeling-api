@@ -100,6 +100,13 @@ With the default `fit.mode: evaluate_then_refit`, `fit_spec` does these steps:
 3. It fits again on all 52 weeks, so that a forecast starts from the latest data. It links
    the evaluation fit in the bundle.
 
+!!! tip "Metrics and params of the fit"
+    The bundle keeps the metrics and params that the model logs in the model group
+    `metrics_history`. To also get the params of the spec in memory, give the fit a recorder:
+    `fit_spec(..., hooks=FitHooks(tracker=MetricRecorder()))`, with `FitHooks` from
+    `mapi_sdk` and `MetricRecorder` from `mapi_sdk.tracking`. On the platform, the run page
+    shows these values. See [Track metrics, params and tags](../guides/tracking.md).
+
 ## 6. Forecast, with a new store
 
 Supply the plan for the next four weeks. Prices and promotions are `future_required`. The
@@ -168,3 +175,5 @@ The bundle contains no pickled objects. See [Bundles](../concepts/bundles.md).
   [Pipelines and stages](../concepts/pipelines.md).
 - To try a Bayesian model, read about the [radon model](../guides/pymc.md) or the
   [marketing-mix model](../guides/mmm.md).
+- To measure the effect of a change, read [Measure the effect of a change](../guides/causal.md).
+- To train a neural network on images, read [Deep learning](../guides/deep-learning.md).

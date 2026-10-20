@@ -34,7 +34,9 @@ Without `DATABASE_URL` an embedded PostgreSQL 16 (`pgserver`) starts under
 | `MAPI_EXEC_TOKEN` | — | shim *exec* principal token handed to local executions |
 | `MAPI_EXECUTOR` | `local-process` | `local-process`, `docker`, `docker-gvisor` |
 | `MAPI_RUNNER_COMMAND` | `mapi-runner` | supervisor argv (shell-quoted) |
-| `MAPI_DOCKER_IMAGE`, `MAPI_DOCKER_NETWORK` | `mapi/base-bayes:local`, `none` | container executor |
+| `MAPI_DOCKER_IMAGE`, `MAPI_DOCKER_NETWORK` | `mapi/base-bayes:<version>`, `none` | container executor |
+| `MAPI_DOCKER_GPUS` | `false` | v0.15: give `GPU`-class run containers one NVIDIA GPU (NVIDIA Container Toolkit) |
+| `MAPI_TRACKING_RETENTION_DAYS` | unset | v0.11: days after a run ends that its metric points and `user` log lines are kept |
 | `MAPI_CATALOG_PATH` | — | catalog JSON exported at image build; otherwise a `describe` run fills it |
 | `MAPI_IMAGE_DIGEST` | `sha256(uv.lock)` | key of the cached catalog |
 | `MAPI_UV_LOCK_PATH` | `uv.lock` above the working directory | lock whose sha256 is the image digest (the images set `/opt/mapi/uv.lock`) |
@@ -57,7 +59,7 @@ Every variable, and how to run multi-tenant: `docs/operations/configuration.md` 
 | `mapi_server.auth` | per-request authentication and authorization (`ROUTE_ACCESS`, tokens, sessions, CSRF, rate limits), identities, OIDC relying party |
 | `mapi_server.devidp` | the offline OpenID provider of the `dev` profile |
 | `mapi_server.services.tenancy`, `.quotas`, `.cost`, `.audit` | memberships, quota admission and kill switches, the cost ledger, the audit log |
-| `mapi_server.api.*` | routers: meta/catalog, auth (BFF), tenancy, tokens, usage, admin, datasets, specs, runs (SSE), models/plots, endpoints, webhooks, internal |
+| `mapi_server.api.*` | routers: meta/catalog, auth (BFF), tenancy, tokens, usage, admin, datasets (v0.15: upload sessions, `blobs/missing`), specs, runs (SSE), tracking (v0.11), media, compare, experiments and run views (v0.14), models/plots, endpoints, webhooks, workflows, governance, explore, internal |
 | `mapi_server.services.endpoints` | endpoints and aliases: the promotion gate, revisions and rollback, input-contract checks of score calls, inline payloads as run inputs |
 | `mapi_server.services.webhooks` | the transactional outbox, the SSRF guard (resolve, check, pin), sealed secrets, signed deliveries with retries and auto-disable, the relay loop |
 | `mapi_server.services.runs` | the only writer of `runs.state` (via `mapi_spec.run.transition`) |
@@ -67,7 +69,10 @@ Every variable, and how to run multi-tenant: `docs/operations/configuration.md` 
 | `mapi_server.services.events` | HMAC verification, `(run, attempt, seq)` dedupe, progress upsert |
 | `mapi_server.services.notify` | `NOTIFY` on commit + one `LISTEN` connection with fan-out |
 | `mapi_server.services.workflows` | saved workflows and revisions, runs that the JSON-only engine of `mapi_workflows` drives (each data node is a sandboxed child run), schedules and triggers. The `plot` outputs of nodes go through the plot sanitizer when they are collected (`PLOT_UNSAFE` fails the node) and again when they are served |
-| `mapi_server.executors` | `LocalProcessExecutor`, `DockerExecutor`, placement checks |
+| `mapi_server.services.tracking`, `.run_search` | v0.11 run tracking: metric series and points, params, tags, notes, the `GET /v1/runs` search grammar and LTTB downsampling |
+| `mapi_server.services.media`, `.compare`, `.experiments`, `.run_views` | v0.14: run media (re-verified, copied create-only to the bundles bucket), `GET /v1/run-compare` and `/v1/run-keys`, experiments and saved views |
+| `mapi_server.services.housekeeping` | expired uploads (v0.15: an arrived upload stays usable; unused for 7 days it expires), sessions, rate counters and tracking retention |
+| `mapi_server.executors` | `LocalProcessExecutor`, `DockerExecutor` (v0.15: `GPU` device requests), `CloudRunJobsExecutor` (v0.15: the `base-dl` GPU Job), placement checks |
 | `mapi_server.storage` | store factory; `MemoryObjectStore` for tests |
 
 ## Runner contract details owned by the server

@@ -162,8 +162,9 @@ audit log records this as a security signal (`webhook.url_blocked`).
 - **Embed links** are read-only links with a token and an expiry date, for BI tools, Slack and
   Notion. The platform shows the token one time. You can revoke links. `allowed_origins`
   limits the sites that can show them in a frame. You can embed only **platform recipes**.
-  These are plots that the recipes of the platform made from a model version. You cannot embed
-  plots that a plugin or a user wrote. A sandboxed iframe can still navigate itself. Thus
+  These are plots that the recipes of the platform made from a model version. From v0.13, the
+  `causal.*` recipes are also platform recipes. You cannot embed plots that a plugin or a user
+  wrote. A sandboxed iframe can still navigate itself. Thus
   shared views run only code that the platform wrote. Requests for other plots get
   `422 EMBED_NOT_ALLOWED`. Links that expired or that you revoked answer `410 LINK_EXPIRED`.
   The link opens the embed page of the plot sandbox. This page can get only the public embed

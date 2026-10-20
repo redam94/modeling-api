@@ -131,6 +131,10 @@ api "$API/v1/endpoints/geo-mmm-prod/schema" | jq .example
  "future_covariates": "carry_last", "output": {"kind": "expected", "summary": ["mean", "hdi_90"]}}
 ```
 
+A score call never needs a side table that only the model reads, for example the pretrained
+weights of a `dl` model (v0.15). The model version keeps what the model learned from them.
+See [Deep learning: pretrained weights](deep-learning.md#pretrained-weights).
+
 Then score the endpoint. `Prefer: wait=60` waits for a maximum of one minute:
 
 - If the run finished, the answer is `200` with links to the outputs.
@@ -148,6 +152,10 @@ zarr or Arrow reader. If a result has more than 100,000 cells, the server cuts i
                         "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]]}],
             "truncated": false}
 ```
+
+From v0.10, a table also has `dims` (the coordinate columns), `time_dim` (the dim that is
+time, when there is one) and `plots` (the ids of the plots of the run that draw the output).
+A server that predates these fields leaves them out.
 
 A table of a circular output (an angle, for example a wind direction) has the field `period`
 (one turn, for example 360). Its statistics are on the circle: `mean` is the circular mean,

@@ -21,6 +21,7 @@ The runs must log their metrics, params and tags first. See
 
 | See also | |
 |---|---|
+| [Run tracking and experiments](../concepts/run-tracking.md) | The concepts: what a run records, experiments, saved views and the compare page |
 | [HTTP API: Comparison, experiments and saved views](../reference/http-api.md#v014) | The endpoints and the DTOs |
 | [Search runs](../reference/http-api.md#search-runs) | The grammar of filters, sort orders and columns |
 | [Images, figures and tables](tracking.md#log-images-figures-and-tables) | Log images that the compare page shows |
@@ -115,6 +116,17 @@ a run. The page has these sections:
 The server sends a maximum of 300 points for each curve. It keeps the shape of the curve, the
 first point and the last point.
 
+To compare the training of two networks, select the runs and look at **Curves** with the
+label `split`. The `dl` models log `loss` and `accuracy` (or `rmse`) for `split=train` and
+`split=val` (see [Deep learning](deep-learning.md#read-the-training)). To compare the
+estimates of causal models, add the column `metric.effect_total` (see
+[What a causal fit logs](tracking.md#what-a-causal-fit-logs)).
+
+!!! note
+    The compare page compares runs. To compare model versions on held-out data, with
+    Diebold-Mariano tests and the elpd, use **Compare** in the
+    [Model Explorer](model-explorer.md#compare-model-versions).
+
 ### Compare runs from Python and the command line
 
 ```python
@@ -199,6 +211,9 @@ runs = api.runs.list(experiment_id=exp.id, columns=["metric.elpd_loo"])
   `experiment_id=` in `api.workflows.run`, or `mapi workflows run --experiment`. If you move
   a workflow run later, the node runs that it already started stay where they are.
 - A retry goes into the experiment of the run that it retries.
+- Workflow schedules and triggers start their runs in no experiment. To group such a run,
+  move it with `PATCH /v1/runs/{run_id}` before it starts its nodes. The node runs that
+  started before the move stay where they are.
 - An archived experiment does not accept new runs. You can still list, filter and compare its
   runs. To add runs again, unarchive it. This includes retries: the server refuses to retry a
   run of an archived experiment (`409`).

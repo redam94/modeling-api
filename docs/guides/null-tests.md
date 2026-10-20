@@ -232,7 +232,10 @@ training history:
 - Mean.
 - Drift.
 
-The check also gives MASE as evidence. Pass ≥ 0.05, warn ≥ 0. For a formal test of the
+The check also gives MASE as evidence. Pass ≥ 0.05, warn ≥ 0. From v0.10, the MASE of this
+check and the `mase` metric of a fit use the same scale (`mapi_sdk.metrics.mase_scale`). The
+scale is the in-sample MAE of a seasonal naive forecast on the training history. If that
+error is zero, the scale uses lag 1. For a formal test of the
 difference on backtest folds, use the `compare.diebold_mariano` workflow node:
 
 ```text

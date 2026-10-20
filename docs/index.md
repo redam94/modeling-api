@@ -1,6 +1,6 @@
 ---
 title: modeling-api
-description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, fit science models of images, fields, maps and graphs, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
+description: Analysts go from a spreadsheet to a report and a what-if scenario in minutes, with honest uncertainty. Data scientists automate whole analyses as tested workflows, measure the effect of a change, train and compare models with full run tracking, fit science models and neural networks, prove every model against null tests before anyone uses it, and put it behind an endpoint in one click.
 hide:
   - navigation
   - toc
@@ -14,40 +14,57 @@ hide:
 
 <p>modeling-api fits Bayesian and classical models of data that has <strong>named
 dimensions</strong> (market × channel × week, store × product × day, household × trip). It
-also fits science models of <strong>images, fields, maps and graphs</strong>. The models
-answer questions in the units that your business uses. An analyst uploads a spreadsheet and
+also fits science models of <strong>images, fields, maps and graphs</strong>, causal models
+that measure the <strong>effect of a change</strong>, and <strong>neural networks</strong> for
+tables and images. The models answer questions in the units that your business uses. An analyst uploads a spreadsheet and
 gets a report, a sanity scorecard and instant what-if sliders. A data scientist writes a small
 spec or some lines of Python and gets the same model behind a versioned endpoint. Each call
 uses the same fitted preprocessing again, exactly.</p>
 
 <p>Full analyses (tests, decisions, models and benchmarks) run as versioned
 <strong>workflows</strong>. A model goes live only after it is better than <strong>shuffled
-data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandbox, and each result tells how sure it is.</p>
+data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandbox, and each result tells how sure it is.
+Each run also keeps its <strong>metrics, params, tags and images</strong>, so that you can
+compare runs side by side.</p>
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
-[What's new in 0.9](whats-new-0.9.md){ .md-button }
+[What's new in 0.15](whats-new-0.15.md){ .md-button }
 
 </div>
 ![The modeling-api logo: a cube of labelled data](assets/logo.svg)
 </div>
 
-!!! success "v0.9: the science gallery"
-    The science plugin now has **15 models** from the pymc-challenges case studies, for
-    images, fields, maps and graphs. **14 new plot recipes** draw maps, networks, trees,
-    polar charts, image checks and colour swatches. **New workflow nodes** give posterior
-    summaries, posterior predictive checks, stacking weights, scores and plots in a run.
-    **Six new recipes** use them, for example a ladder of spatial models and a Bayesian
-    workflow audit.
+!!! success "v0.15: deep learning and image collections"
+    The new package `mapi-jax` trains **neural networks** for tables and images on JAX and
+    Flax: `dl.mlp`, `dl.cnn_classifier` and `dl.finetune_classifier`. The training shows its
+    curves while it runs, logs images of the predictions, stops early, saves checkpoints and
+    gives draws. **Image collections** hold up to 1 000 000 images. The client uploads only
+    the new images, and an upload that stops can continue. The resource class **`GPU`**
+    gives a run one NVIDIA L4.
 
-    Each ported case has a **tutorial** that does the analysis of the notebook in the web
-    app. The **export helper** `python -m mapi_plugin_science.export` writes the data of a
-    case to a file that you can upload.
+    [What's new in 0.10 to 0.15](whats-new-0.15.md) ·
+    [Deep learning](guides/deep-learning.md) ·
+    [Image data](guides/image-data.md)
 
-    [What's new in 0.9](whats-new-0.9.md) ·
-    [The science tutorials](tutorials/pymc-challenges/index.md)
+!!! info "Since 0.9"
+    - **v0.14:** run comparison, experiments and saved views. Runs log images, figures and
+      tables. Image datasets and a classification pack
+      ([Compare runs](guides/run-comparison.md), [Image data](guides/image-data.md)).
+    - **v0.13:** causal models (`causal.impact`, `causal.synthetic_control`, `causal.did`)
+      and a Bayesian structural time series, `ts.bsts`
+      ([Measure the effect of a change](guides/causal.md)).
+    - **v0.12:** the MMM pack: `mmm.nested`, `mmm.multivariate`, channel effects that change
+      over time, counts and shares, and ten new plot recipes
+      ([Marketing-mix models](models/mmm-framework.md)).
+    - **v0.11:** run tracking. Each run keeps its metrics, params, tags, notes and log lines
+      ([Track metrics, params and tags](guides/tracking.md)).
+    - **v0.10:** score plots by the shape of each output, and standard plots and metrics for
+      classifiers, state models and ADVI fits.
+    - **v0.9:** the science gallery: 15 science models, 14 plot recipes and Bayesian
+      workflow nodes ([What's new in 0.9](whats-new-0.9.md)).
 
-!!! info "Since 0.5"
+!!! info "From 0.5 to 0.8"
     - **v0.6:** a spec builder. The YAML editor completes names, and a Visual view shows the
       same spec as blocks ([Build](guides/web-ui.md#build)).
     - **v0.7:** the first four science models. An output can be a 2-D field, and the Model
@@ -73,6 +90,8 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 - Move the **what-if sliders**. Your browser gives the answers. The range stays honest when
   some channels move at the same time. "Run exact" asks the full model.
 - Share a live chart, or put the model in a Google Sheet.
+- Measure the effect of a campaign or a geo-lift test with the *Effect of a campaign* and
+  *Geo-lift test* templates. Use the result as a lift test for your marketing mix.
 - If you are not sure which model to use, use **Help me choose**. It asks some questions and
   explains its recommendations. Each option has an *About* card in plain words.
 
@@ -83,11 +102,14 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 
 ### :material-code-braces: Data scientists
 
-<p class="mapi-promise">Any PyMC, scikit-learn or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
+<p class="mapi-promise">Any PyMC, scikit-learn, JAX or forecasting model. The same preprocessing, exactly. Endpoints in one click.</p>
 
 - A PyMC model is one `build()` method. An sklearn model is one `estimator()`. Built-in
-  marketing-mix, forecasting, demand and choice models are ready to use. So are 15
-  science models for images, fields, maps and graphs.
+  marketing-mix, forecasting, causal, demand, choice and classification models are ready to
+  use. So are 15 science models and three neural networks for tables and images.
+- Each run logs its **metrics, params, tags and images**. Log your own from model code, a
+  notebook or `mapi runs log-metric`. Filter, sort and compare 2 to 10 runs side by side,
+  and group them in **experiments**.
 - Steps **learn on the training data only**. At score time, the platform **replays** them
   and does not fit them again. This applies to forecasts, new markets and counterfactuals.
 - Uncertainty is a primary part of each result: draws, quantiles or intervals. Each one has
@@ -100,6 +122,7 @@ data, fake drivers and a naive forecast</strong>. Each run occurs in a new sandb
 
 [:octicons-arrow-right-24: Quickstart: zero to first model](getting-started/quickstart.md) ·
 [Workflow cookbook](guides/workflow-cookbook.md) ·
+[Track and compare runs](guides/tracking.md) ·
 [Science tutorials](tutorials/pymc-challenges/index.md)
 
 </div>
@@ -113,11 +136,12 @@ changes of an expert come back to Guided mode with no loss.
 
 ```mermaid
 flowchart LR
-    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · NetCDF · HDF5"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
+    D["Your data<br/>CSV · Parquet · MFF ·<br/>Meridian · NetCDF · HDF5 ·<br/>images"] --> I["Sandboxed ingest<br/>checked, profiled,<br/>dims and roles"]
     Q["Guided answers<br/>or a YAML spec"] --> V{{"Static checks<br/>before any compute"}}
     I --> V
     V --> F["Fit in a fresh sandbox<br/>preprocessing learned<br/>on train only"]
     F --> B[("Signed bundle<br/>states · posterior ·<br/>scorecard · grids")]
+    F -.-> T["Run tracking<br/>metrics · params ·<br/>images · compare"]
     W["Workflow<br/>tests → decisions →<br/>search → backtest"] -.-> F
     B --> R["Report, explorers,<br/>what-if, budget plans"]
     B --> G{{"Governance<br/>null tests · benchmarks ·<br/>second-person approval"}}
@@ -144,6 +168,8 @@ flowchart LR
 7. **Full analyses repeat automatically.** A workflow runs the tests, decisions, fits and
    checks again each Monday, or when the data changes. It uses again each step whose inputs
    did not change.
+8. **Each run keeps its record.** A run logs its metrics, params, tags and images while it
+   runs. You can search the runs, compare them side by side and group them in experiments.
 
 ## Your first MMM in Guided mode
 
@@ -208,7 +234,79 @@ full path took **135 seconds** from upload to scenario.
 
 </div>
 
-## What's new in v0.9
+## What's new in v0.10 to v0.15
+
+<div class="grid cards" markdown>
+
+-   :material-chart-line:{ .lg .middle } **Track and compare runs**
+
+    ---
+
+    Each run keeps its metrics, params, tags, notes, log lines and images. Filter and sort
+    the runs table by any metric, save the search as a view, and compare 2 to 10 runs side
+    by side. An experiment groups the runs of one question.
+
+    [:octicons-arrow-right-24: Compare runs and use experiments](guides/run-comparison.md)
+
+-   :material-scale-unbalanced:{ .lg .middle } **Measure the effect of a change**
+
+    ---
+
+    `causal.impact`, `causal.synthetic_control` and `causal.did` measure the effect of a
+    campaign, a launch or a geo-lift test. The result becomes a lift test for the marketing
+    mix. `ts.bsts` is a Bayesian structural time series.
+
+    [:octicons-arrow-right-24: Measure the effect of a change](guides/causal.md)
+
+-   :material-bullhorn-outline:{ .lg .middle } **The MMM pack**
+
+    ---
+
+    `mmm.nested` for effects through visits or awareness, `mmm.multivariate` for related
+    products, effects that change over time, counts and shares, and charts for ROI, mROAS,
+    adstock and the contribution waterfall.
+
+    [:octicons-arrow-right-24: Marketing-mix models](models/mmm-framework.md)
+
+-   :material-brain:{ .lg .middle } **Images and deep learning**
+
+    ---
+
+    Upload a zip of small images or a collection of up to 1 000 000 images. Classify them
+    with scikit-learn, LightGBM, CatBoost, a Bayesian model or a neural network on JAX. The
+    resource class `GPU` gives a run one NVIDIA L4.
+
+    [:octicons-arrow-right-24: Deep learning](guides/deep-learning.md)
+
+</div>
+
+<div class="mapi-shots" markdown>
+
+<figure markdown>
+[![The compare page with four runs and the loss of each run over the steps](assets/screenshots/whats-new-015-compare-curves.png){ .mapi-shot loading=lazy }](guides/run-comparison.md)
+<figcaption>Compare runs: the curves of 2 to 10 runs in one chart.</figcaption>
+</figure>
+
+<figure markdown>
+[![The effect of an intervention: actual values, the values without the change, and the cumulative effect](assets/screenshots/whats-new-015-causal-impact.png){ .mapi-shot loading=lazy }](guides/causal.md)
+<figcaption>Causal impact: the effect of a change, with its range.</figcaption>
+</figure>
+
+<figure markdown>
+[![The direct and mediated effects of each channel in mmm.nested](assets/screenshots/whats-new-015-mmm-mediation.png){ .mapi-shot loading=lazy }](models/mmm-framework.md#nested)
+<figcaption>Nested MMM: the effect of each channel through visits and awareness.</figcaption>
+</figure>
+
+<figure markdown>
+[![The training curves of a CNN for the train and val splits](assets/screenshots/whats-new-015-training-curves.png){ .mapi-shot loading=lazy }](guides/deep-learning.md)
+<figcaption>Deep learning: the training curves of a CNN, while it trains.</figcaption>
+</figure>
+
+</div>
+
+[:octicons-arrow-right-24: Everything that is new in 0.10 to 0.15](whats-new-0.15.md)
+
+## What came in v0.9 { #whats-new-in-v09 }
 
 <div class="grid cards" markdown>
 
@@ -696,8 +794,8 @@ we must still verify in the cloud.
     ---
 
     Bundles are single zarr zips plus JSON sidecars. Native models are skops (allow-listed
-    types) or xgboost JSON. Each file has CRC32C, MD5 and SHA-256 values. The platform
-    verifies them when it reads the file.
+    types) or xgboost JSON. Network weights are safetensors files. Each file has CRC32C, MD5
+    and SHA-256 values. The platform verifies them when it reads the file.
 
 </div>
 

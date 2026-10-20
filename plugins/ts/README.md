@@ -26,6 +26,15 @@ Time-series and state-space model plugins for modeling-api (`ts.*`, entry point
   need future driver values; `filter` mode returns an updated terminal state. The
   `causal.impact` model reuses this core.
 
+* Standard plots (v0.10): `ts.gaussian_hmm` declares `core.state_sequence` (it reads the
+  `hidden_states` group) and `ts.hsgp_trend` keeps a `components` group for
+  `core.decomposition`; `ts.bsts` draws its `components` with `core.decomposition` too. An
+  ADVI fit of `ts.gaussian_hmm` keeps its loss for `core.loss_curve`.
+* Run tracking (v0.13): `ts.bsts` logs its structure as `bsts.*` params, the noise and the
+  error of the one-step-ahead predictions.
+* `ts.bsts` needs pymc-extras (a dependency of this package) and runs in the
+  `mapi/base-forecast` image.
+
 `mapi_plugin_ts.datasets` holds synthetic data, raw schemas and example specs for the first
 two models; `mapi_plugin_ts.bsts_data` holds the ones for `ts.bsts`.
 

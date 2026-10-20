@@ -114,6 +114,12 @@ Click **Fit**. The run page monitors the run through server-sent events.
   user for the model code. Containers and Cloud Run can.
 - The progress bar and the message come directly from the sampler (`chain 1/2: sampling
   39/100`).
+- From v0.11, the **Overview** tab also shows one lane for each chain, with its draws, its
+  divergences and its step size. The **Metrics** tab draws the step size of each chain, with
+  one colour for each chain.
+- The **Params** tab shows the params of the spec, for example `fit.draws` and
+  `settings.<path>`. The fit logs them for you. See
+  [Track metrics, params and tags](tracking.md#what-the-platform-tracks-for-you).
 
 `fit.mode: evaluate_then_refit` makes the run do three things:
 
@@ -128,7 +134,12 @@ succeeds, the platform does three things:
 - It copies the files to a location that the run cannot get to.
 - It signs a manifest.
 
-When the run succeeds, click **Inspect model://default/eu-geo-mmm@v1**.
+When the run succeeds, the **Plots** card of the **Overview** tab shows the plots of the
+model version (v0.10). The **Metrics** tab has a **Values** table with the summary of the
+MMM (v0.12): `roi`, `roi_p05`, `roi_p95`, `mroi` and `contribution_share` for each channel,
+and `baseline_share`. See [What an MMM fit logs](tracking.md#mmm).
+
+Click **Inspect model://default/eu-geo-mmm@v1**.
 
 ## 4. Inspect the model
 
@@ -232,6 +243,10 @@ Two automatic suites run the same flow against the running stack (`make e2e`):
 
 ## Next steps
 
+- [Track metrics, params and tags](tracking.md): add a name, tags and a note to the run, and
+  log a business KPI after you use the model.
+- [Compare runs and use experiments](run-comparison.md): fit the spec again with other
+  settings, then compare the runs side by side.
 - [Marketing-mix models](mmm.md): the model, its priors, derived quantities and budget plots.
 - [Spec format](../reference/spec-format.md) and the [steps](../reference/steps.md) that this guide uses.
 - [Web app and plot sandbox](../reference/web-app.md): all the pages, and how the app isolates plots.

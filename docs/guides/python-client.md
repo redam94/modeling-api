@@ -32,7 +32,7 @@ files:
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.15.0
+http://127.0.0.1:8000 ok 0.15.1
 ```
 
 `Client()` finds its settings in the same sequence as the CLI:
@@ -68,7 +68,10 @@ dataset://default/eu_media_future@v2 ready sha256:2db88e1af79d
    ingest.
 
 It accepts a path, `bytes` or an `xr.Dataset` (with the `xarray` extra). CSV and Parquet files
-need a `mapping=IngestMapping(…)`. Zarr zips and netCDF files describe themselves.
+need a `mapping=IngestMapping(…)`. Zarr zips and netCDF files describe themselves. A zip of
+images needs `IngestMapping(format="image_folder", …)` (v0.14, see
+[Image data](image-data.md#upload-the-zip)). A folder of images goes up as a collection with
+`datasets.upload_collection` (v0.15, see [below](#v015)).
 
 The version has the schema that the ingest run checked:
 
@@ -146,7 +149,7 @@ weeks. Then it does an evaluation on the holdout. Then it fits again on all the 
 | `RunSnapshot` | First, and after each change of state | The full `Run` |
 | `RunEventFrame` | Persisted events: `state`, `warning`, `diagnostic`, `metric`, `checkpoint`, `complete`, `error` | Has an id. The stream sends it again after a reconnect. |
 | `RunLiveFrame` | `progress` and `log` | Live only. The stream never sends it again. |
-| `RunTrackingFrame` | `tracking` (v0.11): the metric series, params or tags changed | Live only. A `TrackingFrame` with the changed series summaries. |
+| `RunTrackingFrame` | `tracking` (v0.11): the metric series, params or tags changed | Live only. A `TrackingFrame` with the changed series summaries. From v0.14, its field `media` is `True` when the run logged new images or tables. |
 | `RunEnd` | One time, when the run is terminal | Then the stream closes. |
 
 If the connection stops, the client continues it with `Last-Event-ID`. Thus, no persisted
@@ -567,7 +570,7 @@ with api.runs.track(run_id) as t:
 
 | Call | What it does |
 |---|---|
-| `runs.update(run_id, name=…, note=…, tags=…)` | `PATCH /v1/runs/{run_id}`. Only the arguments that you give change. `None` clears the name or the note. |
+| `runs.update(run_id, name=…, note=…, tags=…, experiment_id=…)` | `PATCH /v1/runs/{run_id}`. Only the arguments that you give change. `None` clears the name, the note or (v0.14) the experiment. |
 | `runs.log_metric(run_id, key, value, step=None, labels=None, ts=None)` | Log one point |
 | `runs.log_metrics(run_id, values, step=None, labels=None)` | Log a dict of values, or a list of `MetricPointIn`. The client sends a maximum of 1000 points in each request. |
 | `runs.log_params(run_id, params)` | Log params (500 in each request). A different value for a stored key raises a `CONFLICT` error. |
@@ -630,6 +633,7 @@ runs = api.runs.list(experiment_id=exp.id, columns=["metric.rmse"])
 | `runs.track(run_id)` | Also has `log_image` and `log_table` (sent immediately) |
 | `runs.keys(experiment_id=None, prefix=None)` | The metric series, param keys and tag keys of the runs (`RunKeys`) |
 | `runs.compare(run_ids, keys=(), media_keys=(), max_points=300, params=True)` | Compare 2 to 10 runs (`RunCompare`) |
+| `runs.create(run, experiment_id=None)`, `runs.fit(spec_id, revision, experiment_id=None)` | Start a run in an experiment |
 | `experiments.list(name=None, archived=None)`, `get`, `find(name_or_id)` | Find experiments |
 | `experiments.create(name, description=None)`, `update(id, name=…, description=…, archived=…)`, `delete(id)` | Manage experiments |
 | `experiments.add_runs(id, run_ids)`, `remove_runs(id, run_ids)` | Move runs (a maximum of 200 in each request) |
@@ -672,6 +676,7 @@ weights = api.datasets.upload(
 | `datasets.missing_images(dataset_id, shas, *, base_version=None)` | `BlobMissing`. The client sends the digests in groups of 5000 and merges the answers. |
 | `datasets.get_upload(dataset_id, upload_id)` | An `UploadSession` with `received` |
 | `datasets.renew_upload(dataset_id, upload_id)` | A fresh signed PUT for an upload whose file did not arrive |
+| `datasets.upload_weights(source, *, dataset=None, dataset_id=None, arch=None, message=None, wait=True, timeout=None)` | Upload a `.safetensors` file of network weights as a weights dataset. `arch` is a dict or a JSON file, for a file without `mapi_arch` metadata. See [Deep learning](deep-learning.md#pretrained-weights). |
 
 `mapi_client.collections` has the parts of `upload_collection` that do not need a server:
 `scan_images(root, manifest, path_column=..., label_from_folder=...)`,
@@ -699,9 +704,11 @@ The v0.5 resources work in the same way:
 |---|---|
 | `projects` | `list`, `get` |
 | `catalog` | `get`, `models`, `model`, `steps`, `plots`, `schema` |
-| `datasets` | `create`, `list`, `get`, `find`, `ensure`, `create_upload`, `create_version`, `versions`, `version`, `wait_version`, `upload`, `artifact`, `download` |
+| `datasets` | `create`, `list`, `get`, `find`, `ensure`, `create_upload`, `create_version`, `versions`, `version`, `wait_version`, `upload`, `artifact`, `download`; v0.8: `upload_files`, `inspect`, `inspect_file`; v0.15: `upload_collection`, `missing_images`, `get_upload`, `renew_upload`, `upload_weights` |
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
-| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry`; v0.11: `update`, `log_metric`, `log_metrics`, `log_params`, `set_tags`, `track`, `metrics`, `metric_history`, `params` |
+| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry`; v0.11: `update`, `log_metric`, `log_metrics`, `log_params`, `set_tags`, `track`, `metrics`, `metric_history`, `params`; v0.14: `media`, `media_keys`, `get_media`, `download_media`, `log_image`, `log_table`, `keys`, `compare` |
+| `experiments` (v0.14) | `list`, `get`, `find`, `create`, `update`, `delete`, `add_runs`, `remove_runs` |
+| `run_views` (v0.14) | `list`, `find`, `create`, `update`, `delete` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate`; v0.4: `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
 | `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |

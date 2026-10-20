@@ -351,6 +351,12 @@ fit, the median of the sum of the cells was 14 events for each quarter. The 90% 
 4 to 39 events in 2020 Q1 to 1 to 141 events in 2021 Q4. The range increases with each quarter
 because the random walk adds uncertainty.
 
+From v0.10, **Results by output** shows each output by its shape. Select `rate` to see a map
+of the cells with a slider over the forecast quarters. Select `total` to see a line with a
+band. The default plot of the grid output is `sci.field_map`, not a forecast fan of the sum
+over the grid. The run also writes `ui/fields.json`, and the map of the page replaces the
+`sci.field_map` plot in the plot list.
+
 A horizon of 9 or more quarters stops the score with `HORIZON_EXCEEDS_FIT`. To forecast
 further, fit again with a larger `max_extension`. The model also accepts `predict` (the fitted
 quarters) and `evaluate` (new actual counts with metrics).

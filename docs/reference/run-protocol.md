@@ -224,7 +224,7 @@ from one domain is never valid in a different domain.
 | `progress` | `ProgressPayload{phase, fraction?, message?, eta_seconds?, chains[]}` | Maximum one in each `limits.progress_interval_s`. The platform writes it into one `run_progress` row (upsert). From v0.11, samplers fill `chains` (`ChainProgress{chain, draws_done, draws_total, tuning, divergences, step_size?, num_steps?}`). |
 | `log` | `LogPayload{stream, line, truncated, level?, fields?}` | One line, maximum `log_line_bytes`. After `log_total_bytes`, the run fails with `SANDBOX_VIOLATION` (log flood). The streams are `stdout`, `stderr`, `system` and, from v0.11, `user`. Only `user` lines have `level` and `fields`. |
 | `diagnostic` | `Diagnostic` (`mapi_spec`) | Goes into the scorecard |
-| `warning` | `WarningPayload{code, message, untrusted_text?}` | v0.15: `GPU_UNAVAILABLE` when a run of the GPU class sees no NVIDIA device. The run continues on the CPU. |
+| `warning` | `WarningPayload{code, message, untrusted_text?}` | The run continues. v0.11: `TRACKING_BUDGET` ([Tracking budgets](#tracking-budgets)). v0.14: the media warnings ([Media](#media)). v0.15: `GPU_UNAVAILABLE` when a run of the GPU class sees no NVIDIA device (the run continues on the CPU), `VIEW_SAMPLE_FAILED` when a collection fit cannot decode the sample for its views, and `CHECKPOINT_SKIPPED` ([Checkpoints of networks](#checkpoints-of-networks)). [Troubleshooting](../operations/troubleshooting.md#warnings-on-a-run) tells what to do. |
 | `checkpoint` | `CheckpointPayload{name, size, crc32c, segment, draws_done?}` | `name` is relative to `checkpoint_prefix` |
 | `metric` | `MetricPayload{name, value, step?, labels}` | One scalar, for example a holdout metric at the end of a fit. From v0.11, the platform also keeps it as a point of the metric series `name`. |
 | `metrics` | `MetricBatchPayload{t0, series[]}` | v0.11. Points of metric series. See [Tracking events](#tracking-events). |
@@ -436,7 +436,9 @@ The names in `checkpoint_prefix` are:
 `<key>` has 16 to 64 lowercase hex characters (the fit key). The `checkpoint` event has
 `segment` = the epochs done and no `draws_done`. The samplers keep the names
 `ckpt-<key>.draws.zarr.zip` and `ckpt-<key>.meta.json`. The supervisor uploads
-`.safetensors` files with the content type `application/octet-stream`.
+`.safetensors` files with the content type `application/octet-stream`. A `meta.json` has a
+maximum of 16 MiB. If it is larger, the worker does not save the checkpoint and sends the
+warning `CHECKPOINT_SKIPPED`. A resume ignores a `meta.json` that is larger.
 
 ## Exit codes
 

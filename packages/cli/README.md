@@ -36,6 +36,33 @@ mapi admin tenants|quotas|kill-switches|executors|audit ...   # operators; chang
 mapi logout [--revoke]
 ```
 
+Run tracking, comparison and experiments (v0.11, v0.14):
+
+```bash
+mapi runs ls -f 'metric.rmse < 12' --order-by metric.rmse -c param.fit.draws --experiment tuning
+mapi runs metrics RUN [--key loss] | params RUN | log-metric RUN revenue_lift 0.42 | tag RUN stage=candidate
+mapi runs rename RUN NAME | note RUN TEXT
+mapi runs media RUN [--download DIR] | log-image RUN samples plot.png --step 3
+mapi runs compare RUN RUN [RUN...] [-k loss] [--all-params]          # 2 to 10 runs
+mapi runs views ls | save NAME -f 'metric.rmse < 12' | rm VIEW
+mapi experiments ls | create NAME | show EXP | add EXP RUN... | archive EXP | rm EXP
+mapi fit spec.yaml --remote @ --experiment tuning
+mapi workflows run WF --experiment tuning
+```
+
+Image collections and network weights (v0.15):
+
+```bash
+mapi datasets upload-images pets ./pets --label-from-folder --state pets.upload.json --wait
+mapi datasets missing-images pets ./pets        # what the latest version does not have
+mapi datasets upload-weights resnet18 weights.safetensors
+mapi fit spec.yaml --remote @ --resource-class GPU   # one NVIDIA L4 (dl.* image models)
+```
+
+`upload-images` hashes every image, asks the server which ones the base version lacks and
+uploads only those, in deterministic zip parts; run the same command again with the same
+`--state` file to continue an upload that stopped.
+
 | Templates (`mapi new`) | Conformance fixture |
 |---|---|
 | `geo-mmm`: hierarchical geo MMM (weekly EUR, adstock, saturation) | E33 |
@@ -50,6 +77,9 @@ default `http://127.0.0.1:8000`. The config file and `credentials.json` (sign-in
 written with mode `0600`; no command prints a token or secret (`mapi tokens create` prints
 the new secret once, alone on stdout, unless `--save`). `--remote @` means "the configured API"; `--remote URL`
 overrides it for one command.
+
+See `docs/reference/cli.md` and the generated `--help` reference
+(`docs/reference/generated/cli-reference.md`) for every command and flag.
 
 **Scripting.** `--json` prints one JSON document on stdout (`runs watch --json` prints one
 JSON event per line); errors become `{"error": {...}}` and the exit status is 1. Progress

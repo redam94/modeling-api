@@ -7,9 +7,14 @@ method, `build(ds, settings, ctx) -> pm.Model`. The platform provides everything
   - nutpie (the default when installed);
   - PyMC NUTS with segmented, resumable sampling;
   - MAP and ADVI;
-  - Pathfinder and numpyro/blackjax when those libraries are installed.
+  - Pathfinder (the `pathfinder` extra, `pip install "mapi-pymc[pathfinder]"`, which adds
+    pymc-extras; v0.13) and numpyro/blackjax when those libraries are installed.
 
-  Every engine reports progress per chain. `EnginePlan.initvals` (start values on the
+  Every engine reports progress per chain. With run tracking (v0.11), nutpie and the PyMC
+  NUTS sampler send live per-chain progress and the step metrics `step_size`, `num_steps`
+  and `divergences` (the PyMC sampler also `tree_depth`; label `chain`), and ADVI sends its
+  `loss` while it optimises. An ADVI fit also keeps the loss of each step in the bundle group
+  `fit_history` (v0.10), which `core.loss_curve` draws. `EnginePlan.initvals` (start values on the
   constrained scale, by free variable name) and `EnginePlan.jitter=False` start every chain
   at one given point (`pymc`, `nutpie` and the external NUTS bridges; MAP, ADVI and
   Pathfinder ignore them). `sci.ibp_features` uses this.

@@ -43,6 +43,12 @@ gaps in observed series: the check must show them.
 `FitOutput.native` is only for safe native formats (skops, xgboost JSON, safetensors). The
 platform rejects pickle when it writes a bundle and when it reads a bundle.
 
+From v0.10, a model can declare its standard plots in the class attribute `plots`, a list of
+recipe ids. For example, the statsmodels Markov switching model declares
+`core.state_sequence`. The spec editor shows these plots first in the **Insert** panel. A fit
+draws only the plots that the spec lists in `outputs.plots`. The contract kit renders each
+plot of the manifest.
+
 ### Settings rules that need no data
 
 Put the rules that join two or more settings in a pydantic `model_validator` of your
@@ -192,6 +198,10 @@ Follow these rules:
 - Use `ctx.tracking` to skip metrics that take a long time to calculate.
 - The fit already logs the params of the spec (`model`, `fit.*`, `settings.*`). Do not log
   them again.
+
+From v0.14, the contexts also have `ctx.log_image`, `ctx.log_figure` and `ctx.log_table`.
+They put images, matplotlib figures and small tables on the **Media** tab of the run page.
+See [Log images, figures and tables](tracking.md#log-images-figures-and-tables).
 
 To see the values in a test, give the fit a recorder:
 `fit_spec(spec, data, hooks=FitHooks(tracker=MetricRecorder()))`. The recorder keeps the

@@ -300,6 +300,22 @@ validation refuses `log_score`, because the plugin gives point predictions.
 
 `sklearn.tabular_classifier` (binary) also accepts the new estimators.
 
+### Classify images <span class="mapi-badge">v0.14</span> { #classify-images }
+
+An image dataset (`pixels(image, y, x, channel)` and `label(image)`) can go to
+`sklearn.multiclass_classifier` after a step that changes each image into features:
+
+- From v0.15, the step `dl.embed` of `mapi-jax` gives the features of a frozen pretrained
+  network (`embedding(image, feature)`). A linear head, for example
+  `sklearn.LogisticRegression`, then learns the classes. This works with a few hundred
+  labelled images. See [Image features and a simple head](deep-learning.md#image-features-and-a-simple-head).
+- Use a `stratified` split to hold out the same share of each class, or a `column` split to
+  hold out the images that a manifest column marks. See
+  [Hold out images for a test](image-data.md#hold-out-images-for-a-test).
+
+For thousands of images, or to train all the weights of a network, use the models of
+[Deep learning](deep-learning.md).
+
 ## Persistence and safety
 
 The bundle keeps the fitted estimators in its `/native` group. It never uses pickle:

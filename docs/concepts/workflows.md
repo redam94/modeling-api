@@ -197,6 +197,32 @@ unsafe plot fails its node with `PLOT_UNSAFE`. `report.summary` has a `plots` in
 each plot into a section of the report. The run view of the web app and the JSON report show
 these plots.
 
+### Tracking and experiments in a workflow <span class="mapi-badge">v0.11</span> { #tracking-in-a-workflow }
+
+A workflow run and its node runs are usual runs. Thus they have the same tracking data as
+other runs ([Run tracking and experiments](run-tracking.md)):
+
+- A node implementation can log metrics, params, tags and log lines through its
+  `NodeContext`, with the same methods as a model (`log_metric`, `log_params`, `set_tag`,
+  `log_line`). From v0.14, it can also log images and tables.
+- `search.grid` logs each grid point in its search run: the params `trial.<i>.<pointer>` and
+  `grid.*`, the scores with the number of the point as the step, `best_<metric>` and the tag
+  `grid.best_point`.
+- `model.backtest` logs the metrics of each fold with the label `fold`.
+
+From v0.14, a workflow run can go into an [experiment](run-tracking.md#experiments). Give
+`experiment_id` when you start the run (`POST /v1/workflows/{workflow_id}/runs`,
+`api.workflows.run` or `mapi workflows run --experiment`). Each node run then goes into the
+same experiment. Schedules and triggers start their runs in no experiment.
+
+!!! note "Use `search.grid`, not a `Sweep`"
+    The `Sweep` document is retired in v0.14. The server refuses new `Sweep` documents. A
+    workflow with a `search.grid` node does the same work, and its points are metrics that
+    you can compare on the compare page.
+
+The inputs of a workflow must be datasets. An image collection (v0.15) cannot be the input of
+a workflow ([Image data and collections](image-collections.md)).
+
 ## The node catalog
 
 `GET /v1/catalog/workflow-nodes` lists all implementations. For each implementation, it gives

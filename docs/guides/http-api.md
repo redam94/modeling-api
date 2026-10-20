@@ -38,7 +38,7 @@ storage URLs, because these URLs have their own authorization. See
 ```
 
 ```text
-{"status":"ok","version":"0.15.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.15.1","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.bayesian@1.0.0  draws
 mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws
@@ -76,6 +76,11 @@ hour. Send the headers from `upload.headers` exactly, because they are part of t
 - `x-goog-content-length-range` limits the size to `size_bytes`.
 - `x-goog-if-generation-match: 0` makes the object write-once. Thus the storage refuses a
   second PUT to the same URL.
+
+From v0.15, an upload whose file arrived has the status `uploaded`. You can use it in a
+version also after its URL expired. If the URL expired before the file arrived, sign a new
+URL with `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/renew` (see
+[Resumable uploads and image collections](#v015)).
 
 Then change the upload into a dataset version. For CSV and Parquet, the mapping gives the
 column of each dim and variable. It also gives its kind, its score-time policy and its role:
@@ -157,7 +162,7 @@ With `Accept: text/event-stream`, the events endpoint is a live stream. It sends
 2. The persisted events. Each event has an `id:`.
 3. Live `progress` and `log` frames. These have no id, and the server never sends them again.
    From v0.11, live `tracking` frames tell that the metrics, the params or the tags of the run
-   changed.
+   changed. From v0.14, they also tell that the run logged images or tables (`media`).
 4. A new `snapshot` at each change of state.
 5. `end` when the run is terminal. Then the server closes the stream.
 
@@ -234,7 +239,10 @@ the circle:
 
 Each table of `summary.json` also gives `dims`, the names of its coordinate columns (the
 columns before the statistics), and `time_dim`, the dim that is time when there is one. A
-server that predates these fields leaves them out.
+server that predates these fields leaves them out. From v0.10, `plots` gives the ids of the
+plots of the run that draw the output, for example `sci.area_map` or `core.roc_pr`. The
+tables are in the order of their size. Thus, when the server cuts a large summary, it drops a
+large grid table and keeps a small table such as `total`.
 
 ## Track metrics, params and tags <span class="mapi-badge">v0.11</span> { #tracking }
 
@@ -336,6 +344,52 @@ API inside a model, see [Track metrics, params and tags](tracking.md).
 
 For all the endpoints, see
 [Media, comparison, experiments and saved views](../reference/http-api.md#v014).
+
+## Resumable uploads and image collections <span class="mapi-badge">v0.15</span> { #v015 }
+
+An image collection is a dataset version that keeps each image as a file. The CLI and the
+Python client do these steps for you (see
+[Image data: collections](image-data.md#large-image-sets-collections)). With HTTP, do these
+steps:
+
+1. Calculate the SHA-256 of each image. Ask which images the dataset does not have. A
+   request has a maximum of 5000 values:
+
+    ```bash
+    api -X POST "$API/v1/datasets/$DATASET_ID/blobs/missing" -H 'Content-Type: application/json' \
+      -d '{"sha256": ["<64 hex characters>", "<64 hex characters>"]}'
+    ```
+
+    ```json
+    {"base_version": 4, "missing": ["<64 hex characters>"], "present": 1}
+    ```
+
+2. Put the missing images in zip parts. Name each image `<sha256>.<ext>`, for example
+   `9f86d0….png`. Upload the manifest table and each part with an upload session, as for a
+   CSV file. The manifest has one row for each image, with the SHA-256 in the column
+   `sha256` (`CollectionOptions.sha256_column`).
+3. Make the version from the uploads:
+
+    ```bash
+    api -X POST "$API/v1/datasets/$DATASET_ID/versions" -H 'Content-Type: application/json' \
+      -d "{\"collection\": {\"manifest_upload_id\": \"$MANIFEST\",
+           \"part_upload_ids\": [\"$PART0\"], \"base_version\": null}}"
+    ```
+
+    `base_version: null` uses the latest ready collection version for the images that the
+    parts do not have. `0` uses no base version.
+
+4. To continue an upload that stopped, read each upload. `received` tells you if its file
+   arrived. Renew the URL of an upload whose file did not arrive:
+
+    ```bash
+    api "$API/v1/datasets/$DATASET_ID/uploads/$PART0" | jq '{status, received}'
+    api -X POST "$API/v1/datasets/$DATASET_ID/uploads/$PART0/renew" | jq -r .upload.url
+    ```
+
+`get_upload` and `renew_upload` need the `update` permission on the dataset, because their
+answer has a signed PUT URL. For the details of the parts, the manifest and the errors, see
+[Resumable uploads and image collections](../reference/http-api.md#v015).
 
 ## Errors
 

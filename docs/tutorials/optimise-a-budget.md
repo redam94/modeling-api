@@ -1,7 +1,8 @@
 # Optimise a budget
 
-You have a fitted marketing-mix model (`mmm.bayesian` or `mmm.frequentist`). You must divide
-the budget for the next quarter. The platform answers with the planning module of
+You have a fitted marketing-mix model (`mmm.bayesian`, `mmm.frequentist`, or from v0.12
+`mmm.nested` or `mmm.multivariate`). You must divide the budget for the next quarter. The
+platform answers with the planning module of
 mmm-framework, directly from the posterior of the model. It tells you how much each channel
 must get and how sure that is. It also tells you what each extra euro would buy. You do not
 need an external optimiser or a copy of the model in a different location.
@@ -113,6 +114,10 @@ like.
 - **`notes_plain`** gives notes. For example, it tells you when the plan pushes a channel
   above the spend that the model has seen. Then the numbers of that channel extrapolate the
   response curve.
+
+For `mmm.multivariate`, the KPI of the plan is the weighted total of the outcomes. Set the
+weights in `outcomes[].weight` of the spec. A note of the plan gives the weights. See
+[The multivariate model](../models/mmm-framework.md#multivariate).
 
 The plot of the run, `mmm.budget_plans`, compares the current allocation and expected KPI
 with those of the plan (`GET /v1/runs/{run_id}/plots`).

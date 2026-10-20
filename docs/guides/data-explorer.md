@@ -242,7 +242,7 @@ use them in the statistics (distributions, unusual values, correlations and qual
 |---|---|---|
 | `structure` (Structure) | The shapes. A matrix of the variables and the dims, with the role of each dim (time, frame, y, x, area, node and other roles) and its size. How the explorer uses each variable: data, geometry, mask, weight, index or label. The section that shows each shape. | "2 images of 81 x 81 pixels and 1 of 31 x 31 pixels." If the explorer reads a dim incorrectly, [correct the structure](#correct-the-structure-hints). |
 | `images` (Images and fields) | Each image in the field viewer, with a colour bar, a frame slider and the value of the cell below the pointer. A vector field shows the magnitude and arrows. A mask shows as a layer. For each variable: the mean, the spread, the minimum and the maximum of each frame on a line, a histogram of all cells, and the fraction of missing and saturated cells. For a label coord on the frames (E31 `label`), the mean image of each class. When a few cells are much brighter than the others (E58), the colours cover 98% of the values. Select **Colours for the full range** to use the colours for all the values. | Look for frames that are not the same as the others, and for many cells at the maximum value (a saturated detector). A colour map with two colours (blue and red) shows values on the two sides of zero. |
-| `gallery` (Gallery, v0.14) | Thumbnails of the images of one variable (a maximum of 64 pixels on each side), with chips for each label and split, and the number of images for each value. See [Gallery](#gallery). | Look for images with the wrong label, empty images and classes with few images. |
+| `gallery` (Image gallery, v0.14) | Thumbnails of the images of one variable (a maximum of 64 pixels on each side), with chips for each label and split, and the number of images for each value. See [Image gallery](#gallery). | Look for images with the wrong label, empty images and classes with few images. |
 | `profiles` (Profiles and spectra) | One line for each frame along the axis (position, multipole, wavelength or frequency), with the peak of each line. A picker selects the frame. The axes are logarithmic when the values cover a large range. | A peak that moves from frame to frame shows a front or a wave (E50). |
 | `map` (Map) | Each variable in colour on the areas, and the lines between neighbours. When the data has a target and an exposure, the map also shows their ratio (E18: `cases` / `expected`), and the map starts with this ratio. The areas with no neighbour. Moran's I for each variable, with a p-value from 999 permutations. | A positive Moran's I with a small p-value shows that neighbour areas have similar values. Then a spatial model (ICAR or BYM2) is useful. For a variable with frames (one value for each area and year), Moran's I uses the mean of each area over the frames. |
 | `network` (Network) | The matrix of ties, with similar nodes next to each other (140 nodes or fewer). A node-link graph of the nodes and the edges. A histogram of the degree of the nodes. The density, the transitivity, the reciprocity (directed networks) and the components. For each attribute of the nodes, the fraction of ties in the same group. | Blocks on the diagonal of the matrix show groups. If the fraction of ties in the same group is much more than the expected fraction, the attribute explains the ties (homophily). |
@@ -268,9 +268,9 @@ In Expert mode, *All series* also shows the export plots of the science plot rec
 map (`sci.area_map`), the network (`net.graph`) and the roses (`sci.rose`). These plots are
 Plotly plots. The other export plots are Vega-Lite plots.
 
-### Gallery and colour images <span class="mapi-badge">v0.14</span> { #gallery }
+### Image gallery and colour images <span class="mapi-badge">v0.14</span> { #gallery }
 
-The **Gallery** section shows small pictures (thumbnails) of the images of a dataset, for
+The **Image gallery** section shows small pictures (thumbnails) of the images of a dataset, for
 example a dataset from an [image folder upload](image-data.md). It applies when a variable is
 an image with a frame dim of 2 or more levels, for example `pixels` on `image`, `y`, `x` and
 `channel`.
@@ -286,6 +286,12 @@ an image with a frame dim of 2 or more levels, for example `pixels` on `image`, 
   number of images that the gallery shows.
 - The gallery shows 48 thumbnails on each page. Click a thumbnail to see a larger picture and
   its values. The values come from your data. The app shows them as text only.
+
+**Image collections** <span class="mapi-badge">v0.15</span>. For an
+[image collection](image-data.md#explore-a-collection), the explorer reads a sample of up to
+2000 images, with the same share of each label. The gallery and **Images and fields** show
+this sample. The sample has the size of the collection, or the most frequent size with a
+maximum of 64 × 64 pixels.
 
 **Colour images.** When the channel dim of an image has 3 or 4 levels, or the levels `r`,
 `g` and `b` (`red`, `green` and `blue`), **Images and fields** shows the image in colour. A

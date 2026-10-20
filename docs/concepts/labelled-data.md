@@ -61,7 +61,7 @@ Other `DimSpec` fields:
 
 | Field | Meaning |
 |---|---|
-| `dims`, `dtype` | The shape contract (`float64`, `int64`, `bool`, `str`, `datetime64[ns]`, …) |
+| `dims`, `dtype` | The shape contract: `float64`, `float32`, `int64`, `int32`, `uint8` (v0.14, 8-bit image pixels), `bool`, `str` or `datetime64[ns]` |
 | `role` | What the variable means: `target`, `covariate`, `media`, `spend`, `control`, `index`, `mask`, `constant`, `weight`, `exposure` |
 | `units` | A string in pint style (`EUR`, `units`, `1`). Steps update it (`fx_convert` → `EUR`, scaling → `1`), and outputs report it |
 | `missing` | `forbid` (default), `allow` (NaN is permitted) or `mask` (a mask variable shows the valid cells) |
@@ -199,6 +199,15 @@ platform merges their variables into that dataset before the pipeline
 (`TreeSchema.flat` statically, `mapi_sdk.tree.select_nodes` on the arrays). A model that
 declares `capabilities.input = "tree"` also gets the whole tree. Refer to
 [Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md).
+
+## Images and collections <span class="mapi-badge">v0.14</span>
+
+An image dataset is also labelled data: `pixels(image, y, x, channel)` with the dtype `uint8`
+and the target `label(image)`. A small set of images of one size is one array (an image
+folder). From v0.15, a large image set is an **image collection**: a dataset version with the
+layout `collection`. It keeps each image as a file in packs that the tenant shares between
+versions. A dataset version thus has one of three layouts: `dataset` (one `xr.Dataset`),
+`tree` (an `xr.DataTree`) or `collection`. See [Image data and collections](image-collections.md).
 
 ## Wire formats
 
