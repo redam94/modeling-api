@@ -95,6 +95,13 @@ need approval**. An admin can switch on these functions.
 | Forecasting models | `ts`, `forecast`, `ts_multivariate`, `regime` | data quality, convergence, beats benchmarks, holdout accuracy | residual whiteness, shuffled results | parameter stability |
 | Regression and machine learning | `tabular`, `choice`, `sklearn` | data quality, holdout accuracy, shuffled results | fake drivers | convergence |
 
+A policy matches the family of a model or the namespace of its id. Thus the forecasting
+policy also covers `ts.bsts` (v0.13), and the regression policy covers
+`sklearn.multiclass_classifier` and `tabular.image_logistic` (v0.14). No default policy
+covers the causal models (`causal.*`, v0.13) or the neural networks (`dl.*`, v0.15). To
+validate them, write a policy with `"applies_to": {"families": ["causal"]}` or
+`{"families": ["dl"]}` (see [Write a policy](#write-a-policy)).
+
 The thresholds are the catalog defaults:
 
 | Measure | Passes | Warns |

@@ -15,6 +15,7 @@ different sizes, use a [collection](#large-image-sets-collections) (v0.15).
 
 | See also | |
 |---|---|
+| [Image data and collections](../concepts/image-collections.md) | The concepts: the two ways to keep images, and how models and runs read them |
 | [Spec format: image folders and splits](../reference/spec-format.md#image-folders) | `ImageFolderOptions`, `uint8` and the split kinds |
 | [Explore a dataset](data-explorer.md#gallery) | The gallery and the colour images |
 | [Model catalog](../reference/models.md) | `tabular.image_logistic` and `sklearn.multiclass_classifier` |
@@ -69,7 +70,8 @@ In the web app:
 
 1. Open **Datasets** and click **Upload**.
 2. Select the zip file.
-3. For **Format**, select **image folder**.
+3. Make sure that **Format** is **image folder (zip)**. The app selects it for a `.zip`
+   file.
 4. Type the name of the manifest and the names of the columns.
 5. If the images do not have the same size, set **Size** (height and width) and **Resize**.
 6. Click **Upload**.
@@ -150,7 +152,7 @@ directly. Values are whole numbers from 0 to 255.
 
 The Data Explorer of an image dataset starts with two sections:
 
-- **Gallery** shows small pictures (thumbnails) of the images. Click a chip of a label or of
+- **Image gallery** shows small pictures (thumbnails) of the images. Click a chip of a label or of
   a split to show only these images. Click a thumbnail to see a larger picture and the values
   of the image. When the dataset has more than 240 images, the gallery shows an even sample
   of each label and split. A note above the gallery tells you this.
@@ -483,6 +485,13 @@ If a version needs more than 128 packs, upload all images again without a base v
     not delete its packs, because other versions can use them.
 
 ## What comes next
+
+The known gaps of image folders in v0.14:
+
+- An `image_folder` upload has no inspect step. Errors about the columns of the manifest
+  come from the ingest run.
+- Workflow backtests do not make stratified split plans.
+- There is no calibration plot for multiclass predictions.
 
 The known gaps of image collections in v0.15:
 

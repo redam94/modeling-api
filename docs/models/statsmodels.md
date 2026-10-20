@@ -416,6 +416,21 @@ mapi endpoints score weekly-sales --data plan.json --periods 8 -o forecast.zarr.
 mapi explore model model://growth/weekly-sales@v3 -s forecast -s residuals --horizon 8
 ```
 
+## Standard plots <span class="mapi-badge">v0.10</span> { #standard-plots }
+
+Each model declares its standard plots. The **Insert** panel of the spec editor shows them
+first. A fit draws only the plots that the spec lists in `outputs.plots`.
+
+| Models | Standard plots |
+|---|---|
+| All twelve models | `core.ppc_fan`, `core.fit_vs_actual`, `core.residuals_over_time` |
+| `ts.unobserved_components`, `ts.ets` | Also `core.decomposition`. It stacks the level, the seasonal part and the other parts from the `components` group. It does not stack the slope of a trend, because a slope is a rate. |
+| `ts.markov_switching` | Also `core.state_sequence`. It reads `smoothed_prob` in the `regimes` group over the `regime` dim. |
+
+`ts.ets` keeps a `components` group only when its error, trend and season are additive. A
+multiplicative model has no decomposition. For the plots of a score run, see
+[Plots of hidden states](../guides/time-series.md#plots-of-hidden-states).
+
 ## What is stored, and why there is no pickle
 
 The plugin never keeps a statsmodels results object, because pickles cannot cross the

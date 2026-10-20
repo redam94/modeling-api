@@ -41,6 +41,7 @@ drops a group without a warning.
 |---|---|---|---|
 | `dataset` (the default) | `data.zarr.zip` | `schema.json` (`DataSchema`) | A file with no groups, or a version whose sources are all in the root |
 | `tree` | `data.tree.zip` | `tree_schema.json` (`TreeSchema`: one `DataSchema` for each node) | A file with groups, or a version with sources below the root |
+| `collection` (v0.15) | `manifest.parquet`, `collection.json` and packs of images that the versions share | `schema.json` | A large set of images. It is not a tree. See [Large image sets: collections](image-data.md#large-image-sets-collections). |
 
 A `DatasetVersion` gives the layout in `layout`. A tree version also has `tree_schema`, and
 its `data_schema` is the schema of the root node. Thus an older reader sees the root node and
@@ -508,3 +509,4 @@ full list of controls.
   `side_tables.node`.
 - [HTTP API reference](../reference/http-api.md#m4): the inspect endpoints and the DTOs.
 - [Write a step or model plugin](plugins.md): the contract kit.
+- [Image data](image-data.md): image folders and image collections (v0.14 and v0.15).

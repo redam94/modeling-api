@@ -244,7 +244,7 @@ During `evaluate_then_refit`, the evaluation fit skips some tests and logs them.
 tests with a window after the training periods, or a window that the end of the training
 periods cuts. The production refit uses these tests.
 
-### A lift test from a geo-lift fit <span class="mapi-badge">v0.13</span>
+### A lift test from a geo-lift fit <span class="mapi-badge">v0.13</span> { #lift-test-from-a-geo-lift-fit }
 
 The `geo_lift` template fits `causal.synthetic_control` on the markets of a test. Its report
 has the card **Lift test for your marketing mix**. Type the channel and the spend change of the

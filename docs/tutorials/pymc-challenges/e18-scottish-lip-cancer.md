@@ -443,6 +443,10 @@ The **Results** region shows `rr` and `p_exceed` for each district, with the sta
 2.35 to 6.82. The mean of `p_exceed` is the probability of step 6.4. It is more than 0.95 in
 19 districts.
 
+From v0.10, **Results by output** also shows an output over the districts as a map of areas
+(`sci.area_map`): one panel for the mean, one for the sd and one for the probability that the
+value is above a threshold.
+
 This is the request that the page sends (`POST /v1/models/{model_id}/versions/{v}:score`):
 
 ```json

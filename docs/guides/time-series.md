@@ -126,7 +126,10 @@ The model accepts periods without a value. The filter does not update the state 
 periods, and the prediction continues over them. The `core.decomposition` chart shows the
 level, the seasonal parts and the effect of the drivers from the `components` group. See
 [Causal models and Bayesian structural time series](../models/causal.md#tsbsts-bayesian-structural-time-series).
-`causal.impact` uses the same model to measure the effect of a change.
+`causal.impact` uses the same model to measure the effect of a change (see
+[Measure the effect of a change](causal.md)). Each fit of `ts.bsts` logs its structure as
+`bsts.*` params, and the noise and the error of the one-step-ahead predictions as metrics.
+See [What a causal fit logs](tracking.md#what-a-causal-fit-logs).
 
 ## Plots of hidden states <span class="mapi-badge">v0.10</span> { #plots-of-hidden-states }
 

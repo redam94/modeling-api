@@ -18,8 +18,8 @@ and the expiry date.
 ## What can be shared
 
 You can share only charts that the platform drew with one of **its own recipes** (`core.*`,
-`mmm.*`, `ml.*`, `ts.*`, `choice.*`). Examples are response curves, decompositions, forecast
-fans and scorecard charts. The platform refuses a chart that a plugin or a person wrote
+`mmm.*`, `ml.*`, `ts.*`, `choice.*` and, from v0.13, `causal.*`). Examples are response
+curves, decompositions, forecast fans, scorecard charts and the effect of a campaign. The platform refuses a chart that a plugin or a person wrote
 (`EMBED_NOT_ALLOWED`). The reason is that a shared link runs the specification of the chart
 in the browser of an unknown person. Only specifications that the platform wrote can do
 that. Share the other charts inside the project, or as a PNG.

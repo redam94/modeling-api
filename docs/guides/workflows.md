@@ -756,6 +756,22 @@ node runs of a workflow run, use `GET /v1/runs?parent_run_id=<run_id>`. Code in 
 with the same methods as a model (`ctx.log_metric`, `ctx.log_params`, `ctx.set_tag`,
 `ctx.log_line`). See [Track metrics, params and tags](tracking.md#workflow-nodes).
 
+### Put the runs in an experiment <span class="mapi-badge">v0.14</span> { #experiments }
+
+An experiment is a named group of runs. Name the experiment when you start the workflow run.
+Then the workflow run and each node run that it starts go into that experiment:
+
+- In the HTTP API, give `experiment_id` in `POST /v1/workflows/{workflow_id}/runs`.
+- In Python, give `experiment_id=` to `api.workflows.run`.
+- In the CLI, give `--experiment` (an id or a name) to `mapi workflows run`.
+
+Without an experiment, the run goes into the experiment of its parent run, if there is one.
+The server refuses an archived experiment. If you move a workflow run to a different
+experiment later, the node runs that it already started stay where they are. Schedules and
+triggers start their runs in no experiment. To group a run of a schedule, move it with
+`PATCH /v1/runs/{run_id}` before it starts its nodes. See
+[Compare runs and use experiments](run-comparison.md#experiments).
+
 When a run is complete, the server sends the `workflow.run.succeeded` or `workflow.run.failed`
 [webhook](endpoints-and-webhooks.md). The webhook contains the run id, the workflow revision,
 the status and the outputs.
@@ -846,6 +862,12 @@ row-level security, as all other data are.
   `transform.steps` with the preprocessing steps of the catalog.
 - In the web editor, each browser keeps the node positions as a view preference. The document
   has no place for them. The ports of a sub-workflow show when the app loads its revision.
+- Workflows do not take image collections (v0.15). The server refuses a collection as a
+  workflow input (`SCHEMA_INVALID`). Use an `image_folder` dataset, or fit a spec on the collection with a usual
+  fit run. See [Image data](image-data.md).
+- Workflow backtests do not make stratified split plans (v0.14).
+- The `Sweep` document is retired (v0.14). The server refuses new `Sweep` documents. Use a
+  `search.grid` node (see [Search model settings on a plan](#search-model-settings-on-a-plan)).
 - The [Python client](python-client.md#workflows-governance-and-explorers) and the
   [CLI](cli.md#workflows-governance-and-explorers) can do all workflow operations. The
   screens of the web app are in [In the web app](#in-the-web-app).

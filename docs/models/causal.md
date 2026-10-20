@@ -29,7 +29,7 @@ target.
 | `actual` | (`unit`,) `time` | The observed value. It can be NaN. |
 | `counterfactual` | `sample`, (`unit`,) `time` | Draws of the value without the change. The draws include the observation noise. |
 | `effect` | `sample`, (`unit`,) `time` | `actual - counterfactual` |
-| `cumulative_effect` | `sample`, (`unit`,) `time` | The sum of `effect` over the cells of the effect window. It is NaN outside them. |
+| `cumulative_effect` | `sample`, (`unit`,) `time` | The running (cumulative) sum of `effect` along time over the cells of the effect window. It is NaN outside them. |
 | `post` | (`unit`,) `time` | True in the effect window (from the start to the end, inclusive) |
 
 The time dim is always `time`. `causal.synthetic_control` and `causal.did` add the `unit` dim

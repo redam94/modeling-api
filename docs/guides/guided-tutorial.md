@@ -36,9 +36,19 @@ it needs, and what you can do with the result.
 | Template | Use it for |
 |---|---|
 | Geo marketing mix | What each channel adds to your results for each market, ROI for each channel, what-if budgets |
+| Marketing mix with an intermediate measure (v0.12) | What each channel adds to one national result, and how much of the effect goes through a measure such as visits or awareness |
+| Marketing mix for related products (v0.12) | What each channel adds to two or more national results at the same time, with one budget plan for all of them |
+| Effect of a campaign (v0.13) | The effect of a campaign, a launch or a price change on one series, with a range |
+| Geo-lift test (v0.13) | The effect of a campaign that ran only in some markets. The result can calibrate a marketing mix model. |
 | Weekly forecast | One weekly or daily series, forecast with a probable range |
 | Demand by store | Units for each store and week from prices and promotions, with low and high estimates |
 | Customer choice | Which product shoppers select on each trip, and how prices change the choice |
+
+If you are not sure which template applies, use the **Help me choose** panel above the cards.
+It asks some plain questions and gives the applicable analyses and models, with the reasons
+(see [Choosing a model](choosing-a-model.md)). The two marketing-mix templates of v0.12 are in
+[The marketing-mix templates](guided-modelling.md#mmm-templates). The two causal templates
+are in [Measure the effect of a change](causal.md).
 
 Select **Geo marketing mix**.
 
@@ -92,7 +102,9 @@ optional.
   media.
 - **Experiments you have run** take lift tests or geo holdouts. For each experiment, give the
   channel and the market, the dates, the change in spend, and the measured change in results
-  with its uncertainty. The model uses each experiment as extra evidence.
+  with its uncertainty. The model uses each experiment as extra evidence. If you measured a
+  geo-lift test with the **Geo-lift test** template, its report gives the values to type
+  here (see [A lift test from a geo-lift fit](guided-modelling.md#lift-test-from-a-geo-lift-fit)).
 
 **Preview what this means** runs a quick simulation in the sandbox. It shows what your beliefs
 mean before a fit:

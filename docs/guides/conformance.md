@@ -106,6 +106,16 @@ The contract kit does not run in this mode. It needs the plugin in-process.
 | `e23_phylo` | `sci.phylo_regression` | A regression across primate species, with residuals that the phylogeny correlates |
 | `e81_circular` | `sci.circular_regression` | Wind directions on the circle. A von Mises regression |
 
+### Models without a fixture
+
+Some models of v0.12 to v0.15 have no fixture in the corpus yet: `mmm.nested`,
+`mmm.multivariate`, `sklearn.multiclass_classifier`, `tabular.image_logistic` and the
+`dl.*` models of `mapi-jax`. The tests of their packages fit them. The contract kit tests
+`mmm.nested`, `mmm.multivariate`, `sklearn.multiclass_classifier` and
+`dl.cnn_classifier`. For a model that trains on batches, the kit runs the batch path one
+time when you give it a collection: `check_model(MyModel, fixture, collection=...)`. See
+[Train on batches](plugins.md#fit-batches).
+
 ### Deferred
 
 The corpus of the plan also lists fixtures that need plugins or run kinds that do not exist

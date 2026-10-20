@@ -125,7 +125,7 @@ person edit a spec, but not start a 200-task sweep.
 |---|---|
 | `viewer` | Read all items in the project. Validate specs. Mint tokens for themselves. |
 | `editor` | Create and change datasets, specs and saved plots. |
-| `runner` | **Spend compute**: submit, cancel and retry runs, score models and endpoints, and render plots. |
+| `runner` | **Spend compute**: submit, cancel and retry runs, score models and endpoints, and render plots. From v0.11, change the name, the note and the tags of a run, and log metrics, params and (v0.14) images to a run. From v0.14, make, change and delete experiments and saved views of the runs table. |
 | `admin` | Manage members, endpoints, plugins and the tokens of other persons. Delete items. |
 
 Since v0.5, the workflow and governance rules use the same sequence of roles. Editors write
@@ -222,6 +222,18 @@ explains each limit. Operators override the defaults of a tenant:
 `set` **replaces** the policy. It removes the limits that you do not give. For those limits,
 the tier default applies again. `mapi admin quotas rm tenant acme` removes the override.
 
+**The largest resource class.** The limit `max_resource_class` sets the largest class that a
+run can use. The `public` tier stops at class `S`, and the `verified` tier at class `L`. The
+classes are ordered `S < M < L < XL < GPU`. Thus a limit below `GPU` refuses the GPU class
+<span class="mapi-badge">v0.15</span>. The `internal` and `self-hosted-trusted` tiers have no
+such limit. To let a tenant use the GPU class, set `max_resource_class` to `GPU` in its
+policy. See [Deep learning: use the GPU class](deep-learning.md#use-the-gpu-class).
+
+**Storage** <span class="mapi-badge">v0.15</span>. The storage quota counts an upload that is
+`pending` or `uploaded` until the housekeeper retires it. The housekeeper deletes an upload
+whose file arrived, but that no version used, 7 days after its PUT URL expired. The size of an image collection version is
+the size of the packs that it uses. The tenant keeps the packs until the tenant is deleted.
+
 ![The quota policies of the admin console](../assets/screenshots/admin-quotas.png){ .mapi-shot }
 
 ## Cost and usage
@@ -229,7 +241,8 @@ the tier default applies again. `mapi admin quotas rm tenant acme` removes the o
 When you submit a run, the platform makes an estimate of its cost. It checks the estimate
 against the quotas. When each attempt ends, the platform meters the run. It uses the
 vCPU-seconds and GiB-seconds of the resource class of the run, at the versioned price table
-of the deployment. It writes the result to an append-only **cost ledger**. Amounts are exact
+of the deployment. From v0.15, a run of the `GPU` class also meters accelerator-seconds at
+the accelerator price of the table. It writes the result to an append-only **cost ledger**. Amounts are exact
 integer micros of a currency. Each amount names the price table that it used. The page of a
 run and `mapi runs get` show its cost. Usage pages add the costs.
 
@@ -284,6 +297,16 @@ execution backend:
 *trusted tenants only* marks an executor that never gets runs of `verified` and `public`
 tenants.
 
+**The GPU class** <span class="mapi-badge">v0.15</span>. On Cloud Run, the GPU class runs on
+the GPU Jobs of the `base-dl` image (see [Cloud Run: GPU jobs](../operations/cloud-run.md#gpu-jobs)).
+The Docker executor asks Docker for a GPU only when `MAPI_DOCKER_GPUS=true`. Without a GPU,
+and with the local-process executor, a GPU run uses the CPU and gets the warning
+`GPU_UNAVAILABLE`.
+
+!!! warning
+    The GPU path is not tested on a GPU or on GCP. Do a test with a small run before you
+    give the GPU class to tenants.
+
 ![The executor health in the admin console: isolation, load, submit rate and conformance](../assets/screenshots/admin-executors.png){ .mapi-shot }
 
 ## Audit log
@@ -295,6 +318,11 @@ The platform adds security-relevant actions to an audit log. These actions are:
 - Token creation, revocation and failed use.
 - Changes to quotas and kill switches, and quota denials.
 - Run creation and cancellation.
+- Changes to the name, the note and the tags of a run (`run.update`), and metrics, params
+  and images written through the API (`run.log`) <span class="mapi-badge">v0.11</span>.
+- Changes to experiments and saved views (`experiment.create`, `experiment.update`,
+  `experiment.delete`, `run_view.save` and `run_view.delete`)
+  <span class="mapi-badge">v0.14</span>.
 - Integrity failures.
 - Artifact links and dataset downloads.
 - Refused run events.
