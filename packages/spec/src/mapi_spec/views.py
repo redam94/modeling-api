@@ -91,6 +91,7 @@ __all__ = [
     "RESPONSE_GRID_FORMAT",
     "RESPONSE_GRID_VIEW",
     "SCIENCE_SECTIONS",
+    "SCORE_FIELDS_VIEW",
     "SHAPE_KINDS",
     "TREE_INDEX_FORMAT",
     "AcfPacfView",
@@ -217,6 +218,9 @@ RESPONSE_GRID_VIEW: Final = "ui/grids/response_curves.json"
 FORECAST_FORMAT: Final = "mapi.forecast/v1"
 FORECAST_VIEW: Final = "ui/guided/forecast.json"
 """Where a ``forecast`` score run writes its :class:`ForecastView` (M3)."""
+SCORE_FIELDS_VIEW: Final = "ui/fields.json"
+"""Where a predict/forecast/evaluate score run writes the :class:`FieldsView` of its grid
+outputs."""
 COUNTERFACTUAL_FORMAT: Final = "mapi.counterfactual/v1"
 COUNTERFACTUAL_VIEW: Final = "ui/guided/counterfactual.json"
 """Where a ``counterfactual`` score run writes its :class:`CounterfactualView` (M3)."""

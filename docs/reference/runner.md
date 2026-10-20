@@ -166,7 +166,7 @@ this sequence:
 | `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages that a dry run resolved) |
 | `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json` (`MetricsReport`. v0.9: `elpd` has the `elpd_loo`/`elpd_waic` estimates with their pointwise values), `coords.json` (`{stage: {dim: CoordSummary}}`), `scorecard.json` (`Scorecard`, v0.4), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/grids/response_curves.json` (`mapi.response-grid/v1`, v0.4), `ui/plotdata/*.arrow` |
-| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `summary.json` (`ScoreSummary`: the summary as tables, at most 100 000 cells. v0.9: a circular output has `period`), `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). |
+| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `summary.json` (`ScoreSummary`: the summary as tables, at most 100 000 cells. v0.9: a circular output has `period`), `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). Predict, forecast and evaluate add `ui/fields.json` (`FieldsView`) for a model with grid outputs |
 | `evaluate` | `{"request": …?, "metrics": […]?}` | `bundle`, `dataset`, `side.<name>` | the score outputs and also `metrics.json` |
 | `derive` | `{"names": […], "draws": n?, "data": "dataset://…"?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |
 | `render` | `{"plots": […]?, "format": "png" \| "svg", "scale": 2}` | `plots` (a `plots.json`) | `renders/<plot id>.<format>` |
@@ -184,6 +184,24 @@ The Arrow views (`ui/summary.arrow`, `ui/grids/*.arrow`) are tidy tables from
 `mapi_sdk.wire.to_arrow_table`. From v0.9, the schema metadata `mapi.dims` gives the names of
 the dim columns as a JSON list. Thus the web app keeps a numeric dim, for example a grid
 position in cm, as a key column and not as a value.
+
+A score run picks its default plots from the shape of the outputs, when the job does not
+give `plots`:
+
+| Output | Default plot |
+|---|---|
+| A `grid` output with no `component` | `sci.field_map`, with `var`, `y`, `x` and the frame dim (when it is in the result) as options |
+| A `grid` output with a `component` of size 2 | `sci.vector_field`, with the same options |
+| An output that is not a grid, with the time dim and at most one other dim of size more than 1 | `core.ppc_fan` (`var`) |
+| A model with grid outputs and no such time output | no fan: a fan would sum over the grid |
+| A model with no grid outputs, and all counterfactuals | the plots of before |
+
+Evaluate keeps its plots and adds the grid plot. There is at most one plot for each recipe:
+the first grid output with a frame, else the first grid output. The map draws from
+`/predictions`, so the runner keeps the full predictions of a grid model until the plots are
+done. The output variables of a grid carry the attr `grid` (the `GridDecl` as JSON, with the
+dims renamed to the names of the result). `summary.json` gives `dims` and `time_dim` for each
+table, and orders the tables by size.
 
 `scorecard.json` does the data checks on the raw dataset. The check `data.missing` (v0.9)
 does not count these variables:

@@ -1890,11 +1890,46 @@ def score_bundle(
             groups["observed"] = _observed_output(bundle, pipeline, main, tables)
     for name, cached in derived.items():
         groups[f"derived/{name}"] = cached
+    # before the rename, so the binding turns the grid's dims into dataset names too
+    groups = _stamp_grids(groups, bundle.model.manifest)
     if req.output.names == "dataset":
         groups = {k: binding.reverse(v) for k, v in groups.items()}
     nodes: dict[str, xr.Dataset] = {"/": xr.Dataset(attrs=attrs)}
     nodes.update({f"/{k}": v for k, v in groups.items()})
     return xr.DataTree.from_dict(nodes)
+
+
+def _stamp_grids(groups: dict[str, xr.Dataset], manifest: ModelManifest) -> dict[str, xr.Dataset]:
+    """``groups`` with a ``grid`` attr (the output's ``GridDecl`` as JSON) on gridded outputs.
+
+    A score tree carries no manifest, so this is how a field recipe (``sci.field_map``) or a
+    downloaded ``score.zarr.zip`` learns the raster dims of an output. Only outputs whose ``y``
+    and ``x`` dims survived the aggregation get one; a ``frame`` or ``component`` dim that was
+    aggregated away is left out of the attr. The stat dim of a summary does not break it.
+    """
+    grids = {name: decl.grid for name, decl in manifest.outputs.items() if decl.grid is not None}
+    if not grids:
+        return groups
+    out: dict[str, xr.Dataset] = {}
+    for key, ds in groups.items():
+        stamped = None
+        for name, grid in grids.items():
+            if name not in ds.data_vars:
+                continue
+            dims = set(map(str, ds[name].dims))
+            if grid.y not in dims or grid.x not in dims:
+                continue
+            drop = {k for k in ("frame", "component") if getattr(grid, k) not in dims}
+            if stamped is None:
+                stamped = ds.copy()  # shallow: the data is shared, the attrs are replaced
+            var = stamped.variables[name]
+            # a fresh dict: the groups share pred's variables, and so their attrs dicts
+            var.attrs = {
+                **var.attrs,
+                "grid": grid.model_dump_json(exclude_none=True, exclude=drop or None),
+            }
+        out[key] = ds if stamped is None else stamped
+    return out
 
 
 def _model_owned(pred: xr.Dataset, bundle: Bundle) -> tuple[xr.Dataset, dict[str, str]]:

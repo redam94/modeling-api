@@ -230,6 +230,10 @@ the circle:
 - Each interval and quantile is centred on the circular mean.
 - All values are in `[0, period)`. An interval with `lower` more than `upper` crosses the seam.
 
+Each table of `summary.json` also gives `dims`, the names of its coordinate columns (the
+columns before the statistics), and `time_dim`, the dim that is time when there is one. A
+server that predates these fields leaves them out.
+
 ## Errors
 
 ```bash

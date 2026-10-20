@@ -339,7 +339,16 @@ The run returns the actuals that it used in `ScoreSummary.actuals`.
 **Results** shows these items:
 
 - The plots of the run: a forecast fan for each market, or the scenario against the baseline
-  for a counterfactual.
+  for a counterfactual. The runner picks the plots from the shape of the outputs. A grid
+  output, for example the intensity of `sci.lgcp_grid`, gets a map, and not a fan of the sum
+  over the grid.
+- A view of one output at a time. Select the output. The view follows its shape:
+    - a grid: a map with a slider over the frame dim (for example `quarter`), the mean, the
+      bands and the draws. This map comes from `ui/fields.json`, and replaces the
+      `sci.field_map` and `sci.vector_field` plots in the list above;
+    - a time series: a line with the band;
+    - an output with categorical dims: the mean and the band for each level;
+    - a scalar: tiles with the mean and the band.
 - The outputs with their sizes and signed links. `score.zarr.zip` is the full `xr.DataTree`.
   `ui/summary.arrow` is the summary table.
 - The summary as a table, with one row for each coordinate and one column for each statistic.
