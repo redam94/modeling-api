@@ -638,6 +638,46 @@ runs = api.runs.list(experiment_id=exp.id, columns=["metric.rmse"])
 The async client has the same calls. For the web app and the CLI, see
 [Compare runs and use experiments](run-comparison.md).
 
+## Image collections and weights <span class="mapi-badge">v0.15</span> { #v015 }
+
+```python
+from pathlib import Path
+
+from mapi_spec import CollectionOptions, IngestMapping
+
+# how many images are new? (the client calculates the SHA-256 of each image)
+plan = api.datasets.missing_images(dataset_id, ["9f86d0…", "60303a…"])  # a ds_… id
+print(plan.present, len(plan.missing))
+
+# upload a folder: only the missing images, in parts, with a state file to continue later
+version = api.datasets.upload_collection(
+    "product_photos",
+    Path("photos"),
+    label_from_folder=True,
+    options=CollectionOptions(size=(64, 64)),
+    state_file=Path("photos.upload.json"),
+    wait=True,
+)
+print(version.layout, version.collection.n_images, version.collection.new_images)
+
+# pretrained weights as a dataset
+weights = api.datasets.upload(
+    "resnet.safetensors", dataset="tiny-resnet", mapping=IngestMapping(format="safetensors")
+)
+```
+
+| Call | What it does |
+|---|---|
+| `datasets.upload_collection(dataset, root, *, manifest=None, label_from_folder=False, options=None, base_version=None, part_bytes=DEFAULT_PART_BYTES, state_file=None, message=None, wait=False, timeout=None, progress=None)` | Upload a folder of images as a collection version (`DatasetVersion`). `dataset` is a name (the client makes the dataset when it does not exist) or a `ds_…` id. It uploads only the images that the base version does not have. With `state_file`, a second call continues the upload: it skips the parts that arrived and renews expired URLs. |
+| `datasets.missing_images(dataset_id, shas, *, base_version=None)` | `BlobMissing`. The client sends the digests in groups of 5000 and merges the answers. |
+| `datasets.get_upload(dataset_id, upload_id)` | An `UploadSession` with `received` |
+| `datasets.renew_upload(dataset_id, upload_id)` | A fresh signed PUT for an upload whose file did not arrive |
+
+`mapi_client.collections` has the parts of `upload_collection` that do not need a server:
+`scan_images(root, manifest, path_column=..., label_from_folder=...)`,
+`write_parts(plan, missing, out_dir, part_bytes)` and `client_manifest_csv(plan)`. The parts
+are zip files with no compression. The same images always give the same bytes.
+
 ## Async
 
 `AsyncClient` has the same resources and arguments. Use `await` for the calls. Use

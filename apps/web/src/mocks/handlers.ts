@@ -10,6 +10,8 @@ import { LOG_LEVELS, type LogLevel } from "@/api/tracking";
 import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSession } from "@/api/types";
 import { env } from "@/env";
 
+import { collectionDataset, createCollectionHandlers, createCollectionState } from "./collections";
+import { addDlMedia, createDlHandlers, DL_RUN_ID, dlRun, dlTracking } from "./dl";
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
 import { createExperimentHandlers, createExperimentsState, listRuns } from "./experiments";
@@ -56,6 +58,8 @@ interface MockState {
   /** v0.14: experiments and saved views; media items of the runs (bytes in `artifacts`). */
   experiments: ReturnType<typeof createExperimentsState>;
   media: ReturnType<typeof createMediaState>;
+  /** v0.15: the image collection dataset and its uploads. */
+  collections: ReturnType<typeof createCollectionState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -87,15 +91,22 @@ export function createState(): MockState {
     governance: seedGovernance(createGovernanceState()),
     tree: createTreeState(),
     sci: createSciState(),
-    tracking: createTrackingState(),
+    tracking: createTrackingState().set(DL_RUN_ID, dlTracking()),
     experiments: createExperimentsState(),
-    media: createMediaState(artifacts),
-    runs: new Map([...fx.runs, ...SHAPE_RUNS].map((r) => [r.id, structuredClone(r)])),
+    media: withDlMedia(createMediaState(artifacts), artifacts),
+    collections: createCollectionState(),
+    runs: new Map([...fx.runs, ...SHAPE_RUNS, dlRun].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
     uploads: new Map(),
     artifacts,
   };
+}
+
+/** v0.15: the media of the deep-learning fit (mocks/dl.ts) join the media of the study fits. */
+function withDlMedia(media: ReturnType<typeof createMediaState>, artifacts: MockState["artifacts"]): ReturnType<typeof createMediaState> {
+  addDlMedia(media, artifacts);
+  return media;
 }
 
 function sseFrame(event: string, data: unknown, id?: number | string, retry?: number): string {
@@ -177,6 +188,10 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createShapeHandlers({ artifacts: state.artifacts }),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
     ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
+    // v0.15: the image collection dataset (uploads, missing images, versions) and the plots of
+    // the deep-learning fit, before the generic dataset and run routes.
+    ...createCollectionHandlers(state.collections),
+    ...createDlHandlers(),
     // The Data Explorer on scientific data (ds-sci-<case>), before the generic explorer routes.
     ...createSciHandlers(state.sci, { artifacts: state.artifacts, runs: state.runs }),
     // Demo datasets of the Data Explorer on scientific data (the spec's example views).
@@ -213,7 +228,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ),
 
     // datasets
-    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset, ...SCI_DATASETS])),
+    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset, collectionDataset, ...SCI_DATASETS])),
     http.get(`${API}/v1/datasets/:id`, ({ params }) => (params.id === fx.DS_ID ? HttpResponse.json(fx.dataset) : problem(404, "NOT_FOUND", "Not found", "no such dataset"))),
     http.post(`${API}/v1/datasets`, async ({ request }) => {
       const body = (await request.json()) as { name: string; description?: string };

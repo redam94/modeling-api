@@ -74,7 +74,8 @@ def script(
 
 
 def images_file(
-    path: Path, names: tuple[str, ...] = ("server", "web", "base-bayes", "base-ml", "base-forecast")
+    path: Path,
+    names: tuple[str, ...] = ("server", "web", "base-bayes", "base-ml", "base-forecast", "base-dl"),
 ) -> Path:
     path.write_text(json.dumps({"images": {n: f"{REPO}/{n}@{DIGEST}" for n in names}}))
     return path
@@ -234,8 +235,8 @@ def test_build_push_dry_run(bash: str, stubs: Path, tmp_path: Path) -> None:
     )
     assert res.returncode == 0, res.stderr
     builds = [line for line in res.stdout.splitlines() if "docker buildx build" in line]
-    assert len(builds) == 5
-    for name in ("server", "web", "base-bayes", "base-ml", "base-forecast"):
+    assert len(builds) == 6
+    for name in ("server", "web", "base-bayes", "base-ml", "base-forecast", "base-dl"):
         line = next(b for b in builds if f"images/{name}/Dockerfile" in b)
         assert "--platform linux/amd64" in line and "--target runtime" in line and "--push" in line
         assert f"--tag {REPO}/{name}:0.3.0-test" in line
@@ -396,7 +397,8 @@ def test_deploy_refuses_incomplete_or_tagged_releases(
         stubs=stubs,
         out=tmp_path,
     )
-    assert res.returncode != 0 and "lacks: base-bayes, base-ml, base-forecast" in res.stderr
+    assert res.returncode != 0
+    assert "lacks: base-bayes, base-ml, base-forecast, base-dl" in res.stderr
 
     tagged = tmp_path / "tagged.json"
     tagged.write_text(
@@ -404,7 +406,7 @@ def test_deploy_refuses_incomplete_or_tagged_releases(
             {
                 "images": {
                     n: f"{REPO}/{n}:latest"
-                    for n in ("server", "web", "base-bayes", "base-ml", "base-forecast")
+                    for n in ("server", "web", "base-bayes", "base-ml", "base-forecast", "base-dl")
                 }
             }
         )

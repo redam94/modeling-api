@@ -179,7 +179,9 @@ class LocalProcessExecutor:
             egress_enforced=False,
             dns_enforced=False,
             max_runtime=Duration(self._max_runtime_s),
-            classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
+            # GPU-class runs execute on this host's CPU (the runner warns GPU_UNAVAILABLE
+            # when no NVIDIA device is visible)
+            classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L, ResourceClass.GPU],
             max_tasks=1,
             checkpoint_storage=True,
         )

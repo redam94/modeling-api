@@ -19,8 +19,8 @@ Transient storage errors propagate so the job is retried; after
 
 from __future__ import annotations
 
-import hashlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +31,15 @@ from mapi_spec.api import Lineage, ObjectRef, Scorecard, ScorecardItem, new_id
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.catalog import Catalog
+from mapi_spec.collection import (
+    COLLECTION_INFO,
+    COLLECTION_MANIFEST,
+    COLLECTION_MEMBERS,
+    PACK_OBJECT_PREFIX,
+    CollectionInfo,
+    pack_digest,
+    pack_object_name,
+)
 from mapi_spec.coords import CoordSummary, DataSummary
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.executor import RunEventType, RunKind
@@ -174,9 +183,12 @@ def build_scorecard(diagnostics: list[Diagnostic]) -> Scorecard | None:
 
 def dataset_sha(meta: ObjectMeta) -> str:
     """Content address of a dataset version: SHA-256 over the *server-computed* digests
-    (size, CRC32C, MD5) of ``data.zarr.zip`` — no uploader-supplied hash is trusted."""
-    basis = canonical_json({"size": meta.size, "crc32c": meta.crc32c, "md5": meta.md5_hash})
-    return hashlib.sha256(basis.encode()).hexdigest()
+    (size, CRC32C, MD5) of ``data.zarr.zip`` (``manifest.parquet`` for a collection) — no
+    uploader-supplied hash is trusted. The same basis addresses image packs
+    (:func:`mapi_spec.collection.pack_digest`)."""
+    if meta.md5_hash is None:
+        raise IntegrityError(f"{meta.name!r} has no server-computed MD5")
+    return pack_digest(meta.size, meta.crc32c, meta.md5_hash)
 
 
 class Finalizer:
@@ -789,7 +801,8 @@ class Finalizer:
         """Register the dataset version an ingest run wrote: ``data.zarr.zip`` +
         ``schema.json`` (dataset layout) or, M4, ``data.tree.zip`` + ``tree_schema.json``
         (+ ``schema.json``, the root node's schema) for a tree version."""
-        run = v.run
+        if COLLECTION_INFO in v.objects:
+            return await self._ingest_collection(v)
         tree_data = v.objects.get(DATATREE_OUTPUT)
         flat_data = v.objects.get(INGEST_DATA)
         if tree_data is not None and flat_data is not None:
@@ -843,6 +856,24 @@ class Finalizer:
                 f"{TREE_SCHEMA_OUTPUT}"
             )
         sha_hex = dataset_sha(data)
+        stored = await self._store_version(v, sha_hex)
+
+        def fill(dv: m.DatasetVersion) -> None:
+            dv.size_bytes = data.size
+            dv.layout = layout
+            dv.tree_schema = tree.model_dump(mode="json") if tree is not None else None
+
+        return await self._register_version(
+            v, sha_hex, stored, schema=schema, summary=summary, columns=columns, fill=fill
+        )
+
+    async def _store_version(
+        self, v: _Verified, sha_hex: str, *, shared: frozenset[str] | None = None
+    ) -> dict[str, Any]:
+        """Copy every verified output of an ingest under the version's content-addressed
+        prefix; returns the stored refs by output name. With ``shared``, only those outputs
+        are content-addressed; the others are this ingest's own (under the run)."""
+        run = v.run
         prefix = dataset_prefix(run.tenant_id, sha_hex)
         data_bucket = self.ctx.buckets.data
         stored: dict[str, Any] = {}
@@ -851,17 +882,24 @@ class Finalizer:
             # version, another dataset or project) lands on the objects already there, which
             # it must match exactly. The Data Explorer views are this ingest's own (computed
             # by its runner, with timestamps): they live under the run, beside the data.
-            dst = prefix + (f"runs/{run.id}/{name}" if name.startswith(EXPLORE_PREFIX) else name)
-            copied = await self._copy(meta, data_bucket, dst)
-            stored[name] = {
-                "bucket": data_bucket,
-                "name": copied.name,
-                "generation": copied.generation,
-                "size": copied.size,
-                "crc32c": copied.crc32c,
-                "md5": copied.md5_hash,
-                "content_type": copied.content_type,
-            }
+            own = name.startswith(EXPLORE_PREFIX) or (shared is not None and name not in shared)
+            dst = prefix + (f"runs/{run.id}/{name}" if own else name)
+            stored[name] = _stored(await self._copy(meta, data_bucket, dst))
+        return stored
+
+    async def _register_version(
+        self,
+        v: _Verified,
+        sha_hex: str,
+        stored: dict[str, Any],
+        *,
+        schema: DataSchema,
+        summary: DataSummary | None,
+        columns: list[dict[str, Any]] | None,
+        fill: Callable[[m.DatasetVersion], None],
+    ) -> RunState | None:
+        """Mark the ingest's dataset version ready (``fill`` sets the layout fields) in the
+        transaction that marks the run succeeded."""
 
         def ref(name: str) -> dict[str, Any] | None:
             o = stored.get(name)
@@ -882,9 +920,7 @@ class Finalizer:
                 raise IntegrityError("the dataset version of this ingest run is gone")
             dv.status = "ready"
             dv.sha256 = f"sha256:{sha_hex}"
-            dv.size_bytes = data.size
-            dv.layout = layout
-            dv.tree_schema = tree.model_dump(mode="json") if tree is not None else None
+            fill(dv)
             dv.data_schema = schema.model_dump(mode="json")
             dv.summary = summary.model_dump(mode="json") if summary else None
             dv.profile = ref("profile.json")
@@ -900,6 +936,163 @@ class Finalizer:
             await dataset_version_ready(session, ds, dv)
 
         return await self._commit(v, apply)
+
+    async def _ingest_collection(self, v: _Verified) -> RunState | None:
+        """Register an image collection version (v0.15): ``manifest.parquet`` +
+        ``collection.json`` + ``members.bin`` + ``schema.json`` (+ the usual summaries and
+        explorer views). The manifest is never parsed here (no parquet reader in the control
+        plane): its server digests address the version.
+
+        Each pack ``collection.json`` lists is checked against the store, never the runner:
+        an uploaded part's digest is recomputed from the store's metadata of the generation
+        the run was pinned to, then the part is copied (create-only) to its shared address
+        :func:`~mapi_spec.collection.pack_object_name`; a base pack must be one the base
+        version already references."""
+        run = v.run
+        for name in (INGEST_DATA, DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT):
+            if name in v.objects:
+                raise IntegrityError(f"a collection ingest does not upload {name}")
+        missing = [
+            n
+            for n in (COLLECTION_MANIFEST, COLLECTION_MEMBERS, INGEST_SCHEMA)
+            if n not in v.objects
+        ]
+        if missing:
+            raise IntegrityError(f"a collection ingest must upload {', '.join(missing)}")
+        job = (run.payload or {}).get("collection")
+        if not isinstance(job, dict):
+            raise IntegrityError("collection.json comes only from a collection ingest run")
+        cap = self.ctx.settings.max_sidecar_bytes
+        try:
+            info = CollectionInfo.model_validate(
+                await self._read_json(
+                    run_bucket(v), v.objects[COLLECTION_INFO], min(cap, MAX_COLLECTION_INFO)
+                )
+            )
+            schema = DataSchema.model_validate(
+                await self._read_json(run_bucket(v), v.objects[INGEST_SCHEMA], cap)
+            )
+            summary = (
+                parse_data_summary(
+                    await self._read_json(run_bucket(v), v.objects["summary.json"], cap)
+                )
+                if "summary.json" in v.objects
+                else None
+            )
+            columns = (
+                await self._columns(run_bucket(v), v.objects[INGEST_COLUMNS], cap)
+                if INGEST_COLUMNS in v.objects
+                else None
+            )
+        except ValidationError as exc:
+            raise IntegrityError(
+                "an ingest sidecar does not match its schema", untrusted_text=str(exc)[:8000]
+            ) from exc
+        members = v.objects[COLLECTION_MEMBERS]
+        # one 32-byte digest per distinct image: at least one, at most one per manifest row
+        if (
+            members.size % 32
+            or members.size > MAX_MEMBERS_BYTES
+            or not 32 <= members.size <= 32 * info.n_images
+            or members.size // 32 > sum(p.images for p in info.packs)
+        ):
+            raise IntegrityError(
+                f"{COLLECTION_MEMBERS} ({members.size} bytes) does not hold one 32-byte "
+                f"digest per image of the collection ({info.n_images} images)"
+            )
+        # The runner writes no base version when the version uses none of the base's packs
+        # (all images new, or every one also in a part); base packs then fail below.
+        if info.base_version is not None and info.base_version != job.get("base_version"):
+            raise IntegrityError("collection.json names another base version than the run")
+        manifest = v.objects[COLLECTION_MANIFEST]
+        sha_hex = dataset_sha(manifest)
+        packs = await self._collection_packs(v, info)
+        # The manifest addresses the version, and members.bin follows from it. The other
+        # outputs depend on more than the manifest (collection.json names the base version,
+        # the new and reused images and the packs; the options change the schema): the same
+        # manifest uploaded again with another base or other options must not collide.
+        stored = await self._store_version(
+            v, sha_hex, shared=frozenset({COLLECTION_MANIFEST, COLLECTION_MEMBERS})
+        )
+        stored.update(packs)
+
+        # Charge the stored packs, not only the images the manifest references: a part is
+        # kept whole, so its unreferenced entries must count against the storage quota.
+        size_bytes = max(info.total_bytes, sum(p.size for p in info.packs))
+
+        def fill(dv: m.DatasetVersion) -> None:
+            dv.size_bytes = size_bytes
+            dv.layout = "collection"
+            dv.tree_schema = None
+            dv.collection = info.model_dump(mode="json")
+
+        return await self._register_version(
+            v, sha_hex, stored, schema=schema, summary=summary, columns=columns, fill=fill
+        )
+
+    async def _collection_packs(self, v: _Verified, info: CollectionInfo) -> dict[str, Any]:
+        """``{"pack/<digest>": stored ref}`` of every pack of ``info`` (uploads copied to
+        their shared address; base packs taken from the base version)."""
+        run = v.run
+        base: dict[str, Any] = {}
+        if any(p.source == "base" for p in info.packs):
+            base = await self._base_objects(run, info.base_version)
+        data_bucket = self.ctx.buckets.data
+        used: set[str] = set()
+        out: dict[str, Any] = {}
+        for pack in info.packs:
+            key = PACK_OBJECT_PREFIX + pack.digest
+            if pack.source == "base":
+                obj = base.get(key)
+                if not isinstance(obj, dict):
+                    raise IntegrityError(
+                        f"pack {pack.digest} is not a pack of base version v{info.base_version}"
+                    )
+                out[key] = obj
+                continue
+            name = pack.input or ""
+            ref = run.inputs.get(name) if name.startswith("part.") else None
+            if not isinstance(ref, dict) or name in used:
+                raise IntegrityError(f"pack {pack.digest} names no part input of this run")
+            used.add(name)
+            try:
+                meta = await self.ctx.store.stat(
+                    ref["bucket"], ref["name"], generation=int(ref["generation"])
+                )
+            except NotFound:
+                raise IntegrityError(f"the upload of input {name} is gone") from None
+            if meta.md5_hash is None:
+                raise IntegrityError(f"the upload of input {name} has no server-computed MD5")
+            digest = pack_digest(meta.size, meta.crc32c, meta.md5_hash)
+            if digest != pack.digest or (pack.size, pack.crc32c, pack.md5) != (
+                meta.size,
+                meta.crc32c,
+                meta.md5_hash,
+            ):
+                raise IntegrityError(
+                    f"pack {pack.digest} does not match the upload of input {name}"
+                )
+            copied = await self._copy(meta, data_bucket, pack_object_name(run.tenant_id, digest))
+            out[key] = _stored(copied)
+        return out
+
+    async def _base_objects(self, run: m.Run, base_version: int | None) -> dict[str, Any]:
+        """The objects of the ready collection version ``base_version`` of the run's
+        dataset (``IntegrityError`` when there is none)."""
+        if base_version is None or run.dataset_id is None:
+            raise IntegrityError("base packs need a base version")
+        async with self.ctx.db.session() as session:
+            base = await session.get(m.DatasetVersion, (run.dataset_id, base_version))
+            if (
+                base is None
+                or base.tenant_id != run.tenant_id
+                or base.status != "ready"
+                or base.layout != "collection"
+            ):
+                raise IntegrityError(
+                    f"base version v{base_version} is not a ready collection version"
+                )
+            return dict(base.objects)
 
     async def _columns(self, bucket: str, meta: ObjectMeta, cap: int) -> list[dict[str, Any]]:
         """``columns.json`` (Guided role detection): a list of ``ColumnProfile``."""
@@ -1051,6 +1244,10 @@ class Finalizer:
 MAX_PLOT_EXAMPLES_BYTES = 16 * 1024 * 1024
 """Cap on a describe run's ``plot_examples.json``."""
 
+MAX_COLLECTION_INFO = 1024**2
+"""Size cap of ``collection.json`` (v0.15)."""
+MAX_MEMBERS_BYTES = 32 * 1024**2
+"""Size cap of ``members.bin``: 32 bytes per distinct image (v0.15)."""
 MAX_COLUMN_PROFILES = 100_000
 """Profiles one ``columns.json`` may hold (the ingest caps columns far below this)."""
 
@@ -1075,6 +1272,19 @@ def _md5(copied: ObjectMeta, source: ObjectMeta) -> str:
     if md5 is None:  # verify_output_objects only passes objects with an MD5
         raise IntegrityError(f"{copied.name!r} has no server-computed MD5")
     return md5
+
+
+def _stored(meta: ObjectMeta) -> dict[str, Any]:
+    """The stored ref of a copied object (``DatasetVersion.objects`` values)."""
+    return {
+        "bucket": meta.bucket,
+        "name": meta.name,
+        "generation": meta.generation,
+        "size": meta.size,
+        "crc32c": meta.crc32c,
+        "md5": meta.md5_hash,
+        "content_type": meta.content_type,
+    }
 
 
 def run_bucket(v: _Verified) -> str:

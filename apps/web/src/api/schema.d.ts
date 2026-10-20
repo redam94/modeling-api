@@ -756,6 +756,28 @@ export interface paths {
         patch: operations["update_dataset_about"];
         trace?: never;
     };
+    "/v1/datasets/{dataset_id}/blobs/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Which images (by sha256) a collection version does not hold
+         * @description The digests of ``body.sha256`` that the base collection version does not hold, in
+         *     query order (v0.15). Upload only those: a new version takes the others from the base.
+         *     Only versions of this dataset are compared (no lookup across datasets or projects).
+         */
+        post: operations["find_missing_images"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/datasets/{dataset_id}/uploads": {
         parameters: {
             query?: never;
@@ -767,6 +789,28 @@ export interface paths {
         put?: never;
         /** Create Upload */
         post: operations["create_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An upload and whether its file arrived (resume an upload)
+         * @description An upload with ``received``: whether its file arrived. A client that resumes an
+         *     upload skips the files that arrived and renews the URL of the others when it expired
+         *     (v0.15).
+         */
+        get: operations["get_upload"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -811,6 +855,30 @@ export interface paths {
         get: operations["get_upload_inspection"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign a fresh PUT URL for an upload whose file did not arrive
+         * @description A fresh signed PUT (valid 1 h) for the same object of an upload whose file has not
+         *     arrived; an expired upload becomes ``pending`` again. ``409`` when the upload was turned
+         *     into a dataset version or its file already arrived (v0.15). Quota usage stops counting an
+         *     upload once it is ``expired``, so renewing one admits its size again (a ``pending`` upload
+         *     is counted already, also after its PUT expired).
+         */
+        post: operations["renew_upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4120,6 +4188,50 @@ export interface components {
             };
         };
         /**
+         * BlobMissing
+         * @description The answer to :class:`BlobQuery` (v0.15). Upload only the ``missing`` images.
+         * @example {
+         *       "base_version": 4,
+         *       "missing": [
+         *         "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+         *       ],
+         *       "present": 1
+         *     }
+         */
+        BlobMissing: {
+            /**
+             * Base Version
+             * @description The version compared with (none: no base, every image is missing)
+             */
+            base_version: number | null;
+            /**
+             * Missing
+             * @description Missing digests, in query order
+             */
+            missing: string[];
+            /** Present */
+            present: number;
+        };
+        /**
+         * BlobQuery
+         * @description Which images (by sha256) a collection version of the dataset does not hold (v0.15).
+         *
+         *     ``base_version``: ``None`` compares with the latest READY collection version; ``0``
+         *     compares with nothing (every image is missing).
+         * @example {
+         *       "sha256": [
+         *         "abababababababababababababababababababababababababababababababab",
+         *         "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+         *       ]
+         *     }
+         */
+        BlobQuery: {
+            /** Base Version */
+            base_version?: number | null;
+            /** Sha256 */
+            sha256: string[];
+        };
+        /**
          * BlockedKFoldPlan
          * @description ``k`` contiguous blocks; ``gap`` periods on each side of the test block are dropped.
          */
@@ -4453,11 +4565,11 @@ export interface components {
             inference: "mcmc" | "vi" | "map" | "smc" | "kalman" | "point" | "bootstrap" | "custom";
             /**
              * Input
-             * @description M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one
+             * @description M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. v0.15: 'collection' models implement fit_batches/score_batches and train on every image of an image collection through a lazy loader; they also read plain datasets
              * @default dataset
              * @enum {string}
              */
-            input?: "dataset" | "tree";
+            input?: "dataset" | "tree" | "collection";
             /** Loo Invalid Reason */
             loo_invalid_reason?: string | null;
             /**
@@ -4927,6 +5039,198 @@ export interface components {
             items?: components["schemas"]["Recommendation"][];
             /** Unanswered */
             unanswered?: string[];
+        };
+        /** ClassCount */
+        ClassCount: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        };
+        /**
+         * CollectionInfo
+         * @description ``collection.json``: what a collection version holds.
+         */
+        CollectionInfo: {
+            /** Base Version */
+            base_version?: number | null;
+            /**
+             * Classes
+             * @description Image count per class, by count (descending) then label
+             */
+            classes?: components["schemas"]["ClassCount"][];
+            /** Columns */
+            columns?: string[];
+            /** Dim */
+            dim: string;
+            /**
+             * Format
+             * @default mapi.collection/v1
+             * @constant
+             */
+            format?: "mapi.collection/v1";
+            /** Formats */
+            formats?: {
+                [key: string]: number;
+            };
+            /**
+             * Label
+             * @description The version has label(image)
+             */
+            label: boolean;
+            /** Manifest Sha256 */
+            manifest_sha256: string;
+            /** Max Size */
+            max_size: [
+                number,
+                number
+            ];
+            /** Min Size */
+            min_size: [
+                number,
+                number
+            ];
+            /**
+             * Mode
+             * @description Channels the images decode to
+             * @enum {string}
+             */
+            mode: "gray" | "rgb";
+            /** N Images */
+            n_images: number;
+            /** New Images */
+            new_images: number;
+            /**
+             * Other Classes
+             * @description Classes not listed in classes
+             * @default 0
+             */
+            other_classes?: number;
+            /** Packs */
+            packs: components["schemas"]["PackInfo"][];
+            /** Reused Images */
+            reused_images: number;
+            /**
+             * Size
+             * @description options.size, else the common size of all images, else none
+             */
+            size: [
+                number,
+                number
+            ] | null;
+            /**
+             * Split
+             * @description The version has split(image)
+             */
+            split: boolean;
+            /** Splits */
+            splits?: {
+                [key: string]: number;
+            };
+            /**
+             * Total Bytes
+             * @description Stored bytes of the distinct images
+             */
+            total_bytes: number;
+            /** Var */
+            var: string;
+        };
+        /**
+         * CollectionOptions
+         * @description How a client manifest and image parts become a collection version.
+         *
+         *     The manifest is a CSV, TSV or Parquet table with one row per image and at least the
+         *     sha256 of each image's bytes. Its other columns become the id, label, split and path of
+         *     each image, or are kept as coords.
+         */
+        CollectionOptions: {
+            /**
+             * Columns
+             * @description Other columns kept as coords (default: all others)
+             */
+            columns?: string[] | null;
+            /**
+             * Dim
+             * @default image
+             */
+            dim?: string;
+            /**
+             * Id Column
+             * @description Unique ids of the image dim (default: the path, else the sha256)
+             */
+            id_column?: string | null;
+            /**
+             * Label Column
+             * @description Class labels: the text variable 'label(image)', role target
+             */
+            label_column?: string | null;
+            /**
+             * Max Images
+             * @default 100000
+             */
+            max_images?: number;
+            /**
+             * Mode
+             * @description auto: rgb when an image has colour, else gray
+             * @default auto
+             * @enum {string}
+             */
+            mode?: "auto" | "gray" | "rgb";
+            /**
+             * Path Column
+             * @description Kept as the coord 'path' (ignored when the default is missing)
+             * @default path
+             */
+            path_column?: string | null;
+            /**
+             * Resize
+             * @default stretch
+             * @enum {string}
+             */
+            resize?: "stretch" | "crop" | "pad";
+            /**
+             * Sha256 Column
+             * @description Lowercase hex sha256 of each image
+             * @default sha256
+             */
+            sha256_column?: string;
+            /**
+             * Size
+             * @description Canonical (height, width) for samples and model defaults; each 1..4096
+             */
+            size?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Split Column
+             * @description Train/test assignment: the text coord 'split(image)'
+             */
+            split_column?: string | null;
+            /**
+             * Var
+             * @default pixels
+             */
+            var?: string;
+        };
+        /**
+         * CollectionSource
+         * @description ``DatasetVersionCreate.collection``: a manifest upload plus the parts it needs.
+         *
+         *     ``base_version``: ``None`` uses the latest READY collection version of the dataset
+         *     (when there is one) as the source of images the parts do not hold; ``0`` uses no base.
+         */
+        CollectionSource: {
+            /** Base Version */
+            base_version?: number | null;
+            /**
+             * Manifest Upload Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            manifest_upload_id: string;
+            options?: components["schemas"]["CollectionOptions"];
+            /** Part Upload Ids */
+            part_upload_ids?: string[];
         };
         /**
          * ColumnProfile
@@ -5940,8 +6244,83 @@ export interface components {
          *       },
          *       "version": 4
          *     }
+         * @example {
+         *       "collection": {
+         *         "classes": [
+         *           {
+         *             "count": 700,
+         *             "label": "bottle"
+         *           },
+         *           {
+         *             "count": 500,
+         *             "label": "can"
+         *           }
+         *         ],
+         *         "dim": "image",
+         *         "formats": {
+         *           "jpeg": 1150,
+         *           "png": 50
+         *         },
+         *         "label": true,
+         *         "manifest_sha256": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+         *         "max_size": [
+         *           512,
+         *           512
+         *         ],
+         *         "min_size": [
+         *           48,
+         *           48
+         *         ],
+         *         "mode": "rgb",
+         *         "n_images": 1200,
+         *         "new_images": 1200,
+         *         "packs": [
+         *           {
+         *             "crc32c": "4waSgw==",
+         *             "digest": "5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+         *             "entries": 1200,
+         *             "images": 1200,
+         *             "input": "part.0000",
+         *             "md5": "XrY7u+Ae7tCTyyK7j1rNww==",
+         *             "size": 52430000,
+         *             "source": "upload"
+         *           }
+         *         ],
+         *         "reused_images": 0,
+         *         "size": [
+         *           64,
+         *           64
+         *         ],
+         *         "split": true,
+         *         "splits": {
+         *           "test": 240,
+         *           "train": 960
+         *         },
+         *         "total_bytes": 52428800,
+         *         "var": "pixels"
+         *       },
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+         *       "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "issues": [],
+         *       "layout": "collection",
+         *       "project_id": "default",
+         *       "ready_at": "2026-10-15T09:40:10Z",
+         *       "ref": "dataset://default/product_photos@v5",
+         *       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *       "size_bytes": 52428800,
+         *       "sources": [
+         *         "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+         *         "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+         *       ],
+         *       "status": "ready",
+         *       "tenant_id": "default",
+         *       "version": 5
+         *     }
          */
         DatasetVersion: {
+            /** @description v0.15: what an image collection version holds (layout 'collection') */
+            collection?: components["schemas"]["CollectionInfo"] | null;
             /**
              * Created At
              * Format: date-time
@@ -5959,11 +6338,11 @@ export interface components {
             issues?: components["schemas"]["Issue"][];
             /**
              * Layout
-             * @description M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema)
+             * @description M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema). v0.15: 'collection' versions are image collections (collection; data_schema has the virtual pixels variable)
              * @default dataset
              * @enum {string}
              */
-            layout?: "dataset" | "tree";
+            layout?: "dataset" | "tree" | "collection";
             /** Message */
             message?: string | null;
             preview?: components["schemas"]["ObjectRef"] | null;
@@ -5999,8 +6378,10 @@ export interface components {
          * DatasetVersionCreate
          * @description Turn finished uploads into a new version via a sandboxed ingest run (202).
          *
-         *     Exactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several
-         *     files combined per node into one version, see :class:`IngestAssembly`).
+         *     Exactly one of: ``upload_id`` + ``mapping`` (one file), ``assembly`` (M4: several
+         *     files combined per node into one version, see :class:`IngestAssembly`), or
+         *     ``collection`` (v0.15: an image collection from a manifest and image parts, see
+         *     :class:`~mapi_spec.collection.CollectionSource`).
          * @example {
          *       "mapping": {
          *         "dims": {
@@ -6069,10 +6450,29 @@ export interface components {
          *       },
          *       "message": "2024 and 2025 cubes plus the instrument"
          *     }
+         * @example {
+         *       "collection": {
+         *         "manifest_upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+         *         "options": {
+         *           "label_column": "label",
+         *           "size": [
+         *             64,
+         *             64
+         *           ],
+         *           "split_column": "split"
+         *         },
+         *         "part_upload_ids": [
+         *           "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+         *         ]
+         *       },
+         *       "message": "Product photos, October"
+         *     }
          */
         DatasetVersionCreate: {
             /** @description M4: several uploads combined into one (tree) version */
             assembly?: components["schemas"]["IngestAssembly"] | null;
+            /** @description v0.15: an image collection (a manifest upload and image part uploads) */
+            collection?: components["schemas"]["CollectionSource"] | null;
             mapping?: components["schemas"]["IngestMapping"] | null;
             /** Message */
             message?: string | null;
@@ -9770,6 +10170,12 @@ export interface components {
          *         "split_column": "split"
          *       }
          *     }
+         * @example {
+         *       "format": "safetensors",
+         *       "weights": {
+         *         "max_parameters": 50000000
+         *       }
+         *     }
          */
         IngestMapping: {
             /** Dims */
@@ -9780,7 +10186,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder" | "safetensors";
             /** @description M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5') */
             hdf5?: components["schemas"]["Hdf5Mapping"] | null;
             /** @description v0.14: options of an 'image_folder' upload (defaults when left out) */
@@ -9804,6 +10210,8 @@ export interface components {
             vars?: {
                 [key: string]: components["schemas"]["VarMapping"];
             };
+            /** @description v0.15: options of a 'safetensors' upload (defaults when left out) */
+            weights?: components["schemas"]["WeightsOptions"] | null;
             /**
              * Wide
              * @description M3: variables read from one column per label of a dim (wide tables)
@@ -11530,6 +11938,11 @@ export interface components {
             settings_schema?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /**
+             * Side Table Params
+             * @description v0.15: settings keys whose value names a data.side_tables entry the model reads (pretrained weights, for example), like a step's side_table_params
+             */
+            side_table_params?: string[];
             /** Version */
             version: string;
         };
@@ -12475,6 +12888,47 @@ export interface components {
             units?: "original" | "model";
             /** Vars */
             vars?: string[];
+        };
+        /**
+         * PackInfo
+         * @description One pack a collection version reads.
+         */
+        PackInfo: {
+            /**
+             * Crc32C
+             * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
+             * @example 4waSgw==
+             */
+            crc32c: string;
+            /** Digest */
+            digest: string;
+            /**
+             * Entries
+             * @description Zip entries in the pack
+             */
+            entries: number;
+            /**
+             * Images
+             * @description Distinct images of this version stored in it
+             */
+            images: number;
+            /**
+             * Input
+             * @description Uploads: the ingest input it came from ('part.0003'); base: none
+             */
+            input?: string | null;
+            /**
+             * Md5
+             * @description MD5 as GCS reports it: base64 of the 16-byte digest
+             */
+            md5: string;
+            /** Size */
+            size: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "upload" | "base";
         };
         /**
          * Page[ApiToken]
@@ -14514,6 +14968,11 @@ export interface components {
             outputs?: string[];
             /** Resolved */
             resolved: string;
+            /**
+             * Side Tables
+             * @description v0.15: the data.side_tables entries the model reads (fit time only)
+             */
+            side_tables?: string[];
             /** Use */
             use: string;
         };
@@ -14569,10 +15028,13 @@ export interface components {
         };
         /**
          * ResourceClass
-         * @description Executor resource class. Ordered: ``S < M < L < XL``.
+         * @description Executor resource class. Ordered: ``S < M < L < XL < GPU``.
+         *
+         *     ``GPU`` is the last (highest-rank) member on purpose: a quota whose
+         *     ``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.
          * @enum {string}
          */
-        ResourceClass: "S" | "M" | "L" | "XL";
+        ResourceClass: "S" | "M" | "L" | "XL" | "GPU";
         /**
          * ResourceHint
          * @description Resource guidance for scheduling.
@@ -17741,7 +18203,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder" | "safetensors";
             /** Groups */
             groups?: string[];
             /** Size Bytes */
@@ -17809,6 +18271,11 @@ export interface components {
             id: string;
             /** Project Id */
             project_id: string;
+            /**
+             * Received
+             * @description v0.15 (get_upload, renew_upload): the file arrived in the quarantine bucket
+             */
+            received?: boolean | null;
             /** Size Bytes */
             size_bytes: number;
             /**
@@ -18469,6 +18936,46 @@ export interface components {
             events?: components["schemas"]["WebhookEventType"][] | null;
             /** Url */
             url?: string | null;
+        };
+        /**
+         * WeightsOptions
+         * @description A safetensors file of pretrained network weights (read in the sandboxed ingest run).
+         *
+         *     The file becomes a weights dataset: ``weights(param)`` float32 plus the tensor table in
+         *     the ``mapi_weights`` attr. Models and steps read it as a side table.
+         * @example {
+         *       "max_parameters": 50000000
+         *     }
+         * @example {
+         *       "arch": {
+         *         "blocks": [
+         *           1,
+         *           1,
+         *           1
+         *         ],
+         *         "channels": 3,
+         *         "kind": "resnet",
+         *         "widths": [
+         *           16,
+         *           32,
+         *           64
+         *         ]
+         *       }
+         *     }
+         */
+        WeightsOptions: {
+            /**
+             * Arch
+             * @description Architecture JSON, when the file's __metadata__ has no 'mapi_arch'
+             */
+            arch?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Max Parameters
+             * @default 200000000
+             */
+            max_parameters?: number;
         };
         /** WhatIfCompile */
         WhatIfCompile: {
@@ -21329,6 +21836,86 @@ export interface operations {
             };
         };
     };
+    find_missing_images: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlobQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlobMissing"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     create_upload: {
         parameters: {
             query?: never;
@@ -21360,6 +21947,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSession"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -21492,6 +22147,83 @@ export interface operations {
                 };
             };
             /** @description Problem: NOT_READY */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    renew_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSession"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
             409: {
                 headers: {
                     [name: string]: unknown;

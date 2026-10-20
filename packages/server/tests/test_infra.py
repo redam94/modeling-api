@@ -70,6 +70,7 @@ CHAIN = (
     "0014_tree_datasets",
     "0015_run_tracking",
     "0016_experiments_media",
+    "0017_collections",
 )
 
 

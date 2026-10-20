@@ -7,7 +7,8 @@ reproducible from a ledger row (round half to even at the micro). Every amount n
 
 Usage of an attempt is ``vcpu × billed_seconds × tasks`` vCPU-seconds and
 ``ram_gib × billed_seconds × tasks`` GiB-seconds, from :data:`RESOURCE_CLASSES`;
-``billed_seconds`` is wall time rounded up to the table's billing increment.
+``billed_seconds`` is wall time rounded up to the table's billing increment. A class with
+accelerators (``GPU``) also meters ``accelerators × billed_seconds × tasks`` accelerator-seconds.
 
 :data:`DEFAULT_PRICE_TABLE` mirrors Cloud Run's published list prices (CPU 0.000018 USD per
 vCPU-second, memory 0.000002 USD per GiB-second); deployments configure their own. An E33
@@ -61,6 +62,7 @@ class ClassPrice(StrictModel):
 
     vcpu_second_nanos: int = Field(..., ge=0)
     gib_second_nanos: int = Field(..., ge=0)
+    accelerator_second_nanos: int = Field(0, ge=0, exclude_if=lambda v: v == 0)
 
 
 class PriceTable(StrictModel):
@@ -92,20 +94,32 @@ class PriceTable(StrictModel):
 
 
 _LIST = ClassPrice(vcpu_second_nanos=18_000, gib_second_nanos=2_000)
+# Cloud Run L4 GPU list price per GPU-second (no zonal redundancy) [verify: not checked
+# against a live GCP bill].
+_GPU = ClassPrice(
+    vcpu_second_nanos=18_000, gib_second_nanos=2_000, accelerator_second_nanos=186_700
+)
 DEFAULT_PRICE_TABLE: Final = PriceTable(
     version="cloudrun-list-2026-10",
     currency="USD",
-    classes={ResourceClass.S: _LIST, ResourceClass.M: _LIST, ResourceClass.L: _LIST},
+    classes={
+        ResourceClass.S: _LIST,
+        ResourceClass.M: _LIST,
+        ResourceClass.L: _LIST,
+        ResourceClass.GPU: _GPU,
+    },
     billing_increment_ms=100,
     source="Cloud Run list prices (CPU per vCPU-second, memory per GiB-second); "
     "a default for estimates, configure the deployment's own table",
 )
-"""Cloud Run-like list-price defaults. ``XL`` (GKE, M6) has no default price."""
+"""Cloud Run-like list-price defaults. ``XL`` (GKE, M6) has no default price; ``GPU`` adds
+the L4 accelerator price."""
 
 
 class ResourceUsage(StrictModel):
     vcpu_seconds: float = Field(..., ge=0)
     gib_seconds: float = Field(..., ge=0)
+    accelerator_seconds: float = Field(0, ge=0, exclude_if=lambda v: v == 0)
 
 
 def class_usage(
@@ -125,6 +139,7 @@ def class_usage(
     return ResourceUsage(
         vcpu_seconds=round(spec.vcpu * seconds, 6),
         gib_seconds=round(spec.ram_bytes / GIB * seconds, 6),
+        accelerator_seconds=round(spec.accelerators * seconds, 6),
     )
 
 
@@ -137,8 +152,10 @@ def price_usage(
 ) -> int:
     """Amount in micros (round half to even)."""
     p = table.price(resource_class)
-    nanos = _dec(usage.vcpu_seconds) * p.vcpu_second_nanos + _dec(usage.gib_seconds) * (
-        p.gib_second_nanos
+    nanos = (
+        _dec(usage.vcpu_seconds) * p.vcpu_second_nanos
+        + _dec(usage.gib_seconds) * p.gib_second_nanos
+        + _dec(usage.accelerator_seconds) * p.accelerator_second_nanos
     )
     return int((nanos / NANOS_PER_MICRO).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
 

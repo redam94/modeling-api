@@ -18,6 +18,7 @@ from typing import Any, Final
 
 import xarray as xr
 from mapi_sdk.bundle import Bundle
+from mapi_sdk.collection import Collection
 from mapi_sdk.harness import FitHooks, fit_spec
 from mapi_sdk.registry import Registry
 from mapi_spec.governance import RefitBudget
@@ -102,12 +103,13 @@ class Refitter:
 
     def fit(
         self,
-        data: xr.Dataset,
+        data: xr.Dataset | Collection,
         spec: ModelSpec | None = None,
         *,
         raw_schema: DataSchema | None = None,
     ) -> Bundle:
-        """One refit (counted against the budget)."""
+        """One refit (counted against the budget). v0.15: ``data`` may be an image
+        collection (the harness reads it lazily; its schema is the collection's)."""
         if self.used >= self.budget.max_refits:
             raise BudgetExhausted(
                 f"the run's refit budget ({self.budget.max_refits} refits) is used up"
@@ -122,7 +124,8 @@ class Refitter:
             data,
             self.side_tables,
             self.registry,
-            raw_schema=raw_schema or self.bundle.raw_schema,
+            raw_schema=raw_schema
+            or (data.schema if isinstance(data, Collection) else self.bundle.raw_schema),
             hooks=FitHooks(cancel=self.cancel),
             keep_evaluation_bundle=False,
             hash_data=False,

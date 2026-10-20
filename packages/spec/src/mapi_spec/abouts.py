@@ -23,6 +23,7 @@ from mapi_spec.about import About, AboutKind, AboutReference, Difficulty, Typica
 __all__ = [
     "CAUSAL_MODEL_IDS",
     "CLASSIFICATION_MODEL_IDS",
+    "DL_MODEL_IDS",
     "MODEL_ABOUTS",
     "PLANNED_MODEL_IDS",
     "SCIENCE_MODEL_IDS",
@@ -558,8 +559,46 @@ STEP_ABOUTS: Final[dict[str, About]] = {
         related=["core.impute"],
         fits=_PREP,
     ),
+    "dl.embed": _a(
+        "Image features from a pretrained network",
+        "Changes each image into a short list of numbers with a pretrained network. A simple "
+        "classifier after this step can then learn the classes from a few examples.",
+        [
+            "You have a pretrained network as a weights dataset",
+            "You want a fast or a Bayesian classifier on images with few labels",
+        ],
+        [
+            "You have no pretrained weights that suit your images",
+            "The dataset is a large image collection (use the fine-tune classifier, or set a "
+            "sample in data.collection)",
+        ],
+        [
+            "An image dataset: pixels and, for the classifier, a label for each image",
+            "A weights dataset from a safetensors upload, given as a side table",
+        ],
+        [
+            "The network learned features that also separate your classes",
+            "The network does not change: the step does not train it",
+        ],
+        ["A variable 'embedding' with one row of numbers for each image"],
+        _I,
+        _SEC,
+        "Change 500 product photos into 64 numbers each, then classify them with logistic "
+        "regression.",
+        related=[
+            "dl.finetune_classifier",
+            "sklearn.multiclass_classifier",
+            "tabular.image_logistic",
+        ],
+        expert="A frozen mapi-jax ResNet backbone (GroupNorm, global average pooling) loaded "
+        "from a weights side table; writes embedding(image, feature) float32 and records the "
+        "weights sha256 in its state. Batches through the JIT-compiled feature function; runs "
+        "on the CPU in every image that has mapi-jax.",
+        fits={"goal": ["classify"], "data_shape": ["images"]},
+    ),
 }
-"""Cards of the built-in preprocessing steps (``mapi-steps``)."""
+"""Cards of the built-in preprocessing steps (``mapi-steps``) and of plugin steps
+(``dl.embed`` of ``mapi-jax``)."""
 
 # ==================================================================================== splits
 
@@ -1808,8 +1847,12 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         [
             "An image dataset from an image folder upload: pixels and a label for each image",
             "Images of the same size (the upload can resize them)",
+            "Or, with input 'features', image features from the dl.embed step",
         ],
-        ["The main patterns of the pixels (PCA) or the pixels separate the classes linearly"],
+        [
+            "The main patterns of the pixels (PCA), the pixels or the image features separate "
+            "the classes linearly"
+        ],
         [
             "The probability of each class for each image, with a range",
             "Images of the main patterns and of the class means in the run",
@@ -1817,15 +1860,150 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         _I,
         _MIN,
         "Classify 16 x 16 pictures of circles, squares and crosses, and test on 25% of them.",
-        related=["sklearn.multiclass_classifier", "core.stratified", "core.column"],
+        related=[
+            "sklearn.multiclass_classifier",
+            "core.stratified",
+            "core.column",
+            "dl.embed",
+            "dl.cnn_classifier",
+        ],
         expert="Bayesian multinomial logistic regression (PyMC, NUTS) on PCA scores of the "
         "pixels (or the block-averaged pixels), with zero-sum normal priors over the classes. "
-        "Draws representation of y_hat(chain, draw, image, class).",
+        "With input 'features' (v1.1) it reads feature(image, feature) from the dl.embed step: "
+        "standardised features, PCA only above max_features. Draws representation of "
+        "y_hat(chain, draw, image, class).",
         fits={
             "goal": ["classify"],
             "data_shape": ["images"],
             "uncertainty": ["essential", "nice"],
             "frequency": ["not_time"],
+        },
+    ),
+    # ---------------------------------------------------------------- deep learning (v0.15)
+    "dl.mlp": _a(
+        "Neural network for tables",
+        "Learns a value or a class for each row of a table with a small neural network. It "
+        "shows how the error on the training and validation rows changes while it learns.",
+        [
+            "You have thousands of rows and the relation to the result is not linear",
+            "You want to see the training curves and stop when the model starts to overfit",
+        ],
+        [
+            "You have a few hundred rows or less (use a regression or a tree model)",
+            "You must explain the effect of each column",
+        ],
+        ["A table with a result column (a number or a class) and number columns that explain it"],
+        [
+            "The rows that you score are similar to the rows that the model learned from",
+            "The columns are numbers (the model standardises them)",
+        ],
+        [
+            "The value, or the probability of each class, for each row, with a range",
+            "Training and validation curves of the loss for each epoch",
+        ],
+        _I,
+        _MIN,
+        "Predict the delivery time of 50 000 orders from distance, weight and the hour, and "
+        "stop when the validation loss does not decrease.",
+        related=["sklearn.tabular_regressor", "sklearn.multiclass_classifier", "dl.cnn_classifier"],
+        expert="A multilayer perceptron (flax nnx, optax AdamW, warm-up cosine schedule, early "
+        "stopping on the validation loss) on standardised numeric features. Draws "
+        "(chain=1, draw) from a last-layer Laplace approximation (prior precision from the "
+        "evidence) or from MC dropout. A network trained by gradient descent has no pointwise "
+        "log likelihood, so LOO is not valid. Runs on the CPU; the GPU class gives no gain "
+        "for small tables.",
+        fits={
+            "goal": ["predict_values", "classify"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "frequency": ["not_time"],
+            "uncertainty": ["nice", "no"],
+        },
+    ),
+    "dl.cnn_classifier": _a(
+        "Train an image classifier",
+        "Trains a neural network that puts images into classes. It learns from every image of "
+        "a large image collection and shows the training and validation curves while it "
+        "learns.",
+        [
+            "You have thousands of labelled images or more",
+            "The classes differ in shapes or textures that a linear model cannot separate",
+        ],
+        [
+            "You have fewer than a few hundred images (use image features and a simple classifier)",
+            "A pretrained network for similar images exists (use the fine-tune classifier)",
+        ],
+        [
+            "An image collection or an image folder dataset with a label for each image",
+            "For more than a few thousand images: the GPU resource class",
+        ],
+        [
+            "The labels are correct for most images",
+            "The images that you score are similar to the training images",
+        ],
+        [
+            "The probability of each class for each image, with a range",
+            "Training curves, the confusion matrix for each epoch and the wrong validation images",
+        ],
+        _I,
+        _LONG,
+        "Train on 40 000 photos of 10 product types on the GPU class, and stop when the "
+        "validation accuracy does not increase.",
+        related=["dl.finetune_classifier", "tabular.image_logistic", "dl.embed"],
+        expert="A small ResNet (GroupNorm, global average pooling; widths and blocks are "
+        "settings) in flax nnx, trained with optax on fixed-shape batches from the lazy, "
+        "seeded loader (fit_batches) with optional augmentation. Checkpoints every N epochs "
+        "and resumes. Draws (chain=1, draw) from a last-layer Laplace approximation or MC "
+        "dropout. Uses the GPU class when given (one NVIDIA L4), else the CPU.",
+        fits={
+            "goal": ["classify"],
+            "data_shape": ["images"],
+            "frequency": ["not_time"],
+            "uncertainty": ["nice", "no"],
+            "speed": ["can_wait"],
+        },
+    ),
+    "dl.finetune_classifier": _a(
+        "Adapt a pretrained image network",
+        "Starts from a network that learned on other images and trains it on your labelled "
+        "images. It needs fewer images and less time than a new network.",
+        [
+            "You have pretrained weights for the network as a weights dataset",
+            "You have a few hundred to many thousand labelled images",
+        ],
+        [
+            "You have no pretrained weights in the mapi-jax ResNet layout",
+            "Your images are very different from the images that the network learned from",
+        ],
+        [
+            "An image collection or an image folder dataset with a label for each image",
+            "A weights dataset from a safetensors upload, given as the side table 'pretrained'",
+        ],
+        [
+            "The pretrained features are useful for your classes",
+            "The images that you score are similar to the training images",
+        ],
+        [
+            "The probability of each class for each image, with a range",
+            "Training curves, the confusion matrix for each epoch and the wrong validation images",
+        ],
+        _I,
+        _LONG,
+        "Adapt a network that learned on photos to 5 types of plant disease with 800 labelled "
+        "leaf images.",
+        related=["dl.cnn_classifier", "dl.embed", "tabular.image_logistic"],
+        expert="Loads the backbone from a weights side table (mapi_weights tensor table, "
+        "architecture from its mapi_arch metadata), trains the new head first (head_epochs) "
+        "and then the whole network with a smaller backbone learning rate, or keeps the "
+        "backbone frozen (freeze: backbone). Gray images in an RGB backbone repeat the "
+        "channel. Pretrained weights must use the mapi-jax ResNet layout; there is no "
+        "conversion from other frameworks. Same draws, checkpoints and GPU use as "
+        "dl.cnn_classifier.",
+        fits={
+            "goal": ["classify"],
+            "data_shape": ["images"],
+            "frequency": ["not_time"],
+            "uncertainty": ["nice", "no"],
         },
     ),
     # ---------------------------------------------------------------- scientific models
@@ -3024,12 +3202,18 @@ CLASSIFICATION_MODEL_IDS: Final[frozenset[str]] = frozenset(
 """The v0.14 classification models: the multiclass classifier of ``mapi-sklearn`` and the
 image classifier of ``mapi-plugin-tabular``."""
 
+DL_MODEL_IDS: Final[frozenset[str]] = frozenset(
+    {"dl.mlp", "dl.cnn_classifier", "dl.finetune_classifier"}
+)
+"""The v0.15 deep learning models of ``mapi-jax``."""
+
 PLANNED_MODEL_IDS: Final[frozenset[str]] = (
     frozenset(MODEL_ABOUTS)
     - SURVIVING_MODEL_IDS
     - SCIENCE_MODEL_IDS
     - CAUSAL_MODEL_IDS
     - CLASSIFICATION_MODEL_IDS
+    - DL_MODEL_IDS
 )
 """Model ids the v0.5 mmm-framework and statsmodels plugins implement (their cards are
 here so plugins, docs and the chooser use the same words)."""

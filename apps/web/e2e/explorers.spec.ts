@@ -94,8 +94,8 @@ test("the catalog shows every plot as a card with an example", async ({ page }) 
   const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
   // v0.10: core.roc_pr, core.confusion, core.loss_curve, core.loo_pit; v0.12: the MMM pack (8 mmm.*,
   // core.energy, core.prior_posterior); v0.13: causal.impact, causal.pre_fit, causal.donor_weights,
-  // causal.event_study
-  await expect(cards).toHaveCount(54);
+  // causal.event_study; v0.15: ml.training_curves, ml.confusion_epochs, ml.misclassified
+  await expect(cards).toHaveCount(57);
   // the first card's thumbnail renders in the sandbox (Vega-Lite)
   const first = page.getByTestId("plot-card").first();
   await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });

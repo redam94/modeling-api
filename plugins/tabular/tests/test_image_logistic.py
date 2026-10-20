@@ -231,11 +231,14 @@ def test_the_guide_spec_names_metrics_for_classes() -> None:
     must name metrics that a classifier has, or the run shows no holdout metric."""
     guide = Path(__file__).resolve().parents[3] / "docs" / "guides" / "image-data.md"
     blocks = re.findall(r"```yaml\n(.*?)```", guide.read_text("utf-8"), flags=re.S)
-    (text,) = [b for b in blocks if "tabular.image_logistic" in b]
-    spec = load_model_spec(text)
-    assert spec.evaluate.metrics
-    assert set(spec.evaluate.metrics) <= set(CATEGORICAL_METRICS)
-    ImageLogisticSettings.model_validate(spec.model.settings)
+    # whole specs only (other blocks are fragments of a spec)
+    texts = [b for b in blocks if "tabular.image_logistic" in b and b.startswith("apiVersion")]
+    assert texts
+    for text in texts:
+        spec = load_model_spec(text)
+        assert spec.evaluate.metrics
+        assert set(spec.evaluate.metrics) <= set(CATEGORICAL_METRICS)
+        ImageLogisticSettings.model_validate(spec.model.settings)
 
 
 class _MediaCtx:
@@ -325,3 +328,141 @@ def test_tiny_fit_classifies_the_shapes_and_logs_media(registry: Registry) -> No
     pred = y_hat.mean(("chain", "draw")).argmax("class").values
     hits = np.asarray(y_hat["class"].values)[pred] == test["label"].values
     assert hits.mean() > 0.8
+
+
+# ----------------------------------------------------------------- input: features (v1.1)
+
+
+def _embedding(n: int = 15, f: int = 6, seed: int = 0) -> xr.Dataset:
+    """Image features as the dl.embed step writes them: embedding(image, feature) float32."""
+    rng = np.random.default_rng(seed)
+    labels = np.array(["circle", "cross", "square"])[np.arange(n) % 3]
+    centres = rng.normal(size=(3, f)) * 3
+    values = centres[np.arange(n) % 3] + rng.normal(size=(n, f))
+    return xr.Dataset(
+        {
+            "embedding": (("image", "feature"), values.astype(np.float32)),
+            "label": (("image",), labels),
+        },
+        coords={"image": [f"{j:02d}" for j in range(n)], "feature": np.arange(f)},
+    )
+
+
+def test_features_template_resolves_without_pixel_dims() -> None:
+    man = ImageLogistic.manifest()
+    assert man.version == "1.1.0"
+    schema = man.schema_template.resolve(
+        {"input": "features", "pixels": "embedding", "feature_dim": "feat"}
+    )
+    assert schema.vars["embedding"].dims == ("image", "feat")
+    assert schema.vars["embedding"].dtype == "float32"
+    assert {"y", "x", "channel"}.isdisjoint(schema.dims)
+    assert schema.dims["feat"].policy == "fixed"
+    pixels = man.schema_template.resolve({})
+    assert pixels.vars["pixels"].dims == ("image", "y", "x", "channel")
+    with pytest.raises(ValidationError):
+        _settings(input="features", feature_dim="image")
+
+
+def _features_fitted(ds: xr.Dataset, classes: list[str], *, max_features: int) -> Fitted:
+    s = _settings(input="features", pixels="embedding", max_features=max_features)
+    flat = ds["embedding"].transpose("image", "feature").values.astype(float)
+    kind = "pca" if flat.shape[1] > max_features else "pixels"
+    basis = _fit_basis(flat, s.model_copy(update={"features": kind}), seed=0)
+    feats = basis.dataset(s.model_copy(update={"features": kind}), (0, 0, 0), classes)
+    feats.attrs.update({"input": "features", "n_inputs": flat.shape[1]})
+    n = basis.scale.size
+    rng = np.random.default_rng(1)
+    k = len(classes)
+    alpha = rng.normal(size=(1, 20, k))
+    beta = rng.normal(size=(1, 20, n, k))
+    post = xr.Dataset(
+        {
+            "alpha": (("chain", "draw", "class"), alpha - alpha.mean(-1, keepdims=True)),
+            "beta": (("chain", "draw", "feature", "class"), beta - beta.mean(-1, keepdims=True)),
+        },
+        coords={"chain": [0], "draw": np.arange(20), "class": classes},
+    )
+    return Fitted(
+        manifest=ImageLogistic.manifest(),
+        settings=s.model_dump(mode="json"),
+        fit_config=FitConfig(),
+        groups={"posterior": post, FEATURES: feats},
+    )
+
+
+@pytest.mark.parametrize("max_features", [4, 256])
+def test_features_score_from_a_hand_built_posterior(max_features: int) -> None:
+    ds = _embedding()
+    classes = ["circle", "cross", "square"]
+    fitted = _features_fitted(ds, classes, max_features=max_features)
+    # 6 features: standardised as they are (256), PCA to n_components above max_features (4)
+    expected = 6 if max_features == 256 else min(16, ds.sizes["image"] - 1, 6)
+    assert fitted.groups[FEATURES].sizes["feature"] == expected
+    out = ImageLogistic().score(
+        fitted, ds.drop_vars("label"), load_score_request(REQ), ScoreContext()
+    )
+    y_hat = out["predictions"].to_dataset()["y_hat"]
+    assert y_hat.dims == ("chain", "draw", "image", "class")
+    assert y_hat.sizes["image"] == 15
+    np.testing.assert_allclose(y_hat.sum("class").values, 1.0)
+
+
+def test_features_refusals() -> None:
+    ds = _embedding()
+    fitted = _features_fitted(ds, ["circle", "cross", "square"], max_features=256)
+    req, ctx = load_score_request(REQ), ScoreContext()
+    with pytest.raises(MapiError, match="fitted on 6"):
+        ImageLogistic().score(fitted, _embedding(f=5), req, ctx)
+    with pytest.raises(MapiError) as err:
+        ImageLogistic().score(fitted, ds.drop_vars("embedding"), req, ctx)
+    assert err.value.code is ErrorCode.MISSING_FUTURE_COVARIATE
+    bad = ds.assign(embedding=ds["embedding"].where(ds["image"] != "00"))
+    with pytest.raises(MapiError, match="without missing values"):
+        ImageLogistic().score(fitted, bad, req, ctx)
+    with pytest.raises(MapiError, match="must have the dims"):
+        ImageLogistic().score(fitted, ds.rename({"feature": "f"}), req, ctx)
+
+
+FEATURES_SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: shapes-embed, project: vision}
+data:
+  dataset: dataset://vision/shapes@latest
+  split: {kind: column, dim: image, column: split, holdout: [test]}
+  side_tables:
+    backbone: {ref: "dataset://vision/tiny-resnet@v1", score_policy: pinned}
+pipeline:
+  - {id: embed, use: dl.embed@^1, with: {weights: backbone}}
+model:
+  use: tabular.image_logistic@^1
+  settings: {input: features, pixels: embedding}
+  fit: {seed: 4, mode: evaluate_then_refit, engine: nutpie, tune: 200, draws: 100, chains: 1}
+evaluate: {metrics: [accuracy, log_score]}
+"""
+
+
+@pytest.mark.slow
+def test_tiny_fit_on_embeddings_of_images(registry: Registry) -> None:
+    testing = pytest.importorskip("mapi_jax.testing")
+    from mapi_sdk.testing.images import image_dataset
+
+    ds = image_dataset(n_per_class=6, size=8)
+    recorder = MetricRecorder()
+    b = fit_spec(
+        FEATURES_SPEC,
+        ds,
+        side_tables={"backbone": testing.tiny_weights_dataset()},
+        registry=registry,
+        raw_schema=testing.image_schema(ds),
+        hooks=FitHooks(tracker=recorder),
+    )
+    assert recorder.params["image.input"] == "features"
+    assert b.model.groups[FEATURES].attrs["input"] == "features"
+    assert {"accuracy", "log_score"} <= set(b.metrics.values)
+    req = load_score_request(REQ + "mode: predict\n")
+    out = score_bundle(b, req, ds.isel(image=slice(0, 4)), registry=registry, return_full=True)
+    y_hat = out["predictions"].to_dataset()["y_hat"]
+    assert y_hat.sizes["image"] == 4
+    np.testing.assert_allclose(y_hat.sum("class").values, 1.0, rtol=1e-6)

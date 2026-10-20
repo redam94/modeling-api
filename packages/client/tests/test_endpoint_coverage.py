@@ -1,7 +1,7 @@
 """Every endpoint a program may call has a request builder whose method, path, success
-statuses and project scoping match ``mapi_spec.api.ALL_ENDPOINTS`` (the v0.5 table: M1, M2,
-M3 and M3.5, plus the M4 rows) and ``ROUTE_ACCESS`` - the contract the server's route table
-is tested against."""
+statuses and project scoping match ``mapi_spec.api.ALL_ENDPOINTS`` (the v0.5 table: M1,
+M2, M3 and M3.5, plus the M4 and later rows) and ``ROUTE_ACCESS`` - the contract the
+server's route table is tested against."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from mapi_client import _calls_m4 as m4
 from mapi_client import _calls_m35 as m35
 from mapi_client import _calls_tracking as tr
 from mapi_client import _calls_v014 as v14
+from mapi_client import _calls_v015 as v15
 from mapi_client._http import Call
 from mapi_spec.api import (
     ALL_ENDPOINTS,
@@ -24,6 +25,7 @@ from mapi_spec.api import (
     PREFER_HEADER,
     ROUTE_ACCESS,
     ApprovalCreate,
+    BlobQuery,
     DataExploreRequest,
     DatasetAboutUpdate,
     DatasetCreate,
@@ -418,6 +420,10 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "create_run_view": lambda: v14.create_run_view(_ex(RunViewCreate)),
     "update_run_view": lambda: v14.update_run_view("rv_1", _ex(RunViewPatch)),
     "delete_run_view": lambda: v14.delete_run_view("rv_1"),
+    # v0.15: resumable uploads and image collections
+    "get_upload": lambda: v15.get_upload("ds_1", "upl_1"),
+    "renew_upload": lambda: v15.renew_upload("ds_1", "upl_1"),
+    "find_missing_images": lambda: v15.find_missing_images("ds_1", _ex(BlobQuery)),
 }
 
 CLIENT_ENDPOINTS = ALL_ENDPOINTS

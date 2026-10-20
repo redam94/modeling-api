@@ -1045,7 +1045,9 @@ class RunSpec(StrictModel):
         default_factory=dict,
         max_length=256,
         description="M4: the layout of dataset inputs that are not a plain dataset (input "
-        "name -> 'tree' for a data.tree.zip); absent inputs are 'dataset'",
+        "name -> 'tree' for a data.tree.zip; v0.15: 'collection' for an image collection, "
+        "whose manifest.parquet is the input and whose info and packs are the inputs "
+        "<name>.info and <name>.pack.<i>); absent inputs are 'dataset'",
         exclude_if=lambda v: not v,
     )
 
@@ -1506,6 +1508,11 @@ WORKER_ENV_ALLOWLIST: Final = frozenset(
         "NUMBA_CACHE_DIR",
         "PYTENSOR_FLAGS",
         "XLA_FLAGS",
+        # v0.15: JAX/XLA device selection and GPU memory (mapi-jax)
+        "JAX_PLATFORMS",
+        "XLA_PYTHON_CLIENT_PREALLOCATE",
+        "XLA_PYTHON_CLIENT_MEM_FRACTION",
+        "CUDA_VISIBLE_DEVICES",
     }
 )
 """The only variables the supervisor passes to the worker (every ``MAPI_*`` is scrubbed)."""

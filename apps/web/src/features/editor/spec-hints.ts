@@ -9,6 +9,7 @@
  */
 import type { CatalogResponse, DataSchema, Dataset, ModelCatalogEntry, StageSchema, StepCatalogEntry } from "@/api/types";
 import { flatSchema, nodeKey, nodesWithVars, ROOT, type NodeSelection } from "@/features/datasets/tree";
+import { GPU_CLASS, GPU_CLASS_HELP } from "@/lib/run-state";
 
 type ModelManifest = ModelCatalogEntry["manifest"];
 
@@ -418,6 +419,7 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
   }
   const outputs = defs.OutputsBlock;
   addSnippets(prop(outputs, "plots"), plotSnippets(catalog, model));
+  resourceClassHelp(schema, model);
   if (model?.derived?.length) {
     addSnippets(
       prop(outputs, "derived"),
@@ -425,6 +427,33 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
     );
   }
   return schema;
+}
+
+/** The CPU classes (v0.15 adds `GPU`): what each gives a run. */
+const CLASS_HELP: Record<string, string> = {
+  S: "Small: 2 vCPU.",
+  M: "Medium: 4 vCPU.",
+  L: "Large: 8 vCPU.",
+  XL: "Extra large: only when an operator allows it.",
+  [GPU_CLASS]: GPU_CLASS_HELP,
+};
+
+/**
+ * v0.15: descriptions of the resource classes in `execution.resource_class`, and whether the
+ * model of the spec can use the GPU class (`manifest.resources.gpu`).
+ */
+export function resourceClassHelp(schema: Json, model: ModelManifest | null): void {
+  const defs = isObj(schema.$defs) ? schema.$defs : null;
+  const rc = defs?.ResourceClass;
+  if (!isObj(rc)) return;
+  const values = Array.isArray(rc.enum) ? rc.enum.map(String) : Object.keys(CLASS_HELP);
+  if (Array.isArray(rc.enum)) rc.markdownEnumDescriptions = values.map((v) => CLASS_HELP[v] ?? "");
+  const gpu = model?.resources?.gpu === true;
+  rc.markdownDescription = md(
+    "Resource class",
+    values.map((v) => `\`${v}\`: ${CLASS_HELP[v] ?? ""}`).join("  \n"),
+    model ? (gpu ? `The model ${model.id} can use the GPU class.` : `The model ${model.id} does not use a GPU. Use a CPU class.`) : null,
+  );
 }
 
 /** Node paths of a tree dataset as snippets (the nodes that have variables). */

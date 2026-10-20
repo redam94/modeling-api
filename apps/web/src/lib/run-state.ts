@@ -74,12 +74,27 @@ export const TONE_CLASSES: Record<Tone, string> = {
   muted: "bg-muted text-muted-foreground border-border",
 };
 
-export const RESOURCE_CLASSES = ["S", "M", "L", "XL"] as const;
+/** The resource classes, smallest first. v0.15: `GPU` (one NVIDIA L4) is the last one. */
+export const RESOURCE_CLASSES = ["S", "M", "L", "XL", "GPU"] as const;
+export type ResourceClassName = (typeof RESOURCE_CLASSES)[number];
+
+/** The GPU class (v0.15). The "one class up" ladder never offers it. */
+export const GPU_CLASS = "GPU" satisfies ResourceClassName;
+/** The help text of the GPU class wherever a resource class is selected or listed. */
+export const GPU_CLASS_HELP = "One NVIDIA L4 GPU. Only for models that use a GPU.";
+/** The classes a run can retry at (XL needs an operator; GPU only for models that use a GPU). */
+export const RETRY_CLASSES = ["S", "M", "L", "GPU"] as const satisfies readonly ResourceClassName[];
+const CPU_LADDER: readonly ResourceClassName[] = ["S", "M", "L"];
+
+/** A short label of a resource class (`GPU` names its accelerator). */
+export function resourceClassLabel(rc: string): string {
+  return rc === GPU_CLASS ? "GPU (NVIDIA L4)" : rc;
+}
 
 /** The next resource class up, for the "retry one class up" offer after RESOURCE_EXHAUSTED. */
-export function nextResourceClass(rc: string): (typeof RESOURCE_CLASSES)[number] | null {
-  const i = RESOURCE_CLASSES.indexOf(rc as (typeof RESOURCE_CLASSES)[number]);
-  return i >= 0 && i < RESOURCE_CLASSES.length - 2 ? (RESOURCE_CLASSES[i + 1] ?? null) : null;
+export function nextResourceClass(rc: string): ResourceClassName | null {
+  const i = CPU_LADDER.indexOf(rc as ResourceClassName);
+  return i >= 0 && i < CPU_LADDER.length - 1 ? (CPU_LADDER[i + 1] ?? null) : null;
 }
 
 /** What a run ran on, as a short label (spec revision, model version or dataset). */

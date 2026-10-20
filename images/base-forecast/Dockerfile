@@ -22,7 +22,7 @@ ARG MAPI_NO_INSTALL=""
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
 ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels mapi-plugin-causal statsmodels scipy h5py h5netcdf pymc pytensor nutpie pymc-extras vl-convert-python pillow"
-ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-sklearn mapi-server mapi-gcs-shim lightgbm catboost"
+ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-sklearn mapi-server mapi-gcs-shim lightgbm catboost mapi-jax flax optax"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev
@@ -65,6 +65,10 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
 
 FROM python-base AS runtime-base
 ARG MAPI_APT_PACKAGES
+# XLA (jax) settings: empty unless the image sets them (base-dl: no GPU memory preallocation,
+# deterministic GPU ops). XLA_* are on the worker-environment allow-list.
+ARG MAPI_XLA_PREALLOCATE
+ARG MAPI_XLA_FLAGS
 # hadolint ignore=DL3008
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ${MAPI_APT_PACKAGES} \
@@ -82,7 +86,9 @@ ENV PATH=/opt/mapi/venv/bin:${PATH} \
     PYTENSOR_FLAGS=base_compiledir=/tmp/mapi-cache/pytensor \
     NUMBA_CACHE_DIR=/tmp/mapi-cache/numba \
     MPLCONFIGDIR=/tmp/mapi-cache/matplotlib \
-    MPLBACKEND=Agg
+    MPLBACKEND=Agg \
+    XLA_PYTHON_CLIENT_PREALLOCATE=${MAPI_XLA_PREALLOCATE} \
+    XLA_FLAGS=${MAPI_XLA_FLAGS}
 COPY --chmod=0755 images/common/runner-entrypoint.sh /usr/local/bin/mapi-entrypoint
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py \
      images/common/warm.py /opt/mapi/bin/

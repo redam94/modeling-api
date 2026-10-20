@@ -1,0 +1,39 @@
+[project]
+name = "mapi-jax"
+version = "0.14.0"
+description = "JAX / flax deep-learning trainer, dl.* models and the dl.embed step for modeling-api"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Matthew Reda", email = "m.reda94@gmail.com" }]
+dependencies = [
+  "mapi-spec",
+  "mapi-sdk[images]",
+  "numpy>=2.0",
+  "xarray>=2025.1",
+  "pydantic>=2.11",
+  "jax>=0.11.1,<0.12",
+  "flax>=0.12.10,<0.13",
+  "optax>=0.2.8,<0.3",
+]
+
+[project.optional-dependencies]
+# CUDA 12 wheels (jaxlib plugin + NVIDIA runtime). Only the base-dl image installs the extra.
+cuda12 = ["jax[cuda12]>=0.11.1,<0.12"]
+
+[project.entry-points."mapi.models"]
+dl = "mapi_jax.plugins:PLUGINS"
+
+[project.entry-points."mapi.steps"]
+dl = "mapi_jax.steps:STEPS"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mapi_jax"]
+
+[tool.uv.sources]
+mapi-spec = { workspace = true }
+mapi-sdk = { workspace = true }

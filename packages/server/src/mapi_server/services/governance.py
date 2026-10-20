@@ -70,7 +70,6 @@ from mapi_spec.jobs import (
     FIT_BUNDLE,
     INPUT_BUNDLE,
     INPUT_BUNDLE_MANIFEST,
-    INPUT_DATASET,
     INPUT_EVALUATION,
     INPUT_EVALUATION_MANIFEST,
 )
@@ -884,7 +883,7 @@ async def _submit_run(
 ) -> m.Run:
     """Queue the sandboxed ``governance`` run of a validation."""
     from mapi_server.services.specs import resolve_dataset
-    from mapi_server.services.submit import _accept, data_ref, fit_dataset_version
+    from mapi_server.services.submit import _accept, dataset_inputs, fit_dataset_version
 
     dv: m.DatasetVersion | None = None
     if v.dataset:
@@ -915,7 +914,7 @@ async def _submit_run(
     payload = job.model_dump(mode="json", exclude_none=True)
     bundle = await verified_bundle_object(ctx.store, ctx.signer, mv, FIT_BUNDLE)
     inputs: dict[str, Any] = {
-        INPUT_DATASET: data_ref(dv),
+        **dataset_inputs(dv),
         INPUT_BUNDLE: StoredRef(bundle.bucket, bundle.key, bundle.generation),
     }
     objects = (mv.manifest or {}).get("objects") or {}

@@ -56,6 +56,7 @@ OVERRIDES: dict[str, str] = {
     "numba": "BSD-2-Clause",
     "pandas": "BSD-3-Clause",
     "patsy": "BSD-2-Clause",
+    "protobuf": "BSD-3-Clause",
     "pymc-extras": "Apache-2.0",
     "python-dateutil": "Apache-2.0 AND BSD-3-Clause",
     "scipy": "BSD-3-Clause",

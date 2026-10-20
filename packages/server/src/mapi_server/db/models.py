@@ -439,19 +439,22 @@ class DatasetVersion(_Scoped, Base):
     ready_at: Mapped[datetime | None] = mapped_column()
     # columns.json of the ingest run (0007_guided): ColumnProfile per uploaded column
     columns: Mapped[list[Any] | None] = mapped_column(JSONB)
-    # M4 (0014): 'tree' versions hold an xr.DataTree (data.tree.zip + tree_schema)
+    # M4 (0014): 'tree' versions hold an xr.DataTree (data.tree.zip + tree_schema);
+    # v0.15 (0017): 'collection' versions are an image manifest + shared packs
     layout: Mapped[str] = mapped_column(
-        String(8), default="dataset", server_default=text("'dataset'")
+        String(16), default="dataset", server_default=text("'dataset'")
     )
     # json (not jsonb): it keeps the node declaration order TreeSchema.default_node() uses
     tree_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     sources: Mapped[list[Any]] = mapped_column(
         default=list, server_default=text("'[]'::jsonb")
     )  # upload ids the version was built from
+    # v0.15 (0017): the CollectionInfo of a collection version
+    collection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (
         CheckConstraint("status in ('ingesting','ready','failed')", name="status"),
-        CheckConstraint("layout in ('dataset','tree')", name="layout"),
+        CheckConstraint("layout in ('dataset','tree','collection')", name="layout"),
         Index("ix_dataset_versions_sha", "tenant_id", "sha256"),
     )
 

@@ -20,6 +20,8 @@ dependencies = [
 [project.optional-dependencies]
 testing = ["pytest>=8.3", "hypothesis>=6.112"]
 loo = ["arviz>=1.0"]
+# Image decoding (mapi_sdk.images: collections, loaders); Pillow is imported lazily.
+images = ["pillow>=11.0"]
 
 [project.entry-points.pytest11]
 mapi_sdk = "mapi_sdk.testing.plugin"

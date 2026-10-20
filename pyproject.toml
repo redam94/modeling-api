@@ -9,6 +9,7 @@ dependencies = [
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-plugin-statsmodels",
   "mapi-plugin-science", "mapi-plugin-causal", "mapi-conformance", "mapi-workflows[runtime,testing]",
+  "mapi-jax",
 ]
 
 [dependency-groups]
@@ -47,6 +48,7 @@ mapi-plugin-science = { workspace = true }
 mapi-plugin-causal = { workspace = true }
 mapi-conformance = { workspace = true }
 mapi-workflows = { workspace = true }
+mapi-jax = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -94,7 +96,7 @@ forbidden_modules = [
   "mapi_plugin_science", "mapi_plugin_causal", "mapi_plots.recipes", "mapi_plots.packs",
   "mapi_workflows.runtime", "mapi_workflows.testing",
   "numpy", "xarray", "pandas", "pyarrow", "zarr", "scipy", "statsmodels", "pymc_extras",
-  "PIL", "lightgbm", "catboost",
+  "PIL", "lightgbm", "catboost", "mapi_jax", "jax", "flax", "optax",
 ]
 
 [[tool.importlinter.contracts]]
@@ -122,6 +124,7 @@ forbidden_modules = [
   "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
   "mapi_plugin_statsmodels", "mapi_plugin_science", "mapi_plugin_causal", "statsmodels",
   "mapi_workflows", "pymc_extras", "numpy", "xarray", "pandas", "PIL",
+  "mapi_jax", "jax", "flax", "optax",
 ]
 
 [[tool.importlinter.contracts]]

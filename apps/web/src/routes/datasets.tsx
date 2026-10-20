@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Textarea } from "@/components/ui/primitives";
 import { DatasetAboutCard } from "@/features/about/dataset-about";
+import { collectionOf, isCollectionVersion } from "@/features/datasets/collection-upload";
 import { UploadWizard } from "@/features/datasets/upload-wizard";
 import { isTree } from "@/features/datasets/tree";
 import { TreeBrowser } from "@/features/datasets/tree-view";
-import { CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
+import { CollectionSummary, CoordBrowser, MissingnessPanel, PreviewPanel, SchemaTable } from "@/features/datasets/version-views";
 import { formatBytes, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -109,7 +110,7 @@ export function DatasetsPage() {
             />
           ) : (
             <EmptyState icon={<Database />} title="No datasets yet" action={<Button onClick={() => setOpen(true)}><Plus /> New dataset</Button>}>
-              Create a dataset. Then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files) as its first version.
+              Create a dataset. Then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
             </EmptyState>
           )
         }
@@ -134,6 +135,9 @@ function VersionAbout({ version }: { version: DatasetVersion }) {
   // M4: tree versions and versions made from several files.
   if (version.layout === "tree") items.push(["Layout", `tree of ${Object.keys(version.tree_schema?.nodes ?? {}).length} nodes`]);
   if ((version.sources ?? []).length > 1) items.push(["Made from", `${version.sources!.length} uploaded files`]);
+  // v0.15: an image collection.
+  const collection = collectionOf(version);
+  if (collection) items.push(["Layout", `image collection of ${collection.n_images.toLocaleString("en-US")} images`]);
   return <KeyValues items={items} />;
 }
 
@@ -145,6 +149,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
         <CopyButton value={version.ref} label="Copy reference" />
         <Badge variant={VERSION_STATUS[version.status]}>{version.status}</Badge>
         {version.layout === "tree" ? <Badge variant="outline">tree</Badge> : null}
+        {isCollectionVersion(version) ? <Badge variant="outline">Image collection</Badge> : null}
         {version.status === "ready" ? (
           // M3.5: the Data Explorer of this version.
           <Button asChild size="sm" className="ml-auto">
@@ -182,6 +187,22 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
           </TabsList>
           <TabsContent value="nodes"><TreeBrowser version={version} nodes={version.tree_schema.nodes} /></TabsContent>
           <TabsContent value="missing"><MissingnessPanel version={version} /></TabsContent>
+          <TabsContent value="about"><VersionAbout version={version} /></TabsContent>
+        </Tabs>
+      ) : version.status === "ready" && isCollectionVersion(version) ? (
+        // v0.15: an image collection shows what it holds first (the manifest has the coordinates).
+        <Tabs defaultValue="collection">
+          <TabsList>
+            <TabsTrigger value="collection">Collection</TabsTrigger>
+            <TabsTrigger value="schema">Schema</TabsTrigger>
+            <TabsTrigger value="coords">Coordinates</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+          </TabsList>
+          <TabsContent value="collection"><CollectionSummary version={version} /></TabsContent>
+          <TabsContent value="schema">{version.data_schema ? <SchemaTable schema={version.data_schema} /> : <p className="text-muted-foreground">This version has no schema.</p>}</TabsContent>
+          <TabsContent value="coords"><CoordBrowser version={version} /></TabsContent>
+          <TabsContent value="preview"><PreviewPanel version={version} /></TabsContent>
           <TabsContent value="about"><VersionAbout version={version} /></TabsContent>
         </Tabs>
       ) : version.status === "ready" ? (

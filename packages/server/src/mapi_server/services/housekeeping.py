@@ -2,11 +2,14 @@
 
 The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_interval_s``:
 
-* **upload intents** whose signed PUT expired while still ``pending`` become ``expired``
-  and whatever reached the quarantine bucket is deleted, so an abandoned upload (browser
-  closed, CLI killed) never holds storage quota or quarantine space for long. Quota usage
-  already ignores them once their PUT has expired (:func:`~mapi_server.services.quotas.
-  quota_usage`); this makes the row say so.
+* **upload intents** whose signed PUT expired while still ``pending``: an intent whose file
+  arrived becomes ``uploaded`` (a resumable collection upload uses it hours later; it keeps
+  counting against the storage quota), the others become ``expired``, so an abandoned upload
+  (browser closed, CLI killed) never holds storage quota for long. Quota usage counts every
+  ``pending`` intent until this sweep retires it (:func:`~mapi_server.services.quotas.
+  quota_usage`): a file that arrived must not stop counting when its PUT expires. An
+  ``uploaded`` file that no version used for :data:`UPLOAD_KEEP` becomes ``expired`` too,
+  and the objects of expired intents are deleted from quarantine.
 
 * **browser sessions** past their absolute or idle expiry, and sign-ins abandoned between
   ``/auth/login`` and ``/auth/callback``, are deleted (a request with an expired cookie
@@ -19,8 +22,8 @@ The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_inter
   names and notes stay, so finished runs can still be searched and compared.
 
 It runs on the platform role and touches nothing a request could still be using: an
-expired PUT can no longer be completed, ``create_dataset_version`` refuses an upload
-whose intent expired, and an expired session is refused anyway.
+expired PUT can no longer be started, ``create_dataset_version`` refuses an upload whose
+intent expired, and an expired session is refused anyway.
 """
 
 from __future__ import annotations
@@ -32,16 +35,22 @@ from datetime import datetime, timedelta
 
 from mapi_spec.storage import NotFound
 from mapi_spec.tracking import SCALAR_STEP
-from sqlalchemy import delete, text, update
+from sqlalchemy import delete, select, text
 
 from mapi_server.auth.identity import sweep_expired_logins
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.runs import now as utcnow
 
-__all__ = ["TRACKING_PRUNE_BATCH", "Housekeeper"]
+__all__ = ["TRACKING_PRUNE_BATCH", "UPLOAD_EXPIRE_BATCH", "UPLOAD_KEEP", "Housekeeper"]
 
 log = logging.getLogger(__name__)
+
+UPLOAD_KEEP = timedelta(days=7)
+"""How long an arrived upload that no dataset version used is kept after its PUT expired."""
+
+UPLOAD_EXPIRE_BATCH = 500
+"""Upload intents one pass checks (each needs a metadata read of its object)."""
 
 TRACKING_PRUNE_BATCH = 10_000
 """Rows of one table the tracking retention deletes per pass (a backlog takes more passes)."""
@@ -111,19 +120,42 @@ class Housekeeper:
         return deleted
 
     async def expire_uploads(self, *, now: datetime) -> int:
-        """Mark pending intents whose PUT expired ``expired`` and delete their objects."""
+        """Retire pending intents whose PUT expired (``uploaded`` when their file arrived,
+        else ``expired``) and arrived files unused for :data:`UPLOAD_KEEP` (``expired``);
+        deletes the objects of the expired ones."""
+        gone: list[tuple[str, str]] = []
+        due = select(m.Upload).where(
+            ((m.Upload.status == "pending") & (m.Upload.expires_at < now))
+            | ((m.Upload.status == "uploaded") & (m.Upload.expires_at < now - UPLOAD_KEEP))
+        )
         async with self.ctx.db.session() as s:
-            rows = (
-                await s.execute(
-                    update(m.Upload)
-                    .where(m.Upload.status == "pending", m.Upload.expires_at < now)
-                    .values(status="expired")
-                    .returning(m.Upload.bucket, m.Upload.object_name)
-                )
-            ).all()
-        for bucket, name in rows:
+            rows = list(
+                (
+                    await s.execute(
+                        due.order_by(m.Upload.expires_at)
+                        .limit(UPLOAD_EXPIRE_BATCH)
+                        .with_for_update(skip_locked=True)
+                    )
+                ).scalars()
+            )
+            for row in rows:
+                if row.status == "pending" and await self._arrived(row):
+                    row.status = "uploaded"
+                    continue
+                row.status = "expired"
+                gone.append((row.bucket, row.object_name))
+        for bucket, name in gone:
             with contextlib.suppress(NotFound):
                 await self.ctx.store.delete(bucket, name)
-        if rows:
-            log.info("expired %d abandoned upload intent(s)", len(rows))
+        if gone:
+            log.info("expired %d abandoned upload intent(s)", len(gone))
         return len(rows)
+
+    async def _arrived(self, row: m.Upload) -> bool:
+        """Whether the file of ``row`` is in quarantine (a signed PUT that expired cannot
+        start again, so an object there arrived in time)."""
+        try:
+            meta = await self.ctx.store.stat(row.bucket, row.object_name)
+        except NotFound:
+            return False
+        return meta.size <= row.size_bytes

@@ -646,6 +646,20 @@ def test_a_fit_with_a_loss_history_draws_the_loss_curve() -> None:
     assert fit_plot_refs(spec, nuts) == ["core.convergence"]  # type: ignore[arg-type]
 
 
+def test_misclassified_grid_only_when_some_validation_image_is_wrong() -> None:
+    from mapi_runner.worker.fit import fit_plot_refs
+
+    spec = SimpleNamespace(outputs=SimpleNamespace(plots=[]))
+
+    def wrong(n: int) -> SimpleNamespace:
+        thumb = np.zeros((n, 4, 4, 1), dtype=np.uint8)
+        group = xr.Dataset({"thumb": (("example", "ty", "tx", "channel"), thumb)})
+        return SimpleNamespace(model=SimpleNamespace(groups={"misclassified": group}))
+
+    assert fit_plot_refs(spec, wrong(2)) == ["ml.misclassified"]  # type: ignore[arg-type]
+    assert fit_plot_refs(spec, wrong(0)) == []  # type: ignore[arg-type]
+
+
 # ------------------------------------------------------------------- end to end (fit)
 
 

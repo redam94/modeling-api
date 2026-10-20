@@ -103,7 +103,12 @@ from mapi_server.services.specs import (
     resolve_model_version,
     validate_document,
 )
-from mapi_server.services.submit import admit, data_ref, fit_dataset_version
+from mapi_server.services.submit import (
+    COLLECTION_REFUSED,
+    admit,
+    data_ref,
+    fit_dataset_version,
+)
 from mapi_server.services.webhooks.outbox import emit_event
 from mapi_server.services.workflows.events import append_events
 from mapi_server.services.workflows.hooks import governance_hooks
@@ -609,6 +614,8 @@ class WorkflowOrchestrator:
         dv, why = await resolve_dataset(env.session, env.scope, dref)
         if dv is None:
             raise _NodeFailure(ErrorCode.REF_UNRESOLVED, why or f"cannot resolve {ref}")
+        if dv.layout == "collection":  # v0.15: nodes read datasets and trees only
+            raise _NodeFailure(ErrorCode.SCHEMA_INVALID, f"{ref}: {COLLECTION_REFUSED}")
         return dv
 
     async def _model(self, env: _Env, ref: str) -> m.ModelVersion:

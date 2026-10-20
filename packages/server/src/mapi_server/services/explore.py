@@ -22,7 +22,6 @@ from mapi_spec.jobs import (
     INPUT_BUNDLE,
     INPUT_BUNDLE_MANIFEST,
     INPUT_COMPARE_PREFIX,
-    INPUT_DATASET,
     INPUT_EVALUATION,
     INPUT_EVALUATION_MANIFEST,
     INPUT_METRICS_SUFFIX,
@@ -130,7 +129,7 @@ async def submit_dataset_explore(
 ) -> tuple[m.Run, bool]:
     """``(run, cached)``: an ``explore`` run of a ready dataset version (or the last one
     that answered the same request)."""
-    from mapi_server.services.submit import _accept, data_ref
+    from mapi_server.services.submit import _accept, dataset_inputs
 
     if dv.status != "ready":
         raise MapiError(
@@ -153,7 +152,7 @@ async def submit_dataset_explore(
         resource_class=ResourceClass.S,
         timeout_s=EXPLORE_TIMEOUT_S,
         payload=payload,
-        inputs={INPUT_DATASET: data_ref(dv)},
+        inputs=dataset_inputs(dv),  # v0.15: a collection's runner explores a sample
         spec_hash=digest,
         dataset_id=ds.id,
         dataset_version=dv.version,
@@ -195,7 +194,7 @@ async def submit_model_explore(
 ) -> tuple[m.Run, bool]:
     """``(run, cached)``: an ``explore`` run of a model version with its fit data, its
     evaluation bundle (when the fit kept one) and the bundles it is compared with."""
-    from mapi_server.services.submit import _accept, data_ref, fit_dataset_version
+    from mapi_server.services.submit import _accept, dataset_inputs, fit_dataset_version
 
     scope = ctx.scope
     if mv.status != "ready":
@@ -211,7 +210,7 @@ async def submit_model_explore(
     if hit is not None:
         return hit, True
     dv = await fit_dataset_version(session, mv)
-    inputs: dict[str, Any] = {INPUT_DATASET: data_ref(dv)}
+    inputs: dict[str, Any] = dataset_inputs(dv)
     objects = (mv.manifest or {}).get("objects") or {}
 
     async def pin(target: m.ModelVersion, name: str, manifest_name: str) -> None:

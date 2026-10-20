@@ -84,6 +84,7 @@ import { SignupsTab, TenantTrustDialog } from "@/features/trust/admin-trust";
 import { formatMicros, formatVcpuSeconds, MICROS_PER_UNIT } from "@/lib/cost";
 import { absoluteTime, formatBytes, relativeTime } from "@/lib/format";
 import { periodKey, periodLabel, periodStart, shiftPeriod } from "@/lib/period";
+import { GPU_CLASS, GPU_CLASS_HELP, RESOURCE_CLASSES, resourceClassLabel } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 import { ADMIN_TABS, type AdminTab } from "@/router";
 import { toast } from "@/stores/toast";
@@ -480,7 +481,8 @@ const LIMIT_FIELDS: { key: keyof QuotaLimits; label: string; unit: string; integ
   { key: "requests_per_minute", label: "Requests per minute", unit: "req/min", integer: true },
 ];
 
-const CLASSES: ResourceClass[] = ["S", "M", "L", "XL"];
+// v0.15: GPU is the largest class (a quota below GPU refuses GPU runs).
+const CLASSES = RESOURCE_CLASSES;
 const SCOPE_ORDER: Record<QuotaScope, number> = { global: 0, tenant: 1, token: 2 };
 
 function limitText(key: keyof QuotaLimits, v: QuotaLimits[keyof QuotaLimits]): string {
@@ -642,12 +644,12 @@ function QuotaDialog({ policy, onClose }: { policy: QuotaPolicy | null; onClose:
                 <Input id={`qp-${f.key}`} inputMode="decimal" value={values[f.key] ?? ""} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} />
               </Field>
             ))}
-            <Field label="Largest class" htmlFor="qp-class" hint="The platform refuses runs in a larger class.">
+            <Field label="Largest class" htmlFor="qp-class" hint={maxClass === GPU_CLASS ? `The platform refuses runs in a larger class. GPU: ${GPU_CLASS_HELP}` : "The platform refuses runs in a larger class."}>
               <NativeSelect id="qp-class" value={maxClass} onChange={(e) => setMaxClass(e.target.value)}>
                 <option value="">No limit</option>
                 {CLASSES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                  <option key={c} value={c} title={c === GPU_CLASS ? GPU_CLASS_HELP : undefined}>
+                    {resourceClassLabel(c)}
                   </option>
                 ))}
               </NativeSelect>

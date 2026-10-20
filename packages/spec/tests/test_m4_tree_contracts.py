@@ -554,11 +554,11 @@ def test_dataset_version_create_exactly_one() -> None:
     assert "assembly" not in single.model_dump(mode="json")
     multi = DatasetVersionCreate(assembly=_asm(_src(_UPL), _src(_UPL2, node="/b")))
     assert multi.upload_ids == [_UPL, _UPL2]
-    with pytest.raises(ValidationError, match="not both"):
+    with pytest.raises(ValidationError, match="not several"):
         DatasetVersionCreate(
             upload_id=_UPL, mapping=IngestMapping(format="zarr_zip"), assembly=_asm(_src())
         )
-    with pytest.raises(ValidationError, match="not both"):
+    with pytest.raises(ValidationError, match="not several"):
         DatasetVersionCreate(upload_id=_UPL, assembly=_asm(_src()))
     with pytest.raises(ValidationError, match="give upload_id and mapping"):
         DatasetVersionCreate(upload_id=_UPL)
@@ -570,7 +570,7 @@ def test_dataset_version_create_exactly_one() -> None:
 
 
 def test_dataset_version_layout_fields() -> None:
-    old, tree = DatasetVersion.model_json_schema()["examples"]
+    old, tree, _collection = DatasetVersion.model_json_schema()["examples"]
     legacy = {k: v for k, v in old.items() if k != "sources"}
     dv = DatasetVersion.model_validate(legacy)  # a pre-M4 server response
     assert (dv.layout, dv.tree_schema, dv.sources) == ("dataset", None, [])
@@ -584,8 +584,10 @@ def test_dataset_version_layout_fields() -> None:
 
 def test_m4_endpoints_and_access() -> None:
     assert ALL_ENDPOINTS == ENDPOINTS
-    # the v0.11 and v0.14 rows follow the M4 rows
-    m4_end = len(ENDPOINTS) - len(api.V011_ENDPOINTS) - len(api.V014_ENDPOINTS)
+    # the v0.11, v0.14 and v0.15 rows follow the M4 rows
+    m4_end = (
+        len(ENDPOINTS) - len(api.V011_ENDPOINTS) - len(api.V014_ENDPOINTS) - len(api.V015_ENDPOINTS)
+    )
     assert ENDPOINTS[m4_end - len(M4_ENDPOINTS) : m4_end] == M4_ENDPOINTS
     by_op = {e.operation_id: e for e in M4_ENDPOINTS}
     post, get = by_op["inspect_upload"], by_op["get_upload_inspection"]

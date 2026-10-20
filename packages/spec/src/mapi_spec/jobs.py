@@ -59,6 +59,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from mapi_spec._types import StrictModel
 from mapi_spec.api import IngestMapping
 from mapi_spec.calibration import PRIOR_TRANSLATION_OUTPUT, PriorTranslationJob
+from mapi_spec.collection import CollectionIngest
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.explore import ExploreJob
@@ -261,7 +262,8 @@ class IngestSource(StrictModel):
 
 
 class IngestJob(StrictModel):
-    """An ingest run: an explicit column mapping, or the MFF preset.
+    """An ingest run: an explicit column mapping, the MFF preset, an assembly of uploads (M4)
+    or an image collection (v0.15, :class:`~mapi_spec.collection.CollectionIngest`).
 
     From M3 the mapping itself may name a preset (``mapping.preset``: ``mff`` or
     ``meridian``, with its options in the mapping); the top-level
@@ -331,12 +333,19 @@ class IngestJob(StrictModel):
         description="M4: bytes of one attribute value",
         exclude_if=lambda v: v == 65_536,
     )
+    collection: CollectionIngest | None = Field(
+        None,
+        description="v0.15: an image collection (inputs manifest, part.<i>, base.*)",
+        exclude_if=lambda v: v is None,
+    )
 
     @model_validator(mode="after")
     def _one_of(self) -> IngestJob:
-        given = sum(x is not None for x in (self.mapping, self.preset, self.assembly))
+        given = sum(
+            x is not None for x in (self.mapping, self.preset, self.assembly, self.collection)
+        )
         if given != 1:
-            raise ValueError("give exactly one of 'mapping', 'preset' or 'assembly'")
+            raise ValueError("give exactly one of 'mapping', 'preset', 'assembly' or 'collection'")
         if self.assembly is not None and len(self.assembly.sources) > self.max_sources:
             raise ValueError(f"the assembly has more than max_sources ({self.max_sources})")
         return self

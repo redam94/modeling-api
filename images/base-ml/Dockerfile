@@ -22,11 +22,12 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-ml
 ARG MAPI_DESCRIPTION="modeling-api runner: scikit-learn/xgboost/LightGBM/CatBoost models (sklearn.*), steps and plot recipes"
-ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn[gbm]"
+# mapi-jax (CPU jax, flax, optax): the dl.embed step runs in front of the sklearn.* heads.
+ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn[gbm] mapi-jax"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 ARG MAPI_APT_PACKAGES="tini libgomp1"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy h5py h5netcdf mapi-sklearn scikit-learn xgboost skops vl-convert-python pillow lightgbm catboost"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy h5py h5netcdf mapi-sklearn scikit-learn xgboost skops vl-convert-python pillow lightgbm catboost mapi-jax flax optax"
 ARG MAPI_ASSERT_ABSENT="pymc pytensor nutpie numba pymc-extras mapi-pymc mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-science mapi-plugin-causal mapi-server mapi-gcs-shim nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
@@ -70,6 +71,10 @@ RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
 
 FROM python-base AS runtime-base
 ARG MAPI_APT_PACKAGES
+# XLA (jax) settings: empty unless the image sets them (base-dl: no GPU memory preallocation,
+# deterministic GPU ops). XLA_* are on the worker-environment allow-list.
+ARG MAPI_XLA_PREALLOCATE
+ARG MAPI_XLA_FLAGS
 # hadolint ignore=DL3008
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ${MAPI_APT_PACKAGES} \
@@ -87,7 +92,9 @@ ENV PATH=/opt/mapi/venv/bin:${PATH} \
     PYTENSOR_FLAGS=base_compiledir=/tmp/mapi-cache/pytensor \
     NUMBA_CACHE_DIR=/tmp/mapi-cache/numba \
     MPLCONFIGDIR=/tmp/mapi-cache/matplotlib \
-    MPLBACKEND=Agg
+    MPLBACKEND=Agg \
+    XLA_PYTHON_CLIENT_PREALLOCATE=${MAPI_XLA_PREALLOCATE} \
+    XLA_FLAGS=${MAPI_XLA_FLAGS}
 COPY --chmod=0755 images/common/runner-entrypoint.sh /usr/local/bin/mapi-entrypoint
 COPY --chmod=0644 images/common/healthcheck.py images/common/assert_dists.py \
      images/common/warm.py /opt/mapi/bin/

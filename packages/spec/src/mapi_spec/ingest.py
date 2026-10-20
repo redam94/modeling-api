@@ -21,6 +21,7 @@ This module only *describes* files; every byte of an upload is parsed inside the
 
 from __future__ import annotations
 
+import json
 import math
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
@@ -28,6 +29,7 @@ from typing import Annotated, Any, Final, Literal, Self
 from pydantic import (
     ConfigDict,
     Field,
+    JsonValue,
     StringConstraints,
     field_validator,
     model_validator,
@@ -51,11 +53,17 @@ __all__ = [
     "MAX_INSPECT_ARRAYS",
     "MAX_INSPECT_ATTRS",
     "MAX_INSPECT_ATTR_CHARS",
+    "MAX_SAFETENSORS_HEADER",
+    "MAX_WEIGHT_PARAMETERS",
+    "MAX_WEIGHT_TENSORS",
     "MFF_COLUMNS",
     "MFF_KEY_COLUMNS",
     "MFF_PANEL_KEY_COLUMNS",
     "MFF_TOTAL_LABELS",
     "RESERVED_IMAGE_DIMS",
+    "WEIGHTS_ATTR",
+    "WEIGHTS_DIM",
+    "WEIGHTS_VAR",
     "AssemblySource",
     "ColumnRef",
     "CombineRule",
@@ -74,16 +82,20 @@ __all__ = [
     "MffOptions",
     "UploadInspection",
     "VarMapping",
+    "WeightsOptions",
     "WideVarMapping",
 ]
 
-IngestFormat = Literal["csv", "parquet", "mff", "zarr_zip", "netcdf", "hdf5", "image_folder"]
+IngestFormat = Literal[
+    "csv", "parquet", "mff", "zarr_zip", "netcdf", "hdf5", "image_folder", "safetensors"
+]
 """Upload formats. ``mff`` is a CSV laid out as an MFF long table (implies ``preset=mff``);
 ``zarr_zip`` (a single-object zarr v3 zip) and ``netcdf`` are self-describing (``netcdf``:
 NetCDF-3/4 or an xarray/h5netcdf-written HDF5 file, read as a tree when it has groups).
 ``hdf5`` (M4) is a raw HDF5 file without dim metadata, described by
 :class:`Hdf5Mapping`. ``image_folder`` (v0.14) is a zip of PNG/JPEG/TIFF images and a
-manifest table, described by :class:`ImageFolderOptions`."""
+manifest table, described by :class:`ImageFolderOptions`. ``safetensors`` (v0.15) is a file of
+pretrained network weights, read into a weights dataset (:class:`WeightsOptions`)."""
 
 TABULAR_FORMATS: Final = frozenset({"csv", "parquet", "mff"})
 
@@ -101,6 +113,21 @@ IMAGE_FOLDER_MAX_CELLS: Final = 256 * 1024**2
 """Values of the ``pixels`` variable (images x height x width x channels); equals the wire
 limit ``WireLimits.max_store_elements`` of the SDK."""
 _MANIFEST_SUFFIXES: Final = (".csv", ".tsv", ".parquet")
+
+# ------------------------------------------------------------------ weights (v0.15)
+
+WEIGHTS_VAR: Final = "weights"
+"""The one variable of a weights dataset: every tensor flattened, float32."""
+WEIGHTS_DIM: Final = "param"
+WEIGHTS_ATTR: Final = "mapi_weights"
+"""Attr of the weights variable: JSON of the tensor table (name, shape, source dtype,
+offset), the file's ``__metadata__``, the architecture, the file sha256 and the
+parameter count. A weights dataset uses one flat variable because a DataSchema allows at
+most 256 dims."""
+MAX_WEIGHT_TENSORS: Final = 4096
+MAX_WEIGHT_PARAMETERS: Final = 500_000_000
+MAX_SAFETENSORS_HEADER: Final = 8 * 1024**2
+_MAX_ARCH_JSON: Final = 64 * 1024
 
 ColumnRef = Annotated[str, Field(min_length=1, max_length=256)]
 """A column name of a tabular upload (any text; it is never interpreted as code)."""
@@ -633,6 +660,37 @@ class ImageFolderOptions(RequestModel):
         return self
 
 
+# ============================================================================ weights
+
+
+class WeightsOptions(RequestModel):
+    """A safetensors file of pretrained network weights (read in the sandboxed ingest run).
+
+    The file becomes a weights dataset: ``weights(param)`` float32 plus the tensor table in
+    the ``mapi_weights`` attr. Models and steps read it as a side table.
+    """
+
+    arch: dict[str, JsonValue] | None = Field(
+        None,
+        description="Architecture JSON, when the file's __metadata__ has no 'mapi_arch'",
+    )
+    max_parameters: int = Field(200_000_000, ge=1, le=MAX_WEIGHT_PARAMETERS)
+
+    model_config = dto_examples(
+        {"max_parameters": 50_000_000},
+        {"arch": {"kind": "resnet", "channels": 3, "widths": [16, 32, 64], "blocks": [1, 1, 1]}},
+    )
+
+    @field_validator("arch")
+    @classmethod
+    def _arch_size(cls, v: dict[str, JsonValue] | None) -> dict[str, JsonValue] | None:
+        if v is not None:
+            text = json.dumps(v, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            if len(text.encode("utf-8")) > _MAX_ARCH_JSON:
+                raise ValueError(f"arch JSON must be at most {_MAX_ARCH_JSON} bytes")
+        return v
+
+
 # ======================================================================= IngestMapping
 
 
@@ -686,6 +744,11 @@ class IngestMapping(RequestModel):
         description="v0.14: options of an 'image_folder' upload (defaults when left out)",
         exclude_if=lambda v: v is None,
     )
+    weights: WeightsOptions | None = Field(
+        None,
+        description="v0.15: options of a 'safetensors' upload (defaults when left out)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = ConfigDict(
         **dto_examples(
@@ -731,6 +794,7 @@ class IngestMapping(RequestModel):
                 "format": "image_folder",
                 "images": ImageFolderOptions.model_json_schema()["examples"][0],
             },
+            {"format": "safetensors", "weights": {"max_parameters": 50_000_000}},
         ),
     )
 
@@ -759,6 +823,19 @@ class IngestMapping(RequestModel):
                 )
         elif self.images is not None:
             raise ValueError("'images' is only used with format 'image_folder'")
+        if self.format == "safetensors":
+            if (
+                self.dims
+                or self.vars
+                or self.wide
+                or self.preset is not IngestPreset.NONE
+                or self.layout != "dense"
+            ):
+                raise ValueError(
+                    "a safetensors upload is described by 'weights', not dims/vars/wide or a preset"
+                )
+        elif self.weights is not None:
+            raise ValueError("'weights' is only used with format 'safetensors'")
         if self.preset is IngestPreset.NONE:
             if self.format == "mff":
                 raise ValueError("format 'mff' needs the mff preset")
@@ -872,6 +949,8 @@ class IngestAssembly(RequestModel):
             raise ValueError(f"an upload may be used once: {dups}")
         if len(self.sources) > 1 and any(s.mapping.format == "image_folder" for s in self.sources):
             raise ValueError("an image_folder upload must be the only source of a dataset version")
+        if len(self.sources) > 1 and any(s.mapping.format == "safetensors" for s in self.sources):
+            raise ValueError("a safetensors upload must be the only source of a dataset version")
         by_node: dict[str, list[AssemblySource]] = {}
         for s in self.sources:
             by_node.setdefault(s.node, []).append(s)

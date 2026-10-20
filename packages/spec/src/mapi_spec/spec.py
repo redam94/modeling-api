@@ -29,6 +29,7 @@ from mapi_spec._types import (
 from mapi_spec.about import About
 from mapi_spec.calibration import Calibration
 from mapi_spec.capabilities import OutputSelector, ScoreMode
+from mapi_spec.collection import CollectionRead
 from mapi_spec.errors import parse_pointer
 from mapi_spec.refs import DatasetRef, ModelTarget, SpecRef, UseRef
 from mapi_spec.resources import ResourceClass
@@ -367,6 +368,9 @@ class DataBlock(StrictModel):
     ONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per
     ``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).
     ``nodes`` on a plain dataset is an error. The binding applies to the merged names.
+
+    For an image collection (v0.15), ``collection`` says how a model that reads datasets
+    sees it (a seeded sample); a model that trains on batches reads every image.
     """
 
     dataset: DatasetRef
@@ -384,6 +388,12 @@ class DataBlock(StrictModel):
         "exact",
         description="M4: how the coords of the selected nodes align (xarray merge join)",
         exclude_if=lambda v: v == "exact",
+    )
+    collection: CollectionRead | None = Field(
+        None,
+        description="v0.15: an image collection read by a model that reads datasets: a "
+        "seeded sample as pixels(image, y, x, channel)",
+        exclude_if=lambda v: v is None,
     )
 
     @model_validator(mode="after")
@@ -436,7 +446,26 @@ class KeepConfig(StrictModel):
 
 
 class Checkpoint(StrictModel):
-    every_draws: int = Field(..., ge=1, le=1_000_000)
+    """Resumable checkpoints: every N draws (samplers) or every N epochs (v0.15: networks).
+
+    Exactly one is set. The model must be checkpointable; otherwise validation warns and
+    the run ignores it.
+    """
+
+    every_draws: int | None = Field(None, ge=1, le=1_000_000, exclude_if=lambda v: v is None)
+    every_epochs: int | None = Field(
+        None,
+        ge=1,
+        le=10_000,
+        description="v0.15: networks trained in epochs",
+        exclude_if=lambda v: v is None,
+    )
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> Checkpoint:
+        if (self.every_draws is None) == (self.every_epochs is None):
+            raise ValueError("checkpoint needs exactly one of every_draws or every_epochs")
+        return self
 
 
 DEFAULT_FIT_SEED = 0

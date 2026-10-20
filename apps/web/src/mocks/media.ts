@@ -55,7 +55,7 @@ export function samplePng(step: number, hue: [number, number, number], size = 16
 
 let mediaSeq = 0;
 
-function addItem(
+export function addItem(
   state: MediaState,
   artifacts: Artifacts,
   runId: string,

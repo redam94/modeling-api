@@ -26,6 +26,7 @@ __all__ = [
     "MetricName",
     "Name",
     "Scalar",
+    "Sha256Hex",
     "Slug",
     "SortedFrozenSet",
     "StepId",
@@ -57,6 +58,9 @@ MetricName = Annotated[str, StringConstraints(pattern=METRIC_RE)]
 LabelKey = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]([a-z0-9_.\-/]{0,62})$")]
 LabelValue = Annotated[str, StringConstraints(max_length=63, pattern=r"^[A-Za-z0-9_.\-]*$")]
 Scalar = str | int | float | bool
+SHA256_HEX_RE = r"^[0-9a-f]{64}$"
+Sha256Hex = Annotated[str, StringConstraints(pattern=SHA256_HEX_RE)]
+"""A bare lowercase hex sha256 digest (64 characters, no ``sha256:`` prefix)."""
 
 RESERVED_STAGE = "raw"
 """Name of the stage right after binding, before any pipeline step."""

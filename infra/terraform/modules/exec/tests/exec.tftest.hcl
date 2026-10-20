@@ -61,6 +61,86 @@ run "job_inventory" {
   }
 }
 
+run "gpu_job" {
+  # [unverified: Cloud Run Jobs GPU (L4) needs a region with GPU quota; not applied or tested
+  # against GCP] - only the mocked plan of the GPU Job is checked here.
+  command = apply
+
+  variables {
+    images = {
+      base-bayes    = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/base-bayes@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      base-ml       = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/base-ml@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      base-forecast = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/base-forecast@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      base-dl       = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/base-dl@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+    gpu_jobs = true
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_job.runner) == 13
+    error_message = "4 bases x {S, M, L} + the base-dl GPU Job = 13 Jobs."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_job.runner["base-dl-gpu"].name == "mapi-test-base-dl-gpu"
+    error_message = "The GPU Job is named mapi-{env}-base-dl-gpu (the orchestrator's convention)."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].containers[0].resources[0].limits == tomap({ cpu = "8", memory = "32Gi", "nvidia.com/gpu" = "1" })
+    error_message = "The GPU class is 8 vCPU / 32 GiB / one GPU (mapi_spec.resources)."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].node_selector[0].accelerator == "nvidia-l4"
+    error_message = "The GPU Job asks for an NVIDIA L4."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].gpu_zonal_redundancy_disabled
+    error_message = "The GPU Job runs without zonal redundancy."
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_job.runner["base-dl-m"].template[0].template[0].node_selector) == 0 && google_cloud_run_v2_job.runner["base-dl-m"].template[0].template[0].containers[0].resources[0].limits == tomap({ cpu = "4", memory = "16Gi" })
+    error_message = "CPU Jobs of base-dl get no GPU."
+  }
+
+  assert {
+    condition = (
+      google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].max_retries == 0 &&
+      google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].vpc_access[0].egress == "ALL_TRAFFIC" &&
+      google_cloud_run_v2_job.runner["base-dl-gpu"].template[0].template[0].service_account == google_service_account.exec.email
+    )
+    error_message = "The GPU Job has the sandbox of every Job (no retries, deny-all VPC, exec identity)."
+  }
+
+  assert {
+    condition     = output.inventory.classes == tolist(["S", "M", "L", "GPU"]) && output.jobs["base-dl"]["GPU"] == "mapi-test-base-dl-gpu"
+    error_message = "The inventory output offers the GPU class."
+  }
+}
+
+run "gpu_job_is_off_by_default" {
+  command = plan
+
+  variables {
+    images = {
+      base-dl = "europe-west4-docker.pkg.dev/acme-test-build/mapi-test-images/base-dl@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  }
+
+  assert {
+    condition     = length(google_cloud_run_v2_job.runner) == 3 && !contains(keys(google_cloud_run_v2_job.runner), "base-dl-gpu")
+    error_message = "Without gpu_jobs there is no GPU Job."
+  }
+
+  assert {
+    condition     = output.inventory.classes == tolist(["S", "M", "L"])
+    error_message = "Without gpu_jobs the inventory offers the CPU classes only."
+  }
+}
+
 run "egress_firewall" {
   command = apply
 

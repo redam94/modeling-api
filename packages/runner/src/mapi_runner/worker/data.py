@@ -4,15 +4,23 @@ M4: a dataset input is a plain ``*.zarr.zip`` or a tree (``data.tree.zip``, nest
 groups). :func:`load_dataset` returns an ``xr.Dataset`` or an ``xr.DataTree`` accordingly;
 :func:`flatten` selects a tree's nodes per a spec's ``data.nodes`` (the flat pipeline
 input) and :func:`load_tree_schema` reads its :class:`~mapi_spec.tree.TreeSchema`.
+
+v0.15: a dataset input may be an image **collection**: the input ``<name>`` is its
+``manifest.parquet``, ``<name>.info`` its ``collection.json`` and ``<name>.pack.<i>`` the
+packs in the info's order (:func:`is_collection`, :func:`load_collection`). Runs that read
+plain datasets (explore, describe, derive) get a seeded sample as the v0.14 image dataset
+(:func:`~mapi_sdk.collection.collection_read`).
 """
 
 from __future__ import annotations
 
 import json
+import math
 import warnings
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Final
 
 import numpy as np
@@ -20,6 +28,7 @@ import pandas as pd
 import xarray as xr
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, MetricsReport, file_digest
+from mapi_sdk.collection import Collection, CollectionError, CollectionLoader, collection_read
 from mapi_sdk.errors import BundleError, SchemaValidationError, WireFormatError
 from mapi_sdk.tree import (
     infer_tree_schema,
@@ -30,7 +39,9 @@ from mapi_sdk.tree import (
     stored_tree_schema,
 )
 from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
+from mapi_spec.collection import CollectionInfo, CollectionRead, info_input, pack_input
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.ingest import IMAGE_FOLDER_MAX_CELLS
 from mapi_spec.jobs import DATASET_SCHEMA_ATTR, INPUT_METRICS_SUFFIX
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
@@ -40,14 +51,19 @@ from mapi_spec.xrjson import MAX_XRJSON_BYTES
 from pydantic import ValidationError
 
 from mapi_runner.jobs import INPUT_BUNDLE_MANIFEST, INPUT_SCHEMA, SIDE_TABLE_PREFIX
+from mapi_runner.worker.blobs import SignedPackSource
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.tree_ingest import zarr_has_groups
 
 __all__ = [
     "INPUT_TREE_SCHEMA",
     "SCHEMA_ATTR",
+    "CachedCollection",
+    "collection_cache",
     "flatten",
+    "is_collection",
     "load_bundle",
+    "load_collection",
     "load_data_and_tree",
     "load_dataset",
     "load_flat_dataset",
@@ -55,6 +71,7 @@ __all__ = [
     "load_raw_schema",
     "load_side_tables",
     "load_tree_schema",
+    "sample_size",
     "side_table_dataset",
     "supplied_side_tables",
 ]
@@ -64,12 +81,120 @@ INPUT_TREE_SCHEMA: Final = "tree_schema"
 """M4: optional input with the TreeSchema of a tree ``dataset`` input (``tree_schema.json``
 of its version); without it the schema stored in the tree, else an inferred one, is used."""
 _MAX_JSON_INPUT = 32 * 1024 * 1024
+_MAX_INFO_BYTES = 8 * 1024 * 1024
+SAMPLE_SIZE: Final = (64, 64)
+"""v0.15: the size of a decoded collection sample when the images do not share one."""
+
+
+def sample_size(
+    info: CollectionInfo, n: int, size: tuple[int, int] | None = None
+) -> tuple[int, int]:
+    """v0.15: ``size`` (default: the collection's, else :data:`SAMPLE_SIZE`), made smaller
+    with the same aspect when ``n`` images of it would need more than
+    ``IMAGE_FOLDER_MAX_CELLS`` values (a sample of large photos is decoded smaller rather than
+    refused)."""
+    h, w = (int(v) for v in (size or info.size or SAMPLE_SIZE))
+    cells = max(1, min(n, info.n_images)) * h * w * (3 if info.mode == "rgb" else 1)
+    if cells <= IMAGE_FOLDER_MAX_CELLS:
+        return h, w
+    scale = math.sqrt(IMAGE_FOLDER_MAX_CELLS / cells)
+    return max(1, math.floor(h * scale)), max(1, math.floor(w * scale))
+
+
+def is_collection(ctx: WorkerContext, prefix: str = INPUT_DATASET) -> bool:
+    """v0.15: input ``prefix`` is an image collection (its ``<prefix>.info`` is given)."""
+    return ctx.has_input(info_input(prefix))
+
+
+class CachedCollection(Collection):
+    """A :class:`Collection` whose loaders keep read chunks in a scratch block cache
+    (``cache_dir``, at most ``cache_bytes``) unless a caller gives its own: the harness
+    asks the collection for loaders, the run decides where chunks may spill."""
+
+    cache_dir: Path | None = None
+    cache_bytes: int = 0
+
+    def loader(
+        self,
+        ids: np.ndarray | Sequence[str] | None = None,
+        *,
+        cache_dir: Path | None = None,
+        cache_bytes: int = 0,
+        threads: int = 8,
+    ) -> CollectionLoader:
+        if cache_dir is None and self.cache_dir is not None:
+            cache_dir, cache_bytes = self.cache_dir, self.cache_bytes
+        return super().loader(ids, cache_dir=cache_dir, cache_bytes=cache_bytes, threads=threads)
+
+
+def collection_cache(ctx: WorkerContext, collection: Collection) -> Collection:
+    """``collection`` with a block cache in ``{scratch}/work/cache`` of half the scratch
+    budget left (no cache without a budget)."""
+    if ctx.start.scratch_bytes is None or not isinstance(collection, CachedCollection):
+        return collection
+    left = max(0, ctx.start.scratch_bytes - ctx.scratch_used())
+    collection.cache_dir = ctx.work_dir / "cache"
+    collection.cache_bytes = left // 2
+    return collection
+
+
+def load_collection(
+    ctx: WorkerContext, prefix: str = INPUT_DATASET, *, manifest: str | None = None
+) -> Collection:
+    """v0.15: the collection of input ``prefix``: its manifest (input ``manifest``, default
+    ``prefix``) and ``collection.json`` downloaded, its packs read lazily through their
+    signed URLs (each checked against its content address), the version's ``schema`` input
+    when ``prefix`` is the run's dataset."""
+    raw = ctx.download(info_input(prefix))
+    assert raw is not None
+    if raw.stat().st_size > _MAX_INFO_BYTES:
+        raise MapiError("collection.json is too large", code=ErrorCode.PAYLOAD_TOO_LARGE)
+    try:
+        info = CollectionInfo.model_validate_json(raw.read_bytes())
+    except ValidationError as exc:
+        raise MapiError(
+            "collection.json is not valid",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/inputs/{info_input(prefix)}",
+            untrusted_text=str(exc)[:8000],
+        ) from None
+    packs = {}
+    for i, pack in enumerate(info.packs):
+        name = pack_input(i, prefix)
+        get = ctx.start.inputs.get(name)
+        if get is None:
+            raise MapiError(
+                f"the run needs an input named {name!r}",
+                code=ErrorCode.SCHEMA_INVALID,
+                pointer=f"/inputs/{name}",
+            )
+        packs[pack.digest] = get
+    source = SignedPackSource(ctx, packs)
+    path = ctx.download(manifest or prefix)
+    assert path is not None
+    schema = _schema_input(ctx) if prefix == INPUT_DATASET else None
+    try:
+        return CachedCollection.open(info, path, source, schema)
+    except CollectionError as exc:
+        raise MapiError(
+            f"the collection cannot be read: {exc.detail}",
+            code=exc.code,
+            pointer=f"/inputs/{manifest or prefix}",
+            untrusted_text=exc.untrusted_text,
+        ) from None
 
 
 def load_dataset(ctx: WorkerContext, name: str = INPUT_DATASET) -> xr.Dataset | xr.DataTree:
     """Download and decode a dataset input: a ``*.zarr.zip`` (codec/size checks of the wire
     format) as an ``xr.Dataset``, or (M4) a tree dataset (nested groups, ``data.tree.zip``)
-    as an ``xr.DataTree`` under the tree limits."""
+    as an ``xr.DataTree`` under the tree limits. v0.15: an image collection is read as a
+    seeded sample (``collection_read`` defaults), at :func:`sample_size` (images of mixed
+    sizes or too large for the sample are resized)."""
+    if is_collection(ctx, name):
+        collection = load_collection(ctx, name)
+        read = CollectionRead()
+        size = sample_size(collection.info, read.max_samples)
+        return collection_read(collection, read.model_copy(update={"size": size}), seed=0)
     path = ctx.download(name)
     assert path is not None
     try:
@@ -225,23 +350,31 @@ def load_inline(
     return ds.assign_coords(coords) if coords else ds
 
 
+def _schema_input(ctx: WorkerContext) -> DataSchema | None:
+    """The ``schema`` input, when given."""
+    if not ctx.has_input(INPUT_SCHEMA):
+        return None
+    path = ctx.download(INPUT_SCHEMA)
+    assert path is not None
+    raw = path.read_bytes()
+    if len(raw) > _MAX_JSON_INPUT:
+        raise MapiError("the schema input is too large", code=ErrorCode.PAYLOAD_TOO_LARGE)
+    try:
+        return DataSchema.model_validate_json(raw)
+    except ValidationError as exc:
+        raise MapiError(
+            "the schema input is not a valid DataSchema",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/inputs/{INPUT_SCHEMA}",
+            untrusted_text=str(exc)[:8000],
+        ) from None
+
+
 def load_raw_schema(ctx: WorkerContext, data: xr.Dataset) -> DataSchema | None:
     """The dataset's raw schema: ``schema`` input, else the ``mapi_schema`` attr, else None."""
-    if ctx.has_input(INPUT_SCHEMA):
-        path = ctx.download(INPUT_SCHEMA)
-        assert path is not None
-        raw = path.read_bytes()
-        if len(raw) > _MAX_JSON_INPUT:
-            raise MapiError("the schema input is too large", code=ErrorCode.PAYLOAD_TOO_LARGE)
-        try:
-            return DataSchema.model_validate_json(raw)
-        except ValidationError as exc:
-            raise MapiError(
-                "the schema input is not a valid DataSchema",
-                code=ErrorCode.SCHEMA_INVALID,
-                pointer=f"/inputs/{INPUT_SCHEMA}",
-                untrusted_text=str(exc)[:8000],
-            ) from None
+    given = _schema_input(ctx)
+    if given is not None:
+        return given
     stored = data.attrs.get(SCHEMA_ATTR)
     try:
         if isinstance(stored, str):

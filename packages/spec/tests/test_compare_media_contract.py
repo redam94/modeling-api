@@ -229,7 +229,8 @@ def test_compare_shapes_and_caps() -> None:
 
 
 def test_v014_endpoints_access_and_audit() -> None:
-    assert api.ENDPOINTS[-len(V014_ENDPOINTS) :] == V014_ENDPOINTS
+    start = api.ENDPOINTS.index(V014_ENDPOINTS[0])
+    assert api.ENDPOINTS[start : start + len(V014_ENDPOINTS)] == V014_ENDPOINTS
     by_op = {e.operation_id: e for e in V014_ENDPOINTS}
     assert len(by_op) == len(V014_ENDPOINTS) == 16
     for e in V014_ENDPOINTS:
