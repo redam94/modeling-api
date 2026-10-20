@@ -34,7 +34,7 @@ __all__ = [
 
 log = logging.getLogger(__name__)
 
-NoticeKind = Literal["run", "event", "progress", "log"]
+NoticeKind = Literal["run", "event", "progress", "log", "tracking"]
 
 CHANNEL = "mapi_runs"
 

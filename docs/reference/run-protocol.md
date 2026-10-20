@@ -145,7 +145,7 @@ values for each execution are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `resume` | The checkpoint objects of the newest earlier attempt that wrote checkpoints, as `SignedGet`s. The server ignores an attempt that stopped before its first checkpoint. |
 | `checkpoint_prefix` | `{attempt prefix}checkpoints/`, or `null` |
 | `hmac_key` | The event HMAC key of the run (`new_hmac_key()`), in base64. It has a minimum of 32 random bytes. The logs never show it: `RunSpec.redacted()` removes it and all URLs. |
-| `limits` | `RunLimits`: `log_line_bytes` (4096), `log_total_bytes` (20 MiB), `max_event_bytes` (64 KiB), `progress_interval_s` (2 s), `max_output_bytes` and `scratch_bytes` (from the resource class), `max_output_objects` (10 000) |
+| `limits` | `RunLimits`: `log_line_bytes` (4096), `log_total_bytes` (20 MiB), `max_event_bytes` (64 KiB), `progress_interval_s` (2 s), `max_output_bytes` and `scratch_bytes` (from the resource class), `max_output_objects` (10 000), and from v0.11 `tracking` (a `TrackingLimits`, see [Tracking budgets](#tracking-budgets)) |
 | `resource_class`, `deadline`, `created_at`, `labels` | The class (S/M/L/XL), a hard UTC deadline, and metadata |
 
 ### Environment
@@ -187,7 +187,7 @@ Each event has these fields:
 | `run_id`, `attempt` | Must agree with the run and its current attempt |
 | `seq` | Starts at 0 for each attempt and increases by 1 for each line. The receiver removes duplicates on `(run_id, attempt, seq)`. Gaps are permitted, because the logs can lose entries. |
 | `ts` | Has a timezone and is normalised to UTC |
-| `type` | `state`, `progress`, `log`, `diagnostic`, `warning`, `checkpoint`, `metric`, `complete` or `error` |
+| `type` | `state`, `progress`, `log`, `diagnostic`, `warning`, `checkpoint`, `metric`, `metrics`, `params`, `tags`, `complete` or `error` |
 | `payload` | Validated against the payload model for `type`. Refer to the table below. |
 | `hmac` | Lower-case hex HMAC-SHA256 with the `hmac_key` of the run |
 
@@ -215,17 +215,98 @@ from one domain is never valid in a different domain.
 | `type` | Payload model | Notes |
 |---|---|---|
 | `state` | `StatePayload{phase, message?}` | The runner phases: `bootstrap`, `load_inputs`, `validate`, `preprocess`, `fit`, `sample`, `score`, `evaluate`, `derive`, `plots`, `upload`, `done` |
-| `progress` | `ProgressPayload{phase, fraction?, message?, eta_seconds?, chains[]}` | Maximum one in each `limits.progress_interval_s`. The platform writes it into one `run_progress` row (upsert). |
-| `log` | `LogPayload{stream, line, truncated}` | One line, maximum `log_line_bytes`. After `log_total_bytes`, the run fails with `SANDBOX_VIOLATION` (log flood). |
+| `progress` | `ProgressPayload{phase, fraction?, message?, eta_seconds?, chains[]}` | Maximum one in each `limits.progress_interval_s`. The platform writes it into one `run_progress` row (upsert). From v0.11, samplers fill `chains` (`ChainProgress{chain, draws_done, draws_total, tuning, divergences, step_size?, num_steps?}`). |
+| `log` | `LogPayload{stream, line, truncated, level?, fields?}` | One line, maximum `log_line_bytes`. After `log_total_bytes`, the run fails with `SANDBOX_VIOLATION` (log flood). The streams are `stdout`, `stderr`, `system` and, from v0.11, `user`. Only `user` lines have `level` and `fields`. |
 | `diagnostic` | `Diagnostic` (`mapi_spec`) | Goes into the scorecard |
 | `warning` | `WarningPayload{code, message, untrusted_text?}` | |
 | `checkpoint` | `CheckpointPayload{name, size, crc32c, segment, draws_done?}` | `name` is relative to `checkpoint_prefix` |
-| `metric` | `MetricPayload{name, value, step?, labels}` | |
+| `metric` | `MetricPayload{name, value, step?, labels}` | One scalar, for example a holdout metric at the end of a fit. From v0.11, the platform also keeps it as a point of the metric series `name`. |
+| `metrics` | `MetricBatchPayload{t0, series[]}` | v0.11. Points of metric series. See [Tracking events](#tracking-events). |
+| `params` | `ParamsPayload{params[]}` | v0.11. Run params. The first value of a key is kept. |
+| `tags` | `TagsPayload{tags[]}` | v0.11. Run tags. The last value of a key is kept. |
 | `complete` | `CompletePayload{status, manifest_name, manifest_crc32c, objects, total_bytes}` | The last event of a successful attempt (`complete`) or of an attempt with checkpoints (`partial`) |
 | `error` | `ErrorPayload{code, failure_class, message, untrusted_text?}` | `code` must be equal to `failure_class.error_code` |
 
 `make_event(run_id, attempt, seq, payload, key=...)` gets `type` from the payload model and
 signs the event.
+
+### Tracking events <span class="mapi-badge">v0.11</span> { #tracking-events }
+
+The events `metrics`, `params` and `tags` carry the tracking data of a run. The platform writes
+them into the tracking tables (metric points, series summaries, params and tags). It does not
+keep them in the event list. Thus, `GET /v1/runs/{run_id}/events` does not return them. The
+event stream sends a `tracking` frame when they change (see
+[HTTP API](http-api.md#tracking-frame)).
+
+A `metrics` payload groups its points by series. A series is one metric key and one set of
+labels. The point lists are columns of equal length:
+
+```json
+{"t0": "2026-10-15T09:31:00Z",
+ "series": [{"key": "step_size", "labels": {"chain": "0"},
+             "steps": [399, 400], "values": [0.32, 0.31], "ts_ms": [0, 250]}]}
+```
+
+| Field | Rule |
+|---|---|
+| `t0` | A time with a timezone. The time of a point is `t0 + ts_ms` milliseconds. |
+| `series` | 1 to 64 `MetricSeriesBatch` items |
+| `key` | A metric key: `^[a-z][a-z0-9_]{0,63}$`. Use labels for qualifiers. |
+| `labels` | A maximum of 8. Key: `^[a-z][a-z0-9_]{0,31}$`. Value: `^[A-Za-z0-9_.\-]{1,63}$`. |
+| `steps` | An integer (0 or more) for each point, or `null` for a scalar point |
+| `values` | Finite numbers only. NaN and infinity are not valid. |
+| `ts_ms` | An integer (0 or more) for each point |
+
+One `metrics` event has a maximum of 1000 points (`MAX_POINTS_PER_EVENT`). One `params` event
+has a maximum of 200 items, and one `tags` event has a maximum of 100 items. A param value is
+a boolean, an integer, a float or a text of a maximum of 6000 characters. A tag value is a
+text of a maximum of 1000 characters. A tag key that starts with `mapi.` is not valid.
+
+An event line must not be more than `max_event_bytes`. `split_for_events(payload,
+max_event_bytes)` divides a payload into parts that each fit in one line. It divides by
+series first, then by points or items, and it keeps the sequence. Each part keeps 2048 bytes
+for the envelope of the event.
+
+#### Worker messages
+
+The worker sends tracking data to the supervisor through the socketpair, with these messages
+(`mapi_runner.channel`):
+
+| Message | Payload | Rule |
+|---|---|---|
+| `metrics` | `MetricBatchPayload` | The worker collects points for each series and sends them each `flush_interval_s` (1 s), or when 1000 points wait |
+| `params` | `ParamsPayload` | Sent with the next flush |
+| `tags` | `TagsPayload` | Sent with the next flush |
+| `user_log` | `LogPayload` with stream `user` | Sent immediately. Another stream is a protocol error. |
+
+The worker sends the last points before its `result` or `error` message. `StartMessage`
+gives the worker the `TrackingLimits` of the run.
+
+#### Tracking budgets { #tracking-budgets }
+
+`RunLimits.tracking` (`TrackingLimits`) gives the budgets of each run. The worker, the
+supervisor and the server use the same budgets.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `metric_points_per_series` | 10 000 | Points in one series |
+| `metric_points_total` | 500 000 | Points in all the series of the run |
+| `metric_series` | 1000 | Different (key, labels) series |
+| `params` | 5000 | Params |
+| `tags` | 100 | Tags (also the maximum) |
+| `log_lines` | 10 000 | `user` log lines |
+| `log_bytes` | 2 MiB | Bytes of `user` log lines |
+| `tracking_bytes` | 64 MiB | Bytes of all tracking messages |
+| `flush_interval_s` | 1.0 | Seconds between two flushes of the worker (0.1 to 30) |
+
+When a run logs more than a budget, the worker and the supervisor do not keep the points or
+the items that are more than the budget. They count them. At the end of the run, the run gets
+one warning with the code `TRACKING_BUDGET`. The warning gives the reasons and the series with
+the most dropped points. The run does not fail.
+
+`tracking_bytes` is a hard limit. If the worker sends more bytes of tracking messages than this
+limit, the supervisor stops the run with `SANDBOX_VIOLATION` (tracking flood), like a log
+flood.
 
 ## Exit codes
 

@@ -9,7 +9,7 @@ One supervisor runs per execution. It:
    10001 with no-new-privs when it runs as root, in *dev mode* otherwise;
 3. validates every worker message, turns them and the captured output into HMAC-signed
    events on its own stdout (the only thing ever written there), enforces the log, event,
-   scratch and output caps, and coalesces progress;
+   tracking, scratch and output caps, and coalesces progress;
 4. handles SIGTERM and the run deadline (forward to the worker, wait for the checkpoint
    flush, upload a ``partial`` manifest);
 5. uploads outputs with the signed POST policy (streaming, hashing as it goes), writes the
@@ -71,7 +71,7 @@ from mapi_spec.storage import PostPolicy, SignedPut
 from pydantic import BaseModel, ValidationError
 
 from mapi_runner import __version__
-from mapi_runner._text import clean_text, clean_tree
+from mapi_runner._text import clean_text
 from mapi_runner.bootstrap import BootstrapError, fetch_and_delete
 from mapi_runner.channel import (
     MAX_START_FRAME,
@@ -81,17 +81,28 @@ from mapi_runner.channel import (
     ErrorMessage,
     FrameReader,
     MetricMessage,
+    MetricsMessage,
+    ParamsMessage,
     ProgressMessage,
     ProtocolError,
     ResultMessage,
     StartMessage,
     StateMessage,
+    TagsMessage,
+    UserLogMessage,
     WarningMessage,
     WorkerMessage,
     parse_worker_message,
     send_frame,
 )
-from mapi_runner.events import EventEmitter, LogFlood, LogGate, ProgressCoalescer
+from mapi_runner.events import (
+    EventEmitter,
+    LogFlood,
+    LogGate,
+    ProgressCoalescer,
+    TrackingGate,
+)
+from mapi_runner.events import clean_payload as _clean
 from mapi_runner.obslog import StderrLog, trace_id_from_env
 from mapi_runner.outputs import OutputViolation, collect_outputs, open_regular
 from mapi_runner.sandbox import WORKER_GID, WORKER_UID, IsolationPlan, plan_isolation
@@ -133,18 +144,6 @@ _LIB_DISTS: Final = (
     "xgboost",
 )
 _READ_BYTES: Final = 64 * 1024
-_MULTILINE: Final = frozenset({"untrusted_text"})
-
-
-def _clean[M: BaseModel](payload: M) -> M:
-    """A worker-authored payload with every string stripped of ANSI escapes, control
-    characters and bidi overrides (as captured log lines are), so it cannot spoof text in
-    the web app or the CLI. ``untrusted_text`` keeps its line breaks."""
-    raw = clean_tree(payload.model_dump(mode="json", by_alias=True), multiline_keys=_MULTILINE)
-    try:
-        return type(payload).model_validate(raw)
-    except ValidationError as exc:
-        raise ProtocolError(f"invalid worker message after text cleaning: {exc}") from exc
 
 
 class Termination(StrEnum):
@@ -240,6 +239,7 @@ class Supervisor:
         self.emitter: EventEmitter | None = None
         self.progress: ProgressCoalescer | None = None
         self.logs: LogGate | None = None
+        self.tracking: TrackingGate | None = None
         self.scratch: str | None = None
         self.proc: subprocess.Popen[bytes] | None = None
         self.prefix = ""
@@ -292,6 +292,9 @@ class Supervisor:
             self._emit,
             line_bytes=rs.limits.log_line_bytes,
             total_bytes=rs.limits.log_total_bytes,
+        )
+        self.tracking = TrackingGate(
+            self._emit, rs.limits.tracking, max_event_bytes=rs.limits.max_event_bytes
         )
         self._state(RunnerPhase.BOOTSTRAP, "bootstrap object read and deleted")
         if self.isolation.dev_mode and self.environ.get(ENV_REQUIRE_ISOLATION) == "1":
@@ -438,6 +441,7 @@ class Supervisor:
             checkpointing=self.ckpt_policy is not None,
             deadline=rs.deadline,
             labels=rs.labels,
+            tracking=rs.limits.tracking,
         )
 
         def send() -> None:
@@ -525,11 +529,11 @@ class Supervisor:
                     try:
                         if name == "channel":
                             for body in frames.feed(data):
-                                self._handle(parse_worker_message(body))
+                                self._handle(parse_worker_message(body), len(body))
                         else:
                             assert self.logs is not None
                             self.logs.feed(name, data)
-                    except (ProtocolError, LogFlood, MapiError) as exc:
+                    except (ProtocolError, LogFlood, MapiError) as exc:  # TrackingFlood too
                         self._violation(exc)
                 # ------------------------------------------------ periodic checks
                 now = time.monotonic()
@@ -604,9 +608,14 @@ class Supervisor:
             self._kill_worker()
 
     # ================================================================ messages
-    def _handle(self, msg: WorkerMessage) -> None:
+    def _handle(self, msg: WorkerMessage, nbytes: int = 0) -> None:
         if self.worker_result is not None or self.worker_error is not None:
             raise ProtocolError("the worker sent a message after its final result")
+        if isinstance(msg, MetricsMessage | ParamsMessage | TagsMessage | UserLogMessage):
+            # never through the progress coalescer: every point counts, within the budgets
+            assert self.tracking is not None
+            self.tracking.feed(msg, nbytes)
+            return
         if isinstance(msg, StateMessage):
             self._state(msg.payload.phase, msg.payload.message)
         elif isinstance(msg, ProgressMessage):
@@ -711,6 +720,8 @@ class Supervisor:
         with self.pending.lock:
             if self.failure is None and self.pending.async_failure is not None:
                 self.failure = self.pending.async_failure
+        if self.tracking is not None and (budget := self.tracking.warning()) is not None:
+            self._emit(budget)  # once, before complete/error
         if self.failure is not None:
             return self._finish_failure(self.failure)
         if self.worker_result is not None:

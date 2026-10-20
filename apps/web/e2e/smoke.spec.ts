@@ -67,6 +67,9 @@ test("run detail streams chain progress and renders logs as text", async ({ page
   await expect.poll(async () => Number(await chain0.getAttribute("aria-valuenow")), { timeout: 8000 }).toBeGreaterThan(before);
   await expect(page.getByText("2 div.").first()).toBeVisible();
 
+  // v0.11: the logs are on their own tab.
+  await page.getByRole("tab", { name: "Logs" }).click();
+  await expect(page).toHaveURL(/\?tab=logs$/);
   const log = page.getByRole("log", { name: "Run logs" });
   await expect(log.getByText("<img src=x onerror=alert(1)> plain text only")).toBeVisible();
   await expect(log.locator("img")).toHaveCount(0);

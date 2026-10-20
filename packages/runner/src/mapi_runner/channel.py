@@ -6,7 +6,10 @@ oversized or of an unknown type is a ``SANDBOX_VIOLATION`` on the supervisor sid
 
 Supervisor -> worker: exactly one :class:`StartMessage` (no HMAC key, no output URLs).
 Worker -> supervisor: ``state``, ``progress``, ``diagnostic``, ``warning``, ``metric``,
-``checkpoint``, then exactly one terminal ``result`` or ``error``.
+``checkpoint``, the tracking messages ``metrics`` (batched metric points), ``params``,
+``tags`` and ``user_log`` (structured log lines, stream ``user``), then exactly one terminal
+``result`` or ``error``. The supervisor accounts every tracking message against
+``StartMessage.tracking`` (the run's :class:`~mapi_spec.tracking.TrackingLimits`).
 """
 
 from __future__ import annotations
@@ -22,12 +25,17 @@ from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, Issue
 from mapi_spec.executor import RunKind
 from mapi_spec.run import (
+    LogPayload,
+    MetricBatchPayload,
     MetricPayload,
+    ParamsPayload,
     ProgressPayload,
     StatePayload,
+    TagsPayload,
     WarningPayload,
 )
 from mapi_spec.storage import SignedGet
+from mapi_spec.tracking import TrackingLimits
 from pydantic import AwareDatetime, Field, JsonValue, TypeAdapter, ValidationError
 
 __all__ = [
@@ -38,11 +46,15 @@ __all__ = [
     "ErrorMessage",
     "FrameReader",
     "MetricMessage",
+    "MetricsMessage",
+    "ParamsMessage",
     "ProgressMessage",
     "ProtocolError",
     "ResultMessage",
     "StartMessage",
     "StateMessage",
+    "TagsMessage",
+    "UserLogMessage",
     "WarningMessage",
     "WorkerMessage",
     "encode_frame",
@@ -86,6 +98,7 @@ class StartMessage(StrictModel):
     checkpointing: bool = False
     deadline: AwareDatetime
     labels: dict[str, str] = Field(default_factory=dict)
+    tracking: TrackingLimits = Field(default_factory=TrackingLimits)
 
 
 class StateMessage(StrictModel):
@@ -111,6 +124,30 @@ class WarningMessage(StrictModel):
 class MetricMessage(StrictModel):
     type: Literal["metric"] = "metric"
     payload: MetricPayload
+
+
+class MetricsMessage(StrictModel):
+    """A batch of user-defined metric points (at most ``MAX_POINTS_PER_EVENT``)."""
+
+    type: Literal["metrics"] = "metrics"
+    payload: MetricBatchPayload
+
+
+class ParamsMessage(StrictModel):
+    type: Literal["params"] = "params"
+    payload: ParamsPayload
+
+
+class TagsMessage(StrictModel):
+    type: Literal["tags"] = "tags"
+    payload: TagsPayload
+
+
+class UserLogMessage(StrictModel):
+    """One structured log line from user code (``payload.stream`` must be ``user``)."""
+
+    type: Literal["user_log"] = "user_log"
+    payload: LogPayload
 
 
 class CheckpointMessage(StrictModel):
@@ -146,6 +183,10 @@ WorkerMessage = Annotated[
     | DiagnosticMessage
     | WarningMessage
     | MetricMessage
+    | MetricsMessage
+    | ParamsMessage
+    | TagsMessage
+    | UserLogMessage
     | CheckpointMessage
     | ResultMessage
     | ErrorMessage,

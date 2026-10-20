@@ -5,6 +5,8 @@
  */
 import { delay, http, HttpResponse, type HttpHandler } from "msw";
 
+import { filterByLevel } from "@/api/logs";
+import { LOG_LEVELS, type LogLevel } from "@/api/tracking";
 import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSession } from "@/api/types";
 import { env } from "@/env";
 
@@ -18,6 +20,7 @@ import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
 import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
+import { advanceTracking, createTrackingHandlers, createTrackingState } from "./tracking";
 import { createTreeHandlers, createTreeState, TREE, treeSpecIssues } from "./tree";
 import { createTrustHandlers, createTrustState } from "./trust";
 import { createWorkflowHandlers, createWorkflowsState } from "./workflows";
@@ -46,6 +49,8 @@ interface MockState {
   tree: ReturnType<typeof createTreeState>;
   /** The science datasets of the Data Explorer (explorer-sci.gen.json). */
   sci: ReturnType<typeof createSciState>;
+  /** v0.11: metric series and params of the runs (fixtures.trackingFixtures). */
+  tracking: ReturnType<typeof createTrackingState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -70,6 +75,7 @@ export function createState(): MockState {
     governance: seedGovernance(createGovernanceState()),
     tree: createTreeState(),
     sci: createSciState(),
+    tracking: createTrackingState(),
     runs: new Map([...fx.runs, ...SHAPE_RUNS].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -123,13 +129,18 @@ function sseResponse(state: MockState, run: Run, request: Request): Response {
           message: "drawing samples",
           eta_seconds: (1000 - done) / 10,
           chains: [
-            { chain: 0, draws_done: done, draws_total: 1000, tuning: false, divergences: 0 },
-            { chain: 1, draws_done: Math.max(0, done - 20), draws_total: 1000, tuning: false, divergences: 2 },
+            { chain: 0, draws_done: done, draws_total: 1000, tuning: false, divergences: 0, step_size: 0.12 },
+            { chain: 1, draws_done: Math.max(0, done - 20), draws_total: 1000, tuning: false, divergences: 2, step_size: 0.135 },
+            { chain: 2, draws_done: Math.max(0, done - 5), draws_total: 1000, tuning: false, divergences: 0, step_size: 0.15 },
+            { chain: 3, draws_done: Math.max(0, done - 10), draws_total: 1000, tuning: false, divergences: 1, step_size: 0.165 },
           ],
         };
         // Same shape as the server's live frames (`_live_json`): not persisted, so no `id`.
         const ev: Omit<RunEventView, "id"> = { run_id: run.id, attempt: 1, seq, ts: new Date().toISOString(), type: "progress", payload };
         controller.enqueue(enc.encode(sseFrame("progress", ev)));
+        // v0.11: the summaries that changed, as the server's live `tracking` frame (no id).
+        const tracking = advanceTracking(state.tracking, run.id);
+        if (tracking) controller.enqueue(enc.encode(sseFrame("tracking", tracking)));
       }, 800);
       request.signal.addEventListener("abort", () => {
         clearInterval(timer);
@@ -178,9 +189,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.11.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.11.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
@@ -304,7 +315,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     }),
     http.post(new RegExp(`^${API_RE}/v1/specs/[^/]+/revisions/\\d+:dry-run$`), () => HttpResponse.json({ ...fx.runRunning, kind: "validate" }, { status: 202 })),
 
-    // runs
+    // runs (v0.11: name, note and tags, metrics and params in mocks/tracking.ts)
+    ...createTrackingHandlers(state.tracking, { runs: state.runs }),
     http.get(`${API}/v1/runs`, ({ request }) => {
       const url = new URL(request.url);
       const s = url.searchParams.get("state");
@@ -329,7 +341,19 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     }),
     // Plots a run rendered (the score runs of mocks/score-shapes.ts have their own).
     http.get(`${API}/v1/runs/:id/plots`, ({ params }) => (state.runs.has(String(params.id)) ? page([]) : problem(404, "NOT_FOUND", "Not found", "no such run"))),
-    http.get(`${API}/v1/runs/:id/logs`, ({ params }) => page(fx.logLines(String(params.id)))),
+    http.get(`${API}/v1/runs/:id/logs`, ({ params, request }) => {
+      const url = new URL(request.url);
+      const stream = url.searchParams.get("stream");
+      const level = url.searchParams.get("level");
+      const min = LOG_LEVELS.includes(level as LogLevel) ? (level as LogLevel) : null;
+      // Like the server: `user` lines only for `stream=user` or `include_user=true`.
+      const withUser = url.searchParams.get("include_user") === "true";
+      return page(
+        filterByLevel(fx.logLines(String(params.id)), min).filter((l) =>
+          stream ? l.stream === stream : withUser || l.stream !== "user",
+        ),
+      );
+    }),
     http.post(new RegExp(`^${API_RE}/v1/runs/[^/]+:cancel$`), ({ request }) => {
       const id = decodeURIComponent(new URL(request.url).pathname.split("/").at(-1)!.split(":")[0]!);
       const r = state.runs.get(id);

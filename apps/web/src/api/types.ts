@@ -179,6 +179,18 @@ export type WebhookDelivery = S["WebhookDelivery"];
 export type WebhookEventType = S["WebhookEventType"];
 export type WebhookUpdate = S["WebhookUpdate"];
 
+// v0.11: run tracking (metrics, params, name, note and tags).
+export type MetricHistory = S["MetricHistory"];
+export type MetricHistorySeries = S["MetricHistorySeries"];
+export type MetricPointIn = S["MetricPointIn"];
+export type MetricSeries = S["MetricSeries"];
+export type MetricsWrite = S["MetricsWrite"];
+export type MetricsWriteResult = S["MetricsWriteResult"];
+export type ParamsWrite = S["ParamsWrite"];
+export type ParamsWriteResult = S["ParamsWriteResult"];
+export type RunParam = S["RunParam"];
+export type RunPatch = S["RunPatch"];
+
 // Run-event payloads (inside RunEventView.payload and SSE frames).
 export type StatePayload = S["StatePayload"];
 export type ProgressPayload = S["ProgressPayload"];

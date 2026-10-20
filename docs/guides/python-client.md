@@ -32,7 +32,7 @@ files:
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.10.0
+http://127.0.0.1:8000 ok 0.11.0
 ```
 
 `Client()` finds its settings in the same sequence as the CLI:
@@ -146,12 +146,14 @@ weeks. Then it does an evaluation on the holdout. Then it fits again on all the 
 | `RunSnapshot` | First, and after each change of state | The full `Run` |
 | `RunEventFrame` | Persisted events: `state`, `warning`, `diagnostic`, `metric`, `checkpoint`, `complete`, `error` | Has an id. The stream sends it again after a reconnect. |
 | `RunLiveFrame` | `progress` and `log` | Live only. The stream never sends it again. |
+| `RunTrackingFrame` | `tracking` (v0.11): the metric series, params or tags changed | Live only. A `TrackingFrame` with the changed series summaries. |
 | `RunEnd` | One time, when the run is terminal | Then the stream closes. |
 
 If the connection stops, the client continues it with `Last-Event-ID`. Thus, no persisted
 event is lost or repeated. `runs.wait` polls (with backoff) and does not use the stream. With
 `raise_on_failure=True`, it raises the error of the run. `runs.logs(run_id)` gives the
-captured output page by page.
+captured output and the structured `user` lines page by page (`include_user=False` gives
+only the captured output).
 
 ## Inspect the model version
 
@@ -543,6 +545,55 @@ each one with the client.
 --8<-- "client_v05.py:automate"
 ```
 
+## Track metrics, params and tags <span class="mapi-badge">v0.11</span> { #tracking }
+
+You can add metrics, params and tags to a run, also after the run finished. For example, log
+a business KPI that you measured after you deployed the model. The writes need the runner
+role. An API token needs the `runs:write` scope.
+
+```python
+run_id = "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+
+api.runs.log_metric(run_id, "revenue_lift", 0.042, labels={"region": "north"})
+api.runs.log_metrics(run_id, {"mae": 3.1, "rmse": 4.2}, labels={"split": "post_launch"})
+api.runs.log_params(run_id, {"analyst": "kim", "holdout_weeks": 8})
+api.runs.set_tags(run_id, {"stage": "production", "old_tag": None})  # None deletes the tag
+api.runs.update(run_id, name="weekly sales, adstock 4", note="Holiday weeks removed.")
+
+with api.runs.track(run_id) as t:
+    for week, value in weekly_kpi:
+        t.log_metric("weekly_lift", value, step=week)
+```
+
+| Call | What it does |
+|---|---|
+| `runs.update(run_id, name=…, note=…, tags=…)` | `PATCH /v1/runs/{run_id}`. Only the arguments that you give change. `None` clears the name or the note. |
+| `runs.log_metric(run_id, key, value, step=None, labels=None, ts=None)` | Log one point |
+| `runs.log_metrics(run_id, values, step=None, labels=None)` | Log a dict of values, or a list of `MetricPointIn`. The client sends a maximum of 1000 points in each request. |
+| `runs.log_params(run_id, params)` | Log params (500 in each request). A different value for a stored key raises a `CONFLICT` error. |
+| `runs.set_tags(run_id, tags)` | Set tags. `None` deletes a tag. |
+| `runs.track(run_id, flush_every=500)` | A context manager with `log_metric`, `log_metrics`, `log_param`, `log_params`, `set_tag` and `set_tags`. It sends the points in batches and when the block ends. |
+| `runs.metrics(run_id, key=None, attempt=None)` | The series of the run with their summaries (`MetricSeries`) |
+| `runs.metric_history(run_id, key, max_points=1000, attempt=None, labels=None)` | The points of one key (`MetricHistory`), downsampled |
+| `runs.params(run_id, prefix=None)` | The params (`RunParam`) |
+
+`runs.list` can search by the tracking data. The client does a check of each `filters`,
+`order_by` and `columns` value before it sends the request:
+
+```python
+for run in api.runs.list(
+    filters=["metric.rmse < 12", "param.fit.engine = nutpie"],
+    tags=["stage:candidate"],
+    order_by="metric.rmse",
+    columns=["metric.rmse", "param.settings.adstock.l_max"],
+):
+    print(run.id, run.name, run.columns)
+```
+
+The other filters of `runs.list` are `kind`, `state`, `spec_id`, `parent_run_id` and `name`.
+For the grammar, see [Search runs](../reference/http-api.md#search-runs). For the logging API
+inside a model, see [Track metrics, params and tags](tracking.md).
+
 ## Async
 
 `AsyncClient` has the same resources and arguments. Use `await` for the calls. Use
@@ -566,7 +617,7 @@ The v0.5 resources work in the same way:
 | `catalog` | `get`, `models`, `model`, `steps`, `plots`, `schema` |
 | `datasets` | `create`, `list`, `get`, `find`, `ensure`, `create_upload`, `create_version`, `versions`, `version`, `wait_version`, `upload`, `artifact`, `download` |
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
-| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
+| `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry`; v0.11: `update`, `log_metric`, `log_metrics`, `log_params`, `set_tags`, `track`, `metrics`, `metric_history`, `params` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate`; v0.4: `save`, `saved`, `get_saved`, `delete_saved`, `render`, `render_status`, `render_output`, `download_render`, `create_embed`, `embeds`, `revoke_embed`, `embed` |
 | `guided` (v0.4) | `templates`, `template`, `detect_roles`, `draft`, `compile`, `translate_priors`, `prior_translation`, `wait_prior_translation`, `preview_priors` |

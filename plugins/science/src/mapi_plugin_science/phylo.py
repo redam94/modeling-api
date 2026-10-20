@@ -791,7 +791,7 @@ class PhyloRegressionModel(CustomModel[PhyloRegressionSettings]):
             result = run_engine(
                 model,
                 plan,
-                EngineHooks(progress=report, cancel=ctx.cancel, log=ctx.log, sink=sink, key=key),
+                EngineHooks.for_context(ctx, progress=report, sink=sink, key=key),
             )
         ctx.check_cancelled()
         posterior = result.group("posterior")

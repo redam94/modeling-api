@@ -38,7 +38,7 @@ from mapi_pymc.model import DEFAULT_CAPABILITIES, PyMCModel
 try:
     __version__ = _metadata.version("mapi-pymc")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.10.0"
+    __version__ = "0.11.0"
 
 __all__ = [
     "DEFAULT_CAPABILITIES",

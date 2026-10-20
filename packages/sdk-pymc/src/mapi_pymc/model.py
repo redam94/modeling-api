@@ -193,13 +193,7 @@ class PyMCModel[SettingsT: BaseModel](CustomModel[SettingsT]):
                 fit_config=cfg.model_dump(mode="json"),
                 data=ds,
             )
-        hooks = EngineHooks(
-            progress=_window(ctx, 0.0, 0.9),
-            cancel=ctx.cancel,
-            log=ctx.log,
-            sink=sink,
-            key=key,
-        )
+        hooks = EngineHooks.for_context(ctx, progress=_window(ctx, 0.0, 0.9), sink=sink, key=key)
         result = run_engine(model, plan, hooks)
         ctx.check_cancelled()
         groups = self._groups(model, result, cfg, bctx, ds)

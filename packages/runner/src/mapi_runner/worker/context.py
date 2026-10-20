@@ -9,13 +9,14 @@ import socket
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import (
+    ChainProgress,
     MetricPayload,
     ProgressPayload,
     RunnerPhase,
@@ -36,6 +37,9 @@ from mapi_runner.channel import (
     send_frame,
 )
 from mapi_runner.transfer import Transfers, new_client
+
+if TYPE_CHECKING:
+    from mapi_runner.worker.tracking import WorkerTracker
 
 __all__ = ["WorkerContext", "load_registry"]
 
@@ -79,6 +83,11 @@ class WorkerContext:
         self.work_dir = root / "work"
         self._transfers: Transfers | None = None
         self._last_progress = 0.0
+        self._last_fraction: float | None = None
+        self._last_message = ""
+        self._chains: list[ChainProgress] = []
+        self._tracker: WorkerTracker | None = None
+        self._tracker_lock = threading.Lock()
         self._phase = RunnerPhase.BOOTSTRAP
         self.total_written = 0
 
@@ -86,6 +95,10 @@ class WorkerContext:
     def _send(self, msg: BaseModel) -> None:
         with self._send_lock:
             send_frame(self._sock, msg)  # type: ignore[arg-type]
+
+    def send(self, msg: BaseModel) -> None:
+        """Send one message (thread-safe: the tracker flushes from a background thread)."""
+        self._send(msg)
 
     def state(self, phase: RunnerPhase, message: str | None = None) -> None:
         self._phase = phase
@@ -98,6 +111,8 @@ class WorkerContext:
         )
 
     def progress(self, fraction: float | None, message: str = "", *, force: bool = False) -> None:
+        """Report progress (at most one message per 0.25 s); carries the latest chains."""
+        self._last_fraction, self._last_message = fraction, message
         now = time.monotonic()
         if not force and now - self._last_progress < _PROGRESS_MIN_INTERVAL and fraction != 1.0:
             return
@@ -105,9 +120,20 @@ class WorkerContext:
         frac = None if fraction is None else min(max(float(fraction), 0.0), 1.0)
         self._send(
             ProgressMessage(
-                payload=ProgressPayload(phase=self._phase, fraction=frac, message=message[:500])
+                payload=ProgressPayload(
+                    phase=self._phase, fraction=frac, message=message[:500], chains=self._chains
+                )
             )
         )
+
+    def set_chains(self, chains: Sequence[ChainProgress]) -> None:
+        """Keep the newest per-chain progress and send it with a (throttled) progress message
+        that repeats the last fraction and message. Any thread may call it."""
+        self._chains = [
+            c if isinstance(c, ChainProgress) else ChainProgress.model_validate(c)
+            for c in list(chains)[:64]
+        ]
+        self.progress(self._last_fraction, self._last_message)
 
     def warning(self, code: str, message: str, untrusted_text: str | None = None) -> None:
         self._send(
@@ -123,9 +149,19 @@ class WorkerContext:
     def diagnostic(self, diagnostic: Diagnostic) -> None:
         self._send(DiagnosticMessage(payload=diagnostic))
 
-    def metric(self, name: str, value: float, *, labels: dict[str, str] | None = None) -> None:
+    def metric(
+        self,
+        name: str,
+        value: float,
+        *,
+        step: int | None = None,
+        labels: dict[str, str] | None = None,
+    ) -> None:
+        """A legacy scalar ``metric`` event (end-of-run metrics such as holdout errors)."""
         self._send(
-            MetricMessage(payload=MetricPayload(name=name, value=value, labels=labels or {}))
+            MetricMessage(
+                payload=MetricPayload(name=name, value=value, step=step, labels=labels or {})
+            )
         )
 
     def checkpoint(self, files: list[str], segment: int, draws_done: int | None) -> None:
@@ -134,6 +170,23 @@ class WorkerContext:
     def log(self, message: str) -> None:
         """Harness log line (goes through the captured stderr like any other output)."""
         print(message, file=sys.stderr, flush=True)
+
+    # ------------------------------------------------------------------- tracking
+    @property
+    def tracker(self) -> WorkerTracker:
+        """The run's tracker (created on first use with the run's tracking budgets)."""
+        if self._tracker is None:
+            with self._tracker_lock:
+                if self._tracker is None:
+                    from mapi_runner.worker.tracking import WorkerTracker
+
+                    self._tracker = WorkerTracker(self, self.start.tracking)
+        return self._tracker
+
+    def close(self) -> None:
+        """Flush the tracker (before the worker sends its result or error). Idempotent."""
+        if self._tracker is not None:
+            self._tracker.close()
 
     # ------------------------------------------------------------------- registry
     @property
@@ -243,6 +296,7 @@ class WorkerContext:
             on_progress=on_progress,
             cancel=self.cancel,
             checkpoint_sink=checkpoint_sink,
+            tracker=self.tracker,
         )
 
 

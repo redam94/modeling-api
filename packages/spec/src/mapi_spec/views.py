@@ -1300,6 +1300,9 @@ class BacktestView(_Explore):
     folds: list[BacktestFoldResult] = Field(default_factory=list, max_length=200)
     summary: dict[str, float | None] = Field(default_factory=dict)
     benchmarks: dict[str, dict[str, float | None]] = Field(default_factory=dict)
+    by_horizon: dict[str, dict[str, float | None]] = Field(
+        default_factory=dict, description="Error metrics per horizon, pooled over the folds"
+    )
 
 
 class ComparisonView(_Explore):

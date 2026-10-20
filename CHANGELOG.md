@@ -5,6 +5,98 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.11.0] — Run tracking — 2026-10-20
+
+### Run tracking: metrics, parameters, tags and notes
+
+Each run now keeps a log of what happened in it: metrics (curves and single values), params,
+tags, a name, a note and structured log lines. Model code, workflow nodes and you (from a
+notebook, a script or the command line) can add to this log. You can search runs by their
+metrics, params and tags. The data that a run comparison needs is stored. The compare page
+comes in a later release.
+
+#### Added
+- A logging API for model code. `FitContext`, `ScoreContext` and the workflow `NodeContext`
+  have `log_metric`, `log_metrics`, `log_param`, `log_params`, `set_tag`, `set_tags`,
+  `log_line` and `chains`. The methods do a check of each key and label when you call them,
+  also without a run. They are thread-safe. The new guide *Track metrics, params and tags*
+  tells how to use them.
+- Metric keys keep the pattern `^[a-z][a-z0-9_]{0,63}$`. Labels (a maximum of 8) give the
+  qualifiers, for example `loss` with `{"split": "val"}` or `step_size` with `{"chain": "0"}`.
+- `mapi_spec.tracking`: the key and label rules, `TrackingLimits`, `labels_key`, `param_text`
+  and the run search grammar (`parse_run_filter`, `parse_run_order`, `parse_run_ref`).
+- `mapi_sdk.tracking`: the `Tracker` protocol, `MetricRecorder`, `TeeTracker`, `with_labels`
+  and `spec_params`. A fit writes the logged values into the new bundle group
+  `/model/metrics_history`, and `core.loss_curve` draws them.
+- Each fit logs the params of its spec: `model`, `fit.*`, `data.split` and `settings.*`.
+  scikit-learn fits also log the hyperparameters of the estimator as `estimator.*`.
+- Live chains: PyMC fits (nutpie and the PyMC NUTS sampler) and `mmm.bayesian` send the
+  progress of each chain. The run page shows one lane for each chain, with its draws,
+  divergences and step size.
+- Step metrics: nutpie logs `step_size`, `num_steps` and `divergences`. The PyMC NUTS sampler
+  (also in `mmm.bayesian` with `nuts_sampler: pymc`) also logs `tree_depth`. For a chain of
+  more than 5000 draws, it logs each k-th draw. These metrics have the label `chain`. ADVI
+  sends its `loss` while it optimises. The evaluation fit of `evaluate_then_refit` adds the
+  label `fit=evaluation` and the prefix `evaluation.` to the keys of its params.
+- `search.grid` logs each grid point in its search run (the first of the child runs of the
+  node): the params `trial.<i>.<pointer>` and `grid.*`, the scores with the point number as
+  the step, `best_<metric>` and the tag `grid.best_point`.
+  `model.backtest` logs the metrics of each fold with the label `fold`.
+- New endpoints: `PATCH /v1/runs/{run_id}` (name, note and tags), `GET` and
+  `POST /v1/runs/{run_id}/metrics`, `GET /v1/runs/{run_id}/metrics/{key}` (downsampled with
+  LTTB), `GET` and `POST /v1/runs/{run_id}/params`. You can log metrics and params to a run
+  after it finished, for example a business KPI after a deployment.
+- `GET /v1/runs` search: `parent_run_id`, `name`, `tag`, `filter` (for example
+  `metric.rmse < 0.5` or `param.fit.engine = nutpie`), `order_by` and `column`
+  (`Run.columns`).
+- The SSE stream of a run sends `tracking` frames when the metrics, the params or the tags
+  change, and a `snapshot` frame when the name or the note changes.
+- `GET /v1/runs/{run_id}/logs` sends the structured `user` lines only with `stream=user` or
+  `include_user=true`, thus older clients continue to read the logs. The v0.11 client, the
+  CLI and the web app send `include_user=true`.
+- The token scope `runs:write` and the permission `update` on `run` (runner role). The audit
+  actions `run.update` and `run.log`.
+- Python client: `runs.update`, `runs.log_metric`, `runs.log_metrics`, `runs.log_params`,
+  `runs.set_tags`, `runs.track` (a context manager that sends points in batches),
+  `runs.metrics`, `runs.metric_history`, `runs.params`, and the search arguments of
+  `runs.list`.
+- CLI: `mapi runs metrics`, `params`, `log-metric`, `log-param`, `tag`, `rename` and `note`.
+  `mapi runs ls` has `--filter`, `--order-by`, `--column`, `--tag`, `--name` and `--parent`.
+  `mapi runs watch` shows metrics, params, tags and structured log lines.
+- Web app, run page: the tabs **Overview**, **Metrics** (a chart for each key, colour by a
+  label, label filters, log scale, live updates), **Params**, **Logs** (level filter) and
+  **Notes** (name, tags and note). The runs list shows the name and the tags of each run.
+- Budgets for each run (`RunLimits.tracking`): 10 000 points for each series, 500 000 points,
+  1000 series, 5000 params, 100 tags and 10 000 structured log lines. A run that logs more
+  gets one `TRACKING_BUDGET` warning. More than 64 MiB of tracking data is a
+  `SANDBOX_VIOLATION`.
+- The setting `MAPI_TRACKING_RETENTION_DAYS`. The server deletes the metric points and the
+  structured log lines of old runs. It keeps the summaries, the value of each metric without a
+  step, the params, the tags and the notes. Points that you log later add to the kept summary.
+- Model Explorer: the backtest has the error for each horizon, pooled over the folds
+  (`BacktestView.by_horizon`), and the chart "Backtest error by horizon". A plan without
+  horizons uses the horizons 1 to the length of the first test window (a maximum of 32).
+
+#### Changed
+- Run events: the new types `metrics`, `params` and `tags`. The platform writes them to the
+  tracking tables, not to the event list. The `log` event has the new stream `user`, with
+  `level` and `fields`. `ChainProgress` has `step_size` and `num_steps`.
+- The legacy `metric` event (for example the holdout `rmse` at the end of a fit) also becomes
+  a scalar metric series.
+- `GET /v1/runs` returns `422 SCHEMA_INVALID` for a `filter`, `order_by` or `column` that is
+  not correct. `GET /v1/runs/{run_id}/logs` has the filter `level`. `Run` has `name`, `note`
+  and `tags`. `LogLine` has `level` and `fields`.
+- `mmm.bayesian` reports the progress of the sampler from 10% to 90%, and you can cancel it
+  while it samples. A cancelled fit makes no model version.
+
+#### Known gaps
+- The page that compares runs comes in v0.14. v0.11 stores the data and gives the summaries
+  and the search filters in the API.
+- Runs cannot log images or other media.
+- numpyro and blackjax samplers do not send the progress of each chain.
+- The approximate methods of mmm-framework (ADVI, Pathfinder) do not send their loss while
+  they fit.
+
 ## [0.10.0] — Chart wiring and score plots by output shape — 2026-10-20
 
 ### Chart wiring and metric correctness

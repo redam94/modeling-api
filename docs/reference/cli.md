@@ -46,6 +46,7 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `datasets` | `create`, `list`, `get`, `find`, `ensure`, `create_upload`, `create_version`, `versions`, `version`, `wait_version`, `upload`, `artifact`, `download` |
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
+| `runs` tracking (v0.11) | `update`, `log_metric`, `log_metrics`, `log_params`, `set_tags`, `track`, `metrics`, `metric_history`, `params`; `list` also takes `parent_run_id`, `name`, `tags`, `filters`, `order_by` and `columns` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate` |
 | `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
@@ -274,6 +275,30 @@ mapi about ID [--kind K] [--expert]
 | `explore …` | Waits for the explore run. `--out DIR` writes each view as JSON. `--show SECTION` prints one view |
 | `optimize` | Prints the plan (the current spend and the recommended spend, the return of the next unit, notes), the uplift and its probability, and the frontier |
 | `choose` | Asks the questions of the chooser, or uses the `-a` answers and asks nothing. Then it prints the ranking with reasons, cautions and the top About cards |
+
+Run tracking (v0.11). [Track metrics, params and tags](../guides/tracking.md) shows these
+commands with examples:
+
+```bash
+mapi runs ls [--filter EXPR]... [--order-by REF] [--column REF]... [--tag K[=V]]... [--name TEXT] [--parent RUN]
+mapi runs metrics RUN [--key KEY] [--points N]
+mapi runs params RUN [--prefix TEXT]
+mapi runs logs RUN [--stream user] [--level warning]
+mapi runs log-metric RUN KEY VALUE [--step N] [--label K=V]...
+mapi runs log-param RUN KEY VALUE [--text]
+mapi runs tag RUN K=V... [--delete KEY]...
+mapi runs rename RUN NAME
+mapi runs note RUN (TEXT | -)
+```
+
+| Command | Notes |
+|---|---|
+| `runs ls` | `--filter` (`-f`, a maximum of 8) and `--order-by` use the [search grammar](http-api.md#search-runs), for example `-f 'metric.rmse < 12'`. Each `--column` (`-c`, a maximum of 16) adds a column to the table. The table has a `name` column |
+| `runs metrics` | Without `--key`: one row for each series (key, labels, last, min, max, count). With `--key`: the downsampled points of that key (`--points`, the default is 1000) |
+| `runs logs` | `--level` shows the lines at that level or higher (`debug`, `info`, `warning`, `error`). Lines without a level count as `info` |
+| `runs log-param` | The CLI reads `VALUE` as a number, `true` or `false` when it can. `--text` keeps it as text |
+| `runs log-metric`, `runs log-param`, `runs tag`, `runs rename`, `runs note` | Need the runner role (a token needs `runs:write`). `runs note RUN -` reads the note from stdin. `runs rename RUN ""` removes the name |
+| `runs watch`, `fit --remote` | Show a maximum of one `metrics` line each 5 seconds (the newest values of a maximum of 4 series), one `params` line and one `tags` line when they change, and `user` log lines as `[level] text`. The stream only tells that the params or the tags changed. The CLI then reads them and shows the changed values |
 
 Errors: for `QUOTA_EXCEEDED` and `RATE_LIMITED`, the CLI prints when to try again
 (`retry after 1h 30m`). With `--json`, the error document contains `retry_after_seconds`. No

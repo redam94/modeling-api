@@ -214,6 +214,10 @@
       "level": "project",
       "min_role": "viewer"
     },
+    "run:update": {
+      "level": "project",
+      "min_role": "runner"
+    },
     "spec:create": {
       "level": "project",
       "min_role": "editor"
@@ -385,6 +389,7 @@
     "workflows:run",
     "models:validate",
     "policies:manage",
+    "runs:write",
     "admin"
   ]
 }

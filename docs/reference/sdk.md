@@ -82,6 +82,58 @@ of an output after a `data.bind`.
 | Model | `plugin.score(...)` returns the `predictions` group in the representation of the plugin. |
 | Back to you | The SDK removes the context rows and selects the requested coords. It inverts the outputs to the output space. It aggregates them (only if this is statistically valid) and makes summaries. Then it binds the names back to your dataset names. |
 
+## Run tracking <span class="mapi-badge">v0.11</span> { #run-tracking }
+
+`FitContext`, `ScoreContext` and the `NodeContext` of workflow nodes have the same logging
+methods (`mapi_sdk.tracking.TrackingMixin`):
+
+| Method | What it does |
+|---|---|
+| `log_metric(key, value, step=None, labels=None)` | One metric point. Without `step`, the point is a scalar and the newest value is kept. |
+| `log_metrics(values, step=None, labels=None)` | Some metrics with one step and one label set. `log_metrics({})` does nothing. |
+| `log_param(key, value)`, `log_params(params)` | Params. The same value again does nothing. A different value raises `ValueError`. |
+| `set_tag(key, value)`, `set_tags(tags)` | Tags. The last value is kept. |
+| `log_line(message, level="info", fields=None)` | A structured log line (stream `user`). The SDK cuts the message at 4096 characters. A maximum of 16 fields. |
+| `chains(chains)` | The progress of each chain, a list of `mapi_spec.run.ChainProgress` |
+| `tracking` | `True` when a tracker records the values |
+
+Each method does a check of its input, also when no tracker is attached. A bad key, a bad
+label, a negative step or a bad level raises `ValueError` at the call. The SDK ignores
+non-finite metric values. The key and label rules are in `mapi_spec.tracking`
+(`check_metric_key`, `check_labels`, `check_param_key`, `check_tag_key`).
+
+The values go to a `Tracker` (`mapi_sdk.Tracker`, a protocol). All implementations are
+thread-safe:
+
+| Tracker | Use |
+|---|---|
+| `MetricRecorder(limits=None)` | Keeps all values in memory, with the budgets of `TrackingLimits`. `history()` gives the `metrics_history` dataset (or `None`). `params`, `tags`, `lines`, `last_chains` and `dropped` (the count for each reason) show what it kept and what it did not keep. |
+| `TeeTracker(*trackers)` | Sends each call to all the trackers that are not `None` |
+| `with_labels(tracker, labels, *, param_prefix="")` | Adds `labels` to each metric call. The labels of the call have priority. `param_prefix` goes before each param key (a key that becomes too long is not sent). |
+| `WorkerTracker` (`mapi_runner`) | Inside a run: sends the values to the platform each second |
+
+The harness connects the trackers:
+
+- `FitHooks(tracker=...)` gets the values of the fit and the params of the spec
+  (`spec_params`: `model`, `fit.*`, `data.split`, `settings.*`). The values of the
+  evaluation fit of `evaluate_then_refit` get the label `fit=evaluation`.
+- `fit_spec(..., record_metrics=True)` (the default) also records each fit in a
+  `MetricRecorder`, and writes `/model/metrics_history` into the bundle (see
+  [Bundles](../concepts/bundles.md#metrics-history)). With `record_metrics=False`, the bundle
+  has no such group.
+- `score_bundle` gives `hooks.tracker` to `ScoreContext.tracker`.
+
+```python
+from mapi_sdk import FitHooks, MetricRecorder, fit_spec
+
+rec = MetricRecorder()
+bundle = fit_spec(spec, data, hooks=FitHooks(tracker=rec))
+rec.params["model"]                         # 'mmm.bayesian@1.2.0'
+bundle.model.groups["metrics_history"]      # when the model logged stepped metrics
+```
+
+For the full guide, see [Track metrics, params and tags](../guides/tracking.md).
+
 ## Representations and summaries
 
 | Representation | Shape | Summaries | Aggregation |

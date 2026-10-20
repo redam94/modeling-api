@@ -157,6 +157,18 @@ The answer (`202`) is an `Exploration`. Poll `GET /v1/explorations/{run_id}` to 
 and the signed view links. If you send the same request again, the answer is `200` from the
 last run.
 
+### Error by horizon <span class="mapi-badge">v0.11</span> { #error-by-horizon }
+
+The backtest view has the error metrics for each horizon, pooled over all the folds
+(`BacktestView.by_horizon`, for example `by_horizon["4"]["mae"]`). Each fold also keeps its
+own `by_horizon`. If the plan has no `horizons`, the backtest uses the horizons 1 to the
+length of the first test window (a maximum of 32).
+
+The backtest section has a second chart, "Backtest error by horizon". It shows the pooled MAE
+for each number of periods ahead, and a light line for each fold. The chart shows only when
+two or more horizons have a pooled MAE. The error usually increases with the horizon. A fast
+increase tells you that the model is good only for short forecasts.
+
 ## Compare model versions
 
 ```bash

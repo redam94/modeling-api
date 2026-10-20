@@ -13,9 +13,10 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
 * Timestamps are timezone-aware RFC 3339 strings in UTC.
 
 :data:`M1_ENDPOINTS`, :data:`M2_ENDPOINTS` (v0.3), :data:`M3_ENDPOINTS` (guided mode and
-integrations, v0.4) and :data:`M35_ENDPOINTS` (workflows, governance, explorers,
-optimisation and About cards, v0.5) are the machine-readable endpoint tables;
-:data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all four. The server's route table and the
+integrations, v0.4), :data:`M35_ENDPOINTS` (workflows, governance, explorers,
+optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
+:data:`V011_ENDPOINTS` (run tracking, v0.11) are the machine-readable endpoint tables;
+:data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
 project-scoped: the project comes from the path or the ``X-Mapi-Project`` header
@@ -160,6 +161,23 @@ from mapi_spec.tenancy import (
     TrustTier,
 )
 from mapi_spec.tokens import ApiToken, TokenCreate, TokenCreated
+from mapi_spec.tracking import (
+    MAX_PARAMS_PER_WRITE,
+    MAX_POINTS_PER_WRITE,
+    MAX_RUN_NAME_CHARS,
+    MAX_RUN_NOTE_CHARS,
+    MAX_SERIES_PER_HISTORY,
+    MAX_TAG_VALUE_CHARS,
+    MAX_TAGS_PER_RUN,
+    RESERVED_TAG_PREFIX,
+    LogFieldValue,
+    LogLevel,
+    MetricKey,
+    MetricLabels,
+    ParamKey,
+    ParamValue,
+    TagKey,
+)
 from mapi_spec.tree import DataLayout, TreeSchema
 from mapi_spec.trust import (
     EmailVerify,
@@ -238,6 +256,7 @@ __all__ = [
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
     "TOKEN_TENANT_ROUTES",
+    "V011_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -313,6 +332,12 @@ __all__ = [
     "Membership",
     "MembershipCreate",
     "MembershipUpdate",
+    "MetricHistory",
+    "MetricHistorySeries",
+    "MetricPointIn",
+    "MetricSeries",
+    "MetricsWrite",
+    "MetricsWriteResult",
     "Model",
     "ModelCompareRequest",
     "ModelExploreRequest",
@@ -326,6 +351,8 @@ __all__ = [
     "OptimizeRequest",
     "OptimizeResult",
     "Page",
+    "ParamsWrite",
+    "ParamsWriteResult",
     "PlotEmbed",
     "PlotEmbedCreate",
     "PlotEmbedCreated",
@@ -352,6 +379,8 @@ __all__ = [
     "RunCost",
     "RunCreate",
     "RunEventView",
+    "RunParam",
+    "RunPatch",
     "RunRetry",
     "SavedPlot",
     "SavedPlotCreate",
@@ -386,6 +415,7 @@ __all__ = [
     "TenantUpdate",
     "TokenCreate",
     "TokenCreated",
+    "TrackingFrame",
     "TriggerCreate",
     "UploadCreate",
     "UploadInspection",
@@ -1071,6 +1101,21 @@ class Run(_Response):
     progress: ProgressSnapshot | None = None
     cost: RunCost = Field(default_factory=RunCost)
     labels: dict[str, str] = Field(default_factory=dict)
+    name: str | None = Field(
+        None, max_length=MAX_RUN_NAME_CHARS, description="Display name (v0.11)"
+    )
+    note: str | None = Field(
+        None, max_length=MAX_RUN_NOTE_CHARS, description="Free-text note (untrusted text, v0.11)"
+    )
+    tags: dict[str, str] = Field(
+        default_factory=dict, description="Mutable run tags (v0.11; labels stay create-only)"
+    )
+    columns: dict[str, float | str | None] | None = Field(
+        None,
+        description="Values of the requested `column` refs (list_runs only), keyed by "
+        "RunRef.text()",
+        exclude_if=lambda v: v is None,
+    )
     created_at: AwareDatetime
     queued_at: AwareDatetime | None = None
     started_at: AwareDatetime | None = None
@@ -1084,6 +1129,8 @@ class Run(_Response):
             "project_id": "default",
             "kind": "fit",
             "state": "running",
+            "name": "weekly sales, adstock 4",
+            "tags": {"team": "growth", "stage": "candidate"},
             "attempt": 1,
             "spec_id": _SPEC_ID,
             "spec_revision": 2,
@@ -1153,9 +1200,15 @@ class LogLine(_Response):
     attempt: int = Field(..., ge=1)
     seq: int = Field(..., ge=0)
     ts: AwareDatetime
-    stream: Literal["stdout", "stderr", "system"]
+    stream: Literal["stdout", "stderr", "system", "user"]
     line: str = Field(..., max_length=4096)
     truncated: bool = False
+    level: LogLevel | None = Field(None, description="Only on stream 'user' (v0.11)")
+    fields: dict[str, LogFieldValue] | None = Field(
+        None,
+        description="Structured fields of a 'user' line (v0.11)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = _examples(
         {
@@ -1165,7 +1218,17 @@ class LogLine(_Response):
             "ts": _TS,
             "stream": "stderr",
             "line": "Sampling 4 chains for 400 tune and 1000 draw iterations",
-        }
+        },
+        {
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "seq": 121,
+            "ts": _TS,
+            "stream": "user",
+            "line": "grid point 3 failed: the model did not converge",
+            "level": "warning",
+            "fields": {"point": 3},
+        },
     )
 
 
@@ -1173,8 +1236,10 @@ class SseEventName(StrEnum):
     """``event:`` names on ``GET /v1/runs/{id}/events`` (``text/event-stream``).
 
     ``snapshot`` (the full :class:`Run`, no id) is sent first on every connection; run-event
-    types carry ``id:`` = :attr:`RunEventView.id`; ``end`` is sent once the run is terminal,
-    then the server closes the stream.
+    types carry ``id:`` = :attr:`RunEventView.id`; ``tracking`` (a :class:`TrackingFrame`, no
+    id, v0.11) tells that metric series, params or tags changed; ``end`` is sent once the run
+    is terminal, then the server closes the stream. The ``metrics``, ``params`` and ``tags``
+    run events are not stored as events, so they have no frame name of their own.
     """
 
     SNAPSHOT = "snapshot"
@@ -1187,6 +1252,7 @@ class SseEventName(StrEnum):
     METRIC = "metric"
     COMPLETE = "complete"
     ERROR = "error"
+    TRACKING = "tracking"
     END = "end"
 
 
@@ -1810,8 +1876,11 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         headers=("Idempotency-Key",),
     ),
     EndpointDecl(
-        "GET", "/v1/runs", "list_runs", "List runs (filters: kind, state, spec_id)",
-        "Page[Run]", 200, paginated=True, query=(*_PAGE, "kind", "state", "spec_id"),
+        "GET", "/v1/runs", "list_runs",
+        "List runs (filters: kind, state, spec, parent, name, tags, metric/param search)",
+        "Page[Run]", 200, errors=_BODY, paginated=True,
+        query=(*_PAGE, "kind", "state", "spec_id", "parent_run_id", "name", "tag", "filter",
+               "order_by", "column"),
     ),
     EndpointDecl("GET", "/v1/runs/{run_id}", "get_run", "Get a run", "Run", 200, errors=_NF),
     EndpointDecl(
@@ -1822,7 +1891,8 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", "/v1/runs/{run_id}/logs", "run_logs", "Captured log lines (untrusted text)",
-        "Page[LogLine]", 200, errors=_NF, paginated=True, query=(*_PAGE, "attempt", "stream"),
+        "Page[LogLine]", 200, errors=_NF, paginated=True,
+        query=(*_PAGE, "attempt", "stream", "level", "include_user"),
     ),
     EndpointDecl(
         "GET", "/v1/runs/{run_id}/plots", "list_run_plots",
@@ -3268,11 +3338,265 @@ M4_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 )  # fmt: skip
 """The M4 endpoint table (tree datasets: upload inspection; part of :data:`ENDPOINTS`)."""
 
+
+# =========================================================================== v0.11: run tracking
+#
+# User-defined metrics (series of points keyed by metric key + labels), write-once params,
+# mutable tags, the run name and note. Keys, limits and the list_runs search grammar live in
+# mapi_spec.tracking; the run-event payloads in mapi_spec.run.
+
+
+class MetricSeries(_Response):
+    """Summary of one metric series (key + labels) of a run; the newest attempt that logged it."""
+
+    key: MetricKey
+    labels: dict[str, str] = Field(default_factory=dict)
+    attempt: int = Field(..., ge=1)
+    count: int = Field(..., ge=0, description="Stored points")
+    last: float = Field(..., description="Value of the newest point (by time, then step)")
+    last_step: int | None = Field(None, description="Step of the newest point; null for a scalar")
+    min: float
+    max: float
+    first_ts: AwareDatetime
+    last_ts: AwareDatetime
+
+    model_config = _examples(
+        {
+            "key": "step_size",
+            "labels": {"chain": "0"},
+            "attempt": 1,
+            "count": 1400,
+            "last": 0.31,
+            "last_step": 1400,
+            "min": 0.02,
+            "max": 1.2,
+            "first_ts": _TS,
+            "last_ts": "2026-10-15T09:31:00Z",
+        },
+        {
+            "key": "rmse",
+            "attempt": 1,
+            "count": 1,
+            "last": 12.7,
+            "last_step": None,
+            "min": 12.7,
+            "max": 12.7,
+            "first_ts": _TS,
+            "last_ts": _TS,
+        },
+    )
+
+
+class MetricHistorySeries(_Response):
+    """The points of one series, in step order (downsampled to ``max_points`` with LTTB)."""
+
+    labels: dict[str, str] = Field(default_factory=dict)
+    attempt: int = Field(..., ge=1)
+    count: int = Field(..., ge=0, description="Stored points (before downsampling)")
+    downsampled: bool = False
+    steps: list[int | None]
+    values: list[float]
+    ts: list[AwareDatetime]
+
+    model_config = _examples(
+        {
+            "labels": {"chain": "0"},
+            "attempt": 1,
+            "count": 3,
+            "downsampled": False,
+            "steps": [1, 2, 3],
+            "values": [0.9, 0.6, 0.45],
+            "ts": [_TS, _TS, _TS],
+        }
+    )
+
+
+class MetricHistory(_Response):
+    """``GET /v1/runs/{run_id}/metrics/{key}``: every series of one metric key."""
+
+    run_id: Id
+    key: MetricKey
+    series: list[MetricHistorySeries] = Field(
+        default_factory=list, max_length=MAX_SERIES_PER_HISTORY
+    )
+    truncated: bool = Field(False, description="More series exist than were returned")
+
+    model_config = _examples(
+        {
+            "run_id": _RUN_ID,
+            "key": "step_size",
+            "series": [MetricHistorySeries.model_json_schema()["examples"][0]],
+        }
+    )
+
+
+class MetricPointIn(_Request):
+    """One metric point written through the API (``step`` null = a scalar, newest wins)."""
+
+    key: MetricKey
+    value: float = Field(..., allow_inf_nan=False)
+    step: int | None = Field(None, ge=0)
+    ts: AwareDatetime | None = Field(None, description="Defaults to the time of the request")
+    labels: MetricLabels = Field(default_factory=dict)
+
+    model_config = _examples(
+        {"key": "revenue_lift", "value": 0.042, "labels": {"region": "north"}},
+        {"key": "loss", "value": 1.23, "step": 400},
+    )
+
+
+class MetricsWrite(_Request):
+    """``POST /v1/runs/{run_id}/metrics``: log metric points to a run (any state)."""
+
+    metrics: list[MetricPointIn] = Field(..., min_length=1, max_length=MAX_POINTS_PER_WRITE)
+
+    model_config = _examples(
+        {"metrics": [{"key": "revenue_lift", "value": 0.042}, {"key": "loss", "value": 1.23,
+                                                               "step": 400}]}
+    )  # fmt: skip
+
+
+class MetricsWriteResult(_Response):
+    """Points stored, and points that repeated an existing (series, step) and were ignored."""
+
+    accepted: int = Field(..., ge=0)
+    duplicates: int = Field(..., ge=0)
+
+    model_config = _examples({"accepted": 2, "duplicates": 0})
+
+
+class RunParam(_Response):
+    """One run parameter. ``value`` is the text form; ``value_num`` is set for numbers."""
+
+    key: ParamKey
+    value: str
+    value_num: float | None = None
+    source: Literal["runner", "api"]
+    logged_at: AwareDatetime
+
+    model_config = _examples(
+        {"key": "fit.draws", "value": "1000", "value_num": 1000.0, "source": "runner",
+         "logged_at": _TS},
+        {"key": "settings.adstock.l_max", "value": "4", "value_num": 4.0, "source": "runner",
+         "logged_at": _TS},
+    )  # fmt: skip
+
+
+class ParamsWrite(_Request):
+    """``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409)."""
+
+    params: dict[ParamKey, ParamValue] = Field(..., min_length=1, max_length=MAX_PARAMS_PER_WRITE)
+
+    model_config = _examples({"params": {"analyst": "kim", "holdout_weeks": 8}})
+
+
+class ParamsWriteResult(_Response):
+    """Params stored, and params already stored with the same value."""
+
+    accepted: int = Field(..., ge=0)
+    unchanged: int = Field(..., ge=0)
+
+    model_config = _examples({"accepted": 2, "unchanged": 0})
+
+
+class RunPatch(_Request):
+    """Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to
+    ``null`` is deleted."""
+
+    name: str | None = Field(None, max_length=MAX_RUN_NAME_CHARS)
+    note: str | None = Field(None, max_length=MAX_RUN_NOTE_CHARS)
+    tags: dict[TagKey, Annotated[str, Field(max_length=MAX_TAG_VALUE_CHARS)] | None] | None = Field(
+        None, max_length=MAX_TAGS_PER_RUN
+    )
+
+    model_config = _examples(
+        {"name": "weekly sales, adstock 4", "tags": {"stage": "candidate", "old": None}},
+        {"note": "Holdout error is high in week 52 (holiday)."},
+    )
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str | None) -> str | None:
+        return (v.strip() or None) if v is not None else None
+
+    @field_validator("tags")
+    @classmethod
+    def _not_reserved(cls, v: dict[str, str | None] | None) -> dict[str, str | None] | None:
+        bad = sorted(k for k in v or {} if k.startswith(RESERVED_TAG_PREFIX))
+        if bad:
+            raise ValueError(f"tag keys {bad} are reserved (prefix {RESERVED_TAG_PREFIX!r})")
+        return v
+
+    @model_validator(mode="after")
+    def _some_field(self) -> RunPatch:
+        if not self.model_fields_set:
+            raise ValueError("set at least one of name, note or tags")
+        return self
+
+
+class TrackingFrame(_Response):
+    """Data of the SSE ``tracking`` frame: the series that changed since the last frame, and
+    whether params or tags changed (fetch them again)."""
+
+    run_id: Id
+    series: list[MetricSeries] = Field(default_factory=list, max_length=200)
+    params: bool = False
+    tags: bool = False
+
+    model_config = _examples(
+        {
+            "run_id": _RUN_ID,
+            "series": [MetricSeries.model_json_schema()["examples"][0]],
+            "params": True,
+        }
+    )
+
+
+_RUNS = "/v1/runs/{run_id}"
+
+V011_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl(
+        "PATCH", _RUNS, "update_run", "Set the name, note or tags of a run (merge patch)",
+        "Run", 200, request="RunPatch", errors=(*_NF, *_BODY), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _RUNS + "/metrics", "list_run_metrics",
+        "Metric series of a run with their summaries (order: key, labels)",
+        "Page[MetricSeries]", 200, errors=_NF, headers=_PH, paginated=True,
+        query=(*_PAGE, "key", "attempt"),
+    ),
+    EndpointDecl(
+        "GET", _RUNS + "/metrics/{key}", "get_metric_history",
+        "Points of one metric key, every series downsampled to max_points",
+        "MetricHistory", 200, errors=(*_NF, *_BODY), headers=_PH,
+        query=("max_points", "attempt", "label"),
+    ),
+    EndpointDecl(
+        "POST", _RUNS + "/metrics", "log_run_metrics",
+        "Log metric points to a run (also after it finished)", "MetricsWriteResult", 200,
+        request="MetricsWrite", errors=(*_NF, *_BODY, _E.QUOTA_EXCEEDED), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _RUNS + "/params", "list_run_params", "Params of a run (order: key)",
+        "Page[RunParam]", 200, errors=_NF, headers=_PH, paginated=True,
+        query=(*_PAGE, "prefix"),
+    ),
+    EndpointDecl(
+        "POST", _RUNS + "/params", "log_run_params",
+        "Log params to a run (write-once: a different value is a 409)", "ParamsWriteResult",
+        200, request="ParamsWrite",
+        errors=(*_NF, *_BODY, _E.CONFLICT, _E.QUOTA_EXCEEDED), headers=_PH,
+    ),
+)  # fmt: skip
+"""The v0.11 endpoint table (run tracking; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
-ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4); the server serves every row."""
+ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS
+)
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -3382,6 +3706,17 @@ _M4_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_upload_inspection": _p(_RK.DATASET, _AC.READ),
 }
 """Access rules of :data:`M4_ENDPOINTS`."""
+
+_V011_ACCESS: Final[dict[str, RouteAccess]] = {
+    "update_run": _p(_RK.RUN, _AC.UPDATE),
+    "list_run_metrics": _p(_RK.RUN, _AC.READ),
+    "get_metric_history": _p(_RK.RUN, _AC.READ),
+    "log_run_metrics": _p(_RK.RUN, _AC.UPDATE),
+    "list_run_params": _p(_RK.RUN, _AC.READ),
+    "log_run_params": _p(_RK.RUN, _AC.UPDATE),
+}
+"""Access rules of :data:`V011_ENDPOINTS` (writes need ``update`` on ``run``: the runner role,
+or a token with the ``runs:write`` scope)."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
@@ -3535,6 +3870,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_M35_ACCESS,
     # M4 tree datasets
     **_M4_ACCESS,
+    # v0.11 run tracking
+    **_V011_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).

@@ -459,6 +459,14 @@ The node does a backtest of each grid point on the plan. `best` is the winning s
 fitted again on all the data (`best_settings`, `best_score` in the result). If a grid has
 more points than `max_points`, the node fails (`WORKFLOW_INVALID`) before it fits a point.
 
+From v0.11, the search run of the node logs each grid point. The search run is the first
+item in the `child_runs` of the node. The `run_id` of the node is the refit of the winner,
+which does not have this data. The **Metrics** tab of the search run shows the score of each
+point (step = the point number). The **Params** tab lists the settings of each point as
+`trial.<i>.<pointer>`, for example `trial.4.order/2 = 1`. The search run also gets the metric
+`best_rmse` (for `metric: rmse`) and the tag `grid.best_point`. See
+[Read a grid search in the run page](workflow-cookbook.md#grid-search-tracking).
+
 ### Gate on governance and keep the evidence
 
 ```yaml
@@ -741,6 +749,11 @@ again. To calculate all nodes again, start a run with `"use_cache": false`. Or, 
 | `GET /v1/workflow-runs/{run_id}/nodes/{node_id}/outputs/{port}` | A signed download link for a file output (a derived dataset, or a table that is too large to show inline) |
 | `GET /v1/workflow-runs/{run_id}/events` | The event log as JSON, or as server-sent events with `Accept: text/event-stream`. The stream sends a `snapshot` first. Use `Last-Event-ID` to continue. The stream sends `end` when the run is complete. |
 | `POST /v1/workflow-runs/{run_id}:cancel` | Cancels the run and each child that runs. The status is `cancelling` until the children stop. |
+
+Each node that runs in a child run keeps its own metrics, params and tags (v0.11). To list the
+node runs of a workflow run, use `GET /v1/runs?parent_run_id=<run_id>`. Code in a node logs
+with the same methods as a model (`ctx.log_metric`, `ctx.log_params`, `ctx.set_tag`,
+`ctx.log_line`). See [Track metrics, params and tags](tracking.md#workflow-nodes).
 
 When a run is complete, the server sends the `workflow.run.succeeded` or `workflow.run.failed`
 [webhook](endpoints-and-webhooks.md). The webhook contains the run id, the workflow revision,

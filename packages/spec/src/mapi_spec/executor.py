@@ -167,7 +167,11 @@ class ExecStatus(StrictModel):
 
 
 class RunEventType(StrEnum):
-    """Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads)."""
+    """Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).
+
+    ``metrics``, ``params`` and ``tags`` (v0.11) carry run tracking data: the control plane
+    writes them to the tracking tables, not to the stored event list.
+    """
 
     STATE = "state"
     PROGRESS = "progress"
@@ -178,6 +182,9 @@ class RunEventType(StrEnum):
     METRIC = "metric"
     COMPLETE = "complete"
     ERROR = "error"
+    METRICS = "metrics"
+    PARAMS = "params"
+    TAGS = "tags"
 
 
 class RunEvent(StrictModel):

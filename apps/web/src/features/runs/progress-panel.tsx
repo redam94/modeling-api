@@ -35,7 +35,15 @@ const CHAIN_COLORS = [
   "bg-series-8",
 ];
 
-/** One lane per chain: draws done vs total, tuning shown hatched, divergences counted. */
+/** "0.12", "0.0031": two significant digits, no exponent for usual step sizes. */
+export function formatStepSize(v: number): string {
+  return v >= 1e-4 ? String(Number(v.toPrecision(2))) : v.toExponential(1);
+}
+
+/**
+ * One lane per chain: draws done vs total, tuning shown hatched, divergences counted, and the
+ * sampler's step size when the engine reports it (v0.11).
+ */
 export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
   if (!chains.length) return null;
   return (
@@ -44,6 +52,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
         const frac = c.draws_total > 0 ? Math.min(1, c.draws_done / c.draws_total) : 0;
         const color = CHAIN_COLORS[c.chain % CHAIN_COLORS.length];
         const divergences = c.divergences ?? 0;
+        const stepSize = c.step_size;
         return (
           <div key={c.chain} role="listitem" className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 text-xs">
             <span className="font-medium text-muted-foreground">Chain {c.chain}</span>
@@ -60,7 +69,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
                 style={{ width: `${frac * 100}%` }}
               />
             </div>
-            <span className="flex items-center gap-2 tabular text-muted-foreground">
+            <span className="flex flex-wrap items-center justify-end gap-x-2 tabular text-muted-foreground">
               {c.tuning ? <span className="text-[11px]">tuning</span> : null}
               {c.draws_done.toLocaleString("en")}/{c.draws_total.toLocaleString("en")}
               <span
@@ -70,6 +79,11 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
                 {divergences > 0 ? <AlertTriangle className="size-3" /> : null}
                 {divergences} div.
               </span>
+              {typeof stepSize === "number" ? (
+                <span className="text-[11px]" title="Step size of the sampler">
+                  step size {formatStepSize(stepSize)}
+                </span>
+              ) : null}
             </span>
           </div>
         );

@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plugin-mmm"
-version = "0.10.0"
+version = "0.11.0"
 description = "Marketing-mix model plugins on mmm-framework (Bayesian and frequentist MMM)"
 readme = "README.md"
 requires-python = ">=3.12"

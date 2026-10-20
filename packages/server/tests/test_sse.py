@@ -16,6 +16,7 @@ from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.notify import RunNotice, notify_run
 from mapi_server.services.runs import append_event, apply_transition, load_run, now
+from mapi_server.services.tracking import write_tags
 from mapi_server_testkit.builders import queued_fit, signed_event
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_spec.api import SSE_HEARTBEAT
@@ -23,7 +24,11 @@ from mapi_spec.executor import RunEventType
 from mapi_spec.run import (
     Actor,
     LogPayload,
+    MetricBatchPayload,
     MetricPayload,
+    MetricSeriesBatch,
+    ParamItem,
+    ParamsPayload,
     ProgressPayload,
     RunnerPhase,
     RunState,
@@ -143,6 +148,135 @@ async def test_live_stream_with_progress_logs_heartbeat_and_end(ctx: ServerConte
     assert snapshots[0] == "provisioning" and "running" in snapshots
     progress = next(f for f in parsed if f["event"] == "progress")
     assert "id" not in progress and progress["json"]["payload"]["fraction"] == 0.5
+
+
+async def test_live_stream_sends_tracking_frames_and_log_levels(ctx: ServerContext) -> None:
+    """A ``metrics`` event becomes a ``tracking`` frame (no id) with the changed series; a
+    params event and a tag change set the flags; ``user`` log frames carry level and fields.
+    Tracking rows that existed before the stream opened are not sent again."""
+    att = await _provisioned(ctx)
+    ing = EventIngestor(ctx)
+    old = MetricBatchPayload(
+        t0=now(), series=[MetricSeriesBatch(key="old", steps=[1], values=[1.0], ts_ms=[0])]
+    )
+    await ing.ingest(signed_event(att, 0, old))
+    await ctx.hub.start()
+    frames: list[str] = []
+
+    async def consume() -> None:
+        async for frame in sse_stream(ctx, None, att.run_id, 0):
+            frames.append(frame)
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.2)
+    batch = MetricBatchPayload(
+        t0=now(),
+        series=[
+            MetricSeriesBatch(
+                key="step_size",
+                labels={"chain": "0"},
+                steps=[1, 2],
+                values=[0.5, 0.4],
+                ts_ms=[0, 5],
+            )
+        ],
+    )
+    await ing.ingest(signed_event(att, 1, batch))
+    await asyncio.sleep(0.2)
+    await ing.ingest(signed_event(att, 2, ParamsPayload(params=[ParamItem(key="a", value=1)])))
+    await ing.ingest(
+        signed_event(
+            att, 3, LogPayload(stream="user", line="hi", level="warning", fields={"fold": 1})
+        )
+    )
+    await asyncio.sleep(0.2)
+    for value in ("x", None):  # set, then delete: a delete changes no seq, only the count
+        async with ctx.db.session() as s:
+            run = await load_run(s, None, att.run_id, for_update=True)
+            await write_tags(s, run, {"stage": value}, actor="usr_test")
+        await asyncio.sleep(0.2)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+    await asyncio.wait_for(task, 5)
+    parsed = [f for f in parse_frames("".join(frames)) if "event" in f]
+    tracking = [f for f in parsed if f["event"] == "tracking"]
+    assert [f["json"]["tags"] for f in tracking][-2:] == [True, True]
+    assert tracking and all("id" not in f for f in tracking)
+    series = [s for f in tracking for s in f["json"]["series"]]
+    assert [(s["key"], s["labels"], s["count"], s["last"]) for s in series] == [
+        ("step_size", {"chain": "0"}, 2, 0.4)
+    ]
+    assert tracking[0]["json"]["run_id"] == att.run_id
+    assert any(f["json"]["params"] for f in tracking)
+    log = next(f for f in parsed if f["event"] == "log")
+    assert log["json"]["payload"]["level"] == "warning"
+    assert log["json"]["payload"]["fields"] == {"fold": 1}
+
+
+async def test_tracking_frames_do_not_skip_a_summary_committed_between_reads(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The summaries and the params/tags marks are read in separate statements. A metrics
+    commit and then a params commit that land between them must not move the summary
+    cursor past the summary the first read did not see."""
+    import mapi_server.api.runs as runs_api
+
+    att = await _provisioned(ctx)
+    ing = EventIngestor(ctx)
+    real = runs_api._tracking_marks
+    calls = 0
+
+    async def racing_marks(*args: Any, **kwargs: Any) -> tuple[int, int, int, int]:
+        nonlocal calls
+        calls += 1
+        if calls == 2:  # the loop's first marks read: the summary read already ran
+            batch = MetricBatchPayload(
+                t0=now(), series=[MetricSeriesBatch(key="loss", steps=[1], values=[0.5], ts_ms=[0])]
+            )
+            await ing.ingest(signed_event(att, 0, batch))
+            await ing.ingest(
+                signed_event(att, 1, ParamsPayload(params=[ParamItem(key="a", value=1)]))
+            )
+        elif calls == 3:
+            async with ctx.db.session() as s:
+                run = await load_run(s, None, att.run_id, for_update=True)
+                await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(runs_api, "_tracking_marks", racing_marks)
+    frames = [f async for f in sse_stream(ctx, None, att.run_id, 0)]
+    parsed = [f for f in parse_frames("".join(frames)) if "event" in f]
+    tracking = [f["json"] for f in parsed if f["event"] == "tracking"]
+    assert any(f["params"] for f in tracking)
+    assert [s["key"] for f in tracking for s in f["series"]] == ["loss"]
+
+
+async def test_a_rename_or_a_new_note_is_sent_as_a_snapshot(ctx: ServerContext) -> None:
+    """PATCH changes no state: the stream still sends the new name and note."""
+    att = await _provisioned(ctx)
+    await ctx.hub.start()
+    frames: list[str] = []
+
+    async def consume() -> None:
+        async for frame in sse_stream(ctx, None, att.run_id, 0):
+            frames.append(frame)
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.2)
+    for field, value in (("name", "sweep best"), ("note", "looks good")):
+        async with ctx.db.session() as s:
+            run = await load_run(s, None, att.run_id, for_update=True)
+            setattr(run, field, value)
+            await notify_run(s, run.id, "run")
+        await asyncio.sleep(0.3)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+    await asyncio.wait_for(task, 5)
+    parsed = [f for f in parse_frames("".join(frames)) if "event" in f]
+    snaps = [(f["json"]["name"], f["json"]["note"]) for f in parsed if f["event"] == "snapshot"]
+    assert snaps[:3] == [(None, None), ("sweep best", None), ("sweep best", "looks good")]
 
 
 async def test_streams_close_when_the_credential_is_revoked(

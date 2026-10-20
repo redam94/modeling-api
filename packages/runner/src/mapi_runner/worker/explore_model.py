@@ -116,6 +116,8 @@ once more, and only for models that declare a ``grid`` output)."""
 ERROR_METRICS: Final = ("rmse", "mae", "mape", "smape", "wape", "mase", "crps")
 """Metrics where lower is better (rankings sort them ascending)."""
 MAX_BACKTEST_FOLDS: Final = 10
+MAX_BACKTEST_HORIZONS: Final = 32
+"""Default horizons of a backtest whose plan names none: 1 .. min(test length, this)."""
 _MAX_PLOT_BYTES: Final = 2_000_000
 
 
@@ -746,9 +748,16 @@ def backtest(c: ModelContext) -> BacktestView:
     freq = schema.dims[canon_t].freq if schema and canon_t in schema.dims else None
     season = explore_period(freq)
     spec = c.refitter.spec(split=None)
+    # the plan's horizons, else every horizon of the first fold's test window (capped)
+    first = folds[0]
+    assert first.test_start is not None and first.test_stop is not None
+    default_h = list(range(1, min(first.test_stop - first.test_start, MAX_BACKTEST_HORIZONS) + 1))
     results: list[BacktestFoldResult] = []
     bench_acc: dict[str, list[float]] = {}
     model_acc: list[float] = []
+    # pooled over folds: horizon -> (observed, point) per fold, plus every fold's MASE scale
+    pooled: dict[int, tuple[list[float], list[float]]] = {}
+    scales: list[float] = []
     warn: list[str] = []
     for f in folds:
         assert f.train_start is not None and f.train_stop is not None
@@ -771,9 +780,14 @@ def backtest(c: ModelContext) -> BacktestView:
         scale = _benchmark_scale(hist_tot, season)
         m = error_metrics(obs_tot, pt_tot, scale=scale)
         by_h: dict[str, dict[str, float | None]] = {}
-        for h in f.horizons or plan.horizons:
+        if scale is not None and scale > 0:
+            scales.append(scale)
+        for h in f.horizons or plan.horizons or default_h:
             if 1 <= h <= obs_tot.size:
                 by_h[str(h)] = error_metrics(obs_tot[h - 1 : h], pt_tot[h - 1 : h])
+                o, pt = pooled.setdefault(h, ([], []))
+                o.append(float(obs_tot[h - 1]))
+                pt.append(float(pt_tot[h - 1]))
         bench = stats.naive_forecasts(
             hist_tot, obs_tot.size, season=season, methods=("naive", "seasonal_naive")
         )
@@ -800,10 +814,16 @@ def backtest(c: ModelContext) -> BacktestView:
         summary["skill_vs_best_benchmark"] = (
             _fv(1 - mae / best) if best and mae is not None else None
         )
+    pooled_scale = float(np.mean(scales)) if scales else None
+    by_horizon = {
+        str(h): error_metrics(np.asarray(o), np.asarray(pt), scale=pooled_scale)
+        for h, (o, pt) in sorted(pooled.items())
+    }
     return BacktestView(
         plan=plan.model_dump(mode="json"),
         folds=results,
         summary=summary,
+        by_horizon=by_horizon,
         benchmarks=benchmarks,
         warnings_plain=warn[:50],
         caption_plain="Shows the model fitted again on past data and scored on the next "

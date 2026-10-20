@@ -7,6 +7,7 @@
 import { env } from "@/env";
 import { useAuth } from "@/stores/auth";
 
+import { parseTrackingFrame, type TrackingFrame } from "./tracking";
 import type { Run, RunEventView } from "./types";
 
 export interface SseFrame {
@@ -101,6 +102,8 @@ export interface RunStreamHandlers {
   onEvent(event: RunStreamEvent, live: boolean): void;
   onEnd(run: Run): void;
   onStatus?(status: RunStreamStatus, detail?: string): void;
+  /** v0.11 live `tracking` frame (no id, never persisted): metric summaries changed, params/tags changed. */
+  onTracking?(frame: TrackingFrame): void;
 }
 
 export interface RunStreamOptions {
@@ -239,6 +242,10 @@ export async function followRunEvents(
           } else if (frame.event === "end" && isRun(data)) {
             ended = true;
             handlers.onEnd(data);
+          } else if (frame.event === "tracking") {
+            // Live like progress/log: no id, so it never moves the resume point.
+            const tracking = parseTrackingFrame(data);
+            if (tracking) handlers.onTracking?.(tracking);
           } else if (RUN_EVENT_NAMES.has(frame.event)) {
             const ev = parseRunStreamEvent(data);
             if (!ev) continue;

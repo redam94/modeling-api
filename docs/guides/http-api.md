@@ -38,7 +38,7 @@ storage URLs, because these URLs have their own authorization. See
 ```
 
 ```text
-{"status":"ok","version":"0.10.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.11.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.bayesian@1.0.0  draws
 mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws
@@ -156,6 +156,8 @@ With `Accept: text/event-stream`, the events endpoint is a live stream. It sends
 1. A `snapshot` of the run.
 2. The persisted events. Each event has an `id:`.
 3. Live `progress` and `log` frames. These have no id, and the server never sends them again.
+   From v0.11, live `tracking` frames tell that the metrics, the params or the tags of the run
+   changed.
 4. A new `snapshot` at each change of state.
 5. `end` when the run is terminal. Then the server closes the stream.
 
@@ -233,6 +235,58 @@ the circle:
 Each table of `summary.json` also gives `dims`, the names of its coordinate columns (the
 columns before the statistics), and `time_dim`, the dim that is time when there is one. A
 server that predates these fields leaves them out.
+
+## Track metrics, params and tags <span class="mapi-badge">v0.11</span> { #tracking }
+
+A run keeps metrics, params, tags, a name and a note. The model logs most of them while it
+fits. You can add more, also after the run finished. The writes need the runner role. An API
+token needs the `runs:write` scope.
+
+1. Log a metric point. A point without `step` is a scalar:
+
+    ```bash
+    api -X POST "$API/v1/runs/$RUN/metrics" -H 'Content-Type: application/json' \
+      -d '{"metrics": [{"key": "revenue_lift", "value": 0.042, "labels": {"region": "north"}}]}'
+    ```
+
+    ```json
+    {"accepted": 1, "duplicates": 0}
+    ```
+
+2. Log params. A param does not change: a different value for a stored key gets
+   `409 CONFLICT`.
+
+    ```bash
+    api -X POST "$API/v1/runs/$RUN/params" -H 'Content-Type: application/json' \
+      -d '{"params": {"analyst": "kim", "holdout_weeks": 8}}'
+    ```
+
+3. Set the name, the note and the tags. A tag with the value `null` is deleted:
+
+    ```bash
+    api -X PATCH "$API/v1/runs/$RUN" -H 'Content-Type: application/json' \
+      -d '{"name": "weekly sales, adstock 4", "tags": {"stage": "production"}}'
+    ```
+
+4. Read the series and the points:
+
+    ```bash
+    api "$API/v1/runs/$RUN/metrics" | jq -c '.items[] | {key, labels, last, count}'
+    api "$API/v1/runs/$RUN/metrics/step_size?max_points=200&label=chain:0" \
+      | jq '.series[0].values | length'
+    ```
+
+5. Find runs by their metrics and params:
+
+    ```bash
+    api -G "$API/v1/runs" --data-urlencode 'filter=metric.rmse < 12' \
+      --data-urlencode 'order_by=metric.rmse' --data-urlencode 'column=metric.rmse' \
+      | jq -c '.items[] | {id, name, columns}'
+    ```
+
+In these examples, `api` is the helper function of `http_tour.sh`. For all the endpoints and
+the search grammar, see [Run tracking](../reference/http-api.md#run-tracking). For the logging
+API inside a model, see [Track metrics, params and tags](tracking.md).
 
 ## Errors
 

@@ -199,6 +199,23 @@ Python, you can also use the decision objective of a fitted bundle directly.
 each period, `spend(channel)` or `spend(geo, channel)`. It gives this value at steady state,
 for each posterior draw.
 
+## Live progress and cancel <span class="mapi-badge">v0.11</span> { #live-progress }
+
+`mmm.bayesian` reports its progress while it samples. Before v0.11, the progress went from
+10% to 90% in one step.
+
+- The progress bar moves with the draws of the slowest chain.
+- The run page shows one lane for each chain, with its draws, divergences and step size.
+- The fit logs the step metrics `step_size`, `num_steps` and `divergences` for each chain
+  (label `chain`). With `nuts_sampler: pymc`, it also logs `tree_depth`. The **Metrics** tab
+  shows them. See
+  [Live chains and step metrics](pymc.md#live-chains).
+- If you cancel the run while it samples, the sampler stops. The run becomes `cancelled`
+  and makes no model version.
+
+This applies to `nuts_sampler: nutpie` and `nuts_sampler: pymc`. The approximate methods
+(ADVI, Pathfinder) of mmm-framework do not send progress while they fit.
+
 ## The fast frequentist model
 
 `mmm.frequentist` takes the same data and settings, and answers in seconds:

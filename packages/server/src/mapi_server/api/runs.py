@@ -25,6 +25,7 @@ from mapi_spec.api import (
     RunEventView,
     RunRetry,
     SseEventName,
+    TrackingFrame,
     parse_last_event_id,
 )
 from mapi_spec.audit import AuditAction
@@ -32,7 +33,8 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunEventType, RunKind
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.tenancy import Action, ResourceKind
-from sqlalchemy import and_, or_, select
+from mapi_spec.tracking import LOG_LEVELS, LogLevel
+from sqlalchemy import and_, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.api.common import (
@@ -53,10 +55,12 @@ from mapi_server.errors import Conflict
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.cost import run_costs
+from mapi_server.services.run_search import column_values, parse_run_query
 from mapi_server.services.runs import apply_transition, load_run, run_dto
 from mapi_server.services.submit import admit, submit_retry, submit_run
+from mapi_server.services.tracking import run_tags, series_dto, tags_by_run
 
-__all__ = ["RUN_PLOTS_OUTPUT", "render_run", "router", "run_view", "sse_stream"]
+__all__ = ["RUN_PLOTS_OUTPUT", "RunId", "render_run", "router", "run_view", "sse_stream"]
 
 log = logging.getLogger(__name__)
 
@@ -67,12 +71,15 @@ _PAGE = 500
 RUN_PLOTS_OUTPUT = "plots.json"
 """Output a run renders its plots into (a JSON array of PlotSpec documents)."""
 _MAX_RUN_PLOTS = 50
+_TRACKING_FRAME_SERIES = 200
+_LEVEL_RANK = {level: i for i, level in enumerate(LOG_LEVELS)}
 
 
 async def run_view(session: AsyncSession, run: m.Run) -> Run:
     progress = await session.get(m.RunProgress, run.id)
     costs = await run_costs(session, [run])
-    return run_dto(run, progress, cost=costs.get(run.id))
+    tags = await run_tags(session, run.id)
+    return run_dto(run, progress, cost=costs.get(run.id), tags=tags)
 
 
 async def render_run(session: AsyncSession, run_id: str, status_code: int) -> JSONResponse:
@@ -116,8 +123,24 @@ async def list_runs(
     kind: RunKind | None = None,
     state: RunState | None = None,
     spec_id: str | None = None,
+    parent_run_id: str | None = None,
+    name: Annotated[str | None, Query(max_length=200)] = None,
+    tag: Annotated[list[str] | None, Query()] = None,
+    filters: Annotated[list[str] | None, Query(alias="filter")] = None,
+    order_by: Annotated[str | None, Query(max_length=512)] = None,
+    column: Annotated[list[str] | None, Query()] = None,
 ) -> Page[Run]:
-    stmt = select(m.Run).where(
+    """Runs of the project, newest first by default.
+
+    ``name`` is a case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
+    (the run has the tag) or ``key:value``; ``filter`` (repeatable, at most 8) compares a
+    metric series summary, a param, a tag or the name (``metric.rmse < 0.5``); ``order_by``
+    sorts on one ref (``-metric.rmse``; runs without the value sort last); ``column``
+    (repeatable, at most 16) returns those values in ``Run.columns``.
+    """
+    query = parse_run_query(filters or (), order_by, column or (), tag or ())
+    keys = query.sort_keys()
+    stmt = select(m.Run, *keys).where(
         m.Run.tenant_id == ctx.scope.tenant_id, m.Run.project_id == ctx.scope.project_id
     )
     if kind is not None:
@@ -126,25 +149,54 @@ async def list_runs(
         stmt = stmt.where(m.Run.state == state.value)
     if spec_id is not None:
         stmt = stmt.where(m.Run.spec_id == spec_id)
+    if parent_run_id is not None:
+        stmt = stmt.where(m.Run.parent_run_id == parent_run_id)
+    if name:
+        stmt = stmt.where(m.Run.name.icontains(name, autoescape=True))
+    for clause in query.where():
+        stmt = stmt.where(clause)
     after = decode_cursor(cursor)
     if after is not None:
-        stmt = stmt.where(m.Run.id < str(after))
-    rows = list((await session.execute(stmt.order_by(m.Run.id.desc()).limit(limit + 1))).scalars())
-    more = len(rows) > limit
-    rows = rows[:limit]
+        stmt = stmt.where(query.after(keys, after))
+    result = (
+        await session.execute(stmt.order_by(*query.order_clause(keys)).limit(limit + 1))
+    ).all()
+    more = len(result) > limit
+    result = result[:limit]
+    rows = [r[0] for r in result]
+    ids = [r.id for r in rows]
     progress = {
         p.run_id: p
         for p in (
-            await session.execute(
-                select(m.RunProgress).where(m.RunProgress.run_id.in_([r.id for r in rows]))
-            )
+            await session.execute(select(m.RunProgress).where(m.RunProgress.run_id.in_(ids)))
         ).scalars()
     }
     costs = await run_costs(session, rows)
+    tags = await tags_by_run(session, ids)
+    columns = await column_values(session, rows, query.columns) if query.columns else None
+    next_cursor = None
+    if more and result:
+        last = result[-1]
+        next_cursor = encode_cursor(
+            [*_jsonable(last[1:]), last[0].id] if query.by_value else last[0].id
+        )
     return Page[Run](
-        items=[run_dto(r, progress.get(r.id), cost=costs.get(r.id)) for r in rows],
-        next_cursor=encode_cursor(rows[-1].id) if more and rows else None,
+        items=[
+            run_dto(
+                r,
+                progress.get(r.id),
+                cost=costs.get(r.id),
+                tags=tags.get(r.id),
+                columns=columns.get(r.id) if columns is not None else None,
+            )
+            for r in rows
+        ],
+        next_cursor=next_cursor,
     )
+
+
+def _jsonable(values: Any) -> list[Any]:
+    return [v if v is None or isinstance(v, str | int | float) else float(v) for v in values]
 
 
 @router.get("/{run_id}", response_model=Run, operation_id="get_run")
@@ -230,7 +282,14 @@ async def sse_stream(
     Notifications only wake the loop; the database is always the source of what is sent,
     so a lost notification delays a frame but never drops it. Progress and log frames are
     not persisted events and carry no ``id:``; a reconnecting client gets the latest
-    progress from the ``snapshot`` frame.
+    progress from the ``snapshot`` frame. ``log`` frames of ``user`` lines carry their
+    ``level`` and ``fields``.
+
+    ``tracking`` frames (no ``id:`` either) carry the metric series summaries that changed
+    since the previous frame (at most 200 per frame) and whether params or tags changed;
+    clients refetch what they show. Only changes after the stream opened are sent: the
+    ``snapshot`` run view has the tags, and the metrics/params routes have the rest. A new
+    ``snapshot`` goes out when the state, the name or the note changes.
 
     Every ``sse_reauth_s`` the caller's credential is checked again
     (:func:`~mapi_server.auth.request.still_authorized`): once it no longer grants access
@@ -244,7 +303,8 @@ async def sse_stream(
         async with ctx.data_session() as session:
             run = await load_run(session, None, run_id)
             first_progress = await session.get(m.RunProgress, run_id)
-            view = run_dto(run, first_progress)
+            view = run_dto(run, first_progress, tags=await run_tags(session, run_id))
+            tracking = await _tracking_marks(session, run_id)
             last_log = (
                 await session.execute(
                     select(m.RunLog.attempt, m.RunLog.seq)
@@ -254,12 +314,17 @@ async def sse_stream(
                 )
             ).first()
         log_cursor: tuple[int, int] = (last_log[0], last_log[1]) if last_log else (0, -1)
+        # one cursor per table: the tables are read in separate statements, so a shared
+        # cursor could jump past a summary ``seq`` the summary read did not see yet
+        summary_cursor, params_cursor, tags_cursor, tags_count = tracking
         # keyed by the progress row's own attempt: after an infra retry the row can still
         # hold the previous attempt's (higher) seq, which must not hold back the new one
         progress_key = (
             (first_progress.attempt, first_progress.seq) if first_progress is not None else (0, -1)
         )
         sent_state = view.state
+        # a rename or a new note (PATCH) changes no state: it is sent as a snapshot too
+        sent_meta = (run.name, run.note)
         yield _frame(SseEventName.SNAPSHOT, view.model_dump_json(), retry=SSE_RETRY_MS)
         last_write = time.monotonic()
         while True:
@@ -335,25 +400,54 @@ async def sse_stream(
                                 line.seq,
                                 line.ts,
                                 "log",
-                                {
-                                    "stream": line.stream,
-                                    "line": line.line,
-                                    "truncated": line.truncated,
-                                },
+                                _log_payload(line),
                             ),
                         )
                     )
+                series = list(
+                    (
+                        await session.execute(
+                            select(m.RunMetricSummary)
+                            .where(
+                                m.RunMetricSummary.run_id == run_id,
+                                m.RunMetricSummary.seq > summary_cursor,
+                            )
+                            .order_by(m.RunMetricSummary.seq)
+                            .limit(_TRACKING_FRAME_SERIES)
+                        )
+                    ).scalars()
+                )
+                _, params_mark, tags_mark, count = await _tracking_marks(
+                    session, run_id, summaries=False
+                )
+                params_changed = params_mark > params_cursor
+                tags_changed = tags_mark > tags_cursor or count != tags_count
+                if series or params_changed or tags_changed:
+                    frame = TrackingFrame(
+                        run_id=run_id,
+                        series=[series_dto(x) for x in series],
+                        params=params_changed,
+                        tags=tags_changed,
+                    )
+                    frames.append(_frame(SseEventName.TRACKING, frame.model_dump_json()))
+                    tags_count = count
+                    if series:
+                        summary_cursor = series[-1].seq  # a full page: the rest next pass
+                    params_cursor = max(params_cursor, params_mark)
+                    tags_cursor = max(tags_cursor, tags_mark)
                 state = RunState(run.state)
-                if state is not sent_state or (state.terminal and len(rows) < _PAGE):
+                meta = (run.name, run.note)
+                changed = state is not sent_state or meta != sent_meta
+                if changed or (state.terminal and len(rows) < _PAGE):
                     view = await run_view(session, run)
-            if state is not sent_state:
+            if changed:
                 frames.append(_frame(SseEventName.SNAPSHOT, view.model_dump_json()))
-                sent_state = state
+                sent_state, sent_meta = state, meta
             for f in frames:
                 yield f
             if frames:
                 last_write = time.monotonic()
-            if len(rows) == _PAGE or len(logs) == _PAGE:
+            if len(rows) == _PAGE or len(logs) == _PAGE or len(series) == _TRACKING_FRAME_SERIES:
                 continue  # more backlog: no waiting
             if state.terminal:
                 yield _frame(SseEventName.END, view.model_dump_json())
@@ -378,6 +472,45 @@ async def sse_stream(
                 yield SSE_HEARTBEAT
                 last_write = time.monotonic()
             sub.drain()
+
+
+async def _tracking_marks(
+    session: AsyncSession, run_id: str, *, summaries: bool = True
+) -> tuple[int, int, int, int]:
+    """``(max summary seq, max params seq, max tags seq, tag count)`` of a run (0 when none);
+    one statement. A deleted tag changes the count, not a ``seq``."""
+
+    def top(model: type[m.RunMetricSummary | m.RunParam | m.RunTag]) -> Any:
+        return (
+            select(func.coalesce(func.max(model.seq), 0))
+            .where(model.run_id == run_id)
+            .scalar_subquery()
+        )
+
+    row = (
+        await session.execute(
+            select(
+                top(m.RunMetricSummary) if summaries else literal(0),
+                top(m.RunParam),
+                top(m.RunTag),
+                select(func.count()).where(m.RunTag.run_id == run_id).scalar_subquery(),
+            )
+        )
+    ).one()
+    return int(row[0]), int(row[1]), int(row[2]), int(row[3])
+
+
+def _log_payload(line: m.RunLog) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "stream": line.stream,
+        "line": line.line,
+        "truncated": line.truncated,
+    }
+    if line.level is not None:
+        payload["level"] = line.level
+    if line.fields is not None:
+        payload["fields"] = line.fields
+    return payload
 
 
 def _live_json(
@@ -467,15 +600,30 @@ async def run_logs(
     limit: Limit = DEFAULT_LIMIT,
     cursor: str | None = None,
     attempt: Annotated[int | None, Query(ge=1)] = None,
-    stream: Annotated[str | None, Query(pattern=r"^(stdout|stderr|system)$")] = None,
+    stream: Annotated[str | None, Query(pattern=r"^(stdout|stderr|system|user)$")] = None,
+    level: LogLevel | None = None,
+    include_user: Annotated[
+        bool,
+        Query(description="Also return the structured 'user' lines (v0.11)"),
+    ] = False,
 ) -> Page[LogLine]:
-    """Captured lines, oldest first. ``line`` is untrusted text: render it as text only."""
+    """Captured and user lines, oldest first. ``line`` and ``fields`` are untrusted text:
+    render them as text only. ``level`` is the minimum level (``debug < info < warning <
+    error``); lines without a level count as ``info``.
+
+    ``user`` lines come back only with ``stream=user`` or ``include_user=true``: a client
+    older than v0.11 knows only the streams ``stdout``, ``stderr`` and ``system``."""
     await load_run(session, ctx.scope, run_id)
     stmt = select(m.RunLog).where(m.RunLog.run_id == run_id)
     if attempt is not None:
         stmt = stmt.where(m.RunLog.attempt == attempt)
     if stream is not None:
         stmt = stmt.where(m.RunLog.stream == stream)
+    elif not include_user:
+        stmt = stmt.where(m.RunLog.stream != "user")
+    if level is not None and _LEVEL_RANK[level] > 0:
+        rank = case(_LEVEL_RANK, value=m.RunLog.level, else_=_LEVEL_RANK["info"])
+        stmt = stmt.where(rank >= _LEVEL_RANK[level])
     after = decode_cursor(cursor)
     if after is not None:
         a, s = int(after[0]), int(after[1])
@@ -497,6 +645,8 @@ async def run_logs(
                 stream=r.stream,
                 line=r.line,
                 truncated=r.truncated,
+                level=r.level,
+                fields=r.fields,
             )
             for r in rows
         ],

@@ -237,6 +237,40 @@ submits the run. `mapi runs watch RUN` follows a run at a later time.
 `mapi runs cancel RUN` asks for cancellation. `mapi runs retry RUN --resource-class L` starts
 a new run from a run that failed.
 
+From v0.11, `mapi runs watch` and `mapi fit --remote` also show the metrics that the model
+logs. They show a maximum of one `metrics` line each 5 seconds, for example
+`metrics loss=1.23 (step 400)`.
+
+### Track metrics, params and tags <span class="mapi-badge">v0.11</span> { #tracking }
+
+Each run keeps metrics, params, tags, a name and a note. To see them, do these steps:
+
+1. Show the metric series of a run: `mapi runs metrics RUN`.
+2. Show the points of one key: `mapi runs metrics RUN --key step_size --points 200`.
+3. Show the params: `mapi runs params RUN`.
+
+You can add values to a run, also after it finished. You need the runner role. A token needs
+the `runs:write` scope.
+
+```bash
+mapi runs log-metric RUN revenue_lift 0.042 --label region=north
+mapi runs log-param RUN analyst kim
+mapi runs tag RUN stage=production team=growth --delete old_tag
+mapi runs rename RUN "weekly sales, adstock 4"
+echo "Holiday weeks removed." | mapi runs note RUN -
+```
+
+To find runs by their tracking data, use the options of `mapi runs ls`:
+
+```bash
+mapi runs ls --filter 'metric.rmse < 12' --filter 'param.fit.engine = nutpie' \
+  --order-by metric.rmse --column metric.rmse --column param.settings.adstock.l_max
+mapi runs ls --tag stage=candidate --name adstock --parent RUN
+```
+
+For the grammar of `--filter`, `--order-by` and `--column`, see
+[Search runs](../reference/http-api.md#search-runs).
+
 ### Score
 
 ```bash

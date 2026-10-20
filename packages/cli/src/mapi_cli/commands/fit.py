@@ -13,7 +13,14 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
-from mapi_client import Client, RunEnd, RunEventFrame, RunLiveFrame, RunSnapshot
+from mapi_client import (
+    Client,
+    RunEnd,
+    RunEventFrame,
+    RunLiveFrame,
+    RunSnapshot,
+    RunTrackingFrame,
+)
 from mapi_spec.api import Run
 from mapi_spec.cost import RunCost
 from mapi_spec.errors import ErrorCode, MapiError
@@ -32,9 +39,14 @@ __all__ = ["cost_rows", "cost_text", "fit", "follow_run", "report_run"]
 
 
 def follow_run(api: Client, out: Output, run: Run, *, title: str) -> Run:
-    """Follow a run's event stream until it ends; returns the final run."""
+    """Follow a run's event stream until it ends; returns the final run.
+
+    Params and tags never travel on the stream: a ``tracking`` frame only says that they
+    changed. The params and tags that changed are then read and printed (best effort).
+    """
     final = run
     with EventRenderer(out, title) as renderer:
+        seen = _TrackedValues(api, run)
         for item in api.runs.stream_events(run.id):
             if isinstance(item, RunSnapshot):
                 final = item.run
@@ -42,9 +54,44 @@ def follow_run(api: Client, out: Output, run: Run, *, title: str) -> Run:
                 renderer.handle(item.event)
             elif isinstance(item, RunLiveFrame):
                 renderer.handle(item)
+            elif isinstance(item, RunTrackingFrame):
+                renderer.tracking(item.frame)
+                if item.frame.params and renderer.enabled:
+                    renderer.params(seen.new_params())
+                if item.frame.tags and renderer.enabled:
+                    renderer.tags(seen.new_tags())
             elif isinstance(item, RunEnd):
                 final = item.run
     return final
+
+
+class _TrackedValues:
+    """The params and tags a watch already showed. The tags of the start are known; the
+    first params change shows every param (the watch of a new run sees them all anyway)."""
+
+    def __init__(self, api: Client, run: Run) -> None:
+        self.api = api
+        self.run_id = run.id
+        self.tags: dict[str, str] = dict(run.tags)
+        self.params: dict[str, str] = {}
+
+    def new_params(self) -> dict[str, str]:
+        try:
+            now = {p.key: p.value for p in self.api.runs.params(self.run_id)}
+        except MapiError:  # printing them is best effort: the watch goes on
+            return {}
+        new = {k: v for k, v in now.items() if self.params.get(k) != v}
+        self.params = now
+        return new
+
+    def new_tags(self) -> dict[str, str]:
+        try:
+            now = dict(self.api.runs.get(self.run_id).tags)
+        except MapiError:
+            return {}
+        new = {k: v for k, v in now.items() if self.tags.get(k) != v}
+        self.tags = now
+        return new
 
 
 def report_run(out: Output, run: Run) -> None:
@@ -54,11 +101,13 @@ def report_run(out: Output, run: Run) -> None:
     out.kv(
         [
             ("run", run.id),
+            ("name", run.name),
             ("state", safe(run.state.value, "green" if run.state.value == "succeeded" else "red")),
             ("kind", run.kind.value),
             ("attempt", run.attempt),
             ("model version", run.output_model_version_id),
             ("failure", run.failure_class.value if run.failure_class else None),
+            ("tags", ", ".join(f"{k}={v}" for k, v in sorted(run.tags.items()))),
             *cost_rows(run.cost),
         ]
     )

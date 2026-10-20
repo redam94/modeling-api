@@ -27,7 +27,11 @@
   ``governance`` (check catalog, project and tenant policies), ``validations`` (requests,
   the review queue, approvals, evidence packs), ``explorations`` and the Data/Model
   Explorer, comparison and budget optimisation (``models.optimize``) methods, and About
-  cards with *Help me choose* on ``catalog`` (``abouts``, ``chooser``, ``recommend``).
+  cards with *Help me choose* on ``catalog`` (``abouts``, ``chooser``, ``recommend``);
+* from v0.11 run tracking on ``runs``: ``update`` (name, note, tags), ``log_metric(s)``,
+  ``log_params``, ``set_tags``, ``metrics``, ``metric_history``, ``params``, run search in
+  ``list`` (``filters``, ``order_by``, ``columns``, ``tags``) and :meth:`Runs.track`, a
+  buffered :class:`RunTracker`; ``stream_events`` yields :class:`RunTrackingFrame`.
 
 >>> from mapi_client import Client               # doctest: +SKIP
 >>> with Client("http://127.0.0.1:8000") as api:
@@ -35,6 +39,7 @@
 """
 
 from mapi_client._async import AsyncClient
+from mapi_client._calls_tracking import UNSET
 from mapi_client._common import ScoreResult
 from mapi_client._http import Call, RetryPolicy, RetryState
 from mapi_client._m3 import RemoteEndpoint
@@ -42,6 +47,7 @@ from mapi_client._m3_async import AsyncRemoteEndpoint
 from mapi_client._m3_common import forecast_call
 from mapi_client._m4_common import AssemblyFile, InspectedUpload
 from mapi_client._sync import Client
+from mapi_client._tracking import AsyncRunTracker, RunTracker
 from mapi_client._version import __version__
 from mapi_client.auth import BearerAuth, TokenProvider, default_auth
 from mapi_client.config import ClientConfig, ConfigError, load_config
@@ -62,6 +68,7 @@ from mapi_client.sse import (
     RunLiveFrame,
     RunSnapshot,
     RunStreamItem,
+    RunTrackingFrame,
     WorkflowEnd,
     WorkflowEventFrame,
     WorkflowSnapshot,
@@ -69,10 +76,12 @@ from mapi_client.sse import (
 )
 
 __all__ = [
+    "UNSET",
     "AssemblyFile",
     "AsyncClient",
     "AsyncPaginator",
     "AsyncRemoteEndpoint",
+    "AsyncRunTracker",
     "BearerAuth",
     "Call",
     "Client",
@@ -93,6 +102,8 @@ __all__ = [
     "RunLiveFrame",
     "RunSnapshot",
     "RunStreamItem",
+    "RunTracker",
+    "RunTrackingFrame",
     "ScoreResult",
     "TokenProvider",
     "TransportError",
