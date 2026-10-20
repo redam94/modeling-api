@@ -24,11 +24,20 @@ nodes the spec's ``data.nodes`` selects are merged into one flat dataset first
 (:func:`mapi_sdk.tree.select_nodes`, aligned per ``data.join``) and everything else runs on
 it exactly as for a plain dataset. A model whose capabilities declare ``input="tree"``
 also gets the whole tree, bound per node, as ``FitContext.tree`` / ``ScoreContext.tree``.
+
+Image collections (v0.15): both accept a :class:`~mapi_sdk.collection.Collection` as the
+dataset. A model that reads datasets gets a seeded sample as the v0.14 image dataset
+(:func:`~mapi_sdk.collection.collection_read`, per ``data.collection``). A model whose
+capabilities declare ``input="collection"`` runs on the manifest dataset (one row per image,
+no pixels; binding, schema checks, row splits, metrics and bundles as usual) and only the
+model call changes: ``fit_batches``/``score_batches`` receive a loader of the images of the
+rows that reached the model.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import math
 from collections.abc import Callable, Mapping, Sequence
@@ -93,6 +102,7 @@ from mapi_sdk.actuals import (
 )
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import Bundle, ElpdDetail, MetricsReport, assert_no_pickle, new_manifest
+from mapi_sdk.collection import Collection, collection_read
 from mapi_sdk.context import drop_context
 from mapi_sdk.coords import (
     CanonicalPlan,
@@ -112,6 +122,7 @@ from mapi_sdk.models import (
     Fitted,
     ModelPlugin,
     ScoreContext,
+    requested_positions,
 )
 from mapi_sdk.pipeline import RAW, FitTrace, Pipeline, ReplayTrace
 from mapi_sdk.registry import Registry, default_registry
@@ -200,8 +211,6 @@ class FitHooks:
 
 def data_hash(ds: xr.Dataset | xr.DataTree) -> str:
     """``sha256:`` of the canonical zarr-zip bytes of ``ds`` (a tree: of its tree zip)."""
-    import hashlib
-
     raw = write_datatree_zip(ds) if isinstance(ds, xr.DataTree) else write_zarr_zip(ds)
     assert raw is not None
     return "sha256:" + hashlib.sha256(raw).hexdigest()
@@ -452,11 +461,15 @@ def _with_targets(
 
 
 def _resolve(
-    spec: ModelSpec, registry: Registry, data: xr.Dataset, raw_schema: DataSchema | None
+    spec: ModelSpec,
+    registry: Registry,
+    data: xr.Dataset,
+    raw_schema: DataSchema | None,
+    layout: Literal["dataset", "collection"] = "dataset",
 ) -> tuple[ResolvedSpec, DataSchema, list[Issue]]:
     catalog = registry.catalog()
     schema = _raw_schema(spec, data, raw_schema)
-    result = validate_spec(spec, catalog, schema)
+    result = validate_spec(spec, catalog, schema, dataset_layout=layout)
     # the model's template decides the target roles whatever schema was given (validation
     # already judged target dependence by them); the stored raw schema says so too
     if result.resolved is not None:
@@ -465,13 +478,94 @@ def _resolve(
             fixed = _with_targets(schema, model_schema.targets, BindingMap(spec.data.bind))
             if fixed != schema:
                 schema = fixed
-                result = validate_spec(spec, catalog, schema)
+                result = validate_spec(spec, catalog, schema, dataset_layout=layout)
     resolved = result.raise_for_errors()
     return resolved, schema, result.issues
 
 
 def _model_settings(bundle_manifest_schema: Mapping[str, Any], spec: ModelSpec) -> dict[str, Any]:
     return apply_defaults(bundle_manifest_schema, spec.model.plugin_settings)
+
+
+# ==================================================================================== collections
+
+_NO_PIPELINE = (
+    "Remove the steps. Put augmentation in the model settings, or set data.collection to "
+    "read a sample as a dataset."
+)
+
+
+def _model_input(registry: Registry, spec: ModelSpec) -> str:
+    return registry.model(spec.model.use).manifest().capabilities.input
+
+
+def _collection_payload(
+    data: Collection, spec: ModelSpec, model_input: str, seed: int
+) -> tuple[xr.Dataset, Collection | None]:
+    """The dataset the harness runs on and the collection behind it (``None`` when the
+    model reads datasets: it gets a seeded sample per ``data.collection``)."""
+    if model_input != "collection":
+        return collection_read(data, spec.data.collection, seed=seed), None
+    return data.manifest_dataset(), data
+
+
+def _check_collection_spec(spec: ModelSpec) -> None:
+    if spec.pipeline:
+        raise MapiError(
+            "a collection dataset takes no pipeline steps",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/pipeline",
+            issues=[
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/pipeline",
+                    message="a collection dataset takes no pipeline steps",
+                    suggested_action=_NO_PIPELINE,
+                )
+            ],
+        )
+
+
+def _masked_split_error() -> MapiError:
+    return MapiError(
+        "a collection takes row splits: column, stratified or leave_group_out",
+        code=ErrorCode.SPLIT_INVALID,
+        pointer="/data/split/kind",
+    )
+
+
+def _without_virtual(schema: DataSchema, var: str) -> DataSchema:
+    """``schema`` without the virtual pixel variable ``var`` (and the dims only it uses):
+    the manifest dataset of a collection has no pixels."""
+    if var not in schema.vars:
+        return schema
+    data = schema.model_dump()
+    dims = set(data["vars"].pop(var)["dims"])
+    used = {d for v in data["vars"].values() for d in v["dims"]}
+    for d in dims - used:
+        data["dims"].pop(d, None)
+    return DataSchema.model_validate(data)
+
+
+def _fit_key(spec_hash: str, data_hash: str | None, role: str) -> str:
+    return hashlib.sha256(f"{spec_hash}:{data_hash or ''}:{role}".encode()).hexdigest()[:32]
+
+
+def _reindex_rows(tree: xr.DataTree, dim: str, ids: np.ndarray, labels: np.ndarray) -> xr.DataTree:
+    """``tree`` with its ``predictions`` along ``dim`` put on ``labels`` (the canonical
+    order), NaN where a label was not scored. ``ids`` label rows that come without them."""
+    node = tree.get(PREDICTIONS)
+    if not isinstance(node, xr.DataTree):
+        return tree
+    pred = node.to_dataset(inherit=False)
+    if dim not in pred.dims:
+        return tree
+    if dim not in pred.coords:
+        pred = pred.assign_coords({dim: np.asarray(ids)})
+    pred = pred.reindex({dim: labels})
+    out = tree.copy()
+    out[PREDICTIONS] = xr.DataTree(pred)
+    return out
 
 
 @dataclass(slots=True)
@@ -494,11 +588,14 @@ class _FitEnv:
     """M4: the bound tree handed to a tree-input model (``None`` otherwise)."""
     record_metrics: bool = True
     """v0.11: record what the model logs into the bundle's ``metrics_history`` group."""
+    collection: Collection | None = None
+    """v0.15: the image collection behind the manifest dataset of an ``input="collection"``
+    model (its fit takes a loader of the training rows)."""
 
 
 def fit_spec(
     spec: ModelSpec | str,
-    data: xr.Dataset | xr.DataTree,
+    data: xr.Dataset | xr.DataTree | Collection,
     side_tables: Mapping[str, xr.Dataset] | None = None,
     registry: Registry | None = None,
     *,
@@ -528,23 +625,43 @@ def fit_spec(
     ``hooks.tracker`` once; what the model logs goes to ``hooks.tracker`` (an evaluation
     fit's metrics with the label ``fit=evaluation``) and, with ``record_metrics``, into each
     bundle's ``metrics_history`` model group.
+
+    ``data`` may be an image collection (v0.15, see the module docstring): the pipeline must
+    then be empty for an ``input="collection"`` model, and only row splits are taken.
     """
     spec = load_model_spec(spec) if isinstance(spec, str) else spec
     registry = registry or default_registry()
     hooks = hooks or FitHooks()
+    collection: Collection | None = None
+    if isinstance(data, Collection):
+        raw_schema = raw_schema or data.schema
+        model_input = _model_input(registry, spec)
+        data, collection = _collection_payload(data, spec, model_input, spec.model.fit.seed or 0)
+        if collection is not None:
+            _check_collection_spec(spec)
     from_tree = isinstance(data, xr.DataTree)
     given = _tree_input(spec, data, raw_schema, tree_schema, tree)
     data = normalise_dataset(given.flat)
-    resolved, schema, issues = _resolve(given.spec, registry, data, given.raw_schema)
-    check_dataset(schema, data)
+    resolved, schema, issues = _resolve(
+        given.spec,
+        registry,
+        data,
+        given.raw_schema,
+        "collection" if collection is not None else "dataset",
+    )
+    check_dataset(
+        _without_virtual(schema, collection.info.var) if collection is not None else schema, data
+    )
     hooks.progress(0.05, "validated the spec and the data")
 
     tables = {k: normalise_dataset(v) for k, v in (side_tables or {}).items()}
-    needed = sorted({t for s in resolved.steps for t in s.side_tables})
+    needed = sorted(
+        {t for s in resolved.steps for t in s.side_tables} | set(resolved.model.side_tables)
+    )
     missing = [t for t in needed if t not in tables]
     if missing:
         raise MapiError(
-            f"side table {missing[0]!r} is used by the pipeline but was not provided",
+            f"side table {missing[0]!r} is used by the pipeline or the model but was not provided",
             code=ErrorCode.SIDE_TABLE_COVERAGE,
             pointer=f"/data/side_tables/{missing[0]}",
         )
@@ -571,6 +688,7 @@ def fit_spec(
             given.tree, BindingMap(resolved.binding), manifest.capabilities.input == "tree"
         ),
         record_metrics=record_metrics,
+        collection=collection,
     )
     # the model's own settings checks (cross-field rules the JSON schema cannot state) refuse
     # the spec before any data is transformed, split or fitted
@@ -606,6 +724,8 @@ def fit_spec(
     )
     hooks.check()
     sr = split_dataset(prefix.data, split, schema=resolved.stages.get(split_stage), seed=env.seed)
+    if collection is not None and sr.is_masked:
+        raise _masked_split_error()
     _check_recursion(resolved, split, sr)
     hooks.progress(0.15, "split the data")
     binding = BindingMap(resolved.binding)
@@ -718,9 +838,15 @@ def _fit_from(
     model_ds = rest.data
     rs = env.resolved
     model_schema = rs.model.input_schema
+    binding = BindingMap(rs.binding)
     if model_schema is not None:
+        checked = (
+            _without_virtual(model_schema, binding.to_canonical(env.collection.info.var))
+            if env.collection is not None
+            else model_schema
+        )
         try:
-            check_dataset(model_schema, model_ds, check_values=False, check_coords=False)
+            check_dataset(checked, model_ds, check_values=False, check_coords=False)
         except SchemaValidationError as exc:
             raise StepError(
                 "the pipeline output does not match the model's input schema: " + exc.detail
@@ -748,9 +874,16 @@ def _fit_from(
         to_original=_to_original(env.pipeline, states, env.side_tables),
         tree=env.bound_tree,
         tracker=TeeTracker(recorder, outer) if recorder is not None else outer,
+        side_tables={t: env.side_tables[t] for t in rs.model.side_tables if t in env.side_tables},
+        fit_key=_fit_key(rs.spec_hash, env.data_hash, role),
     )
     try:
-        out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
+        if env.collection is not None:
+            dim = binding.to_canonical(env.collection.info.dim)
+            loader = env.collection.loader(ids=np.asarray(model_ds[dim].values))
+            out = env.plugin.fit_batches(loader, s, env.spec.model.fit, fctx)  # type: ignore[attr-defined]
+        else:
+            out = env.plugin.fit(model_ds, s, env.spec.model.fit, fctx)
     except MapiError as exc:
         err = plugin_error(exc, f"model {manifest.id!r} failed during fit")
         if err is exc:
@@ -829,6 +962,7 @@ def _fit_from(
     if (
         manifest.capabilities.representation is Representation.POINT
         and env.settings.get("retransform") == "smearing"
+        and env.collection is None
     ):
         bundle.residuals = _residuals(env, bundle, model_ds)
     return bundle
@@ -1348,6 +1482,7 @@ def _evaluate(env: _FitEnv, evaluation: Bundle, sr: SplitResult, split_stage: st
         observed=observed,
         tree=payload_tree,
         metric_history=sr.train,
+        collection=env.collection,
     )
     report = MetricsReport.model_validate_json(tree.attrs["metrics"])
     report.split = json_safe(
@@ -1639,7 +1774,7 @@ class _Scored:
 def score_bundle(
     bundle: Bundle,
     request: ScoreRequest | str,
-    data: xr.Dataset | xr.DataTree | None = None,
+    data: xr.Dataset | xr.DataTree | Collection | None = None,
     *,
     scenario: xr.Dataset | xr.DataTree | None = None,
     side_tables: Mapping[str, xr.Dataset] | None = None,
@@ -1653,6 +1788,7 @@ def score_bundle(
     history: xr.Dataset | xr.DataTree | None = None,
     tree: xr.DataTree | None = None,
     metric_history: xr.Dataset | None = None,
+    collection: Collection | None = None,
 ) -> xr.DataTree:
     """Score a fitted bundle; returns a ``DataTree``.
 
@@ -1684,6 +1820,12 @@ def score_bundle(
     exactly like the observed values (or stay at the model stage for a model that owns
     ``inverse_units``), so the naive error is in the units of the error it divides. Without
     it, ``mase`` is skipped.
+
+    ``data`` may be an image collection (v0.15): a model that reads datasets scores a
+    seeded sample (``data.collection`` of the fit spec); an ``input="collection"`` model
+    scores the manifest dataset with ``score_batches`` on the requested images. A manifest
+    payload (a subset of the collection's manifest dataset, such as the evaluation holdout)
+    names its ``collection`` instead.
     """
     req = load_score_request(request) if isinstance(request, str) else request
     registry = registry or default_registry()
@@ -1694,6 +1836,13 @@ def score_bundle(
     binding = bundle.binding
     plugin_cls = registry.model(f"{bundle.model.manifest.id}@{bundle.model.manifest.version}")
     plugin = plugin_cls()
+    batched = plugin_cls.manifest().capabilities.input == "collection"
+    if isinstance(data, Collection):
+        seed0 = req.seed if req.seed is not None else (bundle.model.fit_config.seed or 0)
+        data, collection = _collection_payload(
+            data, bundle.spec, "collection" if batched else "dataset", seed0
+        )
+    batched = batched and collection is not None
     fitted_modes = rs.model.capabilities.score_modes
     if req.mode not in fitted_modes:
         # refuse before any mode-specific work (a forecast's horizon and actuals assume a
@@ -1897,6 +2046,16 @@ def score_bundle(
                         pointer="/data",
                     )
                 tree = hook(bundle.model, canon, actuals, req, ctx)
+            elif batched:
+                assert collection is not None
+                dim = binding.to_canonical(collection.info.dim)
+                labels = np.asarray(canon[dim].values)
+                ids = labels[requested_positions(canon, dim)]
+                tree = plugin.score_batches(  # type: ignore[attr-defined]
+                    bundle.model, collection.loader(ids=ids), req, ctx
+                )
+                if isinstance(tree, xr.DataTree):
+                    tree = _reindex_rows(tree, dim, ids, labels)
             else:
                 tree = plugin.score(bundle.model, canon, req, ctx)
         except MapiError as exc:

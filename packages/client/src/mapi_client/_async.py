@@ -87,6 +87,7 @@ from mapi_spec.api import (
 )
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.collection import CollectionSource
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.executor import RunKind
 from mapi_spec.ingest import CoordValue
@@ -149,6 +150,7 @@ from mapi_client._m35_async import (
 )
 from mapi_client._tracking import AsyncRunTracker
 from mapi_client._v014_async import AsyncExperiments, AsyncRunsV014Mixin, AsyncRunViews
+from mapi_client._v015_async import AsyncDatasetsV015Mixin
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -425,7 +427,7 @@ class AsyncCatalog(_Resource, AsyncCatalogAboutMixin):
         return await self._c.send(calls.get_schema(name))
 
 
-class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
+class AsyncDatasets(_Resource, AsyncDatasetAboutMixin, AsyncDatasetsV015Mixin):
     async def create(
         self, name: str, *, description: str | None = None, labels: Mapping[str, str] | None = None
     ) -> Dataset:
@@ -471,13 +473,19 @@ class AsyncDatasets(_Resource, AsyncDatasetAboutMixin):
         upload_id: str | None = None,
         mapping: IngestMapping | None = None,
         assembly: IngestAssembly | None = None,
+        collection: CollectionSource | None = None,
         message: str | None = None,
         idempotency_key: str | None = None,
     ) -> DatasetVersion:
-        """Ingest one upload (``upload_id`` + ``mapping``) or, from M4, several combined into
-        one version (``assembly``) - exactly one of the two."""
+        """Ingest one upload (``upload_id`` + ``mapping``), from M4 several combined into one
+        version (``assembly``) or, v0.15, a manifest and image parts as an image collection
+        (``collection``; see :meth:`upload_collection`) - exactly one of the three."""
         body = DatasetVersionCreate(
-            upload_id=upload_id, mapping=mapping, assembly=assembly, message=message
+            upload_id=upload_id,
+            mapping=mapping,
+            assembly=assembly,
+            collection=collection,
+            message=message,
         )
         return await self._c.send(calls.create_dataset_version(dataset_id, body, idempotency_key))
 

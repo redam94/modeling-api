@@ -233,7 +233,7 @@ Data goes into the platform in three steps:
 | `GET /v1/datasets` | List the datasets | — | `Page[Dataset]` | 200 | — |
 | `GET /v1/datasets/{dataset_id}` | Get a dataset | — | `Dataset` | 200 | `NOT_FOUND` |
 | `POST /v1/datasets/{dataset_id}/uploads` | Get a signed PUT URL into quarantine | `UploadCreate` | `UploadSession` | 201 | `NOT_FOUND`, `PAYLOAD_TOO_LARGE`, `QUOTA_EXCEEDED` |
-| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. From v0.8, `assembly` makes one version from several uploads ([tree datasets](#m4)). Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it), `PAYLOAD_TOO_LARGE` (the uploads of an assembly are larger than 5 GB together) |
+| `POST /v1/datasets/{dataset_id}/versions` | Ingest an upload as a new version. This starts an `ingest` run. From v0.8, `assembly` makes one version from several uploads ([tree datasets](#m4)). From v0.15, `collection` makes an [image collection](#v015). Accepts `Idempotency-Key`. | `DatasetVersionCreate` | `DatasetVersion` (status `ingesting`) | 202 | `NOT_FOUND`, `CONFLICT` (the upload is not complete, or a version already uses it), `PAYLOAD_TOO_LARGE` (the uploads of an assembly are larger than 5 GB together) |
 | `GET /v1/datasets/{dataset_id}/versions` | List the versions | — | `Page[DatasetVersion]` | 200 | `NOT_FOUND` |
 | `GET /v1/datasets/{dataset_id}/versions/{version}` | Schema, summary, and references to the profile and the preview | — | `DatasetVersion` | 200 | `NOT_FOUND` |
 | `GET /v1/datasets/{dataset_id}/versions/{version}/artifacts/{name}` | Signed URL for `data.zarr.zip`, `schema.json`, `profile.json` or `preview.json`. A tree version (v0.8) has `data.tree.zip` and `tree_schema.json` | — | `ArtifactLink` | 200 | `NOT_FOUND` |
@@ -1187,6 +1187,81 @@ curl -G "$MAPI/v1/run-compare" -H "Authorization: Bearer $MAPI_TOKEN" \
   --data-urlencode key=loss --data-urlencode media_key=samples
 ```
 
+## Resumable uploads and image collections <span class="mapi-badge">v0.15</span> { #v015 }
+
+v0.15 adds these parts to the dataset API:
+
+- **Resumable uploads.** `get_upload` tells you if the file of an upload arrived. `renew_upload`
+  signs a fresh PUT URL for an upload whose URL expired. An upload whose file arrived has the
+  status `uploaded`. You can use it in a version also after its PUT URL expired. If no
+  version uses it, the server deletes it 7 days after its PUT URL expired. When you renew an
+  `expired` upload, the server does a check of the storage quota again.
+- **Image collections.** A collection version is made from a manifest upload and image part
+  uploads (`DatasetVersionCreate.collection`). `find_missing_images` tells you which images
+  a base version does not have, so you upload only these images.
+
+The guide [Image data: collections](../guides/image-data.md#large-image-sets-collections)
+shows the CLI, the client and the web app.
+
+### Endpoints { #v015-endpoints }
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/datasets/{dataset_id}/uploads/{upload_id}` | An upload and whether its file arrived (`received`). `upload` is the current signed PUT. | — | `UploadSession` | 200 | `NOT_FOUND` |
+| `POST /v1/datasets/{dataset_id}/uploads/{upload_id}/renew` | Sign a fresh PUT URL (TTL 1 h) for an upload whose file did not arrive. `received` is `false`. | — | `UploadSession` | 200 | `NOT_FOUND`, `CONFLICT` (a version used the upload, or the file arrived) |
+| `POST /v1/datasets/{dataset_id}/blobs/missing` | Which images (by SHA-256) the base version does not have | `BlobQuery` | `BlobMissing` | 200 | `NOT_FOUND` (the base version), `SCHEMA_INVALID`, `CONFLICT` (the base version is not a ready collection) |
+
+All three need the `X-Mapi-Project` header (or a project in the token).
+`find_missing_images` needs `read` on `dataset`, as `get_dataset`. `get_upload` and
+`renew_upload` need `update` on `dataset`, as `create_upload`, because their answer holds a
+signed PUT URL. A user who can only read the dataset cannot write its uploads.
+
+`POST /v1/datasets/{dataset_id}/versions` takes `collection` (a `CollectionSource`) in place
+of `upload_id` + `mapping` or `assembly`. The server:
+
+- makes sure that the manifest upload has a maximum of 256 MB and each part a maximum of
+  2 GB − 64 MB, and that each part has an MD5 (else `409`, pointer
+  `/body/collection/part_upload_ids/<i>`);
+- finds the base version: with `base_version` set, the version must exist, be ready and have
+  the layout `collection` (else `409`); with `null`, the latest ready collection version (or
+  none); with `0`, no base;
+- starts a collection ingest run of class `M`. The run reads the parts in ranges, so the
+  class does not depend on the size of the upload.
+
+`get_dataset_artifact` also gives `manifest.parquet` and `collection.json` of a collection
+version.
+
+### The DTOs { #v015-dtos }
+
+- `UploadSession` gains `received` (only in the answers of `get_upload` and `renew_upload`).
+- `DatasetVersionCreate` gains `collection` (a `CollectionSource`). Give exactly one of
+  `upload_id` + `mapping`, `assembly` or `collection`. `upload_ids` is the manifest, then the
+  parts.
+- `CollectionSource` (`mapi_spec.collection`): `manifest_upload_id`, `part_upload_ids` (a
+  maximum of 64, unique, not the manifest), `base_version` (`null`: the latest ready
+  collection version; `0`: none) and `options` (a `CollectionOptions`).
+- `CollectionOptions` (`mapi_spec.collection`): `sha256_column` (default `sha256`),
+  `id_column`, `path_column` (default `path`), `label_column`, `split_column`, `columns` (a
+  maximum of 64; not the reserved names of `manifest.parquet`), `var` (`pixels`), `dim`
+  (`image`), `mode` (`auto`, `gray` or `rgb`), `size` (height, width), `resize` (`stretch`,
+  `crop` or `pad`) and `max_images` (default 100 000, a maximum of 1 000 000).
+- `DatasetVersion.layout` can be `collection`. `DatasetVersion.collection` is then a
+  `CollectionInfo` (`mapi_spec.collection`): `n_images`, `dim`, `var`, `label`, `split`,
+  `classes` (a maximum of 1000 `ClassCount`, by count), `other_classes`, `splits`, `mode`,
+  `size`, `min_size`, `max_size`, `formats`, `total_bytes`, `packs` (`PackInfo`: `digest`,
+  `size`, `crc32c`, `md5`, `entries`, `images`, `source` (`upload` or `base`) and `input`),
+  `new_images`, `reused_images`, `base_version`, `columns` and `manifest_sha256`.
+- `BlobQuery`: `sha256` (1 to 5000 unique lowercase hex digests) and `base_version`
+  (`null`: the latest ready collection version; `0`: none, so all images are missing).
+- `BlobMissing`: `base_version` (the version compared with, or `null`), `missing` (in the
+  order of the query) and `present` (the number of the other digests).
+
+```bash
+curl -X POST "$MAPI/v1/datasets/$DATASET/blobs/missing" -H "Authorization: Bearer $MAPI_TOKEN" \
+  -H "X-Mapi-Project: growth" -H "Content-Type: application/json" \
+  -d '{"sha256": ["'"$(sha256sum photo.jpg | cut -c1-64)"'"]}'
+```
+
 ## DTO index
 
 All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
@@ -1218,4 +1293,5 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 | Workflows (v0.5) | `Workflow`, `WorkflowCreate`, `WorkflowUpdate`, `WorkflowRevision`, `WorkflowRevisionCreate`, `WorkflowValidateRequest`, `WorkflowValidation`, `WorkflowRun`, `WorkflowRunCreate`, `NodeRun`, `ScheduleCreate`, `ScheduleUpdate`, `WorkflowSchedule`, `TriggerCreate`, `WorkflowTrigger` (`mapi_spec.workflow`), `NodeImplementation` (`mapi_spec.workflow_nodes`), `WorkflowTemplate` (`mapi_spec.workflow_templates`) |
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
 | Tree datasets (v0.8) | `TreeSchema`, `NodeSelect` (`mapi_spec.tree`), `IngestAssembly`, `AssemblySource`, `Hdf5Mapping`, `Hdf5Var`, `Hdf5Coord`, `UploadInspection`, `InspectedArray` (`mapi_spec.ingest`) |
+| Image collections (v0.15) | `BlobQuery`, `BlobMissing`, `CollectionSource`, `CollectionOptions`, `CollectionInfo`, `PackInfo`, `ClassCount`, `CollectionRead` (`mapi_spec.collection`), `WeightsOptions` (`mapi_spec.ingest`) |
 | Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

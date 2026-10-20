@@ -16,6 +16,20 @@ from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
 from mapi_spec.audit import AuditAction, AuditOutcome
 from mapi_spec.capabilities import Capabilities
+from mapi_spec.collection import (
+    BASE_INFO_INPUT,
+    BASE_MANIFEST_INPUT,
+    COLLECTION_INFO,
+    COLLECTION_MANIFEST,
+    INGEST_MANIFEST_INPUT,
+    PACK_OBJECT_PREFIX,
+    CollectionInfo,
+    CollectionIngest,
+    CollectionOptions,
+    info_input,
+    pack_input,
+    part_input,
+)
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError, ValidationFailed
 from mapi_spec.executor import RunKind
@@ -30,6 +44,7 @@ from mapi_spec.jobs import (
     INPUT_DATASET,
     INPUT_HISTORY,
     INPUT_PLOTS,
+    INPUT_SCENARIO,
     INPUT_UPLOAD,
     DeriveJob,
     DescribeJob,
@@ -67,6 +82,7 @@ from mapi_server.services.quotas import admit_run
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.specs import (
+    COLLECTION_REFUSED,
     Validation,
     check_score_request,
     class_for_size,
@@ -79,10 +95,15 @@ from mapi_server.services.specs import (
 from mapi_server.services.verification import require_uploaded_code_allowed
 
 __all__ = [
+    "COLLECTION_REFUSED",
     "DEFAULT_TIMEOUT_S",
     "admit",
+    "collection_ingest_timeout_s",
     "data_object_name",
     "data_ref",
+    "dataset_inputs",
+    "refuse_collection",
+    "submit_collection_ingest",
     "submit_describe",
     "submit_ingest",
     "submit_inspect",
@@ -94,17 +115,33 @@ __all__ = [
 
 DEFAULT_TIMEOUT_S = 1800
 BUNDLE_INPUT = INPUT_BUNDLE
+COLLECTION_INGEST_BASE_S = 1800
+COLLECTION_INGEST_BYTES_PER_S = 20 * 1000**2
+"""A collection ingest streams its parts: 30 min plus 1 s per 20 MB of parts (max 24 h)."""
+MAX_INGEST_TIMEOUT_S = 24 * 3600
 
 
 def data_object_name(dv: m.DatasetVersion) -> str:
     """The data object of a dataset version: ``data.tree.zip`` for a tree version (M4),
-    else ``data.zarr.zip``."""
+    ``manifest.parquet`` for a collection (v0.15), else ``data.zarr.zip``."""
+    if dv.layout == "collection":
+        return COLLECTION_MANIFEST
     return DATATREE_OUTPUT if dv.layout == "tree" else INGEST_DATA
+
+
+def refuse_collection(dv: m.DatasetVersion, pointer: str = "") -> None:
+    """``SCHEMA_INVALID`` for a collection version where only a dataset (or tree) fits."""
+    if dv.layout == "collection":
+        raise MapiError(COLLECTION_REFUSED, code=ErrorCode.SCHEMA_INVALID, pointer=pointer)
 
 
 def data_ref(dv: m.DatasetVersion, name: str | None = None) -> dict[str, Any]:
     """The generation-pinned input ref of a version's data (``name`` defaults to
-    :func:`data_object_name`; the RunSpec then tells the runner its layout)."""
+    :func:`data_object_name`; the RunSpec then tells the runner its layout). A collection
+    version is refused (:data:`COLLECTION_REFUSED`): its data is several objects, which
+    :func:`dataset_inputs` names."""
+    if name is None:
+        refuse_collection(dv)
     name = name or data_object_name(dv)
     obj = dv.objects.get(name)
     if obj is None:
@@ -112,6 +149,33 @@ def data_ref(dv: m.DatasetVersion, name: str | None = None) -> dict[str, Any]:
             f"dataset version {dv.version} has no {name}", code=ErrorCode.REF_UNRESOLVED
         )
     return StoredRef(obj["bucket"], obj["name"], int(obj["generation"]))
+
+
+def collection_info(dv: m.DatasetVersion) -> CollectionInfo:
+    """The stored :class:`CollectionInfo` of a collection version."""
+    if dv.layout != "collection" or not dv.collection:
+        raise MapiError(
+            f"dataset version {dv.version} is not an image collection",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    return CollectionInfo.model_validate(dv.collection)
+
+
+def dataset_inputs(dv: m.DatasetVersion, prefix: str = INPUT_DATASET) -> dict[str, Any]:
+    """The run inputs of a dataset version read as ``prefix``: ``{prefix: data}`` for a
+    dataset or tree; for a collection (v0.15) ``{prefix: manifest.parquet,
+    "<prefix>.info": collection.json, "<prefix>.pack.<i>": pack i}`` in the order of
+    :attr:`CollectionInfo.packs` (the runner maps input ``i`` to ``packs[i].digest``)."""
+    if dv.layout != "collection":
+        return {prefix: data_ref(dv)}
+    info = collection_info(dv)
+    inputs: dict[str, Any] = {
+        prefix: data_ref(dv, COLLECTION_MANIFEST),
+        info_input(prefix): data_ref(dv, COLLECTION_INFO),
+    }
+    for i, pack in enumerate(info.packs):
+        inputs[pack_input(i, prefix)] = data_ref(dv, PACK_OBJECT_PREFIX + pack.digest)
+    return inputs
 
 
 async def _accept(
@@ -325,8 +389,9 @@ async def submit_spec_run(
         checkpointable = caps.checkpointable
     else:
         checkpointable = False
-    inputs = {INPUT_DATASET: data_ref(v.dataset)}
+    inputs = dataset_inputs(v.dataset)
     for name, tv in v.side_tables.items():
+        refuse_collection(tv, f"/data/side_tables/{name}/ref")
         inputs[side_table_input(name)] = data_ref(tv)
     run = await create_run(
         session,
@@ -450,11 +515,13 @@ async def _model_job_inputs(
         tables = {}
     if dv is None:
         dv = await _fit_dataset(session, mv)
-    inputs = {INPUT_DATASET: data_ref(dv)}
+    inputs = dataset_inputs(dv)
     read.append(dv)
     for name, ref in tables.items():
-        tv = await _dataset_input(session, scope, ref, f"/params/request/side_tables/{name}")
+        pointer = f"/params/request/side_tables/{name}"
+        tv = await _dataset_input(session, scope, ref, pointer)
         assert tv is not None
+        refuse_collection(tv, pointer)
         inputs[side_table_input(name)] = data_ref(tv)
         read.append(tv)
     return inputs
@@ -498,7 +565,11 @@ async def submit_model_run(
         # the runner enforces the tier's draw cap again (plan Q2)
         payload = {"request": req_payload, "max_draws": await score_draw_cap(session, scope)}
         for name, dv in datasets.items():
-            inputs[name] = data_ref(dv)
+            if name in (INPUT_DATASET, INPUT_SCENARIO):
+                inputs.update(dataset_inputs(dv, name))
+            else:  # a side table
+                refuse_collection(dv, f"/request/side_tables/{name}")
+                inputs[name] = data_ref(dv)
             read.append(dv)
         if _needs_history(request):
             fit_dv = await _fit_dataset(session, mv)
@@ -712,6 +783,83 @@ async def submit_ingest(
         kind=RunKind.INGEST,
         resource_class=resource_class,
         timeout_s=DEFAULT_TIMEOUT_S,
+        payload=payload,
+        inputs=inputs,
+        spec_hash=spec_hash(payload),
+        dataset_id=dataset.id,
+        dataset_version=version,
+        catalog_digest=snapshot.digest if snapshot else None,
+    )
+    return await _accept(session, ctx, run)
+
+
+def collection_ingest_timeout_s(part_bytes: int) -> int:
+    """Timeout of a collection ingest: ``min(24 h, 1800 s + part bytes / 20 MB/s)``."""
+    return min(
+        MAX_INGEST_TIMEOUT_S,
+        COLLECTION_INGEST_BASE_S + -(-part_bytes // COLLECTION_INGEST_BYTES_PER_S),
+    )
+
+
+async def submit_collection_ingest(
+    session: AsyncSession,
+    ctx: ServerContext,
+    *,
+    dataset: m.Dataset,
+    version: int,
+    manifest: tuple[m.Upload, int],
+    parts: list[tuple[m.Upload, int]],
+    base: m.DatasetVersion | None,
+    options: CollectionOptions,
+) -> m.Run:
+    """One ``ingest`` run for a new collection version (v0.15): inputs ``manifest``,
+    ``part.<i>`` (the part uploads in order) and, with a ``base`` collection version,
+    ``base.manifest``, ``base.info`` and ``base.pack.<i>`` (in the base's pack order). Each
+    upload is paired with the generation it is pinned to.
+
+    The run streams parts with range reads instead of decoding them in scratch, so it
+    always gets class ``M`` (never :func:`class_for_size`) and a timeout that grows with
+    the part bytes (:func:`collection_ingest_timeout_s`)."""
+    resource_class = ResourceClass.M
+    scratch = RESOURCE_CLASSES[resource_class].scratch_bytes
+    caps: dict[str, Any] = {} if scratch is None else {"max_uncompressed_bytes": scratch}
+    upload, generation = manifest
+    inputs: dict[str, Any] = {
+        INGEST_MANIFEST_INPUT: StoredRef(upload.bucket, upload.object_name, generation)
+    }
+    for i, (part, gen) in enumerate(parts):
+        inputs[part_input(i)] = StoredRef(part.bucket, part.object_name, gen)
+    base_packs = 0
+    if base is not None:
+        info = collection_info(base)
+        inputs[BASE_MANIFEST_INPUT] = data_ref(base, COLLECTION_MANIFEST)
+        inputs[BASE_INFO_INPUT] = data_ref(base, COLLECTION_INFO)
+        for i, pack in enumerate(info.packs):
+            inputs[pack_input(i, "base")] = data_ref(base, PACK_OBJECT_PREFIX + pack.digest)
+        base_packs = len(info.packs)
+    job = IngestJob(
+        collection=CollectionIngest(
+            options=options,
+            parts=len(parts),
+            base_version=base.version if base is not None else None,
+            base_packs=base_packs,
+        ),
+        dataset=f"dataset://{dataset.project_id}/{dataset.name}@v{version}",
+        source=IngestSource(
+            filename=upload.filename,
+            content_type=upload.content_type,
+            size_bytes=upload.size_bytes,
+        ),
+        **caps,
+    )
+    payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
+    snapshot = await ctx.catalogs.get(session)
+    run = await create_run(
+        session,
+        ctx.scope,
+        kind=RunKind.INGEST,
+        resource_class=resource_class,
+        timeout_s=collection_ingest_timeout_s(sum(p.size_bytes for p, _ in parts)),
         payload=payload,
         inputs=inputs,
         spec_hash=spec_hash(payload),

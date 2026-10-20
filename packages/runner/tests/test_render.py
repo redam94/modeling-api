@@ -224,6 +224,8 @@ def test_plotly_tile_maps_and_images_are_refused() -> None:
     assert find_fetching_constructs("plotly", {"data": [{"type": "image", "source": "x"}]})
     assert find_fetching_constructs("plotly", {"layout": {"images": [{"source": "x"}]}})
     assert not find_fetching_constructs("plotly", {"data": [{"type": "heatmap"}]})
+    # An image trace with inline pixels (ml.misclassified) fetches nothing.
+    assert not find_fetching_constructs("plotly", {"data": [{"type": "image", "z": [[[0, 0, 0]]]}]})
 
 
 def test_render_run_reads_plot_data_inputs_and_writes_renders(gcs: Any) -> None:

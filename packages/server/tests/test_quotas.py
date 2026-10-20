@@ -311,8 +311,10 @@ async def test_concurrent_uploads_cannot_overrun_the_storage_quota(
 async def test_abandoned_upload_intents_stop_counting_once_expired(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
-    """An upload intent reserves its declared size only until its signed PUT expires; the
-    housekeeper then marks it expired and deletes whatever reached quarantine."""
+    """An upload intent reserves its declared size until the housekeeper retires it after its
+    signed PUT expired: an intent whose file did not arrive becomes expired (it no longer
+    counts); one whose file arrived becomes uploaded and keeps counting, so letting PUT URLs
+    expire never frees quota for files that are still stored."""
     from mapi_server.services.housekeeping import Housekeeper
     from mapi_spec.storage import NotFound
 
@@ -323,22 +325,64 @@ async def test_abandoned_upload_intents_stop_counting_once_expired(
     first = await client.post(url, json=body)
     assert first.status_code == 201
     assert (await client.post(url, json=body)).status_code == 429  # 800 + 800 > 1000
-    async with ctx.db.session() as s:
-        row = await s.get(m.Upload, first.json()["id"])
-        assert row is not None
-        row.expires_at = now() - timedelta(minutes=1)  # the browser was closed
-        bucket, name = row.bucket, row.object_name
-    await ctx.store.put(bucket, name, b"half a file")
+
+    async def expire(upload_id: str) -> tuple[str, str]:
+        async with ctx.db.session() as s:
+            row = await s.get(m.Upload, upload_id)
+            assert row is not None
+            row.expires_at = now() - timedelta(minutes=1)  # the browser was closed
+            return row.bucket, row.object_name
+
+    bucket, name = await expire(first.json()["id"])
+    # the PUT expired but a file could have arrived: it counts until the housekeeper looks
+    assert (await client.post(url, json=body)).status_code == 429
+    assert await Housekeeper(ctx).sweep_once() >= 1
     second = await client.post(url, json=body)
     assert second.status_code == 201, second.text  # the expired intent no longer counts
+    with pytest.raises(NotFound):
+        await ctx.store.stat(bucket, name)
+    # the second file arrives, then its PUT expires: it is stored, so it still counts
+    bucket, name = await expire(second.json()["id"])
+    await ctx.store.put(bucket, name, b"a whole file")
     assert await Housekeeper(ctx).sweep_once() >= 1
     async with ctx.db.session() as s:
         statuses = {
             u.id: u.status for u in (await s.execute(select(m.Upload))).scalars()
         }  # fmt: skip
-    assert statuses == {first.json()["id"]: "expired", second.json()["id"]: "pending"}
-    with pytest.raises(NotFound):
-        await ctx.store.stat(bucket, name)
+    assert statuses == {first.json()["id"]: "expired", second.json()["id"]: "uploaded"}
+    assert await ctx.store.get(bucket, name) == b"a whole file"
+    assert (await client.post(url, json=body)).status_code == 429
+
+
+async def test_renewing_an_expired_upload_is_admitted_again(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """An expired upload no longer counts, so its renewal (a fresh PUT) must pass the storage
+    quota again: letting uploads expire and renewing them all never exceeds the quota."""
+    ds = (await client.post("/v1/datasets", json={"name": "renewed"})).json()
+    await _policy(ctx, "tenant", "default", storage_bytes=1000)
+    body = {"filename": "a.zip", "content_type": "application/zip", "size_bytes": 800}
+    url = f"/v1/datasets/{ds['id']}/uploads"
+    ids = []
+    for _ in range(2):
+        r = await client.post(url, json=body)
+        assert r.status_code == 201, r.text
+        ids.append(r.json()["id"])
+        async with ctx.db.session() as s:
+            row = await s.get(m.Upload, ids[-1])
+            assert row is not None
+            row.expires_at = now() - timedelta(minutes=1)
+            row.status = "expired"
+    first = await client.post(f"{url}/{ids[0]}/renew")
+    assert first.status_code == 200, first.text  # 800 <= 1000
+    second = await client.post(f"{url}/{ids[1]}/renew")
+    assert second.status_code == 429, second.text  # 800 + 800 > 1000
+    async with ctx.db.session() as s:
+        row = await s.get(m.Upload, ids[1])
+        assert row is not None and row.status == "expired"
+    # renewing a pending upload again does not count it two times
+    again = await client.post(f"{url}/{ids[0]}/renew")
+    assert again.status_code == 200, again.text
 
 
 # ============================================================================ fair share

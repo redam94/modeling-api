@@ -7,11 +7,18 @@ Canonical inputs (the layout of an ``image_folder`` ingest; ``{p}``, ``{t}`` and
     vars  {p}({i}, y, x, channel): uint8 covariate (any numbers in 0..255 are accepted)
           {t}({i}): str target (missing allowed; those images do not train)
 
-Features: the pixels are scaled to [0, 1], averaged over ``downsample x downsample`` blocks
-and flattened. ``features: pca`` (default) projects them on the first ``n_components``
-principal components of the training images (``np.linalg.svd`` of the centred rows; at most
-``_PCA_ROWS`` seeded training rows fit the basis) and standardises the scores;
+Features (``input: pixels``, the default): the pixels are scaled to [0, 1], averaged over
+``downsample x downsample`` blocks and flattened. ``features: pca`` (default) projects them on
+the first ``n_components`` principal components of the training images (``np.linalg.svd`` of
+the centred rows; at most ``_PCA_ROWS`` seeded training rows fit the basis) and standardises
+the scores;
 ``features: pixels`` uses the standardised block means directly (at most ``max_features``).
+
+``input: features`` (v1.1) reads image features instead of pixels: ``{p}({i}, {f})`` numbers
+(``{f}`` is ``settings.feature_dim``), for example the ``embedding`` the ``dl.embed`` step of
+``mapi-jax`` writes. They are standardised and used as they are, or projected on
+``n_components`` principal components when there are more than ``max_features`` of them. No
+images are logged in this mode.
 
 The model, with ``K`` classes and ``F`` features ``Z``::
 
@@ -97,11 +104,19 @@ class ImageLogisticSettings(ModelSettings):
     class_order: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = Field(
         None, min_length=2, max_length=50, description="The classes in order (default: sorted)"
     )
+    input: Literal["pixels", "features"] = Field(
+        "pixels",
+        description="pixels: an image variable (image, y, x, channel); features: image "
+        "features (image, feature_dim), for example from the dl.embed step",
+    )
+    feature_dim: Name = Field("feature", description="input: features: the dim of the features")
 
     @model_validator(mode="after")
     def _check(self) -> ImageLogisticSettings:
         if self.image_dim in {_Y, _X, _CHANNEL, CLASS, FEATURE, "sample", "chain", "draw"}:
             raise ValueError(f"image_dim {self.image_dim!r} is a reserved dim name")
+        if self.input == "features" and self.feature_dim in {self.image_dim, CLASS, _CHANNEL}:
+            raise ValueError(f"feature_dim {self.feature_dim!r} must be its own dim")
         if self.pixels == self.target:
             raise ValueError("pixels and target must be different variables")
         if self.class_order is not None and len(set(self.class_order)) != len(self.class_order):
@@ -114,6 +129,8 @@ _TEMPLATE: dict[str, Any] = {
         "pixels": {"type": "string", "default": "pixels"},
         "target": {"type": "string", "default": "label"},
         "image_dim": {"type": "string", "default": "image"},
+        "input": {"type": "string", "enum": ["pixels", "features"], "default": "pixels"},
+        "feature_dim": {"type": "string", "default": "feature"},
     },
     "template": {
         "dims": {
@@ -122,16 +139,8 @@ _TEMPLATE: dict[str, Any] = {
                 "policy": "new_levels",
                 "new_level_strategy": "pooled",
             },
-            _Y: {"kind": "integer", "policy": "fixed"},
-            _X: {"kind": "integer", "policy": "fixed"},
-            _CHANNEL: {"kind": "categorical", "policy": "fixed"},
         },
         "vars": {
-            "{pixels}": {
-                "dims": ["{image_dim}", _Y, _X, _CHANNEL],
-                "dtype": "uint8",
-                "role": "covariate",
-            },
             "{target}": {
                 "dims": ["{image_dim}"],
                 "dtype": "str",
@@ -140,14 +149,47 @@ _TEMPLATE: dict[str, Any] = {
             },
         },
     },
+    "cases": [
+        {
+            "when": {"input": "pixels"},
+            "merge": {
+                "dims": {
+                    _Y: {"kind": "integer", "policy": "fixed"},
+                    _X: {"kind": "integer", "policy": "fixed"},
+                    _CHANNEL: {"kind": "categorical", "policy": "fixed"},
+                },
+                "vars": {
+                    "{pixels}": {
+                        "dims": ["{image_dim}", _Y, _X, _CHANNEL],
+                        "dtype": "uint8",
+                        "role": "covariate",
+                    }
+                },
+            },
+        },
+        {
+            "when": {"input": "features"},
+            "merge": {
+                "dims": {"{feature_dim}": {"kind": "integer", "policy": "fixed"}},
+                "vars": {
+                    "{pixels}": {
+                        "dims": ["{image_dim}", "{feature_dim}"],
+                        "dtype": "float32",
+                        "role": "covariate",
+                    }
+                },
+            },
+        },
+    ],
 }
 
 
 class ImageLogistic(CustomModel[ImageLogisticSettings]):
-    """Multinomial logistic regression on PCA scores (or block means) of small images."""
+    """Multinomial logistic regression on PCA scores (or block means) of small images, or on
+    image features (``input: features``)."""
 
     id = "tabular.image_logistic"
-    version = "1.0.0"
+    version = "1.1.0"
     Settings = ImageLogisticSettings
     description = (
         "A Bayesian multinomial logistic regression for small images of the same size: "
@@ -192,25 +234,10 @@ class ImageLogistic(CustomModel[ImageLogisticSettings]):
         self, ds: xr.Dataset, s: ImageLogisticSettings, cfg: FitConfig, ctx: FitContext
     ) -> FitOutput:
         seed = int(cfg.seed if cfg.seed is not None else ctx.seed)
+        if s.input == "features":
+            return self._fit_features(ds, s, cfg, ctx, seed)
         px = _pixels(ds, s, phase="fit")
-        if s.target not in ds:
-            raise MapiError(
-                f"the fit data has no target {s.target!r}",
-                code=ErrorCode.SCHEMA_INVALID,
-                pointer=f"/data/{s.target}",
-            )
-        texts = _labels(ds[s.target], s.image_dim)
-        classes = _classes(texts, s)
-        keep = np.array([t is not None for t in texts])
-        if keep.sum() < 2:
-            raise MapiError("fewer than two images have a label", code=ErrorCode.SCHEMA_INVALID)
-        index = {c: j for j, c in enumerate(classes)}
-        codes = np.array([index[t] for t in texts if t is not None], dtype=np.int64)
-        if np.unique(codes).size < 2:
-            raise MapiError(
-                "the labelled images have one class only; a classifier needs two or more",
-                code=ErrorCode.SCHEMA_INVALID,
-            )
+        keep, codes, classes = _targets(ds, s)
         blocks = _block_mean(px[keep], s.downsample)
         _, hh, ww, cc = blocks.shape
         flat = blocks.reshape(blocks.shape[0], -1)
@@ -230,6 +257,87 @@ class ImageLogistic(CustomModel[ImageLogisticSettings]):
                 ctx.log_metric("explained_variance", basis.explained)
             if ctx.tracking_media:
                 self._log_images(ctx, blocks, codes, classes, basis, (hh, ww, cc))
+        groups, result = self._sample(z, codes, classes, s, cfg, ctx, seed)
+        groups[FEATURES] = basis.dataset(s, (int(px.shape[1]), int(px.shape[2]), cc), classes)
+        ctx.progress(1.0, "posterior ready")
+        learned: dict[str, Any] = {
+            "engine": result.engine,
+            "tune": result.plan.tune,
+            "draws": result.plan.draws,
+            "chains": result.plan.chains,
+            "classes": list(classes),
+            "height": int(px.shape[1]),
+            "width": int(px.shape[2]),
+            "channels": int(cc),
+            "channel_labels": [str(c) for c in np.asarray(ds[_CHANNEL].values).tolist()]
+            if _CHANNEL in ds.coords
+            else [],
+            "downsample": s.downsample,
+            "features": s.features,
+            "n_features": int(z.shape[1]),
+            "n_train": int(codes.size),
+            "explained_variance": basis.explained,
+        }
+        return FitOutput(groups=groups, learned=learned)
+
+    def _fit_features(
+        self,
+        ds: xr.Dataset,
+        s: ImageLogisticSettings,
+        cfg: FitConfig,
+        ctx: FitContext,
+        seed: int,
+    ) -> FitOutput:
+        """``input: features``: standardised features (PCA above ``max_features``)."""
+        feats = _feature_matrix(ds, s, phase="fit")
+        keep, codes, classes = _targets(ds, s)
+        flat = feats[keep]
+        kind: Literal["pca", "pixels"] = "pca" if flat.shape[1] > s.max_features else "pixels"
+        basis = _fit_basis(flat, s.model_copy(update={"features": kind, "downsample": 1}), seed)
+        z = _project(flat, basis)
+        ctx.check_cancelled()
+        if ctx.tracking:
+            ctx.log_params(
+                {
+                    "image.input": "features",
+                    "image.features": kind,
+                    "image.n_inputs": int(flat.shape[1]),
+                    "image.n_components": int(z.shape[1]),
+                }
+            )
+            if basis.explained is not None:
+                ctx.log_metric("explained_variance", basis.explained)
+        groups, result = self._sample(z, codes, classes, s, cfg, ctx, seed)
+        dataset = basis.dataset(s.model_copy(update={"features": kind}), (0, 0, 0), classes)
+        dataset.attrs.update({"input": "features", "n_inputs": int(flat.shape[1])})
+        groups[FEATURES] = dataset
+        ctx.progress(1.0, "posterior ready")
+        learned: dict[str, Any] = {
+            "engine": result.engine,
+            "tune": result.plan.tune,
+            "draws": result.plan.draws,
+            "chains": result.plan.chains,
+            "classes": list(classes),
+            "input": "features",
+            "n_inputs": int(flat.shape[1]),
+            "features": kind,
+            "n_features": int(z.shape[1]),
+            "n_train": int(codes.size),
+            "explained_variance": basis.explained,
+        }
+        return FitOutput(groups=groups, learned=learned)
+
+    def _sample(
+        self,
+        z: np.ndarray,
+        codes: np.ndarray,
+        classes: Sequence[str],
+        s: ImageLogisticSettings,
+        cfg: FitConfig,
+        ctx: FitContext,
+        seed: int,
+    ) -> tuple[dict[str, xr.Dataset], Any]:
+        """Sample the model of ``z``; the ``posterior`` and ``sample_stats`` groups."""
         model = self.build_model(z, codes, classes, s)
         plan = EnginePlan.from_config(cfg, default_engine=self.default_engine, seed=seed)
         report = None
@@ -257,27 +365,7 @@ class ImageLogistic(CustomModel[ImageLogisticSettings]):
                 if stats[v].dtype.kind in "biuf" and set(stats[v].dims) <= {"chain", "draw"}
             ]
             groups["sample_stats"] = _clean(stats[numeric], result.engine)
-        groups[FEATURES] = basis.dataset(s, (int(px.shape[1]), int(px.shape[2]), cc), classes)
-        ctx.progress(1.0, "posterior ready")
-        learned: dict[str, Any] = {
-            "engine": result.engine,
-            "tune": result.plan.tune,
-            "draws": result.plan.draws,
-            "chains": result.plan.chains,
-            "classes": list(classes),
-            "height": int(px.shape[1]),
-            "width": int(px.shape[2]),
-            "channels": int(cc),
-            "channel_labels": [str(c) for c in np.asarray(ds[_CHANNEL].values).tolist()]
-            if _CHANNEL in ds.coords
-            else [],
-            "downsample": s.downsample,
-            "features": s.features,
-            "n_features": int(z.shape[1]),
-            "n_train": int(codes.size),
-            "explained_variance": basis.explained,
-        }
-        return FitOutput(groups=groups, learned=learned)
+        return groups, result
 
     def _log_images(
         self,
@@ -342,17 +430,27 @@ class ImageLogistic(CustomModel[ImageLogisticSettings]):
                 code=ErrorCode.INTEGRITY_FAILURE,
             )
         basis = _Basis.from_dataset(feats)
-        px = _pixels(ds, s, phase="score")
-        height, width = int(feats.attrs["height"]), int(feats.attrs["width"])
-        channels = int(feats.attrs["channels"])
-        if px.shape[1:] != (height, width, channels):
-            raise MapiError(
-                f"the images are {px.shape[1]} x {px.shape[2]} with {px.shape[3]} channel(s); "
-                f"the model was fitted on {height} x {width} with {channels}",
-                code=ErrorCode.SCHEMA_INVALID,
-                pointer=f"/data/{s.pixels}",
-            )
-        flat = _block_mean(px, basis.downsample).reshape(px.shape[0], -1)
+        if s.input == "features":
+            flat = _feature_matrix(ds, s, phase="score")
+            n_inputs = int(feats.attrs.get("n_inputs") or flat.shape[1])
+            if flat.shape[1] != n_inputs:
+                raise MapiError(
+                    f"the images have {flat.shape[1]} features; the model was fitted on {n_inputs}",
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=f"/data/{s.pixels}",
+                )
+        else:
+            px = _pixels(ds, s, phase="score")
+            height, width = int(feats.attrs["height"]), int(feats.attrs["width"])
+            channels = int(feats.attrs["channels"])
+            if px.shape[1:] != (height, width, channels):
+                raise MapiError(
+                    f"the images are {px.shape[1]} x {px.shape[2]} with {px.shape[3]} "
+                    f"channel(s); the model was fitted on {height} x {width} with {channels}",
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer=f"/data/{s.pixels}",
+                )
+            flat = _block_mean(px, basis.downsample).reshape(px.shape[0], -1)
         z = _project(flat, basis)
         post = _thin(fitted.posterior, MAX_SCORE_DRAWS)
         alpha = np.asarray(post["alpha"].transpose("chain", "draw", CLASS).values, dtype=float)
@@ -534,6 +632,62 @@ def _pixels(ds: xr.Dataset, s: ImageLogisticSettings, *, phase: str) -> np.ndarr
             pointer=f"/data/{s.pixels}",
         )
     return values / 255.0
+
+
+def _feature_matrix(ds: xr.Dataset, s: ImageLogisticSettings, *, phase: str) -> np.ndarray:
+    """``(n, F)`` float features of ``input: features`` (finite numbers)."""
+    code = ErrorCode.MISSING_FUTURE_COVARIATE if phase == "score" else ErrorCode.SCHEMA_INVALID
+    if s.pixels not in ds:
+        raise MapiError(
+            f"the {phase} data has no feature variable {s.pixels!r}",
+            code=code,
+            pointer=f"/data/{s.pixels}",
+        )
+    da = ds[s.pixels]
+    want = (s.image_dim, s.feature_dim)
+    if set(da.dims) != set(want):
+        raise MapiError(
+            f"{s.pixels!r} must have the dims {list(want)}, not {list(da.dims)}",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/data/{s.pixels}",
+        )
+    if da.dtype.kind not in "uifb":
+        raise MapiError(
+            f"{s.pixels!r} must hold numbers, not {da.dtype}",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/data/{s.pixels}",
+        )
+    values = np.asarray(da.transpose(*want).values, dtype=float)
+    if not np.isfinite(values).all():
+        raise MapiError(
+            f"{s.pixels!r} must hold numbers without missing values",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/data/{s.pixels}",
+        )
+    return values
+
+
+def _targets(ds: xr.Dataset, s: ImageLogisticSettings) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """``(labelled mask, class codes of the labelled images, classes)``."""
+    if s.target not in ds:
+        raise MapiError(
+            f"the fit data has no target {s.target!r}",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer=f"/data/{s.target}",
+        )
+    texts = _labels(ds[s.target], s.image_dim)
+    classes = _classes(texts, s)
+    keep = np.array([t is not None for t in texts])
+    if keep.sum() < 2:
+        raise MapiError("fewer than two images have a label", code=ErrorCode.SCHEMA_INVALID)
+    index = {c: j for j, c in enumerate(classes)}
+    codes = np.array([index[t] for t in texts if t is not None], dtype=np.int64)
+    if np.unique(codes).size < 2:
+        raise MapiError(
+            "the labelled images have one class only; a classifier needs two or more",
+            code=ErrorCode.SCHEMA_INVALID,
+        )
+    return keep, codes, classes
 
 
 def _label_text(value: Any) -> str | None:

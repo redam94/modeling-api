@@ -28,7 +28,9 @@ tenant are ended, unfinished runs are cancelled again, and every registered
 3. ``object_store``: every object under ``t/{tenant}/`` in the quarantine, runs, bundles and
    data buckets, through :class:`~mapi_spec.storage.ObjectStore`. An object a retention lock
    refuses is recorded with the time it may be deleted (``time_created`` + the bundles
-   retention, ``MAPI_BUNDLE_RETENTION_DAYS``), and the purge resumes then;
+   retention, ``MAPI_BUNDLE_RETENTION_DAYS``), and the purge resumes then. The image packs
+   of collection versions (v0.15, ``t/{tenant}/blobs/packs/``) are shared by every version
+   that references them, so nothing else deletes them: they go here, with the tenant;
 4. ``logs``: not purged. Request and run logs hold ids, not content, and expire with the
    log buckets' retention (documented in the data-deletion guide);
 5. ``webhooks``: delivers ``tenant.deletion.completed`` through the configured

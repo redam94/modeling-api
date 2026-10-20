@@ -208,6 +208,25 @@ class Transfers:
             )
         return got
 
+    def read_range(self, get: SignedGet, start: int, end: int) -> bytes:
+        """Bytes ``[start, end)`` of ``get`` with one HTTP ``Range`` read (v0.15: lazy reads of
+        image packs). Only a ``206`` answer of exactly ``end - start`` bytes is accepted; the
+        caller verifies the content (every image read checks its own sha256)."""
+        if not 0 <= start < end <= get.size:
+            raise ValueError(f"range [{start}, {end}) is outside the {get.size}-byte object")
+        rng = f"bytes={start}-{end - 1}"
+        resp = self._retry(
+            "range read", get.url, lambda: self.client.get(get.url, headers={"Range": rng})
+        )
+        self._check(resp, "range read", (206,))
+        data = resp.content
+        if len(data) != end - start:
+            raise MapiError(
+                "a range read returned the wrong number of bytes",
+                code=ErrorCode.INTEGRITY_FAILURE,
+            )
+        return data
+
     def fetch(self, get: SignedGet, *, max_bytes: int) -> bytes:
         """Download a small object into memory (verified like :meth:`download`)."""
         if get.size > max_bytes:

@@ -168,6 +168,7 @@ def cloudrun_inventory(settings: Settings) -> JobInventory:
         template=settings.cloudrun_job_template,
         plugin_bases={k: Base(v) for k, v in settings.cloudrun_plugin_bases.items()},
         default_base=Base(settings.cloudrun_default_base),
+        gpu_bases=(Base.DL,) if settings.cloudrun_gpu_jobs else (),
     )
 
 
@@ -248,4 +249,5 @@ def build_executor(settings: Settings) -> Executor:
         gvisor=settings.executor is ExecutorName.DOCKER_GVISOR,
         gvisor_runtime=settings.docker_runtime_gvisor,
         cancel_grace_s=settings.cancel_grace_s,
+        gpus=settings.docker_gpus,
     )

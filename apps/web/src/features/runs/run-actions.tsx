@@ -11,7 +11,7 @@ import type { ResourceClass, Run } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect } from "@/components/ui/primitives";
-import { isCancellable, nextResourceClass, RESOURCE_CLASSES } from "@/lib/run-state";
+import { GPU_CLASS, GPU_CLASS_HELP, isCancellable, nextResourceClass, resourceClassLabel, RETRY_CLASSES } from "@/lib/run-state";
 import { toast } from "@/stores/toast";
 
 export function RunActions({ run }: { run: Run }) {
@@ -88,7 +88,7 @@ function RetryDialog({ run, onClose }: { run: Run; onClose: () => void }) {
             : "The app makes a new run from the same inputs. This run does not change."}
         </DialogDescription>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Resource class" htmlFor="retry-rc">
+          <Field label="Resource class" htmlFor="retry-rc" hint={(rc as string) === GPU_CLASS ? GPU_CLASS_HELP : undefined}>
             <NativeSelect
               id="retry-rc"
               value={rc}
@@ -97,9 +97,9 @@ function RetryDialog({ run, onClose }: { run: Run; onClose: () => void }) {
                 retry.reset();
               }}
             >
-              {RESOURCE_CLASSES.slice(0, 3).map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {RETRY_CLASSES.map((c) => (
+                <option key={c} value={c} title={c === GPU_CLASS ? GPU_CLASS_HELP : undefined}>
+                  {resourceClassLabel(c)}
                 </option>
               ))}
             </NativeSelect>

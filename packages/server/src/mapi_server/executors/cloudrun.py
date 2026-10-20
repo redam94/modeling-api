@@ -135,16 +135,21 @@ class Base(StrEnum):
     BAYES = "base-bayes"
     ML = "base-ml"
     FORECAST = "base-forecast"
+    DL = "base-dl"
+    """v0.15: ``mapi-jax`` with the CUDA 12 wheels (the only base with a GPU Job)."""
 
 
 DEFAULT_PLUGIN_BASES: Final[Mapping[str, Base]] = {
     "mmm": Base.BAYES,
+    "sci": Base.BAYES,
     "tabular": Base.BAYES,
     "sklearn": Base.ML,
     "ts": Base.FORECAST,
     "causal": Base.FORECAST,
+    "dl": Base.DL,
 }
-"""Plugin namespace (:data:`~mapi_spec.executor.PLUGIN_LABEL`) → the base that ships it."""
+"""Plugin namespace (:data:`~mapi_spec.executor.PLUGIN_LABEL`) → the base that ships it
+(mirrors :data:`mapi_server.settings.DEFAULT_CLOUDRUN_BASES`)."""
 
 
 # ======================================================================= inventory
@@ -161,15 +166,27 @@ class JobInventory:
     plugin_bases: Mapping[str, Base] = field(default_factory=lambda: dict(DEFAULT_PLUGIN_BASES))
     default_base: Base = Base.BAYES
     classes: tuple[ResourceClass, ...] = INVENTORY_CLASSES
+    gpu_bases: tuple[Base, ...] = (Base.DL,)
+    """Bases that also have a ``GPU`` Job (one NVIDIA L4; v0.15). Empty: no GPU class."""
 
     def __post_init__(self) -> None:
         if not _PROJECT.match(self.project):
             raise ValueError(f"{self.project!r} is not a valid Google Cloud project id")
         if not _REGION.match(self.region):
             raise ValueError(f"{self.region!r} is not a valid Cloud Run region")
+        if any(rc.is_gpu for rc in self.classes):
+            raise ValueError("the GPU class comes from gpu_bases, not classes")
         for base in Base:
             for rc in self.classes:
                 self.job_id(base, rc)  # validates the template once
+        for base in self.gpu_bases:
+            self.job_id(base, ResourceClass.GPU)
+
+    @property
+    def offered_classes(self) -> tuple[ResourceClass, ...]:
+        """The classes some Job of the inventory runs: the CPU classes, plus ``GPU`` when a
+        base has a GPU Job."""
+        return (*self.classes, ResourceClass.GPU) if self.gpu_bases else self.classes
 
     @property
     def parent(self) -> str:
@@ -190,8 +207,9 @@ class JobInventory:
         return f"{self.parent}/jobs/{self.job_id(base, resource_class)}"
 
     def jobs(self) -> list[str]:
-        """Every Job of the inventory (bases × classes)."""
-        return [self.job_name(b, rc) for b in Base for rc in self.classes]
+        """Every Job of the inventory (bases × CPU classes, then GPU bases × ``GPU``)."""
+        cpu = [self.job_name(b, rc) for b in Base for rc in self.classes]
+        return cpu + [self.job_name(b, ResourceClass.GPU) for b in self.gpu_bases]
 
     def base_for(self, rs: RunSubmit) -> Base:
         plugin = rs.labels.get(PLUGIN_LABEL)
@@ -200,10 +218,19 @@ class JobInventory:
         return self.plugin_bases.get(plugin, self.default_base)
 
     def select(self, rs: RunSubmit) -> str:
-        """The Job an attempt runs on (plugin → base, resource class → size)."""
+        """The Job an attempt runs on (plugin → base, resource class → size). Only the
+        GPU bases (``dl`` models) have a ``GPU`` Job."""
+        base = self.base_for(rs)
+        if rs.resource_class.is_gpu:
+            if base not in self.gpu_bases:
+                raise ValueError(
+                    "only dl models run on the GPU class "
+                    f"(this run's base {base.value} has no GPU job)"
+                )
+            return self.job_name(base, rs.resource_class)
         if rs.resource_class not in self.classes:
             raise ValueError(f"the Cloud Run inventory has no class {rs.resource_class.value}")
-        return self.job_name(self.base_for(rs), rs.resource_class)
+        return self.job_name(base, rs.resource_class)
 
 
 # ===================================================================== API shapes
@@ -517,7 +544,7 @@ class CloudRunJobsExecutor:
             egress_enforced=self._egress,
             dns_enforced=self._dns,
             max_runtime=Duration(self._max_runtime),
-            classes=list(self.inventory.classes),
+            classes=list(self.inventory.offered_classes),
             max_tasks=MAX_TASK_COUNT,
             regions=(self.inventory.region,),
             checkpoint_storage=True,

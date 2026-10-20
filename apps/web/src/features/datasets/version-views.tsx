@@ -1,16 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { Grid3x3, Search } from "lucide-react";
+import { Grid3x3, ImageIcon, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { datasetArtifactLink, qk, useProjectScope } from "@/api/queries";
 import type { CoordSummary, DataSchema, DatasetVersion } from "@/api/types";
-import { EmptyState, ErrorNotice, LoadingRows, Mono } from "@/components/common";
+import { EmptyState, ErrorNotice, KeyValues, LoadingRows, Mono } from "@/components/common";
 import { Badge, Input, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
 import { missingnessHeatmap } from "@/features/plots/builtin-specs";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { fetchArtifactJson } from "@/lib/artifacts";
-import { formatNumber } from "@/lib/format";
+import { formatBytes, formatNumber } from "@/lib/format";
 import { parsePreview, parseProfile, type PreviewView, type ProfileView } from "@/lib/views";
+
+import { collectionOf, type CollectionView } from "./collection-upload";
 
 export function SchemaTable({ schema }: { schema: DataSchema }) {
   const dims = Object.entries(schema.dims ?? {});
@@ -228,6 +230,81 @@ export function PreviewPanel({ version }: { version: DatasetVersion }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+const n = (v: number) => v.toLocaleString("en-US");
+const side = (s: readonly number[] | null | undefined) => (s && s.length === 2 ? `${s[0]} × ${s[1]}` : "—");
+
+/**
+ * v0.15: what an image collection version holds (`DatasetVersion.collection`): the number of
+ * images (new and reused from the base version), the classes (the 10 largest), the splits, the
+ * packs of image bytes, the total size and the range of image sizes.
+ */
+export function CollectionSummary({ version, info }: { version: DatasetVersion; info?: CollectionView | null }) {
+  const c = info ?? collectionOf(version);
+  if (!c) return <EmptyState icon={<ImageIcon />} title="This version is not an image collection">The version has no collection summary.</EmptyState>;
+  const classes = c.classes.slice(0, 10);
+  const top = Math.max(1, ...classes.map((x) => x.count));
+  const listed = c.classes.length - classes.length + c.other_classes;
+  const splits = Object.entries(c.splits).sort(([a], [b]) => a.localeCompare(b));
+  const formats = Object.entries(c.formats).sort(([, a], [, b]) => b - a);
+  const uploaded = c.packs.filter((p) => p.source === "upload").length;
+  return (
+    <div className="grid gap-6" data-testid="collection-summary">
+      <KeyValues
+        items={[
+          ["Images", <span key="i" className="tabular">{n(c.n_images)}</span>],
+          [
+            "New and reused",
+            <span key="r" className="tabular">
+              {n(c.new_images)} new, {n(c.reused_images)} from {c.base_version != null ? `version v${c.base_version}` : "no base version"}
+            </span>,
+          ],
+          ["Variable", <Mono key="v">{`${c.var}(${c.dim}, y, x, channel)`}</Mono>],
+          ["Colours", c.mode === "gray" ? "gray (1 channel)" : "colour (3 channels)"],
+          ["Model size", c.size ? `${side(c.size)} pixels` : "not set (the images have different sizes)"],
+          ["Image sizes", c.min_size[0] === c.max_size[0] && c.min_size[1] === c.max_size[1] ? `${side(c.min_size)} pixels` : `${side(c.min_size)} to ${side(c.max_size)} pixels`],
+          ["Formats", formats.length ? formats.map(([f, k]) => `${f} ${n(k)}`).join(", ") : "—"],
+          ["Total size", formatBytes(c.total_bytes)],
+          ["Packs", `${n(c.packs.length)} (${n(uploaded)} uploaded, ${n(c.packs.length - uploaded)} from the base version)`],
+          ...(c.columns.length ? [["Other columns", c.columns.join(", ")] as [string, string]] : []),
+        ]}
+      />
+      <div className="grid gap-6 md:grid-cols-2">
+        <section aria-label="Classes" className="grid content-start gap-2">
+          <h3 className="text-[13px] font-semibold">Classes</h3>
+          {c.label && classes.length ? (
+            <ul className="grid gap-1.5" data-testid="collection-classes">
+              {classes.map((x) => (
+                <li key={x.label} className="grid grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-[13px]">
+                  <Mono className="truncate" title={x.label}>{x.label}</Mono>
+                  <span className="h-2 rounded-full bg-primary/70" style={{ width: `${Math.max(2, (100 * x.count) / top)}%` }} aria-hidden />
+                  <span className="text-right tabular">{n(x.count)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">The images have no class.</p>
+          )}
+          {listed > 0 ? <p className="text-xs text-muted-foreground">The list shows the 10 largest classes. {n(listed)} other classes are not in the list.</p> : null}
+        </section>
+        <section aria-label="Splits" className="grid content-start gap-2">
+          <h3 className="text-[13px] font-semibold">Splits</h3>
+          {splits.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {splits.map(([name, k]) => (
+                <Badge key={name} variant="outline">
+                  {name} <span className="tabular">{n(k)}</span>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">The images have no split column.</p>
+          )}
+        </section>
       </div>
     </div>
   );

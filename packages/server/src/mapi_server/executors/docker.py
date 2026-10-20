@@ -105,6 +105,7 @@ class DockerExecutor:
         gvisor_runtime: str = "runsc",
         user: str = "0:0",
         cancel_grace_s: float = 10.0,
+        gpus: bool = False,
         client_factory: Callable[[], Any] | None = None,
     ) -> None:
         RunnerEnv(run_id="probe", nonce="0" * 64, bootstrap_url=bootstrap_url_template)
@@ -120,6 +121,7 @@ class DockerExecutor:
         self._runtime = gvisor_runtime
         self._user = user
         self._grace = cancel_grace_s
+        self._gpus = gpus
         self._client_factory = client_factory or self._default_client
         self._client: Any = None
         self._events: asyncio.Queue[tuple[str, RunEvent]] = asyncio.Queue()
@@ -162,7 +164,8 @@ class DockerExecutor:
             egress_enforced=self._network_isolated,
             dns_enforced=self._network_isolated,
             max_runtime=Duration(24 * 3600),
-            classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L],
+            # GPU: one NVIDIA device with MAPI_DOCKER_GPUS, else the same container on CPU
+            classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L, ResourceClass.GPU],
             max_tasks=1,
             checkpoint_storage=True,
         )
@@ -206,6 +209,11 @@ class DockerExecutor:
             opts["command"] = list(self._command)
         if self._gvisor:
             opts["runtime"] = self._runtime
+        if rs.resource_class.is_gpu and self._gpus:
+            # `docker run --gpus 1`: the docker SDK turns each dict into a DeviceRequest
+            opts["device_requests"] = [
+                {"Driver": "nvidia", "Count": spec.accelerators or 1, "Capabilities": [["gpu"]]}
+            ]
         return opts
 
     async def submit(self, rs: RunSubmit, nonce: str) -> Handle:

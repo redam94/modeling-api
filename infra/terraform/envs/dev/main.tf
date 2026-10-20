@@ -40,6 +40,7 @@ module "stack" {
 
   deletion_protection  = false
   binary_authorization = false
+  gpu_jobs             = false # v0.15: the base-dl GPU Job [unverified: no GCP GPU quota tested]
 
   vpc_sc = {
     access_policy_id = var.access_policy_id

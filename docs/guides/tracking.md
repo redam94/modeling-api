@@ -170,6 +170,21 @@ more:
 mapi runs ls --filter "metric.p_effect_positive >= 0.95" --column metric.effect_total
 ```
 
+## What a network fit logs <span class="mapi-badge">v0.15</span> { #what-a-network-fit-logs }
+
+The `dl` models of `mapi-jax` log the training while it runs:
+
+- `loss` and `accuracy` (classification) or `rmse` and `mae` (regression), with the label
+  `split=train` (batch values) and `split=val` (at the end of each evaluation);
+- `lr`, `grad_norm` and `epoch`;
+- one log line for each epoch, with the fields `epoch`, `train_loss`, `val_loss` and
+  `images_per_second`;
+- the params `dl.arch.*`, `dl.train.*`, `dl.backend`, `dl.device` and `dl.parameters`;
+- the media `val_predictions` and `confusion` (label `split=val`) at a maximum of 20
+  evaluations.
+
+See [Deep learning](deep-learning.md#read-the-training).
+
 ## Keys, labels and values
 
 Metric keys match `^[a-z][a-z0-9_]{0,63}$`. Write qualifiers as labels, not in the key:

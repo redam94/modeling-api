@@ -29,10 +29,10 @@ from mapi_spec.jobs import INPUT_DATASET, INPUT_SCENARIO, SCORE_INPUTS, side_tab
 from mapi_spec.loader import check_limits, parse_document, parse_text, spec_hash
 from mapi_spec.quotas import max_score_draws
 from mapi_spec.refs import DatasetRef, EndpointRef, ModelVersionRef
-from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
+from mapi_spec.resources import CPU_CLASSES, RESOURCE_CLASSES, ResourceClass
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import ModelSpec, ScoreRequest
-from mapi_spec.tree import ROOT, TreeSchema
+from mapi_spec.tree import ROOT, DataLayout, TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,12 +43,14 @@ from mapi_server.services.catalog import CatalogService, CatalogSnapshot
 from mapi_server.services.runs import Scope
 
 __all__ = [
+    "COLLECTION_REFUSED",
     "DOCUMENT_KINDS",
     "Validation",
     "check_score_request",
     "class_for_size",
     "data_cap_issue",
     "first_error",
+    "layout_of",
     "live_capabilities",
     "pin_document",
     "refuse_retired_kind",
@@ -61,6 +63,8 @@ __all__ = [
 ]
 
 DOCUMENT_KINDS = ("ModelSpec", "ScoreRequest", "Sweep", "Backtest", "SBC", "Campaign")
+COLLECTION_REFUSED = "side tables and workflow inputs must be datasets, not image collections"
+"""v0.15: why a collection version cannot be a side table or a workflow input."""
 RETIRED_KINDS: dict[str, str] = {"Sweep": "Use a workflow with a search.grid node"}
 """v0.14: kinds stored documents may still have, which new specs and revisions may not."""
 
@@ -109,6 +113,13 @@ def tree_schema_of(dv: m.DatasetVersion) -> TreeSchema | None:
     return TreeSchema.model_validate(dv.tree_schema)
 
 
+def layout_of(dv: m.DatasetVersion) -> DataLayout:
+    """The stored layout of a version (``dataset`` for anything unknown)."""
+    if dv.layout == "tree":
+        return "tree"
+    return "collection" if dv.layout == "collection" else "dataset"
+
+
 def side_table_node_issue(key: str, node: str | None, tree: TreeSchema | None) -> Issue | None:
     """M4: a tree side table must name ONE node of its version (``SideTable.node``); a plain
     one names none (or the root). The same rules the runner applies, checked statically."""
@@ -138,8 +149,9 @@ def side_table_node_issue(key: str, node: str | None, tree: TreeSchema | None) -
 
 
 def class_for_size(size_bytes: int) -> ResourceClass | None:
-    """The smallest resource class whose dataset cap holds ``size_bytes`` (plan §8.5)."""
-    for rc in ResourceClass:
+    """The smallest resource class whose dataset cap holds ``size_bytes`` (plan §8.5).
+    Never ``GPU`` (v0.15): an accelerator is asked for, not picked by data size."""
+    for rc in CPU_CLASSES:
         if size_bytes <= RESOURCE_CLASSES[rc].max_dataset_bytes:
             return rc
     return None
@@ -154,8 +166,10 @@ def data_cap_issue(
     versions: list[m.DatasetVersion],
     pointer: str = "/execution/resource_class",
 ) -> Issue | None:
-    """``PAYLOAD_TOO_LARGE`` when the input data exceeds the class's dataset cap."""
-    total = sum(v.size_bytes or 0 for v in versions)
+    """``PAYLOAD_TOO_LARGE`` when the input data exceeds the class's dataset cap. Collection
+    versions (v0.15) do not count: their images are streamed from packs, and the sample a
+    model that reads datasets gets (``data.collection``) is capped at run time."""
+    total = sum(v.size_bytes or 0 for v in versions if v.layout != "collection")
     cap = RESOURCE_CLASSES[resource_class].max_dataset_bytes
     if total <= cap:
         return None
@@ -334,6 +348,12 @@ async def _validate_model_spec(
             out.issues.append(
                 _issue(ErrorCode.REF_UNRESOLVED, f"/data/side_tables/{name}/ref", twhy or "")
             )
+        elif tv.layout == "collection":  # v0.15
+            out.issues.append(
+                _issue(
+                    ErrorCode.SCHEMA_INVALID, f"/data/side_tables/{name}/ref", COLLECTION_REFUSED
+                )
+            )
         else:
             out.side_tables[name] = tv
             node_issue = side_table_node_issue(name, table.node, tree_schema_of(tv))
@@ -357,7 +377,11 @@ async def _validate_model_spec(
         return
     tree = tree_schema_of(dv)
     result = validate_spec(
-        spec, snapshot.catalog, DataSchema.model_validate(dv.data_schema), tree_schema=tree
+        spec,
+        snapshot.catalog,
+        DataSchema.model_validate(dv.data_schema),
+        tree_schema=tree,
+        dataset_layout=layout_of(dv),
     )
     out.issues.extend(result.issues)
     if spec.calibration is not None and dv.summary:
@@ -437,6 +461,10 @@ async def check_score_request(
         dv, why = await resolve_dataset(session, scope, ref)
         if dv is None:
             issues.append(_issue(ErrorCode.REF_UNRESOLVED, f"/side_tables/{name}", why or ""))
+        elif dv.layout == "collection":  # v0.15
+            issues.append(
+                _issue(ErrorCode.SCHEMA_INVALID, f"/side_tables/{name}", COLLECTION_REFUSED)
+            )
         else:
             datasets[side_table_input(name)] = dv
     if mv.score_meta is None:

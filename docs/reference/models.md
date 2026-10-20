@@ -35,6 +35,9 @@ each lift likelihood.
 | `causal.did@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict, counterfactual | `did_event_study` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
 | `tabular.image_logistic@1` <span class="mapi-badge">v0.14</span> | `mapi-plugin-tabular` | draws | predict, evaluate | contract kit (`shapes_dataset`) |
+| `dl.mlp@1` <span class="mapi-badge">v0.15</span> | `mapi-jax` | draws (Laplace or MC dropout) | predict, evaluate | contract kit |
+| `dl.cnn_classifier@1` <span class="mapi-badge">v0.15</span> | `mapi-jax` | draws (Laplace or MC dropout) | predict, evaluate | contract kit (`local_collection`) |
+| `dl.finetune_classifier@1` <span class="mapi-badge">v0.15</span> | `mapi-jax` | draws (Laplace or MC dropout) | predict, evaluate | contract kit (`tiny_weights_dataset`) |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 | `ts.sarimax@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_arimax` |
@@ -342,9 +345,48 @@ the group `features`. The fit logs the params `image.features`, `image.n_compone
 | `max_features` | 256 | `pixels`: the maximum of (height / downsample) × (width / downsample) × channels |
 | `prior_sigma` | 1.0 | The prior scale of `beta` (more than 0, a maximum of 10) |
 | `class_order` | none | The classes in a fixed sequence (a maximum of 50) |
+| `input` | `pixels` | v0.15: `pixels` or `features` (image features such as `embedding(image, feature)`) |
+| `feature_dim` | `feature` | v0.15: the feature dim when `input` is `features` |
 
 `mapi_plugin_tabular.image_data.shapes_dataset()` makes a small example dataset (circles,
 squares and crosses, 16 × 16 pixels, with a `split` coordinate).
+
+**Features input (v1.1, v0.15).** With `input: features`, the model reads image features,
+for example `embedding(image, feature)` from the step `dl.embed`. Set `pixels` to the name of
+the feature variable and `feature_dim` (default `feature`) to its dim. The model standardises
+the features. It uses PCA only when there are more than `max_features` features. See
+[Deep learning: image features and a simple head](../guides/deep-learning.md#image-features-and-a-simple-head).
+
+## Deep learning (`mapi-jax`) <span class="mapi-badge">v0.15</span> { #deep-learning-mapi-jax }
+
+The package `mapi-jax` has three models and one step. They use JAX, Flax (`nnx`) and Optax.
+The models train with the shared trainer of `mapi_jax.trainer`. All have the capabilities:
+inference `custom`, representation `draws` (`chain` = 1), score modes `predict` and
+`evaluate`, `checkpointable`, `deterministic_given_seed`, and `loo_valid: false` ("a network
+trained by gradient descent has no pointwise log likelihood").
+
+| Model | Input | Resources | Outputs |
+|---|---|---|---|
+| `dl.mlp` | `dataset` | S, no GPU | `y_hat(chain, draw, *rows)` (regression) or `y_hat(chain, draw, *rows, class)` with `meaning: class_probability` |
+| `dl.cnn_classifier` | `collection` (also plain image datasets) | minimum S, default M, GPU | `y_hat(chain, draw, image, class)` |
+| `dl.finetune_classifier` | `collection` (also plain image datasets) | minimum S, default M, GPU | `y_hat(chain, draw, image, class)`. Reads the side table `pretrained`. |
+
+The image models use a small ResNet with GroupNorm and global average pooling. The bundle
+has:
+
+- the group `training`: `train_loss`, `val_loss`, `train_accuracy` (or `train_rmse`),
+  `val_accuracy` (or `val_rmse`) and `lr` along `epoch`, and `confusion(epoch, true_class,
+  pred_class)` for classifiers with validation data;
+- the group `misclassified`: up to 32 small validation images that the network classifies
+  incorrectly, with `true_label`, `pred_label` and `prob`;
+- the native objects `weights.safetensors` and, for the Laplace draws, `laplace.safetensors`.
+
+The plots are `ml.training_curves`, `ml.confusion_epochs`, `ml.misclassified`,
+`core.roc_pr` and `core.confusion` (`dl.mlp`: `ml.training_curves`). The step `dl.embed`
+writes `embedding(image, feature)` from a frozen pretrained backbone.
+
+[Deep learning](../guides/deep-learning.md) gives the settings, the training, the draws,
+the checkpoints, the GPU class and examples.
 
 ## `tabular.regressor` — quantile regression for panels
 

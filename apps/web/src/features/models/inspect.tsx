@@ -3,16 +3,20 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { AlertTriangle, CheckCircle2, ChevronRight, FolderTree, ShieldCheck, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { modelArtifactLink, qk, useProjectScope } from "@/api/queries";
+import { modelArtifactLink, qk, useCatalog, useProjectScope } from "@/api/queries";
 import type { Capabilities, Diagnostic, ModelVersion, Scorecard } from "@/api/types";
 import { EmptyState, ErrorNotice, JsonBlock, KeyValues, LoadingRows, Mono } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Badge, Card, CardContent, CardHeader, CardTitle, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
+import { findModel } from "@/features/editor/spec-hints";
 import { stateArrayPlot } from "@/features/plots/builtin-specs";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { fetchArtifactJson } from "@/lib/artifacts";
 import { absoluteTime, formatBytes, formatNumber, shortId } from "@/lib/format";
+import { resourceClassLabel } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
+
+import { GpuBadge } from "./gpu-badge";
 import { parsePreprocess, parseTreeIndex, type StateArray, type TreeGroup } from "@/lib/views";
 
 // ----------------------------------------------------------------------- scorecard
@@ -259,6 +263,9 @@ export function PreprocessViewer({ mv }: { mv: ModelVersion }) {
 export function ProvenancePanel({ mv }: { mv: ModelVersion }) {
   const m = mv.manifest;
   const l = mv.lineage;
+  // v0.15: the plugin's catalog entry says whether the model can use the GPU class.
+  const catalog = useCatalog();
+  const plugin = l.plugin ? findModel(catalog.data ?? null, l.plugin) : null;
   const objects = Object.entries(m.objects ?? {});
   return (
     <div className="grid gap-5 xl:grid-cols-2">
@@ -294,11 +301,11 @@ export function ProvenancePanel({ mv }: { mv: ModelVersion }) {
           <KeyValues
             items={[
               ["Fit run", <Mono key="r">{shortId(l.run_id)} (attempt {l.attempt})</Mono>],
-              ["Plugin", l.plugin ?? "—"],
+              ["Plugin", l.plugin ? <span key="p" className="inline-flex items-center gap-1.5">{l.plugin}<GpuBadge manifest={plugin} /></span> : "—"],
               ["Engine", l.engine ?? "—"],
               ["Seed", l.seed ?? "—"],
               ["Executor", l.executor ?? "—"],
-              ["Class", l.resource_class ?? "—"],
+              ["Class", l.resource_class ? resourceClassLabel(l.resource_class) : "—"],
               ["Dataset", l.dataset_sha ? <Mono key="ds" title={l.dataset_sha}>{shortId(l.dataset_sha)}</Mono> : "—"],
               ["Side tables", Object.keys(l.side_tables ?? {}).join(", ") || "—"],
               ["Evaluation of", l.evaluation_of ? <Mono key="e">{shortId(l.evaluation_of)}</Mono> : "—"],

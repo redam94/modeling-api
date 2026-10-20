@@ -224,3 +224,10 @@ against the JSON, and it does not import step code. The package also contains th
 
 In a notebook, `mapi_steps.registry()` returns a registry with all the steps. The `mapi.steps`
 entry point also gives the steps to `mapi_sdk.default_registry()`.
+
+## Plugin steps <span class="mapi-badge">v0.15</span>
+
+Packages other than `mapi-steps` can register steps through the `mapi.steps` entry point.
+`mapi-jax` registers `dl.embed`: it changes each image into image features
+(`embedding(image, feature)`) with a frozen pretrained network from a weights side table.
+Read [Deep learning](../guides/deep-learning.md#image-features-and-a-simple-head).

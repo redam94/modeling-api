@@ -157,6 +157,54 @@ bundle.model.groups["metrics_history"]      # when the model logged stepped metr
 
 For the full guide, see [Track metrics, params and tags](../guides/tracking.md).
 
+## Image collections, loaders and weights <span class="mapi-badge">v0.15</span> { #collections }
+
+`mapi_sdk.collection` reads image collections lazily. `mapi_sdk.images` decodes images.
+`mapi_sdk.safetensors` and `mapi_sdk.checkpoints` save network weights. All of them are
+exported from `mapi_sdk`.
+
+| Name | What it does |
+|---|---|
+| `Collection` | A collection: `info` (`CollectionInfo`), `manifest` (a DataFrame, one row for each image), `source` (a `BlobSource`) and `schema`. `Collection.open(info, manifest, source)` validates the columns, the ids, the digests and the packs. `manifest_dataset()` gives the manifest as a 1-D dataset along the image dim. `loader(ids=None)` gives a `CollectionLoader`. |
+| `ImageLoader` | The protocol of a loader: `n`, `dim`, `ids`, `labels`, `classes`, `size`, `channels`, `manifest()`, `subset()`, `with_classes()`, `with_size()`, `with_mode()`, `split()`, `batches()` and `to_xarray()` |
+| `ArrayImageLoader` | An `ImageLoader` over an in-memory image dataset (`pixels(image, y, x, channel)`). Pixels can be `uint8`, or floats in 0 to 1 or 0 to 255. |
+| `CollectionLoader` | An `ImageLoader` that reads the images from the packs while you iterate. Each read makes sure that the SHA-256 is correct. |
+| `Batch` | `ids`, `pixels` (B, H, W, C) `uint8`, `labels`, `codes` (`int32`, −1 for a missing label or an unknown class) and `index` |
+| `Augment` | Random changes for each training image: `flip_x`, `flip_y`, `rotate90`, `crop_pad`, `brightness`, `contrast`, `noise`. Models put it in their settings. |
+| `BlobSource`, `LocalPackSource` | Where the packs are. The runner gives a source that reads the signed pack URLs in ranges. `LocalPackSource({digest: path})` reads local files. |
+| `read_safetensors`, `write_safetensors` | Read and write safetensors files with numpy only. The writer gives the same bytes for the same tensors. |
+| `weights_dataset`, `tensors_from_dataset` | Change tensors into the weights dataset (`weights(param)` and the attribute `mapi_weights`) and back |
+| `FileCheckpoint`, `FileCheckpointSink` | Checkpoints as files (weights, optimizer state, meta). `MemoryFileCheckpointSink` keeps them in memory for tests. |
+| `requested_positions(ds, dim)` | The positions of the rows that a score request asked for (it skips the padded rows of a `new_levels` dim) |
+
+The order of `batches(batch_size, epoch=e, shuffle=True, seed=s)` is a function of the seed
+and the epoch only. The loader reads blocks of up to 64 images of one pack, puts the blocks
+in a random sequence and shuffles the images in windows of 8 blocks. The random changes of
+`Augment` use a generator for each image, from the seed, the epoch and the position. Thus
+the batches are the same for each number of threads. `shard=(i, n)` gives every n-th block
+to shard i.
+
+`to_xarray(max_samples, size, seed=..., stratify="label")` gives the v0.14 image layout:
+`pixels(image, y, x, channel)` `uint8` with `label(image)`. When the loader has more than
+`max_samples` images, it keeps a seeded share of each label.
+
+```python
+from mapi_sdk import Augment
+from mapi_sdk.testing.images import local_collection
+
+collection = local_collection(tmp_path, n_per_class=8, size=12)
+loader = collection.loader().with_size((12, 12))
+train, val = loader.split(0.25, seed=0)
+for batch in train.batches(16, epoch=0, shuffle=True, seed=0, augment=Augment(flip_x=True)):
+    print(batch.pixels.shape, batch.codes)
+```
+
+`fit_spec(spec, collection)` and `score_bundle(bundle, request, collection)` take a
+`Collection` in place of a dataset. A model with `capabilities.input: collection` gets a
+loader in `fit_batches` and `score_batches`. Any other model gets
+`collection_read(collection, spec.data.collection, seed=...)`. Read
+[Train on batches](../guides/plugins.md#fit-batches).
+
 ## Representations and summaries
 
 | Representation | Shape | Summaries | Aggregation |

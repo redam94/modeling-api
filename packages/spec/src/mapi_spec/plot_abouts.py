@@ -1075,6 +1075,123 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         refs=[_MMM_DOCS],
     ),
     # ============================================================ ml pack
+    "ml.training_curves": _a(
+        "Training and validation curves",
+        "Shows the loss and the accuracy of a neural network on the training data and on the "
+        "validation data while it learns. When the validation loss goes up and the training "
+        "loss goes down, the network starts to overfit.",
+        [
+            "You trained a network and want to know if it had sufficient epochs",
+            "You want to see when the network started to overfit and which epoch was the best",
+        ],
+        [
+            "The model was not trained in steps (use Convergence or the scorecard)",
+        ],
+        [
+            "A metrics_history group with a split label (train and val), or a training group "
+            "with train_* and val_* variables for each epoch",
+        ],
+        [
+            "Lower is better for the loss and the error, higher is better for the accuracy",
+            "The training values are batch values. The validation values are for all "
+            "validation images at the end of each epoch",
+        ],
+        [
+            "One panel for each metric (loss, accuracy or error, up to 4), with one line for "
+            "each split",
+            "Points on the validation line",
+            "A caption with the best validation value and its step or epoch, and a note when "
+            "the network starts to overfit",
+        ],
+        _B,
+        _NOW,
+        "The validation loss is lowest at epoch 7 (0.41). After epoch 9 it goes up while the "
+        "training loss goes down, so the network starts to overfit. Early stopping kept the "
+        "weights of epoch 7.",
+        related=["core.loss_curve", "ml.confusion_epochs", "ml.misclassified"],
+        expert="Reads metrics_history (per-step series with the label dim `label`, default "
+        "'split') or else the per-epoch training group. `keys` picks the metrics (default: "
+        "loss and accuracy or rmse, at most 4 panels); `x` is 'step' or 'epoch'; `smooth` "
+        "applies a moving average of that width to the training series; `log_y` forces or "
+        "turns off a log scale; `max_points` thins each series. The overfit note shows when, "
+        "over the last 25% of the x range, the validation series rises by more than 2% and "
+        "the training series falls.",
+        fits={"goal": ["classify", "predict_values", "validate_model"]},
+    ),
+    "ml.confusion_epochs": _a(
+        "Confusion over epochs",
+        "Shows the confusion matrix of the validation data at some epochs of the training. "
+        "You can see which classes the network learns first and which classes it confuses "
+        "to the end.",
+        [
+            "You trained an image or table classifier and want to see how the errors changed",
+            "Some classes stay hard and you want to know which classes the network confuses",
+        ],
+        [
+            "The model has no validation data or was not trained in epochs (use the confusion "
+            "matrix)",
+        ],
+        [
+            "A training group with confusion(epoch, true_class, pred_class) counts (the "
+            "mapi-jax classifiers write it)",
+        ],
+        [
+            "The counts are for the validation data at the end of each epoch",
+            "At most 20 classes are shown. The other classes are put together as (other)",
+        ],
+        [
+            "Up to 6 small matrices: the first epoch, some epochs between, the best epoch and "
+            "the last epoch",
+            "Each row is shown as a share of its actual class, or as counts",
+            "A caption with the validation accuracy at the first, the best and the last epoch",
+        ],
+        _B,
+        _NOW,
+        "At epoch 1 the network puts most images in the class 'can'. At the best epoch (12), "
+        "the accuracy is 0.91. The network still confuses only 'bottle' and 'jar'.",
+        related=["core.confusion", "ml.training_curves", "ml.misclassified"],
+        expert="`epochs` picks the epochs (default: first, evenly spaced, best and last, "
+        "at most 6); `normalize` is 'true' (rows divided by the actual-class count) or "
+        "'none'; `max_classes` keeps the most frequent classes and pools the rest.",
+        fits={"goal": ["classify", "validate_model"]},
+    ),
+    "ml.misclassified": _a(
+        "Wrong validation images",
+        "Shows the validation images that the network classifies incorrectly, with the true "
+        "class, the predicted class and its probability. Look at them to find wrong labels "
+        "or classes that look the same.",
+        [
+            "You trained an image classifier and want to see its errors",
+            "You think that some labels are wrong",
+        ],
+        [
+            "The data are not images",
+            "The model has no validation images",
+        ],
+        [
+            "A misclassified group with small images and their true and predicted labels (the "
+            "mapi-jax image classifiers write it)",
+        ],
+        [
+            "The images are from the best epoch",
+            "The labels are text from the dataset. The chart shows them as text only",
+        ],
+        [
+            "A grid of up to 24 small images",
+            "Above each image: true class → predicted class and the probability",
+            "A caption with the number of wrong images and of validation images",
+        ],
+        _B,
+        _NOW,
+        "37 of 400 validation images are wrong at epoch 12. Five 'cat' images that the "
+        "network calls 'dog' with p = 0.97 have a dog in them: their labels are wrong.",
+        related=["ml.training_curves", "ml.confusion_epochs", "core.confusion"],
+        expert="Plotly image traces with `z` pixel arrays (RGB uint8; gray images repeat to "
+        "three channels; no `source` URLs). `max_items` (default 24) and `columns` (default "
+        "6) set the grid. The images are sorted by the predicted-class probability, highest "
+        "first.",
+        fits={"goal": ["classify", "validate_model"], "data_shape": ["images"]},
+    ),
     "ml.feature_importance": _a(
         "Feature importance",
         "Ranks the inputs that a tabular model uses most. For a linear model it shows the "

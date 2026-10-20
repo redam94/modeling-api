@@ -21,6 +21,7 @@ from mapi_spec.about import (
 from mapi_spec.abouts import (
     CAUSAL_MODEL_IDS,
     CLASSIFICATION_MODEL_IDS,
+    DL_MODEL_IDS,
     MODEL_ABOUTS,
     PLANNED_MODEL_IDS,
     SCIENCE_MODEL_IDS,
@@ -109,7 +110,8 @@ def test_every_builtin_card_is_complete_and_cross_references_resolve() -> None:
 
 
 def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
-    assert len(STEP_ABOUTS) == 28 and all(k.startswith("core.") for k in STEP_ABOUTS)
+    core = {k for k in STEP_ABOUTS if k.startswith("core.")}
+    assert len(core) == 28 and set(STEP_ABOUTS) - core == {"dl.embed"}  # v0.15: mapi-jax
     assert set(SPLIT_ABOUTS) == {"core.time_holdout", "core.as_of", "core.leave_group_out",
                                  "core.last_per_group", "core.mask_block", "core.column",
                                  "core.stratified"}  # fmt: skip
@@ -148,6 +150,7 @@ def test_cards_cover_the_surviving_catalog_and_the_planned_engines() -> None:
         | SCIENCE_MODEL_IDS
         | CAUSAL_MODEL_IDS
         | CLASSIFICATION_MODEL_IDS
+        | DL_MODEL_IDS
     )
     for template in GUIDED_TEMPLATES.values():
         assert template.about == TEMPLATE_ABOUTS[template.id]

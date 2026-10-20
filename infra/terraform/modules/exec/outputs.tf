@@ -19,7 +19,7 @@ output "network_id" {
 }
 
 output "jobs" {
-  description = "Job name per base and class: {base-bayes = {S = \"mapi-prod-base-bayes-s\", ...}, ...}."
+  description = "Job name per base and class: {base-bayes = {S = \"mapi-prod-base-bayes-s\", ...}, ..., base-dl = {..., GPU = \"mapi-prod-base-dl-gpu\"}}."
   value = {
     for base in distinct([for j in values(local.jobs) : j.base]) : base => {
       for key, j in local.jobs : j.class => google_cloud_run_v2_job.runner[key].name if j.base == base
@@ -32,7 +32,7 @@ output "inventory" {
   value = {
     project = var.project_id
     region  = var.region
-    classes = var.classes
+    classes = concat(var.classes, length(local.gpu_jobs) > 0 ? ["GPU"] : [])
     jobs = {
       for base in distinct([for j in values(local.jobs) : j.base]) : base => {
         for key, j in local.jobs : j.class => google_cloud_run_v2_job.runner[key].name if j.base == base

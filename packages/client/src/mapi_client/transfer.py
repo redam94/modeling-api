@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 CHUNK_SIZE: Final = 1024 * 1024
-UploadFormat = Literal["csv", "parquet", "zarr_zip", "netcdf", "hdf5"]
+UploadFormat = Literal["csv", "parquet", "zarr_zip", "netcdf", "hdf5", "safetensors"]
 
 _SUFFIXES: Final[tuple[tuple[str, UploadFormat, str], ...]] = (
     (".zarr.zip", "zarr_zip", "application/zip"),
@@ -69,6 +69,7 @@ _SUFFIXES: Final[tuple[tuple[str, UploadFormat, str], ...]] = (
     (".h5", "hdf5", "application/x-hdf5"),
     (".hdf5", "hdf5", "application/x-hdf5"),
     (".he5", "hdf5", "application/x-hdf5"),
+    (".safetensors", "safetensors", "application/octet-stream"),  # v0.15: network weights
 )
 _CONTENT_TYPES: Final[dict[UploadFormat, str]] = {f: ct for _, f, ct in reversed(_SUFFIXES)}
 

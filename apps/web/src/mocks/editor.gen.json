@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:8f9f3b50984c3650965a041bcf297d5f2e408df329b6389fa77bb574bafb7c0d",
+  "digest": "sha256:81f286bbc7d30abc714cf7e1282cd633b700f0787bceb1614c1e406118f4d222",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -1085,6 +1085,1893 @@
        }
       },
       "title": "MultinomialLogitSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The labels are correct for most images",
+       "The images that you score are similar to the training images"
+      ],
+      "avoid_when": [
+       "You have fewer than a few hundred images (use image features and a simple classifier)",
+       "A pretrained network for similar images exists (use the fine-tune classifier)"
+      ],
+      "data_needs": [
+       "An image collection or an image folder dataset with a label for each image",
+       "For more than a few thousand images: the GPU resource class"
+      ],
+      "difficulty": "intermediate",
+      "example": "Train on 40 000 photos of 10 product types on the GPU class, and stop when the validation accuracy does not increase.",
+      "expert_notes": "A small ResNet (GroupNorm, global average pooling; widths and blocks are settings) in flax nnx, trained with optax on fixed-shape batches from the lazy, seeded loader (fit_batches) with optional augmentation. Checkpoints every N epochs and resumes. Draws (chain=1, draw) from a last-layer Laplace approximation or MC dropout. Uses the GPU class when given (one NVIDIA L4), else the CPU.",
+      "fits": {
+       "data_shape": [
+        "images"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "classify"
+       ],
+       "speed": [
+        "can_wait"
+       ],
+       "uncertainty": [
+        "nice",
+        "no"
+       ]
+      },
+      "outputs": [
+       "The probability of each class for each image, with a range",
+       "Training curves, the confusion matrix for each epoch and the wrong validation images"
+      ],
+      "references": [],
+      "related": [
+       "dl.finetune_classifier",
+       "tabular.image_logistic",
+       "dl.embed"
+      ],
+      "summary_plain": "Trains a neural network that puts images into classes. It learns from every image of a large image collection and shows the training and validation curves while it learns.",
+      "title": "Train an image classifier",
+      "typical_runtime": "long",
+      "use_when": [
+       "You have thousands of labelled images or more",
+       "The classes differ in shapes or textures that a linear model cannot separate"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "custom",
+      "input": "collection",
+      "loo_invalid_reason": "a network trained by gradient descent has no pointwise log likelihood",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A small residual convolutional network trained on labelled images. It streams large image collections in batches, logs training and validation curves, and gives probability draws by a last-layer Laplace approximation or MC dropout.",
+     "fit_schema": {},
+     "id": "dl.cnn_classifier",
+     "outputs": {
+      "y_hat": {
+       "description": "Probability of each class per image (sums to 1 over class)",
+       "dims": [
+        "class"
+       ],
+       "dims_of": "label",
+       "units": "1"
+      }
+     },
+     "plots": [
+      "ml.training_curves",
+      "ml.confusion_epochs",
+      "ml.misclassified",
+      "core.roc_pr",
+      "core.confusion"
+     ],
+     "resources": {
+      "default_class": "M",
+      "gpu": true,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "image_dim": {
+        "default": "image",
+        "required": false,
+        "type": "string"
+       },
+       "pixels": {
+        "default": "pixels",
+        "required": false,
+        "type": "string"
+       },
+       "target": {
+        "default": "label",
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "channel": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "x": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "y": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "{image_dim}": {
+         "kind": "categorical",
+         "new_level_strategy": "pooled",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "{pixels}": {
+         "dims": [
+          "{image_dim}",
+          "y",
+          "x",
+          "channel"
+         ],
+         "dtype": "uint8",
+         "role": "covariate"
+        },
+        "{target}": {
+         "dims": [
+          "{image_dim}"
+         ],
+         "dtype": "str",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "Augment": {
+        "additionalProperties": false,
+        "description": "Random per-image transforms a loader applies to training batches.\n\nFlips and 90-degree turns (only half turns for non-square images) keep the pixels;\n``crop_pad`` pads by ``n`` pixels (edge values) and crops back to the size at a random\noffset; ``brightness``/``contrast`` add or scale by a random amount up to the value (in\nunits of the 0..255 range); ``noise`` adds Gaussian noise with that standard deviation.",
+        "properties": {
+         "brightness": {
+          "default": 0,
+          "description": "Largest brightness change",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Brightness",
+          "type": "number"
+         },
+         "contrast": {
+          "default": 0,
+          "description": "Largest relative contrast change",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Contrast",
+          "type": "number"
+         },
+         "crop_pad": {
+          "default": 0,
+          "description": "Pad by n pixels, then crop at random",
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Crop Pad",
+          "type": "integer"
+         },
+         "flip_x": {
+          "default": false,
+          "description": "Mirror left-right with probability 0.5",
+          "title": "Flip X",
+          "type": "boolean"
+         },
+         "flip_y": {
+          "default": false,
+          "description": "Mirror top-bottom with probability 0.5",
+          "title": "Flip Y",
+          "type": "boolean"
+         },
+         "noise": {
+          "default": 0,
+          "description": "Gaussian noise sd (0..1 units)",
+          "maximum": 0.5,
+          "minimum": 0,
+          "title": "Noise",
+          "type": "number"
+         },
+         "rotate90": {
+          "default": false,
+          "description": "Turn by a random multiple of 90 degrees",
+          "title": "Rotate90",
+          "type": "boolean"
+         }
+        },
+        "title": "Augment",
+        "type": "object"
+       },
+       "EarlyStopping": {
+        "additionalProperties": false,
+        "description": "Stop when the monitored validation metric has not improved for ``patience`` evaluations.",
+        "properties": {
+         "min_delta": {
+          "default": 0.0,
+          "description": "The smallest change that counts as better",
+          "minimum": 0,
+          "title": "Min Delta",
+          "type": "number"
+         },
+         "monitor": {
+          "default": "val_loss",
+          "description": "The validation metric to watch",
+          "enum": [
+           "val_loss",
+           "val_accuracy",
+           "val_rmse"
+          ],
+          "title": "Monitor",
+          "type": "string"
+         },
+         "patience": {
+          "default": 5,
+          "description": "Evaluations without improvement",
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Patience",
+          "type": "integer"
+         },
+         "restore_best": {
+          "default": true,
+          "description": "Keep the weights of the best evaluation",
+          "title": "Restore Best",
+          "type": "boolean"
+         }
+        },
+        "title": "EarlyStopping",
+        "type": "object"
+       },
+       "TrainConfig": {
+        "additionalProperties": false,
+        "description": "How a network is trained (optimizer, schedule, validation, logging).",
+        "properties": {
+         "batch_size": {
+          "default": 64,
+          "description": "Rows per gradient step",
+          "maximum": 8192,
+          "minimum": 1,
+          "title": "Batch Size",
+          "type": "integer"
+         },
+         "early_stopping": {
+          "anyOf": [
+           {
+            "$ref": "#/$defs/EarlyStopping"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         },
+         "epochs": {
+          "default": 20,
+          "description": "Passes over the training rows",
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+         },
+         "eval_every_epochs": {
+          "default": 1,
+          "description": "Epochs between validation passes",
+          "minimum": 1,
+          "title": "Eval Every Epochs",
+          "type": "integer"
+         },
+         "grad_clip": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 1.0,
+          "description": "Clip the global gradient norm",
+          "title": "Grad Clip"
+         },
+         "label_smoothing": {
+          "default": 0.0,
+          "description": "Classification only",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Label Smoothing",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.001,
+          "description": "Peak learning rate",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "log_every_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Steps between logged training metrics (default: <= 1000 points)",
+          "title": "Log Every Steps"
+         },
+         "max_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Stop after this many gradient steps",
+          "title": "Max Steps"
+         },
+         "media_every_epochs": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Epochs between logged images (default: at most 20 times)",
+          "title": "Media Every Epochs"
+         },
+         "momentum": {
+          "default": 0.9,
+          "description": "Momentum (sgd)",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Momentum",
+          "type": "number"
+         },
+         "optimizer": {
+          "default": "adamw",
+          "enum": [
+           "adamw",
+           "adam",
+           "sgd"
+          ],
+          "title": "Optimizer",
+          "type": "string"
+         },
+         "schedule": {
+          "default": "warmup_cosine",
+          "enum": [
+           "constant",
+           "cosine",
+           "warmup_cosine"
+          ],
+          "title": "Schedule",
+          "type": "string"
+         },
+         "val_fraction": {
+          "default": 0.1,
+          "description": "Stratified share of the training rows for validation",
+          "exclusiveMaximum": 0.9,
+          "minimum": 0,
+          "title": "Val Fraction",
+          "type": "number"
+         },
+         "val_split_value": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": "val",
+          "description": "Rows whose split coord equals this value are the validation set",
+          "title": "Val Split Value"
+         },
+         "warmup_epochs": {
+          "default": 1.0,
+          "description": "Linear warm-up (warmup_cosine)",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "number"
+         },
+         "weight_decay": {
+          "default": 0.0001,
+          "description": "Decoupled weight decay (adamw)",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+         }
+        },
+        "title": "TrainConfig",
+        "type": "object"
+       },
+       "UncertaintyConfig": {
+        "additionalProperties": false,
+        "description": "How a trained network gives draws (``chain=1``, ``draw``).",
+        "properties": {
+         "draws": {
+          "anyOf": [
+           {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Draws per prediction (default: fit draws, else 100)",
+          "title": "Draws"
+         },
+         "hessian": {
+          "default": "auto",
+          "description": "auto: full when (features + 1) x outputs <= 2048",
+          "enum": [
+           "auto",
+           "full",
+           "diag"
+          ],
+          "title": "Hessian",
+          "type": "string"
+         },
+         "max_rows": {
+          "default": 20000,
+          "description": "Training rows used for the Laplace Hessian",
+          "minimum": 10,
+          "title": "Max Rows",
+          "type": "integer"
+         },
+         "method": {
+          "default": "laplace",
+          "description": "laplace: last-layer Laplace; mc_dropout: dropout at score; none: one draw",
+          "enum": [
+           "laplace",
+           "mc_dropout",
+           "none"
+          ],
+          "title": "Method",
+          "type": "string"
+         },
+         "prior_precision": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "None: maximise the Laplace evidence on a grid 1e-4..1e4",
+          "title": "Prior Precision"
+         }
+        },
+        "title": "UncertaintyConfig",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``dl.cnn_classifier``.",
+      "properties": {
+       "augment": {
+        "$ref": "#/$defs/Augment",
+        "description": "Training augmentation"
+       },
+       "blocks": {
+        "default": [
+         1,
+         1,
+         1
+        ],
+        "description": "Residual blocks per stage",
+        "items": {
+         "type": "integer"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Blocks",
+        "type": "array"
+       },
+       "class_order": {
+        "anyOf": [
+         {
+          "items": {
+           "maxLength": 200,
+           "minLength": 1,
+           "type": "string"
+          },
+          "maxItems": 1000,
+          "minItems": 2,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Classes in order (default: sorted)",
+        "title": "Class Order"
+       },
+       "dropout": {
+        "default": 0.1,
+        "description": "Dropout before the head",
+        "exclusiveMaximum": 1,
+        "minimum": 0,
+        "title": "Dropout",
+        "type": "number"
+       },
+       "groups": {
+        "default": 8,
+        "description": "GroupNorm groups (at most)",
+        "maximum": 64,
+        "minimum": 1,
+        "title": "Groups",
+        "type": "integer"
+       },
+       "image_dim": {
+        "default": "image",
+        "description": "The dim that lists the images",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Image Dim",
+        "type": "string"
+       },
+       "image_size": {
+        "anyOf": [
+         {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           }
+          ],
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Height and width the images are resized to (default: their size)",
+        "title": "Image Size"
+       },
+       "mode": {
+        "default": "auto",
+        "description": "Channels of the input",
+        "enum": [
+         "auto",
+         "gray",
+         "rgb"
+        ],
+        "title": "Mode",
+        "type": "string"
+       },
+       "normalize": {
+        "default": "unit",
+        "description": "unit: pixels / 255; standardize: per-channel training mean and sd",
+        "enum": [
+         "unit",
+         "standardize"
+        ],
+        "title": "Normalize",
+        "type": "string"
+       },
+       "pixels": {
+        "default": "pixels",
+        "description": "The image variable (image, y, x, channel)",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Pixels",
+        "type": "string"
+       },
+       "stem_stride": {
+        "default": 1,
+        "description": "Stride of the first convolution",
+        "maximum": 2,
+        "minimum": 1,
+        "title": "Stem Stride",
+        "type": "integer"
+       },
+       "target": {
+        "default": "label",
+        "description": "The class label of each image",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Target",
+        "type": "string"
+       },
+       "train": {
+        "$ref": "#/$defs/TrainConfig"
+       },
+       "uncertainty": {
+        "$ref": "#/$defs/UncertaintyConfig"
+       },
+       "widths": {
+        "default": [
+         16,
+         32,
+         64
+        ],
+        "description": "Channels of each stage",
+        "items": {
+         "type": "integer"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Widths",
+        "type": "array"
+       }
+      },
+      "title": "CNNClassifierSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The pretrained features are useful for your classes",
+       "The images that you score are similar to the training images"
+      ],
+      "avoid_when": [
+       "You have no pretrained weights in the mapi-jax ResNet layout",
+       "Your images are very different from the images that the network learned from"
+      ],
+      "data_needs": [
+       "An image collection or an image folder dataset with a label for each image",
+       "A weights dataset from a safetensors upload, given as the side table 'pretrained'"
+      ],
+      "difficulty": "intermediate",
+      "example": "Adapt a network that learned on photos to 5 types of plant disease with 800 labelled leaf images.",
+      "expert_notes": "Loads the backbone from a weights side table (mapi_weights tensor table, architecture from its mapi_arch metadata), trains the new head first (head_epochs) and then the whole network with a smaller backbone learning rate, or keeps the backbone frozen (freeze: backbone). Gray images in an RGB backbone repeat the channel. Pretrained weights must use the mapi-jax ResNet layout; there is no conversion from other frameworks. Same draws, checkpoints and GPU use as dl.cnn_classifier.",
+      "fits": {
+       "data_shape": [
+        "images"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "classify"
+       ],
+       "uncertainty": [
+        "nice",
+        "no"
+       ]
+      },
+      "outputs": [
+       "The probability of each class for each image, with a range",
+       "Training curves, the confusion matrix for each epoch and the wrong validation images"
+      ],
+      "references": [],
+      "related": [
+       "dl.cnn_classifier",
+       "dl.embed",
+       "tabular.image_logistic"
+      ],
+      "summary_plain": "Starts from a network that learned on other images and trains it on your labelled images. It needs fewer images and less time than a new network.",
+      "title": "Adapt a pretrained image network",
+      "typical_runtime": "long",
+      "use_when": [
+       "You have pretrained weights for the network as a weights dataset",
+       "You have a few hundred to many thousand labelled images"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "custom",
+      "input": "collection",
+      "loo_invalid_reason": "a network trained by gradient descent has no pointwise log likelihood",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A pretrained residual network (weights from a dataset version) with a new classifier head, trained on labelled images. The backbone can stay frozen. No download: the weights are a pinned side table.",
+     "fit_schema": {},
+     "id": "dl.finetune_classifier",
+     "outputs": {
+      "y_hat": {
+       "description": "Probability of each class per image (sums to 1 over class)",
+       "dims": [
+        "class"
+       ],
+       "dims_of": "label",
+       "units": "1"
+      }
+     },
+     "plots": [
+      "ml.training_curves",
+      "ml.confusion_epochs",
+      "ml.misclassified",
+      "core.roc_pr",
+      "core.confusion"
+     ],
+     "resources": {
+      "default_class": "M",
+      "gpu": true,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "image_dim": {
+        "default": "image",
+        "required": false,
+        "type": "string"
+       },
+       "pixels": {
+        "default": "pixels",
+        "required": false,
+        "type": "string"
+       },
+       "target": {
+        "default": "label",
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "channel": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "x": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "y": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "{image_dim}": {
+         "kind": "categorical",
+         "new_level_strategy": "pooled",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "{pixels}": {
+         "dims": [
+          "{image_dim}",
+          "y",
+          "x",
+          "channel"
+         ],
+         "dtype": "uint8",
+         "role": "covariate"
+        },
+        "{target}": {
+         "dims": [
+          "{image_dim}"
+         ],
+         "dtype": "str",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "Augment": {
+        "additionalProperties": false,
+        "description": "Random per-image transforms a loader applies to training batches.\n\nFlips and 90-degree turns (only half turns for non-square images) keep the pixels;\n``crop_pad`` pads by ``n`` pixels (edge values) and crops back to the size at a random\noffset; ``brightness``/``contrast`` add or scale by a random amount up to the value (in\nunits of the 0..255 range); ``noise`` adds Gaussian noise with that standard deviation.",
+        "properties": {
+         "brightness": {
+          "default": 0,
+          "description": "Largest brightness change",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Brightness",
+          "type": "number"
+         },
+         "contrast": {
+          "default": 0,
+          "description": "Largest relative contrast change",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Contrast",
+          "type": "number"
+         },
+         "crop_pad": {
+          "default": 0,
+          "description": "Pad by n pixels, then crop at random",
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Crop Pad",
+          "type": "integer"
+         },
+         "flip_x": {
+          "default": false,
+          "description": "Mirror left-right with probability 0.5",
+          "title": "Flip X",
+          "type": "boolean"
+         },
+         "flip_y": {
+          "default": false,
+          "description": "Mirror top-bottom with probability 0.5",
+          "title": "Flip Y",
+          "type": "boolean"
+         },
+         "noise": {
+          "default": 0,
+          "description": "Gaussian noise sd (0..1 units)",
+          "maximum": 0.5,
+          "minimum": 0,
+          "title": "Noise",
+          "type": "number"
+         },
+         "rotate90": {
+          "default": false,
+          "description": "Turn by a random multiple of 90 degrees",
+          "title": "Rotate90",
+          "type": "boolean"
+         }
+        },
+        "title": "Augment",
+        "type": "object"
+       },
+       "EarlyStopping": {
+        "additionalProperties": false,
+        "description": "Stop when the monitored validation metric has not improved for ``patience`` evaluations.",
+        "properties": {
+         "min_delta": {
+          "default": 0.0,
+          "description": "The smallest change that counts as better",
+          "minimum": 0,
+          "title": "Min Delta",
+          "type": "number"
+         },
+         "monitor": {
+          "default": "val_loss",
+          "description": "The validation metric to watch",
+          "enum": [
+           "val_loss",
+           "val_accuracy",
+           "val_rmse"
+          ],
+          "title": "Monitor",
+          "type": "string"
+         },
+         "patience": {
+          "default": 5,
+          "description": "Evaluations without improvement",
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Patience",
+          "type": "integer"
+         },
+         "restore_best": {
+          "default": true,
+          "description": "Keep the weights of the best evaluation",
+          "title": "Restore Best",
+          "type": "boolean"
+         }
+        },
+        "title": "EarlyStopping",
+        "type": "object"
+       },
+       "TrainConfig": {
+        "additionalProperties": false,
+        "description": "How a network is trained (optimizer, schedule, validation, logging).",
+        "properties": {
+         "batch_size": {
+          "default": 64,
+          "description": "Rows per gradient step",
+          "maximum": 8192,
+          "minimum": 1,
+          "title": "Batch Size",
+          "type": "integer"
+         },
+         "early_stopping": {
+          "anyOf": [
+           {
+            "$ref": "#/$defs/EarlyStopping"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         },
+         "epochs": {
+          "default": 20,
+          "description": "Passes over the training rows",
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+         },
+         "eval_every_epochs": {
+          "default": 1,
+          "description": "Epochs between validation passes",
+          "minimum": 1,
+          "title": "Eval Every Epochs",
+          "type": "integer"
+         },
+         "grad_clip": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 1.0,
+          "description": "Clip the global gradient norm",
+          "title": "Grad Clip"
+         },
+         "label_smoothing": {
+          "default": 0.0,
+          "description": "Classification only",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Label Smoothing",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.001,
+          "description": "Peak learning rate",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "log_every_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Steps between logged training metrics (default: <= 1000 points)",
+          "title": "Log Every Steps"
+         },
+         "max_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Stop after this many gradient steps",
+          "title": "Max Steps"
+         },
+         "media_every_epochs": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Epochs between logged images (default: at most 20 times)",
+          "title": "Media Every Epochs"
+         },
+         "momentum": {
+          "default": 0.9,
+          "description": "Momentum (sgd)",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Momentum",
+          "type": "number"
+         },
+         "optimizer": {
+          "default": "adamw",
+          "enum": [
+           "adamw",
+           "adam",
+           "sgd"
+          ],
+          "title": "Optimizer",
+          "type": "string"
+         },
+         "schedule": {
+          "default": "warmup_cosine",
+          "enum": [
+           "constant",
+           "cosine",
+           "warmup_cosine"
+          ],
+          "title": "Schedule",
+          "type": "string"
+         },
+         "val_fraction": {
+          "default": 0.1,
+          "description": "Stratified share of the training rows for validation",
+          "exclusiveMaximum": 0.9,
+          "minimum": 0,
+          "title": "Val Fraction",
+          "type": "number"
+         },
+         "val_split_value": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": "val",
+          "description": "Rows whose split coord equals this value are the validation set",
+          "title": "Val Split Value"
+         },
+         "warmup_epochs": {
+          "default": 1.0,
+          "description": "Linear warm-up (warmup_cosine)",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "number"
+         },
+         "weight_decay": {
+          "default": 0.0001,
+          "description": "Decoupled weight decay (adamw)",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+         }
+        },
+        "title": "TrainConfig",
+        "type": "object"
+       },
+       "UncertaintyConfig": {
+        "additionalProperties": false,
+        "description": "How a trained network gives draws (``chain=1``, ``draw``).",
+        "properties": {
+         "draws": {
+          "anyOf": [
+           {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Draws per prediction (default: fit draws, else 100)",
+          "title": "Draws"
+         },
+         "hessian": {
+          "default": "auto",
+          "description": "auto: full when (features + 1) x outputs <= 2048",
+          "enum": [
+           "auto",
+           "full",
+           "diag"
+          ],
+          "title": "Hessian",
+          "type": "string"
+         },
+         "max_rows": {
+          "default": 20000,
+          "description": "Training rows used for the Laplace Hessian",
+          "minimum": 10,
+          "title": "Max Rows",
+          "type": "integer"
+         },
+         "method": {
+          "default": "laplace",
+          "description": "laplace: last-layer Laplace; mc_dropout: dropout at score; none: one draw",
+          "enum": [
+           "laplace",
+           "mc_dropout",
+           "none"
+          ],
+          "title": "Method",
+          "type": "string"
+         },
+         "prior_precision": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "None: maximise the Laplace evidence on a grid 1e-4..1e4",
+          "title": "Prior Precision"
+         }
+        },
+        "title": "UncertaintyConfig",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``dl.finetune_classifier``.",
+      "properties": {
+       "augment": {
+        "$ref": "#/$defs/Augment",
+        "description": "Training augmentation"
+       },
+       "backbone_lr_scale": {
+        "default": 0.1,
+        "description": "Learning rate of the backbone relative to the head",
+        "exclusiveMinimum": 0,
+        "maximum": 1,
+        "title": "Backbone Lr Scale",
+        "type": "number"
+       },
+       "class_order": {
+        "anyOf": [
+         {
+          "items": {
+           "maxLength": 200,
+           "minLength": 1,
+           "type": "string"
+          },
+          "maxItems": 1000,
+          "minItems": 2,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Classes in order (default: sorted)",
+        "title": "Class Order"
+       },
+       "dropout": {
+        "anyOf": [
+         {
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Dropout before the head (default: the weights' value)",
+        "title": "Dropout"
+       },
+       "freeze": {
+        "default": "none",
+        "description": "backbone: train the head only",
+        "enum": [
+         "none",
+         "backbone"
+        ],
+        "title": "Freeze",
+        "type": "string"
+       },
+       "head_epochs": {
+        "default": 1,
+        "description": "Epochs that train the head only before the rest",
+        "maximum": 10000,
+        "minimum": 0,
+        "title": "Head Epochs",
+        "type": "integer"
+       },
+       "image_dim": {
+        "default": "image",
+        "description": "The dim that lists the images",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Image Dim",
+        "type": "string"
+       },
+       "image_size": {
+        "anyOf": [
+         {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+           {
+            "type": "integer"
+           },
+           {
+            "type": "integer"
+           }
+          ],
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Height and width the images are resized to (default: their size)",
+        "title": "Image Size"
+       },
+       "mode": {
+        "default": "auto",
+        "description": "Channels of the input",
+        "enum": [
+         "auto",
+         "gray",
+         "rgb"
+        ],
+        "title": "Mode",
+        "type": "string"
+       },
+       "normalize": {
+        "default": "unit",
+        "description": "unit: pixels / 255; standardize: per-channel training mean and sd",
+        "enum": [
+         "unit",
+         "standardize"
+        ],
+        "title": "Normalize",
+        "type": "string"
+       },
+       "pixels": {
+        "default": "pixels",
+        "description": "The image variable (image, y, x, channel)",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Pixels",
+        "type": "string"
+       },
+       "pretrained": {
+        "default": "pretrained",
+        "description": "The data.side_tables entry with the pretrained weights",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Pretrained",
+        "type": "string"
+       },
+       "target": {
+        "default": "label",
+        "description": "The class label of each image",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Target",
+        "type": "string"
+       },
+       "train": {
+        "$ref": "#/$defs/TrainConfig"
+       },
+       "uncertainty": {
+        "$ref": "#/$defs/UncertaintyConfig"
+       }
+      },
+      "title": "FinetuneClassifierSettings",
+      "type": "object"
+     },
+     "side_table_params": [
+      "pretrained"
+     ],
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The rows that you score are similar to the rows that the model learned from",
+       "The columns are numbers (the model standardises them)"
+      ],
+      "avoid_when": [
+       "You have a few hundred rows or less (use a regression or a tree model)",
+       "You must explain the effect of each column"
+      ],
+      "data_needs": [
+       "A table with a result column (a number or a class) and number columns that explain it"
+      ],
+      "difficulty": "intermediate",
+      "example": "Predict the delivery time of 50 000 orders from distance, weight and the hour, and stop when the validation loss does not decrease.",
+      "expert_notes": "A multilayer perceptron (flax nnx, optax AdamW, warm-up cosine schedule, early stopping on the validation loss) on standardised numeric features. Draws (chain=1, draw) from a last-layer Laplace approximation (prior precision from the evidence) or from MC dropout. A network trained by gradient descent has no pointwise log likelihood, so LOO is not valid. Runs on the CPU; the GPU class gives no gain for small tables.",
+      "fits": {
+       "data_shape": [
+        "table",
+        "panel"
+       ],
+       "drivers": [
+        "yes"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "predict_values",
+        "classify"
+       ],
+       "uncertainty": [
+        "nice",
+        "no"
+       ]
+      },
+      "outputs": [
+       "The value, or the probability of each class, for each row, with a range",
+       "Training and validation curves of the loss for each epoch"
+      ],
+      "references": [],
+      "related": [
+       "sklearn.tabular_regressor",
+       "sklearn.multiclass_classifier",
+       "dl.cnn_classifier"
+      ],
+      "summary_plain": "Learns a value or a class for each row of a table with a small neural network. It shows how the error on the training and validation rows changes while it learns.",
+      "title": "Neural network for tables",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have thousands of rows and the relation to the result is not linear",
+       "You want to see the training curves and stop when the model starts to overfit"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": true,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "custom",
+      "loo_invalid_reason": "a network trained by gradient descent has no pointwise log likelihood",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A multilayer perceptron for a table: numeric features predict a number or a class. It logs training and validation curves and gives draws by a last-layer Laplace approximation or MC dropout.",
+     "fit_schema": {},
+     "id": "dl.mlp",
+     "outputs": {
+      "y_hat": {
+       "description": "Prediction per row; a classification adds a class dim (the probability of each class, summing to 1 over class)",
+       "dims": [],
+       "dims_of": "y"
+      }
+     },
+     "plots": [
+      "ml.training_curves"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "new_levels": {
+        "default": "pooled",
+        "enum": [
+         "pooled",
+         "zero",
+         "error"
+        ],
+        "required": false,
+        "type": "string"
+       },
+       "rows": {
+        "required": true,
+        "type": "string_list"
+       },
+       "target": {
+        "default": "y",
+        "required": false,
+        "type": "string"
+       },
+       "target_dtype": {
+        "default": "float64",
+        "enum": [
+         "float64",
+         "str",
+         "int64"
+        ],
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "{*rows as d}": {
+         "kind": "categorical",
+         "new_level_strategy": "{new_levels}",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "{target}": {
+         "dims": "{rows}",
+         "dtype": "{target_dtype}",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "EarlyStopping": {
+        "additionalProperties": false,
+        "description": "Stop when the monitored validation metric has not improved for ``patience`` evaluations.",
+        "properties": {
+         "min_delta": {
+          "default": 0.0,
+          "description": "The smallest change that counts as better",
+          "minimum": 0,
+          "title": "Min Delta",
+          "type": "number"
+         },
+         "monitor": {
+          "default": "val_loss",
+          "description": "The validation metric to watch",
+          "enum": [
+           "val_loss",
+           "val_accuracy",
+           "val_rmse"
+          ],
+          "title": "Monitor",
+          "type": "string"
+         },
+         "patience": {
+          "default": 5,
+          "description": "Evaluations without improvement",
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Patience",
+          "type": "integer"
+         },
+         "restore_best": {
+          "default": true,
+          "description": "Keep the weights of the best evaluation",
+          "title": "Restore Best",
+          "type": "boolean"
+         }
+        },
+        "title": "EarlyStopping",
+        "type": "object"
+       },
+       "TrainConfig": {
+        "additionalProperties": false,
+        "description": "How a network is trained (optimizer, schedule, validation, logging).",
+        "properties": {
+         "batch_size": {
+          "default": 64,
+          "description": "Rows per gradient step",
+          "maximum": 8192,
+          "minimum": 1,
+          "title": "Batch Size",
+          "type": "integer"
+         },
+         "early_stopping": {
+          "anyOf": [
+           {
+            "$ref": "#/$defs/EarlyStopping"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         },
+         "epochs": {
+          "default": 20,
+          "description": "Passes over the training rows",
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Epochs",
+          "type": "integer"
+         },
+         "eval_every_epochs": {
+          "default": 1,
+          "description": "Epochs between validation passes",
+          "minimum": 1,
+          "title": "Eval Every Epochs",
+          "type": "integer"
+         },
+         "grad_clip": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 1.0,
+          "description": "Clip the global gradient norm",
+          "title": "Grad Clip"
+         },
+         "label_smoothing": {
+          "default": 0.0,
+          "description": "Classification only",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Label Smoothing",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.001,
+          "description": "Peak learning rate",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "log_every_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Steps between logged training metrics (default: <= 1000 points)",
+          "title": "Log Every Steps"
+         },
+         "max_steps": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Stop after this many gradient steps",
+          "title": "Max Steps"
+         },
+         "media_every_epochs": {
+          "anyOf": [
+           {
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Epochs between logged images (default: at most 20 times)",
+          "title": "Media Every Epochs"
+         },
+         "momentum": {
+          "default": 0.9,
+          "description": "Momentum (sgd)",
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Momentum",
+          "type": "number"
+         },
+         "optimizer": {
+          "default": "adamw",
+          "enum": [
+           "adamw",
+           "adam",
+           "sgd"
+          ],
+          "title": "Optimizer",
+          "type": "string"
+         },
+         "schedule": {
+          "default": "warmup_cosine",
+          "enum": [
+           "constant",
+           "cosine",
+           "warmup_cosine"
+          ],
+          "title": "Schedule",
+          "type": "string"
+         },
+         "val_fraction": {
+          "default": 0.1,
+          "description": "Stratified share of the training rows for validation",
+          "exclusiveMaximum": 0.9,
+          "minimum": 0,
+          "title": "Val Fraction",
+          "type": "number"
+         },
+         "val_split_value": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": "val",
+          "description": "Rows whose split coord equals this value are the validation set",
+          "title": "Val Split Value"
+         },
+         "warmup_epochs": {
+          "default": 1.0,
+          "description": "Linear warm-up (warmup_cosine)",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "number"
+         },
+         "weight_decay": {
+          "default": 0.0001,
+          "description": "Decoupled weight decay (adamw)",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+         }
+        },
+        "title": "TrainConfig",
+        "type": "object"
+       },
+       "UncertaintyConfig": {
+        "additionalProperties": false,
+        "description": "How a trained network gives draws (``chain=1``, ``draw``).",
+        "properties": {
+         "draws": {
+          "anyOf": [
+           {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Draws per prediction (default: fit draws, else 100)",
+          "title": "Draws"
+         },
+         "hessian": {
+          "default": "auto",
+          "description": "auto: full when (features + 1) x outputs <= 2048",
+          "enum": [
+           "auto",
+           "full",
+           "diag"
+          ],
+          "title": "Hessian",
+          "type": "string"
+         },
+         "max_rows": {
+          "default": 20000,
+          "description": "Training rows used for the Laplace Hessian",
+          "minimum": 10,
+          "title": "Max Rows",
+          "type": "integer"
+         },
+         "method": {
+          "default": "laplace",
+          "description": "laplace: last-layer Laplace; mc_dropout: dropout at score; none: one draw",
+          "enum": [
+           "laplace",
+           "mc_dropout",
+           "none"
+          ],
+          "title": "Method",
+          "type": "string"
+         },
+         "prior_precision": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "None: maximise the Laplace evidence on a grid 1e-4..1e4",
+          "title": "Prior Precision"
+         }
+        },
+        "title": "UncertaintyConfig",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``dl.mlp``.",
+      "properties": {
+       "class_order": {
+        "anyOf": [
+         {
+          "items": {
+           "type": "string"
+          },
+          "maxItems": 1000,
+          "minItems": 2,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Class Order"
+       },
+       "dropout": {
+        "default": 0.1,
+        "description": "Dropout between and after the layers",
+        "exclusiveMaximum": 1,
+        "minimum": 0,
+        "title": "Dropout",
+        "type": "number"
+       },
+       "features": {
+        "anyOf": [
+         {
+          "items": {
+           "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+           "type": "string"
+          },
+          "maxItems": 256,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Feature variables (default: every numeric one)",
+        "title": "Features"
+       },
+       "hidden": {
+        "default": [
+         64,
+         64
+        ],
+        "description": "Hidden layer widths",
+        "items": {
+         "type": "integer"
+        },
+        "maxItems": 16,
+        "title": "Hidden",
+        "type": "array"
+       },
+       "new_levels": {
+        "default": "pooled",
+        "description": "Unseen row levels at score",
+        "enum": [
+         "pooled",
+         "zero",
+         "error"
+        ],
+        "title": "New Levels",
+        "type": "string"
+       },
+       "rows": {
+        "description": "The dims of a row",
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+         "type": "string"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Rows",
+        "type": "array"
+       },
+       "target": {
+        "default": "y",
+        "description": "The target variable",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Target",
+        "type": "string"
+       },
+       "target_dtype": {
+        "default": "float64",
+        "description": "dtype of the target: numbers, text labels or integer labels",
+        "enum": [
+         "float64",
+         "str",
+         "int64"
+        ],
+        "title": "Target Dtype",
+        "type": "string"
+       },
+       "task": {
+        "default": "auto",
+        "description": "auto: classification for text or integer labels",
+        "enum": [
+         "auto",
+         "regression",
+         "classification"
+        ],
+        "title": "Task",
+        "type": "string"
+       },
+       "train": {
+        "$ref": "#/$defs/TrainConfig"
+       },
+       "uncertainty": {
+        "$ref": "#/$defs/UncertaintyConfig"
+       }
+      },
+      "required": [
+       "rows"
+      ],
+      "title": "MLPSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -23944,7 +25831,7 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "The main patterns of the pixels (PCA) or the pixels separate the classes linearly"
+       "The main patterns of the pixels (PCA), the pixels or the image features separate the classes linearly"
       ],
       "avoid_when": [
        "The images are large or very different (the model is linear)",
@@ -23952,11 +25839,12 @@
       ],
       "data_needs": [
        "An image dataset from an image folder upload: pixels and a label for each image",
-       "Images of the same size (the upload can resize them)"
+       "Images of the same size (the upload can resize them)",
+       "Or, with input 'features', image features from the dl.embed step"
       ],
       "difficulty": "intermediate",
       "example": "Classify 16 x 16 pictures of circles, squares and crosses, and test on 25% of them.",
-      "expert_notes": "Bayesian multinomial logistic regression (PyMC, NUTS) on PCA scores of the pixels (or the block-averaged pixels), with zero-sum normal priors over the classes. Draws representation of y_hat(chain, draw, image, class).",
+      "expert_notes": "Bayesian multinomial logistic regression (PyMC, NUTS) on PCA scores of the pixels (or the block-averaged pixels), with zero-sum normal priors over the classes. With input 'features' (v1.1) it reads feature(image, feature) from the dl.embed step: standardised features, PCA only above max_features. Draws representation of y_hat(chain, draw, image, class).",
       "fits": {
        "data_shape": [
         "images"
@@ -23980,7 +25868,9 @@
       "related": [
        "sklearn.multiclass_classifier",
        "core.stratified",
-       "core.column"
+       "core.column",
+       "dl.embed",
+       "dl.cnn_classifier"
       ],
       "summary_plain": "Learns the class of small images, such as shapes or digits, from labelled examples. It gives the probability of each class with a range.",
       "title": "Classify small images",
@@ -24035,10 +25925,81 @@
       "min_class": "S"
      },
      "schema_template": {
-      "cases": [],
+      "cases": [
+       {
+        "merge": {
+         "dims": {
+          "channel": {
+           "kind": "categorical",
+           "policy": "fixed"
+          },
+          "x": {
+           "kind": "integer",
+           "policy": "fixed"
+          },
+          "y": {
+           "kind": "integer",
+           "policy": "fixed"
+          }
+         },
+         "vars": {
+          "{pixels}": {
+           "dims": [
+            "{image_dim}",
+            "y",
+            "x",
+            "channel"
+           ],
+           "dtype": "uint8",
+           "role": "covariate"
+          }
+         }
+        },
+        "when": {
+         "input": "pixels"
+        }
+       },
+       {
+        "merge": {
+         "dims": {
+          "{feature_dim}": {
+           "kind": "integer",
+           "policy": "fixed"
+          }
+         },
+         "vars": {
+          "{pixels}": {
+           "dims": [
+            "{image_dim}",
+            "{feature_dim}"
+           ],
+           "dtype": "float32",
+           "role": "covariate"
+          }
+         }
+        },
+        "when": {
+         "input": "features"
+        }
+       }
+      ],
       "params": {
+       "feature_dim": {
+        "default": "feature",
+        "required": false,
+        "type": "string"
+       },
        "image_dim": {
         "default": "image",
+        "required": false,
+        "type": "string"
+       },
+       "input": {
+        "default": "pixels",
+        "enum": [
+         "pixels",
+         "features"
+        ],
         "required": false,
         "type": "string"
        },
@@ -24055,18 +26016,6 @@
       },
       "template": {
        "dims": {
-        "channel": {
-         "kind": "categorical",
-         "policy": "fixed"
-        },
-        "x": {
-         "kind": "integer",
-         "policy": "fixed"
-        },
-        "y": {
-         "kind": "integer",
-         "policy": "fixed"
-        },
         "{image_dim}": {
          "kind": "categorical",
          "new_level_strategy": "pooled",
@@ -24074,16 +26023,6 @@
         }
        },
        "vars": {
-        "{pixels}": {
-         "dims": [
-          "{image_dim}",
-          "y",
-          "x",
-          "channel"
-         ],
-         "dtype": "uint8",
-         "role": "covariate"
-        },
         "{target}": {
          "dims": [
           "{image_dim}"
@@ -24127,6 +26066,13 @@
         "title": "Downsample",
         "type": "integer"
        },
+       "feature_dim": {
+        "default": "feature",
+        "description": "input: features: the dim of the features",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Feature Dim",
+        "type": "string"
+       },
        "features": {
         "default": "pca",
         "description": "pca: principal component scores; pixels: the block means",
@@ -24142,6 +26088,16 @@
         "description": "The dim that lists the images",
         "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
         "title": "Image Dim",
+        "type": "string"
+       },
+       "input": {
+        "default": "pixels",
+        "description": "pixels: an image variable (image, y, x, channel); features: image features (image, feature_dim), for example from the dl.embed step",
+        "enum": [
+         "pixels",
+         "features"
+        ],
+        "title": "Input",
         "type": "string"
        },
        "max_features": {
@@ -24186,7 +26142,7 @@
       "title": "ImageLogisticSettings",
       "type": "object"
      },
-     "version": "1.0.0"
+     "version": "1.1.0"
     },
     "yanked": false
    },
@@ -31051,6 +33007,55 @@
    {
     "about": {
      "assumptions": [
+      "The counts are for the validation data at the end of each epoch",
+      "At most 20 classes are shown. The other classes are put together as (other)"
+     ],
+     "avoid_when": [
+      "The model has no validation data or was not trained in epochs (use the confusion matrix)"
+     ],
+     "data_needs": [
+      "A training group with confusion(epoch, true_class, pred_class) counts (the mapi-jax classifiers write it)"
+     ],
+     "difficulty": "beginner",
+     "example": "At epoch 1 the network puts most images in the class 'can'. At the best epoch (12), the accuracy is 0.91. The network still confuses only 'bottle' and 'jar'.",
+     "expert_notes": "`epochs` picks the epochs (default: first, evenly spaced, best and last, at most 6); `normalize` is 'true' (rows divided by the actual-class count) or 'none'; `max_classes` keeps the most frequent classes and pools the rest.",
+     "fits": {
+      "goal": [
+       "classify",
+       "validate_model"
+      ]
+     },
+     "outputs": [
+      "Up to 6 small matrices: the first epoch, some epochs between, the best epoch and the last epoch",
+      "Each row is shown as a share of its actual class, or as counts",
+      "A caption with the validation accuracy at the first, the best and the last epoch"
+     ],
+     "references": [],
+     "related": [
+      "core.confusion",
+      "ml.training_curves",
+      "ml.misclassified"
+     ],
+     "summary_plain": "Shows the confusion matrix of the validation data at some epochs of the training. You can see which classes the network learns first and which classes it confuses to the end.",
+     "title": "Confusion over epochs",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You trained an image or table classifier and want to see how the errors changed",
+      "Some classes stay hard and you want to know which classes the network confuses"
+     ]
+    },
+    "id": "ml.confusion_epochs",
+    "persona": "expert",
+    "requires_groups": [],
+    "requires_representation": [],
+    "summary": "The validation confusion matrix at some epochs of the training. It shows which classes the network learns first and which classes it mixes up.",
+    "title": "Confusion matrix over epochs",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
       "Tree importances are impurity based and favour inputs with many values",
       "Coefficients are on the model's scale, so compare them only when the inputs have the same scale"
      ],
@@ -31090,6 +33095,109 @@
     "requires_representation": [],
     "summary": "The features that the tabular model uses most (importances or coefficients).",
     "title": "Feature importance",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The images are from the best epoch",
+      "The labels are text from the dataset. The chart shows them as text only"
+     ],
+     "avoid_when": [
+      "The data are not images",
+      "The model has no validation images"
+     ],
+     "data_needs": [
+      "A misclassified group with small images and their true and predicted labels (the mapi-jax image classifiers write it)"
+     ],
+     "difficulty": "beginner",
+     "example": "37 of 400 validation images are wrong at epoch 12. Five 'cat' images that the network calls 'dog' with p = 0.97 have a dog in them: their labels are wrong.",
+     "expert_notes": "Plotly image traces with `z` pixel arrays (RGB uint8; gray images repeat to three channels; no `source` URLs). `max_items` (default 24) and `columns` (default 6) set the grid. The images are sorted by the predicted-class probability, highest first.",
+     "fits": {
+      "data_shape": [
+       "images"
+      ],
+      "goal": [
+       "classify",
+       "validate_model"
+      ]
+     },
+     "outputs": [
+      "A grid of up to 24 small images",
+      "Above each image: true class \u2192 predicted class and the probability",
+      "A caption with the number of wrong images and of validation images"
+     ],
+     "references": [],
+     "related": [
+      "ml.training_curves",
+      "ml.confusion_epochs",
+      "core.confusion"
+     ],
+     "summary_plain": "Shows the validation images that the network classifies incorrectly, with the true class, the predicted class and its probability. Look at them to find wrong labels or classes that look the same.",
+     "title": "Wrong validation images",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You trained an image classifier and want to see its errors",
+      "You think that some labels are wrong"
+     ]
+    },
+    "id": "ml.misclassified",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "summary": "The validation images that the network classified wrong, with the true and the predicted class.",
+    "title": "Wrong validation images",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "Lower is better for the loss and the error, higher is better for the accuracy",
+      "The training values are batch values. The validation values are for all validation images at the end of each epoch"
+     ],
+     "avoid_when": [
+      "The model was not trained in steps (use Convergence or the scorecard)"
+     ],
+     "data_needs": [
+      "A metrics_history group with a split label (train and val), or a training group with train_* and val_* variables for each epoch"
+     ],
+     "difficulty": "beginner",
+     "example": "The validation loss is lowest at epoch 7 (0.41). After epoch 9 it goes up while the training loss goes down, so the network starts to overfit. Early stopping kept the weights of epoch 7.",
+     "expert_notes": "Reads metrics_history (per-step series with the label dim `label`, default 'split') or else the per-epoch training group. `keys` picks the metrics (default: loss and accuracy or rmse, at most 4 panels); `x` is 'step' or 'epoch'; `smooth` applies a moving average of that width to the training series; `log_y` forces or turns off a log scale; `max_points` thins each series. The overfit note shows when, over the last 25% of the x range, the validation series rises by more than 2% and the training series falls.",
+     "fits": {
+      "goal": [
+       "classify",
+       "predict_values",
+       "validate_model"
+      ]
+     },
+     "outputs": [
+      "One panel for each metric (loss, accuracy or error, up to 4), with one line for each split",
+      "Points on the validation line",
+      "A caption with the best validation value and its step or epoch, and a note when the network starts to overfit"
+     ],
+     "references": [],
+     "related": [
+      "core.loss_curve",
+      "ml.confusion_epochs",
+      "ml.misclassified"
+     ],
+     "summary_plain": "Shows the loss and the accuracy of a neural network on the training data and on the validation data while it learns. When the validation loss goes up and the training loss goes down, the network starts to overfit.",
+     "title": "Training and validation curves",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You trained a network and want to know if it had sufficient epochs",
+      "You want to see when the network started to overfit and which epoch was the best"
+     ]
+    },
+    "id": "ml.training_curves",
+    "persona": "both",
+    "requires_groups": [],
+    "requires_representation": [],
+    "summary": "The training and validation loss and accuracy of a network at each step. It shows if the training converged and if the model starts to overfit.",
+    "title": "Training curves",
     "version": "1.0.0",
     "yanked": false
    },
@@ -36250,6 +38358,171 @@
     "var_params": [],
     "version": "1.0.0",
     "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The network learned features that also separate your classes",
+      "The network does not change: the step does not train it"
+     ],
+     "avoid_when": [
+      "You have no pretrained weights that suit your images",
+      "The dataset is a large image collection (use the fine-tune classifier, or set a sample in data.collection)"
+     ],
+     "data_needs": [
+      "An image dataset: pixels and, for the classifier, a label for each image",
+      "A weights dataset from a safetensors upload, given as a side table"
+     ],
+     "difficulty": "intermediate",
+     "example": "Change 500 product photos into 64 numbers each, then classify them with logistic regression.",
+     "expert_notes": "A frozen mapi-jax ResNet backbone (GroupNorm, global average pooling) loaded from a weights side table; writes embedding(image, feature) float32 and records the weights sha256 in its state. Batches through the JIT-compiled feature function; runs on the CPU in every image that has mapi-jax.",
+     "fits": {
+      "data_shape": [
+       "images"
+      ],
+      "goal": [
+       "classify"
+      ]
+     },
+     "outputs": [
+      "A variable 'embedding' with one row of numbers for each image"
+     ],
+     "references": [],
+     "related": [
+      "dl.finetune_classifier",
+      "sklearn.multiclass_classifier",
+      "tabular.image_logistic"
+     ],
+     "summary_plain": "Changes each image into a short list of numbers with a pretrained network. A simple classifier after this step can then learn the classes from a few examples.",
+     "title": "Image features from a pretrained network",
+     "typical_runtime": "seconds",
+     "use_when": [
+      "You have a pretrained network as a weights dataset",
+      "You want a fast or a Bayesian classifier on images with few labels"
+     ]
+    },
+    "depends_on_target": false,
+    "dim_params": [
+     "image_dim"
+    ],
+    "effect": {
+     "adds": {
+      "{out}": {
+       "dims": [
+        "{image_dim}",
+        "{feature_dim}"
+       ],
+       "dtype": "float32",
+       "role": "covariate"
+      }
+     },
+     "template_params": [
+      "out",
+      "feature_dim",
+      "image_dim"
+     ],
+     "transforms_dims": {
+      "{feature_dim}": {
+       "kind": "integer",
+       "policy": "fixed"
+      }
+     }
+    },
+    "id": "dl.embed",
+    "invertible": false,
+    "kind": "feature",
+    "provides": [],
+    "settings_schema": {
+     "additionalProperties": false,
+     "description": "Settings of ``dl.embed``.",
+     "properties": {
+      "batch_size": {
+       "default": 64,
+       "description": "Images per forward pass",
+       "maximum": 4096,
+       "minimum": 1,
+       "title": "Batch Size",
+       "type": "integer"
+      },
+      "feature_dim": {
+       "default": "feature",
+       "description": "The dim of the features",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "title": "Feature Dim",
+       "type": "string"
+      },
+      "image_dim": {
+       "default": "image",
+       "description": "The dim that lists the images",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "title": "Image Dim",
+       "type": "string"
+      },
+      "keep_pixels": {
+       "default": false,
+       "description": "Keep the pixel variable after the step",
+       "title": "Keep Pixels",
+       "type": "boolean"
+      },
+      "out": {
+       "default": "embedding",
+       "description": "The feature variable the step writes",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "title": "Out",
+       "type": "string"
+      },
+      "pixels": {
+       "default": "pixels",
+       "description": "The image variable (image, y, x, channel)",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "title": "Pixels",
+       "type": "string"
+      },
+      "size": {
+       "anyOf": [
+        {
+         "maxItems": 2,
+         "minItems": 2,
+         "prefixItems": [
+          {
+           "type": "integer"
+          },
+          {
+           "type": "integer"
+          }
+         ],
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Height and width the images are resized to (default: the weights')",
+       "title": "Size"
+      },
+      "weights": {
+       "default": "weights",
+       "description": "The data.side_tables entry with the weights",
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+       "title": "Weights",
+       "type": "string"
+      }
+     },
+     "title": "EmbedSettings",
+     "type": "object"
+    },
+    "side_table_params": [
+     "weights"
+    ],
+    "stateful": true,
+    "summary": "Image features from a frozen pretrained network",
+    "summary_plain": "Turns each image into a list of numbers with a pretrained network",
+    "var_params": [
+     "pixels"
+    ],
+    "version": "1.0.0",
+    "yanked": false
    }
   ]
  },
@@ -37179,18 +39452,126 @@
    },
    "Checkpoint": {
     "additionalProperties": false,
+    "description": "Resumable checkpoints: every N draws (samplers) or every N epochs (v0.15: networks).\n\nExactly one is set. The model must be checkpointable; otherwise validation warns and\nthe run ignores it.",
     "properties": {
      "every_draws": {
-      "maximum": 1000000,
-      "minimum": 1,
-      "title": "Every Draws",
-      "type": "integer"
+      "anyOf": [
+       {
+        "maximum": 1000000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Every Draws"
+     },
+     "every_epochs": {
+      "anyOf": [
+       {
+        "maximum": 10000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "v0.15: networks trained in epochs",
+      "title": "Every Epochs"
      }
     },
-    "required": [
-     "every_draws"
-    ],
     "title": "Checkpoint",
+    "type": "object"
+   },
+   "CollectionRead": {
+    "additionalProperties": false,
+    "description": "How a model that reads datasets sees a collection: a seeded sample as\n``pixels(image, y, x, channel)`` (``ModelSpec`` ``data.collection``).",
+    "properties": {
+     "max_samples": {
+      "default": 5000,
+      "maximum": 100000,
+      "minimum": 1,
+      "title": "Max Samples",
+      "type": "integer"
+     },
+     "mode": {
+      "default": "auto",
+      "enum": [
+       "auto",
+       "gray",
+       "rgb"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "resize": {
+      "default": "stretch",
+      "enum": [
+       "stretch",
+       "crop",
+       "pad"
+      ],
+      "title": "Resize",
+      "type": "string"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "exclusiveMaximum": 4294967296,
+        "minimum": 0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Default: the fit seed",
+      "title": "Seed"
+     },
+     "size": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "integer"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "(height, width); default: the collection's size (needed when it has none)",
+      "title": "Size"
+     },
+     "stratify": {
+      "anyOf": [
+       {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": "label",
+      "description": "Keep the share of each level of this var or coord (none: uniform)",
+      "title": "Stratify"
+     }
+    },
+    "title": "CollectionRead",
     "type": "object"
    },
    "ColumnSplit": {
@@ -37294,10 +39675,22 @@
    },
    "DataBlock": {
     "additionalProperties": false,
-    "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.",
+    "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.\n\nFor an image collection (v0.15), ``collection`` says how a model that reads datasets\nsees it (a seeded sample); a model that trains on batches reads every image.",
     "properties": {
      "bind": {
       "$ref": "#/$defs/Binding"
+     },
+     "collection": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/CollectionRead"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "v0.15: an image collection read by a model that reads datasets: a seeded sample as pixels(image, y, x, channel)"
      },
      "dataset": {
       "description": "Dataset reference dataset://project/name@version",
@@ -38195,12 +40588,13 @@
     "type": "object"
    },
    "ResourceClass": {
-    "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+    "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
     "enum": [
      "S",
      "M",
      "L",
-     "XL"
+     "XL",
+     "GPU"
     ],
     "title": "ResourceClass",
     "type": "string"

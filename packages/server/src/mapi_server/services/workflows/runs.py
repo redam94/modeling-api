@@ -53,6 +53,7 @@ from mapi_server.services.experiments import check_run_experiment
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import Scope, now
 from mapi_server.services.specs import resolve_dataset, resolve_model_version
+from mapi_server.services.submit import refuse_collection
 from mapi_server.services.workflows.store import load_revision, workflow_ref
 
 __all__ = [
@@ -120,6 +121,7 @@ async def _resolve_inputs(
                 raise MapiError(
                     why or f"cannot resolve {text}", code=ErrorCode.REF_UNRESOLVED, pointer=ptr
                 )
+            refuse_collection(dv, ptr)  # v0.15
             ds = await session.get(m.Dataset, dv.dataset_id)
             assert ds is not None
             pin = f"dataset://{ds.project_id}/{ds.name}@v{dv.version}"

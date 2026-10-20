@@ -43,7 +43,7 @@ entry-point group (`core`, `mmm`, `ml`, `sci`, `net`):
 |---|---|
 | `core.*` (Vega-Lite) | data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast fan, fit vs actual, residuals, decomposition, model comparison, counterfactual, decision distribution, `core.pair` (corner plot with divergent draws), `core.ridge`, `core.rank_matrix`, `core.calibration` (PIT-ECDF or reliability diagram, also from point probabilities), `core.state_sequence` (HMM hidden states, Markov regimes), `core.roc_pr` and `core.confusion` (binary classifiers), `core.loss_curve` (ADVI loss history), `core.loo_pit` (LOO-PIT and PSIS Pareto k) |
 | `mmm.*` | response curves, marginal cost, budget plans, decomposition, prior beliefs |
-| `ml.*` | `ml.feature_importance` |
+| `ml.*` | `ml.feature_importance`, `ml.training_curves` (train and validation curves by label), `ml.confusion_epochs` (validation confusion matrices at up to 6 epochs), `ml.misclassified` (Plotly grid of the wrong validation images, inline pixels) |
 | `sci.*` (Plotly) | `sci.field_map`, `sci.vector_field`, `sci.profile_bands`, `sci.ensemble`, `sci.area_map`, `sci.phylogeny`, `sci.rose`, `sci.image_residuals`, `sci.ppc_image_grid`, `sci.swatches`, `sci.power_spectrum`, `sci.point_pattern` |
 | `net.*` (Plotly) | `net.graph` (a node-link drawing and an adjacency matrix of an edge variable `(..., node, node_)`) |
 

@@ -120,6 +120,26 @@ node. Examples are a forecast, an evaluation or a governance check of a fitted m
 plugin (ingest, describe, statistical tests) use `MAPI_DOCKER_IMAGE`. The defaults are the
 tags that `make docker-build` makes for the current version.
 
+**Deep learning and the GPU class** <span class="mapi-badge">v0.15</span>. `dl.*` runs in
+`mapi/base-dl`. This image has `mapi-jax[cuda12]`: JAX with the NVIDIA CUDA wheels from pip,
+on python-slim (no NVIDIA base image). It is about 3 GB. `mapi/base-bayes` and
+`mapi/base-ml` also have `mapi-jax` for the CPU, so the step `dl.embed` works in front of
+their models.
+
+The docker executor accepts the resource class `GPU`:
+
+- With `MAPI_DOCKER_GPUS=true`, the executor asks Docker for one NVIDIA GPU (a device
+  request with the driver `nvidia` and the capability `gpu`). The host needs the NVIDIA
+  driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/).
+- With `MAPI_DOCKER_GPUS=false` (the default), the run gets the CPU and memory of the GPU
+  class and no GPU. JAX uses the CPU. The run shows the warning `GPU_UNAVAILABLE`.
+
+The local-process executor also accepts `GPU` and always uses the CPU.
+
+!!! warning
+    The GPU path of `mapi/base-dl` is not tested. The project has no GPU. Do a test with a
+    small run and make sure that the param `dl.backend` is `gpu`.
+
 `MAPI_DOCKER_NETWORK` must give the run a path to the object store, because the bootstrap
 object and each signed URL point at it. In compose, the run joins the network namespace of
 the shim (`container:mapi-gcs-shim`). An internal Docker network that holds only the shim

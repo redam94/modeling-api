@@ -10,8 +10,8 @@ TF_ROOT="$REPO_ROOT/infra/terraform"
 DRY_RUN=${DRY_RUN:-0}
 ASSUME_YES=${ASSUME_YES:-0}
 
-# The five images a release consists of (images/<name>/Dockerfile, target runtime).
-RELEASE_IMAGES="server web base-bayes base-ml base-forecast"
+# The six images a release consists of (images/<name>/Dockerfile, target runtime).
+RELEASE_IMAGES="server web base-bayes base-ml base-forecast base-dl"
 
 log() { printf '==> %s\n' "$*" >&2; }
 warn() { printf 'warning: %s\n' "$*" >&2; }

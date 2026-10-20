@@ -264,6 +264,9 @@ the string columns of these DataFrames.
 | `mmm.mediation` | `hdi_prob` (0.9) |
 | `mmm.cross_effects` | `hdi_prob` (0.9) |
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
+| `ml.training_curves` (v0.15) | `keys` (none: `loss` and `accuracy` or `rmse`, a maximum of 4 panels), `label` (split), `x` (step \| epoch), `smooth` (none), `log_y` (none), `max_points` (2 000) |
+| `ml.confusion_epochs` (v0.15) | `epochs` (none: the first, evenly spaced, the best and the last, a maximum of 6), `normalize` (true \| none), `max_classes` (20; the others are "(other)") |
+| `ml.misclassified` (v0.15) | `max_items` (24), `columns` (6). Plotly `image` traces with `z` pixel arrays (no `source`) |
 | `sci.field_map` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `y`, `x`, `frame`, `select`, `stats` ([mean, sd]; also median, z, q05, q95, draws), `n_draws` (3), `max_draws` (400), `max_cells` (40 000), `max_frames` (24), `colormap`, `log`, `origin`, `aspect` (equal \| auto), `columns` (3), `width` (760), `height` (280, one row of panels) |
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
 | `sci.profile_bands` | `var`, `group`, `observed_var`, `along`, `by`, `select`, `levels` ([0.5, 0.9]), `point` (median \| mean), `max_curves` (12), `max_draws` (1 000), `colormap` (viridis), `log` (false), `width` (640), `height` (360) |

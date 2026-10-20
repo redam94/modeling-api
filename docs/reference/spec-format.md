@@ -40,16 +40,17 @@ execution: {resource_class: M, timeout: 45m}
 |---|---|
 | `metadata` | `name` and `project` (lowercase slugs). Optional: `labels` and `description` |
 | `data.dataset` | `dataset://<project>/<name>@latest|vN|sha256:<hex>` — The API pins it to an exact version when you submit |
-| `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied`. A side table that is a tree dataset reads one node: `node: /fx` (v0.8) |
+| `data.side_tables` | Small constant datasets (FX, holidays). `score_policy` is `pinned`, `latest` or `supplied`. A side table that is a tree dataset reads one node: `node: /fx` (v0.8). From v0.15 a model can read a side table too (`side_table_params` in its manifest, for example the pretrained weights of `dl.finetune_classifier`). A score request never needs a table that only the model reads |
 | `data.nodes` | v0.8, tree datasets only. The nodes whose variables make the flat input of the pipeline: `{key: {path, vars?, prefix?}}`, a maximum of 64 entries. Refer to [Tree datasets in a spec](#tree-datasets-in-a-spec) |
 | `data.join` | v0.8, used only with `data.nodes` (a value other than `exact` without them is an error). How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
 | `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again. When a dim gets a new name, the `grid` attr of each variable gets the new name too (v0.9) |
 | `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out`, `mask_block`, and from v0.14 `column` or `stratified` (see [Column and stratified splits](#column-and-stratified-splits)). The split occurs at `after_step` |
+| `data.collection` | v0.15, image collections only. How a model that reads datasets sees the collection: a seeded sample as `pixels(image, y, x, channel)`. Refer to [Image collections in a spec](#image-collections-in-a-spec) |
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
 | `model` | The plugin `use`, its `settings` and the `fit` block |
 | `outputs` | Derived quantities, plot recipes and the number of draws that the UI keeps |
 | `evaluate` | Holdout metrics (`elpd_loo`, `coverage_90`, `mape`, `rmse`, `auc`, `mase` and [more](#evaluate-metrics)). `elpd_loo` and `elpd_waic` need a `log_likelihood` group, for example `model.fit.keep: {log_likelihood: true}`. If not, `metrics.json` gives the reason in `skipped`. A [circular output](sdk.md#circular-outputs) gets circular metrics and skips `mape`, `smape`, `wape` and `r2` |
-| `execution` | The resource class (`S`, `M`, `L`, `XL`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest class that holds the upload. |
+| `execution` | The resource class (`S`, `M`, `L`, `XL`, and from v0.15 `GPU`) and the timeout (`45m`, `1h30m`). Each class has a limit for the input data that a run reads (dataset plus side tables): S 0.5 GB, M 2 GB, L 5 GB, XL 50 GB, GPU 50 GB. If the data is larger, validation reports `PAYLOAD_TOO_LARGE` at `/execution/resource_class`. The message gives the class that fits. Ingest runs select the smallest CPU class that holds the upload. An image collection is read in parts while the model trains, so its size does not count. Refer to [Resource classes](#resource-classes) |
 
 ## Metrics in `evaluate` <span class="mapi-badge">v0.10</span> { #evaluate-metrics }
 
@@ -193,6 +194,120 @@ images:
 The ingest writes `pixels(image, y, x, channel)` with the dtype `uint8`. `uint8` is a numeric
 dtype of the schema (v0.14), for values from 0 to 255. For the full layout and the limits,
 see [Image data](../guides/image-data.md).
+
+## Resource classes { #resource-classes }
+
+| Class | vCPU | Memory | Scratch | Input data | Bundle | Accelerator |
+|---|---|---|---|---|---|---|
+| `S` | 2 | 8 GiB | 3 GiB | 0.5 GB | 1 GB | — |
+| `M` | 4 | 16 GiB | 6 GiB | 2 GB | 4 GB | — |
+| `L` | 8 | 32 GiB | 12 GiB | 5 GB | 8 GB | — |
+| `XL` | (GKE) | (GKE) | (GKE) | 50 GB | 50 GB | — |
+| `GPU` (v0.15) | 8 | 32 GiB | 12 GiB | 50 GB | 8 GB | 1 NVIDIA L4 |
+
+The classes are in this sequence: `S < M < L < XL < GPU`. A quota with a maximum class below
+`GPU` refuses the GPU class. After `RESOURCE_EXHAUSTED`, the platform offers the next CPU
+class only (the GPU class is never offered). Validation refuses a spec that selects `GPU`
+for a model that does not use a GPU (`resources.gpu` in its manifest). It shows a note
+when a model can use the GPU and the spec selects a CPU class. Refer to
+[Deep learning](../guides/deep-learning.md#use-the-gpu-class).
+
+## Checkpoints { #checkpoints }
+
+`model.fit.checkpoint` saves resumable checkpoints during a fit. Give exactly one of:
+
+| Field | For | Meaning |
+|---|---|---|
+| `every_draws` | Samplers (PyMC) | Save a checkpoint every N draws (1 to 1 000 000) |
+| `every_epochs` | Networks (v0.15, `dl.*`) | Save a checkpoint every N epochs (1 to 10 000) |
+
+```yaml
+model:
+  fit:
+    checkpoint: {every_epochs: 2}
+```
+
+If the model cannot save checkpoints (`capabilities.checkpointable` is `false`), validation
+shows a warning at `/model/fit/checkpoint/every_epochs` and the run ignores the setting.
+
+## Image collections in a spec <span class="mapi-badge">v0.15</span> { #image-collections-in-a-spec }
+
+An image collection is a dataset version with the layout `collection` (see
+[Image data](../guides/image-data.md#large-image-sets-collections)). A model reads it in one of
+two ways:
+
+- A model with `capabilities.input: collection` (`dl.cnn_classifier`,
+  `dl.finetune_classifier`) trains on batches of all images. The spec takes no pipeline
+  steps (`SCHEMA_INVALID` at `/pipeline`).
+- Any other model reads a seeded sample as `pixels(image, y, x, channel)`, as set by
+  `data.collection` (a `CollectionRead`). Validation shows a note at `/data/collection`.
+
+```yaml
+data:
+  dataset: dataset://default/product_photos@v5
+  collection:
+    max_samples: 5000   # 1 to 100 000
+    size: [32, 32]      # (height, width); default: the size of the collection
+    resize: stretch     # stretch, crop or pad
+    mode: auto          # auto, gray or rgb
+    stratify: label     # a variable or coordinate along the image dim; null: uniform
+    seed: 7             # default: the fit seed
+```
+
+When the collection has no common size and `size` is not set, the run fails with
+`SCHEMA_INVALID` at `/data/collection/size`. `data.collection` on a dataset that is not a
+collection gives a warning, and the run ignores it.
+
+The other rules for a collection:
+
+- `data.split` must be a row split: `column`, `stratified` or `leave_group_out`
+  (`SPLIT_INVALID` at `/data/split/kind`).
+- A side table must be a dataset, not a collection.
+
+### Collection options
+
+The options of a collection version (`CollectionOptions`, the `options` of
+`DatasetVersionCreate.collection`):
+
+| Option | Default | Meaning |
+|---|---|---|
+| `sha256_column` | `sha256` | The column with the lowercase hex SHA-256 of each image |
+| `id_column` | none | Unique ids of the image dim. Default: the path, else the SHA-256. |
+| `path_column` | `path` | Kept as the coordinate `path`. A missing default column is ignored. |
+| `label_column` | none | The class: the text variable `label(image)`, role target |
+| `split_column` | none | The text coordinate `split(image)` |
+| `columns` | all others | The other columns to keep as coordinates (a maximum of 64). They cannot use the names of the fixed columns of `manifest.parquet` (`image_id`, `sha256`, `pack`, `offset`, `stored`, `method`, `crc32`, `nbytes`, `format`, `width`, `height`, `mode`). |
+| `var`, `dim` | `pixels`, `image` | The names of the virtual pixel variable and of the image dim |
+| `mode` | `auto` | `gray`, `rgb` or `auto` (rgb when an image has colour) |
+| `size` | none | The size (height, width) for samples and model defaults, each 1 to 4096 |
+| `resize` | `stretch` | `stretch`, `crop` or `pad` |
+| `max_images` | 100 000 | 1 to 1 000 000 |
+
+## Pretrained weights: the `safetensors` format <span class="mapi-badge">v0.15</span> { #safetensors }
+
+An upload of the format `safetensors` is a file of network weights. The mapping has only
+`format` and, optionally, `weights` (a `WeightsOptions`). A `safetensors` upload must be the
+only source of a dataset version.
+
+```yaml
+format: safetensors
+weights:
+  arch: {kind: resnet, channels: 3, widths: [16, 32, 64], blocks: [1, 1, 1]}  # optional
+  max_parameters: 200000000   # 1 to 500 000 000
+```
+
+`arch` is necessary only when the `__metadata__` of the file has no `mapi_arch` key. Its JSON
+can have a maximum of 64 KiB. The ingest writes a weights dataset:
+
+| Name | Dims | Type | Contents |
+|---|---|---|---|
+| `weights` | `param` | `float32` | All tensors, flattened, role `constant` |
+| attribute `mapi_weights` | | JSON | `tensors` (name, shape, source dtype, offset), `metadata`, `arch`, `sha256` of the file and `parameters` |
+
+The ingest accepts the dtypes F64, F32, F16, BF16, I64, I32, I16, I8, U8 and BOOL, a
+maximum of 4096 tensors and a header of a maximum of 8 MiB. Use the weights dataset as a
+side table of a model or a step (see
+[Deep learning](../guides/deep-learning.md#pretrained-weights)).
 
 ## Retired documents
 

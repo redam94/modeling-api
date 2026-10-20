@@ -20,6 +20,7 @@ import { compactNumber, formatGibSeconds, formatMicros, formatVcpuSeconds, isSes
 import { formatBytes } from "@/lib/format";
 import { periodKey, periodLabel, periodStart, shiftPeriod } from "@/lib/period";
 import { humanWait } from "@/lib/problems";
+import { resourceClassLabel } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 
 const route = getRouteApi("/usage");
@@ -303,11 +304,11 @@ export function UsagePage() {
               <CardHeader>
                 <div>
                   <CardTitle>By resource class</CardTitle>
-                  <CardDescription>S 2 vCPU · M 4 vCPU · L 8 vCPU</CardDescription>
+                  <CardDescription>S 2 vCPU · M 4 vCPU · L 8 vCPU · GPU 8 vCPU and one NVIDIA L4 GPU</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>
-                <BreakdownList query={classes} metric={metric} currency={currency} label="Cost by resource class" name={(k) => `Class ${k}`} />
+                <BreakdownList query={classes} metric={metric} currency={currency} label="Cost by resource class" name={(k) => `Class ${resourceClassLabel(k)}`} />
               </CardContent>
             </Card>
           </div>

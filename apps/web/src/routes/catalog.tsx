@@ -11,12 +11,23 @@ import { Badge } from "@/components/ui/primitives";
 import { AboutCard } from "@/features/about/about-card";
 import { CatalogBrowser } from "@/features/about/catalog-browser";
 import { StartButton } from "@/features/about/chooser";
+import { GpuBadge } from "@/features/models/gpu-badge";
 import { PlotCatalogGrid } from "@/features/plots/plot-catalog";
 
 const route = getRouteApi("/catalog");
 
 const modelColumns: ColumnDef<ModelCatalogEntry, unknown>[] = [
-  { id: "id", header: "Model", accessorFn: (m) => m.manifest.id, cell: ({ getValue }) => <Mono className="font-medium">{String(getValue())}</Mono> },
+  {
+    id: "id",
+    header: "Model",
+    accessorFn: (m) => m.manifest.id,
+    cell: ({ getValue, row }) => (
+      <span className="inline-flex items-center gap-1.5">
+        <Mono className="font-medium">{String(getValue())}</Mono>
+        <GpuBadge manifest={row.original.manifest} />
+      </span>
+    ),
+  },
   { id: "version", header: "Version", accessorFn: (m) => m.manifest.version },
   { id: "about", header: "What it does", accessorFn: (m) => m.manifest.about?.summary_plain ?? "", cell: ({ getValue }) => <span className="line-clamp-1 max-w-[28rem] text-muted-foreground">{String(getValue())}</span> },
   { id: "inference", header: "Inference", accessorFn: (m) => m.manifest.capabilities.inference },
@@ -47,7 +58,16 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
       <div className="grid gap-4">
         {m.about ? <AboutCard about={m.about} kind="model" id={m.id} actions={<StartButton kind="model" id={m.id} />} /> : null}
         <h3 className="text-[13px] font-semibold">Technical details</h3>
-        <KeyValues items={[["Inference", m.capabilities.inference], ["Representation", m.capabilities.representation], ["Owns", (m.capabilities.owns ?? []).join(", ") || "—"], ["Plots", (m.plots ?? []).join(", ") || "—"]]} />
+        <KeyValues
+          items={[
+            ["Inference", m.capabilities.inference],
+            ["Representation", m.capabilities.representation],
+            ["Owns", (m.capabilities.owns ?? []).join(", ") || "—"],
+            ["Plots", (m.plots ?? []).join(", ") || "—"],
+            // v0.15: the resource classes of the model, and whether it can use the GPU class.
+            ["Resource classes", <span key="rc" className="inline-flex items-center gap-1.5">{`${m.resources?.min_class ?? "S"} or larger, default ${m.resources?.default_class ?? "S"}`}<GpuBadge manifest={m} /></span>],
+          ]}
+        />
         <h3 className="text-[13px] font-semibold">Settings schema</h3>
         <JsonBlock value={m.settings_schema} maxHeight="18rem" />
         <h3 className="text-[13px] font-semibold">Fit schema</h3>

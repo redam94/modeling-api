@@ -66,7 +66,8 @@ def caption(plot: PlotSpec) -> str:
 
 def check_plot(plot: PlotSpec, recipe: Recipe[Any]) -> None:
     """The contract every recipe output satisfies (the sci pack draws with Plotly)."""
-    assert plot.kind == ("plotly" if recipe.id.startswith(("sci.", "net.")) else "vega-lite")
+    plotly = recipe.id.startswith(("sci.", "net.")) or recipe.id == "ml.misclassified"
+    assert plot.kind == ("plotly" if plotly else "vega-lite")
     assert plot.id == recipe.id
     assert plot.provenance.recipe == recipe.ref
     assert plot.persona == recipe.persona

@@ -110,6 +110,9 @@ describe("run state", () => {
     expect(nextResourceClass("S")).toBe("M");
     expect(nextResourceClass("M")).toBe("L");
     expect(nextResourceClass("L")).toBeNull();
+    // v0.15: the GPU class is never offered as "one class up", and has no class above it
+    expect(nextResourceClass("XL")).toBeNull();
+    expect(nextResourceClass("GPU")).toBeNull();
   });
 });
 

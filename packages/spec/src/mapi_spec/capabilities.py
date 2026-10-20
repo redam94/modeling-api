@@ -239,10 +239,12 @@ class Capabilities(StrictModel):
         description="Calibration data the model uses from a spec's calibration block (M3)",
         exclude_if=lambda v: not v,
     )
-    input: Literal["dataset", "tree"] = Field(
+    input: Literal["dataset", "tree", "collection"] = Field(
         "dataset",
         description="M4: 'tree' models also receive the whole tree dataset (the bound "
-        "xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+        "xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. "
+        "v0.15: 'collection' models implement fit_batches/score_batches and train on every "
+        "image of an image collection through a lazy loader; they also read plain datasets",
         exclude_if=lambda v: v == "dataset",
     )
     conditions_on_actuals: bool = Field(
@@ -396,6 +398,13 @@ class ModelManifest(StrictModel):
         "ts_multivariate, tabular, choice, regime); default: the id's namespace",
         exclude_if=lambda v: v is None,
     )
+    side_table_params: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="v0.15: settings keys whose value names a data.side_tables entry the "
+        "model reads (pretrained weights, for example), like a step's side_table_params",
+        exclude_if=lambda v: not v,
+    )
 
     @field_validator("id")
     @classmethod
@@ -428,6 +437,8 @@ class ModelManifest(StrictModel):
         names = [d.name for d in self.derived]
         if len(names) != len(set(names)):
             raise ValueError("derived quantity names must be unique")
+        if len(self.side_table_params) != len(set(self.side_table_params)):
+            raise ValueError("side_table_params must be unique")
         return self
 
     def derived_names(self) -> set[str]:

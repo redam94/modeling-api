@@ -23,8 +23,8 @@ from .conftest import ROOT, load_script
 
 pytestmark = pytest.mark.unit
 
-PY_IMAGES = ("base-bayes", "base-ml", "base-forecast", "server", "gcs-shim")
-RUNNER_IMAGES = ("base-bayes", "base-ml", "base-forecast")
+PY_IMAGES = ("base-bayes", "base-ml", "base-forecast", "base-dl", "server", "gcs-shim")
+RUNNER_IMAGES = ("base-bayes", "base-ml", "base-forecast", "base-dl")
 ALL_IMAGES = (*PY_IMAGES, "web")
 SECRET_NAME = re.compile(r"(PASSWORD|PASSWD|SECRET|TOKEN|API_?KEY|PRIVATE_?KEY|CREDENTIAL)", re.I)
 OCI_LABELS = ("title", "description", "version", "revision", "created", "licenses", "vendor")
@@ -461,6 +461,38 @@ def test_base_ml_has_no_pymc() -> None:
     names = image_closure(*arg_default("base-ml", "MAPI_PACKAGES").split())
     assert not names & {"pymc", "pytensor", "nutpie", "mapi-pymc", "mmm-framework"}
     assert {"scikit-learn", "xgboost", "mapi-sklearn"} <= names
+
+
+def test_base_dl_ships_cuda_jax_and_no_other_stack() -> None:
+    """base-dl: jax with its CUDA 12 wheels (unverified on a GPU), no PyMC/sklearn/torch; the
+    CPU images that host a dl.embed step carry mapi-jax without any CUDA wheel."""
+    names = image_closure(*arg_default("base-dl", "MAPI_PACKAGES").split())
+    assert {"mapi-jax", "jax", "jaxlib", "flax", "optax", "jax-cuda12-plugin"} <= names
+    assert any(n.startswith("nvidia-") for n in names)
+    assert not names & {"pymc", "pytensor", "mapi-pymc", "mapi-sklearn", "torch", "tensorflow"}
+    for name in ("base-bayes", "base-ml"):
+        cpu = image_closure(*arg_default(name, "MAPI_PACKAGES").split())
+        assert {"mapi-jax", "flax", "optax"} <= cpu, name
+        assert "jax-cuda12-plugin" not in cpu and not any(n.startswith("nvidia-cu") for n in cpu)
+    assert "mapi-jax" not in image_closure(*arg_default("base-forecast", "MAPI_PACKAGES").split())
+
+
+def test_xla_settings_only_in_base_dl() -> None:
+    from mapi_spec.run import WORKER_ENV_ALLOWLIST
+
+    for name in RUNNER_IMAGES:
+        env = env_vars(stage(name, "runtime-base"))
+        assert env["XLA_PYTHON_CLIENT_PREALLOCATE"] == "${MAPI_XLA_PREALLOCATE}"
+        assert env["XLA_FLAGS"] == "${MAPI_XLA_FLAGS}"
+        if name == "base-dl":
+            assert arg_default(name, "MAPI_XLA_PREALLOCATE") == "false"
+            assert arg_default(name, "MAPI_XLA_FLAGS") == "--xla_gpu_deterministic_ops=true"
+        else:
+            with pytest.raises(KeyError):
+                arg_default(name, "MAPI_XLA_FLAGS")
+    assert {"XLA_FLAGS", "XLA_PYTHON_CLIENT_PREALLOCATE"} <= set(WORKER_ENV_ALLOWLIST)
+    header = (ROOT / "images/base-dl/Dockerfile").read_text(encoding="utf-8").split("ARG ")[0]
+    assert "UNVERIFIED" in header
 
 
 # ================================================================================ web image

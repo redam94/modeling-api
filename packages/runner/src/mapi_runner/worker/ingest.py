@@ -41,6 +41,10 @@ v0.14: an ``image_folder`` upload (a zip of images and a manifest table) becomes
 dataset ``pixels(image, y, x, channel)`` uint8 (:mod:`~mapi_runner.worker.image_ingest`); it
 must be the only source of a version.
 
+v0.15: a ``safetensors`` upload becomes a weights dataset (``weights(param)`` float32,
+:mod:`~mapi_runner.worker.weights_ingest`), and an ``IngestJob.collection`` (a manifest and
+image parts) an image collection version (:mod:`~mapi_runner.worker.collection_ingest`).
+
 Every byte of user data is parsed here, in the sandbox, under the caps of
 :class:`~mapi_runner.worker.tabular.IngestLimits`.
 """
@@ -70,6 +74,8 @@ from mapi_spec.ingest import (
     MFF_COLUMNS,
     MFF_PANEL_KEY_COLUMNS,
     MFF_TOTAL_LABELS,
+    WEIGHTS_DIM,
+    WEIGHTS_VAR,
     DimMapping,
     ImageFolderOptions,
     IngestMapping,
@@ -121,6 +127,7 @@ from mapi_runner.worker.tree_ingest import (
     tree_from_nodes,
     zarr_has_groups,
 )
+from mapi_runner.worker.weights_ingest import read_weights
 
 __all__ = [
     "EXPLORE_NODES_INDEX",
@@ -145,6 +152,8 @@ _OFFSET = r"(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:Z|UTC|[+-]\d{2}:?\d{2})$"
 Notes = list[dict[str, str]]
 _COUNT_CHUNK = 4_000_000
 _UNLIMITED = IngestLimits()
+_WEIGHTS_VIEW = 100_000
+"""Parameters of a weights dataset the preview and the Data Explorer read."""
 
 
 def _schema_error(message: str, pointer: str = "", **kw: Any) -> MapiError:
@@ -1151,6 +1160,8 @@ def _tree_upload(
 def build_upload(path: Path, mapping: IngestMapping, limits: IngestLimits) -> Upload:
     """Parse one upload as ``mapping`` says: a plain dataset or (M4) a tree."""
     size = path.stat().st_size
+    if mapping.format == "safetensors":  # v0.15: pretrained network weights
+        return read_weights(path, mapping.weights, limits)
     if mapping.format == "image_folder":
         _check_format(path, mapping.format)
         images, image_schema, image_notes = read_image_folder(
@@ -1322,6 +1333,10 @@ def _raise_errors(issues: list[Issue]) -> None:
 
 
 def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
+    if job.collection is not None:  # v0.15: a manifest and image parts
+        from mapi_runner.worker.collection_ingest import run_collection_ingest
+
+        return run_collection_ingest(ctx, job)
     limits = IngestLimits.from_job(job)
     if job.assembly is not None:
         ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the uploads")
@@ -1356,7 +1371,8 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
     # metadata the control plane uses for CoordPlan checks of score payloads
     ctx.write_output("summary.json", data_summary(ds, schema).model_dump_json(indent=2).encode())
     ctx.write_json("profile.json", profile(ds, schema, issues, raw))
-    ctx.write_json("preview.json", preview(ds, job.preview_rows))
+    view = _view_dataset(ds)
+    ctx.write_json("preview.json", preview(view, job.preview_rows))
     if columns is not None:
         ctx.write_output(INGEST_COLUMNS, write_profiles(columns))
     # M3.5: the cheap Data Explorer sections (ui/explore/); never fails the ingest
@@ -1364,9 +1380,20 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
 
     ctx.progress(0.95, "computing the Data Explorer overview")
     ds.attrs.pop(SCHEMA_ATTR, None)
-    write_data_explorer(ctx, ds, schema, ref=job.dataset or "dataset://runner/upload@latest")
+    view.attrs.pop(SCHEMA_ATTR, None)
+    write_data_explorer(ctx, view, schema, ref=job.dataset or "dataset://runner/upload@latest")
     ctx.progress(1.0, "dataset ready", force=True)
     return schema
+
+
+def _view_dataset(ds: xr.Dataset) -> xr.Dataset:
+    """What the preview and the Data Explorer read: ``ds``, or the first
+    :data:`_WEIGHTS_VIEW` parameters of a weights dataset (v0.15; a network can have
+    hundreds of millions)."""
+    var = ds.data_vars.get(WEIGHTS_VAR)
+    if var is None or var.dims != (WEIGHTS_DIM,) or ds.sizes[WEIGHTS_DIM] <= _WEIGHTS_VIEW:
+        return ds
+    return ds.isel({WEIGHTS_DIM: slice(0, _WEIGHTS_VIEW)})
 
 
 def _write_tree(

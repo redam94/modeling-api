@@ -5,6 +5,116 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Deep learning and image collections
+
+You can now train neural networks on the platform. The new package `mapi-jax` has three
+models: a network for tables, an image classifier and a classifier that starts from
+pretrained weights. The training shows the training and validation curves while it runs,
+logs images of the predictions, stops early, saves checkpoints and gives draws. Large image
+sets upload as image collections: the client uploads only the new images, and an upload
+that stops can continue. A new resource class gives a run one GPU.
+
+#### Added
+- Image collections: the dataset layout `collection`. A version is a manifest
+  (`manifest.parquet`), a summary (`collection.json`, `CollectionInfo`) and packs of images,
+  stored one time for each tenant at `t/{tenant}/blobs/packs/{digest}.zip`. A version can hold
+  1 000 000 images of different sizes. The pack address is `pack_digest(size, crc32c, md5)`
+  over the digests that the store calculated. Each image is identified by its SHA-256, and
+  each read makes sure that the SHA-256 is correct. Contracts in `mapi_spec.collection`.
+- `DatasetVersionCreate.collection` (`CollectionSource`: a manifest upload, up to 64 part
+  uploads, a base version and `CollectionOptions`). The ingest run reads the parts in ranges,
+  makes sure that each image has the SHA-256 of its name, reads the image headers and writes
+  the explorer views of a sample. The finalizer copies the parts to the shared pack path.
+- Resumable uploads and deduplication: `GET /v1/datasets/{dataset_id}/uploads/{upload_id}`
+  (`UploadSession.received`), `POST .../uploads/{upload_id}/renew` and
+  `POST /v1/datasets/{dataset_id}/blobs/missing` (`BlobQuery`, `BlobMissing`: the images
+  that the base version does not have).
+- Client and CLI: `datasets.upload_collection`, `datasets.missing_images`,
+  `datasets.get_upload`, `datasets.renew_upload`; `mapi datasets upload-images`,
+  `mapi datasets missing-images` and `mapi datasets upload-weights`. The parts are
+  deterministic zip files, and a state file continues an upload.
+- Web app: the upload step **Folder of images** (labels from folders or from a manifest
+  column, progress, retry and continue), and the collection summary on the version page.
+- `mapi_sdk.collection`: `Collection`, the lazy and seeded `CollectionLoader`,
+  `ArrayImageLoader`, `ImageLoader`, `Batch`, `Augment` and `to_xarray(max_samples, size)`.
+  `mapi_sdk.images` decodes images. `mapi_sdk.testing.images` makes small test collections.
+- Model hooks `fit_batches` and `score_batches` (`Capabilities.input = "collection"`). The
+  harness gives these models a loader of the rows of the split. Other models get a seeded
+  sample of a collection, as set by `data.collection` (`CollectionRead`).
+- Model side tables: `ModelManifest.side_table_params`, `FitContext.side_tables` and
+  `ResolvedModel.side_tables`. A score request never needs a table that only the model reads.
+- The upload format `safetensors` (`WeightsOptions`): a file of network weights becomes a
+  weights dataset (`weights(param)` and the attribute `mapi_weights`).
+  `mapi_sdk.safetensors` reads and writes safetensors files with numpy only.
+- `mapi-jax` (`packages/sdk-jax`, Apache-2.0) on JAX, Flax (`nnx`) and Optax: the models
+  `dl.mlp`, `dl.cnn_classifier` and `dl.finetune_classifier`, and the step `dl.embed`
+  (image features from a frozen pretrained network). The shared trainer logs `loss` and
+  `accuracy` (or `rmse`) with the label `split`, logs prediction images and the confusion
+  matrix as media, stops early, can be cancelled, is deterministic for a seed, and saves
+  checkpoints every N epochs. The models give draws from a last-layer Laplace approximation
+  or from MC dropout.
+- `fit.checkpoint.every_epochs`, and file checkpoints (`ckpt-<key>.weights.safetensors`,
+  `ckpt-<key>.opt.safetensors`, `ckpt-<key>.meta.json`) with resume.
+- `tabular.image_logistic` (model version 1.1.0) takes `input: features`, for example the
+  output of `dl.embed`.
+- The resource class `GPU` (one NVIDIA L4, 8 vCPU, 32 GiB) and the runner image `base-dl`
+  (`mapi-jax[cuda12]`). The Cloud Run inventory has the Jobs `base-dl × {S, M, L, GPU}`
+  (Terraform `gpu_jobs`, default off). The docker executor asks for a GPU when
+  `MAPI_DOCKER_GPUS=true`. Otherwise, and with the local-process executor, a GPU run uses the
+  CPU and shows the warning `GPU_UNAVAILABLE`. The price table has a GPU row with an
+  accelerator price.
+- Plots: `ml.training_curves`, `ml.confusion_epochs` and `ml.misclassified`, with About
+  cards. The fit adds them when the bundle has the training history.
+- About cards for `dl.mlp`, `dl.cnn_classifier`, `dl.finetune_classifier` and `dl.embed`.
+- Documentation: the guide *Deep learning*, and the section *Large image sets: collections*
+  of the guide *Image data*.
+
+#### Changed
+- `Checkpoint.every_draws` is optional. A checkpoint has exactly one of `every_draws` and
+  `every_epochs`. Documents with `every_draws` do not change.
+- `Capabilities.input` accepts `collection`. `DataLayout` and `DatasetVersion.layout` accept
+  `collection`. `IngestJob` takes exactly one of `mapping`, `preset`, `assembly` and
+  `collection`. `IngestFormat` has `safetensors`.
+- `ResourceClass` has `GPU` as its last member. `next_up()` walks the CPU classes only, and
+  quotas with a maximum class below `GPU` refuse it. `ResourceClassSpec` has `accelerator`
+  and `accelerators`. `ClassPrice` and `ResourceUsage` have accelerator fields (left out when
+  zero).
+- `validate_spec` takes `dataset_layout` and `side_table_layouts`: a collection takes no
+  pipeline steps for a model that trains on batches, takes only row splits, and cannot be a
+  side table. Validation refuses a spec that selects `GPU` for a model that does not use a
+  GPU (the GPU Job runs only these models). It warns when a spec sets `every_epochs` for a
+  model that cannot save checkpoints.
+- An upload whose file arrived has the status `uploaded`. It stays usable after its PUT URL
+  expires, so a collection upload that takes more than one hour, or that continues the next
+  day, can make its version. The storage quota counts a `pending` upload until the
+  housekeeper retires it. The housekeeper deletes an arrived upload that no version used
+  after 7 days. `get_upload` needs `update` on `dataset`, because its answer holds the signed
+  PUT URL. When you renew an expired upload, the server does a check of the storage quota
+  again.
+- The size of a collection version is the size of the packs that it uses, also the images in
+  a part that the manifest does not use.
+- The worker environment allows `JAX_PLATFORMS`, `XLA_PYTHON_CLIENT_PREALLOCATE`,
+  `XLA_PYTHON_CLIENT_MEM_FRACTION` and `CUDA_VISIBLE_DEVICES`.
+- The images `mapi/base-bayes` and `mapi/base-ml` have `mapi-jax` for the CPU, so that
+  `dl.embed` works in front of their models. The import-linter contracts forbid `mapi_jax`,
+  `jax`, `flax` and `optax` in the control plane and in the supervisor.
+- **Upgrade the CLI and `mapi-client` to v0.15** to upload collections and weights. Older
+  clients ignore the new fields.
+
+#### Known gaps
+- Cloud Run GPU jobs and the `base-dl` CUDA image are not tested against GCP or on a GPU.
+- Deduplication is only against a base version of the same dataset.
+- The platform keeps packs until the tenant is deleted.
+- There are no thumbnails for each image beyond the gallery sample of the ingest.
+- Collections take no pipeline steps (with a model that trains on batches) and no time
+  splits.
+- Workflows and side tables do not take collections.
+- `dl.embed` on a collection needs `data.collection` (a sample). Use
+  `dl.finetune_classifier` with `freeze: backbone` for all images.
+- One GPU for each run. There is no training on more than one GPU or more than one machine.
+- Pretrained weights must use the `mapi-jax` ResNet layout. There is no conversion from
+  PyTorch checkpoints.
+
 ## [0.14.0] — Run comparison, media and image data — 2026-10-20
 
 ### Run comparison, media, image data and classification

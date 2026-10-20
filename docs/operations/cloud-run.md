@@ -37,6 +37,12 @@ base image and resource class, and it selects one Job for each attempt:
 | `base-bayes` (`mmm.*`, `sci.*`, `tabular.*`, ingest, describe) | `mapi-prod-base-bayes-s` | `mapi-prod-base-bayes-m` | `mapi-prod-base-bayes-l` |
 | `base-ml` (`sklearn.*`) | `mapi-prod-base-ml-s` | `mapi-prod-base-ml-m` | `mapi-prod-base-ml-l` |
 | `base-forecast` (`ts.*`, `causal.*`) | `mapi-prod-base-forecast-s` | `mapi-prod-base-forecast-m` | `mapi-prod-base-forecast-l` |
+| `base-dl` (`dl.*`, v0.15) | `mapi-prod-base-dl-s` | `mapi-prod-base-dl-m` | `mapi-prod-base-dl-l` |
+
+From v0.15, the inventory also has one GPU Job: `mapi-prod-base-dl-gpu` (see
+[GPU jobs](#gpu-jobs)). Only a GPU base (`base-dl`) has a GPU Job. A spec of the GPU class
+for a model of another namespace is refused at placement: "only dl models run on the GPU
+class".
 
 The names use `MAPI_CLOUDRUN_JOB_TEMPLATE` (default `mapi-{env}-{base}-{class}`). The
 infrastructure must make exactly these Jobs. Each Job must have:
@@ -48,6 +54,38 @@ infrastructure must make exactly these Jobs. Each Job must have:
 - The deny-all network and the restricted Google APIs VIP.
 
 XL runs are for the GKE executor (planned). The dispatcher refuses XL runs for `cloudrun-jobs`.
+
+### GPU jobs <span class="mapi-badge">v0.15</span> { #gpu-jobs }
+
+!!! warning "Not verified"
+    The GPU Job is written to the Cloud Run documentation, but it is not applied or tested
+    against GCP. The `base-dl` CUDA image is not tested on a GPU. Do a test with a small run
+    before you use it.
+
+The resource class `GPU` runs on the Job `{base-dl, GPU}`:
+
+| Field | Value |
+|---|---|
+| Image | `base-dl` (`mapi-jax[cuda12]`: `jax[cuda12]` from pip wheels on python-slim, no NVIDIA base image) |
+| Resources | `cpu = "8"`, `memory = "32Gi"`, `nvidia.com/gpu = "1"` |
+| Node selector | `accelerator = "nvidia-l4"` |
+| Zonal redundancy | off (`gpu_zonal_redundancy_disabled = true`) |
+| Other fields | The same service account, network, environment and `max_retries = 0` as the CPU Jobs |
+
+To make the Job:
+
+1. Select a region that has Cloud Run GPUs (L4) and request the GPU quota for the project.
+2. Build and push the `base-dl` image. It is about 3 GB, because of the CUDA wheels.
+3. In Terraform, set `images["base-dl"]` and `gpu_jobs = true` in the `exec` module. The
+   default is `false`.
+4. Apply. Set `MAPI_CLOUDRUN_GPU_JOBS=true` on the orchestrator. Without it, the executor
+   does not offer the GPU class.
+5. Submit a small `dl.cnn_classifier` run of the class `GPU`.
+6. Open the run. Make sure that the param `dl.backend` is `gpu` and that the run has no
+   `GPU_UNAVAILABLE` warning.
+
+The cost of a GPU attempt adds `accelerator_seconds` (wall time × 1) at the price of the
+class `GPU` in the price table (the default is the Cloud Run L4 list price, **[verify]**).
 
 ## What one attempt looks like
 
@@ -285,8 +323,9 @@ to `internal` and `self_hosted_trusted` tenants.
 | `MAPI_CLOUDRUN_PROJECT` | — | Exec project that holds the Job inventory (necessary) |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Rule for Job ids |
-| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`, `causal`: `base-forecast` | Plugin namespace to base (JSON) |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`, `causal`: `base-forecast`; `dl`: `base-dl` (v0.15) | Plugin namespace to base (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a plugin |
+| `MAPI_CLOUDRUN_GPU_JOBS` | `false` | v0.15: the inventory has the GPU Job of `base-dl`. Runs of the class `GPU` go to it |
 | `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` (maximum 180) |
 | `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | Number of `429` answers in sequence before a submit fails |
 | `MAPI_CLOUDRUN_BACKOFF_BASE_S`, `MAPI_CLOUDRUN_BACKOFF_CAP_S` | `1`, `64` | Exponential back-off after a `429` |

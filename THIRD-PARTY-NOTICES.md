@@ -12,12 +12,14 @@ are compiled into the web app and the plot sandbox, so their licence texts (wher
 the package ships one) are reproduced at the end of this file. NOTICE files are
 reproduced verbatim.
 
-## Python packages (141)
+## Python packages (171)
 
 Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 
 | Package | Version | Licence |
 |---|---|---|
+| `absl-py` | 2.5.1 | Apache-2.0 |
+| `aiofiles` | 25.1.0 | Apache-2.0 |
 | `alembic` | 1.20.0 | MIT |
 | `altair` | 6.3.0 | BSD-3-Clause |
 | `annotated-doc` | 0.0.5 | MIT |
@@ -45,10 +47,13 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `docker` | 7.2.0 | Apache-2.0 |
 | `donfig` | 0.8.1.post1 | MIT |
 | `et-xmlfile` | 2.0.0 | MIT |
+| `etils` | 1.14.0 | Apache-2.0 |
 | `fastapi` | 0.143.1 | MIT |
 | `filelock` | 4.2.0 | MIT |
+| `flax` | 0.12.10 | Apache-2.0 |
 | `fonttools` | 4.67.0 | MIT |
 | `formulaic` | 1.2.2 | MIT |
+| `fsspec` | 2026.9.0 | BSD-3-Clause |
 | `google-crc32c` | 1.9.0 | Apache-2.0 |
 | `graphviz` | 0.21 | MIT |
 | `greenlet` | 3.5.6 | MIT AND PSF-2.0 |
@@ -59,9 +64,12 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `httpcore` | 1.0.9 | BSD-3-Clause |
 | `httptools` | 0.9.0 | MIT |
 | `httpx` | 0.28.1 | BSD-3-Clause |
+| `humanize` | 4.16.0 | MIT |
 | `idna` | 3.20 | BSD-3-Clause |
 | `interface-meta` | 2.0.1 | MIT |
 | `jax` | 0.11.2 | Apache-2.0 |
+| `jax-cuda12-pjrt` | 0.11.2 | Apache-2.0 |
+| `jax-cuda12-plugin` | 0.11.2 | Apache-2.0 |
 | `jaxlib` | 0.11.2 | Apache-2.0 |
 | `jinja2` | 3.1.6 | BSD-3-Clause |
 | `joblib` | 1.6.0 | BSD-3-Clause |
@@ -80,6 +88,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `mdurl` | 0.1.2 | MIT |
 | `ml-dtypes` | 0.6.0 | Apache-2.0 |
 | `mmm-framework` | 1.5.0 | Apache-2.0 |
+| `msgpack` | 1.2.3 | Apache-2.0 |
 | `msgspec` | 0.22.0 | BSD-3-Clause |
 | `multipledispatch` | 1.0.0 | BSD-3-Clause |
 | `narwhals` | 2.27.1 | MIT |
@@ -88,6 +97,19 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `numpy` | 2.4.6 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 |
 | `numpyro` | 0.22.0 | Apache-2.0 |
 | `nutpie` | 0.16.11 | MIT |
+| `nvidia-cublas-cu12` | 12.9.2.10 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cuda-cccl-cu12` | 12.9.27 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cuda-cupti-cu12` | 12.9.79 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cuda-nvcc-cu12` | 12.9.86 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cuda-nvrtc-cu12` | 12.9.86 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cuda-runtime-cu12` | 12.9.79 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cudnn-cu12` | 9.27.0.42 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cufft-cu12` | 11.4.1.4 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cusolver-cu12` | 11.7.5.82 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-cusparse-cu12` | 12.5.10.65 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-nccl-cu12` | 2.32.3 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-nvjitlink-cu12` | 12.9.86 | LicenseRef-NVIDIA-Proprietary |
+| `nvidia-nvshmem-cu12` | 3.8.0 | LicenseRef-NVIDIA-Proprietary |
 | `obstore` | 0.11.1 | MIT |
 | `openpyxl` | 3.1.5 | MIT |
 | `opentelemetry-api` | 1.45.1 | Apache-2.0 |
@@ -100,6 +122,8 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `opentelemetry-semantic-conventions` | 0.66b1 | Apache-2.0 |
 | `opentelemetry-util-http` | 0.66b1 | Apache-2.0 |
 | `opt-einsum` | 3.4.0 | MIT |
+| `optax` | 0.2.8 | Apache-2.0 |
+| `orbax-checkpoint` | 0.12.7 | Apache-2.0 |
 | `packaging` | 26.3 | Apache-2.0 OR BSD-2-Clause |
 | `pandas` | 3.0.6 | BSD-3-Clause |
 | `patsy` | 1.0.3 | BSD-2-Clause |
@@ -110,6 +134,8 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `prettytable` | 3.18.0 | BSD-3-Clause |
 | `procrastinate` | 3.10.0 | MIT |
 | `prometheus-client` | 0.26.0 | Apache-2.0 AND BSD-2-Clause |
+| `protobuf` | 7.36.2 | BSD-3-Clause |
+| `psutil` | 7.2.2 | BSD-3-Clause |
 | `psycopg` | 3.3.6 | LGPL-3.0-only |
 | `psycopg-binary` | 3.3.6 | LGPL-3.0-only |
 | `psycopg-pool` | 3.3.3 | LGPL-3.0-only |
@@ -135,6 +161,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `scikit-learn` | 1.9.1 | BSD-3-Clause |
 | `scipy` | 1.18.1 | BSD-3-Clause |
 | `setuptools` | 84.0.0 | MIT |
+| `simplejson` | 4.2.0 | MIT OR AFL-2.1 |
 | `six` | 1.17.0 | MIT |
 | `skops` | 0.16.0 | MIT |
 | `sqlalchemy` | 2.1.4 | MIT |
@@ -142,8 +169,10 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `starlette` | 1.8.0 | BSD-3-Clause |
 | `statsmodels` | 0.15.0 | BSD-3-Clause |
 | `structlog` | 26.1.0 | MIT OR Apache-2.0 |
+| `tensorstore` | 0.1.85 | Apache-2.0 |
 | `threadpoolctl` | 3.7.0 | BSD-3-Clause |
 | `tqdm` | 4.70.1 | MPL-2.0 AND MIT |
+| `treescope` | 0.1.10 | Apache-2.0 |
 | `typing-extensions` | 4.16.0 | PSF-2.0 |
 | `typing-inspection` | 0.4.4 | MIT |
 | `tzdata` | 2026.5 | Apache-2.0 |
@@ -159,6 +188,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `xarray-einstats` | 0.11.0 | Apache-2.0 |
 | `xgboost` | 3.4.1 | Apache-2.0 |
 | `zarr` | 3.4.1 | MIT |
+| `zipp` | 4.1.1 | MIT |
 
 ## JavaScript packages (244)
 
@@ -412,6 +442,14 @@ Bundled into the web image (`apps/web`, `apps/plot-sandbox`; `pnpm-lock.yaml`).
 | `zustand` | 5.0.15 | MIT |
 
 ## NOTICE files
+
+### aiofiles 25.1.0
+
+<!-- notice: py:aiofiles@25.1.0 -->
+~~~text
+Asyncio support for files
+Copyright 2016 Tin Tvrtkovic
+~~~
 
 ### prometheus-client 0.26.0
 

@@ -227,8 +227,9 @@ async def quota_usage(
                 await s.execute(
                     select(func.coalesce(func.sum(m.Upload.size_bytes), 0)).where(
                         m.Upload.tenant_id == subject_id,
-                        (m.Upload.status == "uploaded")
-                        | ((m.Upload.status == "pending") & (m.Upload.expires_at > now)),
+                        # a pending intent whose PUT expired may hold a file that arrived:
+                        # it counts until the housekeeper retires it (uploaded or expired)
+                        m.Upload.status.in_(("pending", "uploaded")),
                     )
                 )
             ).scalar_one()

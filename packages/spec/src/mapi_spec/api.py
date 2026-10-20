@@ -16,7 +16,8 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
 integrations, v0.4), :data:`M35_ENDPOINTS` (workflows, governance, explorers,
 optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
 :data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
-comparison, experiments and saved views, v0.14) are the machine-readable endpoint tables;
+comparison, experiments and saved views, v0.14) and :data:`V015_ENDPOINTS` (resumable uploads and
+image collections, v0.15) are the machine-readable endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -52,7 +53,16 @@ from mapi_spec._dto import Sha256 as Sha256
 from mapi_spec._dto import TenantId as TenantId
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._dto import new_id
-from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug, StrictModel
+from mapi_spec._types import (
+    Duration,
+    LabelKey,
+    LabelValue,
+    MetricName,
+    Sha256Hex,
+    Slug,
+    StrictModel,
+    unique,
+)
 from mapi_spec.about import (
     About,
     AboutKind,
@@ -80,6 +90,7 @@ from mapi_spec.calibration import (
 )
 from mapi_spec.capabilities import Capabilities, Diagnostic
 from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
 from mapi_spec.endpoints import (
@@ -284,6 +295,7 @@ __all__ = [
     "TOKEN_TENANT_ROUTES",
     "V011_ENDPOINTS",
     "V014_ENDPOINTS",
+    "V015_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -294,6 +306,8 @@ __all__ = [
     "ArtifactLink",
     "AssemblySource",
     "AuditEvent",
+    "BlobMissing",
+    "BlobQuery",
     "CatalogAbout",
     "CatalogResponse",
     "CheckResult",
@@ -535,6 +549,36 @@ _SPEC_ID = "spc_01jaf3b1c2d3e4f5g6h7j8k9m0"
 _MODEL_ID = "mdl_01jaf3c1d2e3f4g5h6j7k8m9n0"
 _UPLOAD_ID = "upl_01jaf3d1e2f3g4h5j6k7m8n9p0"
 _SHA = "sha256:" + "3f" * 32
+_COLLECTION_INFO_EXAMPLE: Final[dict[str, Any]] = {
+    "n_images": 1200,
+    "dim": "image",
+    "var": "pixels",
+    "label": True,
+    "split": True,
+    "classes": [{"label": "bottle", "count": 700}, {"label": "can", "count": 500}],
+    "splits": {"train": 960, "test": 240},
+    "mode": "rgb",
+    "size": [64, 64],
+    "min_size": [48, 48],
+    "max_size": [512, 512],
+    "formats": {"jpeg": 1150, "png": 50},
+    "total_bytes": 52428800,
+    "packs": [
+        {
+            "digest": "5d" * 32,
+            "size": 52430000,
+            "crc32c": "4waSgw==",
+            "md5": "XrY7u+Ae7tCTyyK7j1rNww==",
+            "entries": 1200,
+            "images": 1200,
+            "source": "upload",
+            "input": "part.0000",
+        }
+    ],
+    "new_images": 1200,
+    "reused_images": 0,
+    "manifest_sha256": "7a" * 32,
+}
 _SCHEMA_EXAMPLE: dict[str, Any] = {
     "dims": {
         "market": {"kind": "categorical"},
@@ -703,6 +747,11 @@ class UploadSession(_Response):
     upload: SignedPut
     expires_at: AwareDatetime
     created_at: AwareDatetime
+    received: bool | None = Field(
+        None,
+        description="v0.15 (get_upload, renew_upload): the file arrived in the quarantine bucket",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = _examples(
         {
@@ -736,8 +785,10 @@ class UploadSession(_Response):
 class DatasetVersionCreate(_Request):
     """Turn finished uploads into a new version via a sandboxed ingest run (202).
 
-    Exactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several
-    files combined per node into one version, see :class:`IngestAssembly`).
+    Exactly one of: ``upload_id`` + ``mapping`` (one file), ``assembly`` (M4: several
+    files combined per node into one version, see :class:`IngestAssembly`), or
+    ``collection`` (v0.15: an image collection from a manifest and image parts, see
+    :class:`~mapi_spec.collection.CollectionSource`).
     """
 
     upload_id: Id | None = None
@@ -746,6 +797,11 @@ class DatasetVersionCreate(_Request):
     assembly: IngestAssembly | None = Field(
         None,
         description="M4: several uploads combined into one (tree) version",
+        exclude_if=lambda v: v is None,
+    )
+    collection: CollectionSource | None = Field(
+        None,
+        description="v0.15: an image collection (a manifest upload and image part uploads)",
         exclude_if=lambda v: v is None,
     )
 
@@ -759,23 +815,42 @@ class DatasetVersionCreate(_Request):
             "assembly": IngestAssembly.model_json_schema()["examples"][0],
             "message": "2024 and 2025 cubes plus the instrument",
         },
+        {
+            "collection": {
+                "manifest_upload_id": _UPLOAD_ID,
+                "part_upload_ids": ["upl_01jaf3d1e2f3g4h5j6k7m8n9p1"],
+                "options": {"label_column": "label", "split_column": "split", "size": [64, 64]},
+            },
+            "message": "Product photos, October",
+        },
     )
 
     @model_validator(mode="after")
     def _one_source(self) -> DatasetVersionCreate:
         single = self.upload_id is not None or self.mapping is not None
-        if self.assembly is not None:
-            if single:
-                raise ValueError("give either upload_id and mapping, or assembly - not both")
-        elif self.upload_id is None or self.mapping is None:
-            raise ValueError("give upload_id and mapping (one file), or assembly (several)")
+        given = int(single) + (self.assembly is not None) + (self.collection is not None)
+        if given > 1:
+            raise ValueError(
+                "give one of: upload_id and mapping, assembly, or collection - not several"
+            )
+        if (
+            self.assembly is None
+            and self.collection is None
+            and (self.upload_id is None or self.mapping is None)
+        ):
+            raise ValueError(
+                "give upload_id and mapping (one file), assembly (several) or collection "
+                "(an image collection)"
+            )
         return self
 
     @property
     def upload_ids(self) -> list[str]:
-        """Every upload this version consumes (source order)."""
+        """Every upload this version consumes (source order; a collection: manifest, parts)."""
         if self.assembly is not None:
             return [src.upload_id for src in self.assembly.sources]
+        if self.collection is not None:
+            return self.collection.upload_ids
         return [self.upload_id] if self.upload_id is not None else []
 
 
@@ -808,11 +883,17 @@ class DatasetVersion(_Response):
     layout: DataLayout = Field(
         "dataset",
         description="M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is "
-        "then the root node's schema)",
+        "then the root node's schema). v0.15: 'collection' versions are image collections "
+        "(collection; data_schema has the virtual pixels variable)",
     )
     tree_schema: TreeSchema | None = Field(None, description="M4: the schema of a tree version")
     sources: list[Id] = Field(
         default_factory=list, description="M4: the uploads the version was built from"
+    )
+    collection: CollectionInfo | None = Field(
+        None,
+        description="v0.15: what an image collection version holds (layout 'collection')",
+        exclude_if=lambda v: v is None,
     )
 
     model_config = _examples(
@@ -867,7 +948,56 @@ class DatasetVersion(_Response):
             "created_at": _TS,
             "ready_at": "2026-10-15T09:31:10Z",
         },
+        {
+            "dataset_id": _DS_ID,
+            "tenant_id": "default",
+            "project_id": "default",
+            "version": 5,
+            "ref": "dataset://default/product_photos@v5",
+            "status": "ready",
+            "sha256": _SHA,
+            "size_bytes": 52428800,
+            "layout": "collection",
+            "collection": _COLLECTION_INFO_EXAMPLE,
+            "sources": [_UPLOAD_ID, "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"],
+            "ingest_run_id": _RUN_ID,
+            "issues": [],
+            "created_at": _TS,
+            "ready_at": "2026-10-15T09:40:10Z",
+        },
     )
+
+
+class BlobQuery(_Request):
+    """Which images (by sha256) a collection version of the dataset does not hold (v0.15).
+
+    ``base_version``: ``None`` compares with the latest READY collection version; ``0``
+    compares with nothing (every image is missing).
+    """
+
+    sha256: list[Sha256Hex] = Field(..., min_length=1, max_length=MAX_BLOB_QUERY)
+    base_version: int | None = Field(None, ge=0)
+
+    model_config = _examples({"sha256": ["ab" * 32, "cd" * 32], "base_version": None})
+
+    @field_validator("sha256")
+    @classmethod
+    def _unique(cls, v: list[str]) -> list[str]:
+        if dups := unique(v):
+            raise ValueError(f"sha256 values must be unique: {dups[:5]}")
+        return v
+
+
+class BlobMissing(_Response):
+    """The answer to :class:`BlobQuery` (v0.15). Upload only the ``missing`` images."""
+
+    base_version: int | None = Field(
+        ..., description="The version compared with (none: no base, every image is missing)"
+    )
+    missing: list[Sha256Hex] = Field(..., description="Missing digests, in query order")
+    present: int = Field(..., ge=0)
+
+    model_config = _examples({"base_version": 4, "missing": ["cd" * 32], "present": 1})
 
 
 # ========================================================================================= specs
@@ -4277,14 +4407,35 @@ V014_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The v0.14 endpoint table (media, comparison, experiments, saved views; part of
 :data:`ENDPOINTS`)."""
 
+_UPLOAD = "/v1/datasets/{dataset_id}/uploads/{upload_id}"
+V015_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl(
+        "GET", _UPLOAD, "get_upload",
+        "An upload and whether its file arrived (resume an upload)", "UploadSession", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _UPLOAD + "/renew", "renew_upload",
+        "Sign a fresh PUT URL for an upload whose file did not arrive", "UploadSession", 200,
+        errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/datasets/{dataset_id}/blobs/missing", "find_missing_images",
+        "Which images (by sha256) a collection version does not hold", "BlobMissing", 200,
+        request="BlobQuery", errors=(*_BODY, *_NF, _E.CONFLICT), headers=_PH,
+    ),
+)  # fmt: skip
+"""The v0.15 endpoint table (resumable uploads, image collections; part of
+:data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
 ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
-    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS + V014_ENDPOINTS
+    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS + V014_ENDPOINTS + V015_ENDPOINTS
 )
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14); the server serves
-every row."""
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15); the server
+serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -4426,6 +4577,15 @@ _V014_ACCESS: Final[dict[str, RouteAccess]] = {
 }
 """Access rules of :data:`V014_ENDPOINTS`: experiments, saved views and media use the run
 permissions (reads: ``read`` on ``run``; writes: ``update`` on ``run``)."""
+
+_V015_ACCESS: Final[dict[str, RouteAccess]] = {
+    # an upload carries its signed PUT URL, which lets the holder write the file
+    "get_upload": _p(_RK.DATASET, _AC.UPDATE),
+    "renew_upload": _p(_RK.DATASET, _AC.UPDATE),
+    "find_missing_images": _p(_RK.DATASET, _AC.READ),
+}
+"""Access rules of :data:`V015_ENDPOINTS`: ``find_missing_images`` as ``get_dataset``;
+``get_upload`` and ``renew_upload`` as ``create_upload`` (both return a signed PUT URL)."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
@@ -4583,6 +4743,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_V011_ACCESS,
     # v0.14 media, comparison, experiments, saved views
     **_V014_ACCESS,
+    # v0.15 resumable uploads, image collections
+    **_V015_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).

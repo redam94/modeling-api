@@ -63,6 +63,10 @@ _VERSIONED = (
     "catboost",
     "pillow",
     "mmm-framework",
+    "jax",
+    "jaxlib",
+    "flax",
+    "optax",
 )
 
 
