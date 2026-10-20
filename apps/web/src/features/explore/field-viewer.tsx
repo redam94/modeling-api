@@ -5,6 +5,10 @@
  * the draws one after the other (hypothetical outcome plots), arrows for vector fields, a
  * colour bar and a readout of the cell under the pointer (or under the keyboard cursor: focus
  * the map and use the arrow keys). Strings in the view come from the user's model: text only.
+ *
+ * v0.10, `mode="data"` (the Data Explorer's `images` section): the raster is the data itself,
+ * so there is one statistic ("Value") and no draws; an optional mask is shaded over the image,
+ * and a strip of the per-frame statistics follows the frame slider (and picks a frame).
  */
 import { Pause, Play } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
@@ -12,9 +16,9 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type P
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { availableStats, cellAt, colorTicks, displayRange, frameValues, gradientCss, paint, rasterRange, type ColorScale, type FieldStat } from "./fields";
+import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, ROBUST_FACTOR, robustRange, type ColorScale, type FieldStat } from "./fields";
 import { num } from "./ui";
-import type { FieldArrows, FieldEntry } from "./views";
+import type { FieldArrows, FieldEntry, FieldRaster, FrameStats } from "./views";
 
 export const STAT_LABEL: Record<FieldStat, string> = {
   mean: "Mean",
@@ -35,6 +39,11 @@ const STAT_HINT: Record<FieldStat, string> = {
 };
 
 const PLAY_MS = 450;
+
+/** What the viewer shows: posterior statistics of a model output, or the values of the data. */
+export type FieldViewerMode = "model" | "data";
+
+const DATA_HINT = "The value of each cell in the data.";
 
 function label(v: string | number | boolean | null | undefined): string {
   return v === null || v === undefined ? "—" : String(v);
@@ -86,7 +95,7 @@ function Arrows({ arrows, width, height, origin }: { arrows: FieldArrows; width:
   );
 }
 
-function ColorBar({ scale, units, title }: { scale: ColorScale; units?: string | null | undefined; title: string }) {
+function ColorBar({ scale, units, title, clipped = null }: { scale: ColorScale; units?: string | null | undefined; title: string; clipped?: string | null }) {
   const ticks = colorTicks(scale);
   return (
     <figure className="grid gap-1" aria-label={`Colour scale: ${title}`}>
@@ -100,22 +109,100 @@ function ColorBar({ scale, units, title }: { scale: ColorScale; units?: string |
         {title}
         {units ? ` (${units})` : ""}
         {scale.log ? ", log scale" : ""}
+        {clipped ? `. The colours cover 98% of ${clipped}. Lower and higher values show the colours at the two ends.` : ""}
       </figcaption>
     </figure>
   );
 }
 
+/**
+ * The per-frame statistics as a small strip (mean, with the min–max band), with a marker at
+ * the frame shown. A click picks the shown frame nearest to that position. Numbers only.
+ */
+function FrameStrip({ stats, at, frameDim, shownLabels, onPick }: { stats: FrameStats; at: number; frameDim: string; shownLabels: readonly unknown[]; onPick: (frame: number) => void }) {
+  const n = stats.coords.length;
+  const W = 400;
+  const H = 48;
+  const vals = [...stats.mean, ...(stats.min ?? []), ...(stats.max ?? [])].filter((v): v is number => v !== null && Number.isFinite(v));
+  if (n < 2 || !vals.length) return null;
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const x = (i: number) => (i / (n - 1)) * W;
+  const y = (v: number) => (hi > lo ? H - 2 - ((v - lo) / (hi - lo)) * (H - 4) : H / 2);
+  const line = (arr: readonly (number | null)[] | undefined) =>
+    (arr ?? [])
+      .map((v, i) => (v !== null && Number.isFinite(v) ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null))
+      .filter((p) => p !== null)
+      .join(" ");
+  const band =
+    stats.min && stats.max
+      ? [...stats.max.map((v, i) => (v !== null ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null)), ...stats.min.map((v, i) => (v !== null ? `${x(i).toFixed(1)},${y(v).toFixed(1)}` : null)).reverse()].filter((p) => p !== null).join(" ")
+      : "";
+  const shownIdx = shownLabels.map((l) => frameStatIndex(stats.coords, l));
+  const pick = (frac: number) => {
+    const target = frac * (n - 1);
+    let best = 0;
+    let dist = Infinity;
+    shownIdx.forEach((i, f) => {
+      const d = Math.abs((i >= 0 ? i : (f / Math.max(1, shownIdx.length - 1)) * (n - 1)) - target);
+      if (d < dist) {
+        dist = d;
+        best = f;
+      }
+    });
+    onPick(best);
+  };
+  return (
+    <figure className="grid gap-1" data-testid="frame-strip">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="h-12 w-full cursor-pointer rounded-sm border bg-muted/30"
+        role="img"
+        aria-label={`The mean of every ${frameDim} (${n}), with the minimum and maximum`}
+        onClick={(e) => {
+          const box = e.currentTarget.getBoundingClientRect();
+          if (box.width) pick((e.clientX - box.left) / box.width);
+        }}
+      >
+        {band ? <polygon points={band} className="fill-primary/15" /> : null}
+        <polyline points={line(stats.mean)} fill="none" className="stroke-primary" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        {at >= 0 ? <line x1={x(at)} x2={x(at)} y1={0} y2={H} className="stroke-foreground" strokeWidth={1.5} vectorEffect="non-scaling-stroke" data-testid="frame-strip-marker" /> : null}
+      </svg>
+      <figcaption className="text-[11px] text-muted-foreground">
+        Mean of each {frameDim} ({num(n)}{stats.downsampled ? ", thinned" : ""}), with the range from the minimum to the maximum. Click to go to a {frameDim}.
+      </figcaption>
+    </figure>
+  );
+}
+
+export interface FieldViewerProps {
+  field: FieldEntry;
+  /** `data`: the Data Explorer's images (one statistic, "Value"). Default `model`. */
+  mode?: FieldViewerMode;
+  /** Data mode: a 0/1 raster of the same size; the cells at 0 are shaded. */
+  mask?: FieldRaster | null | undefined;
+  /** Data mode: the name of the mask variable. */
+  maskLabel?: string | null | undefined;
+  /** Data mode: the statistics of every frame, drawn as a strip that follows the slider. */
+  frameStats?: FrameStats | null | undefined;
+}
+
 /** One field: the canvas, its controls, the colour bar and the cell readout. */
-export function FieldViewer({ field }: { field: FieldEntry }) {
+export function FieldViewer({ field, mode = "model", mask = null, maskLabel = null, frameStats = null }: FieldViewerProps) {
   const ids = useId();
-  const stats = useMemo(() => availableStats(field), [field]);
+  const data = mode === "data";
+  const stats = useMemo((): FieldStat[] => (data ? ["mean"] : availableStats(field)), [field, data]);
   const [stat, setStat] = useState<FieldStat>("mean");
   const [frame, setFrame] = useState(0);
   const [draw, setDraw] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [arrowsOn, setArrowsOn] = useState(true);
   const [cell, setCell] = useState<{ row: number; col: number } | null>(null);
+  const [maskOn, setMaskOn] = useState(true);
+  const [fullRange, setFullRange] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const maskCanvas = useRef<HTMLCanvasElement>(null);
 
   const { width, height } = field;
   const frames = field.frames;
@@ -138,7 +225,7 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
   const shown = values(frame, current, draw);
 
   // One colour scale per statistic group, shared by every frame and draw.
-  const scale = useMemo((): ColorScale | null => {
+  const fullScale = useMemo((): ColorScale | null => {
     if (current === "ratio") {
       const r = displayRange([frameValues(field, fr, "ratio")], false, colormap);
       return r ? { lo: r[0], hi: r[1], log: false, colormap } : null;
@@ -151,6 +238,17 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
     const r = rasterRange(group, enc, log, colormap);
     return r ? { lo: r[0], hi: r[1], log, colormap } : null;
   }, [current, field, fr, frames, enc, log, colormap]);
+  // The 1% to 99% range of the means of every frame when the full range is much wider: in
+  // data mode a few bright cells, in model mode the tails of the quantiles and draws (a
+  // log-scale intensity whose draws reach 1e-12 and 1e2 while the means sit near 1e-2). The
+  // mean, quantiles and draws keep sharing it; a check box shows the full range.
+  const robust = useMemo((): ColorScale | null => {
+    if (!fullScale || current === "sd" || current === "ratio") return null;
+    const r = robustRange(frames.map((f) => frameValues(field, f, "mean")), log, colormap);
+    if (!r || fullScale.hi - fullScale.lo <= ROBUST_FACTOR * (r[1] - r[0])) return null;
+    return { ...fullScale, lo: r[0], hi: r[1] };
+  }, [current, fullScale, frames, field, log, colormap]);
+  const scale = robust && !fullRange ? robust : fullScale;
 
   useEffect(() => {
     const el = canvas.current;
@@ -160,6 +258,20 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
     if (!shown || !scale) return;
     ctx.putImageData(new ImageData(paint(shown, width, height, scale, origin), width, height), 0, 0);
   }, [shown, scale, width, height, origin]);
+
+  // Data mode: the mask, decoded once (only when it has the image's size).
+  const maskValues = useMemo(() => {
+    if (!data || !mask) return null;
+    const m = decodeRaster(mask);
+    return m.length === width * height ? m : null;
+  }, [data, mask, width, height]);
+  useEffect(() => {
+    const el = maskCanvas.current;
+    const ctx = el?.getContext("2d");
+    if (!el || !ctx) return;
+    ctx.clearRect(0, 0, width, height);
+    if (maskValues && maskOn) ctx.putImageData(new ImageData(paintMask(maskValues, width, height, origin), width, height), 0, 0);
+  }, [maskValues, maskOn, width, height, origin]);
 
   useEffect(() => {
     if (!playing || current !== "draw" || nDraws < 2) return;
@@ -188,12 +300,15 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
   const read = (s: FieldStat, d = 0) => (at >= 0 ? (values(frame, s, d)?.[at] ?? NaN) : NaN);
   const frameDim = field.frame_dim ?? "frame";
   const vector = field.kind === "vector";
-  const title = `${STAT_LABEL[current]}${current === "draw" ? ` ${draw + 1}` : ""} of ${vector ? `the size of ${field.output}` : field.output}`;
+  const statLabel = data ? "Value" : STAT_LABEL[current];
+  const title = `${statLabel}${current === "draw" ? ` ${draw + 1}` : ""} of ${vector ? `the size of ${field.output}` : field.output}`;
+  const statAt = frameStats ? frameStatIndex(frameStats.coords, fr.label) : -1;
   const cursorY = cell ? (origin === "lower" ? height - 1 - cell.row : cell.row) : 0;
 
   return (
     <div className="grid gap-4" data-testid="field-viewer">
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+        {data ? null : (
         <div className="grid gap-1">
           <span className="text-xs font-medium text-muted-foreground" id={`${ids}-stat`}>
             Statistic
@@ -217,10 +332,23 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
             ))}
           </div>
         </div>
+        )}
         {vector ? (
           <label className="flex items-center gap-2 pb-1 text-[13px]">
             <input type="checkbox" className="accent-primary" checked={arrowsOn} onChange={(e) => setArrowsOn(e.target.checked)} />
             Show the arrows
+          </label>
+        ) : null}
+        {robust ? (
+          <label className="flex items-center gap-2 pb-1 text-[13px]">
+            <input type="checkbox" className="accent-primary" checked={fullRange} onChange={(e) => setFullRange(e.target.checked)} />
+            Colours for the full range
+          </label>
+        ) : null}
+        {maskValues ? (
+          <label className="flex items-center gap-2 pb-1 text-[13px]">
+            <input type="checkbox" className="accent-primary" checked={maskOn} onChange={(e) => setMaskOn(e.target.checked)} />
+            Shade the cells outside the mask{maskLabel ? ` (${maskLabel})` : ""}
           </label>
         ) : null}
       </div>
@@ -241,6 +369,7 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
             aria-valuetext={`${frameDim} ${label(fr.label)}`}
             className="w-full accent-primary"
           />
+          {frameStats ? <FrameStrip stats={frameStats} at={statAt} frameDim={frameDim} shownLabels={frames.map((f) => f.label)} onPick={setFrame} /> : null}
         </div>
       ) : null}
 
@@ -285,6 +414,7 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
             onKeyDown={onKey}
           >
             <canvas ref={canvas} width={width} height={height} className="size-full" style={{ imageRendering: "pixelated" }} />
+            {maskValues ? <canvas ref={maskCanvas} width={width} height={height} className="pointer-events-none absolute inset-0 size-full" style={{ imageRendering: "pixelated" }} aria-hidden data-testid="field-mask" /> : null}
             {vector && arrowsOn && fr.arrows ? <Arrows arrows={fr.arrows} width={width} height={height} origin={origin} /> : null}
             {cell ? (
               <svg className="pointer-events-none absolute inset-0 size-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
@@ -293,7 +423,7 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
               </svg>
             ) : null}
           </div>
-          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
+          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust ? (data ? "the values" : "the posterior means") : null} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
         </div>
         <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-[13px]" aria-live="polite" data-testid="field-readout">
           {cell ? (
@@ -302,8 +432,14 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
               <dd className="tabular">{label(field.y_coords[cell.row])}</dd>
               <dt className="text-muted-foreground">{field.x_dim}</dt>
               <dd className="tabular">{label(field.x_coords[cell.col])}</dd>
-              <dt className="text-muted-foreground">Mean</dt>
+              <dt className="text-muted-foreground">{data ? "Value" : "Mean"}</dt>
               <dd className="tabular">{num(read("mean"))}</dd>
+              {maskValues ? (
+                <>
+                  <dt className="text-muted-foreground">{maskLabel ?? "Mask"}</dt>
+                  <dd>{maskWord(maskValues[at] ?? NaN)}</dd>
+                </>
+              ) : null}
               {fr.sd ? (
                 <>
                   <dt className="text-muted-foreground">Std. dev.</dt>
@@ -336,7 +472,7 @@ export function FieldViewer({ field }: { field: FieldEntry }) {
           )}
         </dl>
       </div>
-      <p className="text-xs text-muted-foreground">{STAT_HINT[current]}</p>
+      <p className="text-xs text-muted-foreground">{data ? DATA_HINT : STAT_HINT[current]}</p>
     </div>
   );
 }

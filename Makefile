@@ -300,12 +300,13 @@ docs-screenshots-tutorials: ## Recapture the v0.4 tutorial screenshots (Sheets c
 	MAPI_EMBED_VIEW=.local/embed-view.json node scripts/docs_screenshots_tutorials.mjs .local/screenshots-tutorials
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-tutorials docs/assets/screenshots --max-kb 150 --only $(DOCS_TUTORIAL_SHOTS)
 
-DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize
+DOCS_EXPLORER_SCI_SHOTS := explorer-sci-profiles,explorer-sci-points,explorer-sci-nav
+DOCS_EXPLORER_SHOTS := explorer-chooser,explorer-about-card,explorer-data-overview-guided,explorer-data-stationarity,explorer-data-stl,explorer-model-summary,explorer-model-params,explorer-model-residuals,explorer-model-irf,explorer-model-governance,explorer-model-compare,explorer-optimize,$(DOCS_EXPLORER_SCI_SHOTS)
 
 .PHONY: docs-screenshots-explorers
-docs-screenshots-explorers: ## Recapture the v0.5 explorer, About-card, chooser and optimisation screenshots from mock mode (Playwright)
+docs-screenshots-explorers: ## Recapture the explorer (also on scientific data), About-card, chooser and optimisation screenshots from mock mode (Playwright)
 	MAPI_EXPLORER_SCREENSHOTS=1 MAPI_SMOKE_WEB_PORT=$${MAPI_SMOKE_WEB_PORT:-15173} MAPI_SMOKE_PLOTS_PORT=$${MAPI_SMOKE_PLOTS_PORT:-15174} \
-		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts
+		$(PNPM) --filter @mapi/web exec playwright test e2e/explorer-screenshots.spec.ts e2e/science-explorer-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-explorers docs/assets/screenshots --max-kb 150 --only $(DOCS_EXPLORER_SHOTS)
 
 DOCS_WORKFLOW_SHOTS := workflows-gallery,workflows-editor,workflows-run-monitor,workflows-node-drawer,workflows-decisions,workflows-schedule,workflows-recipe,governance-policies,governance-policy,governance-policy-editor,governance-review-queue,governance-validation,governance-evidence
@@ -316,10 +317,11 @@ docs-screenshots-workflows: ## Recapture the v0.5 workflow and governance screen
 		$(PNPM) --filter @mapi/web exec playwright test e2e/workflow-screenshots.spec.ts
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-workflows docs/assets/screenshots --max-kb 150 --only $(DOCS_WORKFLOW_SHOTS)
 
-DOCS_SCIENCE_SHOTS := science-upload-preview,science-spec-editor,science-run-progress,science-fields-heat-plate,science-area-map,science-network-graph,science-recipe-monitor,science-recipe-report
+DOCS_SCIENCE_EXPLORER_SHOTS := science-explorer-map,science-explorer-network,science-explorer-images,science-explorer-tree,science-explorer-circular
+DOCS_SCIENCE_SHOTS := science-upload-preview,science-spec-editor,science-run-progress,science-fields-heat-plate,science-area-map,science-network-graph,science-recipe-monitor,science-recipe-report,$(DOCS_SCIENCE_EXPLORER_SHOTS)
 
 .PHONY: docs-screenshots-science
-docs-screenshots-science: ## Recapture the science tutorial screenshots (E18, E51, E21 and a recipe) from a dev stack (see the script)
+docs-screenshots-science: ## Recapture the science tutorial screenshots (E18, E51, E21 and a recipe) and the Data Explorer on the raw exports from a dev stack (see the script)
 	node scripts/docs_screenshots_science.mjs .local/screenshots-science
 	$(UV) run python scripts/optimise_screenshots.py .local/screenshots-science docs/assets/screenshots --max-kb 150 --only $(DOCS_SCIENCE_SHOTS)
 

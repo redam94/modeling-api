@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Final
 
 import numpy as np
+from mapi_sdk.metrics import mase_scale
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.stattests import StatTestResult
 from mapi_workflows.payloads import (
@@ -32,7 +33,6 @@ from mapi_workflows.runtime.models import (
     FoldForecast,
     candidate,
     cells_of,
-    mase_scale,
     model_residuals,
     plan_dim,
     plan_fold_list,

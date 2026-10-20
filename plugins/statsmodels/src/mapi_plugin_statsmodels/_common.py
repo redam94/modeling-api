@@ -34,6 +34,7 @@ from scipy import stats
 
 __all__ = [
     "DEFAULT_QUANTILES",
+    "NOT_A_PART",
     "PARAM",
     "QUANTILE",
     "TARGET",
@@ -60,6 +61,8 @@ QUANTILE: Final = "quantile"
 PARAM: Final = "param"
 TEST: Final = "test"
 RESERVED_DIMS: Final = frozenset({TIME, VARIABLE, QUANTILE, PARAM, TEST, "chain", "draw"})
+NOT_A_PART: Final = {"decomposition": "exclude"}
+"""Attrs of a ``components`` var that is not an additive part of the series (a slope)."""
 
 DEFAULT_QUANTILES: Final[tuple[float, ...]] = (0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975)
 """Prediction-interval quantiles: 50%, 80%, 90% and 95% bands around the median."""
@@ -403,6 +406,7 @@ def stack_cells(
     for v in merged.data_vars:
         dims = lead + [d for d in merged[v].dims if d not in lead]
         out[v] = merged[v].transpose(*dims)
+        out[v].attrs = next((dict(ds[v].attrs) for ds in datasets if v in ds), {})
     result = xr.Dataset(out, coords=merged.coords)
     result.attrs = dict(datasets[0].attrs)
     return result

@@ -30,8 +30,8 @@ generic implementation is the fallback.
 
 from __future__ import annotations
 
-import base64
 import itertools
+import json
 import math
 import warnings
 from collections.abc import Callable, Sequence
@@ -40,37 +40,24 @@ from typing import Any, Final
 
 import numpy as np
 import xarray as xr
-from mapi_sdk.bundle import Bundle
+from mapi_sdk.bundle import Bundle, ElpdDetail
 from mapi_sdk.harness import score_bundle
-from mapi_sdk.metrics import point_estimate
+from mapi_sdk.metrics import mase_scale, point_estimate
 from mapi_sdk.registry import Registry
 from mapi_spec.calibration import FanChart
-from mapi_spec.capabilities import OutputDecl, Representation
 from mapi_spec.errors import MapiError
 from mapi_spec.explore import ModelExploreRequest
 from mapi_spec.spec import ScoreRequest
 from mapi_spec.splitplan import ExpandingWindowPlan, RollingOriginPlan, plan_folds
 from mapi_spec.stattests import StatTestResult
 from mapi_spec.views import (
-    FIELD_LEVELS,
-    FIELD_NAN,
     MAX_EXPLORE_POINTS,
     MAX_EXPLORE_SERIES,
-    MAX_FIELD_ARROWS,
-    MAX_FIELD_CELLS,
-    MAX_FIELD_DRAWS,
-    MAX_FIELD_FRAMES,
-    MAX_FIELD_PIXELS,
-    MAX_FIELDS,
     BacktestFoldResult,
     BacktestView,
     ComparisonView,
     DecompositionView,
     FevdView,
-    FieldArrows,
-    FieldEntry,
-    FieldFrame,
-    FieldRaster,
     FieldsView,
     FitVsActualView,
     ForecastView,
@@ -89,6 +76,7 @@ from pydantic import BaseModel
 
 from mapi_runner.worker import stats
 from mapi_runner.worker.explore_data import SectionSkipped, explore_period, jsonable
+from mapi_runner.worker.fieldview import fields_view
 from mapi_runner.worker.modelview import (
     Prediction,
     bundle_kind,
@@ -100,6 +88,7 @@ from mapi_runner.worker.modelview import (
     target_vars,
     time_dim_of,
 )
+from mapi_runner.worker.rasters import block_mean, encode_raster  # noqa: F401  (re-exported)
 from mapi_runner.worker.refit import Refitter
 
 __all__ = [
@@ -107,6 +96,7 @@ __all__ = [
     "FIT_SECTIONS",
     "MODEL_SECTION_FUNCS",
     "ModelContext",
+    "comparison_plots",
     "error_metrics",
 ]
 
@@ -126,6 +116,7 @@ once more, and only for models that declare a ``grid`` output)."""
 ERROR_METRICS: Final = ("rmse", "mae", "mape", "smape", "wape", "mase", "crps")
 """Metrics where lower is better (rankings sort them ascending)."""
 MAX_BACKTEST_FOLDS: Final = 10
+_MAX_PLOT_BYTES: Final = 2_000_000
 
 
 def _fv(x: Any) -> float | None:
@@ -562,65 +553,6 @@ def fevd(c: ModelContext) -> FevdView:
 
 # ------------------------------------------------------------------------------- fields
 
-MAX_FIELD_SAMPLES: Final = 400
-"""Posterior draws behind the field statistics (more are thinned evenly)."""
-_STAT_RASTERS: Final = 4  # mean, sd, q05, q95
-
-
-def encode_raster(values: np.ndarray, encoding: str = "linear") -> FieldRaster:
-    """A 2-D array as a :class:`~mapi_spec.views.FieldRaster` (uint16 codes over [lo, hi])."""
-    x = np.asarray(values, dtype=float)
-    if encoding == "log10":
-        pos = np.isfinite(x) & (x > 0)
-        x = np.where(pos, np.log10(np.where(pos, x, 1.0)), np.nan)
-    ok = np.isfinite(x)
-    codes = np.full(x.shape, FIELD_NAN, dtype="<u2")
-    lo = hi = None
-    if ok.any():
-        lo, hi = float(x[ok].min()), float(x[ok].max())
-        span = hi - lo
-        if span > 0 and math.isfinite(span):
-            q = np.rint((x[ok] - lo) / span * FIELD_LEVELS)
-            codes[ok] = np.clip(q, 0, FIELD_LEVELS).astype("<u2")
-        else:
-            codes[ok] = 0
-    return FieldRaster(lo=lo, hi=hi, data=base64.b64encode(codes.tobytes()).decode("ascii"))
-
-
-def block_mean(a: np.ndarray, fy: int, fx: int) -> np.ndarray:
-    """Mean over ``fy`` x ``fx`` blocks of the last two axes (NaN-aware; edge blocks are
-    partial)."""
-    if fy <= 1 and fx <= 1:
-        return np.asarray(a, dtype=float)
-    h, w = a.shape[-2:]
-    ny, nx = -(-h // fy), -(-w // fx)
-    pad = [(0, 0)] * (a.ndim - 2) + [(0, ny * fy - h), (0, nx * fx - w)]
-    p = np.pad(np.asarray(a, dtype=float), pad, constant_values=np.nan)
-    p = p.reshape(*a.shape[:-2], ny, fy, nx, fx)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        return np.asarray(np.nanmean(p, axis=(-3, -1)))
-
-
-def _block_labels(labels: list[Any], f: int) -> list[Any]:
-    n = len(labels)
-    return [labels[min(i + f // 2, n - 1)] for i in range(0, n, f)]
-
-
-def _even(n: int, k: int) -> list[int]:
-    if n <= k:
-        return list(range(n))
-    return sorted({int(i) for i in np.linspace(0, n - 1, k).round()})
-
-
-def _field_dim(c: ModelContext, da: xr.DataArray, name: str | None) -> str | None:
-    if name is None:
-        return None
-    if name in da.dims:
-        return name
-    alias = c.bundle.binding.to_dataset(name)
-    return alias if alias in da.dims else None
-
 
 def _field_source(c: ModelContext, name: str) -> xr.DataArray | None:
     """A grid output from the in-sample score, else from a bundle group (a posterior)."""
@@ -636,224 +568,8 @@ def _field_source(c: ModelContext, name: str) -> xr.DataArray | None:
     return None
 
 
-@dataclass
-class _Grid:
-    """One field to encode: its data as ``(sample?, frame, component, y, x)``."""
-
-    output: str
-    decl: OutputDecl
-    facet: dict[str, Any]
-    values: np.ndarray  # (S, F, C, H, W): S = 1 for point-like statistics
-    stats: dict[str, np.ndarray] | None  # non-draw representations: stat -> (F, C, H, W)
-    y: str
-    x: str
-    frame: str | None
-    component: str | None
-    y_labels: list[Any]
-    x_labels: list[Any]
-    frame_labels: list[Any]
-
-
-def _grids(c: ModelContext) -> tuple[list[_Grid], list[str]]:
-    man = c.bundle.model.manifest
-    rep = man.capabilities.representation
-    decls = {n: d for n, d in man.outputs.items() if d.grid is not None}
-    if not decls:
-        raise SectionSkipped("this model has no outputs on a 2-D grid (images, maps or fields)")
-    out: list[_Grid] = []
-    omitted: list[str] = []
-    for name, decl in decls.items():
-        g = decl.grid
-        assert g is not None
-        da = _field_source(c, name)
-        if da is None or not np.issubdtype(da.dtype, np.number):
-            omitted.append(name)
-            continue
-        y, x = _field_dim(c, da, g.y), _field_dim(c, da, g.x)
-        frame, comp = _field_dim(c, da, g.frame), _field_dim(c, da, g.component)
-        if y is None or x is None or (g.component is not None and comp is None):
-            omitted.append(name)
-            continue
-        if comp is not None and da.sizes[comp] != 2:
-            omitted.append(name)
-            continue
-        draws = "chain" in da.dims and "draw" in da.dims
-        rep_dims = {"chain", "draw"} if draws else {"quantile", "bound", "moment"} & set(da.dims)
-        grid_dims = [d for d in (frame, comp, y, x) if d is not None]
-        other = [str(d) for d in da.dims if d not in grid_dims and d not in rep_dims]
-        levels = [_coords(da, d) for d in other]
-        for idx in itertools.product(*[range(len(lv)) for lv in levels]):
-            if len(out) >= MAX_FIELDS:
-                omitted.append(name if not other else f"{name}[{idx}]")
-                break
-            facet = {d: lv[i] for d, lv, i in zip(other, levels, idx, strict=True)}
-            sub = da.isel(dict(zip(other, idx, strict=True))) if other else da
-            if frame is None:
-                sub = sub.expand_dims("__frame")
-            if comp is None:
-                sub = sub.expand_dims("__comp")
-            f_dim, c_dim = frame or "__frame", comp or "__comp"
-            stats: dict[str, np.ndarray] | None = None
-            if draws:
-                s = sub.stack(__sample=("chain", "draw"))
-                vals = np.asarray(s.transpose("__sample", f_dim, c_dim, y, x).values, float)
-                vals = vals[_even(vals.shape[0], MAX_FIELD_SAMPLES)]
-            else:
-                order = (f_dim, c_dim, y, x)
-                mean = point_estimate(sub, rep).transpose(*order)
-                vals = np.asarray(mean.values, dtype=float)[None]
-                stats = {}
-                if comp is None and rep is not Representation.POINT:
-                    from mapi_runner.worker.modelview import _band
-
-                    band = _band(sub, rep, 0.9)
-                    if band is not None:
-                        stats["q05"] = np.asarray(band[0].transpose(*order).values, float)
-                        stats["q95"] = np.asarray(band[1].transpose(*order).values, float)
-                    if rep is Representation.MOMENTS:
-                        sd = sub.sel(moment="sd", drop=True).transpose(*order)
-                        stats["sd"] = np.asarray(sd.values, dtype=float)
-                    elif "q05" in stats:  # a normal approximation of the spread
-                        stats["sd"] = (stats["q95"] - stats["q05"]) / (2 * 1.6448536269514722)
-            out.append(
-                _Grid(
-                    output=name,
-                    decl=decl,
-                    facet=facet,
-                    values=vals,
-                    stats=stats,
-                    y=y,
-                    x=x,
-                    frame=frame,
-                    component=comp,
-                    y_labels=_coords(da, y),
-                    x_labels=_coords(da, x),
-                    frame_labels=_coords(da, frame) if frame is not None else [None],
-                )
-            )
-    return out, omitted
-
-
-def _plan(g: _Grid, budget: int) -> tuple[int, int, list[int], int]:
-    """Block factor, number of draw rasters and frames that fit ``budget`` cells."""
-    h, w = g.values.shape[-2:]
-    frames = _even(len(g.frame_labels), MAX_FIELD_FRAMES)
-    f = max(1, -(-max(h, w) // MAX_FIELD_PIXELS))
-    if g.stats is None:
-        n_stats, max_draws = _STAT_RASTERS, min(MAX_FIELD_DRAWS, g.values.shape[0])
-    else:
-        n_stats, max_draws = 1 + len(g.stats), 0
-    while True:
-        cells = -(-h // f) * -(-w // f) * len(frames)
-        spare = budget // cells - n_stats if cells else 0
-        if spare >= 0:
-            return f, max(0, min(max_draws, spare)), frames, len(g.frame_labels) - len(frames)
-        f += 1
-
-
-def _arrows(mean: np.ndarray) -> FieldArrows:
-    """Arrows of the mean components ``(2, h, w)`` on a grid of at most MAX_FIELD_ARROWS."""
-    h, w = mean.shape[-2:]
-    a = max(1, -(-max(h, w) // MAX_FIELD_ARROWS))
-    coarse = block_mean(mean, a, a)
-
-    def centres(n: int) -> list[float]:
-        return [(i + min(i + a, n) - 1) / 2 for i in range(0, n, a)]
-
-    return FieldArrows(
-        x=centres(w),
-        y=centres(h),
-        u=[[_fv(v) for v in row] for row in coarse[0]],
-        v=[[_fv(v) for v in row] for row in coarse[1]],
-    )
-
-
-def _entry(g: _Grid, budget: int) -> FieldEntry:
-    decl, grid = g.decl, g.decl.grid
-    assert grid is not None
-    f, n_draws, frames, omitted = _plan(g, budget)
-    enc = "log10" if grid.log else "linear"
-    vector = g.component is not None
-    s_total = g.values.shape[0]
-    picks = _even(s_total, n_draws) if g.stats is None and n_draws else []
-    out: list[FieldFrame] = []
-    for i in frames:
-        comps = block_mean(g.values[:, i], f, f)  # (S, C, h, w)
-        mag = np.sqrt(np.sum(comps**2, axis=1)) if vector else comps[:, 0]  # (S, h, w)
-        sd: FieldRaster | None
-        q05: FieldRaster | None
-        q95: FieldRaster | None
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            mean = np.nanmean(mag, axis=0)
-            if g.stats is None and s_total > 1:
-                sd = encode_raster(np.nanstd(mag, axis=0, ddof=1), enc)
-                q = np.nanquantile(mag, [0.05, 0.95], axis=0)
-                q05, q95 = encode_raster(q[0], enc), encode_raster(q[1], enc)
-            elif g.stats is not None:
-                st = {k: block_mean(v[i, 0], f, f) for k, v in g.stats.items()}
-                sd = encode_raster(st["sd"], enc) if "sd" in st else None
-                q05 = encode_raster(st["q05"], enc) if "q05" in st else None
-                q95 = encode_raster(st["q95"], enc) if "q95" in st else None
-            else:
-                sd = q05 = q95 = None
-        out.append(
-            FieldFrame(
-                label=jsonable(g.frame_labels[i]) if g.frame is not None else None,
-                mean=encode_raster(mean, enc),
-                sd=sd,
-                q05=q05,
-                q95=q95,
-                draws=[encode_raster(mag[k], enc) for k in picks],
-                arrows=_arrows(np.nanmean(comps, axis=0)) if vector else None,
-            )
-        )
-    h, w = g.values.shape[-2:]
-    return FieldEntry(
-        output=g.output[:128],
-        units=decl.units,
-        description=decl.description,
-        facet=g.facet,
-        kind="vector" if vector else "scalar",
-        y_dim=g.y,
-        x_dim=g.x,
-        frame_dim=g.frame,
-        component_dim=g.component,
-        height=-(-h // f),
-        width=-(-w // f),
-        source_height=h,
-        source_width=w,
-        downsampled=f > 1,
-        y_coords=_block_labels(g.y_labels, f),
-        x_coords=_block_labels(g.x_labels, f),
-        colormap=grid.colormap,
-        log=grid.log,
-        origin=grid.origin,
-        encoding=enc,
-        n_draws=s_total if g.stats is None else 0,
-        frames=out,
-        omitted_frames=omitted,
-    )
-
-
 def fields(c: ModelContext) -> FieldsView:
-    grids, omitted = _grids(c)
-    if not grids:
-        raise SectionSkipped("the predictions do not hold the outputs of the model on a 2-D grid")
-    budget = MAX_FIELD_CELLS // len(grids)
-    entries = [_entry(g, budget) for g in grids]
-    warn: list[str] = []
-    if any(e.downsampled for e in entries):
-        warn.append("Some fields have more pixels than the viewer shows. It shows block means.")
-    if any(e.omitted_frames for e in entries):
-        warn.append(f"Some fields have more than {MAX_FIELD_FRAMES} frames. It shows a sample.")
-    return FieldsView(
-        fields=entries,
-        omitted=omitted[:256],
-        warnings_plain=warn,
-        caption_plain="Shows each output of the model on its grid. Select the mean, the "
-        "uncertainty or a posterior draw. Use the slider to go through the frames.",
-    )
+    return fields_view(c.bundle, lambda n: _field_source(c, n))
 
 
 def forecast(c: ModelContext) -> ModelForecastView:
@@ -993,11 +709,9 @@ def error_metrics(
 
 
 def _benchmark_scale(history: np.ndarray, season: int | None) -> float | None:
+    """The in-sample (seasonal-)naive MAE of a fold's training history (the MASE scale)."""
     h = stats.finite(history)
-    m = season if season and h.size > season else 1
-    if h.size <= m:
-        return None
-    return _fv(np.mean(np.abs(h[m:] - h[:-m])))
+    return mase_scale(h, season if season and h.size > season else 1)
 
 
 def backtest(c: ModelContext) -> BacktestView:
@@ -1173,6 +887,58 @@ def comparison(c: ModelContext) -> ComparisonView:
         caption_plain="Shows some model versions side by side on held-out data (lower errors "
         "are better).",
     )
+
+
+def comparison_plots(c: ModelContext) -> list[dict[str, Any]]:
+    """``core.model_comparison`` (an elpd forest) of the compared versions that have a PSIS-LOO
+    estimate (else WAIC, as the first version with one) on the same number of observations,
+    as PlotSpec documents. Empty with fewer than two such versions, when the recipe fails or
+    when the plot is above 2 MB."""
+    found: list[tuple[str, str, ElpdDetail]] = []
+    for ref, b in [(c.ref, c.bundle), *c.compare]:
+        got = next((k for k in ("elpd_loo", "elpd_waic") if k in b.metrics.elpd), None)
+        if got is not None:
+            found.append((ref, got, b.metrics.elpd[got]))
+    if not found:
+        return []
+    ic, n = found[0][1], found[0][2].n
+    same = [(ref, d) for ref, k, d in found if k == ic and d.n == n]
+    if len(same) < 2:
+        return []
+    elpd = np.array([d.elpd for _r, d in same], dtype=float)
+    top = int(np.argmax(elpd))
+    best = same[top][1].pointwise
+    dse: list[float] = []
+    for i, (_r, d) in enumerate(same):
+        pw = d.pointwise
+        if i == top:
+            dse.append(0.0)
+        elif pw is not None and best is not None and len(pw) == len(best):
+            diff = np.asarray(pw, dtype=float) - np.asarray(best, dtype=float)
+            dse.append(float(np.sqrt(diff.size * np.var(diff))))
+        else:
+            dse.append(math.nan)
+    table = xr.Dataset(
+        {
+            ic: ("model", elpd),
+            "se": ("model", [math.nan if d.se is None else d.se for _r, d in same]),
+            "dse": ("model", dse),
+        },
+        coords={"model": [r for r, _d in same]},
+    )
+    try:
+        from mapi_plots.recipes._base import registered
+
+        recipe = registered()["core.model_comparison"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            spec = recipe.render(xr.DataTree.from_dict({"/comparison": table}))
+        doc = spec.model_dump(mode="json", exclude_none=True)
+    except Exception:  # a plot never fails the comparison
+        return []
+    if len(json.dumps(doc, separators=(",", ":"))) > _MAX_PLOT_BYTES:
+        return []
+    return [doc]
 
 
 _FORECAST_FAMILIES: Final = frozenset({"forecast", "ts_multivariate", "regime", "ts"})

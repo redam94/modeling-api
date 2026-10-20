@@ -5,6 +5,7 @@ sanitizer, and an explore run writes the index with skipped sections explained."
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ from mapi_spec.views import (
     DATA_SECTIONS,
     EXPLORE_INDEX,
     MODEL_SECTIONS,
+    SCIENCE_SECTIONS,
     CorrelationView,
     ExplorerIndex,
     FevdView,
@@ -104,7 +106,12 @@ def test_data_explorer_sections_validate_and_plot(facet: list[str] | None) -> No
         ds, schema, DataExploreRequest(facet_by=facet or [], prewhiten=True, max_lag=8)
     )
     assert c.time_dim == "week" and c.freq == "W-SUN" and c.period == 52 and c.kpi == "sales"
+    assert set(c.shapes.not_applicable) == set(SCIENCE_SECTIONS) - {"structure"}
     for name, f in DATA_SECTION_FUNCS.items():
+        if name in c.shapes.not_applicable:
+            with pytest.raises(SectionSkipped):
+                f(c)
+            continue
         view = f(c).model_dump(mode="json", exclude_none=True)
         json.dumps(view, allow_nan=False)
         assert _sanitized(view) >= 1, name
@@ -193,8 +200,16 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     ds, schema = _panel()
     ctx = FakeCtx(tmp_path)
     index = write_data_explorer(ctx, ds, schema, ref="dataset://p/sales@v1")  # type: ignore[arg-type]
-    assert index is not None and [s.section for s in index.sections] == list(CHEAP_SECTIONS)
-    assert all(s.status == "ok" for s in index.sections)
+    assert index is not None
+    # the ingest set: the cheap sections, structure, and every picture section as skipped
+    assert [s.section for s in index.sections] == [*CHEAP_SECTIONS, *SCIENCE_SECTIONS]
+    status = {s.section: (s.status, s.reason) for s in index.sections}
+    assert all(status[s] == ("ok", None) for s in (*CHEAP_SECTIONS, "structure"))
+    assert all(
+        status[s] == ("skipped", "not_applicable") for s in SCIENCE_SECTIONS if s != "structure"
+    )
+    assert index.shapes == ["timeseries"] and index.order is not None
+    assert index.order[:4] == ["overview", "quality", "distributions", "timeseries"]
     stored = ExplorerIndex.model_validate(ctx.written[EXPLORE_INDEX])
     assert stored.ref == "dataset://p/sales@v1"
     assert "ui/explore/overview.json" in ctx.written
@@ -209,6 +224,7 @@ def test_write_sections_writes_views_plots_and_an_index(tmp_path: Path) -> None:
     idx = write_sections(ctx, DATA_SECTION_FUNCS, ["overview", "stl"], c, target="dataset", ref="x")  # type: ignore[arg-type]
     assert [s.status for s in idx.sections] == ["ok", "skipped"]
     assert idx.sections[1].message_plain and "time" in idx.sections[1].message_plain
+    assert idx.sections[1].reason == "not_applicable"
 
 
 @pytest.fixture(scope="module")
@@ -358,3 +374,140 @@ def test_comparison_runs_no_significance_test_on_one_forecast_path() -> None:
     assert cmp["models"] == ["model://p/a@v1", "model://p/b@v1"]
     assert cmp["tests"] == []
     assert any("one forecast origin" in w for w in cmp["warnings_plain"])
+
+
+GOLDEN = Path(__file__).parent / "data" / "explorer_golden"
+_TIME_SECTIONS = (
+    "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
+    "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality",
+)  # fmt: skip
+
+
+def _rounded(x: Any) -> Any:
+    """Floats to 6 significant digits (BLAS differences between machines stay out)."""
+    if isinstance(x, float):
+        return float(f"{x:.6g}")
+    if isinstance(x, dict):
+        return {k: _rounded(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_rounded(v) for v in x]
+    return x
+
+
+def _all_views(ds: xr.Dataset, schema: DataSchema, req: DataExploreRequest) -> dict[str, Any]:
+    c = data_context(ds, schema, req)
+    out: dict[str, Any] = {}
+    for name in _TIME_SECTIONS:
+        try:
+            out[name] = DATA_SECTION_FUNCS[name](c).model_dump(mode="json", exclude_none=True)
+        except SectionSkipped as exc:
+            out[name] = {"skipped": str(exc)}
+    return out
+
+
+@pytest.mark.parametrize(
+    ("case", "facet"), [("panel", None), ("panel_geo", ["geo"]), ("linear", None)]
+)
+def test_time_series_views_are_unchanged(case: str, facet: list[str] | None) -> None:
+    """Regression: the scientific sections leave every view of a time-series dataset as it
+    was (golden JSON written by the explorer before they existed)."""
+    if case == "linear":
+        ds, schema = linear_data(), SCHEMA
+    else:
+        ds, schema = _panel()
+    views = _rounded(_all_views(ds, schema, DataExploreRequest(facet_by=facet or [], max_lag=8)))
+    text = json.dumps(views, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    path = GOLDEN / f"{case}.json"
+    if os.environ.get("MAPI_UPDATE_SNAPSHOTS") == "1" and not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text + "\n")
+    assert json.loads(text) == json.loads(path.read_text())
+
+
+# ------------------------------------------------- comparison: elpd forest (v0.10)
+
+
+def _elpd_bundle(elpd: dict[str, Any]) -> Any:
+    from types import SimpleNamespace
+
+    from mapi_sdk.bundle import MetricsReport
+
+    return SimpleNamespace(metrics=MetricsReport.model_validate({"elpd": elpd}))
+
+
+def _loo(value: float, n: int = 4, pointwise: list[float] | None = None) -> dict[str, Any]:
+    return {"elpd": value, "se": 2.0, "p": 3.0, "n": n, "pointwise": pointwise}
+
+
+def test_compared_versions_with_elpd_get_a_model_comparison_plot(tmp_path: Path) -> None:
+    from mapi_runner.worker.explore_model import comparison_plots
+    from mapi_spec.views import ComparisonView
+
+    a = _elpd_bundle({"elpd_loo": _loo(-10.0, pointwise=[-2.0, -3.0, -2.5, -2.5])})
+    b = _elpd_bundle({"elpd_loo": _loo(-14.0, pointwise=[-3.0, -4.0, -3.5, -3.5])})
+    waic_only = _elpd_bundle({"elpd_waic": _loo(-9.0)})
+    other_n = _elpd_bundle({"elpd_loo": _loo(-9.0, n=7)})
+    ctx = ModelContext(
+        a, xr.Dataset(), None, ref="model://p/a@v1",  # type: ignore[arg-type]
+        compare=[("model://p/b@v1", b), ("model://p/w@v1", waic_only), ("model://p/n@v1", other_n)],
+    )  # fmt: skip
+    [plot] = comparison_plots(ctx)
+    assert plot["id"] == "core.model_comparison" and plot["kind"] == "vega-lite"
+    assert plot["datasets"] and all(d["kind"] == "inline_arrow" for d in plot["datasets"].values())
+    sanitize_plot(plot)
+    # one version with an estimate (or none): no plot
+    assert comparison_plots(ModelContext(a, xr.Dataset(), None)) == []  # type: ignore[arg-type]
+    alone = ModelContext(a, xr.Dataset(), None, compare=[("w", waic_only)])  # type: ignore[arg-type]
+    assert comparison_plots(alone) == []
+    none = _elpd_bundle({})
+    assert comparison_plots(ModelContext(none, xr.Dataset(), None, compare=[("n", none)])) == []  # type: ignore[arg-type]
+
+    # the explorer writes it after the section's own plots
+    def view(c: ModelContext) -> ComparisonView:
+        return ComparisonView(
+            models=[c.ref, "model://p/b@v1"],
+            metrics=["rmse"],
+            table={c.ref: {"rmse": 1.0}, "model://p/b@v1": {"rmse": 2.0}},
+            ranking={"rmse": [c.ref, "model://p/b@v1"]},
+            caption_plain="Shows two versions.",
+        )
+
+    fctx = FakeCtx(tmp_path)
+    write_sections(fctx, {"comparison": view}, ["comparison"], ctx, target="model", ref="x")  # type: ignore[arg-type]
+    ids = [p["id"] for p in fctx.written["ui/explore/plots/comparison.json"]]
+    assert ids[-1] == "core.model_comparison" and ids.count("core.model_comparison") == 1
+
+
+class _BundleInputs(FakeCtx):
+    """A context whose inputs are local files (what ``load_bundle`` reads)."""
+
+    def __init__(self, root: Path, files: dict[str, Path]) -> None:
+        super().__init__(root)
+        self.files = files
+
+    def has_input(self, name: str) -> bool:
+        return name in self.files
+
+    def download(self, name: str, *, required: bool = True) -> Path | None:
+        return self.files.get(name)
+
+
+def test_a_bundle_input_gets_its_metrics_from_the_metrics_sidecar(tmp_path: Path) -> None:
+    """Regression: the bundle archive holds no metrics.json, so the explorer compared versions
+    with no holdout metrics and drew no elpd plot. ``<input>.metrics`` carries them."""
+    from mapi_runner.worker.data import load_bundle
+    from mapi_sdk.wire import write_datatree_zip
+
+    b = fit(linear_spec(), linear_data(), default_registry())
+    assert b.metrics.values
+    archive = tmp_path / "compare.0"
+    raw = write_datatree_zip(b.to_tree())
+    assert raw is not None
+    archive.write_bytes(raw)
+    alone = load_bundle(_BundleInputs(tmp_path, {"compare.0": archive}), "compare.0", "-")
+    assert not alone.metrics.values
+    sidecar = tmp_path / "compare.0.metrics"
+    sidecar.write_text(b.metrics.model_dump_json())
+    files = {"compare.0": archive, "compare.0.metrics": sidecar}
+    got = load_bundle(_BundleInputs(tmp_path, files), "compare.0", "-")
+    assert got.metrics == b.metrics

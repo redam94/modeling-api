@@ -29,7 +29,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
-from typing import Any, Final, Generic, Literal, TypeVar
+from typing import Annotated, Any, Final, Generic, Literal, TypeVar
 
 from pydantic import (
     AwareDatetime,
@@ -1454,11 +1454,26 @@ class ScoreSummaryTable(_Response):
     """One output variable's summary as a table: the coordinate columns (one per dim), then
     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
-    circle (see the field)."""
+    circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
+    which one is time; a server that predates them leaves both out. ``plots``: the recipe ids
+    of the run's rendered plots (``plots.json``) that draw this variable, so a client can show
+    them next to the table."""
 
     variable: str = Field(..., max_length=256)
     columns: list[str] = Field(..., max_length=256)
     rows: list[list[SummaryCell]]
+    dims: list[str] | None = Field(
+        None,
+        max_length=64,
+        description="The coordinate columns (the leading columns); the rest are statistics",
+        exclude_if=lambda v: v is None,
+    )
+    time_dim: str | None = Field(
+        None,
+        max_length=256,
+        description="The dim that is time, when there is one",
+        exclude_if=lambda v: v is None,
+    )
     period: float | None = Field(
         None,
         gt=0,
@@ -1468,12 +1483,21 @@ class ScoreSummaryTable(_Response):
         "lower > upper crosses the seam (from 350 to 10 degrees)",
         exclude_if=lambda v: v is None,
     )
+    plots: list[Annotated[str, Field(pattern=r"^[A-Za-z0-9_.\-]{1,128}$")]] | None = Field(
+        None,
+        max_length=16,
+        description="Recipe ids of the run's plots that draw this output (sci.area_map, "
+        "core.roc_pr, ...)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = _examples(
         {
             "variable": "revenue",
             "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
             "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+            "dims": ["geo", "time"],
+            "time_dim": "time",
         }
     )
 

@@ -22,6 +22,7 @@ __all__ = [
     "area_map_tree",
     "bundle_tree",
     "calibration_tree",
+    "classifier_tree",
     "contributions",
     "counterfactual_tree",
     "decision_dataset",
@@ -31,6 +32,8 @@ __all__ = [
     "field_tree",
     "group_effects_tree",
     "image_tree",
+    "loo_tree",
+    "loss_history_tree",
     "network_tree",
     "panel_data",
     "phylogeny_tree",
@@ -455,6 +458,72 @@ def regime_tree() -> xr.DataTree:
     )
 
 
+def classifier_tree() -> xr.DataTree:
+    """``predictions.p(chain, draw, row)``: the probability of churn for 300 customers, and
+    ``observed_data.churn(row)`` (0/1). The model separates the classes well (AUC near 0.8)
+    and is a little too sure at both ends."""
+    rng = _rng(31)
+    n = 300
+    x = rng.normal(0.0, 1.0, n)
+    y = (rng.random(n) < 1 / (1 + np.exp(-(1.8 * x - 0.8)))).astype(float)
+    logit = 2.2 * x - 0.9 + 0.3 * rng.standard_normal((CHAINS, 50, 1))
+    logit = logit + 0.4 * rng.standard_normal((CHAINS, 50, n))
+    p = 1 / (1 + np.exp(-logit))
+    coords = {"row": np.arange(n)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-classifier"}),
+            "/predictions": xr.Dataset({"p": (("chain", "draw", "row"), p)}, coords),
+            "/observed_data": xr.Dataset({"churn": (("row",), y)}, coords),
+        }
+    )
+
+
+def loss_history_tree() -> xr.DataTree:
+    """``model/fit_history.loss(step)``: the negative ELBO of a 2000-step ADVI fit. It falls
+    fast, then slowly, and still goes down at the end."""
+    rng = _rng(32)
+    n = 2000
+    step = np.arange(1, n + 1)
+    loss = 400 + 2.0e4 * np.exp(-step / 150) + 300 * np.exp(-step / 800)
+    loss = loss * (1 + 0.04 * rng.standard_normal(n))
+    hist = xr.Dataset(
+        {"loss": (("step",), loss, {"objective": "negative ELBO", "engine": "advi"})},
+        coords={"step": step},
+    )
+    return xr.DataTree.from_dict(
+        {"/": xr.Dataset(attrs={"bundle_id": "bundle-advi"}), "/model/fit_history": hist}
+    )
+
+
+def loo_tree() -> xr.DataTree:
+    """A normal model of 40 measurements with one gross error (observation 7):
+    ``log_likelihood``, ``posterior_predictive`` and ``observed_data`` of ``y(obs)``. The
+    error gets a high Pareto k."""
+    rng = _rng(33)
+    n = 40
+    y = rng.normal(0.0, 1.0, n)
+    y[7] = 9.0
+    s_draws = CHAINS * DRAWS
+    mu = rng.normal(y.mean(), y.std() / np.sqrt(n), s_draws)
+    sigma = y.std() * np.sqrt((n - 1) / rng.chisquare(n - 1, s_draws))
+    z = (y[None, :] - mu[:, None]) / sigma[:, None]
+    ll = -0.5 * z**2 - np.log(sigma[:, None] * np.sqrt(2 * np.pi))
+    rep = mu[:, None] + sigma[:, None] * rng.standard_normal((s_draws, n))
+    dims = ("chain", "draw", "obs")
+    coords = {"chain": np.arange(CHAINS), "draw": np.arange(DRAWS), "obs": np.arange(n)}
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-loo"}),
+            "/log_likelihood": xr.Dataset({"y": (dims, ll.reshape(CHAINS, DRAWS, n))}, coords),
+            "/posterior_predictive": xr.Dataset(
+                {"y": (dims, rep.reshape(CHAINS, DRAWS, n))}, coords
+            ),
+            "/observed_data": xr.Dataset({"y": (("obs",), y)}, {"obs": np.arange(n)}),
+        }
+    )
+
+
 def area_map_tree() -> xr.DataTree:
     """``posterior.rr(chain, draw, area)``: relative risk of a disease in 30 districts (a
     6 x 5 grid; the last district also owns an island), the observed ratio ``smr`` and the
@@ -774,6 +843,10 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "core.rank_matrix": (group_effects_tree(), {}),
         "core.calibration": (calibration_tree(), {}),
         "core.state_sequence": (regime_tree(), {}),
+        "core.roc_pr": (classifier_tree(), {}),
+        "core.confusion": (classifier_tree(), {"threshold": "auto"}),
+        "core.loss_curve": (loss_history_tree(), {}),
+        "core.loo_pit": (loo_tree(), {}),
         "sci.area_map": (area_map_tree(), {"observed": "smr", "show_edges": True}),
         "sci.phylogeny": (phylogeny_tree(), {}),
         "sci.rose": (rose_tree(), {"units": "degrees", "bins": 16}),

@@ -314,6 +314,11 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
             "counterfactual zeroing otherwise), in model space",
         },
     }
+    plots: ClassVar[Sequence[str]] = (
+        "core.fit_vs_actual",
+        "core.residuals_over_time",
+        "ml.feature_importance",
+    )
     pad_extend: ClassVar[bool] = False
 
     def __init__(self) -> None:
@@ -829,6 +834,12 @@ class SklearnClassifier[SettingsT: ClassifierSettings](SklearnModel[SettingsT]):
             "description": "Counterfactual-zeroing contributions to the probability",
         },
     }
+    plots: ClassVar[Sequence[str]] = (
+        "core.calibration",
+        "core.roc_pr",
+        "core.confusion",
+        "ml.feature_importance",
+    )
 
     def _attrs(self, info: _Learned, exp: Expansion) -> dict[str, dict[str, Any]]:
         attrs = super()._attrs(info, exp)

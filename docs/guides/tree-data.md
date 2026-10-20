@@ -374,6 +374,13 @@ The Data Explorer shows one node at a time. A `DataExploreRequest` takes an opti
 The default is the root, or the first node that has variables. The ingest writes the views of
 each node.
 
+The explorer finds the shapes of each node separately. For example, the E80 lens tree has
+two images of 81 × 81 pixels (`image` and `weight`) in the node `/image`, and an image of
+31 × 31 pixels (`psf`) in the node `/psf`. Thus each node has its own sections and its own
+sequence of sections. Do not confuse a tree dataset with the section **Tree**. That section
+shows a tree that is in the data of one node, for example the `parent` variable of a
+phylogeny. Refer to [Scientific data](data-explorer.md#scientific-data).
+
 ## Models that read the whole tree
 
 Some models need more than the flat merge, for example the PSF of an instrument next to the

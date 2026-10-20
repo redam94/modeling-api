@@ -14,6 +14,8 @@ import { guidedTemplateForModel, startTarget } from "@/features/about/start";
 import { specStarterFor } from "@/features/about/spec-starter";
 import { createHandlers } from "@/mocks/handlers";
 import { DS_ID, MODEL_ID } from "@/mocks/fixtures";
+import { SCI_DEMO_ID, SCI_DEMO_NOT_APPLICABLE, SCI_DEMO_TREE_ID } from "@/mocks/explore-sci-demo";
+import { DATA_SECTION_META } from "@/features/explore/sections-meta";
 import { EXTRA_MODEL_IDS, FIXTURE } from "@/mocks/explore";
 import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
@@ -197,5 +199,82 @@ describe("budget optimisation", () => {
   it("refuses models that do not optimise budgets", async () => {
     renderApp(`/models/${EXTRA_MODEL_IDS.arimax}/versions/1/optimize`);
     expect(await screen.findByText("This model does not optimise budgets", undefined, T)).toBeInTheDocument();
+  });
+});
+
+// ------------------------------------------------------------------------------ scientific data
+
+const SCI_ID = SCI_DEMO_ID;
+const NOT_APPLICABLE = SCI_DEMO_NOT_APPLICABLE;
+
+describe("the Data Explorer on scientific data", () => {
+  // jsdom has no canvas: the field viewer paints nothing (fields.test.ts tests the pixels)
+  beforeAll(() => {
+    HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+  });
+
+  it("lists the sections by relevance, hides what does not apply and links the shapes", async () => {
+    const { router } = renderApp(`/datasets/${SCI_ID}/versions/1/explore`);
+    const chips = await screen.findByTestId("shape-chips", undefined, T);
+    const nav = screen.getByRole("navigation", { name: "Data Explorer sections" });
+    // the picture sections come before the time-series ones, in the index's order
+    const listed = [...nav.querySelectorAll("[data-section]:not([data-reason])")].map((e) => e.getAttribute("data-section"));
+    expect(listed.slice(0, 2)).toEqual(["overview", "structure"]);
+    expect(within(nav).getByText("Pictures of the data")).toBeInTheDocument();
+    for (const s of NOT_APPLICABLE) expect(listed).not.toContain(s);
+    // "Not for this data" holds them, closed
+    const hidden = within(nav).getByTestId("nav-not-applicable");
+    expect(hidden).toHaveTextContent(`Not for this data (${NOT_APPLICABLE.length})`);
+    expect((hidden as HTMLDetailsElement).open).toBe(false);
+    expect(screen.getByText(/views are ready|Every view is ready/)).toBeInTheDocument();
+    // a shape chip opens its section
+    await userEvent.click(within(chips).getByRole("button", { name: /^Image/ }));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ section: "images" }));
+    expect(await screen.findByTestId("field-viewer", undefined, T)).toBeInTheDocument();
+  });
+
+  it("opens a section that does not apply from its link, with the reason", async () => {
+    renderApp(`/datasets/${SCI_ID}/versions/1/explore?section=stl`);
+    const skipped = await screen.findByTestId("section-skipped", undefined, T);
+    expect(skipped).toHaveTextContent("Not available: the data has no time dimension.");
+    const hidden = screen.getByTestId("nav-not-applicable");
+    expect((hidden as HTMLDetailsElement).open).toBe(true);
+    expect(within(hidden).getByRole("button", { name: /Trend and season/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it.each([
+    ["structure", "Variables and their dimensions"],
+    ["images", null],
+    ["profiles", "cells along position"],
+    ["map", "Map of cases / expected"],
+    ["network", "Ties of cowork"],
+    ["tree", "Tree of node"],
+    ["circular", "Rose of wind_from"],
+    ["points", "chip: Colour of each point"],
+  ] as const)("renders the %s section from its view", async (section, plotTitle) => {
+    renderApp(`/datasets/${SCI_ID}/versions/1/explore?section=${section}`);
+    expect(await screen.findByTestId("plain-summary", undefined, T)).toBeInTheDocument();
+    expect(screen.getByText(DATA_SECTION_META[section].question)).toBeInTheDocument();
+    if (plotTitle) {
+      const frame = screen.getAllByTestId("plot-frame").find((f) => f.getAttribute("title") === plotTitle);
+      expect(frame, `plot "${plotTitle}"`).toBeDefined();
+    } else {
+      expect(screen.getByTestId("field-viewer")).toBeInTheDocument();
+    }
+  });
+
+  it("gives each node of a tree dataset its own sections", async () => {
+    const { router } = renderApp(`/datasets/${SCI_DEMO_TREE_ID}/versions/1/explore?node=%2Flinks&section=network`);
+    expect(await screen.findByText(/^The network of cowork has 4 nodes/, undefined, T)).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Data Explorer sections" });
+    expect(nav.querySelector('[data-section="network"]:not([data-reason])')).not.toBeNull();
+    expect(nav.querySelector('[data-section="images"]')).toHaveAttribute("data-reason", "not_applicable");
+    // the other node: the image is there, the network does not apply
+    await userEvent.selectOptions(screen.getByLabelText("Node"), "/image");
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ node: "/image" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Images and fields/ }, T));
+    expect(await screen.findByTestId("field-viewer", undefined, T)).toBeInTheDocument();
+    const nav2 = screen.getByRole("navigation", { name: "Data Explorer sections" });
+    expect(nav2.querySelector('[data-section="network"]')).toHaveAttribute("data-reason", "not_applicable");
   });
 });

@@ -38,7 +38,7 @@ import time
 import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
 
 import numpy as np
 import pymc as pm
@@ -59,6 +59,8 @@ __all__ = [
     "DEFAULT_DRAWS",
     "DEFAULT_TUNE",
     "ENGINES",
+    "FIT_HISTORY",
+    "MAX_HISTORY_POINTS",
     "MCMC_ENGINES",
     "ChainProgress",
     "EngineHooks",
@@ -75,6 +77,9 @@ DEFAULT_TUNE = 1000
 DEFAULT_DRAWS = 1000
 DEFAULT_CHAINS = 4
 DEFAULT_ADVI_STEPS = 10_000
+FIT_HISTORY: Final = "fit_history"
+"""Group of an ADVI fit's loss per optimisation step (var ``loss(step)``)."""
+MAX_HISTORY_POINTS: Final = 5000
 _ENGINE_MODULES = {
     "nutpie": "nutpie",
     "numpyro": "numpyro",
@@ -726,9 +731,33 @@ def _advi(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult
         idata = approx.sample(plan.draws, random_seed=plan.seed)
     hooks.report(1.0, "ADVI finished", force=True)
     keep = {k: idata[k] for k in ("posterior",) if k in idata.children}
-    tree = xr.DataTree.from_dict({f"/{k}": v.to_dataset(inherit=False) for k, v in keep.items()})
+    groups = {f"/{k}": v.to_dataset(inherit=False) for k, v in keep.items()}
+    groups[f"/{FIT_HISTORY}"] = _history_dataset(np.asarray(approx.hist, dtype=float))
+    tree = xr.DataTree.from_dict(groups)
     plan_vi = EnginePlan("advi", tune=steps, draws=plan.draws, chains=1, seed=plan.seed)
     return EngineResult(tree, plan_vi, notes=[f"ADVI: {steps} steps, {plan.draws} draws"])
+
+
+def _history_dataset(hist: np.ndarray) -> xr.Dataset:
+    """The loss of each optimisation step as ``loss(step)``, steps numbered from 1.
+
+    More than :data:`MAX_HISTORY_POINTS` steps are thinned to that many evenly spaced steps
+    (the last step always kept; ``thinned_from`` records the full count). Non-finite losses
+    stay as NaN.
+    """
+    loss = np.where(np.isfinite(hist), hist, np.nan).ravel()
+    n = loss.size
+    steps = np.arange(1, n + 1, dtype=np.int64)
+    attrs: dict[str, Any] = {}
+    if n > MAX_HISTORY_POINTS:
+        idx = np.unique(np.linspace(0, n - 1, MAX_HISTORY_POINTS).round().astype(np.int64))
+        loss, steps = loss[idx], steps[idx]
+        attrs["thinned_from"] = n
+    return xr.Dataset(
+        {"loss": ("step", loss, {"objective": "negative ELBO", "engine": "advi"})},
+        coords={"step": steps},
+        attrs=attrs,
+    )
 
 
 def _pathfinder(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> EngineResult:

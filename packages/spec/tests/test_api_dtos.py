@@ -406,3 +406,35 @@ def test_reference_docs_list_every_m2_endpoint_and_the_scoping_rules() -> None:
         assert f"`{tier.value}`" in tenancy, tier
     for needle in ("QUOTA_EXCEEDED", "RATE_LIMITED", "interactive", "batch", "vCPU-second"):
         assert needle in quotas, needle
+
+
+def test_score_summary_tables_name_their_dims_and_old_tables_still_parse() -> None:
+    from mapi_spec.api import ScoreSummaryTable
+    from mapi_spec.views import SCORE_FIELDS_VIEW
+
+    old = {"variable": "total", "columns": ["quarter", "mean"], "rows": [["2024Q1", 3.0]]}
+    table = ScoreSummaryTable.model_validate(old)
+    assert table.dims is None and table.time_dim is None
+    assert table.model_dump(mode="json") == old  # unset fields stay off the wire
+    new = ScoreSummaryTable.model_validate({**old, "dims": ["quarter"], "time_dim": "quarter"})
+    assert new.model_dump(mode="json") == {**old, "dims": ["quarter"], "time_dim": "quarter"}
+    example = ScoreSummaryTable.model_json_schema()["examples"][0]
+    assert ScoreSummaryTable.model_validate(example).dims == ["geo", "time"]
+    with pytest.raises(ValidationError):
+        ScoreSummaryTable.model_validate({**old, "dims": ["d"] * 65})
+    assert SCORE_FIELDS_VIEW == "ui/fields.json"
+
+
+def test_score_summary_tables_name_the_plots_that_draw_them() -> None:
+    from mapi_spec.api import ScoreSummaryTable
+
+    old = {"variable": "y_hat", "columns": ["row", "mean"], "rows": [[0, 0.7]]}
+    assert ScoreSummaryTable.model_validate(old).plots is None
+    assert "plots" not in ScoreSummaryTable.model_validate(old).model_dump(mode="json")
+    ids = ["core.calibration", "core.roc_pr", "core.confusion"]
+    table = ScoreSummaryTable.model_validate({**old, "plots": ids})
+    assert table.model_dump(mode="json") == {**old, "plots": ids}
+    assert ScoreSummaryTable.model_validate({**old, "plots": []}).plots == []
+    for bad in (["core roc"], [""], ["x" * 129], ["core.roc_pr"] * 17):
+        with pytest.raises(ValidationError):
+            ScoreSummaryTable.model_validate({**old, "plots": bad})

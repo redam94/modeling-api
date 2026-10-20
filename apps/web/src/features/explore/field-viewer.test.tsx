@@ -3,7 +3,7 @@
  * `fields.gen.json`): the statistic switch, the frame slider, the draw scrubber and the
  * keyboard readout. jsdom has no canvas, so the pixels themselves are tested in fields.test.ts.
  */
-import { screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +12,10 @@ import { EXTRA_MODEL_IDS } from "@/mocks/explore";
 import { createHandlers } from "@/mocks/handlers";
 import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
+
+import { FieldViewer } from "./field-viewer";
+import { encodeRaster } from "./fields";
+import { scienceExample } from "./science-examples.test-helper";
 
 const server = setupServer(...createHandlers());
 beforeAll(() => {
@@ -58,5 +62,86 @@ describe("field viewer", () => {
     const vector = await screen.findByTestId("field-viewer");
     expect(within(vector).getByLabelText("Show the arrows")).toBeChecked();
     expect(within(vector).queryByRole("slider", { name: /period/ })).toBeNull();
+  });
+});
+
+describe("field viewer in data mode (images of the Data Explorer)", () => {
+  it("shows one statistic, the mask and a frame strip that follows the slider", async () => {
+    const img = scienceExample("images").fields[0]!;
+    render(<FieldViewer field={img} mode="data" mask={img.mask} maskLabel={img.mask_var} frameStats={img.frame_stats} />);
+    const viewer = screen.getByTestId("field-viewer");
+    // no statistic switch, no draws
+    expect(within(viewer).queryByRole("group", { name: "Statistic" })).toBeNull();
+    expect(within(viewer).queryByRole("button", { name: "Draws" })).toBeNull();
+    expect(within(viewer).getByText("The value of each cell in the data.")).toBeInTheDocument();
+    // the mask: drawn and switchable
+    expect(within(viewer).getByTestId("field-mask")).toBeInTheDocument();
+    const shade = within(viewer).getByLabelText("Shade the cells outside the mask (visible)");
+    expect(shade).toBeChecked();
+    // the strip marks the frame shown and moves with the slider
+    const strip = within(viewer).getByTestId("frame-strip");
+    const marker = () => within(strip).getByTestId("frame-strip-marker");
+    expect(marker()).toHaveAttribute("x1", "0");
+    const slider = within(viewer).getByRole("slider", { name: /quarter/ });
+    fireEvent.change(slider, { target: { value: "1" } });
+    expect(slider).toHaveAttribute("aria-valuetext", "quarter 2009-04-01");
+    expect(marker()).toHaveAttribute("x1", "400");
+    // the readout: "Value" and the mask of the cell (row 1, column 1 is outside the mask)
+    const map = within(viewer).getByRole("img", { name: /^Value of quakes/ });
+    map.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    const readout = within(viewer).getByTestId("field-readout");
+    expect(readout).toHaveTextContent("Value");
+    expect(readout).toHaveTextContent(/visible\s*outside/);
+    await userEvent.click(shade);
+    expect(shade).not.toBeChecked();
+  });
+
+  it("gives the colours to 98% of the values when a few cells are much brighter (E58 camera frames)", async () => {
+    const img = scienceExample("images").fields[0]!;
+    // a 20 x 20 frame with one bright cell
+    const spots = Array.from({ length: 400 }, (_, i) => (i === 0 ? 40_000 : 1000 + (i % 7)));
+    const bright = { ...img, width: 20, height: 20, frames: [{ ...img.frames[0]!, mean: encodeRaster(spots) }] };
+    render(<FieldViewer field={bright} mode="data" />);
+    const full = screen.getByLabelText("Colours for the full range");
+    expect(full).not.toBeChecked();
+    const bar = screen.getByRole("figure", { name: /^Colour scale/ });
+    expect(bar).toHaveTextContent("98% of the values");
+    expect(bar).not.toHaveTextContent("40,000");
+    await userEvent.click(full);
+    expect(screen.getByRole("figure", { name: /^Colour scale/ })).toHaveTextContent("40,000");
+    // the image of the fixture has no such cells: no check box
+    render(<FieldViewer field={img} mode="data" />);
+    expect(screen.getAllByTestId("field-viewer")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Colours for the full range")).toHaveLength(1);
+  });
+
+  it("gives a model map the colours of 98% of its means when the quantiles and draws reach far wider (lgcp forecast)", async () => {
+    const img = scienceExample("images").fields[0]!;
+    const means = Array.from({ length: 400 }, (_, i) => 0.01 + (i % 20) / 1000);
+    const frame = { ...img.frames[0]!, mean: encodeRaster(means), sd: encodeRaster(means.map((m) => m / 2)), q05: encodeRaster(means.map(() => 0)), q95: encodeRaster(means.map((m, i) => (i === 0 ? 100 : m * 3))) };
+    render(<FieldViewer field={{ ...img, width: 20, height: 20, frames: [frame] }} />);
+    const full = screen.getByLabelText("Colours for the full range");
+    expect(full).not.toBeChecked();
+    const bar = () => screen.getByRole("figure", { name: /^Colour scale/ });
+    expect(bar()).toHaveTextContent("98% of the posterior means");
+    expect(bar()).not.toHaveTextContent("100");
+    // the 95% quantile shares the scale of the means: comparable colours, ends clipped
+    await userEvent.click(screen.getByRole("button", { name: "95% quantile" }));
+    expect(bar()).toHaveTextContent("98% of the posterior means");
+    await userEvent.click(full);
+    expect(bar()).toHaveTextContent("100");
+    // the sd has its own scale: no clipping, no check box
+    await userEvent.click(screen.getByRole("button", { name: "Std. dev." }));
+    expect(screen.queryByLabelText("Colours for the full range")).toBeNull();
+    expect(bar()).not.toHaveTextContent("98%");
+  });
+
+  it("keeps the model mode unchanged when no mode is given", () => {
+    const img = scienceExample("images").fields[0]!;
+    render(<FieldViewer field={img} />);
+    expect(screen.getByRole("group", { name: "Statistic" })).toBeInTheDocument();
+    expect(screen.queryByTestId("field-mask")).toBeNull();
+    expect(screen.queryByTestId("frame-strip")).toBeNull();
   });
 });

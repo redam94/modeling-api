@@ -3421,6 +3421,20 @@
               "stl",
               "quality"
             ]
+          },
+          {
+            "hints": {
+              "angle_vars": {
+                "wind_from": "deg"
+              },
+              "x_dim": "col",
+              "y_dim": "row"
+            },
+            "sections": [
+              "structure",
+              "images",
+              "circular"
+            ]
           }
         ],
         "properties": {
@@ -3461,6 +3475,17 @@
             ],
             "description": "Dim for group comparisons",
             "title": "Group By"
+          },
+          "hints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructureHints"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Corrections to the detected structure (image dims, node dim, angle variables)"
           },
           "kpi": {
             "anyOf": [
@@ -3552,11 +3577,19 @@
                 "stl",
                 "vif",
                 "groups",
-                "quality"
+                "quality",
+                "structure",
+                "images",
+                "profiles",
+                "map",
+                "network",
+                "tree",
+                "circular",
+                "points"
               ],
               "type": "string"
             },
-            "maxItems": 13,
+            "maxItems": 21,
             "minItems": 1,
             "title": "Sections",
             "type": "array"
@@ -7513,10 +7546,49 @@
               },
               {
                 "message_plain": "Less than two seasons of data.",
+                "reason": "insufficient_data",
                 "section": "stl",
                 "status": "skipped",
                 "view": "ui/explore/stl.json"
               }
+            ],
+            "target": "dataset"
+          },
+          {
+            "order": [
+              "overview",
+              "structure",
+              "images",
+              "quality",
+              "distributions",
+              "timeseries",
+              "missingness"
+            ],
+            "ref": "dataset://seismology/oklahoma_quakes@v1",
+            "sections": [
+              {
+                "section": "overview",
+                "view": "ui/explore/overview.json"
+              },
+              {
+                "section": "structure",
+                "view": "ui/explore/structure.json"
+              },
+              {
+                "section": "images",
+                "view": "ui/explore/images.json"
+              },
+              {
+                "message_plain": "Not available: the data has no polygons.",
+                "reason": "not_applicable",
+                "section": "map",
+                "status": "skipped",
+                "view": "ui/explore/map.json"
+              }
+            ],
+            "shapes": [
+              "image",
+              "timeseries"
             ],
             "target": "dataset"
           }
@@ -7541,6 +7613,22 @@
             "description": "M4: the node of a tree dataset explored (absent for a flat dataset)",
             "title": "Node"
           },
+          "order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 32,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Data Explorer: the sections in order of relevance for this data",
+            "title": "Order"
+          },
           "ref": {
             "description": "dataset://… or model://…",
             "maxLength": 512,
@@ -7554,6 +7642,35 @@
             "maxItems": 32,
             "title": "Sections",
             "type": "array"
+          },
+          "shapes": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "timeseries",
+                    "sequence",
+                    "image",
+                    "vector_field",
+                    "areal_map",
+                    "points",
+                    "network",
+                    "tree",
+                    "circular",
+                    "profile",
+                    "table"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Data Explorer: the detected data shapes, best first",
+            "title": "Shapes"
           },
           "target": {
             "enum": [
@@ -7585,6 +7702,23 @@
               }
             ],
             "title": "Message Plain"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_applicable",
+                  "insufficient_data",
+                  "needs_option"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a skipped section was skipped (absent in indexes written before the scientific sections: readers then list every section)",
+            "title": "Reason"
           },
           "section": {
             "maxLength": 32,
@@ -21515,7 +21649,7 @@
         "type": "object"
       },
       "ScoreSummaryTable": {
-        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field).",
+        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and\nwhich one is time; a server that predates them leaves both out. ``plots``: the recipe ids\nof the run's rendered plots (``plots.json``) that draw this variable, so a client can show\nthem next to the table.",
         "examples": [
           {
             "columns": [
@@ -21524,6 +21658,10 @@
               "mean",
               "hdi_90_lower",
               "hdi_90_upper"
+            ],
+            "dims": [
+              "geo",
+              "time"
             ],
             "rows": [
               [
@@ -21534,6 +21672,7 @@
                 1633.9
               ]
             ],
+            "time_dim": "time",
             "variable": "revenue"
           }
         ],
@@ -21545,6 +21684,22 @@
             "maxItems": 256,
             "title": "Columns",
             "type": "array"
+          },
+          "dims": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The coordinate columns (the leading columns); the rest are statistics",
+            "title": "Dims"
           },
           "period": {
             "anyOf": [
@@ -21558,6 +21713,23 @@
             ],
             "description": "Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)",
             "title": "Period"
+          },
+          "plots": {
+            "anyOf": [
+              {
+                "items": {
+                  "pattern": "^[A-Za-z0-9_.\\-]{1,128}$",
+                  "type": "string"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Recipe ids of the run's plots that draw this output (sci.area_map, core.roc_pr, ...)",
+            "title": "Plots"
           },
           "rows": {
             "items": {
@@ -21584,6 +21756,19 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "time_dim": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The dim that is time, when there is one",
+            "title": "Time Dim"
           },
           "variable": {
             "maxLength": 256,
@@ -23529,6 +23714,91 @@
           "state"
         ],
         "title": "StoreProgress",
+        "type": "object"
+      },
+      "StructureHints": {
+        "additionalProperties": false,
+        "description": "Corrections to the structure the Data Explorer detects (each one overrides the rule\nfor that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,\n``frame_dim``), the node dim of a network or tree, the time dim, and variables that are\nangles or times of day with their units (``{\"wind_from\": \"deg\"}``).",
+        "properties": {
+          "angle_vars": {
+            "maxProperties": 64,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "enum": [
+                  "deg",
+                  "rad",
+                  "h",
+                  "d",
+                  "month"
+                ],
+                "type": "string"
+              }
+            },
+            "title": "Angle Vars",
+            "type": "object"
+          },
+          "frame_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Dim"
+          },
+          "node_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Dim"
+          },
+          "time_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Dim"
+          },
+          "x_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X Dim"
+          },
+          "y_dim": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Dim"
+          }
+        },
+        "title": "StructureHints",
         "type": "object"
       },
       "TemplateCase": {
@@ -28084,7 +28354,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.9.1"
+    "version": "0.10.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -38162,7 +38432,7 @@
     },
     "/v1/runs/{run_id}/plots": {
       "get": {
-        "description": "Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on\nevery read; plots it rejects are left out. Empty while the run is not ``succeeded``.\n\nThe control plane decodes nothing but this size-capped JSON, read at the generation the\nfinalizer verified.",
+        "description": "Plots a run rendered (``plots.json``) in its newest attempt that has them: succeeded\nand partial runs, and failed or cancelled runs whose earlier partial attempt wrote plots.\nEvery read passes the plot sanitizer; plots it rejects are left out. Empty while no\nattempt has plots. The control plane decodes nothing but this size-capped JSON, read at\nthe generation the finalizer verified.",
         "operationId": "list_run_plots",
         "parameters": [
           {

@@ -30,7 +30,13 @@ from mapi_sklearn import (
     TabularRegressor,
     capabilities_for,
 )
-from mapi_sklearn.testing import demand_dataset, demand_registry, demand_schema, demand_spec
+from mapi_sklearn.testing import (
+    XGB_SMALL,
+    demand_dataset,
+    demand_registry,
+    demand_schema,
+    demand_spec,
+)
 from mapi_spec import DataSchema, ModelSpec, load_model_spec, load_score_request
 from mapi_spec.capabilities import Capabilities
 from mapi_spec.errors import ErrorCode, MapiError
@@ -684,6 +690,36 @@ def test_classifier_passes_the_kit(reg: Registry) -> None:
         raise_on_failure=False,
     )
     assert report.ok, report.summary()
+
+
+REGRESSION_PLOTS = ["core.fit_vs_actual", "core.residuals_over_time", "ml.feature_importance"]
+CLASSIFIER_PLOTS = ["core.calibration", "core.roc_pr", "core.confusion", "ml.feature_importance"]
+
+
+@pytest.mark.parametrize("plugin", PLUGINS, ids=lambda p: p.id)
+def test_manifests_list_default_plots(plugin: type[Any]) -> None:
+    from mapi_sklearn import SklearnClassifier
+
+    expected = CLASSIFIER_PLOTS if issubclass(plugin, SklearnClassifier) else REGRESSION_PLOTS
+    assert list(plugin.manifest().plots) == expected
+
+
+@pytest.mark.parametrize(
+    ("estimator", "group"),
+    [
+        (RIDGE, "coefficients"),
+        (XGB_SMALL, "feature_importance"),
+    ],
+    ids=["linear", "tree"],
+)
+def test_feature_importance_renders_from_the_bundle(
+    estimator: dict[str, Any], group: str, fit: Callable[..., Bundle]
+) -> None:
+    recipes = pytest.importorskip("mapi_plots.recipes")
+    b = fit("sklearn.tabular_regressor", {"estimator": estimator})
+    assert group in b.model.groups
+    out = recipes.render_plots(b.to_tree(), ["ml.feature_importance"])
+    assert [p.id for p in out.plots] == ["ml.feature_importance"], out.issues
 
 
 def test_classifier_errors(reg: Registry) -> None:

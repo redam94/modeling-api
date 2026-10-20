@@ -185,11 +185,13 @@ The tests of the plugin that read the real data files run only when
 `MAPI_PYMC_CHALLENGES_DATA` is set. If it is not set, these tests skip. `MAPI_E21_DRAWS` sets
 the draws for each chain of the real-data fit of `sci.network_latent_space` (default 300).
 
-`make docs-screenshots-science` captures the screenshots of the science tutorials again from a
-`make dev` stack. Before you run it, export the cases `e18`, `e51` and `e21` to
-`scotland_lip.nc`, `heat_plate_e51.nc` and `lazega_coworkers.nc` in `.local/science` (or in
-the folder that `MAPI_SCIENCE_DATA` gives). Refer to the header of
-`scripts/docs_screenshots_science.mjs` for the full procedure.
+`make docs-screenshots-science` captures the screenshots of the science tutorials and of the
+Data Explorer on scientific data again from a `make dev` stack. Before you run it, export the
+cases `e18`, `e51`, `e21`, `e58`, `e23` and `e81b` to `scotland_lip.nc`, `heat_plate_e51.nc`,
+`lazega_coworkers.nc`, `unc13_dstorm.nc`, `primates301.nc` and `bci_camera_traps.nc` in
+`.local/science` (or in the folder that `MAPI_SCIENCE_DATA` gives). To capture only the Data
+Explorer, run `node scripts/docs_screenshots_science.mjs .local/screenshots-science explorer`.
+Refer to the header of `scripts/docs_screenshots_science.mjs` for the full procedure.
 
 ## End-to-end tests
 

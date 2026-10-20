@@ -1,6 +1,6 @@
 [project]
 name = "mapi-plugin-statsmodels"
-version = "0.9.1"
+version = "0.10.0"
 description = "statsmodels time-series model plugins (SARIMAX, VAR, VECM, ECM, ETS, ...)"
 readme = "README.md"
 requires-python = ">=3.12"

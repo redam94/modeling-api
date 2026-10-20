@@ -535,11 +535,21 @@ def outlier_scores(x: Any, method: Literal["iqr", "mad", "zscore"] = "mad") -> n
     """A robust z-like score per value (NaN stays NaN): ``mad``: ``0.6745 (x - median) /
     MAD``; ``iqr``: ``(x - median) / (IQR / 1.349)``; ``zscore``: ``(x - mean) / sd``.
     Under a normal distribution all three are standard normal, so one threshold (3.5 by
-    default) means the same for each."""
+    default) means the same for each. An indicator has no unusual values (every score is NaN):
+    one value only, the values 0 and 1 (the ties of a network), or two values where the less
+    frequent one is 5 % of the values or more. A constant series with one spike keeps its
+    scores: the spike is an unusual value."""
     a = np.asarray(x, dtype=float).reshape(-1)
     y = a[np.isfinite(a)]
     out = np.full_like(a, np.nan)
     if y.size < 3:
+        return out
+    levels, counts = np.unique(y, return_counts=True)
+    if levels.size == 1:
+        return out
+    if levels.size == 2 and (
+        {float(levels[0]), float(levels[1])} == {0.0, 1.0} or counts.min() >= 0.05 * y.size
+    ):
         return out
     if method == "zscore":
         sd = float(y.std(ddof=1))
@@ -553,6 +563,8 @@ def outlier_scores(x: Any, method: Literal["iqr", "mad", "zscore"] = "mad") -> n
     else:
         q1, q3 = np.percentile(y, [25, 75])
         scale = float(q3 - q1) / 1.349
+        if scale <= 0:  # more than half the values are equal: the mean absolute deviation
+            scale = float(np.mean(np.abs(y - med))) * 1.2533
     if scale > 0:
         out = (a - med) / scale
     return out

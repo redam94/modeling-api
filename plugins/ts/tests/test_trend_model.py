@@ -63,6 +63,28 @@ def test_fit_drops_sentinel_months_from_the_likelihood(co2_bundle: Bundle, co2: 
     assert co2_bundle.metrics.values["rmse"] < 2.0
 
 
+def test_fit_stores_trend_and_seasonality_in_ppm(co2_bundle: Bundle, co2: xr.Dataset) -> None:
+    assert "core.decomposition" in HSGPTrendModel.manifest().plots
+    groups = co2_bundle.model.groups
+    comps = groups["components"]
+    assert set(comps.data_vars) == {"trend", "seasonality"}
+    assert comps["trend"].dims == ("chain", "draw", "t")
+    assert not any(comps[v].attrs for v in comps.data_vars)  # both are stacked parts
+    total = comps["trend"] + comps["seasonality"]
+    # an affine map of the standardised mu (the fitted core.standardize inverse)
+    mu = groups["posterior"]["mu"].values.ravel()
+    a, b = np.polyfit(mu, total.values.ravel(), 1)
+    np.testing.assert_allclose(total.values.ravel(), a * mu + b, atol=1e-6)
+    # ... back in ppm: the parts add up to the series, the season swings about 0 by ~3 ppm
+    y = co2["co2"].where(co2["co2"] > 0).values
+    fitted = total.mean(("chain", "draw")).values
+    ok = np.isfinite(y)
+    assert float(np.abs(fitted[ok] - y[ok]).mean()) < 2.0
+    season = comps["seasonality"].mean(("chain", "draw"))
+    assert abs(float(season.mean())) < 1.0 and 1.5 < float(season.max()) < 5.0
+    assert float(comps["trend"].mean()) > 300
+
+
 def test_forecast_starts_after_the_refit_and_is_in_ppm(
     co2_bundle: Bundle, co2: xr.Dataset, registry: Registry
 ) -> None:

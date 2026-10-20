@@ -269,7 +269,7 @@ How validation gives its results:
 | `GET /v1/runs/{run_id}` | Get a run: state, failure class and problem, attempt, progress snapshot and cost. The cost has placeholders in v0.2. From v0.3, the platform meters it | — | `Run` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/events` | An SSE stream or a JSON page of the persisted events (see [Run events](#run-events-server-sent-events)). Accepts `Last-Event-ID`. | — | `Page[RunEventView]` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/logs` | The captured log lines. Filters: `attempt`, `stream` | — | `Page[LogLine]` | 200 | `NOT_FOUND` |
-| `GET /v1/runs/{run_id}/plots` | The plots that a succeeded run rendered (`plots.json`: forecast fans, counterfactual bands). The plot sanitizer does a check of them at each read. The response does not include rejected plots. The list is empty until the run succeeds. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
+| `GET /v1/runs/{run_id}/plots` | The plots that a run rendered (`plots.json`: forecast fans, counterfactual bands, classifier plots). The response comes from the newest attempt that has a verified `plots.json`. Thus succeeded and partial runs have plots, and so do failed or cancelled runs with an earlier partial attempt that wrote plots (v0.10). The plot sanitizer does a check of them at each read. The response does not include rejected plots. The list is empty while no attempt has plots, for example while the run is active. | — | `Page[PlotSpec]` | 200 | `NOT_FOUND`, `INTEGRITY_FAILURE` |
 | `POST /v1/runs/{run_id}:cancel` | Request cancellation. It is idempotent. It returns the run in `cancelling`, or in its terminal state if the run is already complete. The API does not change a `finalizing` run and returns it as it is, because its execution is already complete. | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` |
 | `POST /v1/runs/{run_id}:resume` | Resume a `partial` run from its checkpoints (new attempt) | — | `Run` | 202 | `NOT_FOUND`, `CONFLICT` (the run is not `partial`) |
 | `POST /v1/runs/{run_id}:retry` | Start a **new** run from a failed run. For example, use the next larger resource class after `RESOURCE_EXHAUSTED`. Accepts `Idempotency-Key`. | `RunRetry` | `Run` | 201 | `NOT_FOUND`, `CONFLICT` (the run did not fail, or it is a workflow, workflow node or governance run. For these, start the workflow again or submit the validation again) |
@@ -302,7 +302,9 @@ transitions between them.
 **Score summaries.** When a score run succeeds, `ScoreCallResult.summary` (`ScoreSummary`)
 holds the requested summary as plain tables (the `summary.json` of the run). Each
 `ScoreSummaryTable` has the coordinate columns (one for each dim), then one column for each
-statistic. If the summary has more than 100 000 cells, `truncated` is `true`. Use the
+statistic. `dims` names the coordinate columns, and `time_dim` names the dim that is time
+when there is one. A server that predates these two fields leaves them out. The tables are in
+the order of their size. If the summary has more than 100 000 cells, `truncated` is `true`. Use the
 `score.zarr.zip` output for all the values. From v0.9, the table of a circular output
 (`OutputDecl.circular`, for example a direction) has the field `period` (one turn, in the
 units of the output). The statistics are then on the circle:

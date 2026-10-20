@@ -32,7 +32,7 @@ files:
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.9.1
+http://127.0.0.1:8000 ok 0.10.0
 ```
 
 `Client()` finds its settings in the same sequence as the CLI:
@@ -348,7 +348,9 @@ Nobody can override `PROMOTION_BLOCKED`. `api.endpoints` also has `list`, `get`,
 Like `models.score`, it sends `Prefer: wait=60`. It sends the call again with the same
 idempotency key until the run is complete. `timeout=` sets the maximum wait. Thus, a slow
 score never makes two runs. `api.endpoints.score(alias, call)` is the lower-level call. It
-returns a `ScoreResult` with the run, the output links and the downloaded tree. Inline
+returns a `ScoreResult` with the run, the output links and the downloaded tree.
+`ScoreResult.summary` holds the summary as tables. Each table gives `dims` (its coordinate
+columns) and `time_dim` (the dim that is time, or `None`). Inline
 payloads need the `xarray` extra. If the data is larger, upload it as a dataset and send it
 as `data="dataset://growth/plan@v2"`.
 

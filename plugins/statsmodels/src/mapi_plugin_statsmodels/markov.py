@@ -112,6 +112,7 @@ class MarkovSwitchingModel(StatsmodelsModel[MarkovSwitchingSettings]):
     )
     capabilities = quantile_capabilities("custom")
     schema_template = schema_template(multivariate=False, exog=True)
+    plots = (*StatsmodelsModel.plots, "core.state_sequence")
 
     def build(self, cell: Cell, s: MarkovSwitchingSettings) -> Any:
         from statsmodels.tsa.regime_switching.markov_autoregression import MarkovAutoregression

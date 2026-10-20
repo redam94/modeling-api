@@ -5,6 +5,226 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.10.0] — Chart wiring and score plots by output shape — 2026-10-20
+
+### Chart wiring and metric correctness
+
+More models now get the plots that apply to them, and the metrics that a spec requests are
+calculated. A classifier gets classifier plots and metrics. A state model gets a state plot. An
+ADVI fit shows its loss. The run page shows the plots of a run.
+
+#### Added
+- New plot recipes in the core pack, each with an About card and example data:
+    - `core.roc_pr`: the ROC curve and the precision-recall curve of a 0/1 target, with the AUC
+      and the average precision.
+    - `core.confusion`: the 2 × 2 table of actual and predicted classes at a threshold (0.5,
+      or `auto`), with accuracy, precision, recall, specificity and F1.
+    - `core.loss_curve`: the loss of each step of a fit, raw and smoothed, with a note when
+      the loss still goes down at the end.
+    - `core.loo_pit`: the LOO-PIT check of calibration and the PSIS Pareto k of each
+      observation. It is not a default plot. Add it in the plot builder.
+- Metrics: `auc` (the Mann-Whitney AUC) and binary `brier`, `log_score` and `accuracy` for a
+  target with two values. `mase` for a fit with a time holdout: the holdout `mae` divided by
+  the in-sample error of a seasonal naive forecast.
+- `metrics.json` keeps the PSIS Pareto k of each observation of `elpd_loo`
+  (`ElpdDetail.pareto_k`).
+- An ADVI fit keeps the loss of each step in the bundle group `fit_history` (`loss(step)`, at
+  most 5,000 steps). The fit run adds `core.loss_curve` to its plots.
+- Standard plots for more models. The model declares them, and the **Insert** panel of the spec
+  editor shows them first. A fit draws only the plots in `outputs.plots`:
+    - sklearn regressors (and the quantile, bootstrap and conformal plugins):
+      `core.fit_vs_actual`, `core.residuals_over_time`, `ml.feature_importance`.
+    - `sklearn.tabular_classifier`: `core.calibration`, `core.roc_pr`, `core.confusion`,
+      `ml.feature_importance`.
+    - `ts.gaussian_hmm` and the statsmodels Markov switching model: `core.state_sequence`.
+    - The unobserved components model, ETS and `ts.hsgp_trend`: `core.decomposition`. ETS and
+      `ts.hsgp_trend` keep a new `components` group for it.
+- Default score plots: an areal output gets `sci.area_map`, an output of probabilities over a
+  `state` or `regime` dim gets `core.state_sequence`, and an evaluate run with a 0/1 target gets
+  `core.calibration`, `core.roc_pr` and `core.confusion`.
+- `ScoreSummaryTable.plots`: the ids of the rendered plots that draw the output.
+- **Score**, *Results by output*: a map of areas and a classification view, made from the plots
+  of the run.
+- **Run detail**: a **Plots** card with the plots of a finished run.
+- **Compare** in the Model Explorer: the card *Which version predicts new data best?* with the
+  `core.model_comparison` plot, when two or more versions have `elpd_loo` (or `elpd_waic`).
+- **Score**, quick chart: a **Cell** picker for a table with more dims than the axis and the
+  colour, for example a grid. The chart shows one cell at a time.
+
+#### Changed
+- `core.calibration` accepts one predicted probability for each row (no draws) for a 0/1
+  target. Validation now accepts it for a model with point predictions.
+- `core.state_sequence` reads the `hidden_states` group (HMM), the `regimes` group (Markov
+  switching) and a score summary. It finds the state dim (`state` or `regime`) itself. When the
+  data has more than one series, it shows the first one and names it in the caption.
+- `core.decomposition` reads the `components` group. It does not stack a variable with the
+  attr `decomposition: exclude` (the trend slope of the UC and ETS models).
+- `GET /v1/runs/{run_id}/plots` returns the plots of the newest attempt that has them. Thus
+  partial runs, and failed or cancelled runs with an earlier partial attempt, also show plots.
+- One implementation of the MASE scale (`mapi_sdk.metrics.mase_scale`) for the SDK, the
+  workflows, the explorer and governance.
+
+#### Fixed
+- The fit calculated no metric for a classifier: `metrics.json` was empty. The harness did not
+  pair a probability output with its target, because the output declares `units`. It now pairs
+  an output with `meaning: probability` with the target.
+- An evaluate run from the **Score** page did not draw its plots: the runner skipped
+  `core.fit_vs_actual` because the result had no observed values. The runner now gives the
+  plots the full predictions and the observed values.
+- `auc` and `mase` passed validation but the fit did not calculate them.
+- **Compare** in the Model Explorer showed no holdout metrics of the versions (only the number
+  of parameters). The explore run did not get the `metrics.json` of each version. The server
+  now gives it to the run with each bundle.
+- **Score**: the quick chart of a large grid table (for example 864 rows of the LGCP summary)
+  looked blank. The chart drew one line through all the rows, so all the cells of a period
+  were at the same x position: each period was a vertical stroke and the band had no width.
+  Empty cells (outside the study area) also broke the line between the periods. The chart now
+  draws one cell of the grid at a time.
+
+#### Known gaps
+- Validation refuses `log_score` in `evaluate.metrics` for a model with point predictions, so
+  a point classifier cannot request it. Use `brier`.
+- `mase` is calculated only in the evaluation of a fit. An evaluate run from the **Score** page
+  skips it, because it does not have the training data.
+- A regression target that has only the values 0 and 1 gets the classifier plots on evaluate.
+- The `sci.*` models that run the PyMC engine themselves do not keep the ADVI loss history.
+  `PyMCModel` plugins and `ts.gaussian_hmm` keep it.
+- `sci.area_map` on the Score page draws an output with only an area dim. An areal output with
+  more dims is skipped with a warning.
+
+### Score results by output shape
+
+The plots of a score run now follow the shape of each output. A gridded output, for example
+the intensity of the earthquake model `sci.lgcp_grid`, shows as a map with a slider over the
+periods of the forecast, not as a forecast fan of the sum over the grid.
+
+#### Added
+- The runner picks the default score plots from the shape of the outputs (predict, forecast
+  and evaluate). A `grid` output gets `sci.field_map`, or `sci.vector_field` when it has a
+  `component` of size 2, with the frame dim (`quarter`) as the slider. A time series output
+  that is not a grid (`total[period]`) gets `core.ppc_fan`. A model with grid outputs and no
+  such time series gets no fan. A model with no grid outputs keeps the plots of before, and
+  `job.plots` still replaces the defaults.
+- A predict, forecast or evaluate run of a model with grid outputs writes `ui/fields.json`
+  (`FieldsView`, `mapi_spec.views.SCORE_FIELDS_VIEW`): the same field view as the Model
+  Explorer, made from the predictions.
+- The output variables of a grid in `score.zarr.zip` carry the attr `grid` (the `GridDecl` as
+  JSON, with the dataset names of the dims). Thus a download can be plotted as a map.
+- `ScoreSummaryTable` has two optional fields: `dims` (the coordinate columns) and `time_dim`
+  (the dim that is time). A server that predates them leaves both out.
+- **Score** in the web app shows a view for each output by its shape: a map with a frame
+  slider for a grid, a line with a band for a time series, intervals for a categorical output
+  and tiles for a scalar. When `ui/fields.json` is there, the map replaces the
+  `sci.field_map` and `sci.vector_field` plots in the plot list.
+
+#### Changed
+- The KPI of a guided forecast (`ui/guided/forecast.json`) is an output that is not a grid
+  when there is one, for example `total` and not the sum of `rate` over the grid.
+- The summary tables are in the order of their size, so a truncated summary drops a large
+  grid table and keeps `total`.
+- A model's field map (Score page and Model Explorer) colours the 1% to 99% range of the
+  posterior means when the quantiles and draws reach much wider, so a log-scale intensity
+  does not look flat; the mean, quantiles and draws still share the scale, and "Colours for
+  the full range" shows all of it.
+
+### Data Explorer for scientific data
+
+The Data Explorer now shows graphs of scientific data, not only time series. It finds the
+structure of the data (images, profiles, maps, networks, trees, directions and points) and
+shows the sections that apply first.
+
+#### Added
+- The explorer finds the shapes of each dataset, and of each node of a tree dataset, from the
+  dims, the coords, the roles and the units. The new section **Structure** shows the shapes,
+  the role of each dim and how the explorer uses each variable.
+- Seven picture sections in the new group *Pictures of the data*:
+    - **Images and fields**: the field viewer of the Model Explorer, with the statistics of
+      each frame.
+    - **Profiles and spectra**.
+    - **Map**: areas in colour, neighbours and Moran's I.
+    - **Network**: matrix, node-link graph, degree and homophily.
+    - **Tree**: the tree with the traits and the phylogenetic signal.
+    - **Directions and times of day**: roses and the Rayleigh test.
+    - **Points**: lattice, CIE Lab colours and agreement.
+- The ingest writes `structure` and each picture section that applies. The explorer index
+  gives the new fields `reason`, `shapes` and `order`. A request takes the new field `hints`
+  to correct the structure.
+- In Expert mode, *All series* also shows the Plotly plots `sci.area_map`, `net.graph` and
+  `sci.rose`.
+- Mock datasets for eleven pymc-challenges cases and the E80 lens tree, and screenshots of
+  the new sections. `make docs-screenshots-explorers` records the profiles, the points and the
+  section list from mock mode. `make docs-screenshots-science` records the images (E58), the
+  map (E18), the network (E21), the tree (E23) and the roses (E81b) from the real exports.
+- **Images and fields**: when a few cells are much brighter than the others (E58 camera
+  frames), the colours cover 98% of the values. **Colours for the full range** shows all the
+  values. The axis of a histogram with a log count has ticks at the powers of ten.
+- **Tree**: a trait with positive values that go across two orders of magnitude or more
+  (E23 body mass) has a logarithmic axis.
+- Each pymc-challenges tutorial has a step "Explore the data". The guide
+  Explore a dataset (`docs/guides/data-explorer.md`) has a new part
+  "Scientific data".
+
+#### Changed
+- The list of sections shows only the sections that apply to the data, in the sequence that
+  agrees with the structure. The other sections go in the closed list **Not for this data**.
+  A link to one of these sections continues to open it. Versions from earlier releases keep
+  the thirteen sections.
+- A dim with `policy: extend` is time only when its coords are numbers that increase and it
+  is not a list of ids. A `week`, `month`, `quarter`, `year`, `day`, `date`, `period` or
+  `time` dim with numbers stays time (an MMM panel on the weeks 1 to 104). A list of ids is a
+  sequence when its name tells a step in time (`step`, `t`) or media or spend change along
+  it. If your data uses another list of ids as time, give `time_dim` in the request.
+- **Over time** adds or averages the cells of an image to make one series. It does not make
+  a series for each cell. The time patterns need a real time dim and 16 periods or more.
+- **Group comparison** compares only real groups. **Correlations**, **Distributions** and
+  **Unusual values** do not use geometry (borders, neighbours, tree variables, positions).
+  **Data quality** gives `SHORT_HISTORY` only for data with a time dim, and has the new
+  warnings `GEOMETRY_INVALID`, `TREE_INVALID`, `NETWORK_ASYMMETRIC`, `ANGLE_RANGE` and
+  `IMAGE_SATURATED`.
+- A request can have all 21 sections (before: 13).
+- **Map** starts with the ratio of the target and the exposure (E18 `cases` / `expected`),
+  when the data has this ratio.
+- **Unusual values** and the `OUTLIERS` check do not use an indicator (the values 0 and 1,
+  or two values that each occur in 5 % of the rows or more), or a profile or a spectrum (E79
+  `reference_dl`). One spike in a constant series continues to be an unusual value.
+- **Distributions** says "has only the values 0 and 1" for a variable with only 0 and 1.
+  **Correlations** names the largest pair when no pair has a correlation of 0.7 or more.
+- The tables of the picture sections show counts with all their digits (10,292, not 10,290).
+- The dataset About counts a pair of dims (`district`, `district_`) once, and does not add an
+  "s" to a dim name that ends in "s" ("186 species", not "186 speciess"). A name that ends
+  in "ss", "us", "x", "ch" or "sh" gets "es" ("3 classes", "3 statuses").
+
+#### Fixed
+- The upload page puts the bytes of a file once. Before, **Upload and ingest** while
+  **Preview structure** still sent the file failed with "upload failed with HTTP 412".
+- Time-series and tabular data keep the classic sections:
+    - A target named `y`, or a pair of columns such as `sales_x` and `sales_y`, is data,
+      not the positions of points. Points need names of positions and, for `x` and `y`,
+      integers, units of length or a dim of points (`site`).
+    - An MMM panel with integer geo or channel codes is not an image. **Over time** gives
+      one series for each geo and channel.
+    - `hours_open`, `months_active`, a temperature in degrees, and a latitude or a
+      longitude are not directions.
+- **Images and fields** reads a few frames at a time. A movie of 1,000 frames of 256 × 256
+  cells needs about 250 MB more memory, not 1.8 GB. The ingest leaves out the images of more
+  than 50,000,000 cells: **Run the deeper checks** calculates them.
+- `IMAGE_SATURATED` looks only for a pile-up at the limit of a detector. A heater setting
+  (E51 `heater_w`) and a noise map (E79 `noise_sd`) do not get it.
+- Moran's I of a map variable with frames uses the mean over the frames, not the first
+  frame.
+- The server does not reuse an explore run from before this release: the cache key of a
+  request includes the version of the explorer.
+- **Group comparison** does not compare the layers of a network (E21 `covariate`).
+- The roses show the bin in the units of the data when the pointer is on a bar ("13–14 h",
+  not "203°"). The plain summary of the roses does not count the rose of all the records as
+  a group.
+- The export plots of a section have different ids (three roses in E81).
+- "has only the values 0 and 1" shows only for a variable with the values 0 and 1, not for
+  any two values between 0 and 1.
+- The counts of frames, ties and dim sizes show all their digits. For a version from an
+  earlier release, the header names the views for scientific data apart from the list.
+- In **Network**, the **Colour by** picker stays when a network has no matrix.
+
 ## [0.9.1] — Science gallery docs — 2026-10-19
 
 This release updates the documentation for v0.9.0. It has no code changes.

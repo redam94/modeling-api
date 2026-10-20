@@ -235,7 +235,7 @@ the string columns of these DataFrames.
 | `core.ppc` | `var`, `observed_var`, `num_draws` (50), `bins` (20), `levels` |
 | `core.ppc_fan` | `var`, `observed_var`, `along`, `facet`, `max_facets` (12), `levels` ([0.5, 0.9]), `point` (median), `split_at`, `columns` (3), `max_rows` |
 | `core.fit_vs_actual`, `core.residuals_over_time` | `var`, `observed_var`, `along`, `facet`, `max_facets`, `point` |
-| `core.decomposition`, `mmm.decomposition` | `vars`, `component` (auto / `channel`), `along`, `hdi_prob` (0.9), `max_components` (20) |
+| `core.decomposition`, `mmm.decomposition` | `vars`, `component` (auto / `channel`), `along`, `hdi_prob` (0.9), `max_components` (20). `core.decomposition` skips a variable with the attr `decomposition: exclude` if `vars` does not name it. |
 | `core.model_comparison` | `ic` (auto: precomputed table, else WAIC), `var`, `model_dim` (model) |
 | `core.counterfactual` | `var`, `along`, `hdi_prob` (0.9), `bins` (30) |
 | `core.decision_distribution` | `var`, `candidate`, `hdi_prob`, `higher_is_better` (true), `max_candidates` (12) |
@@ -243,7 +243,11 @@ the string columns of these DataFrames.
 | `core.ridge` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `dim`, `select`, `hdi_prob` (0.94), `max_levels` (30), `max_draws` (4 000), `points` (100), `overlap` (1.6), `descending` (true) |
 | `core.rank_matrix` | `var`, `group`, `dim`, `select`, `descending` (true: rank 1 is the largest value), `max_items` (30), `max_draws` (4 000), `labels` (auto \| always \| never) |
 | `core.calibration` | `var`, `observed_var`, `kind` (auto \| continuous \| binary), `prob` (0.95), `bins` (10), `n_sim` (1 000), `seed` (0) |
-| `core.state_sequence` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive \| root), `state_dim` (state), `along`, `observed_var`, `select`, `max_states` (10), `max_times` (2 000), `max_draws` (4 000), `width` (640), `height` (140) |
+| `core.state_sequence` | `var`, `group` (auto \| hidden_states \| regimes \| posterior \| predictions \| posterior_predictive \| summary \| root), `state_dim` (auto: `state`, then `regime`), `along`, `observed_var`, `select` (none: the first level of each other dim), `max_states` (10), `max_times` (2 000), `max_draws` (4 000), `width` (640), `height` (140) |
+| `core.roc_pr` | `var`, `observed_var`, `positive` (the larger target value), `max_points` (500, 20 to 5 000), `width` (320), `height` (280) |
+| `core.confusion` | `var`, `observed_var`, `positive`, `threshold` (0.5, or `auto`: the largest TPR − FPR), `normalize` (none \| true), `width` (260), `height` (240) |
+| `core.loss_curve` | `var`, `group` (auto \| fit_history \| metrics_history), `along` (step), `smooth` (none: a window of n / 50 steps), `log_y` (none: log when max / min > 50), `max_points` (2 000), `width` (560), `height` (220) |
+| `core.loo_pit` | `var` (a `log_likelihood` variable), `observed_var`, `prob` (0.95), `n_sim` (1 000), `seed` (0), `max_draws` (2 000), `k_threshold` (0.7) |
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
@@ -265,15 +269,26 @@ the string columns of these DataFrames.
 
 ### Extra core recipes
 
-These five recipes are in the core pack (`mapi_plots.recipes.extras`, Vega-Lite):
+These recipes are in the core pack (`mapi_plots.recipes.extras`, `classification`, `training` and `loo`, Vega-Lite):
 
 | Recipe | What it shows |
 |---|---|
 | `core.pair` | A corner plot of up to `max_params` scalar parameter elements. Below the diagonal: thinned draws of each pair. On the diagonal: a histogram of each parameter. Red points are divergent transitions (`sample_stats.diverging`). |
 | `core.ridge` | One density for each level of `dim`, sorted by the mean, with a dot for the mean and a bar for the HDI. Each curve has the same peak height. |
 | `core.rank_matrix` | P(rank = k) for each item, sorted by the expected rank, and the matrix of P(row above column). Input: draws `(…, item)`. |
-| `core.calibration` | Continuous targets: the PIT-ECDF difference with a simultaneous envelope (simulated). Targets with values 0 and 1: a reliability diagram with a binomial band for each bin and a histogram of the predicted probabilities. |
-| `core.state_sequence` | The observed series (points coloured by the most likely state) above the stacked state probabilities. Input: probabilities `(…, state, time)` with or without draws, or integer state draws `(chain, draw, time)`. |
+| `core.calibration` | Continuous targets: the PIT-ECDF difference with a simultaneous envelope (simulated). Targets with values 0 and 1: a reliability diagram with a binomial band for each bin and a histogram of the predicted probabilities. A point prediction (no draws, values from 0 to 1) uses the reliability diagram. A point prediction of a target that is not 0/1 gives an error, because the PIT check needs draws. |
+| `core.state_sequence` | The observed series (points coloured by the most likely state) above the stacked state probabilities. Input: probabilities `(…, state, time)` with or without draws, a score summary with a `stat` dim (the plot uses `mean`), or integer state draws `(chain, draw, time)`. The default variable is `smoothed_prob`, `state_prob` or `filtered_prob`. Without `select`, the plot fixes each other dim at its first level and the caption names that level. |
+| `core.roc_pr` | Two panels: the ROC curve with the diagonal of a random guess, and the precision-recall curve with the base rate. The titles give the AUC and the average precision. With draws, the caption gives the 90% interval of the AUC (up to 500 draws). |
+| `core.confusion` | The 2 × 2 table of the actual class and the predicted class at the threshold, as counts or as the share of each actual class. The caption gives the accuracy, the precision, the recall, the specificity, the F1 score and the threshold. |
+| `core.loss_curve` | The raw loss (light) and a rolling mean (dark) over the steps, one line for each level of an extra dim (at most 8). The caption gives the first and the last smoothed value and the change over the last 10% of the steps. |
+| `core.loo_pit` | The LOO-PIT ECDF difference with a simultaneous envelope (when `posterior_predictive` and `observed_data` are present), and the PSIS Pareto k of each observation with lines at 0.5 and `k_threshold`. |
+
+The recipes `core.calibration`, `core.roc_pr` and `core.confusion` share one input rule. They
+look for the prediction in the `posterior_predictive`, `predictions` and `draws` groups (with
+draws, or one probability for each cell), then in `summary` (`stat` mean, point or median). The
+actual values come from `observed_data` or `observed`. The two arrays are aligned on their shared
+cells, and cells with NaN are left out. The target must have two values. The larger value is the
+positive class unless you set `positive`. The predictions must be from 0 to 1.
 
 ### Scientific-model pack (`sci.*`)
 

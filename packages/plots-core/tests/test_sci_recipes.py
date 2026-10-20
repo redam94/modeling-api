@@ -33,6 +33,7 @@ from mapi_plots.recipes import (  # noqa: E402
     all_recipes,
     get_recipe,
     recipe,
+    render_plots,
 )
 from mapi_plots.sanitize import check_plot, sanitize_plot  # noqa: E402
 from mapi_spec.plots import MAX_INLINE_ARROW_B64, PlotSpec  # noqa: E402
@@ -472,6 +473,66 @@ def test_ensemble_prefers_an_output_without_a_grid() -> None:
     plot = ensemble.render(tree, n_draws=5)
     check_sci(plot, ensemble)
     assert "total" in (plot.caption_plain or "") + json.dumps(plot.spec)
+
+
+# ------------------------------------------------------------------------ score trees
+
+#: the grid attr the sdk harness writes on a gridded score output, in dataset names
+#: (the lgcp ``rate[period,row,col]`` with ``period`` bound to the dataset's ``quarter``)
+SCORE_GRID = {
+    "y": "row",
+    "x": "col",
+    "frame": "quarter",
+    "log": True,
+    "colormap": "magma",
+    "origin": "lower",
+}
+
+
+def score_tree(quarters: int = 4, *, predictions: bool = True) -> xr.DataTree:
+    """An lgcp-like forecast score tree: ``/summary`` and (kept) ``/predictions``."""
+    rate = RNG.gamma(2.0, 1.0, size=(2, 6, quarters, 5, 7))
+    dims = ("chain", "draw", "quarter", "row", "col")
+    coords = {"quarter": [f"2024Q{i + 1}" for i in range(quarters)]}
+    attrs = {"grid": json.dumps(SCORE_GRID)}
+    pred = xr.Dataset(
+        {
+            "rate": xr.DataArray(rate, dims=dims, coords=coords, attrs=attrs),
+            "total": (("chain", "draw", "quarter"), rate.sum(axis=(-2, -1))),
+        },
+        coords=coords,
+    )
+    stats = xr.concat([pred.mean(["chain", "draw"]), pred.std(["chain", "draw"])], dim="stat")
+    summary = stats.assign_coords(stat=["mean", "sd"])
+    summary["rate"].attrs = dict(attrs)
+    nodes = {
+        "/": xr.Dataset(attrs={"mode": "forecast", "names": "dataset"}),
+        "/summary": summary,
+    }
+    if predictions:
+        nodes["/predictions"] = pred
+    return xr.DataTree.from_dict(nodes)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [None, {"sci.field_map": {"var": "rate", "y": "row", "x": "col", "frame": "quarter"}}],
+)
+def test_field_map_on_a_score_tree_has_a_frame_slider(options: Any) -> None:
+    report = render_plots(score_tree(), ["sci.field_map"], options=options)
+    assert report.issues == []
+    (plot,) = report.plots
+    assert [f["name"] for f in plot.spec["frames"]] == ["2024Q1", "2024Q2", "2024Q3", "2024Q4"]
+    slider = plot.spec["layout"]["sliders"][0]
+    assert [s["label"] for s in slider["steps"]] == ["2024Q1", "2024Q2", "2024Q3", "2024Q4"]
+
+
+def test_field_map_on_a_summary_only_score_tree_warns() -> None:
+    # a trimmed score tree keeps no draws: the runner must keep /predictions for grid outputs
+    report = render_plots(score_tree(predictions=False), ["sci.field_map"])
+    assert report.plots == []
+    (issue,) = report.issues
+    assert issue.severity.value == "warning" and "no draws" in (issue.untrusted_text or "")
 
 
 # ------------------------------------------------------------------- plotly in Recipe.render

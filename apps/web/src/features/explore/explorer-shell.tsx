@@ -31,9 +31,37 @@ const STATUS_ICON = {
   error: { icon: AlertTriangle, className: "text-destructive", label: "failed" },
 } as const;
 
-/** The section list: a vertical nav on wide screens, a wrapping list on phones. */
-export function ExplorerNav({ entries, current, onSelect, label }: { entries: readonly NavEntry[]; current: string; onSelect: (id: string) => void; label: string }) {
-  const groups = [...new Set(entries.map((e) => e.group))];
+/** A section that does not apply to the data: out of the list, still one click away. */
+export interface HiddenNavEntry {
+  id: string;
+  title: string;
+  /** Why it does not apply, in plain words. */
+  message: string;
+}
+
+/**
+ * The section list: a vertical nav on wide screens, a wrapping list on phones. `groupOrder`
+ * orders the groups (else the order of their first entry). `hidden` sections go into a closed
+ * "Not for this data" list under the nav (open when the current section is one of them).
+ */
+export function ExplorerNav({
+  entries,
+  current,
+  onSelect,
+  label,
+  hidden = [],
+  groupOrder,
+}: {
+  entries: readonly NavEntry[];
+  current: string;
+  onSelect: (id: string) => void;
+  label: string;
+  hidden?: readonly HiddenNavEntry[];
+  groupOrder?: readonly string[];
+}) {
+  const present = [...new Set(entries.map((e) => e.group))];
+  const groups = groupOrder ? [...groupOrder.filter((g) => present.includes(g)), ...present.filter((g) => !groupOrder.includes(g))] : present;
+  const currentHidden = hidden.some((h) => h.id === current);
   return (
     <nav aria-label={label} className="grid content-start gap-4 lg:sticky lg:top-4">
       {groups.map((g) => (
@@ -70,6 +98,34 @@ export function ExplorerNav({ entries, current, onSelect, label }: { entries: re
           </ul>
         </div>
       ))}
+      {hidden.length ? (
+        <details className="group grid gap-1 border-t pt-3" open={currentHidden || undefined} data-testid="nav-not-applicable">
+          <summary className="cursor-pointer px-2 text-[12px] font-medium text-muted-foreground select-none hover:text-foreground">Not for this data ({hidden.length})</summary>
+          <ul className="mt-1 flex flex-wrap gap-1 lg:grid lg:gap-0.5" aria-label="Views that do not apply to this data">
+            {hidden.map((h) => (
+              <li key={h.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(h.id)}
+                  aria-current={current === h.id ? "page" : undefined}
+                  title={`${h.title}: ${h.message}`}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1 text-left text-[12px] text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+                    current === h.id && "border-border bg-accent font-medium text-accent-foreground",
+                  )}
+                  data-section={h.id}
+                  data-status="skipped"
+                  data-reason="not_applicable"
+                >
+                  <MinusCircle aria-hidden className="size-3.5 shrink-0 text-muted-foreground/70" />
+                  <span className="min-w-0 flex-1 truncate">{h.title}</span>
+                  <span className="sr-only">(does not apply to this data)</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </nav>
   );
 }
@@ -158,9 +214,9 @@ export function RecipePlots({ target, state, runId, expert }: { target: Explorer
         <div className="grid gap-4 border-t p-4">
           {plots.isError ? <ErrorNotice error={plots.error} title="The app could not load the plots" /> : null}
           {plots.isPending ? <Skeleton className="h-60" /> : null}
-          {(plots.data ?? []).map((p) => (
-            <div key={p.id} className="grid gap-1">
-              <PlotFrame kind="vega-lite" spec={recipeBody(p)} datasets={{}} title={p.title} exportName={p.id} />
+          {(plots.data ?? []).map(({ plot: p, kind, datasets }, i) => (
+            <div key={`${p.id}-${i}`} className="grid gap-1">
+              <PlotFrame kind={kind} spec={recipeBody(p)} datasets={datasets} title={p.title} exportName={p.id} />
               {p.caption_plain ? <p className="text-xs text-muted-foreground">{p.caption_plain}</p> : null}
             </div>
           ))}

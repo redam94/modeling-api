@@ -41,7 +41,7 @@ entry-point group (`core`, `mmm`, `ml`, `sci`, `net`):
 
 | Pack | Recipes |
 |---|---|
-| `core.*` (Vega-Lite) | data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast fan, fit vs actual, residuals, decomposition, model comparison, counterfactual, decision distribution, `core.pair` (corner plot with divergent draws), `core.ridge`, `core.rank_matrix`, `core.calibration` (PIT-ECDF or reliability diagram), `core.state_sequence` |
+| `core.*` (Vega-Lite) | data overview, prior predictive, convergence, posterior forest, PPC, fit/forecast fan, fit vs actual, residuals, decomposition, model comparison, counterfactual, decision distribution, `core.pair` (corner plot with divergent draws), `core.ridge`, `core.rank_matrix`, `core.calibration` (PIT-ECDF or reliability diagram, also from point probabilities), `core.state_sequence` (HMM hidden states, Markov regimes), `core.roc_pr` and `core.confusion` (binary classifiers), `core.loss_curve` (ADVI loss history), `core.loo_pit` (LOO-PIT and PSIS Pareto k) |
 | `mmm.*` | response curves, marginal cost, budget plans, decomposition, prior beliefs |
 | `ml.*` | `ml.feature_importance` |
 | `sci.*` (Plotly) | `sci.field_map`, `sci.vector_field`, `sci.profile_bands`, `sci.ensemble`, `sci.area_map`, `sci.phylogeny`, `sci.rose`, `sci.image_residuals`, `sci.ppc_image_grid`, `sci.swatches`, `sci.power_spectrum`, `sci.point_pattern` |

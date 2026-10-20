@@ -52,7 +52,7 @@ import pytensor.tensor as pt
 import xarray as xr
 from mapi_pymc.checkpoint import CheckpointSink, fit_key
 from mapi_pymc.diagnostics import convergence_diagnostics
-from mapi_pymc.engines import EngineHooks, EnginePlan, run_engine
+from mapi_pymc.engines import FIT_HISTORY, EngineHooks, EnginePlan, run_engine
 from mapi_sdk.models import (
     PREDICTIONS,
     CustomModel,
@@ -175,7 +175,7 @@ class GaussianHMMModel(CustomModel[GaussianHMMSettings]):
             "description": "Hidden-state probabilities (predicted, or filtered in filter mode)",
         },
     }
-    plots = ("core.convergence", "core.posterior_forest")
+    plots = ("core.convergence", "core.posterior_forest", "core.state_sequence")
     pad_extend = False
     default_engine: ClassVar[str] = "pymc"
 
@@ -253,6 +253,9 @@ class GaussianHMMModel(CustomModel[GaussianHMMSettings]):
                 if stats[v].dtype.kind in "biuf" and set(stats[v].dims) <= {"chain", "draw"}
             ]
             groups["sample_stats"] = _clean(stats[keep], result.engine)
+        history = result.group(FIT_HISTORY)
+        if history is not None:  # ADVI: the loss of each step, for core.loss_curve
+            groups[FIT_HISTORY] = history
         groups["observed_data"] = _clean(
             xr.Dataset({TARGET: ds[TARGET].transpose(GROUP_DIM, STEP_DIM)}), result.engine
         )

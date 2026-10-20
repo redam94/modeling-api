@@ -36,7 +36,7 @@ import xarray as xr
 from mapi_sdk.actuals import entry_fit_end
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
-from mapi_sdk.metrics import point_estimate
+from mapi_sdk.metrics import mase_scale, point_estimate
 from mapi_sdk.registry import Registry, default_registry
 from mapi_sdk.summarise import interp_quantile
 from mapi_spec.actuals import DATA_SPACE_LABEL, TRANSFORMED_SPACE
@@ -381,17 +381,6 @@ def _interval(da: xr.DataArray, rep: Representation) -> tuple[xr.DataArray, xr.D
 def cells_of(da: xr.DataArray, tdim: str) -> np.ndarray:
     others = [d for d in da.dims if d != tdim]
     return np.asarray(da.transpose(tdim, *others).values, dtype=float).reshape(da.sizes[tdim], -1)
-
-
-def mase_scale(train: np.ndarray, m: int) -> float | None:
-    """In-sample seasonal-naive MAE of a training block (``m`` falls back to 1)."""
-    for lag in (m, 1):
-        if lag < train.shape[0]:
-            d = np.abs(train[lag:] - train[:-lag])
-            d = d[np.isfinite(d)]
-            if d.size and float(d.mean()) > 0:
-                return float(d.mean())
-    return None
 
 
 def _score_window(

@@ -47,9 +47,18 @@ from mapi_runner.worker.plots import render_for
 from mapi_runner.worker.scorecard import fit_scorecard, model_structural_missing
 from mapi_runner.worker.views import externalize_plot_data, write_ui_views
 
-__all__ = ["FIT_COORDS", "run_fit", "write_fit_coords", "write_guided_views"]
+__all__ = [
+    "FIT_COORDS",
+    "fit_plot_refs",
+    "run_fit",
+    "write_fit_coords",
+    "write_guided_views",
+]
 
 FIT_COORDS = "coords.json"
+FIT_HISTORY = "fit_history"
+"""The model group of a fit's loss per step (``mapi_pymc.engines.FIT_HISTORY``: ADVI)."""
+LOSS_CURVE = "core.loss_curve"
 
 
 def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
@@ -80,7 +89,7 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
     )
     ctx.cancel.check()
     ctx.state(RunnerPhase.PLOTS, "rendering plots and views")
-    refs = [str(p) for p in spec.outputs.plots]
+    refs = fit_plot_refs(spec, bundle)
     plots = render_for(
         ctx,
         refs,
@@ -105,6 +114,15 @@ def run_fit(ctx: WorkerContext, spec: ModelSpec) -> Bundle:
             ctx.metric(name, float(value))
     ctx.progress(1.0, "fit complete", force=True)
     return bundle
+
+
+def fit_plot_refs(spec: ModelSpec, bundle: Bundle) -> list[str]:
+    """The spec's ``outputs.plots``, plus ``core.loss_curve`` when the fit kept its loss
+    history (an ADVI fit: the loss of an approximation is always worth a look)."""
+    refs = [str(p) for p in spec.outputs.plots]
+    if FIT_HISTORY in bundle.model.groups and LOSS_CURVE not in {r.split("@")[0] for r in refs}:
+        refs.append(LOSS_CURVE)
+    return refs
 
 
 def write_guided_views(ctx: WorkerContext, bundle: Bundle, data: xr.Dataset) -> None:

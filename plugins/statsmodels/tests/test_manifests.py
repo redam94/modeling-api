@@ -56,6 +56,20 @@ def test_manifest(plugin: type) -> None:
     assert integer.dims["t"].kind == "integer"
 
 
+@pytest.mark.parametrize(
+    ("model_id", "extra"),
+    [
+        ("ts.markov_switching", "core.state_sequence"),
+        ("ts.unobserved_components", "core.decomposition"),
+        ("ts.ets", "core.decomposition"),
+    ],
+)
+def test_models_with_states_or_parts_list_their_plot(model_id: str, extra: str) -> None:
+    plugin = next(p for p in PLUGINS if p.id == model_id)
+    plots = plugin.manifest().plots  # type: ignore[attr-defined]
+    assert list(plots) == ["core.ppc_fan", "core.fit_vs_actual", "core.residuals_over_time", extra]
+
+
 def test_multivariate_templates_have_a_variable_dim() -> None:
     by_id = {p.id: p for p in PLUGINS}
     for mid in ("ts.var", "ts.vecm", "ts.varmax", "ts.dynamic_factor"):

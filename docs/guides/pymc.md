@@ -89,6 +89,20 @@ example, all observations share one latent field), declare `loo_valid=False` and
 in `loo_invalid_reason` in the `Capabilities` of the model. The fit then skips `elpd_loo` with
 that reason.
 
+### The loss history of ADVI <span class="mapi-badge">v0.10</span> { #advi-loss-history }
+
+An ADVI fit keeps the loss of each optimization step in the `fit_history` group of the bundle.
+The loss is the negative ELBO. A lower value is better. The group has one variable, `loss`, over
+the dim `step` (1 to the number of steps). If the fit has more than 5,000 steps, the group keeps
+5,000 evenly spaced steps and the last step. The attr `thinned_from` then gives the number of
+steps of the fit.
+
+The fit run adds the plot `core.loss_curve` to each fit that has this group. The plot shows the
+raw loss and a moving average. If the moving average still goes down by more than 1% over the
+last 10% of the steps, the caption tells you so. Then increase `tune` and fit again.
+
+`map` and `pathfinder` do not keep a loss history.
+
 ### Segmented sampling and checkpoints
 
 With `engine: pymc` and `checkpoint.every_draws`, the sampler tunes one time. Then it makes the

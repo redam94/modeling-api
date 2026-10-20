@@ -186,6 +186,12 @@ After a disconnect, it continues from the point where it stopped.
   also shows the spec hash, the run that it retried and its cost (`Not metered locally`).
 - **Events**: each persisted event, with diagnostics and metrics. On a laptop, this includes
   the `DEV_MODE_ISOLATION` warning.
+- **Plots** (v0.10): the plots of a finished run, under **Progress**. A fit shows the plots of
+  its model version. A score, evaluate or other run shows the plots that it rendered. A
+  partial run, and a failed or cancelled run with an earlier partial attempt, also show their
+  plots. Some plots of a run keep their data in a file of the run. The page cannot open this
+  file, so the plot shows the note "The data of this plot is in a file of the run. Open the
+  model version to see the plot." The card does not show when the run has no plots.
 
 **Actions:**
 
@@ -339,14 +345,35 @@ The run returns the actuals that it used in `ScoreSummary.actuals`.
 **Results** shows these items:
 
 - The plots of the run: a forecast fan for each market, or the scenario against the baseline
-  for a counterfactual.
+  for a counterfactual. The runner picks the plots from the shape of the outputs. A grid
+  output, for example the intensity of `sci.lgcp_grid`, gets a map, and not a fan of the sum
+  over the grid.
+- A view of one output at a time. Select the output. The view follows its shape:
+    - a grid: a map with a slider over the frame dim (for example `quarter`), the mean, the
+      bands and the draws. This map comes from `ui/fields.json`, and replaces the
+      `sci.field_map` and `sci.vector_field` plots in the list above;
+    - a map of areas (v0.10): the `sci.area_map` plot of an areal output, for example the
+      cases of `sci.areal_bym2`;
+    - a classification (v0.10): the `core.roc_pr`, `core.confusion` and `core.calibration`
+      plots of an evaluate run with a 0/1 target. If the run did not make a plot, the view
+      shows "The run did not make this plot.";
+    - a time series: a line with the band;
+    - an output with categorical dims: the mean and the band for each level;
+    - a scalar: tiles with the mean and the band.
 - The outputs with their sizes and signed links. `score.zarr.zip` is the full `xr.DataTree`.
   `ui/summary.arrow` is the summary table.
 - The summary as a table, with one row for each coordinate and one column for each statistic.
   A dim with numeric labels stays a key column, for example the grid positions `y_cm` and
   `x_cm` of `sci.heat_plate`. Thus a grid output keeps one row for each cell. The summary
   table names its dims in the schema metadata `mapi.dims`.
-- A quick chart. You can plot it again by a different column.
+- A quick chart. You can plot it again by a different column. If the table has more dims
+  than the x axis and the colour, for example a grid with `row` and `col`, select one cell in
+  **Cell** (v0.10). The chart then shows one line for that cell, not one line through all the
+  cells.
+
+The view of one output starts with a grid, then a map of areas, then a classification, then a
+time series. The summary table of an output names the plots that draw it (`plots`). The page
+does not show these plots two times: they are only in the view of the output.
 
 If the model did not see a market before (for example FR above), the platform draws it from
 the fitted hierarchy. Thus, its band is wider. The `issues` of the result tell this.
@@ -420,7 +447,12 @@ choosing](../concepts/about-and-choosing.md#in-the-web-app)).
 ## Explorers and budget plans <span class="mapi-badge">v0.5</span>
 
 - **Explore this version** on a dataset version opens the
-  [Data Explorer](data-explorer.md#in-the-web-app).
+  [Data Explorer](data-explorer.md#in-the-web-app). The sections that the explorer shows
+  first agree with the structure of the data. For time series, it shows the time plots and
+  the time patterns. For [scientific data](data-explorer.md#scientific-data), it shows
+  images and fields, profiles and spectra, maps, networks, trees, roses of directions and
+  times of day, and points. The sections that do not apply to the data go in the closed list
+  **Not for this data**.
 - **Explore** on a model version opens the [Model Explorer](model-explorer.md#in-the-web-app).
   It shows parameters, diagnostics, fit, residuals, contributions, response curves,
   IRF/FEVD, forecasts, backtests, governance evidence and lineage.

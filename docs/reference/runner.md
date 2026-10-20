@@ -166,7 +166,7 @@ this sequence:
 | `describe` | `DescribeJob` (`{"image_digest": …?}`) | none | `catalog.json` (`Catalog`), `describe.json` (`catalog_digest`, versions) |
 | `validate` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `validation.json` (`ValidateResponse` with the stages that a dry run resolved) |
 | `fit` | a `ModelSpec` | `dataset`, optional `schema`, `side.<name>` | `bundle.zarr.zip`, `bundle.manifest.json`, `diagnostics.json`, `plots.json`, `metrics.json` (`MetricsReport`. v0.9: `elpd` has the `elpd_loo`/`elpd_waic` estimates with their pointwise values), `coords.json` (`{stage: {dim: CoordSummary}}`), `scorecard.json` (`Scorecard`, v0.4), `evaluation/…`, `ui/thin.zarr.zip`, `ui/summaries.json`, `ui/tree_index.json` (`mapi.tree-index/v1`), `ui/preprocess.json` (`mapi.preprocess/v1`), `ui/grids/*.arrow`, `ui/grids/response_curves.json` (`mapi.response-grid/v1`, v0.4), `ui/plotdata/*.arrow` |
-| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `summary.json` (`ScoreSummary`: the summary as tables, at most 100 000 cells. v0.9: a circular output has `period`), `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). |
+| `score` | a `ScoreRequest`, or `{"request": …, "plots": […], "max_draws": n}` | `bundle`, optional `bundle.manifest`, `dataset` (payload), `scenario`, `side.<name>`, `history` (v0.4) | `score.zarr.zip`, `result.json`, `summary.json` (`ScoreSummary`: the summary as tables, at most 100 000 cells. v0.9: a circular output has `period`), `ui/summary.arrow`, `plots.json`. Forecasts add `ui/guided/forecast.json` (`mapi.forecast/v1`). Counterfactuals add `ui/guided/counterfactual.json` (`mapi.counterfactual/v1`) (v0.4). Predict, forecast and evaluate add `ui/fields.json` (`FieldsView`) for a model with grid outputs |
 | `evaluate` | `{"request": …?, "metrics": […]?}` | `bundle`, `dataset`, `side.<name>` | the score outputs and also `metrics.json` |
 | `derive` | `{"names": […], "draws": n?, "data": "dataset://…"?}` | `bundle`, `dataset`, `side.<name>` | `derived.zarr.zip`, `ui/grids/<name>.arrow`, `result.json` |
 | `render` | `{"plots": […]?, "format": "png" \| "svg", "scale": 2}` | `plots` (a `plots.json`) | `renders/<plot id>.<format>` |
@@ -184,6 +184,44 @@ The Arrow views (`ui/summary.arrow`, `ui/grids/*.arrow`) are tidy tables from
 `mapi_sdk.wire.to_arrow_table`. From v0.9, the schema metadata `mapi.dims` gives the names of
 the dim columns as a JSON list. Thus the web app keeps a numeric dim, for example a grid
 position in cm, as a key column and not as a value.
+
+A score run picks its default plots from the shape of the outputs, when the job does not
+give `plots`:
+
+| Output (manifest declaration, result dims) | Default plot |
+|---|---|
+| A `grid` output (y and x in the result) | `sci.field_map`, with `var`, `y`, `x` and the frame dim (when it is in the result) as options. The frame dim is the slider. |
+| A `grid` output with a `component` of size 2 | `sci.vector_field`, with the same options |
+| An output on the areas of `ring_x`/`ring_y` (v0.10) | `sci.area_map` (`var`). The polygons come from the bundle. |
+| Probabilities over a dim with the name `state` or `regime` (v0.10): each cell has a sum of 1 | `core.state_sequence` (`var`, `state_dim`) |
+| Evaluate: a binary output (observed values 0/1, predictions from 0 to 1) (v0.10) | `core.calibration`, `core.roc_pr`, `core.confusion` (`var`, `observed_var`) |
+| An output that is not a grid, over time, with at most one other dim of size more than 1 | `core.ppc_fan` (`var`), for predict and forecast |
+
+Each mode except counterfactual starts from the plots of before (`DEFAULT_PLOTS`). A
+counterfactual keeps `core.counterfactual`. A model with grid outputs or area outputs gets the
+fan only when it also has an output over time. A fan of a map adds the values of all cells.
+Evaluate draws `core.fit_vs_actual`. It adds `core.residuals_over_time` only when an output is
+over time. A binary output replaces the two plots with the three classifier plots
+(`BINARY_EVALUATE_PLOTS`). There is at most one plot for each recipe, so each recipe draws one
+output. The map draws the first grid output with a frame, else the first grid output. The other
+recipes draw the first areal, state or binary output in the sequence of the manifest.
+
+A state output must have a dim with the name `state` or `regime` (not only a name that contains
+the word, such as `us_state`). Its values must also be probabilities over that dim. Thus a panel
+output such as `sales(time, state)` for the states of a country does not get the state plot.
+
+The map draws from `/predictions`, so the runner keeps the full predictions of a grid model until
+the plots are done. From v0.10, the runner also keeps them for a model with area outputs and for
+each evaluate run. Thus the evaluate plots get `/predictions` and `/observed`. `score.zarr.zip`
+does not keep the two groups. The `summary.json` table of an output gives `plots` (v0.10): the
+ids of the rendered plots that draw it.
+
+A fit run adds `core.loss_curve` to the plots of a fit that has a `fit_history` group (an ADVI
+fit, v0.10).
+
+The output variables of a grid carry the attr `grid` (the `GridDecl` as JSON, with the
+dims renamed to the names of the result). `summary.json` gives `dims` and `time_dim` for each
+table, and orders the tables by size.
 
 `scorecard.json` does the data checks on the raw dataset. The check `data.missing` (v0.9)
 does not count these variables:

@@ -3,12 +3,18 @@
  * checks, merging the ingest/fit index with an explore run, plain readings and the plot
  * builders (JSON specs whose data travels as named datasets).
  */
+import { tableFromArrays, tableToIPC } from "apache-arrow";
 import { describe, expect, it } from "vitest";
 
 import { FIXTURE } from "@/mocks/explore";
 
-import { mergeSections, type Exploration } from "./api";
-import { bestByMetric, parseModelRef } from "./compare";
+import { mergeSections, recipePlots, type Exploration } from "./api";
+import { cleanHints, hintProblem } from "./data-explorer";
+import { maskWord, paintMask } from "./fields";
+import { clone, scienceExample } from "./science-examples.test-helper";
+import { groupField, modeCounts } from "./science-sections";
+import { circularReading, imageReading, mapReading, networkReading, pointsReading, profileReading, structureReading, treeReading } from "./plain";
+import { bestByMetric, elpdSourceText, parseModelRef } from "./compare";
 import { endOfHorizon, groupTests, paramLabel } from "./model-sections";
 import {
   backtestReading,
@@ -30,7 +36,8 @@ import {
 } from "./plain";
 import { barsPlot, fevdPlot, fitPlot, histogramPlot, irfPlot, lagPlot, linesPlot, missingSharePlot, stlPlot, xType } from "./plots";
 import { periodUnit } from "./sections-meta";
-import { DATA_SECTIONS, facetLabel, parseIndex, parseView, seriesLabel, ViewFormatError, type SectionViews } from "./views";
+import { count, num } from "./ui";
+import { DATA_SECTIONS, facetLabel, indexOrder, parseIndex, parseView, SCIENCE_SECTIONS, seriesLabel, skipReason, ViewFormatError, type SectionViews } from "./views";
 
 const ds = FIXTURE.dataset;
 const mmm = FIXTURE.models["model://default/eu-geo-mmm@v1"]!;
@@ -61,6 +68,14 @@ describe("views", () => {
     expect(periodUnit("W-SUN")).toBe("week");
     expect(periodUnit("MS")).toBe("month");
     expect(periodUnit(null)).toBe("period");
+  });
+});
+
+describe("number formats", () => {
+  it("shows every digit of a count (E81b: 10,292 photographs of the agouti, not 10,290)", () => {
+    expect(num(10_292)).toBe("10,290");
+    expect(count(10_292)).toBe("10,292");
+    expect(count(null)).toBe("—");
   });
 });
 
@@ -107,9 +122,22 @@ describe("plain readings (data)", () => {
   it("reads distributions, correlations, leads, stationarity, seasons and overlap", () => {
     const dist = view("distributions", ds.ingest.views.distributions);
     expect(distributionReading(dist.items![0]!).text).toMatch(/^Half of the values of revenue are between/);
+    // the ties of a network (E21 cowork) are 0 or 1: no quartiles, no tail
+    const ties = { var: "cowork", facet: {}, n: 5041, mean: 0.15, skew: 1.96, zero_share: 0.85, quantiles: { "0.25": 0, "0.5": 0, "0.75": 0 }, histogram: { edges: [0, 0.25, 0.5, 0.75, 1], counts: [4285, 0, 0, 756] } };
+    expect(distributionReading(ties as never)).toEqual({ text: "cowork has only the values 0 and 1. 15% of the values are 1.", tone: "neutral" });
+    expect(distributionReading({ ...ties, histogram: { edges: [0, 1, 2], counts: [10, 5] } }).text).toMatch(/^Half of the values/);
+    // two values that are not 0 and 1 ({0.2, 0.7}, a dose {0, 0.5}) are not an indicator
+    const two = { ...ties, var: "x", mean: 0.45, histogram: { edges: [0.2, 0.45, 0.7], counts: [55, 45] } };
+    expect(distributionReading(two as never).text).not.toMatch(/only the values 0 and 1/);
+    const dose = { ...ties, var: "dose", mean: 0.25, histogram: { edges: [0, 0.25, 0.5], counts: [50, 50] } };
+    expect(distributionReading(dose as never).text).not.toMatch(/only the values 0 and 1/);
     const corr = view("correlation", ds.ingest.views.correlation);
     expect(correlationPairs(corr)[0]).toMatchObject({ a: "spend[social]", b: "price" });
     expect(correlationReading(corr)).toMatchObject({ tone: "warn" });
+    // below 0.7: no warning, but the summary names the largest pair that the table calls "strongly" (E79)
+    const weak = { ...corr, vars: ["reference_dl", "pixel_window"], matrix: [[1, 0.658], [0.658, 1]], p_values: null } as never;
+    expect(correlationReading({ ...corr, vars: [], matrix: [] }).text).toBe("The data has no pair of numeric variables on the same dimensions to compare.");
+    expect(correlationReading(weak)).toEqual({ tone: "good", text: "No pair of variables has a correlation of 0.7 or more. The largest correlation is reference_dl and pixel_window (0.66). Thus, it is easy for a model to find the effect of each variable." });
     const ccf = view("ccf", ds.explore.views.ccf);
     expect(ccfReading(ccf).text).toContain("lead");
     // prewhitened by default (M3.5 review): the raw view's spurious "falls 7 weeks after" peak is gone
@@ -177,5 +205,150 @@ describe("plot builders", () => {
     expect(spec).toContain('"axis":{"format":"~%"}');
     expect(spec).toContain('"format":".2~%"'); // the tooltip keeps a readable precision
     expect(missingSharePlot([{ name: "spend", missing_share: 0 }])).toBeNull();
+  });
+});
+
+// ------------------------------------------------------------------------------ scientific data
+
+function b64(bytes: Uint8Array): string {
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin);
+}
+
+describe("scientific data: views and index", () => {
+  it("accepts the spec's example view of every new section and refuses it under another", () => {
+    expect(DATA_SECTIONS).toHaveLength(21);
+    for (const s of SCIENCE_SECTIONS) expect(() => scienceExample(s)).not.toThrow();
+    expect(() => parseView("map", scienceExample("network"))).toThrow(ViewFormatError);
+  });
+
+  it("reads the reason, the order and the shapes of an index of v0.10, and nothing unknown", () => {
+    expect(skipReason({ reason: "not_applicable" })).toBe("not_applicable");
+    expect(skipReason({ reason: "because" })).toBeNull();
+    expect(skipReason(null)).toBeNull();
+    expect(indexOrder({ order: ["overview", "images", "params", 3, "images"] })).toEqual(["overview", "images"]);
+    expect(indexOrder({})).toBeNull();
+    const states = mergeSections(DATA_SECTIONS, { format: "mapi.explorer-index/v1", target: "dataset", ref: "r", sections: [{ section: "map", view: "ui/explore/map.json", status: "skipped", reason: "not_applicable", message_plain: "no polygons" }] }, null);
+    expect(states.find((s) => s.section === "map")).toMatchObject({ status: "skipped", reason: "not_applicable", message: "no polygons" });
+  });
+});
+
+describe("scientific data: recipe plots", () => {
+  it("keeps Vega-Lite and Plotly plots, decodes inline Arrow and refuses data at a path", async () => {
+    const data = b64(tableToIPC(tableFromArrays({ theta: Float64Array.from([45, 135]), r: Float64Array.from([3, 4]) }), "stream"));
+    const vega = { id: "explore.images.histogram", kind: "vega-lite", title: "h", spec: { mark: "bar" }, datasets: {} };
+    const plotly = { id: "sci.rose", kind: "plotly", title: "rose", spec: { data: [{ type: "barpolar", r: { $ref: "rose.r" }, theta: { $ref: "rose.theta" } }] }, datasets: { rose: { kind: "inline_arrow", data } } };
+    const linked = { id: "net.graph", kind: "plotly", title: "g", spec: { data: [] }, datasets: { g: { kind: "path", path: "plots/net.arrow", format: "arrow" } } };
+    const other = { id: "x", kind: "matplotlib", title: "x", spec: {} };
+    const plots = await recipePlots([vega, plotly, linked, other, null, "x"]);
+    expect(plots.map((p) => [p.plot.id, p.kind])).toEqual([
+      ["explore.images.histogram", "vega-lite"],
+      ["sci.rose", "plotly"],
+    ]);
+    expect(plots[1]!.datasets.rose).toEqual([
+      { theta: 45, r: 3 },
+      { theta: 135, r: 4 },
+    ]);
+    expect(await recipePlots({ not: "a list" })).toEqual([]);
+  });
+
+  it("decodes the inline Arrow datasets of a Vega-Lite recipe plot (core.model_comparison)", async () => {
+    const data = b64(tableToIPC(tableFromArrays({ model: ["a@v1", "a@v2"], elpd_loo: Float64Array.from([-120.5, -118.25]) }), "stream"));
+    const elpd = { id: "core.model_comparison", kind: "vega-lite", title: "elpd", spec: { data: { name: "comparison" }, mark: "point" }, datasets: { comparison: { kind: "inline_arrow", data } } };
+    const linked = { ...elpd, id: "linked", datasets: { comparison: { kind: "path", path: "plots/c.arrow", format: "arrow" } } };
+    const plots = await recipePlots([elpd, linked]);
+    expect(plots.map((p) => p.plot.id)).toEqual(["core.model_comparison"]);
+    expect(plots[0]!.datasets.comparison).toEqual([
+      { model: "a@v1", elpd_loo: -120.5 },
+      { model: "a@v2", elpd_loo: -118.25 },
+    ]);
+  });
+
+  it("names the information criterion of the elpd plot: LOO, or WAIC when the versions have no LOO", () => {
+    const loo = { datasets: { comparison: [{ model: "a@v1", elpd: -120.5, ic: "loo" }] } };
+    const waic = { datasets: { comparison: [{ model: "a@v1", elpd: -120.5, ic: "waic" }] } };
+    expect(elpdSourceText(loo)).toMatch(/leave-one-out cross-validation \(PSIS-LOO\)\.$/);
+    expect(elpdSourceText(waic)).toMatch(/information criterion \(WAIC\)/);
+    expect(elpdSourceText(waic)).not.toMatch(/from leave-one-out/);
+    expect(elpdSourceText({ datasets: {} })).toBe("The expected log predictive density (elpd) of each version.");
+  });
+});
+
+describe("scientific data: plain readings", () => {
+  it("reads the structure and the images", () => {
+    expect(structureReading(scienceExample("structure")).text).toMatch(/^The data has 2 shapes\. The main shape is: image: 9 x 12 cells, 44 quarter\./);
+    expect(structureReading({ shapes: [], dims: [], vars: [] }).text).toMatch(/no special shape/);
+    const img = scienceExample("images").fields[0]!;
+    const r = imageReading(img);
+    expect(r.text).toMatch(/^quakes is an image of 2 x 3 cells, with 2 frames along quarter\./);
+    expect(r.text).toMatch(/at the maximum value/);
+    expect(r.tone).toBe("warn");
+    expect(imageReading(scienceExample("images").fields[1]!).text).toMatch(/^displacement is a vector field of 4 x 4 cells\. The picture shows block means of 2 x 2 cells\./);
+  });
+
+  it("reads profiles, maps, networks and trees", () => {
+    const pr = scienceExample("profiles");
+    expect(profileReading(pr.items[0]!).text).toMatch(/Each curve has its highest value at position = 25\./);
+    expect(profileReading(pr.items[1]!).text).toMatch(/log scale on the horizontal axis/);
+    const m = scienceExample("map");
+    expect(mapReading(m, "cases").text).toMatch(/^The map has 3 areas\. The values of cases do not cluster/);
+    const clustered = clone(m);
+    clustered.moran = [{ var: "cases", morans_i: 0.4, p_value: 0.001, weights: "knn4" }];
+    expect(mapReading(clustered, "cases")).toMatchObject({ tone: "warn" });
+    expect(mapReading(clustered, "cases").text).toMatch(/4 nearest areas/);
+    expect(networkReading(scienceExample("network").items[0]!).text).toMatch(/^The network of cowork has 4 nodes and 4 ties\. 67% of all possible ties are present\./);
+    const t = scienceExample("tree");
+    expect(treeReading(t).text).toMatch(/^The tree has 3 tips and 5 nodes in all\. All tips are at the same distance from the root\./);
+    expect(treeReading({ ...t, roots: [3, 4] }).tone).toBe("warn");
+    expect(treeReading({ ...t, signal: [{ var: "brain", morans_i: 0.5, p_value: 0.01 }] }).text).toMatch(/phylogenetic signal/);
+  });
+
+  it("reads directions, times of day and points", () => {
+    const c = scienceExample("circular");
+    expect(circularReading(c.items[0]!).text).toMatch(/^wind_from has a preferred direction: about 182°/);
+    expect(circularReading(c.items[1]!).text).toMatch(/ocelot \(about 00:30\) and agouti \(about 12:00\) have a preferred time of day/);
+    // the pooled rose "all" that the runner puts first is not a group
+    const clock = c.items[1]!;
+    const pooled = { ...clock, groups: [{ ...clock.groups[0]!, label: "all" }, ...clock.groups] };
+    const read = circularReading(pooled).text;
+    expect(read).toMatch(new RegExp(`^One rose for each ${clock.group_by ?? "group"} \\(${clock.groups.length}\\), and one for all the records together\\.`));
+    expect(read).not.toMatch(/all \(about/);
+    const pts = scienceExample("points");
+    expect(pointsReading(pts).text).toMatch(/^3 points along chip, at wcs_col and wcs_row \(a grid of cells\)\./);
+    expect(modeCounts(pts)).toEqual([
+      { t: "B", n: 1 },
+      { t: "F", n: 1 },
+      { t: "W", n: 1 },
+    ]);
+  });
+});
+
+describe("scientific data: helpers", () => {
+  it("shows the class means of an image as frames", () => {
+    const img = scienceExample("images").fields[0]!;
+    const g = groupField(img)!;
+    expect(g.frames).toHaveLength(1);
+    expect(g.frame_dim).toBe("label");
+    expect(g.frames[0]!.label).toBe(0);
+    expect(groupField(scienceExample("images").fields[1]!)).toBeNull();
+  });
+
+  it("shades the cells outside a mask, more for cells less often inside", () => {
+    const px = paintMask([1, 0, 0.5, NaN], 2, 2);
+    expect(px[3]).toBe(0);
+    expect(px[7]).toBe(150);
+    expect(px[11]).toBe(75);
+    expect(px[15]).toBe(0);
+    expect([maskWord(1), maskWord(0), maskWord(0.25), maskWord(NaN)]).toEqual(["inside", "outside", "inside in 25% of the frames", "—"]);
+  });
+
+  it("cleans the structure hints and checks the y/x pair", () => {
+    expect(cleanHints({ y_dim: "", x_dim: null, angle_vars: { "": "deg" } })).toBeNull();
+    expect(cleanHints({ y_dim: "row", x_dim: "col", angle_vars: { wind_from: "deg" } })).toEqual({ y_dim: "row", x_dim: "col", angle_vars: { wind_from: "deg" } });
+    expect(hintProblem({ y_dim: "row" })).toMatch(/or neither/);
+    expect(hintProblem({ y_dim: "row", x_dim: "row" })).toMatch(/different/);
+    expect(hintProblem({ y_dim: "row", x_dim: "col" })).toBeNull();
+    expect(hintProblem(null)).toBeNull();
   });
 });

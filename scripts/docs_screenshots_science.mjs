@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Capture the screenshots of the science tutorials (docs/tutorials/pymc-challenges/e18, e51
- * and e21, and docs/tutorials/complex-workflows.md) from a real dev stack. It follows the
+ * and e21, and docs/tutorials/complex-workflows.md) and of the Data Explorer on scientific data
+ * from a real dev stack. It follows the
  * tutorials: it uploads the exported datasets, builds each spec from the YAML of its page,
  * fits it, opens the plots and the Fields section, and runs the recipe sci_spatial_ladder.
  *
@@ -14,9 +15,22 @@
  *   cd ../.. && make docs-screenshots-science         # this script into .local/screenshots-science,
  *                                                     #   then optimise_screenshots.py --only those
  *
- * MAPI_SCIENCE_DATA names the folder of the three .nc files (default .local/science). The
+ * The explorer part (run first) also needs three more exports in the same folder:
+ *
+ *   uv run python -m mapi_plugin_science.export e58 --challenges <pymc-challenges>/data --out unc13_dstorm.nc
+ *   uv run python -m mapi_plugin_science.export e23 --challenges <pymc-challenges>/data --out primates301.nc
+ *   uv run python -m mapi_plugin_science.export e81b --challenges <pymc-challenges>/data --out bci_camera_traps.nc
+ *
+ * It opens the Data Explorer of the raw datasets (E18 map, E21 network, E58 images, E23 tree,
+ * E81b times of day; docs/guides/data-explorer.md) and uploads a dataset when its project does
+ * not have it. A second argument selects the parts: `explorer`, `tutorials` or both (default):
+ *
+ *   node scripts/docs_screenshots_science.mjs .local/screenshots-science explorer
+ *
+ * MAPI_SCIENCE_DATA names the folder of the .nc files (default .local/science). The
  * script signs in through the development IdP as MAPI_DEV_ACCOUNT (default admin@dev.local).
- * It makes the projects epidemiology, engineering and sociology when they are not there. When
+ * It makes the projects epidemiology, engineering, sociology, microscopy, biology and ecology
+ * when they are not there. When
  * a dataset or a spec is already there, it uses it again (the upload preview then comes from
  * "Upload new version", without an ingest). Each run fits the three specs again, so each run
  * adds a model version. The sandbox time is about three minutes. One PNG per view at
@@ -68,6 +82,22 @@ const CASES = {
     model: "Who works with whom in a network",
   },
 };
+
+/**
+ * The Data Explorer on the raw exports (docs/guides/data-explorer.md, part "Scientific data"):
+ * the project, the dataset, the file, the section and the screenshot. E18 and E21 are the
+ * datasets of CASES; the others are uploaded when they are not there.
+ */
+const EXPLORER = [
+  { case: "e18", project: CASES.e18.project, dataset: CASES.e18.dataset, file: CASES.e18.file, section: "map", shot: "science-explorer-map" },
+  { case: "e21", project: CASES.e21.project, dataset: CASES.e21.dataset, file: CASES.e21.file, section: "network", shot: "science-explorer-network" },
+  { case: "e58", project: ["microscopy", "Microscopy"], dataset: "dannhauser2022_unc13_dstorm", file: "unc13_dstorm.nc", section: "images", shot: "science-explorer-images" },
+  { case: "e23", project: ["biology", "Biology"], dataset: "primates301", file: "primates301.nc", section: "tree", shot: "science-explorer-tree" },
+  { case: "e81b", project: ["ecology", "Ecology"], dataset: "bci_camera_traps", file: "bci_camera_traps.nc", section: "circular", shot: "science-explorer-circular" },
+];
+
+/** The parts of this script to run: `tutorials`, `explorer` or both (the second argument). */
+const PARTS = new Set((process.argv[3] || "tutorials,explorer").split(",").map((p) => p.trim()));
 
 /** The full spec of a tutorial page: its first YAML block with `kind: ModelSpec`. */
 function specOf(page) {
@@ -228,7 +258,67 @@ async function plot(title, name) {
   await shot(name);
 }
 
-try {
+/**
+ * Open the Data Explorer of the latest version of a raw export (upload it first when the
+ * project does not have it) at one section, and wait until its pictures are drawn.
+ */
+async function explore(c) {
+  await useProject(c.project);
+  await go("/datasets");
+  await page.getByText("dataset://").first().waitFor({ timeout: 20_000 }).catch(() => undefined);
+  const ref = page.getByText(`dataset://${c.project[0]}/${c.dataset}`, { exact: true });
+  if (await ref.count()) {
+    await ref.first().click();
+  } else {
+    await upload({ ...c, description: `${c.case.toUpperCase()} export (pymc-challenges)` });
+  }
+  await page.getByRole("link", { name: /Explore this version/ }).first().click();
+  await expect(page).toHaveURL(/\/versions\/\d+\/explore/);
+  const url = new URL(page.url());
+  url.searchParams.set("section", c.section);
+  await go(`${url.pathname}${url.search}`);
+  await expect(page.getByRole("navigation", { name: "Data Explorer sections" })).toBeVisible({ timeout: 30_000 });
+  const main = page.locator("main");
+  await expect(main.locator('iframe[data-testid="plot-frame"], canvas').first()).toBeVisible({ timeout: 60_000 });
+  for (const f of await main.locator('iframe[data-testid="plot-frame"]').all()) {
+    await expect(f.contentFrame().locator(".main-svg, svg.marks, canvas").first()).toBeVisible({ timeout: 90_000 });
+  }
+  // the section title at the top of the screenshot, below the header; for an image, the
+  // viewer from its controls to the colour bar
+  if (c.section === "images") {
+    // the frame with the brightest spot (a molecule that blinks) of the frames that the slider shows
+    const slider = page.getByTestId("field-viewer").first().locator("input[type=range]").first();
+    if (await slider.count()) {
+      const max = Number(await slider.getAttribute("max"));
+      let best = [0, -1];
+      for (let f = 0; f <= max; f++) {
+        await slider.fill(String(f));
+        await page.waitForTimeout(150);
+        const peak = await page.getByTestId("field-viewer").first().locator("canvas").first().evaluate((el) => {
+          const d = el.getContext("2d").getImageData(0, 0, el.width, el.height).data;
+          let m = 0;
+          for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i] + d[i + 1] + d[i + 2]);
+          return m;
+        });
+        if (peak > best[1]) best = [f, peak];
+      }
+      await slider.fill(String(best[0]));
+      await slider.evaluate((el) => el.blur());
+    }
+    await page.getByTestId("field-viewer").first().evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await page.mouse.wheel(0, -90);
+  } else {
+    // the network in the colours of the office of each lawyer (the homophily of the summary)
+    if (c.section === "network") await page.getByLabel("Colour by").selectOption({ label: "office" });
+    await page.getByTestId("plain-summary").first().evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await page.mouse.wheel(0, -240);
+  }
+  await page.waitForTimeout(2_500);
+  await shot(c.shot);
+}
+
+/** The screenshots of the tutorials: E51, E18 and E21 fitted, and the E18 recipe. */
+async function tutorials() {
   // ------------------------------------------------------------------ E51: upload, Fields
   const e51 = CASES.e51;
   await useProject(e51.project);
@@ -300,6 +390,14 @@ try {
   await expect(reportFrame.locator(".main-svg, svg.marks").first()).toBeVisible({ timeout: 90_000 });
   await page.waitForTimeout(2_500);
   await shot("science-recipe-report");
+}
+
+try {
+  if (PARTS.has("explorer")) {
+    // ---------------------------------------------------------------- the Data Explorer
+    for (const c of EXPLORER) await explore(c);
+  }
+  if (PARTS.has("tutorials")) await tutorials();
 } finally {
   await browser.close();
 }

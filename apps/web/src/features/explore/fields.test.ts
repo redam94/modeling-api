@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { FIELDS_FIXTURE } from "@/mocks/explore";
 
-import { availableStats, cellAt, colorAt, colormapLut, colorTicks, decodeRaster, displayRange, encodeRaster, FIELD_NAN, frameValues, gradientCss, paint, rasterRange } from "./fields";
+import { availableStats, cellAt, colorAt, colormapLut, colorTicks, decodeRaster, displayRange, encodeRaster, FIELD_NAN, frameValues, gradientCss, paint, rasterRange, robustRange } from "./fields";
 import { parseView } from "./views";
 
 function b64(codes: number[]): string {
@@ -85,6 +85,13 @@ describe("colour maps", () => {
     expect(displayRange([[1, 10, 100, 0]], true, "viridis")).toEqual([0, 2]);
     expect(displayRange([[-1, 3]], false, "diverging")).toEqual([-3, 3]);
     expect(displayRange([[NaN]], false, "viridis")).toBeNull();
+    // a camera frame: a background near 1000 and a few bright spots
+    const frame = Array.from({ length: 1600 }, (_, i) => (i % 400 === 0 ? 40_000 : 1000 + (i % 100)));
+    const [lo, hi] = robustRange([frame], false, "viridis")!;
+    expect(lo).toBeGreaterThanOrEqual(1000);
+    expect(hi).toBeLessThan(1100);
+    expect(robustRange([[1, 1, 1]], false, "viridis")).toBeNull();
+    expect(robustRange([Array.from({ length: 101 }, (_, i) => i - 50)], false, "diverging")).toEqual([-49, 49]);
     const r = rasterRange([{ lo: 0, hi: 2, data: "" }, { lo: -1, hi: 1, data: "" }, null], "log10", true, "viridis");
     expect(r).toEqual([-1, 2]);
     expect(colorTicks({ lo: 0, hi: 2, log: true }, 3)).toEqual([1, 10, 100]);

@@ -33,6 +33,19 @@ _VEHTARI_LOO = (
     "leave-one-out cross-validation and WAIC",
     "https://arxiv.org/abs/1507.04544",
 )
+_VEHTARI_PSIS = (
+    "Vehtari, Simpson, Gelman, Yao and Gabry (2024), Pareto smoothed importance sampling",
+    "https://arxiv.org/abs/1507.02646",
+)
+_FAWCETT = (
+    "Fawcett (2006), An introduction to ROC analysis",
+    "https://doi.org/10.1016/j.patrec.2005.10.010",
+)
+_SAITO = (
+    "Saito and Rehmsmeier (2015), The precision-recall plot is more informative than the ROC "
+    "plot when evaluating binary classifiers on imbalanced datasets",
+    "https://doi.org/10.1371/journal.pone.0118432",
+)
 _BDA3 = ("Gelman et al. (2013), Bayesian Data Analysis, 3rd edition", None)
 _MMM_DOCS = ("mmm-framework documentation", "https://redam94.github.io/mmm-framework/")
 
@@ -182,10 +195,15 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Your model does not add its parts together",
             "Some parts are negative and large (a stacked area is then hard to read)",
         ],
-        ["A contributions group with one variable or label for each part, over time"],
+        [
+            "A contributions, decomposition or components group with one variable or label "
+            "for each part, over time",
+        ],
         [
             "The parts add up to the outcome on the scale that the model uses",
             "Draws (or values) are added up over markets and other hidden dimensions",
+            "A part that the model marks as not additive, such as the slope of a trend, is "
+            "not a part of the stack",
         ],
         [
             "Stacked areas of each part over time",
@@ -201,7 +219,10 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "of component/channel/contribution/term/effect) plus whole variables without it. The "
         "area uses the mean over draws per time; the bar uses the mean of each draw's total "
         "with an HDI at `hdi_prob` (default 0.9). Shares are of the summed means. "
-        "`max_components` caps the parts (default 20).",
+        "`max_components` caps the parts (default 20). Groups: contributions, decomposition, "
+        "then components (the unobserved-components and ETS states, the HSGP trend and "
+        "seasonality). A variable with attr `decomposition='exclude'` (the UC and ETS slope "
+        "state, which is a rate and not an additive part) is skipped unless `vars` names it.",
     ),
     "core.counterfactual": _a(
         "Scenario vs baseline",
@@ -1040,18 +1061,23 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "You want a sharper check of the predicted ranges than the PIT histogram",
             "You predict a yes/no outcome and want to know if a 70% prediction comes true "
             "about 70% of the time",
+            "You fitted a classifier that gives one probability for each row, without draws",
         ],
         [
             "You have no actual values to compare with",
             "You have only a few observations (fewer than about 30)",
         ],
         [
-            "Predictions with draws (posterior_predictive or predictions group)",
-            "The actual values (observed_data group)",
+            "Predictions with draws (posterior_predictive or predictions group), or one "
+            "predicted probability for each cell for a yes/no outcome",
+            "The actual values (observed_data or observed group)",
         ],
         [
             "Each actual value is compared with the draws for the same cell",
-            "For a yes/no outcome the predicted probability is the average of the draws",
+            "For a yes/no outcome the predicted probability is the average of the draws, or "
+            "the single probability when there are no draws",
+            "Without draws, the chart can only show a yes/no outcome. The check of the ranges "
+            "needs draws",
         ],
         [
             "For numbers: the PIT-ECDF difference with a 95% band that holds at all points "
@@ -1065,7 +1091,7 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         _SEC,
         "The line goes above the band near 0 and below it near 1: too many actual values are "
         "in the tails. The predicted ranges of the model are too narrow.",
-        related=["core.ppc", "core.ppc_fan"],
+        related=["core.ppc", "core.ppc_fan", "core.roc_pr", "core.confusion", "core.loo_pit"],
         expert="Continuous: PIT = P(ŷ < y) + ½ P(ŷ = y); the line is ECDF(z) − z on a grid of "
         "min(max(n, 20), 200) points. The simultaneous envelope at `prob` (0.95) is "
         "±c·sqrt(z(1−z)/n) with c the `prob` quantile of the largest standardised deviation "
@@ -1073,7 +1099,10 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "counts, `seed`). Binary (auto when y ∈ {0, 1} and the draws are in [0, 1]): `bins` "
         "(10) equal-width bins of the mean prediction; each band is the binomial range "
         "p ± z·sqrt(p(1−p)/n_bin); the expected calibration error weights |observed − "
-        "predicted| by bin size.",
+        "predicted| by bin size. A point prediction (no sample dims, values in [0, 1], for "
+        "example the y_hat of an sklearn classifier) takes the binary path with the "
+        "probability as the mean; `var` and `observed_var` pick the pair. A point prediction "
+        "of a target that is not 0/1 is an error, because the PIT check needs draws.",
         refs=[
             (
                 "Säilynoja, Bürkner and Vehtari (2022), Graphical test for discrete uniformity "
@@ -1098,13 +1127,16 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "There are more than about 10 states",
         ],
         [
-            "State probabilities with a state and a time dimension, or draws of the state "
-            "number at each time (posterior, predictions or posterior_predictive group)",
+            "State probabilities with a state (or regime) and a time dimension, or draws of "
+            "the state number at each time. The chart looks in the hidden_states, regimes, "
+            "posterior, predictions, posterior_predictive and summary groups",
             "Optional: the observed series (observed_data group)",
         ],
         [
             "State number 0 in one draw is the same state as number 0 in another draw",
             "The observed series and the states use the same time points",
+            "When the data has more than one series, such as one for each animal, the chart "
+            "shows the first series. The caption tells which one",
         ],
         [
             "The observed series with each point coloured by its most likely state",
@@ -1118,12 +1150,224 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "late April. The large swings in the data are at the same times. At the edges of "
         "these periods neither state reaches 80%, so the exact change dates are not certain.",
         related=["core.ppc_fan", "sci.profile_bands"],
-        expert="With a `state_dim` (default 'state') the variable is a probability per state "
-        "and time: the mean over draws (up to `max_draws`), clipped at 0 and normalised at "
-        "each time. Without it, integer state draws are counted per time. `along` sets the "
-        "time dim, `select` fixes other dims, `observed_var` picks the series (default: the "
-        "first observed variable with the time dim). The most likely state colours the "
-        "points; up to `max_times` (2000) evenly spaced times.",
+        expert="`group='auto'` looks in hidden_states (HMM), regimes (Markov switching), "
+        "posterior, predictions, posterior_predictive, summary, then the root. `var` defaults "
+        "to smoothed_prob, state_prob or filtered_prob, else a numeric variable with a state "
+        "dim and one more dim (so `transition` and `expected_duration` are skipped), else "
+        "integer state draws. `state_dim='auto'` takes 'state', then 'regime', then a dim whose "
+        "name contains either. A probability variable is the mean over draws (up to "
+        "`max_draws`), clipped at 0 and normalised at each time; a score summary uses its "
+        "`stat='mean'` row (else median, else point). Integer state draws are counted per "
+        "time. `along` sets the time dim. Without `select`, every other dim with more than "
+        "one level is fixed at its first level and the caption names it; with `select`, a "
+        "missing level is an error. `observed_var` picks the series (default: the first "
+        "observed variable with the time dim); NaN padding is dropped. The most likely state "
+        "colours the points; up to `max_times` (2000) evenly spaced times.",
+    ),
+    # ============================================================ core: classifiers, training, LOO
+    "core.roc_pr": _a(
+        "ROC and precision-recall curves",
+        "Shows how well the predicted probabilities separate the yes cases from the no cases "
+        "at all thresholds. A curve near the top-left corner (ROC) or the top-right corner "
+        "(precision-recall) shows a good separation.",
+        [
+            "You predict a yes/no outcome and want one number for how well the model puts "
+            "the cases in order",
+            "You want to see the balance between the cases that the model finds and its "
+            "false alarms at all thresholds",
+            "The yes cases are rare. The precision-recall curve shows this better than the "
+            "ROC curve",
+        ],
+        [
+            "The target has more than two values",
+            "You want to know if the probabilities are correct (use Calibration)",
+            "You need the result at one threshold (use Confusion matrix)",
+        ],
+        [
+            "Predicted probabilities of the positive class, with draws or one value for each "
+            "cell (posterior_predictive, predictions or draws group, or a score summary)",
+            "The actual 0/1 values (observed_data or observed group)",
+        ],
+        [
+            "The larger of the two actual values is the positive class, unless you set `positive`",
+            "With draws, the curves use the mean probability of each cell",
+            "Cells with no actual value or no prediction are left out",
+        ],
+        [
+            "The ROC curve: the true positive rate against the false positive rate, with a "
+            "diagonal line for a random guess",
+            "The precision-recall curve, with a line at the base rate (the share of positive "
+            "cases)",
+            "The AUC and the average precision in the titles of the panels",
+            "A caption with a verdict on the AUC and the base rate. With draws, the caption "
+            "also gives a 90% range of the AUC",
+        ],
+        _I,
+        _NOW,
+        "The AUC is 0.86, so the model separates the classes well. Only 8% of the cases are "
+        "positive. The precision falls below 0.5 when the recall is more than 0.6. At that "
+        "point, half of the alarms are false.",
+        related=["core.confusion", "core.calibration", "ml.feature_importance"],
+        expert="The thresholds are the distinct predicted probabilities, thinned to "
+        "`max_points` (500, 20..5000). The AUC is the Mann-Whitney statistic with average "
+        "ranks for ties. The average precision summarises the precision-recall curve. With "
+        "draws, the AUC of each draw (up to 500 draws) gives the 90% interval in the caption. "
+        "Verdict on the AUC: >= 0.9 very well, >= 0.8 well, >= 0.7 fairly well, else not "
+        "well. `positive` picks the value of the positive class (default: the larger one); "
+        "`var` and `observed_var` pick the pair. On imbalanced data, read the precision-"
+        "recall panel: the ROC curve can look good while most alarms are false.",
+        refs=[_FAWCETT, _SAITO],
+    ),
+    "core.confusion": _a(
+        "Confusion matrix",
+        "Counts the cases that the model classifies correctly and incorrectly at one "
+        "probability threshold. The four boxes are the true and false positives and the true "
+        "and false negatives.",
+        [
+            "You must change the probabilities into yes/no decisions and want to see the errors",
+            "You want the precision, the recall and the specificity at one threshold",
+            "You want to explain the errors of a classifier to people who do not read models",
+        ],
+        [
+            "You want to see all thresholds (use ROC and precision-recall curves)",
+            "The target has more than two values",
+        ],
+        [
+            "Predicted probabilities of the positive class, with draws or one value for each "
+            "cell (posterior_predictive, predictions or draws group, or a score summary)",
+            "The actual 0/1 values (observed_data or observed group)",
+        ],
+        [
+            "A case is positive when its probability is equal to or more than the threshold",
+            "The threshold is 0.5 unless you change it. With `auto`, the chart uses the "
+            "threshold with the largest difference between the true positive rate and the "
+            "false positive rate",
+            "With draws, the chart uses the mean probability of each cell",
+        ],
+        [
+            "A 2 × 2 matrix of the actual class against the predicted class, with counts or "
+            "with the share of each actual class",
+            "A caption with the accuracy, the precision, the recall (sensitivity), the "
+            "specificity, the F1 score and the threshold",
+        ],
+        _B,
+        _NOW,
+        "At the threshold 0.5, the model finds 62 of the 80 positive cases (recall 0.78). "
+        "25 of its 87 alarms are false (precision 0.71). With the threshold `auto`, the "
+        "threshold goes down to 0.31. The recall goes up to 0.9 and the precision goes down "
+        "to 0.6.",
+        related=["core.roc_pr", "core.calibration"],
+        expert="`threshold` is a number (default 0.5) or 'auto': the threshold that "
+        "maximises Youden's J = TPR − FPR over the distinct predicted probabilities. "
+        "`normalize='true'` divides each row (actual class) by its count; 'none' shows "
+        "counts. Precision = TP/(TP+FP), recall = TP/(TP+FN), specificity = TN/(TN+FP), "
+        "F1 = 2PR/(P+R). `positive`, `var` and `observed_var` work as in ROC and "
+        "precision-recall curves.",
+        refs=[_FAWCETT],
+    ),
+    "core.loss_curve": _a(
+        "Training loss",
+        "Shows the loss of a fit that runs in steps, such as ADVI, at each step. A flat curve "
+        "at the end shows that more steps will not make the fit better.",
+        [
+            "You fitted a model with ADVI and want to know if it had sufficient steps",
+            "You want to compare the training loss and the validation loss of a model that "
+            "records both",
+        ],
+        [
+            "The model was fitted with MCMC (use Convergence)",
+            "The run did not record a loss at each step",
+        ],
+        [
+            "A fit_history group (an ADVI fit writes it) or a metrics_history group, with one "
+            "variable for each curve over a step dimension",
+        ],
+        [
+            "Each variable is one curve over the steps. Other dimensions, such as a split into "
+            "training and validation data, give one line for each level (at most 8)",
+            "A lower loss is better",
+            "For ADVI, the loss is the negative ELBO. It is noisy because each step uses "
+            "random draws",
+        ],
+        [
+            "The raw loss as a light line",
+            "A moving average as a dark line",
+            "A log scale when all values are more than zero and the largest value is more "
+            "than 50 times the smallest value",
+            "A caption with the first and the last value of the moving average and its change "
+            "over the last 10% of the steps",
+        ],
+        _B,
+        _NOW,
+        "The moving average goes from 12 400 to 830. Over the last 10% of the steps, it goes "
+        "down by 4% more. The loss still goes down at the end, so more steps can make the "
+        "fit better.",
+        related=["core.convergence", "core.posterior_forest"],
+        expert="`group='auto'` takes fit_history, then metrics_history; `var` picks one "
+        "variable; `along` is the step dim (default 'step'). The smoothed line is a rolling "
+        "mean with window `smooth` (default max(1, n // 50)). `log_y=None` uses log10 when "
+        "all values > 0 and max/min > 50. Up to `max_points` (2000) evenly spaced steps, the "
+        "last step always kept. The ADVI history keeps at most 5000 evenly spaced steps (the "
+        "dataset attr `thinned_from` holds the original count). The caption warns when the "
+        "smoothed loss still falls by more than 1% over the last 10% of the steps. The run "
+        "adds this plot to every fit with a fit_history group.",
+        refs=[
+            (
+                "Kucukelbir et al. (2017), Automatic differentiation variational inference",
+                "https://arxiv.org/abs/1603.00788",
+            )
+        ],
+    ),
+    "core.loo_pit": _a(
+        "LOO-PIT and Pareto k",
+        "Checks each actual value against the predictions of the model when that value is "
+        "left out of the fit. It also finds the values that have too much effect for this "
+        "check to be reliable.",
+        [
+            "You want a calibration check that does not use each actual value two times (one "
+            "time to fit and one time to check)",
+            "You want to find values that have a large effect on the model, such as outliers",
+            "You want to know if you can trust the LOO score (elpd_loo) of a model",
+        ],
+        [
+            "The model has no log_likelihood group",
+            "The model gives only one value for each cell, with no draws",
+        ],
+        [
+            "Draws with a log_likelihood group",
+            "For the PIT panel: posterior_predictive draws and the actual values "
+            "(observed_data group)",
+        ],
+        [
+            "When one value is left out, the fit changes only a little. Importance sampling "
+            "can then find the fit without that value from the draws that you have",
+            "The values in the log_likelihood group are in the same order as the actual values",
+            "A Pareto k of more than 0.7 shows that the result for that value is not reliable",
+        ],
+        [
+            "The LOO-PIT ECDF difference with a 95% band that holds at all points together "
+            "(when the posterior_predictive and observed_data groups are present)",
+            "A dot for the Pareto k of each value, coloured good (less than 0.5), ok or bad "
+            "(more than the threshold), with lines at 0.5 and at the threshold",
+            "A caption with the number and the share of values above the threshold, and the "
+            "verdict on the PIT line",
+        ],
+        _X,
+        _SEC,
+        "3 of 120 values (2.5%) have a Pareto k of more than 0.7. All three are in the week "
+        "of the holiday sale, which the model does not know about. The PIT line stays in the "
+        "band, so the other predictions are well calibrated.",
+        related=["core.calibration", "core.model_comparison", "core.ppc"],
+        expert="PSIS (Vehtari et al. 2024) on the log ratios −log p(y_i | θ_s): tail length "
+        "M = ceil(min(0.2 S, 3 √S)), a generalized Pareto fit (Zhang and Stephens, with the "
+        "weakly informative prior) whose quantiles replace the tail, truncated at the largest "
+        "raw weight; k = inf when the tail is too short. LOO-PIT_i = Σ_s w_si 1[ŷ_si < y_i] + "
+        "½ Σ_s w_si 1[ŷ_si = y_i] with the normalised weights. The envelope is the "
+        "simultaneous one of Calibration (`prob` 0.95, `n_sim` 1000, `seed`). Draws are "
+        "thinned evenly to `max_draws` (2000). `var` picks the log_likelihood variable "
+        "(default: the first), `observed_var` the actual values; `k_threshold` (0.7) sets "
+        "the bad line. The bundle's metrics.json also keeps the k of elpd_loo (`pareto_k`).",
+        refs=[_VEHTARI_LOO, _VEHTARI_PSIS],
     ),
     "sci.area_map": _a(
         "Area map",

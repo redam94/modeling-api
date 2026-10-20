@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from mapi_sdk.binding import BindingMap
-from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, file_digest
+from mapi_sdk.bundle import BUNDLE_FILE, Bundle, BundleManifest, MetricsReport, file_digest
 from mapi_sdk.errors import BundleError, SchemaValidationError, WireFormatError
 from mapi_sdk.tree import (
     infer_tree_schema,
@@ -31,7 +31,7 @@ from mapi_sdk.tree import (
 )
 from mapi_sdk.wire import DEFAULT_LIMITS, loads_xrjson, read_datatree_zip, read_zarr_zip
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.jobs import DATASET_SCHEMA_ATTR
+from mapi_spec.jobs import DATASET_SCHEMA_ATTR, INPUT_METRICS_SUFFIX
 from mapi_spec.run import INPUT_BUNDLE, INPUT_DATASET
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import DataBlock, ModelSpec, ScorePolicy
@@ -315,7 +315,8 @@ def load_bundle(
     """Rebuild a fitted :class:`Bundle` from the ``bundle`` (+ ``bundle.manifest``) inputs
     (M3.5: or any other pair, e.g. ``evaluation`` or ``compare.<k>``).
 
-    With a manifest, the archive must match its recorded size and hashes.
+    With a manifest, the archive must match its recorded size and hashes. v0.10: with a
+    ``<name>.metrics`` input (the fit's ``metrics.json``), the bundle has its metrics.
     """
     path = ctx.download(name)
     assert path is not None
@@ -341,11 +342,25 @@ def load_bundle(
         manifest = _manifest_from_tree(raw)
     try:
         tree = read_datatree_zip(raw)
-        return Bundle.from_tree(tree, ctx.registry, manifest=manifest)
+        bundle = Bundle.from_tree(tree, ctx.registry, manifest=manifest)
     except (WireFormatError, BundleError) as exc:
         raise MapiError(
             "the bundle cannot be read", code=ErrorCode.SCHEMA_INVALID, untrusted_text=exc.detail
         ) from None
+    metrics_name = f"{name}{INPUT_METRICS_SUFFIX}"
+    if ctx.has_input(metrics_name):
+        # metrics.json is a sidecar of the fit, not part of the archive
+        mpath = ctx.download(metrics_name)
+        assert mpath is not None
+        try:
+            bundle.metrics = MetricsReport.model_validate_json(mpath.read_bytes())
+        except ValidationError as exc:
+            raise MapiError(
+                "the bundle's metrics.json is invalid",
+                code=ErrorCode.SCHEMA_INVALID,
+                untrusted_text=str(exc)[:8000],
+            ) from None
+    return bundle
 
 
 def _manifest_from_tree(raw: bytes) -> BundleManifest:

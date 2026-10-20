@@ -125,6 +125,23 @@ the 36 readings.
 The file is one plain dataset. You do not need the tree fields ("Put this file in a node of a
 tree (optional)") or the HDF5 path.
 
+### 3.1 Explore the data
+
+Look at the data before you build the spec.
+
+1. On the version page, click **Explore this version**. The Data Explorer opens. The
+   sections under *Pictures of the data* come first.
+2. Click **Images and fields**.
+
+- The viewer shows `reading_c` and `heater_w` on the plate, 12 × 24 cells. The frame slider
+  goes from run to run (3 runs).
+- Compare the hot cells of `reading_c` with the heaters of `heater_w` in each run.
+- **Group comparison** compares the 3 runs. The rows and the columns of the plate are not
+  groups.
+- The time sections are in **Not for this data**.
+
+Refer to [Scientific data](../../guides/data-explorer.md#scientific-data).
+
 ## 4. Build the spec
 
 1. Open **Build** and click **New spec**. The editor opens with the geo MMM template.

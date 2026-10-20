@@ -11,9 +11,12 @@ import { env } from "@/env";
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
 import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
+import { createSciHandlers, createSciState, SCI_DATASETS } from "./explore-sci";
+import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
+import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { createTreeHandlers, createTreeState, TREE, treeSpecIssues } from "./tree";
 import { createTrustHandlers, createTrustState } from "./trust";
@@ -41,6 +44,8 @@ interface MockState {
   governance: ReturnType<typeof createGovernanceState>;
   /** M4: upload records (names, inspections) and the tree dataset. */
   tree: ReturnType<typeof createTreeState>;
+  /** The science datasets of the Data Explorer (explorer-sci.gen.json). */
+  sci: ReturnType<typeof createSciState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -64,7 +69,8 @@ export function createState(): MockState {
     workflows: createWorkflowsState(),
     governance: seedGovernance(createGovernanceState()),
     tree: createTreeState(),
-    runs: new Map(fx.runs.map((r) => [r.id, structuredClone(r)])),
+    sci: createSciState(),
+    runs: new Map([...fx.runs, ...SHAPE_RUNS].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
     uploads: new Map(),
@@ -148,8 +154,14 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // v0.10: score results by output shape (grid summary table, classifier, areal output).
+    ...createShapeHandlers({ artifacts: state.artifacts }),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
     ...createTreeHandlers(state.tree, { artifacts: state.artifacts, runs: state.runs }),
+    // The Data Explorer on scientific data (ds-sci-<case>), before the generic explorer routes.
+    ...createSciHandlers(state.sci, { artifacts: state.artifacts, runs: state.runs }),
+    // Demo datasets of the Data Explorer on scientific data (the spec's example views).
+    ...createSciDemoHandlers({ artifacts: state.artifacts }),
     ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
     ...createGuidedHandlers(state),
@@ -166,9 +178,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.9.1-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.9.1-mock", contract_version: "0.2" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.10.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
@@ -182,7 +194,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ),
 
     // datasets
-    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset])),
+    http.get(`${API}/v1/datasets`, () => page([fx.dataset, TREE.dataset, ...SCI_DATASETS])),
     http.get(`${API}/v1/datasets/:id`, ({ params }) => (params.id === fx.DS_ID ? HttpResponse.json(fx.dataset) : problem(404, "NOT_FOUND", "Not found", "no such dataset"))),
     http.post(`${API}/v1/datasets`, async ({ request }) => {
       const body = (await request.json()) as { name: string; description?: string };
@@ -315,6 +327,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       if ((request.headers.get("accept") ?? "").includes("text/event-stream")) return sseResponse(state, r, request);
       return page(fx.events(r.id));
     }),
+    // Plots a run rendered (the score runs of mocks/score-shapes.ts have their own).
+    http.get(`${API}/v1/runs/:id/plots`, ({ params }) => (state.runs.has(String(params.id)) ? page([]) : problem(404, "NOT_FOUND", "Not found", "no such run"))),
     http.get(`${API}/v1/runs/:id/logs`, ({ params }) => page(fx.logLines(String(params.id)))),
     http.post(new RegExp(`^${API_RE}/v1/runs/[^/]+:cancel$`), ({ request }) => {
       const id = decodeURIComponent(new URL(request.url).pathname.split("/").at(-1)!.split(":")[0]!);

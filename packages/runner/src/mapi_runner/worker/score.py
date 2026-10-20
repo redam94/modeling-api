@@ -4,9 +4,11 @@ Outputs:
 
 * score - ``score.zarr.zip`` (the result ``DataTree``), ``result.json`` (representation, units,
   output space, issues, metrics), ``summary.json`` (the summary as plain tables, which the API
-  inlines in its answer; forecasts add ``conditioning``, what the forecast was conditioned on -
-  :mod:`mapi_spec.actuals` - also in ``result.json``), ``ui/summary.arrow`` and
-  ``plots.json``; forecasts add
+  inlines in its answer; a table lists the rendered plots that draw it; forecasts add
+  ``conditioning``, what the forecast was conditioned on - :mod:`mapi_spec.actuals` - also
+  in ``result.json``), ``ui/summary.arrow`` and ``plots.json`` (by the shape of each output,
+  :mod:`mapi_runner.worker.score_plots`); models with grid outputs add ``ui/fields.json`` (a
+  FieldsView of the maps, as in the Model Explorer; not for counterfactuals); forecasts add
   ``ui/guided/forecast.json`` and counterfactuals ``ui/guided/counterfactual.json`` (M3,
   :mod:`mapi_runner.worker.guided`), and a forecast's fan chart shows the fitted history
   with the split line;
@@ -18,6 +20,7 @@ Outputs:
 from __future__ import annotations
 
 import json
+from collections.abc import Collection, Mapping, Sequence
 from typing import Any
 
 import numpy as np
@@ -39,7 +42,7 @@ from mapi_spec.endpoints import INPUT_INLINE_DATA, INPUT_INLINE_SCENARIO
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.spec import ScoreRequest
-from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW
+from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW, SCORE_FIELDS_VIEW
 
 from mapi_runner.jobs import INPUT_HISTORY, INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
@@ -52,17 +55,24 @@ from mapi_runner.worker.data import (
     load_tree_schema,
     supplied_side_tables,
 )
+from mapi_runner.worker.explore_data import SectionSkipped
+from mapi_runner.worker.fieldview import fields_view
 from mapi_runner.worker.guided import _kpi_var, counterfactual_view, forecast_view
 from mapi_runner.worker.plots import render_for
+from mapi_runner.worker.score_plots import (
+    ScorePlots,
+    area_plot_tree,
+    default_score_plots,
+    field_plot_tree,
+    has_area_outputs,
+    has_grid_outputs,
+    time_dims,
+)
 
 __all__ = ["run_derive", "run_evaluate", "run_score"]
 
-_DEFAULT_PLOTS: dict[str, list[str]] = {
-    "predict": ["core.ppc_fan"],
-    "forecast": ["core.ppc_fan"],
-    "counterfactual": ["core.counterfactual"],
-    "evaluate": ["core.fit_vs_actual", "core.residuals_over_time"],
-}
+_MAX_TABLE_PLOTS = 16
+"""``ScoreSummaryTable.plots`` holds at most this many recipe ids."""
 
 
 def _optional_dataset(ctx: WorkerContext, name: str) -> xr.Dataset | xr.DataTree | None:
@@ -115,17 +125,24 @@ def _cell(value: Any) -> Any:
     return str(value)
 
 
-def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) -> dict[str, Any]:
+def summary_tables(
+    ds: xr.Dataset,
+    *,
+    max_cells: int = SCORE_SUMMARY_MAX_CELLS,
+    time_dims: Collection[str] = (),
+    plots: Mapping[str, Sequence[str]] | None = None,
+) -> dict[str, Any]:
     """The ``summary`` group (variables with a leading ``stat`` dim) as plain tables: the
-    coordinate columns, then one column per statistic; at most ``max_cells`` cells. A
-    circular output summarised on the circle carries its ``period``."""
+    coordinate columns (``dims``), then one column per statistic; at most ``max_cells``
+    cells, smallest tables first (a large grid is what a truncation drops). A table over one
+    of ``time_dims`` names it ``time_dim``; a circular output summarised on the circle
+    carries its ``period``; a variable in ``plots`` lists the recipe ids that draw it."""
     tables: list[dict[str, Any]] = []
     cells = 0
     truncated = False
-    for name in sorted(ds.data_vars, key=str):
+    names = [n for n in ds.data_vars if "stat" in ds[n].dims]
+    for name in sorted(names, key=lambda n: (ds[n].size, str(n))):
         da = ds[name]
-        if "stat" not in da.dims:
-            continue
         da = da.transpose("stat", ...)
         dims = [str(d) for d in da.dims if d != "stat"]
         stats = [str(s) for s in da["stat"].values]
@@ -141,10 +158,21 @@ def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) 
                 + [_cell(v) for v in values[(slice(None), *idx)]]
             )
             cells += len(dims) + len(stats)
-        table: dict[str, Any] = {"variable": str(name), "columns": [*dims, *stats], "rows": rows}
+        table: dict[str, Any] = {
+            "variable": str(name),
+            "columns": [*dims, *stats],
+            "rows": rows,
+            "dims": dims,
+        }
+        t = next((d for d in time_dims if d in dims), None)
+        if t is not None:
+            table["time_dim"] = t
         period = da.attrs.get(CIRCULAR_ATTR)
         if period is not None:
             table["period"] = float(period)
+        drawn = list((plots or {}).get(str(name), ()))[:_MAX_TABLE_PLOTS]
+        if drawn:
+            table["plots"] = drawn
         tables.append(table)
         if truncated:
             break
@@ -152,17 +180,24 @@ def summary_tables(ds: xr.Dataset, *, max_cells: int = SCORE_SUMMARY_MAX_CELLS) 
 
 
 def summary_document(
-    tree: xr.DataTree, actuals: list[dict[str, Any]] | None = None
+    tree: xr.DataTree,
+    actuals: list[dict[str, Any]] | None = None,
+    bundle: Bundle | None = None,
+    plots: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, Any] | None:
     """``summary.json`` (a :class:`~mapi_spec.api.ScoreSummary`) of a score result: the
-    summary tables and, for forecasts, what the forecast was conditioned on
-    (:mod:`mapi_spec.actuals`) and the actuals themselves (:func:`actuals_tables`). ``None``
-    when the result has no summary group."""
+    summary tables (with their time dim, given the ``bundle``, and the ids of the rendered
+    ``plots`` that draw each variable) and, for forecasts, what the forecast was conditioned
+    on (:mod:`mapi_spec.actuals`) and the actuals themselves (:func:`actuals_tables`).
+    ``None`` when the result has no summary group."""
     if "summary" not in tree:
         return None
     node = tree["summary"]
     assert isinstance(node, xr.DataTree)
-    out = summary_tables(node.to_dataset())
+    ds = node.to_dataset()
+    out = summary_tables(
+        ds, time_dims=time_dims(bundle, ds) if bundle is not None else (), plots=plots
+    )
     conditioning = tree.attrs.get(CONDITIONING_ATTR)
     if isinstance(conditioning, str):
         out["conditioning"] = json.loads(conditioning)
@@ -193,7 +228,8 @@ def actuals_tables(
         return []
     node = tree["summary"]
     assert isinstance(node, xr.DataTree)
-    var = _kpi_var(bundle, node.to_dataset())
+    # the KPI on the target's own dims (a gridded model's map, not its total)
+    var = _kpi_var(bundle, node.to_dataset(), skip_grids=False)
     raw = bundle.resolved.stages.get(RESERVED_STAGE)
     if var is None or raw is None:
         return []
@@ -223,13 +259,16 @@ def actuals_tables(
 _FULL_GROUPS = ("/predictions", "/baseline/predictions", "/delta/predictions")
 
 
-def _without_full(tree: xr.DataTree) -> xr.DataTree:
-    """``tree`` without the full-representation groups scored only for the guided views."""
+def _without_full(tree: xr.DataTree, *, observed: bool = False) -> xr.DataTree:
+    """``tree`` without the full-representation groups scored only for the guided views,
+    the maps and the evaluate plots, and without ``/observed`` when ``observed`` (the stored
+    result of a score-page evaluate never carries the observed target)."""
+    drop = (*_FULL_GROUPS, "/observed") if observed else _FULL_GROUPS
     return xr.DataTree.from_dict(
         {
             node.path: node.to_dataset(inherit=False)
             for node in tree.subtree
-            if node.path not in _FULL_GROUPS
+            if node.path not in drop
         }
     )
 
@@ -262,10 +301,57 @@ def _guided_views(
     return []
 
 
+def _write_fields(ctx: WorkerContext, bundle: Bundle, tree: xr.DataTree) -> None:
+    """``ui/fields.json``: the grid outputs of a result that still holds ``/predictions``."""
+    if "predictions" not in tree:
+        return
+    node = tree["predictions"]
+    assert isinstance(node, xr.DataTree)
+    pred = node.to_dataset(inherit=False)
+    found: dict[str, str] = {}  # output -> its name in the result (as the summary tables)
+
+    def source(name: str) -> xr.DataArray | None:
+        for candidate in (name, bundle.binding.to_dataset(name)):
+            if candidate in pred.data_vars:
+                found[name] = candidate
+                return pred[candidate]
+        return None
+
+    try:
+        view = fields_view(
+            bundle,
+            source,
+            caption="Shows each output of the score on its grid. Select the mean, the "
+            "uncertainty or a draw. Use the slider to go through the frames.",
+        )
+        fields = [
+            f.model_copy(update={"output": found.get(f.output, f.output)[:128]})
+            for f in view.fields
+        ]
+        view = view.model_copy(update={"fields": fields})
+        ctx.write_json(SCORE_FIELDS_VIEW, view.model_dump(mode="json", exclude_none=True))
+    except SectionSkipped:
+        return
+    except (ValueError, KeyError, MapiError) as exc:  # a view never fails the score
+        ctx.warning(
+            "VIEW_FAILED",
+            "the field view of the score could not be written",
+            untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
+        )
+
+
+def _drawn(plots: ScorePlots, rendered: Sequence[Mapping[str, Any]]) -> dict[str, list[str]]:
+    """Each result variable -> the ids of the rendered plots whose options name it."""
+    ids = {str(p.get("id")) for p in rendered}
+    out = {var: [r for r in rids if r in ids] for var, rids in plots.by_var().items()}
+    return {var: rids for var, rids in out.items() if rids}
+
+
 def _write_tree(
     ctx: WorkerContext,
+    bundle: Bundle,
     tree: xr.DataTree,
-    extra_plots: list[str],
+    plots: ScorePlots,
     plot_trees: list[xr.DataTree] | None = None,
     actuals: list[dict[str, Any]] | None = None,
 ) -> None:
@@ -273,7 +359,11 @@ def _write_tree(
     assert raw is not None
     ctx.write_output("score.zarr.zip", raw)
     ctx.write_json("result.json", _result_json(tree))
-    summary = summary_document(tree, actuals)
+    # the plots first: each summary table lists the rendered plots that draw its variable
+    ctx.state(RunnerPhase.PLOTS, "rendering plots")
+    rendered = render_for(ctx, plots.refs, [*(plot_trees or []), tree], options=plots.options)
+    ctx.write_json("plots.json", rendered)
+    summary = summary_document(tree, actuals, bundle, plots=_drawn(plots, rendered))
     if summary is not None:
         node = tree["summary"]
         assert isinstance(node, xr.DataTree)
@@ -282,8 +372,6 @@ def _write_tree(
             ctx.write_output("ui/summary.arrow", write_arrow_ipc(to_arrow_table(node.to_dataset())))
         except PayloadLimitError as exc:
             ctx.warning("VIEW_TOO_LARGE", f"the summary view was not written: {exc.detail}")
-    ctx.state(RunnerPhase.PLOTS, "rendering plots")
-    ctx.write_json("plots.json", render_for(ctx, extra_plots, [*(plot_trees or []), tree]))
 
 
 def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
@@ -294,7 +382,11 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     history = _optional_dataset(ctx, INPUT_HISTORY)
     tables = load_side_tables(ctx, bundle.spec)
     ctx.state(RunnerPhase.SCORE, f"scoring ({job.request.mode})")
-    guided = job.request.mode in ("forecast", "counterfactual")
+    mode = job.request.mode
+    guided = mode in ("forecast", "counterfactual")
+    # grid and area outputs keep their draws until the maps are drawn (the summary has no
+    # draws); an evaluate keeps its predictions and /observed for the evaluate plots
+    full = guided or has_grid_outputs(bundle) or has_area_outputs(bundle) or mode == "evaluate"
     tree = score_bundle(
         bundle,
         job.request,
@@ -304,14 +396,28 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         registry=ctx.registry,
         max_draws=job.max_draws,
         hooks=ctx.fit_hooks(),
-        return_full=guided,
+        return_full=full,
         history=history,
     )
     plot_trees: list[xr.DataTree] = []
     if guided:
         plot_trees = _guided_views(ctx, bundle, tree, job.request, tables)
-        tree = _without_full(tree)
-    plots = job.plots if job.plots is not None else _DEFAULT_PLOTS.get(job.request.mode, [])
+    if mode == "evaluate":
+        # the untrimmed result: fit vs actual and the binary plots need /observed
+        plot_trees.insert(0, tree)
+    if mode != "counterfactual":
+        field_tree = field_plot_tree(bundle, tree)
+        area_tree = area_plot_tree(bundle, tree)
+        plot_trees += [t for t in (field_tree, area_tree) if t is not None]
+        _write_fields(ctx, bundle, tree)
+    plots = (
+        ScorePlots(list(job.plots))
+        if job.plots is not None
+        else default_score_plots(bundle, mode, tree)
+    )
+    if full:
+        # the stored evaluate result never carries the /observed that return_full added
+        tree = _without_full(tree, observed=mode == "evaluate")
     try:
         flat = (
             None if data is None else flatten(data, bundle.spec.data, load_tree_schema(ctx, data))
@@ -320,7 +426,7 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     except (ValueError, KeyError) as exc:  # the comparison is a convenience; the score stands
         ctx.warning("VIEW_FAILED", f"the actuals were not added to the summary: {exc}"[:500])
         actuals = []
-    _write_tree(ctx, tree, plots, plot_trees, actuals)
+    _write_tree(ctx, bundle, tree, plots, plot_trees, actuals)
     return tree
 
 
@@ -372,7 +478,15 @@ def run_evaluate(ctx: WorkerContext, job: EvaluateJob) -> MetricsReport:
     for name, value in sorted(report.values.items()):
         if value is not None and np.isfinite(value):
             ctx.metric(name, float(value))
-    _write_tree(ctx, tree, _DEFAULT_PLOTS["evaluate"])
+    _write_fields(ctx, bundle, tree)
+    area_tree = area_plot_tree(bundle, tree)
+    _write_tree(
+        ctx,
+        bundle,
+        tree,
+        default_score_plots(bundle, "evaluate", tree),
+        [area_tree] if area_tree is not None else None,
+    )
     return report
 
 

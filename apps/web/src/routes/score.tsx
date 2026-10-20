@@ -13,6 +13,8 @@ import { ModelInputsPanel } from "@/features/score/model-inputs";
 import { sideTableOptions, type SideTableOption } from "@/features/score/request";
 import { ScoreResults } from "@/features/score/results";
 import { ScoreFormView } from "@/features/score/score-form";
+import { plotsShownAbove, SCORE_FIELDS_VIEW } from "@/features/score/shape";
+import { ScoreShapeViews } from "@/features/score/shape-views";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { isTerminal } from "@/lib/run-state";
 
@@ -140,6 +142,11 @@ export function ScorePage() {
   );
 }
 
+/** Whether the run wrote the FieldsView of its grid outputs. */
+function hasFields(result: ScoreCallResult): boolean {
+  return (result.outputs ?? []).some((o) => o.name === SCORE_FIELDS_VIEW);
+}
+
 /** The request form and its results, for one model version. */
 function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
   const inputs = useModelInputs(mv.model_id, mv.version);
@@ -191,7 +198,8 @@ function ScoreWorkspace({ mv }: { mv: ModelVersion }) {
                   <div className="grid gap-3">
                     {done.summary?.conditioning ? <ConditioningNote conditioning={done.summary.conditioning} /> : null}
                     {done.summary?.actuals?.length ? <ActualsComparison summary={done.summary} /> : null}
-                    <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} />
+                    {done.summary?.tables?.length || hasFields(done) ? <ScoreShapeViews summary={done.summary} outputs={done.outputs ?? []} runId={done.run.id} /> : null}
+                    <ScoreResults outputs={done.outputs ?? []} runId={done.run.id} hidePlots={plotsShownAbove(done.summary, hasFields(done))} />
                   </div>
                 )
               ) : pending ? (

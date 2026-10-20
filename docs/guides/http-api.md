@@ -38,7 +38,7 @@ storage URLs, because these URLs have their own authorization. See
 ```
 
 ```text
-{"status":"ok","version":"0.9.1","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.10.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.bayesian@1.0.0  draws
 mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws
@@ -229,6 +229,10 @@ the circle:
 - `mean` is the circular mean, and `sd` is the circular standard deviation.
 - Each interval and quantile is centred on the circular mean.
 - All values are in `[0, period)`. An interval with `lower` more than `upper` crosses the seam.
+
+Each table of `summary.json` also gives `dims`, the names of its coordinate columns (the
+columns before the statistics), and `time_dim`, the dim that is time when there is one. A
+server that predates these fields leaves them out.
 
 ## Errors
 

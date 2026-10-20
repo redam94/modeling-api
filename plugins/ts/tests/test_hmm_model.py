@@ -236,3 +236,21 @@ def test_gaussian_hmm_passes_the_contract_kit(registry: Registry, tracks: xr.Dat
         "evaluate_path_equals_score_path",
         "seed_determinism",
     } <= ran
+
+
+def test_manifest_lists_the_state_sequence_plot() -> None:
+    plots = GaussianHMMModel.manifest().plots
+    assert list(plots) == ["core.convergence", "core.posterior_forest", "core.state_sequence"]
+
+
+def test_an_advi_fit_keeps_its_loss_history(registry: Registry, tracks: xr.Dataset) -> None:
+    from mapi_pymc.engines import FIT_HISTORY
+    from mapi_sdk.harness import fit_spec
+
+    spec = TRACKS_SPEC_YAML.replace(
+        "tune: 150, draws: 100, chains: 2, engine: pymc", "tune: 300, draws: 50, engine: advi"
+    ).replace("mode: evaluate_then_refit", "mode: train_only")
+    b = fit_spec(spec, tracks, registry=registry, raw_schema=TRACKS_SCHEMA)
+    hist = b.model.groups[FIT_HISTORY]
+    assert hist["loss"].dims == ("step",) and hist.sizes["step"] == 300
+    assert hist["loss"].attrs["engine"] == "advi"

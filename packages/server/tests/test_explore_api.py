@@ -105,7 +105,9 @@ async def _finish_explore(ctx: ServerContext, run_id: str, target: str, ref: str
     assert await Finalizer(ctx).finalize(run.id, att.attempt) is RunState.SUCCEEDED
 
 
-async def test_dataset_about_and_exploration(client: httpx.AsyncClient, ctx: ServerContext) -> None:
+async def test_dataset_about_and_exploration(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ds, _dv = await ready_dataset(ctx)
     about = (await client.get(f"/v1/datasets/{ds.id}/about")).json()
     assert about["description_user"] is None and "48" in about["summary_generated"]
@@ -131,6 +133,13 @@ async def test_dataset_about_and_exploration(client: httpx.AsyncClient, ctx: Ser
         f"/v1/datasets/{ds.id}/versions/1/explore", json={"sections": ["stl"]}
     )
     assert other.status_code == 202 and other.json()["run"]["id"] != ex["run"]["id"]
+    # a new explorer version does not reuse the views of an earlier release
+    import mapi_server.services.explore as explore_service
+
+    with monkeypatch.context() as mp:
+        mp.setattr(explore_service, "EXPLORER_VERSION", "next")
+        upgraded = await client.post(f"/v1/datasets/{ds.id}/versions/1/explore", json=body)
+    assert upgraded.status_code == 202 and upgraded.json()["run"]["id"] != ex["run"]["id"]
     async with ctx.db.session() as s:
         run = await s.get(m.Run, ex["run"]["id"])
         assert run is not None and set(run.inputs) == {"dataset"}
@@ -192,6 +201,8 @@ async def test_model_exploration_and_comparison(
     async with ctx.db.session() as s:
         run = await s.get(m.Run, ex["run"]["id"])
         assert run is not None and {"bundle", "dataset"} <= set(run.inputs)
+        # the fit's metrics.json rides along (the archive does not hold the metrics)
+        assert "bundle.metrics" in run.inputs
         assert run.model_version_id == mv.id
     cmp = await client.post(
         "/v1/models:compare",
@@ -200,7 +211,7 @@ async def test_model_exploration_and_comparison(
     assert cmp.status_code == 202, cmp.text
     async with ctx.db.session() as s:
         crun = await s.get(m.Run, cmp.json()["run"]["id"])
-        assert crun is not None and "compare.0" in crun.inputs
+        assert crun is not None and {"compare.0", "compare.0.metrics"} <= set(crun.inputs)
         assert crun.payload["model"]["compare_with"] == ["model://default/trend@v2"]
     unknown = await client.post(
         "/v1/models:compare",

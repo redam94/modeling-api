@@ -1988,11 +1988,11 @@ export interface paths {
         };
         /**
          * List Run Plots
-         * @description Plots a succeeded run rendered (``plots.json``), passed through the plot sanitizer on
-         *     every read; plots it rejects are left out. Empty while the run is not ``succeeded``.
-         *
-         *     The control plane decodes nothing but this size-capped JSON, read at the generation the
-         *     finalizer verified.
+         * @description Plots a run rendered (``plots.json``) in its newest attempt that has them: succeeded
+         *     and partial runs, and failed or cancelled runs whose earlier partial attempt wrote plots.
+         *     Every read passes the plot sanitizer; plots it rejects are left out. Empty while no
+         *     attempt has plots. The control plane decodes nothing but this size-capped JSON, read at
+         *     the generation the finalizer verified.
          */
         get: operations["list_run_plots"];
         put?: never;
@@ -4918,6 +4918,20 @@ export interface components {
          *         "quality"
          *       ]
          *     }
+         * @example {
+         *       "hints": {
+         *         "angle_vars": {
+         *           "wind_from": "deg"
+         *         },
+         *         "x_dim": "col",
+         *         "y_dim": "row"
+         *       },
+         *       "sections": [
+         *         "structure",
+         *         "images",
+         *         "circular"
+         *       ]
+         *     }
          */
         DataExploreRequest: {
             /**
@@ -4938,6 +4952,8 @@ export interface components {
              * @description Dim for group comparisons
              */
             group_by?: string | null;
+            /** @description Corrections to the detected structure (image dims, node dim, angle variables) */
+            hints?: components["schemas"]["StructureHints"] | null;
             /** Kpi */
             kpi?: string | null;
             /**
@@ -4975,7 +4991,7 @@ export interface components {
              */
             prewhiten?: boolean;
             /** Sections */
-            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality")[];
+            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality" | "structure" | "images" | "profiles" | "map" | "network" | "tree" | "circular" | "points")[];
             /**
              * Time Dim
              * @description Default: the dataset's time dim
@@ -7241,10 +7257,49 @@ export interface components {
          *         },
          *         {
          *           "message_plain": "Less than two seasons of data.",
+         *           "reason": "insufficient_data",
          *           "section": "stl",
          *           "status": "skipped",
          *           "view": "ui/explore/stl.json"
          *         }
+         *       ],
+         *       "target": "dataset"
+         *     }
+         * @example {
+         *       "order": [
+         *         "overview",
+         *         "structure",
+         *         "images",
+         *         "quality",
+         *         "distributions",
+         *         "timeseries",
+         *         "missingness"
+         *       ],
+         *       "ref": "dataset://seismology/oklahoma_quakes@v1",
+         *       "sections": [
+         *         {
+         *           "section": "overview",
+         *           "view": "ui/explore/overview.json"
+         *         },
+         *         {
+         *           "section": "structure",
+         *           "view": "ui/explore/structure.json"
+         *         },
+         *         {
+         *           "section": "images",
+         *           "view": "ui/explore/images.json"
+         *         },
+         *         {
+         *           "message_plain": "Not available: the data has no polygons.",
+         *           "reason": "not_applicable",
+         *           "section": "map",
+         *           "status": "skipped",
+         *           "view": "ui/explore/map.json"
+         *         }
+         *       ],
+         *       "shapes": [
+         *         "image",
+         *         "timeseries"
          *       ],
          *       "target": "dataset"
          *     }
@@ -7262,12 +7317,22 @@ export interface components {
              */
             node?: string | null;
             /**
+             * Order
+             * @description Data Explorer: the sections in order of relevance for this data
+             */
+            order?: string[] | null;
+            /**
              * Ref
              * @description dataset://… or model://…
              */
             ref: string;
             /** Sections */
             sections?: components["schemas"]["ExplorerSectionRef"][];
+            /**
+             * Shapes
+             * @description Data Explorer: the detected data shapes, best first
+             */
+            shapes?: ("timeseries" | "sequence" | "image" | "vector_field" | "areal_map" | "points" | "network" | "tree" | "circular" | "profile" | "table")[] | null;
             /**
              * Target
              * @enum {string}
@@ -7280,6 +7345,11 @@ export interface components {
         ExplorerSectionRef: {
             /** Message Plain */
             message_plain?: string | null;
+            /**
+             * Reason
+             * @description Why a skipped section was skipped (absent in indexes written before the scientific sections: readers then list every section)
+             */
+            reason?: ("not_applicable" | "insufficient_data" | "needs_option") | null;
             /** Section */
             section: string;
             /**
@@ -14098,7 +14168,10 @@ export interface components {
          * @description One output variable's summary as a table: the coordinate columns (one per dim), then
          *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
          *     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
-         *     circle (see the field).
+         *     circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
+         *     which one is time; a server that predates them leaves both out. ``plots``: the recipe ids
+         *     of the run's rendered plots (``plots.json``) that draw this variable, so a client can show
+         *     them next to the table.
          * @example {
          *       "columns": [
          *         "geo",
@@ -14106,6 +14179,10 @@ export interface components {
          *         "mean",
          *         "hdi_90_lower",
          *         "hdi_90_upper"
+         *       ],
+         *       "dims": [
+         *         "geo",
+         *         "time"
          *       ],
          *       "rows": [
          *         [
@@ -14116,6 +14193,7 @@ export interface components {
          *           1633.9
          *         ]
          *       ],
+         *       "time_dim": "time",
          *       "variable": "revenue"
          *     }
          */
@@ -14123,12 +14201,27 @@ export interface components {
             /** Columns */
             columns: string[];
             /**
+             * Dims
+             * @description The coordinate columns (the leading columns); the rest are statistics
+             */
+            dims?: string[] | null;
+            /**
              * Period
              * @description Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)
              */
             period?: number | null;
+            /**
+             * Plots
+             * @description Recipe ids of the run's plots that draw this output (sci.area_map, core.roc_pr, ...)
+             */
+            plots?: string[] | null;
             /** Rows */
             rows: (string | number | boolean | null)[][];
+            /**
+             * Time Dim
+             * @description The dim that is time, when there is one
+             */
+            time_dim?: string | null;
             /** Variable */
             variable: string;
         };
@@ -15035,6 +15128,29 @@ export interface components {
             store: "database" | "object_store" | "queue" | "logs" | "webhooks";
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * StructureHints
+         * @description Corrections to the structure the Data Explorer detects (each one overrides the rule
+         *     for that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,
+         *     ``frame_dim``), the node dim of a network or tree, the time dim, and variables that are
+         *     angles or times of day with their units (``{"wind_from": "deg"}``).
+         */
+        StructureHints: {
+            /** Angle Vars */
+            angle_vars?: {
+                [key: string]: "deg" | "rad" | "h" | "d" | "month";
+            };
+            /** Frame Dim */
+            frame_dim?: string | null;
+            /** Node Dim */
+            node_dim?: string | null;
+            /** Time Dim */
+            time_dim?: string | null;
+            /** X Dim */
+            x_dim?: string | null;
+            /** Y Dim */
+            y_dim?: string | null;
         };
         /**
          * TemplateCase

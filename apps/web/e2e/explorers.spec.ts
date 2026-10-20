@@ -92,7 +92,7 @@ test("the catalog browses every item by its About card", async ({ page }) => {
 test("the catalog shows every plot as a card with an example", async ({ page }) => {
   await page.goto("/catalog?tab=plots");
   const cards = page.getByRole("list", { name: "Plot recipes" }).getByRole("listitem");
-  await expect(cards).toHaveCount(36);
+  await expect(cards).toHaveCount(40); // v0.10: core.roc_pr, core.confusion, core.loss_curve, core.loo_pit
   // the first card's thumbnail renders in the sandbox (Vega-Lite)
   const first = page.getByTestId("plot-card").first();
   await expect(first.locator('iframe[data-testid="plot-frame"]').contentFrame().locator("svg.marks")).toBeVisible({ timeout: 20_000 });
@@ -161,6 +161,74 @@ test("the Data Explorer shows the ingest views and computes the rest on demand",
   await expect(page.getByRole("table", { name: "Summary statistics" })).toBeHidden();
   await page.getByText("Show the statistics", { exact: true }).click();
   await expect(page.getByRole("table", { name: "Summary statistics" })).toBeVisible();
+});
+
+// v0.10: the Data Explorer on scientific data (src/mocks/explore-sci-demo.ts: the spec's example views)
+const SCI_DEMO = "ds-sci-demo";
+const SCI_DEMO_TREE = "ds-sci-demo-tree";
+
+/** The plot sandbox drew the section's first plot (Vega-Lite or Plotly), or the field viewer its canvas. */
+async function pictureRendered(page: Page, section: string) {
+  const card = page.locator(`#section-${section}`);
+  if (section === "images") {
+    await expect(card.getByTestId("field-viewer").locator("canvas").first()).toBeVisible({ timeout: 20_000 });
+    return;
+  }
+  const frame = card.locator('iframe[data-testid="plot-frame"]').first();
+  await expect(frame).toBeVisible({ timeout: 20_000 });
+  await expect(frame.contentFrame().locator("svg.marks, svg.main-svg").first()).toBeVisible({ timeout: 20_000 });
+}
+
+test("the Data Explorer on scientific data: the list follows the shapes and every picture renders", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") consoleErrors.push(m.text());
+  });
+  await page.goto(`/datasets/${SCI_DEMO}/versions/1/explore`);
+  const nav = page.getByRole("navigation", { name: "Data Explorer sections" });
+  await expect(nav).toBeVisible();
+  // the relevance order: the picture sections come first, the time sections are not listed
+  const listed = nav.locator("[data-section]:not([data-reason])");
+  await expect(listed.first()).toHaveAttribute("data-section", "overview");
+  await expect(listed.nth(1)).toHaveAttribute("data-section", "structure");
+  await expect(nav.getByRole("heading", { name: "Pictures of the data" })).toBeVisible();
+  await expect(nav.locator('[data-section="stl"]:not([data-reason])')).toHaveCount(0);
+  const hidden = nav.getByTestId("nav-not-applicable");
+  await expect(hidden).toContainText("Not for this data (7)");
+  // the overview links each shape to its section
+  await page.getByTestId("shape-chips").getByRole("button", { name: /^Image/ }).click();
+  await expect(page).toHaveURL(/section=images/);
+  await pictureRendered(page, "images");
+  for (const [section, title] of [
+    ["structure", "Structure"],
+    ["profiles", "Profiles and spectra"],
+    ["map", "Map"],
+    ["network", "Network"],
+    ["tree", "Tree"],
+    ["circular", "Directions and times of day"],
+    ["points", "Points"],
+  ] as const) {
+    await nav.getByRole("button", { name: new RegExp(`^${title}`) }).first().click();
+    await expect(page).toHaveURL(new RegExp(`section=${section}`));
+    await pictureRendered(page, section);
+  }
+  // a hidden section still opens from its link, with the reason
+  await page.goto(`/datasets/${SCI_DEMO}/versions/1/explore?section=stl`);
+  await expect(page.getByTestId("section-skipped")).toContainText("the data has no time dimension");
+  await expect(page.getByTestId("nav-not-applicable").getByRole("button", { name: /Trend and season/ })).toHaveAttribute("aria-current", "page");
+  expect(consoleErrors).toEqual([]);
+});
+
+test("the Data Explorer on a tree dataset: each node has its own pictures", async ({ page }) => {
+  await page.goto(`/datasets/${SCI_DEMO_TREE}/versions/1/explore?node=%2Flinks&section=network`);
+  await pictureRendered(page, "network");
+  const nav = page.getByRole("navigation", { name: "Data Explorer sections" });
+  await expect(nav.locator('[data-section="images"]')).toHaveAttribute("data-reason", "not_applicable");
+  await page.getByRole("combobox", { name: "Node", exact: true }).selectOption("/image");
+  await expect(page).toHaveURL(/node=%2Fimage/);
+  await nav.getByRole("button", { name: /^Images and fields/ }).click();
+  await pictureRendered(page, "images");
+  await expect(nav.locator('[data-section="network"]')).toHaveAttribute("data-reason", "not_applicable");
 });
 
 test("the Model Explorer: parameters, diagnostics, forecasts, governance and lineage", async ({ page }) => {

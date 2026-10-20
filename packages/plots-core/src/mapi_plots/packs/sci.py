@@ -24,7 +24,11 @@ Inputs are bundle or score trees, as for the core recipes: draws (``chain``/``dr
 ``sample`` dims) in ``posterior``, ``predictions`` or ``posterior_predictive`` and actual values
 in ``observed_data``. The grid dims default to the output's ``grid`` declaration
 (:class:`mapi_spec.capabilities.GridDecl`), read from the variable's ``grid`` attr or from the
-model manifest in the tree (``/model`` attrs ``manifest``).
+model manifest in the tree (``/model`` attrs ``manifest``). A score tree has no manifest: the
+sdk harness writes the ``grid`` attr on each gridded output, in the names the tree uses (a
+dataset's ``quarter`` for a canonical ``period``). The field recipes read draws only, so a score
+tree needs its ``/predictions`` group (``/summary`` and ``/draws`` are not searched); the runner
+keeps it for grid outputs.
 
 Size: every field figure keeps its cells in one shared table (``x``, ``y`` and one column per
 statistic and frame), so the inline Arrow stays under the 2 MB cap and the plot sandbox's row
