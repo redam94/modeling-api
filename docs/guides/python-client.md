@@ -32,7 +32,7 @@ files:
 ```
 
 ```text
-http://127.0.0.1:8000 ok 0.10.0
+http://127.0.0.1:8000 ok 0.11.0
 ```
 
 `Client()` finds its settings in the same sequence as the CLI:

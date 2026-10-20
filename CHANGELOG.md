@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.11.0] — Run tracking — 2026-10-20
+
 ### Run tracking: metrics, parameters, tags and notes
 
 Each run now keeps a log of what happened in it: metrics (curves and single values), params,

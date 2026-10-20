@@ -315,7 +315,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.10.0"
+    __version__ = "0.11.0"
 
 __all__ = [
     "API_VERSION",
