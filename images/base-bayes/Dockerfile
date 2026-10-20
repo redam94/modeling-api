@@ -20,13 +20,13 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-bayes
 ARG MAPI_DESCRIPTION="modeling-api runner: PyMC models (mmm.* on mmm-framework, tabular.*), steps and plot recipes"
-ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science"
+ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc[pathfinder] mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-workflows mmm-framework statsmodels scipy h5py h5netcdf pymc pytensor nutpie numpyro jax vl-convert-python"
-ARG MAPI_ASSERT_ABSENT="mapi-server mapi-gcs-shim mapi-plugin-ts nvidia-nccl-cu13"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-pymc mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-workflows mmm-framework statsmodels scipy h5py h5netcdf pymc pytensor nutpie pymc-extras numpyro jax vl-convert-python"
+ARG MAPI_ASSERT_ABSENT="mapi-server mapi-gcs-shim mapi-plugin-ts mapi-plugin-causal nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev
@@ -96,7 +96,7 @@ WORKDIR /home/mapi
 # ------------------------------------------------- worker target (base-bayes only, compose)
 FROM builder AS worker-builder
 ARG MAPI_NO_INSTALL
-ARG MAPI_WORKER_PACKAGES="mapi-plugin-ts mapi-server[docker]"
+ARG MAPI_WORKER_PACKAGES="mapi-plugin-ts mapi-plugin-causal mapi-server[docker]"
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
     python3 /usr/local/lib/mapi/install_packages.py ${MAPI_WORKER_PACKAGES} \
       --no-install ${MAPI_NO_INSTALL}
@@ -126,7 +126,8 @@ COPY --chmod=0644 uv.lock /opt/mapi/uv.lock
 RUN install -d -o 10001 -g 10001 -m 0700 /var/lib/mapi/keys \
  && python -I /opt/mapi/bin/assert_dists.py \
       --present mapi-server mapi-runner mapi-pymc mapi-plugin-mmm mapi-plugin-ts \
-                mapi-plugin-tabular mapi-plugin-science mapi-sklearn docker \
+                mapi-plugin-tabular mapi-plugin-science mapi-plugin-causal pymc-extras \
+                mapi-sklearn docker \
       --absent nvidia-nccl-cu13 \
  && PYTENSOR_FLAGS=base_compiledir=/opt/mapi/cache/pytensor \
     NUMBA_CACHE_DIR=/opt/mapi/cache/numba HOME=/tmp/build-home \

@@ -35,7 +35,8 @@ services:
         {"mmm": "mapi/base-bayes:${MAPI_VERSION:-0.12.0}",
         "tabular": "mapi/base-bayes:${MAPI_VERSION:-0.12.0}",
         "sklearn": "mapi/base-ml:${MAPI_VERSION:-0.12.0}",
-        "ts": "mapi/base-forecast:${MAPI_VERSION:-0.12.0}"}
+        "ts": "mapi/base-forecast:${MAPI_VERSION:-0.12.0}",
+        "causal": "mapi/base-forecast:${MAPI_VERSION:-0.12.0}"}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 

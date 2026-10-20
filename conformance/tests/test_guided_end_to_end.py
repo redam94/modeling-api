@@ -110,6 +110,23 @@ def _choice_table(rng: np.random.Generator) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _impact_table(rng: np.random.Generator) -> pd.DataFrame:
+    search = 50 + rng.normal(0, 5, 80)
+    sales = 200 + 2 * search + rng.normal(0, 4, 80) + np.where(np.arange(80) >= 60, 30.0, 0.0)
+    return pd.DataFrame({"Week": _weeks(80), "Sales": sales, "Search Index": search,
+                         "Benchmark": 100 + rng.normal(0, 3, 80)})  # fmt: skip
+
+
+def _geo_lift_table(rng: np.random.Generator) -> pd.DataFrame:
+    base = 100 + rng.normal(0, 5, (6, 60)).cumsum(axis=1) * 0.2
+    rows = []
+    for g in range(6):
+        for k, w in enumerate(_weeks(60)):
+            lift = 8.0 if g == 0 and k >= 48 else 0.0
+            rows.append({"week": w, "market": f"m{g:02d}", "sales": base[g, k] + lift})
+    return pd.DataFrame(rows)
+
+
 TABLES = {
     "geo_mmm": _geo_table,
     "mediated_mmm": _mediated_table,
@@ -117,7 +134,14 @@ TABLES = {
     "weekly_forecast": _forecast_table,
     "store_demand": _store_table,
     "customer_choice": _choice_table,
+    "campaign_impact": _impact_table,
+    "geo_lift": _geo_lift_table,
 }
+TEXT_ANSWERS: dict[str, dict[str, Any]] = {
+    "campaign_impact": {"start": "2025-03-02"},  # week 60 of _impact_table
+    "geo_lift": {"treated": "m00", "start": "2024-12-08", "end": "2025-01-05"},  # weeks 48-52
+}
+"""Answers to the text questions (role detection does not fill them)."""
 
 
 def _draft_and_ingest(template_id: str, tmp_path: Path, registry: Registry) -> tuple[Any, Any, Any]:
@@ -128,6 +152,7 @@ def _draft_and_ingest(template_id: str, tmp_path: Path, registry: Registry) -> t
     sug = suggest_roles(template, profiles)
     assert not sug.issues, sug.issues  # every required question is pre-filled
     answers = {q.question_id: q.answer for q in sug.questions}
+    answers.update(TEXT_ANSWERS.get(template_id, {}))
     req = GuidedAnswers(
         template_id=template_id, name="guided", dataset="upload", answers=answers,
         columns=profiles,
@@ -149,7 +174,12 @@ def test_a_table_becomes_a_valid_spec(template_id: str, tmp_path: Path, registry
         and registry.catalog().resolve_model(plugin) is None
     ):
         pytest.skip(f"{plugin} is a v0.5 plugin that is not installed here")
-    _draft_and_ingest(template_id, tmp_path, registry)
+    spec, _, _ = _draft_and_ingest(template_id, tmp_path, registry)
+    if template_id == "campaign_impact":
+        assert sorted(spec.model.settings["controls"]) == ["benchmark", "search_index"]
+    if template_id == "geo_lift":
+        assert spec.data.bind.dims == {"unit": "market", "time": "week"}
+        assert spec.model.settings["treated"] == ["m00"]
 
 
 def test_the_choice_draft_fits(tmp_path: Path, registry: Registry) -> None:

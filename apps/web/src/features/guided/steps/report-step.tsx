@@ -6,28 +6,30 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Microscope, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { stringify } from "yaml";
 
 import { useModelPlots, type ModelPlot } from "../model-plots";
 import { can } from "@/api/access";
 import { api, errorMessage, unwrap } from "@/api/client";
-import { qk, usePlot, useProjectScope } from "@/api/queries";
+import { qk, usePlot, useProjectScope, useRunMetrics, useRunParams, useSpecRevision } from "@/api/queries";
 import type { ModelVersion, Scorecard } from "@/api/types";
-import { EmptyState, ErrorNotice, LoadingRows, Spinner } from "@/components/common";
+import { CopyButton, EmptyState, ErrorNotice, LoadingRows, Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from "@/components/ui/primitives";
+import { Checkbox } from "@/components/ui/overlays";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Skeleton } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { useModelPlotData } from "@/features/plots/plot-data";
 import { cn } from "@/lib/utils";
 
 import { useResponseGrid } from "../api";
+import { buildLiftTest, treatedUnits } from "../lift-test";
 import { StepActions } from "../frame";
 import { amount, holdoutFraction, ratio, share } from "../plain";
 import { useGuidedLock } from "../persona";
 import { canFitMoreCarefully, withCarefulFit } from "../refit";
-import { GUIDED_MESSAGE, exploreTitle } from "../session";
+import { GUIDED_MESSAGE, exploreTitle, hasExplore } from "../session";
 import { StatusBadge, Figure, type CheckStatus } from "../ui";
 import type { GuidedSession } from "../use-session";
 import { baselineShare, channelHeadlines, type ChannelHeadline, type ResponseGrid } from "../whatif";
@@ -254,8 +256,93 @@ function ModelPlotFigure({ mv, plot }: { mv: ModelVersion; plot: ModelPlot }) {
   );
 }
 
-/** The charts on the results page, in this order: ROI, response curves, then the fit; two at most. */
-const REPORT_FIRST = ["mmm.roi", "mmm.response_curves", "core.ppc_fan", "core.fit_vs_actual"];
+/**
+ * The geo-lift result as a lift test for the marketing mix: the effect that the fit logged, plus
+ * the channel and the spend change that only the user knows, as a `calibration.lift_tests` entry.
+ * The treated markets come from the revision that the fit used: the results can be older than
+ * the latest changes, and the effect and its market must come from the same fit.
+ */
+export function LiftTestCard({ session }: { session: GuidedSession }) {
+  const id = useId();
+  const runId = session.lastGoodFit?.id;
+  const metrics = useRunMetrics(runId);
+  const params = useRunParams(runId);
+  const fitRevision = session.lastGoodFit?.spec_revision;
+  const stale = typeof fitRevision === "number" && fitRevision !== session.latest.revision;
+  const fitted = useSpecRevision(session.spec.id, stale ? fitRevision : undefined);
+  const fittedDocument = stale ? fitted.data?.document : session.document;
+  const treated = treatedUnits(fittedDocument);
+  const [channel, setChannel] = useState("");
+  const [spend, setSpend] = useState("");
+  const [useGeo, setUseGeo] = useState(true);
+  const loading = metrics.isPending || params.isPending || (stale && fitted.isPending);
+  const result =
+    metrics.data && params.data && fittedDocument
+      ? buildLiftTest({ metrics: metrics.data.items, params: params.data.items, treated }, { channel, spend, useGeo })
+      : null;
+  return (
+    <Card aria-labelledby={`${id}-title`}>
+      <CardHeader className="pb-2">
+        <div className="grid gap-0.5">
+          <CardTitle id={`${id}-title`}>Lift test for your marketing mix</CardTitle>
+          <CardDescription>Use this result as a lift test in a marketing mix model. The model then agrees with what the test measured.</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Channel" htmlFor={`${id}-channel`} hint="Type the name of the channel in your marketing mix data, for example tv.">
+            <Input id={`${id}-channel`} value={channel} onChange={(e) => setChannel(e.target.value)} className="font-mono" maxLength={128} />
+          </Field>
+          <Field label="Spend change in the test" htmlFor={`${id}-spend`} hint="Type the extra spend in the test markets during the test. For a holdout, type a negative number.">
+            <Input id={`${id}-spend`} value={spend} onChange={(e) => setSpend(e.target.value)} inputMode="decimal" className="font-mono" />
+          </Field>
+        </div>
+        {stale && fittedDocument ? <p className="text-[13px] text-muted-foreground">The lift test uses the markets of the last fit, not your latest changes.</p> : null}
+        {treated.length === 1 ? (
+          <label htmlFor={`${id}-geo`} className="flex items-center gap-2 text-[13px]">
+            <Checkbox id={`${id}-geo`} checked={useGeo} onCheckedChange={(c) => setUseGeo(c === true)} />
+            The marketing mix model has markets. Use the market {treated[0]} for the test.
+          </label>
+        ) : treated.length > 1 ? (
+          <p className="text-[13px] text-muted-foreground">The test has {treated.length} markets, so the lift test is for the whole country.</p>
+        ) : null}
+        {loading && runId ? (
+          <Skeleton className="h-24" />
+        ) : metrics.isError || params.isError || (stale && fitted.isError) ? (
+          <ErrorNotice error={metrics.error ?? params.error ?? fitted.error} title="The app could not load the results of the fit" />
+        ) : result?.ok ? (
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium">Add this to the spec of your marketing mix model</p>
+              <CopyButton value={result.yaml} label="Copy the lift test" />
+            </div>
+            <pre className="overflow-x-auto rounded-md border bg-muted/40 p-3 font-mono text-[12px]" data-testid="lift-test-yaml">
+              {result.yaml}
+            </pre>
+          </div>
+        ) : result ? (
+          <ul className="grid gap-1 text-[13px] text-muted-foreground">
+            {result.problems.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The charts on the results page, in this order: the causal effect, then ROI, response curves, then the fit; two at most. */
+const REPORT_FIRST = [
+  "causal.impact",
+  "causal.event_study",
+  "causal.donor_weights",
+  "causal.pre_fit",
+  "mmm.roi",
+  "mmm.response_curves",
+  "core.ppc_fan",
+  "core.fit_vs_actual",
+];
 
 export function reportPlots<T extends { id: string }>(plots: readonly T[]): T[] {
   return plots
@@ -269,6 +356,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const mv = session.modelVersion;
   const grid = useResponseGrid(mv);
   const plots = useModelPlots(mv);
+  const explore = hasExplore(session.template);
   if (!session.lastGoodFit) {
     return (
       <EmptyState title="No results yet" action={<Button onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>Fit the model</Button>}>
@@ -307,13 +395,14 @@ export function ReportStep({ session }: { session: GuidedSession }) {
           ))}
         </section>
       ) : null}
+      {session.template.id === "geo_lift" ? <LiftTestCard session={session} /> : null}
       {mv.scorecard ? <ScorecardView scorecard={mv.scorecard} mv={mv} session={session} /> : <p className="text-[13px] text-muted-foreground">This model has no scorecard.</p>}
       <StepActions>
         <Button variant="ghost" onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>
           Back
         </Button>
-        <Button onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "explore" } })}>
-          {exploreTitle(session.template)} <ArrowRight />
+        <Button onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: explore ? "explore" : "share" } })}>
+          {explore ? exploreTitle(session.template) : "Share"} <ArrowRight />
         </Button>
       </StepActions>
     </div>

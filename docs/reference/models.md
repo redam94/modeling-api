@@ -29,6 +29,10 @@ each lift likelihood.
 | `mmm.multivariate@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | contract kit (`examples_multivariate`) |
 | `ts.hsgp_trend@1` | `mapi-plugin-ts` | draws | predict, forecast, evaluate | `c08` |
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
+| `ts.bsts@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e13_bsts` |
+| `causal.impact@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict, forecast | `causal_impact` |
+| `causal.synthetic_control@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict | `geo_lift` |
+| `causal.did@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict, counterfactual | `did_event_study` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
@@ -50,6 +54,10 @@ each lift likelihood.
 | `sci.phylo_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e23_phylo` |
 | `sci.circular_regression@1` | `mapi-plugin-science` | draws | predict, simulate, evaluate | `e81_circular` |
 | `ts.arima@1`, `ts.ets@1`, `ts.theta@1`, `ts.unobserved_components@1`, `ts.ardl@1`, `ts.ecm@1`, `ts.var@1`, `ts.varmax@1`, `ts.dynamic_factor@1`, `ts.markov_switching@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | contract kit and reference-value tests |
+
+[Causal models and Bayesian structural time series](../models/causal.md) describes
+`ts.bsts` and the causal models (v0.13). These models measure the effect of a campaign, a
+launch or a test. Their `impact` group gives a lift test for `mmm.bayesian`.
 
 [statsmodels time-series models](../models/statsmodels.md) describes the statsmodels
 plugins. These are the ARIMA family, exponential smoothing, theta, ARDL and error correction,
@@ -234,6 +242,20 @@ Validation rejects `elpd_loo`.
 
 **Outputs.** `y_hat(animal, step)` in your units, and `state_prob(animal, step, state)`. The
 units of `state_prob` are `probability`. The model does not inverse-transform it.
+
+## `ts.bsts` and the causal models <span class="mapi-badge">v0.13</span>
+
+`ts.bsts` is a Bayesian structural time series on the state-space models of pymc-extras: a
+level, a trend, seasonal patterns and drivers with one effect for all periods. Like
+`ts.gaussian_hmm`, it keeps a `terminal_state` group. `forecast` starts from it and `filter`
+updates it. The manifest declares pointwise LOO as not valid.
+
+`causal.impact` (CausalImpact on the `ts.bsts` core), `causal.synthetic_control` (a Bayesian
+synthetic control for geo-lift tests) and `causal.did` (difference-in-differences and event
+study) write the effect of a change to the `impact` group. See
+[Causal models and Bayesian structural time series](../models/causal.md) for the inputs, the
+settings and the groups, and [Measure the effect of a change](../guides/causal.md) for the
+procedures.
 
 ## `tabular.hierarchical_glm` — partial pooling in long layout
 

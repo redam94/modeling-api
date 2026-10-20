@@ -51,6 +51,7 @@ from mapi_sdk.steps import CancelToken
 from mapi_sdk.tracking import Tracker, TrackingMixin
 
 __all__ = [
+    "DIFFERENCE_ATTR",
     "PREDICTIONS",
     "BudgetPlan",
     "CustomModel",
@@ -67,6 +68,13 @@ __all__ = [
 
 PREDICTIONS = "predictions"
 """Name of the DataTree group a plugin's ``score`` must fill."""
+
+DIFFERENCE_ATTR = "difference_of"
+"""Scored array attr naming a reference output: the output is ``<a level of its units_of
+variable> - <reference>`` (the effect ``y - y_hat`` of ``causal.impact``). A difference is
+not a level, so it cannot go through the target's inverse transforms on its own; the
+harness inverts the level and the reference and subtracts them in the output space (draws
+and point outputs)."""
 
 ProgressFn = Callable[[float, str], None]
 

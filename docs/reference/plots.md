@@ -181,6 +181,7 @@ mapi_plots.packs.mmm.mmm_recipes()       # entry point  mapi.plots: mmm
 mapi_plots.packs.ml.ml_recipes()         # entry point  mapi.plots: ml
 mapi_plots.packs.sci.sci_recipes()       # entry point  mapi.plots: sci (Plotly)
 mapi_plots.packs.net.net_recipes()       # entry point  mapi.plots: net (Plotly)
+mapi_plots.packs.causal.causal_recipes() # entry point  mapi.plots: causal (v0.13)
 Recipe.render(data, **settings) -> PlotSpec       # also Recipe(data, **settings)
 Recipe.catalog_entry() -> PlotCatalogEntry        # id, version, persona, required groups/representation
 
@@ -318,6 +319,22 @@ skips only that plot.
 | `mmm.effectiveness` | `effectiveness(sample, channel, time)`, `time_varying(channel)` | The effect of one unit of spend in each period with an HDI band |
 | `mmm.mediation` | `mediation`: `direct(sample, channel)`, `indirect(sample, channel, mediator)` | Stacked direct and indirect effects of each channel, with the share that the mediators carry |
 | `mmm.cross_effects` | `cross_effects`: `psi(sample, pair)` and the coords `source`, `target`, `kind` | A forest of each cross-effect with its kind |
+
+### Causal pack (`causal.*`) <span class="mapi-badge">v0.13</span>
+
+The causal models (`causal.impact`, `causal.synthetic_control`, `causal.did`) write their
+results to bundle groups that these recipes read. See
+[Causal models](../models/causal.md#the-effect-in-one-bundle-group). All recipes accept draws
+with a `sample` dim or with `chain` and `draw` dims. A recipe that does not find its group
+raises `RecipeDataError`. The runner then skips only that plot. The recipes send medians and
+intervals for each period to the sanitizer, not the draws.
+
+| Recipe | Input | Settings | What it shows |
+|---|---|---|---|
+| `causal.impact` | `impact`: `actual`, `counterfactual`, `effect`, `cumulative_effect`, `post` | `hdi_prob` (0.9), `unit` (none: the sum over the `unit` dim), `panels` (`series`, `pointwise`, `cumulative`) | Three panels on one time axis: the actual values with the median and HDI band of the values without the change, the effect in each period, and the cumulative effect in the effect window. A rule marks the start (and the end). The caption gives the total effect with its interval, the relative effect and the probability that the effect is more than zero. |
+| `causal.pre_fit` | `impact` (the cells before the start) | `hdi_prob` (0.9), `unit` | The actual values against the band of the model before the change, with the RMSE, the MAPE and the part of the actual values in the band. The caption flags a part below 80%. |
+| `causal.donor_weights` | `donor_weights`: `weight(sample, unit, donor)` | `hdi_prob` (0.9), `top` (15), `unit` (none: one panel for each treated unit up to 4, else the first unit) | Horizontal bars of the mean weight of each donor with HDI rules, sorted. The other donors are summed as "other donors". |
+| `causal.event_study` | `event_study`: `coef(sample, event_time)`, `att`, attrs `reference` | `hdi_prob` (0.9) | A point and an HDI rule for each event time, a zero line and a dashed rule between -1 and 0. The reference period is marked. The caption gives the average effect after the change and tells if the coefficients before the change include zero. |
 
 ### Scientific-model pack (`sci.*`)
 

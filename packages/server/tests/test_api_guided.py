@@ -59,20 +59,23 @@ async def test_templates_are_listed_and_paged(client: httpx.AsyncClient) -> None
     r = await client.get("/v1/guided/templates")
     assert r.status_code == 200
     ids = [GuidedTemplate.model_validate(t).id for t in r.json()["items"]]
-    assert ids == ["customer_choice", "geo_mmm", "mediated_mmm", "multi_kpi_mmm",
-                   "store_demand", "weekly_forecast"]  # fmt: skip
+    assert ids == ["campaign_impact", "customer_choice", "geo_lift", "geo_mmm", "mediated_mmm",
+                   "multi_kpi_mmm", "store_demand", "weekly_forecast"]  # fmt: skip
     first = (await client.get("/v1/guided/templates", params={"limit": 5})).json()
     assert len(first["items"]) == 5 and first["next_cursor"]
     rest = (
         await client.get("/v1/guided/templates", params={"cursor": first["next_cursor"]})
     ).json()
-    assert [t["id"] for t in rest["items"]] == ["weekly_forecast"] and rest["next_cursor"] is None
+    assert [t["id"] for t in rest["items"]] == ["multi_kpi_mmm", "store_demand", "weekly_forecast"]
+    assert rest["next_cursor"] is None
     one = GuidedTemplate.model_validate((await client.get("/v1/guided/templates/geo_mmm")).json())
     assert one.plugin == "mmm.bayesian@^1" and one.ui_levels["/pipeline"] == "hidden"
     nested = GuidedTemplate.model_validate(
         (await client.get("/v1/guided/templates/mediated_mmm")).json()
     )
     assert nested.plugin == "mmm.nested@^1" and nested.about is not None
+    lift = GuidedTemplate.model_validate((await client.get("/v1/guided/templates/geo_lift")).json())
+    assert lift.family == "causal" and lift.plugin == "causal.synthetic_control@^1"
     choice = (await client.get("/v1/guided/templates/customer_choice")).json()
     assert choice["plugin_available"] is True
     _problem(await client.get("/v1/guided/templates/nope"), 404, "NOT_FOUND")

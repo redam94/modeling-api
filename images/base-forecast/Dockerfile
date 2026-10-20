@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1.26@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 #
 # mapi/base-forecast - the time-series runner image (plan §7 tier T0): the ts.* plugins
-# (ts.hsgp_trend, ts.gaussian_hmm on PyMC; the statsmodels models of
-# mapi-plugin-statsmodels), with the SDK, built-in steps and plot recipes.
-# No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
+# (ts.hsgp_trend, ts.gaussian_hmm, ts.bsts on PyMC; the statsmodels models of
+# mapi-plugin-statsmodels) and the causal.* plugins (causal.impact reuses ts.bsts), with the
+# SDK, built-in steps and plot recipes. pymc-extras (state space, Pathfinder) pulls preliz,
+# numba and matplotlib. No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
 #
 #   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.12.0 .
 #
@@ -15,12 +16,12 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-forecast
-ARG MAPI_DESCRIPTION="modeling-api runner: time-series and state-space models (ts.*), steps and plot recipes"
-ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels"
+ARG MAPI_DESCRIPTION="modeling-api runner: time-series, state-space and causal models (ts.*, causal.*), steps and plot recipes"
+ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc[pathfinder] mapi-plugin-ts mapi-plugin-statsmodels mapi-plugin-causal"
 ARG MAPI_NO_INSTALL=""
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels statsmodels scipy h5py h5netcdf pymc pytensor nutpie vl-convert-python"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels mapi-plugin-causal statsmodels scipy h5py h5netcdf pymc pytensor nutpie pymc-extras vl-convert-python"
 ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-sklearn mapi-server mapi-gcs-shim"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)

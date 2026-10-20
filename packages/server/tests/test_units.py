@@ -359,6 +359,7 @@ def test_docker_settings_default_to_the_built_images() -> None:
         "tabular": f"mapi/base-bayes:{__version__}",
         "sklearn": f"mapi/base-ml:{__version__}",
         "ts": f"mapi/base-forecast:{__version__}",
+        "causal": f"mapi/base-forecast:{__version__}",
     }
     # --network none cannot reach the HTTP bootstrap URL: refuse at start, not per run
     with pytest.raises(ExecutorRefused, match="MAPI_DOCKER_NETWORK"):

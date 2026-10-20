@@ -36,7 +36,7 @@ base image and resource class, and it selects one Job for each attempt:
 |---|---|---|---|
 | `base-bayes` (`mmm.*`, `sci.*`, `tabular.*`, ingest, describe) | `mapi-prod-base-bayes-s` | `mapi-prod-base-bayes-m` | `mapi-prod-base-bayes-l` |
 | `base-ml` (`sklearn.*`) | `mapi-prod-base-ml-s` | `mapi-prod-base-ml-m` | `mapi-prod-base-ml-l` |
-| `base-forecast` (`ts.*`) | `mapi-prod-base-forecast-s` | `mapi-prod-base-forecast-m` | `mapi-prod-base-forecast-l` |
+| `base-forecast` (`ts.*`, `causal.*`) | `mapi-prod-base-forecast-s` | `mapi-prod-base-forecast-m` | `mapi-prod-base-forecast-l` |
 
 The names use `MAPI_CLOUDRUN_JOB_TEMPLATE` (default `mapi-{env}-{base}-{class}`). The
 infrastructure must make exactly these Jobs. Each Job must have:
@@ -284,7 +284,7 @@ to `internal` and `self_hosted_trusted` tenants.
 | `MAPI_CLOUDRUN_PROJECT` | — | Exec project that holds the Job inventory (necessary) |
 | `MAPI_CLOUDRUN_REGION` | `europe-west1` | Region of the inventory |
 | `MAPI_CLOUDRUN_JOB_TEMPLATE` | `mapi-{env}-{base}-{class}` | Rule for Job ids |
-| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`: `base-forecast` | Plugin namespace to base (JSON) |
+| `MAPI_CLOUDRUN_PLUGIN_BASES` | `mmm`, `sci`, `tabular`: `base-bayes`; `sklearn`: `base-ml`; `ts`, `causal`: `base-forecast` | Plugin namespace to base (JSON) |
 | `MAPI_CLOUDRUN_DEFAULT_BASE` | `base-bayes` | Base for runs without a plugin |
 | `MAPI_CLOUDRUN_SUBMITS_PER_MINUTE`, `MAPI_CLOUDRUN_SUBMIT_BURST` | `150`, `10` | Token bucket in front of `jobs.run` (maximum 180) |
 | `MAPI_CLOUDRUN_MAX_429_RETRIES` | `6` | Number of `429` answers in sequence before a submit fails |

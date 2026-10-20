@@ -55,6 +55,7 @@ DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
     "tabular": "base-bayes",
     "sklearn": "base-ml",
     "ts": "base-forecast",
+    "causal": "base-forecast",
 }
 """Plugin namespace → the base whose Cloud Run Jobs ship it (mirrors the docker images)."""
 
@@ -64,6 +65,7 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "tabular": f"mapi/base-bayes:{__version__}",
     "sklearn": f"mapi/base-ml:{__version__}",
     "ts": f"mapi/base-forecast:{__version__}",
+    "causal": f"mapi/base-forecast:{__version__}",
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 

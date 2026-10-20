@@ -20,11 +20,16 @@ make docker-pin-check                  # every base image pinned by digest?
 |---|---|---|---|
 | `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `mmm.*`, `tabular.*` and `sci.*` plugins (`mapi-plugin-science`, which uses SciPy), a C++ compiler for PyTensor | `10001` | `mapi-runner` |
 | `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` (`sklearn.*` plugins). **No PyMC.** | `10001` | `mapi-runner` |
-| `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `ts.*` plugins (`mapi-plugin-ts` and `mapi-plugin-statsmodels`) | `10001` | `mapi-runner` |
-| `mapi/worker` | `base-bayes` with the `ts.*` plugins and `mapi-server` (target `worker` of the base-bayes Dockerfile). Only for compose | `10001` | `mapi-server worker` |
+| `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc` with the `pathfinder` extra, the `ts.*` plugins (`mapi-plugin-ts` and `mapi-plugin-statsmodels`), the `causal.*` plugins (`mapi-plugin-causal`) and pymc-extras | `10001` | `mapi-runner` |
+| `mapi/worker` | `base-bayes` with the `ts.*` and `causal.*` plugins and `mapi-server` (target `worker` of the base-bayes Dockerfile). Only for compose | `10001` | `mapi-server worker` |
 | `mapi/server` | The control plane: `mapi-server`, `mapi-spec`, the JSON-only `mapi-plots` core, the JSON-only `mapi-workflows` engine, docker-py. **No science dependencies.** | `10001` | `mapi-server api` (or `worker`, `migrate`) |
 | `mapi/gcs-shim` | The local Cloud Storage emulator | `10001` | `mapi-gcs-shim` |
 | `mapi/web` | nginx that serves `apps/web` (port 8080) and `apps/plot-sandbox` (port 8081) | `101` | nginx |
+
+`causal.impact` uses the `ts.bsts` model of `mapi-plugin-ts`. Thus the `causal.*` plugins are
+in `mapi/base-forecast`, and `mapi/base-bayes` does not contain them. pymc-extras (state space
+models and the Pathfinder engine) adds preliz, Numba and Matplotlib. Thus `mapi/base-forecast`
+is larger than in v0.12. `mapi/base-bayes` also contains pymc-extras (the Pathfinder engine).
 
 `make docker-build IMAGES="server web"` builds a subset. `make docker-build` builds all
 images. It also builds `mapi/worker` when `base-bayes` is in the set. Each image has the OCI

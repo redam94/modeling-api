@@ -102,10 +102,134 @@ const MULTIVARIATE_STARTER = [
   ),
 ].join("\n");
 
+/** The fit of the causal starters: no holdout (the effect window is the test), four chains. */
+const CAUSAL_FIT = "  fit: {mode: train_only, tune: 500, draws: 500, chains: 4, seed: 20261020}";
+
+/** A Bayesian structural time series: trend, a yearly pattern and optional regressors. */
+const BSTS_STARTER = [
+  "apiVersion: mapi/v1",
+  "kind: ModelSpec",
+  "metadata:",
+  "  name: new-bsts",
+  "  project: default",
+  "data:",
+  "  # One series. Each row is one period. The target can have empty cells.",
+  "  dataset: dataset://default/my-dataset@latest",
+  "  bind:",
+  "    dims: {t: date}",
+  "    vars: {y: sales}",
+  "  split: {kind: time_holdout, dim: t, last: 8}",
+  "model:",
+  "  use: ts.bsts@^1",
+  "  settings:",
+  "    trend: local_linear",
+  "    # 52.18 for weekly data, 7 for daily data, 12 for monthly data.",
+  "    seasonality: [{period: 52.18, harmonics: 3}]",
+  "    # Columns that you also know for the future, for example [price].",
+  "    regressors: []",
+  "  fit: {mode: evaluate_then_refit, tune: 500, draws: 500, chains: 4, seed: 20261020}",
+  "outputs:",
+  "  plots: [core.ppc_fan, core.decomposition, core.convergence]",
+  "execution: {resource_class: S, timeout: 30m}",
+  "",
+].join("\n");
+
+/** The effect of a campaign on one series (CausalImpact): the model learns the series before the start. */
+const IMPACT_STARTER = [
+  "apiVersion: mapi/v1",
+  "kind: ModelSpec",
+  "metadata:",
+  "  name: new-impact",
+  "  project: default",
+  "data:",
+  "  # One series. Each row is one week (or day), before and after the start of the campaign.",
+  "  dataset: dataset://default/my-dataset@latest",
+  "  bind:",
+  "    dims: {time: week}",
+  "    vars: {y: sales}",
+  "model:",
+  "  use: causal.impact@^1",
+  "  settings:",
+  "    # The first date of the campaign (YYYY-MM-DD). Empty end: until the end of the data.",
+  '    intervention_start: "2025-06-02"',
+  '    intervention_end: ""',
+  "    # Columns that the campaign did not change, for example [sales_other_regions].",
+  "    controls: []",
+  "    seasonality: [{period: 52.18, harmonics: 3}]",
+  CAUSAL_FIT,
+  "outputs:",
+  "  plots: [causal.impact, causal.pre_fit, core.convergence]",
+  "execution: {resource_class: S, timeout: 30m}",
+  "",
+].join("\n");
+
+/** A geo test (synthetic control): the treated markets against a weighted copy made from the other markets. */
+const SYNTHETIC_STARTER = [
+  "apiVersion: mapi/v1",
+  "kind: ModelSpec",
+  "metadata:",
+  "  name: new-geo-lift",
+  "  project: default",
+  "data:",
+  "  # Each row is one market and one week, before and after the start of the test.",
+  "  dataset: dataset://default/my-dataset@latest",
+  "  bind:",
+  "    dims: {unit: geo, time: week}",
+  "    vars: {y: sales}",
+  "model:",
+  "  use: causal.synthetic_control@^1",
+  "  settings:",
+  "    # The markets that got the campaign. The other markets are the donors.",
+  "    treated: [geo_03]",
+  '    intervention_start: "2025-06-02"',
+  '    intervention_end: "2025-08-25"',
+  CAUSAL_FIT,
+  "outputs:",
+  "  plots: [causal.impact, causal.donor_weights, causal.pre_fit, core.convergence]",
+  "execution: {resource_class: S, timeout: 30m}",
+  "",
+].join("\n");
+
+/** Difference-in-differences with an event study: units that start the treatment at the same or different times. */
+const DID_STARTER = [
+  "apiVersion: mapi/v1",
+  "kind: ModelSpec",
+  "metadata:",
+  "  name: new-did",
+  "  project: default",
+  "data:",
+  "  # Each row is one unit (store or market) and one period. The treatment column is 0 before",
+  "  # the unit starts the treatment and 1 from then on. Some units must never start it.",
+  "  dataset: dataset://default/my-dataset@latest",
+  "  bind:",
+  "    dims: {unit: store, time: month}",
+  "    vars: {y: sales, treatment: treatment}",
+  "model:",
+  "  use: causal.did@^1",
+  "  settings:",
+  "    design: event_study",
+  "    leads: 4",
+  "    lags: 8",
+  CAUSAL_FIT,
+  "outputs:",
+  "  plots: [causal.event_study, causal.impact, causal.pre_fit, core.convergence]",
+  "execution: {resource_class: S, timeout: 30m}",
+  "",
+].join("\n");
+
+const STARTERS: Record<string, string> = {
+  "ts.bsts": BSTS_STARTER,
+  "causal.impact": IMPACT_STARTER,
+  "causal.synthetic_control": SYNTHETIC_STARTER,
+  "causal.did": DID_STARTER,
+};
+
 export function specStarterFor(modelId: string, opts: { version?: string | null; about?: About | null } = {}): string {
   if (modelId === "mmm.bayesian") return STARTER_SPEC;
   if (modelId === "mmm.nested") return NESTED_STARTER;
   if (modelId === "mmm.multivariate") return MULTIVARIATE_STARTER;
+  const fixed = STARTERS[modelId];
+  if (fixed !== undefined) return fixed;
   const short = modelId.replace(/^[a-z]+\./, "").replace(/_/g, "-").slice(0, 40);
   const about = opts.about;
   const notes = about

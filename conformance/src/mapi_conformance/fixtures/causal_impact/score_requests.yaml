@@ -1,0 +1,19 @@
+# causal.impact: the counterfactual over the data (with the effect where sales are given),
+# forecasts with planned controls, and typed errors for missing controls and other modes.
+- name: predict_over_data
+  request: {mode: predict, output: {summary: [mean, q5, q95]}}
+  payload: fit_data
+  drop_targets: false
+  expect: {groups: [summary], vars: [y_hat, effect]}
+- name: forecast_4
+  request: {mode: forecast, horizon: {dim: time, periods: 4}, output: {summary: [mean, q5, q95]}}
+  payload: future
+  expect: {groups: [summary], vars: [y_hat], sizes: {week: 4}}
+- name: missing_future_control
+  request: {mode: forecast, horizon: {dim: time, periods: 4}}
+  payload: future_without_control
+  expect_error: MISSING_FUTURE_COVARIATE
+- name: counterfactual_unsupported
+  request: {mode: counterfactual, interventions: [{var: control_a, multiply: 1.1}]}
+  payload: "tail:4"
+  expect_error: MODE_NOT_SUPPORTED

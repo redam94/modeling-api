@@ -23,7 +23,7 @@ context, and are tagged `mapi/<name>:<version>` by `make docker-build`.
 | `mapi/server` | Control plane: `mapi-server api`, `worker`, `migrate` | No science dependencies (enforced at build time) |
 | `mapi/base-bayes` | Runner: PyMC models (`mmm.*`, `tabular.*`, `sci.*`) | Entry point `mapi-runner`; target `worker` = `mapi/worker` |
 | `mapi/base-ml` | Runner: scikit-learn / xgboost models (`sklearn.*`) | No PyMC (enforced) |
-| `mapi/base-forecast` | Runner: time-series models (`ts.*`) | |
+| `mapi/base-forecast` | Runner: time-series and causal models (`ts.*`, `causal.*`) | Includes pymc-extras |
 | `mapi/gcs-shim` | Local Cloud Storage emulator | Development and tests only |
 | `mapi/web` | nginx: the web app (`:8080`) and the plot sandbox (`:8081`) | The two must be served from different origins |
 

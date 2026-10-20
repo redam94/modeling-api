@@ -33,7 +33,7 @@ ports, parameters and result fields.
 
 ## Start from the gallery
 
-The gallery has ten templates. Each template has an About card in plain language
+The gallery has eleven templates. Each template has an About card in plain language
 (`GET /v1/workflow-templates`):
 
 | Template | Select it when |
@@ -41,6 +41,7 @@ The gallery has ten templates. Each template has an About card in plain language
 | `ts_readiness_arimax` | You have one weekly or daily KPI and you want an ARIMAX forecast that you can defend. The tests decide the differencing. A search selects the AR and MA orders. A backtest shows that the model is better than naive forecasts. |
 | `var_vecm_cointegration` | Some series move together (for example sales, price and distribution). You want to know if they have a long-run relation before you select a VECM or a VAR. |
 | `mmm_governed` | You need a marketing mix model that must pass the governance policy before a person uses it. |
+| `geo_lift_mmm` <span class="mapi-badge">v0.13</span> | You ran a geo-lift test on one channel. You want the effect of the test, and a marketing mix model that agrees with it. See the [cookbook](workflow-cookbook.md#geo-lift-test-to-a-calibrated-mmm). |
 | `forecast_bakeoff` | You do not know which forecast model is correct for the data. SARIMAX, ETS, Theta and a smooth trend compete on the same folds. |
 | `sci_spatial_ladder` | You have counts of a disease for each area of a map. You want to know if the areas share their risk with their neighbours, and if the effect of a covariate stays clear in the best model. |
 | `sci_network_ladder` | You have the ties of a network and traits of its nodes. You want to know if the shared traits explain the ties, or if the activity of each node and a hidden map also help. |

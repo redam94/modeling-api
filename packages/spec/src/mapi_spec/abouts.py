@@ -21,6 +21,7 @@ from typing import Final
 from mapi_spec.about import About, AboutKind, AboutReference, Difficulty, TypicalRuntime
 
 __all__ = [
+    "CAUSAL_MODEL_IDS",
     "MODEL_ABOUTS",
     "PLANNED_MODEL_IDS",
     "SCIENCE_MODEL_IDS",
@@ -1321,6 +1322,247 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         "drift) with optional seasonal decomposition.",
         refs=[_TS_REF],
         fits={"goal": ["forecast"], "data_shape": ["one_series"], "drivers": ["no"]},
+    ),
+    # ------------------------------------- causal and Bayesian state space (v0.13, ts + causal)
+    "ts.bsts": _a(
+        "Bayesian trend, season and drivers",
+        "Divides one series into a level, a trend, seasonal patterns and the effect of drivers "
+        "that you know. It forecasts the series with a range of probable values.",
+        [
+            "You forecast one regular series and you want an honest range",
+            "The level, the trend or the seasonal pattern can change over time",
+            "Some values are missing (the model continues over the gaps)",
+            "You want to update the forecast with new periods without a new fit",
+        ],
+        [
+            "You have many related series (this model takes one series)",
+            "The effect of a driver changes over time (the effect is the same in all periods)",
+            "You need results in seconds",
+        ],
+        [
+            "One number over time at a regular frequency",
+            "Optional drivers (for example the price). You must know their future values to "
+            "forecast.",
+        ],
+        [
+            "The level and the trend change by small random steps",
+            "Each driver has the same effect in all periods",
+        ],
+        [
+            "A forecast with a range",
+            "The level and the seasonal parts over time",
+            "The effect of each driver with a range",
+            "A filter mode that adds new periods to the fit state",
+        ],
+        _I,
+        _MIN,
+        "Monthly sales divide into a slow increase, a December peak and a price effect of -0.3 "
+        "units for each euro.",
+        related=["ts.unobserved_components", "ts.hsgp_trend", "causal.impact"],
+        expert="Bayesian structural time series on pymc-extras statespace: local level, local "
+        "linear or smooth trend, dummy or Fourier seasonal components (fixed or with "
+        "innovations), static regression (normal or horseshoe prior; the regression states "
+        "start with zero variance, so the coefficients are static). Exact Kalman likelihood "
+        "(NUTS). Scores re-run a numpy Kalman filter for each kept draw: one-step-ahead inside "
+        "the fit, a forecast from the terminal state after it, and a 'filter' mode that "
+        "continues the fit with new data. Leave-one-out is not defined.",
+        refs=[
+            (
+                "Harvey (1989), Forecasting, Structural Time Series Models and the Kalman Filter",
+                None,
+            ),
+            (
+                "Durbin and Koopman (2012), Time Series Analysis by State Space Methods",
+                None,
+            ),
+            (
+                "Scott and Varian (2014), Predicting the present with Bayesian structural time "
+                "series",
+                None,
+            ),
+        ],
+        fits={
+            "goal": ["forecast"],
+            "data_shape": ["one_series"],
+            "frequency": ["daily", "weekly", "monthly"],
+            "history": ["medium", "long"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "causal.impact": _a(
+        "Effect of a campaign on one series",
+        "Measures the effect of a campaign, a launch or a change on one series. It compares the "
+        "actual values with the values that the model predicts without the change.",
+        [
+            "A campaign, a launch or a price change started on a known date",
+            "You have other series that the change did not touch (for example the sales in "
+            "other countries, or searches for the category)",
+            "You want the effect with a range, for each period and in total",
+        ],
+        [
+            "The change also changed the control series",
+            "Other events occurred at the same time as the change",
+            "You have fewer than about 10 periods before the change",
+            "You have the same series for many markets (use the synthetic control)",
+        ],
+        [
+            "One number over time at a regular frequency, before and after the change",
+            "The start date of the change, and an end date if it stopped",
+            "Optional control series for the full period",
+        ],
+        [
+            "Without the change, the series continues as the model of the period before it "
+            "predicts",
+            "The change did not touch the control series",
+        ],
+        [
+            "Actual values and the values without the change, with a range",
+            "The effect in each period and the total effect",
+            "The probability that the effect is more than zero",
+            "A chart of the fit before the change",
+        ],
+        _I,
+        _MIN,
+        "A TV campaign from 1 March added 4,200 sales in 8 weeks (range 2,900 to 5,500).",
+        related=["ts.bsts", "causal.synthetic_control", "causal.did"],
+        expert="CausalImpact (Brodersen et al. 2015) on the ts.bsts core: a Bayesian structural "
+        "time series with the controls as static regressors is fitted on the pre-period only. "
+        "The counterfactual is the one-step-ahead prediction in the pre-period and a "
+        "predictive forecast from the terminal state after the start (common random numbers). "
+        "The effect is actual minus counterfactual, per draw; the cumulative effect sums the "
+        "post cells. Interrupted time series is the case without controls.",
+        refs=[
+            (
+                "Brodersen et al. (2015), Inferring causal impact using Bayesian structural "
+                "time-series models, Annals of Applied Statistics",
+                "https://doi.org/10.1214/14-AOAS788",
+            )
+        ],
+        fits={
+            "goal": ["measure_impact"],
+            "data_shape": ["one_series", "several_series"],
+            "frequency": ["daily", "weekly", "monthly"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "causal.synthetic_control": _a(
+        "Geo-lift test",
+        "Measures the effect of a campaign in some markets. It compares each test market with a "
+        "weighted mix of the other markets that did not get the campaign.",
+        [
+            "You did a test in some markets and kept the other markets as they were",
+            "You have the same number for many markets, before and during the test",
+            "You want a lift test to calibrate a marketing mix model",
+        ],
+        [
+            "The test markets are very different from all other markets (for example the "
+            "largest market)",
+            "The campaign also changed the other markets",
+            "You have fewer than about 10 periods before the test",
+        ],
+        [
+            "The same number for each market over time, before and during the test",
+            "The names of the test markets, and the start and end dates of the test",
+            "At least two markets without the campaign, with no missing values before the test",
+        ],
+        [
+            "Before the test, a weighted mix of the other markets follows each test market",
+            "Without the campaign, this mix continues to follow the test market",
+        ],
+        [
+            "Actual values and the values without the campaign for each test market, with a range",
+            "The total effect and the effect in each period",
+            "The weight of each market in the mix",
+            "A lift test for the marketing mix model",
+        ],
+        _I,
+        _MIN,
+        "TV in Leeds and Bristol for 6 weeks added 3% to sales (range 1% to 5%), compared with "
+        "a mix of 10 other markets.",
+        related=["causal.impact", "causal.did", "mmm.bayesian"],
+        expert="Bayesian synthetic control (Abadie, Diamond and Hainmueller 2010): for each "
+        "treated unit, y_pre ~ Normal|StudentT(alpha + Y_donor,pre @ w, sigma) on the "
+        "pre-period, with w on the simplex (Dirichlet) or a regularised horseshoe (can "
+        "extrapolate). Units are divided by their pre-period mean. The counterfactual is the "
+        "predictive draw alpha + Y_donor @ w + noise. There are no placebo tests and no test "
+        "design (market choice, power) yet. A lift test from several markets is national.",
+        refs=[
+            (
+                "Abadie, Diamond and Hainmueller (2010), Synthetic control methods for "
+                "comparative case studies, JASA",
+                "https://doi.org/10.1198/jasa.2009.ap08746",
+            ),
+            (
+                "Kim, Lee and Gupta (2020), Bayesian synthetic control methods, Journal of "
+                "Marketing Research",
+                "https://doi.org/10.1177/0022243720936230",
+            ),
+        ],
+        fits={
+            "goal": ["measure_impact"],
+            "data_shape": ["panel"],
+            "frequency": ["daily", "weekly", "monthly"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "causal.did": _a(
+        "Before and after, with a comparison group",
+        "Measures the effect of a change that some stores or markets got and others did not. It "
+        "shows the effect for each period before and after the change.",
+        [
+            "Some units got a change and other units never got it",
+            "The units got the change at the same time or at different times",
+            "You want to see if the groups moved the same way before the change",
+        ],
+        [
+            "All units got the change",
+            "The units got the change at different times and the effect is different for each "
+            "group (the result can be wrong)",
+            "You want to forecast (the time effects are only for the periods of the data)",
+        ],
+        [
+            "The same number for each unit over time",
+            "A column that is 1 from the period when a unit got the change, else 0",
+            "At least one unit that never got the change",
+        ],
+        [
+            "Without the change, all units move in parallel",
+            "A unit does not stop the change after it starts",
+        ],
+        [
+            "The average effect of the change with a range",
+            "The effect for each period before and after the change",
+            "A warning when the units got the change at different times",
+        ],
+        _I,
+        _MIN,
+        "A new store layout in 12 of 30 stores added 5% to monthly sales, and the stores moved "
+        "together before the change.",
+        related=["causal.synthetic_control", "causal.impact"],
+        expert="Bayesian two-way fixed effects: unit and time effects (ZeroSumNormal; time "
+        "effects iid or a random walk) plus event-time dummies (reference period -1, endpoints "
+        "binned at -leads/+lags) or one treatment dummy (design 'did'). Under staggered "
+        "adoption with effects that differ between cohorts, TWFE estimates can be biased "
+        "(Goodman-Bacon 2021, Sun and Abraham 2021): the model emits a STAGGERED_ADOPTION "
+        "warning. Counterfactual mode sets treatment to 0.",
+        refs=[
+            (
+                "Goodman-Bacon (2021), Difference-in-differences with variation in treatment "
+                "timing, Journal of Econometrics",
+                "https://doi.org/10.1016/j.jeconom.2021.03.014",
+            ),
+            (
+                "Sun and Abraham (2021), Estimating dynamic treatment effects in event studies "
+                "with heterogeneous treatment effects, Journal of Econometrics",
+                "https://doi.org/10.1016/j.jeconom.2020.09.006",
+            ),
+        ],
+        fits={
+            "goal": ["measure_impact"],
+            "data_shape": ["panel"],
+            "frequency": ["daily", "weekly", "monthly"],
+            "uncertainty": ["essential", "nice"],
+        },
     ),
     # ------------------------------------------------------ scikit-learn tabular (mapi-sklearn)
     "sklearn.tabular_regressor": _a(
@@ -2657,8 +2899,14 @@ SCIENCE_MODEL_IDS: Final[frozenset[str]] = frozenset(
 """The scientific models of ``mapi-plugin-science`` (fields, simulators, image inverse
 problems ported from the pymc-challenges case studies)."""
 
+CAUSAL_MODEL_IDS: Final[frozenset[str]] = frozenset(
+    {"ts.bsts", "causal.impact", "causal.synthetic_control", "causal.did"}
+)
+"""The v0.13 models: the Bayesian structural time series of ``mapi-plugin-ts`` and the
+causal models of ``mapi-plugin-causal``."""
+
 PLANNED_MODEL_IDS: Final[frozenset[str]] = (
-    frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS - SCIENCE_MODEL_IDS
+    frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS - SCIENCE_MODEL_IDS - CAUSAL_MODEL_IDS
 )
 """Model ids the v0.5 mmm-framework and statsmodels plugins implement (their cards are
 here so plugins, docs and the chooser use the same words)."""
@@ -2773,6 +3021,86 @@ TEMPLATE_ABOUTS: Final[dict[str, About]] = {
             "frequency": ["daily", "weekly"],
             "history": ["medium", "long"],
             "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "campaign_impact": _a(
+        "Effect of a campaign",
+        "Measure the effect of a campaign, a launch or a price change on one series. Get the "
+        "effect for each period and in total, with a range.",
+        [
+            "A change started on a known date and you want to know what it added",
+            "You have series that the change did not affect, such as sales in other countries",
+        ],
+        [
+            "The change ran only in some markets and you have data for each market (use "
+            "Geo-lift test)",
+            "Other events occurred at the same time as the change",
+            "You have fewer than about 10 periods before the change",
+        ],
+        [
+            "A table with a date, the result and optional control columns, before and after "
+            "the change",
+            "The start date of the change, and the end date if it stopped",
+        ],
+        [
+            "Without the change, the result continues as it did before the change",
+            "The change did not affect the control columns",
+        ],
+        [
+            "A chart of the actual values and the values without the change",
+            "The total effect with a range",
+            "The probability that the effect is more than zero",
+            "A scorecard",
+        ],
+        _B,
+        _MIN,
+        "A price decrease from 1 March added 6% to weekly sales (range 3% to 9%).",
+        related=["causal.impact", "ts.bsts"],
+        fits={
+            "goal": ["measure_impact"],
+            "data_shape": ["one_series", "several_series"],
+            "frequency": ["daily", "weekly"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "geo_lift": _a(
+        "Geo-lift test",
+        "Measure the effect of a campaign that ran only in some markets. Use the result as a "
+        "lift test for your marketing mix model.",
+        [
+            "You ran a campaign in some markets and kept the other markets as they were",
+            "You want a lift test to calibrate a marketing mix model",
+        ],
+        [
+            "You have one total series (use Effect of a campaign)",
+            "The campaign also changed the other markets",
+            "You have fewer than about 10 periods before the test",
+        ],
+        [
+            "A table with date, market and the result, before and during the test",
+            "The names of the test markets, and the start and end dates of the test",
+            "At least two markets without the campaign",
+        ],
+        [
+            "Before the test, a mix of the other markets follows the test markets",
+            "Without the campaign, the mix continues to follow them",
+        ],
+        [
+            "A chart of the actual values and the values without the campaign",
+            "The total effect with a range",
+            "The weight of each market in the mix",
+            "A lift test entry for the marketing mix model",
+            "A scorecard",
+        ],
+        _B,
+        _MIN,
+        "Upload 18 months of weekly sales for 12 markets, with a 6-week TV test in 2 markets.",
+        related=["causal.synthetic_control", "mmm.bayesian"],
+        fits={
+            "goal": ["measure_impact", "explain_marketing"],
+            "data_shape": ["panel"],
+            "frequency": ["daily", "weekly"],
             "uncertainty": ["essential", "nice"],
         },
     ),

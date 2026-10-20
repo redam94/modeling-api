@@ -175,6 +175,35 @@ Business priors (ROI or share ranges) and lift tests calibrate the model through
 `calibration` block of the spec. See [Guided modelling](guided-modelling.md) and
 [the model reference](../models/mmm-framework.md#priors-in-business-terms).
 
+## Calibrate with a geo-lift test <span class="mapi-badge">v0.13</span> { #geo-lift }
+
+A geo-lift test changes the spend of one channel in some markets for some weeks. The result
+of the test is a good lift test for the model, because the test measures the effect directly.
+
+1. Fit `causal.synthetic_control` on the KPI of all markets around the test. The `geo_lift`
+   Guided template does this for you.
+2. Get the lift test from the fit: the lift-test card of the Guided report, or the workflow
+   node `model.lift_test`.
+3. Add the lift test to `calibration.lift_tests` of the MMM spec.
+4. Fit the MMM again.
+5. Look at the `mmm.lift_tests` chart. The estimate of the model must be near the test.
+
+```yaml
+calibration:
+  lift_tests:
+    - id: tv-geo-lift-2024-03
+      channel: tv
+      geo: geo_03            # one test market; null for two or more markets
+      start: 2024-03-04
+      end: 2024-04-14
+      spend_delta: 50000
+      kpi_delta: 4100        # the mean of the total effect
+      se: 1100               # the sd of the total effect
+```
+
+The workflow template `geo_lift_mmm` does all the steps in one run. See
+[Measure the effect of a change](causal.md#feed-the-result-to-the-marketing-mix-model).
+
 ## Effects that change over time <span class="mapi-badge">v0.12</span> { #time-varying }
 
 Use this when the effect of a channel changes during the data, for example when an

@@ -746,14 +746,13 @@ _QUOTE = re.compile(r"^### `(ts\.[a-z_]+)`.*?\n\n> (.+?)\n", re.M | re.S)
 
 
 def test_the_statsmodels_page_quotes_the_about_cards() -> None:
-    from mapi_spec.abouts import builtin_abouts
+    from mapi_spec.abouts import CAUSAL_MODEL_IDS, builtin_abouts
 
     page = (DOCS / "models" / "statsmodels.md").read_text("utf-8")
     quotes = dict(_QUOTE.findall(page))
     cards = builtin_abouts()
-    expected = {
-        i for i in cards if i.startswith("ts.") and i not in ("ts.hsgp_trend", "ts.gaussian_hmm")
-    }
+    not_statsmodels = {"ts.hsgp_trend", "ts.gaussian_hmm", *CAUSAL_MODEL_IDS}  # ts.bsts: v0.13
+    expected = {i for i in cards if i.startswith("ts.") and i not in not_statsmodels}
     assert set(quotes) == expected
     for model_id, quote in quotes.items():
         assert quote == cards[model_id].summary_plain, model_id

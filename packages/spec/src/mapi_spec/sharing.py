@@ -47,7 +47,7 @@ __all__ = [
     "is_platform_recipe",
 ]
 
-PLATFORM_RECIPE_NAMESPACES: Final = ("core", "mmm", "ml", "ts", "choice")
+PLATFORM_RECIPE_NAMESPACES: Final = ("core", "mmm", "ml", "ts", "choice", "causal")
 """Plot recipe namespaces shipped by the platform (``mapi_plots``): the only embeddable plots."""
 MAX_EMBED_DAYS: Final = 365
 EMBED_TOKEN_RE: Final = re.compile(r"^mpe_[0-9a-hjkmnp-tv-z]{40}$")

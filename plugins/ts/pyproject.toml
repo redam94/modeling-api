@@ -1,7 +1,7 @@
 [project]
 name = "mapi-plugin-ts"
 version = "0.12.0"
-description = "Time-series / state-space model plugins"
+description = "Time-series / state-space model plugins (incl. Bayesian structural time series)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -13,6 +13,9 @@ dependencies = [
   "numpy>=2.0",
   "pandas>=2.2",
   "xarray>=2025.1",
+  # Apache-2.0. ts.bsts builds its Kalman likelihood with pymc_extras.statespace; the
+  # statespace API changes between minors, so the pin stays inside one minor.
+  "pymc-extras>=0.12.1,<0.13",
 ]
 
 [project.entry-points."mapi.models"]

@@ -52,6 +52,31 @@ The two templates fit national data only. They take no control variables, and th
 have business priors. All three templates keep `adstock` and show `mmm.roi`. They use the
 same scorecard checks.
 
+## The causal templates <span class="mapi-badge">v0.13</span> { #causal-templates }
+
+Two Guided templates measure the effect of a change. They fit once on all periods
+(`train_only`), because the effect is the result of the fit:
+
+| Template | Model | Your data | Tasks |
+|---|---|---|---|
+| `campaign_impact` - Effect of a campaign | `causal.impact` | One result over time, optional control columns, the start date and the optional end date of the change | — |
+| `geo_lift` - Geo-lift test | `causal.synthetic_control` | The result for each market over time, the names of the test markets, the start and end dates of the test | — (the report has a lift-test card) |
+
+**`campaign_impact`** asks for the result, the date, the control columns, the start date and
+the end date. The control columns are optional. Each control column becomes its own variable,
+and the spec lists them in `controls`. Leave the end date empty if the change did not stop.
+The template adds a yearly pattern (3 harmonics) for weekly data, and a weekly pattern for
+daily data.
+
+**`geo_lift`** asks for the result, the date, the market column, the test markets, the start
+date and the end date. Type the test markets as text, with commas between the names. The
+draft has the list of the names in `treated`. The other markets make the synthetic control.
+
+The two templates use the scorecard checks of convergence and of missing values. The report
+shows `causal.impact` first. The templates have no tasks, thus their steps do not include the
+scenarios step: **Next** on the results goes to **Share**. The share step offers the causal
+charts for embedding. See [Measure the effect of a change](causal.md).
+
 ## Business priors
 
 A business prior gives a belief about one channel, in the units that persons use:
@@ -218,6 +243,17 @@ The platform checks tests three times. Each check occurs where the information i
 During `evaluate_then_refit`, the evaluation fit skips some tests and logs them. These are
 tests with a window after the training periods, or a window that the end of the training
 periods cuts. The production refit uses these tests.
+
+### A lift test from a geo-lift fit <span class="mapi-badge">v0.13</span>
+
+The `geo_lift` template fits `causal.synthetic_control` on the markets of a test. Its report
+has the card **Lift test for your marketing mix**. Type the channel and the spend change of the
+test. The card then shows the YAML entry for `calibration.lift_tests`: `kpi_delta` is the
+mean of the total effect, and `se` is its sd. With one test market, the entry has the geo of
+that market. With two or more test markets, the entry is national. The card uses the test
+markets of the revision that the last fit used, also when you changed them after that fit. Copy
+the entry into the spec of the marketing mix model. The workflow template `geo_lift_mmm` does
+the same steps in one run. See [Measure the effect of a change](causal.md#feed-the-result-to-the-marketing-mix-model).
 
 ## The sanity scorecard
 

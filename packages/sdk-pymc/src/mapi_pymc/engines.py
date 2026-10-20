@@ -17,7 +17,8 @@
 ``map``         ``pm.find_MAP`` - one "draw" (chain 1, draw 1).
 ``advi``        mean-field ADVI; ``fit.tune`` is the number of optimisation steps (default
                 10,000) and ``fit.draws`` the number of draws from the approximation.
-``pathfinder``  pymc-extras' Pathfinder when pymc-extras is installed.
+``pathfinder``  pymc-extras' Pathfinder when pymc-extras is installed (extra ``pathfinder``:
+                ``mapi-pymc[pathfinder]``). One chain; no progress table on stdout.
 ==============  ==========================================================================
 
 Every engine reports progress through one callback ``(fraction, message)`` where the
@@ -112,6 +113,8 @@ _ENGINE_MODULES = {
     "blackjax": "blackjax",
     "pathfinder": "pymc_extras",
 }
+_ENGINE_INSTALL = {"pathfinder": "mapi-pymc[pathfinder]"}
+"""Engines whose package comes from an extra: the requirement to name in the error."""
 _VOLATILE_STATS = ("perf_counter_diff", "perf_counter_start", "process_time_diff", "warning")
 _PROGRESS_EVERY_S = 0.5
 _NUTPIE_POLL_S = 0.05
@@ -137,9 +140,11 @@ def resolve_engine(name: str | None, default: str | None = None) -> str:
         )
     if not engine_available(chosen):
         module = _ENGINE_MODULES.get(chosen, chosen)
+        install = _ENGINE_INSTALL.get(chosen)
+        hint = f" (install {install})" if install else ""
         raise MapiError(
             f"fit engine {chosen!r} needs the {module!r} package, which is not installed in "
-            "this image",
+            f"this image{hint}",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,
             pointer="/model/fit/engine",
         )
@@ -1152,7 +1157,13 @@ def _pathfinder(model: pm.Model, plan: EnginePlan, hooks: EngineHooks) -> Engine
     hooks.report(0.0, "running Pathfinder", force=True)  # pragma: no cover
     with model, warnings.catch_warnings():  # pragma: no cover
         warnings.simplefilter("ignore")
-        idata = pmx.fit(method="pathfinder", num_draws=plan.draws, random_seed=plan.seed)
+        idata = pmx.fit(
+            method="pathfinder",
+            num_draws=plan.draws,
+            random_seed=plan.seed,
+            # The default rich progress table writes to stdout (the worker's log).
+            progressbar=False,
+        )
     hooks.report(1.0, "Pathfinder finished", force=True)  # pragma: no cover
     keep = {k: idata[k] for k in ("posterior",) if k in idata.children}  # pragma: no cover
     tree = xr.DataTree.from_dict(  # pragma: no cover
