@@ -65,7 +65,7 @@ from mapi_steps.value import (
 try:
     __version__ = _metadata.version("mapi-steps")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source tree without install
-    __version__ = "0.14.0"
+    __version__ = "0.15.0"
 
 STEPS: tuple[type[Step[Any, Any]], ...] = (
     # reshape

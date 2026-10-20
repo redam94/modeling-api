@@ -29,7 +29,7 @@ v0.15 adds **deep learning**: `mapi-jax` networks for tables and images (trainin
 stopping, checkpoints and draws), image collections of up to a million images with resumable
 uploads, pretrained weights as datasets, and a GPU resource class.
 
-> Status: under active development. The latest release is v0.14.0 (Run comparison, media and image data). See [CHANGELOG.md](CHANGELOG.md).
+> Status: under active development. The latest release is v0.15.0 (Deep learning and image collections). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 

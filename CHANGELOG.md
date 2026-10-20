@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.15.0] — Deep learning and image collections — 2026-10-20
+
 ### Deep learning and image collections
 
 You can now train neural networks on the platform. The new package `mapi-jax` has three

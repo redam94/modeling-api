@@ -6,7 +6,7 @@
 # SDK, built-in steps and plot recipes. pymc-extras (state space, Pathfinder) pulls preliz,
 # numba and matplotlib. No marketing-mix stack (mmm-framework) and no tabular models. Build from the repo root:
 #
-#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.14.0 .
+#   docker build -f images/base-forecast/Dockerfile -t mapi/base-forecast:0.15.0 .
 #
 # See docs/operations/docker.md.
 
