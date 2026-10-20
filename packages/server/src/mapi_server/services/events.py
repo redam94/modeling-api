@@ -11,7 +11,8 @@ For every event: the per-attempt HMAC key verifies it (a bad HMAC is dropped and
 a sandbox violation — it never changes the run); ``(run, attempt, seq)`` deduplicates it;
 ``progress`` upserts the single ``run_progress`` row; ``log`` lines go to ``run_logs``
 (``user`` lines with their level and fields); ``metrics``/``params``/``tags`` go to the run
-tracking tables (:mod:`mapi_server.services.tracking`), never to ``run_events``; everything
+tracking tables (:mod:`mapi_server.services.tracking`) and ``media`` to ``run_media``
+(:mod:`mapi_server.services.media`, v0.14), never to ``run_events``; everything
 else is appended to ``run_events`` (a legacy scalar ``metric`` is also mirrored as a
 tracking point). The first verified event of an attempt moves the run to ``RUNNING``
 (events never move it anywhere else).
@@ -36,6 +37,7 @@ from mapi_spec.run import (
     ErrorPayload,
     InvalidEvent,
     LogPayload,
+    MediaPayload,
     MetricBatchPayload,
     MetricPayload,
     ParamsPayload,
@@ -294,6 +296,11 @@ class EventIngestor:
 
         if isinstance(payload, MetricBatchPayload | ParamsPayload | TagsPayload):
             return await self._persist_tracking(session, run, event, payload)
+
+        if isinstance(payload, MediaPayload):
+            from mapi_server.services.media import ingest_media  # media imports IngestResult
+
+            return await ingest_media(session, self.ctx, run, event, payload)
 
         dup = await session.execute(
             select(m.RunEvent.id).where(

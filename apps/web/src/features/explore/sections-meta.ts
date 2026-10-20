@@ -24,6 +24,7 @@ export const DATA_SECTION_META: Record<DataSection, SectionMeta> = {
   stl: { title: "Trend and season", question: "How strong are the trend and the season?", group: "Time patterns" },
   structure: { title: "Structure", question: "Which shapes does the data have (images, maps, networks, series)?", group: "The basics" },
   images: { title: "Images and fields", question: "What do the images and grids of the data look like?", group: "Pictures of the data" },
+  gallery: { title: "Image gallery", question: "What do the images of each class look like?", group: "Pictures of the data" },
   profiles: { title: "Profiles and spectra", question: "How do the values change along an axis that is not time?", group: "Pictures of the data" },
   map: { title: "Map", question: "Where are the values high or low, and are neighbours similar?", group: "Pictures of the data" },
   network: { title: "Network", question: "Which nodes are connected, and how strongly?", group: "Pictures of the data" },
@@ -43,7 +44,7 @@ export const CLASSIC_ORDER: readonly DataSection[] = ["overview", "quality", "di
  * The default order of every section: the time-series order, then the sections for scientific
  * data. An index from v0.10 brings its own relevance order (`ExplorerIndex.order`).
  */
-export const DATA_ORDER: readonly DataSection[] = [...CLASSIC_ORDER, "structure", "images", "profiles", "map", "network", "tree", "circular", "points"];
+export const DATA_ORDER: readonly DataSection[] = [...CLASSIC_ORDER, "structure", "images", "gallery", "profiles", "map", "network", "tree", "circular", "points"];
 
 export const MODEL_SECTION_META: Record<ModelSection, SectionMeta> = {
   params: { title: "Parameters", question: "What did the model learn, and how sure is it?", group: "What it learned" },

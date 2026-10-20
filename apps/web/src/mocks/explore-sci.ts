@@ -18,6 +18,7 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import type { Dataset, DatasetVersion, Problem, Run } from "@/api/types";
 import { env } from "@/env";
 
+import { SCI_DEMO_IMAGES_DATASET } from "./explore-sci-demo";
 import gen from "./explorer-sci.gen.json";
 import * as fx from "./fixtures";
 
@@ -58,7 +59,11 @@ export interface SciDataset {
 }
 
 export const SCI = (gen as unknown as { datasets: SciDataset[] }).datasets;
-export const SCI_DATASETS: Dataset[] = SCI.map((d) => d.dataset);
+/**
+ * The datasets the mock lists: v0.14's image-folder demo (served by `explore-sci-demo.ts` until
+ * the generated fixture has an ingested image folder), then the science exports.
+ */
+export const SCI_DATASETS: Dataset[] = [SCI_DEMO_IMAGES_DATASET, ...SCI.map((d) => d.dataset)];
 /** The mock dataset id of an export case (`e07` -> `ds-sci-e07`). */
 export const sciDatasetId = (c: string) => `ds-sci-${c}`;
 

@@ -5,6 +5,116 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Run comparison, media, image data and classification
+
+You can now compare runs and group them. The runs table shows metrics, params and tags as
+columns, and you can filter, sort and save the search as a view. The compare page shows 2 to
+10 runs side by side. An experiment is a named group of runs. A run can also log images,
+figures and small tables. You can upload a zip of small images as a dataset, look at the
+images in a gallery, and classify them. The classification pack adds a multiclass classifier,
+LightGBM and CatBoost, new GLM families and multiclass plots.
+
+#### Added
+- Experiments: a named group of runs in a project (`GET/POST /v1/experiments`,
+  `GET/PATCH/DELETE /v1/experiments/{experiment_id}`, `POST /v1/experiments/{experiment_id}/runs`).
+  A run is in a maximum of one experiment (`RunCreate.experiment_id`, `Run.experiment_id`,
+  `RunPatch.experiment_id`, `WorkflowRunCreate.experiment_id`). A workflow node run gets the
+  experiment of its workflow run. A retry gets the experiment of the run that it retries. An
+  archived experiment accepts no new runs and no retries. `list_runs` has the filter
+  `experiment_id`.
+- Saved views of the runs table (`/v1/run-views`): a name and a `RunViewQuery` (the filters,
+  the sort order, the columns, the tags and the other filters of `list_runs`), shared in the
+  project. A maximum of 200 views in a project.
+- `GET /v1/run-compare`: the summaries, the metric histories, the params (with `differs`) and
+  the media of 2 to 10 runs. `GET /v1/run-keys`: the metric series, param keys and tag keys of
+  the runs of a project or an experiment, with the number of runs that have each.
+- Run media: `ctx.log_image`, `ctx.log_figure` and `ctx.log_table` on the fit, score and node
+  contexts. The supervisor uploads the files through a create-only POST policy on the
+  `media/` prefix of the run (`RunSpec.media_prefix`, output `media`) and sends a `media`
+  event. The server downloads each file, does a check of its SHA-256, size and format, and
+  keeps a copy in the bundles bucket. A run can log 1000 items and 256 MiB.
+  `GET /v1/runs/{run_id}/media`, `/media/{media_id}`, `/media-keys`, and
+  `POST /v1/runs/{run_id}/media` (from a notebook, a maximum of 4 MiB). The `tracking` frame
+  has the field `media`.
+- `mapi_spec.media`: the media kinds and content types, `sniff_image` (PNG and JPEG headers,
+  no image library), `MediaTable`, `media_name`, `check_media` and the limits.
+  `mapi_sdk.media`: `MediaItem`, `encode_png` (numpy and zlib only) and the optional
+  `MediaTracker` protocol.
+- Web app: the runs table has a filter bar, a column picker for tracked columns, sort by a
+  column, saved views, and check boxes to compare runs or to add them to an experiment. New
+  pages: **Experiments**, the page of an experiment, and the compare page (curves, metric bars,
+  param differences, plots side by side, and images with a step slider). The run page has a
+  **Media** tab. The **Notes** tab moves the run to an experiment.
+- Client and CLI: `runs.media`, `runs.media_keys`, `runs.get_media`, `runs.download_media`,
+  `runs.log_image`, `runs.log_table`, `runs.keys`, `runs.compare`, `client.experiments` and
+  `client.run_views`. `mapi experiments ...`, `mapi runs media`, `mapi runs log-image`,
+  `mapi runs compare`, `mapi runs views ...`, `mapi runs ls --experiment/--view`,
+  `mapi fit --experiment` and `mapi workflows run --experiment`.
+- Image data, stage 1: the upload format `image_folder` (a zip of PNG, JPEG or TIFF images and
+  a manifest table, `ImageFolderOptions`). The ingest writes `pixels(image, y, x, channel)`
+  with the new dtype `uint8`, the target `label(image)` and the manifest columns as
+  coordinates. It can resize the images (`stretch`, `crop` or `pad`). The ingest refuses
+  unsafe paths, images of more than 4096 × 4096 pixels, images with more than 8 bits, and
+  datasets that are too large, with a message that gives the number of images that fit.
+- Data Explorer: the **Gallery** section (thumbnails of the images, an even sample for each
+  label and split, and the counts of each facet), and colour (RGB) images in **Images and
+  fields**. A label variable on the frames gives the classes of the mean images.
+- The split kinds `column` (hold out the rows with a value of a column, for example
+  `split = test`) and `stratified` (hold out the same share of each class, at random), with
+  About cards.
+- Classification: `sklearn.multiclass_classifier` (the probability of each class in
+  `y_hat(..., class)`), the estimators `sklearn.HistGradientBoostingClassifier`,
+  `lightgbm.LGBMClassifier` and `catboost.CatBoostClassifier` (the extra `mapi-sklearn[gbm]`),
+  and the metric `auc` for multiclass predictions (the mean one-vs-rest AUC).
+- `tabular.hierarchical_glm` (model version 1.1.0) has the families `negative_binomial`,
+  `zero_inflated_poisson`, `zero_inflated_negative_binomial`, `beta`, `gamma` and `ordinal`.
+- `tabular.image_logistic`: a Bayesian multinomial logistic regression on the main patterns
+  (PCA) of small images. The fit logs the patterns and the class means as images.
+- *Help me choose* has the goal "Put items or images into classes" (`classify`) and the data
+  shape "Images (pictures of the same size)" (`images`).
+- Documentation: the guides *Compare runs and use experiments* and *Image data*.
+
+#### Changed
+- `core.roc_pr` and `core.confusion` accept a binary or a multiclass target. With a class dim
+  on the prediction, or more than two observed classes, `core.roc_pr` draws one-vs-rest
+  curves for each class with the macro AUC (`classes` selects the classes), and
+  `core.confusion` shows a K × K matrix with the accuracy and the macro F1. The binary
+  behaviour does not change.
+- `sklearn.tabular_classifier` accepts the new classifier estimators.
+- `verify_output_objects` accepts objects below `media/` of the run prefix by default.
+- `mapi-runner` depends on Pillow. The runner image `mapi/base-ml` has LightGBM, CatBoost and
+  `libgomp1`. The other runner images have Pillow, and do not have LightGBM or CatBoost. The
+  `mapi/server` image has none of them.
+- New audit actions: `experiment.create`, `experiment.update`, `experiment.delete`,
+  `run_view.save` and `run_view.delete`. A media write through the API is a `run.log` event.
+- **Upgrade the CLI and `mapi-client` to v0.14** to use experiments, saved views, comparison
+  and media. Older clients ignore the new fields.
+
+#### Removed
+- `mapi_spec.expand_sweep` and the module `mapi_spec.sweep`. Nothing called them.
+- New `Sweep` documents: the server refuses them (`422 SCHEMA_INVALID` at `/kind`). Stored
+  `Sweep` documents still load. Use a workflow with a `search.grid` node.
+
+#### Known gaps
+- A fit without a run (for example `fit_spec` in a notebook) keeps no logged media.
+  `tracking_media` is `False`, and `log_image`, `log_figure` and `log_table` only check their
+  arguments. To keep the items in memory, give the fit a recorder:
+  `FitHooks(tracker=MetricRecorder())`. The items are then in `MetricRecorder.media`.
+- Workflow schedules and triggers start their runs in no experiment. To group such a run,
+  move it with `PATCH /v1/runs/{run_id}` before it starts its nodes. Node runs that started
+  before the move stay where they are.
+- The platform keeps media until you delete the tenant. There is no retention setting for
+  media.
+- `image_folder` has no inspect step. Errors about the columns of the manifest come from the
+  ingest run.
+- Images must have 8 bits for each channel and one size for each dataset. A dataset has a
+  maximum of 268 435 456 pixel values. The collection layout of v0.15 removes these limits.
+- Workflow backtests do not make stratified split plans.
+- There is no calibration plot for multiclass predictions.
+- LightGBM and CatBoost are only in the `mapi/base-ml` runner image.
+- Validation refuses `log_score` for `sklearn.multiclass_classifier`, as for the binary
+  classifier, because the plugin gives point predictions. Use `brier`.
+
 ## [0.13.0] — Causal models and Bayesian state space — 2026-10-20
 
 ### Causal inference and Bayesian state space

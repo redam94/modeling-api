@@ -122,6 +122,24 @@ def test_post_outside_the_policy_is_refused_locally(
     assert gcs.list("mapi-test-runs") == []
 
 
+def test_post_bytes_uploads_create_only_and_checks_the_policy(
+    gcs: ShimGcs, transfers: Transfers
+) -> None:
+    data = secrets.token_bytes(3000)
+    policy = gcs.post_policy("mapi-test-runs", "t/x/a1/media/", max_bytes=4000, create_only=True)
+    digest = transfers.post_bytes(policy, "t/x/a1/media/a.png", data, content_type="image/png")
+    assert digest == hashes_of(data)
+    assert gcs.get("mapi-test-runs", "t/x/a1/media/a.png") == data
+    meta = gcs.stat("mapi-test-runs", "t/x/a1/media/a.png")
+    assert (meta.size, meta.crc32c, meta.md5_hash) == (digest.size, digest.crc32c, digest.md5)
+    with pytest.raises(TransferError):  # create-only: the same name twice is refused
+        transfers.post_bytes(policy, "t/x/a1/media/a.png", data, content_type="image/png")
+    for key, body in (("t/x/a1/media/b.png", b"x" * 4001), ("t/x/a1/c.png", b"x")):
+        with pytest.raises(MapiError) as exc:
+            transfers.post_bytes(policy, key, body, content_type="image/png")
+        assert exc.value.code is ErrorCode.SANDBOX_VIOLATION
+
+
 def test_signed_put_is_write_once(gcs: ShimGcs, transfers: Transfers) -> None:
     put = gcs.sign_put("mapi-test-runs", "t/x/a1/manifest.json", max_bytes=100)
     d = transfers.put_bytes(put, b"{}", content_type="application/json")

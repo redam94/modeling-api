@@ -156,7 +156,16 @@ class AuditAction(StrEnum):
     """``PATCH /v1/runs/{id}``: details ``{"fields": [...], "tags_set": n, "tags_deleted": n}``
     (never the note text)."""
     RUN_LOG = "run.log"
-    """Metrics or params written through the API: details ``{"metrics": n}`` / ``{"params": n}``."""
+    """Metrics, params or media written through the API: details ``{"metrics": n}`` /
+    ``{"params": n}`` / ``{"media": 1, "kind": "image"}``."""
+    # --- v0.14 (additive) --------------------------------------------------------------------
+    EXPERIMENT_CREATE = "experiment.create"
+    EXPERIMENT_UPDATE = "experiment.update"
+    """Rename, description, archive, or a bulk run move (details ``{"added": n, "removed": n}``)."""
+    EXPERIMENT_DELETE = "experiment.delete"
+    RUN_VIEW_SAVE = "run_view.save"
+    """A saved run view was created or updated."""
+    RUN_VIEW_DELETE = "run_view.delete"
 
 
 class AuditEvent(ResponseModel):

@@ -167,6 +167,19 @@ Each ingest, describe, dry-run, fit and score is a run. You can filter the list 
 by type. The list updates live. From v0.11, the **Name** column shows the name of the run (or
 its short id) and a maximum of three of its tags.
 
+From v0.14, the runs table has these controls:
+
+- An **Experiment** select, a name search, and a **filter bar** for filters such as
+  `metric.rmse < 3`.
+- **Columns**: add metrics, params and tags as columns. Click the header of a column to sort
+  by it.
+- **Views**: save the search as a view, and apply, rename or delete views.
+- Check boxes: select 2 to 10 runs and click **Compare**, or click **Add to experiment**.
+
+The page **Experiments** (after **Runs** in the menu) lists the experiments. The page of an
+experiment has its description, its runs and its saved views. See
+[Compare runs and use experiments](run-comparison.md).
+
 ### Run detail
 
 ![A fit run while the sampler makes draws](../assets/screenshots/run-progress.png){ .mapi-shot }
@@ -174,13 +187,14 @@ its short id) and a maximum of three of its tags.
 The run page subscribes to the server-sent event stream of the run (`Live` next to the state).
 After a disconnect, it continues from the point where it stopped.
 
-From v0.11, the run page has five tabs. The URL keeps the tab (`?tab=metrics`).
+From v0.11, the run page has tabs. The URL keeps the tab (`?tab=metrics`).
 
 | Tab | What it shows |
 |---|---|
 | **Overview** | Progress, details, events and plots (the items below) |
 | **Metrics** | A chart for each metric key. See [Metrics tab](#metrics-tab). |
 | **Params** | The tags and the params of the run. Type in the filter to find a param. |
+| **Media** | v0.14. The images and tables that the run logged. See [Media tab](#media-tab). |
 | **Logs** | All the log lines, with a level filter |
 | **Notes** | The name, the tags and the note. You can change them. |
 
@@ -225,11 +239,25 @@ The **Metrics** tab shows the metrics that the run logged (see
 
 If the run did not log metrics, the tab tells you so.
 
+#### Media tab <span class="mapi-badge">v0.14</span> { #media-tab }
+
+The **Media** tab shows the images and the tables that the run logged (see
+[Log images, figures and tables](tracking.md#log-images-figures-and-tables)).
+
+- Each media key has a card. A slider selects the step. The default is the last step.
+- When the key has labels, a select shows one value of a label.
+- The card shows the caption as text, the size and the start of the SHA-256.
+- A table shows its first 200 rows. A note gives the number of the other rows.
+- The tab updates while the run is active.
+
+If the run did not log media, the tab shows "The run did not log images or tables."
+
 #### Notes tab
 
 Type a name, add or remove tags and type a note. Then click **Save**. The app sends only the
 fields that you changed. You need the runner role. Without it, the tab is read-only. Tag keys
-that start with `mapi.` are for the platform only.
+that start with `mapi.` are for the platform only. From v0.14, the **Experiment** select moves
+the run to an experiment.
 
 **Actions:**
 

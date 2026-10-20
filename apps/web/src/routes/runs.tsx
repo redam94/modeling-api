@@ -1,136 +1,33 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Activity } from "lucide-react";
-import { useMemo } from "react";
+import { FlaskConical } from "lucide-react";
 
-import { useRuns } from "@/api/queries";
-import { runName, runTags } from "@/api/tracking";
-import type { Run, RunKind, RunState } from "@/api/types";
-import { EmptyState, Mono, PageHeader, QueryView, StateBadge } from "@/components/common";
-import { DataTable } from "@/components/data-table";
-import { NativeSelect } from "@/components/ui/primitives";
-import { TagBadges } from "@/features/runs/tag-badges";
-import { elapsedSeconds, formatDuration, relativeTime, shortId } from "@/lib/format";
-import { runCostView } from "@/lib/cost";
-import { RUN_KINDS, RUN_STATES, runSubject, STATE_META } from "@/lib/run-state";
+import { PageHeader } from "@/components/common";
+import { Button } from "@/components/ui/button";
+import { RunsTable } from "@/features/runs/runs-table";
 
 const route = getRouteApi("/runs");
 
-export const runColumns: ColumnDef<Run, unknown>[] = [
-  {
-    accessorKey: "state",
-    header: "State",
-    cell: ({ row }) => <StateBadge state={row.original.state} />,
-    sortingFn: (a, b) => RUN_STATES.indexOf(a.original.state) - RUN_STATES.indexOf(b.original.state),
-  },
-  {
-    // v0.11: the run's name (or its short id) and up to three tags. Both are untrusted text.
-    id: "name",
-    header: "Name",
-    accessorFn: (r) => runName(r) ?? r.id,
-    cell: ({ row }) => {
-      const name = runName(row.original);
-      const tags = runTags(row.original);
-      return (
-        <span className="grid max-w-80 gap-1">
-          <Link to="/runs/$runId" params={{ runId: row.original.id }} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-            {name ? <span className="font-medium [overflow-wrap:anywhere]" title={row.original.id}>{name}</span> : <Mono>{shortId(row.original.id)}</Mono>}
-          </Link>
-          {Object.keys(tags).length ? <TagBadges tags={tags} max={3} /> : null}
-        </span>
-      );
-    },
-  },
-  { accessorKey: "kind", header: "Kind" },
-  { id: "subject", header: "Input", accessorFn: runSubject, cell: ({ getValue }) => <Mono className="text-muted-foreground">{String(getValue())}</Mono> },
-  { accessorKey: "resource_class", header: "Class" },
-  {
-    id: "duration",
-    header: "Duration",
-    accessorFn: (r) => elapsedSeconds(r.started_at, r.finished_at) ?? -1,
-    cell: ({ row }) => <span className="tabular">{formatDuration(elapsedSeconds(row.original.started_at, row.original.finished_at))}</span>,
-  },
-  {
-    id: "cost",
-    header: "Cost",
-    accessorFn: (r) => r.cost?.amount_micros ?? r.cost?.estimate_micros ?? -1,
-    cell: ({ row }) => {
-      const c = runCostView(row.original.cost);
-      return c ? (
-        <span className={c.estimated ? "text-muted-foreground tabular" : "tabular"} title={c.detail}>
-          {c.text}
-        </span>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      );
-    },
-  },
-  {
-    accessorKey: "created_at",
-    header: "Created",
-    cell: ({ row }) => <span title={row.original.created_at}>{relativeTime(row.original.created_at)}</span>,
-  },
-];
-
+/**
+ * The runs workspace (v0.14): every run of the project with tracked columns, filters, saved
+ * views, and the selection that opens the compare page. The table's state is the URL search.
+ */
 export function RunsPage() {
   const search = route.useSearch();
   const navigate = useNavigate({ from: "/runs" });
-  const filters = useMemo(() => ({ ...(search.state ? { state: search.state } : {}), ...(search.kind ? { kind: search.kind } : {}) }), [search.state, search.kind]);
-  const runs = useRuns(filters);
   return (
     <>
       <PageHeader
         title="Runs"
-        description="All the fit, dry-run, ingest and score runs. The page updates active runs live."
+        description="All the fit, dry-run, ingest and score runs. Add metric, param and tag columns, filter and sort them, and select runs to compare. The page updates active runs live."
         actions={
-          <div className="flex gap-2">
-            <NativeSelect
-              aria-label="Filter by state"
-              value={search.state ?? ""}
-              onChange={(e) => void navigate({ search: (s) => ({ ...s, state: (e.target.value || undefined) as RunState | undefined }) })}
-              className="h-8 w-40"
-            >
-              <option value="">All states</option>
-              {RUN_STATES.map((s) => (
-                <option key={s} value={s}>
-                  {STATE_META[s].label}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect
-              aria-label="Filter by kind"
-              value={search.kind ?? ""}
-              onChange={(e) => void navigate({ search: (s) => ({ ...s, kind: (e.target.value || undefined) as RunKind | undefined }) })}
-              className="h-8 w-36"
-            >
-              <option value="">All kinds</option>
-              {RUN_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/experiments">
+              <FlaskConical /> Experiments
+            </Link>
+          </Button>
         }
       />
-      <QueryView query={runs}>
-        {(page) =>
-          page.items.length === 0 && !search.state && !search.kind ? (
-            <EmptyState icon={<Activity />} title="No runs yet">
-              Fit a spec on the Build page. Or upload a dataset to start an ingest run.
-            </EmptyState>
-          ) : (
-            <DataTable
-              label="Runs"
-              data={page.items}
-              columns={runColumns}
-              getRowId={(r) => r.id}
-              onRowClick={(r) => void navigate({ to: "/runs/$runId", params: { runId: r.id } })}
-              empty="No runs match these filters. Change the filters."
-            />
-          )
-        }
-      </QueryView>
+      <RunsTable search={search} onSearch={(next) => void navigate({ search: next, replace: true })} />
     </>
   );
 }

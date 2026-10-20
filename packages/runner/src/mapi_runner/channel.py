@@ -7,7 +7,8 @@ oversized or of an unknown type is a ``SANDBOX_VIOLATION`` on the supervisor sid
 Supervisor -> worker: exactly one :class:`StartMessage` (no HMAC key, no output URLs).
 Worker -> supervisor: ``state``, ``progress``, ``diagnostic``, ``warning``, ``metric``,
 ``checkpoint``, the tracking messages ``metrics`` (batched metric points), ``params``,
-``tags`` and ``user_log`` (structured log lines, stream ``user``), then exactly one terminal
+``tags`` and ``user_log`` (structured log lines, stream ``user``), ``media`` (v0.14: one file
+the worker wrote under ``{scratch}/media/``), then exactly one terminal
 ``result`` or ``error``. The supervisor accounts every tracking message against
 ``StartMessage.tracking`` (the run's :class:`~mapi_spec.tracking.TrackingLimits`).
 """
@@ -24,6 +25,12 @@ from mapi_spec._types import StrictModel
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ErrorCode, Issue
 from mapi_spec.executor import RunKind
+from mapi_spec.media import (
+    MAX_MEDIA_CAPTION_CHARS,
+    MEDIA_NAME_RE,
+    MediaContentType,
+    MediaKind,
+)
 from mapi_spec.run import (
     LogPayload,
     MetricBatchPayload,
@@ -35,7 +42,7 @@ from mapi_spec.run import (
     WarningPayload,
 )
 from mapi_spec.storage import SignedGet
-from mapi_spec.tracking import TrackingLimits
+from mapi_spec.tracking import MetricKey, MetricLabels, TrackingLimits
 from pydantic import AwareDatetime, Field, JsonValue, TypeAdapter, ValidationError
 
 __all__ = [
@@ -45,6 +52,7 @@ __all__ = [
     "DiagnosticMessage",
     "ErrorMessage",
     "FrameReader",
+    "MediaMessage",
     "MetricMessage",
     "MetricsMessage",
     "ParamsMessage",
@@ -91,7 +99,9 @@ class StartMessage(StrictModel):
     spec: dict[str, JsonValue]
     inputs: dict[str, SignedGet] = Field(default_factory=dict)
     resume: dict[str, SignedGet] = Field(default_factory=dict)
-    scratch: str = Field(..., description="Scratch root (inputs/, outputs/, checkpoints/, work/)")
+    scratch: str = Field(
+        ..., description="Scratch root (inputs/, outputs/, checkpoints/, media/, work/)"
+    )
     scratch_bytes: int | None = Field(None, ge=0)
     max_output_bytes: int = Field(..., ge=0)
     max_output_objects: int = Field(..., ge=1)
@@ -99,6 +109,7 @@ class StartMessage(StrictModel):
     deadline: AwareDatetime
     labels: dict[str, str] = Field(default_factory=dict)
     tracking: TrackingLimits = Field(default_factory=TrackingLimits)
+    media: bool = Field(False, description="The run has a media policy (v0.14)")
 
 
 class StateMessage(StrictModel):
@@ -159,6 +170,23 @@ class CheckpointMessage(StrictModel):
     draws_done: int | None = Field(None, ge=0)
 
 
+class MediaMessage(StrictModel):
+    """A media file was written under ``{scratch}/media/`` (one per message).
+
+    The file name claims the sha256 of its bytes; the supervisor recomputes the hash and
+    checks the bytes before it uploads them.
+    """
+
+    type: Literal["media"] = "media"
+    file: str = Field(..., pattern=MEDIA_NAME_RE)
+    key: MetricKey
+    kind: MediaKind
+    content_type: MediaContentType
+    step: int | None = Field(None, ge=0)
+    labels: MetricLabels = Field(default_factory=dict)
+    caption: str | None = Field(None, max_length=MAX_MEDIA_CAPTION_CHARS)
+
+
 class ResultMessage(StrictModel):
     """The run finished; every output is a regular file under ``{scratch}/outputs/``."""
 
@@ -188,6 +216,7 @@ WorkerMessage = Annotated[
     | TagsMessage
     | UserLogMessage
     | CheckpointMessage
+    | MediaMessage
     | ResultMessage
     | ErrorMessage,
     Field(discriminator="type"),

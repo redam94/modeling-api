@@ -307,7 +307,7 @@ function meFor(p: Persona, state: TenancyState): Me {
 const PROJECT_SCOPED = /^\/v1\/(?!me\b|tenants\b|admin\b|projects\b|catalog\b|schemas\b)/;
 /** Projects whose v0.2 resources are empty in the mock (to show the switcher at work). */
 const EMPTY_PROJECTS = new Set(["acme/retail", "globex/sandbox"]);
-const LIST_RE = /^\/v1\/(datasets|specs|runs|models)$/;
+const LIST_RE = /^\/v1\/(datasets|specs|runs|models|experiments|run-views)$/;
 
 function seeded(seed: string): () => number {
   let h = 2166136261;

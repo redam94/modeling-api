@@ -542,6 +542,7 @@ class AsyncWorkflows(_Resource):
         revision: int | None = None,
         use_cache: bool = True,
         resource_class: ResourceClass | str | None = None,
+        experiment_id: str | None = None,
         idempotency_key: str | None = None,
         wait: bool = False,
         timeout: float | None = None,
@@ -549,7 +550,8 @@ class AsyncWorkflows(_Resource):
         raise_on_failure: bool = True,
     ) -> WorkflowRun:
         """Start a run (inputs are references such as ``dataset://growth/sales@latest``,
-        pinned to an exact version at start). With ``wait`` the run is followed until it
+        pinned to an exact version at start). ``experiment_id`` puts the run and every run
+        it starts in that experiment (v0.14). With ``wait`` the run is followed until it
         is terminal and a failed or cancelled run raises its error."""
         body = WorkflowRunCreate(
             revision=revision,
@@ -557,6 +559,7 @@ class AsyncWorkflows(_Resource):
             inputs=dict(inputs or {}),
             use_cache=use_cache,
             resource_class=ResourceClass(resource_class) if resource_class else None,
+            experiment_id=experiment_id,
         )
         key = idempotency_key or str(uuid.uuid4())
         run = await self._c.send(m35.start_workflow_run(workflow_id, body, key))

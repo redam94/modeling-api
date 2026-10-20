@@ -80,6 +80,8 @@ class WorkerContext:
         self.inputs_dir = root / "inputs"
         self.outputs_dir = root / "outputs"
         self.checkpoints_dir = root / "checkpoints"
+        self.media_dir = root / "media"
+        """Where the tracker writes logged media for the supervisor (v0.14)."""
         self.work_dir = root / "work"
         self._transfers: Transfers | None = None
         self._last_progress = 0.0

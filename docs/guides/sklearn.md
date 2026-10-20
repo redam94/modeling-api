@@ -1,8 +1,8 @@
 # Tabular models with scikit-learn and xgboost
 
-`mapi-sklearn` changes each scikit-learn or xgboost estimator on the allow-list into a full
-modeling-api plugin. You tell *which dims are samples* and *which variables are features*. The
-platform does the rest:
+`mapi-sklearn` changes each scikit-learn, xgboost, LightGBM or CatBoost estimator on the
+allow-list into a full modeling-api plugin. You tell *which dims are samples* and *which
+variables are features*. The platform does the rest:
 
 - It stacks your labelled `xr.Dataset` into a design matrix.
 - It fits the estimator and keeps it safely.
@@ -22,6 +22,7 @@ which summaries and aggregations are valid. Each kind is a different plugin:
 | `sklearn.tabular_bootstrap` | draws | One joint draw for each bootstrap replicate `(chain, draw, ...)` | Yes, all |
 | `sklearn.tabular_conformal` | interval | `(bound=[lower, upper, point], ...)`, attr `alpha` | No |
 | `sklearn.tabular_classifier` | point | The probability of the positive class | Linear only, with a flag |
+| `sklearn.multiclass_classifier` (v0.14) | point | The probability of each class: `y_hat(..., class)` | No |
 
 !!! note "Why conformal is an interval, not draws"
     A split-conformal interval guarantees the coverage *for each cell*
@@ -133,7 +134,16 @@ A `ROWS_DROPPED` diagnostic reports these rows.
 | `sklearn.GradientBoostingRegressor` | regression | one model for each level | — | one-hot | skops |
 | `sklearn.HistGradientBoostingRegressor` | regression | one model for each level | native | native | skops |
 | `xgboost.XGBRegressor` | regression | **one native multi-quantile model** | native | native | xgboost JSON |
-| `sklearn.LogisticRegression`, `sklearn.RandomForestClassifier`, `xgboost.XGBClassifier` | binary classification | — | xgboost only | xgboost only | skops / JSON |
+| `sklearn.LogisticRegression`, `sklearn.RandomForestClassifier`, `xgboost.XGBClassifier` | binary and multiclass classification | — | xgboost only | xgboost only | skops / JSON |
+| `sklearn.HistGradientBoostingClassifier` (v0.14) | binary and multiclass classification | — | native | native | skops |
+| `lightgbm.LGBMClassifier` (v0.14) | binary and multiclass classification | — | native | one-hot | LightGBM text model |
+| `catboost.CatBoostClassifier` (v0.14) | binary and multiclass classification | — | native | one-hot | CatBoost JSON model |
+
+LightGBM and CatBoost are in the extra `mapi-sklearn[gbm]`. The `base-ml` runner image has
+this extra. The other runner images do not have LightGBM or CatBoost. If the extra is not
+installed, a fit with these estimators stops with `SETTINGS_INVALID`. The message tells you to
+install `mapi-sklearn[gbm]`. The platform sets their output to quiet and their threads from
+`n_jobs`. CatBoost writes no files outside the run.
 
 Each kind has a bounded Pydantic params model (`extra="forbid"`). You cannot set the parameters
 that the platform owns: seeds, threads, categorical declarations, and the loss or objective that
@@ -250,6 +260,46 @@ the root of the Brier score. Refer to
     predictions. Use `brier`. A regression target that has only the values 0 and 1 also gets
     the classifier plots on the Score page.
 
+## Multiclass classification <span class="mapi-badge">v0.14</span> { #multiclass }
+
+`sklearn.multiclass_classifier` puts each row into one of 3 or more classes. The target can be
+text (`"cat"`) or whole numbers (`3`).
+
+```yaml
+model:
+  use: sklearn.multiclass_classifier@1
+  settings:
+    target: topic                       # text or whole-number labels
+    rows: [ticket]
+    time_kind: none                     # the rows have no time order
+    columns: {roles: [covariate]}
+    estimator: {kind: lightgbm.LGBMClassifier, params: {n_estimators: 300, num_leaves: 31}}
+    max_classes: 50
+outputs:
+  plots: [core.roc_pr, core.confusion, ml.feature_importance]
+evaluate: {metrics: [accuracy, brier, auc]}
+```
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `estimator` | | A classification estimator of the table above |
+| `class_order` | none | The classes in a fixed sequence. It must contain all the classes of the training data. Without it, the classes are in sorted sequence. A maximum of 200. |
+| `max_classes` | 50 | The fit stops when the target has more classes (2 to 200) |
+| `target_dtype` | `str` | The dtype of the target in the schema template: `str` or `int64` |
+
+The fit changes the labels to text. Whole numbers become `3`, not `3.0`. Rows with no label
+are not used. The output `y_hat` has a `class` dim with the class labels as coordinates. Each
+row of `y_hat` has the probabilities of the classes, and they add up to 1. `y_hat` has the
+attribute `meaning: class_probability`.
+
+**Plots and metrics.** `core.roc_pr` draws one ROC curve and one precision-recall curve for
+each class against the other classes, and gives the macro AUC. `core.confusion` shows a K × K
+matrix of the most probable class. The metrics `accuracy`, `brier` and `auc` (the mean
+one-vs-rest AUC of the classes) use the class probabilities. As for the binary classifier,
+validation refuses `log_score`, because the plugin gives point predictions.
+
+`sklearn.tabular_classifier` (binary) also accepts the new estimators.
+
 ## Persistence and safety
 
 The bundle keeps the fitted estimators in its `/native` group. It never uses pickle:
@@ -259,6 +309,10 @@ The bundle keeps the fitted estimators in its `/native` group. It never uses pic
   of that estimator. For example, a random forest can contain `sklearn.tree._tree.Tree`. A ridge
   regression can contain no extra types. The loaded object must be exactly the expected class.
 * xgboost models as the JSON document of the booster.
+* LightGBM models as the text model of the booster (v0.14). The text must start with
+  `tree`. The platform loads it into a LightGBM booster, not into a pickled object.
+* CatBoost models as the JSON model (v0.14). The JSON must be an object with
+  `oblivious_trees`.
 
 The bundle manifest records the size, CRC32C, MD5 and SHA-256 of each file. The contract kit
 does a check that the bundle contains no entry that looks like pickle.
@@ -286,7 +340,9 @@ Before you publish, run the contract kit on synthetic data:
 
 * Forecasts are direct only. You must give the future features, or the pipeline must calculate
   them.
-* Classification is binary. The positive class is the larger target value.
+* `sklearn.tabular_classifier` is binary. The positive class is the larger target value. For
+  three or more classes, use `sklearn.multiclass_classifier`.
+* The multiclass classifier has no calibration plot.
 * The platform declares all row dims other than `time_dim` as categorical. Thus groups with
   integer labels (numeric store ids) need string labels.
 * Contributions are not available for the quantile plugins or the conformal plugins.

@@ -7,7 +7,7 @@
  * Code 65535 is a missing cell; a code `q` in 0..65534 is `lo + (hi - lo) * q / 65534`, which
  * is log10 of the value when the field's `encoding` is `log10`.
  */
-import type { FieldEntry, FieldFrame, FieldRaster } from "./views";
+import type { FieldEntry, FieldFrame, FieldRaster, RgbRaster } from "./views";
 
 export const FIELD_NAN = 65535;
 export const FIELD_LEVELS = 65534;
@@ -63,6 +63,48 @@ export function encodeRaster(values: ArrayLike<number>, encoding: FieldEncoding 
   let bin = "";
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
   return { lo, hi, data: btoa(bin) };
+}
+
+/**
+ * The RGBA pixels (for `ImageData`) of an RGB raster (`RgbRaster`: base64 of r, g, b bytes per
+ * cell, row-major), row 0 at the top unless `origin` is `lower` (then `width` is needed). A
+ * raster with another number of cells than `cells` gives `null`: the view is damaged, the viewer
+ * draws nothing.
+ */
+export function decodeRgb(r: Pick<RgbRaster, "data">, cells: number, origin: "upper" | "lower" = "upper", width = 0): Uint8ClampedArray<ArrayBuffer> | null {
+  let bytes: Uint8Array;
+  try {
+    bytes = bytesOf(r.data);
+  } catch {
+    return null;
+  }
+  if (bytes.length !== 3 * cells) return null;
+  const out = new Uint8ClampedArray(4 * cells);
+  const w = origin === "lower" && width > 0 ? width : 0;
+  const height = w ? cells / w : 0;
+  for (let i = 0; i < cells; i++) {
+    const o = w ? 4 * ((height - 1 - Math.floor(i / w)) * w + (i % w)) : 4 * i;
+    out[o] = bytes[3 * i]!;
+    out[o + 1] = bytes[3 * i + 1]!;
+    out[o + 2] = bytes[3 * i + 2]!;
+    out[o + 3] = 255;
+  }
+  return out;
+}
+
+/** The inverse of {@link decodeRgb} for `[r, g, b]` cells (for tests and fixtures). */
+export function encodeRgb(cells: readonly (readonly [number, number, number])[]): RgbRaster {
+  let bin = "";
+  for (const [r, g, b] of cells) bin += String.fromCharCode(r & 255, g & 255, b & 255);
+  return { data: btoa(bin) };
+}
+
+/** The `[r, g, b]` of cell `i` of decoded RGBA pixels drawn with `origin` (row-major index of the data). */
+export function rgbAt(rgba: ArrayLike<number>, i: number, width: number, height: number, origin: "upper" | "lower" = "upper"): Rgb | null {
+  if (i < 0 || i >= width * height) return null;
+  const row = Math.floor(i / width);
+  const o = 4 * ((origin === "lower" ? height - 1 - row : row) * width + (i % width));
+  return [rgba[o]!, rgba[o + 1]!, rgba[o + 2]!];
 }
 
 /** The values of `stat` in one frame (`draw` picks `frame.draws[draw]`); null when absent. */

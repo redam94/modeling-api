@@ -731,3 +731,160 @@ def test_moran_of_a_map_layer_with_frames_uses_their_mean() -> None:
     assert row.morans_i == pytest.approx(plain.morans_i, abs=1e-9)
     assert any("mean of each area over the frames" in w for w in v.warnings_plain)
     assert n == len(v.areas)
+
+
+# ---------------------------------------------------------------- v0.14: colour images, gallery
+
+
+def _stack(
+    n: int, *, rgb: bool = True, float_data: bool = False, label: bool = True, split: bool = True
+) -> tuple[xr.Dataset, DataSchema]:
+    """An image-folder dataset: ``pixels(image, y, x, channel)`` with a ``label`` variable
+    (3 classes of different sizes) and a ``split`` coord."""
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(14)
+    c = 3 if rgb else 1
+    px = rng.integers(0, 256, (n, 12, 10, c)).astype(np.uint8)
+    px[:, :, :, 0] = np.arange(n, dtype=np.uint8)[:, None, None] % 200  # red differs by image
+    values: Any = px.astype(np.float64) / 255.0 if float_data else px
+    classes = np.array(["cat"] * (n // 2) + ["dog"] * (n // 3) + ["bird"] * (n - n // 2 - n // 3))
+    coords: dict[str, Any] = {
+        "image": [f"{i:05d}" for i in range(n)],
+        "y": np.arange(12),
+        "x": np.arange(10),
+        "channel": ["r", "g", "b"] if rgb else ["gray"],
+        "path": ("image", [f"img/{i}.png" for i in range(n)]),
+    }
+    if split:
+        coords["split"] = ("image", np.where(np.arange(n) % 4 == 0, "test", "train"))
+    data: dict[str, Any] = {"pixels": (("image", "y", "x", "channel"), values)}
+    if label:
+        data["label"] = ("image", classes)
+    ds = xr.Dataset(data, coords=coords)
+    ds["pixels"].attrs["mapi_image"] = "1"
+    return ds, infer_schema(ds, roles={"label": "target"} if label else None)
+
+
+def test_a_colour_stack_is_an_rgb_image_with_class_means_by_label() -> None:
+    from mapi_runner.worker.structure import detect_structure
+    from mapi_spec.views import ImageEntry
+
+    ds, schema = _stack(30)
+    s = detect_structure(ds, schema)
+    shape = s.first("image")
+    assert shape is not None and dict(shape.dims) == {
+        "y": "y", "x": "x", "frame": "image", "channel": "channel",
+    }  # fmt: skip
+    # the label variable wins over the split coord for the class means
+    assert shape.extra["group_coord"] == "label"
+    assert "gallery" not in s.not_applicable
+    assert s.recommended.index("images") + 1 == s.recommended.index("gallery")
+    v = DATA_SECTION_FUNCS["images"](data_context(ds, schema))
+    assert isinstance(v, ImagesView) and len(v.fields) == 1  # the channel is not a facet
+    e = v.fields[0]
+    assert e.color == "rgb" and e.channel_dim == "channel" and e.rgb_scale == "uint8"
+    assert e.group_by == "label" and {g.label for g in e.groups} == {"cat", "dog", "bird"}
+    assert all(g.rgb is not None for g in e.groups)
+    ImageEntry.model_validate(e.model_dump())
+    assert any("brightness" in w for w in v.warnings_plain)
+    # the first frame's colours are the data's (8-bit values as they are)
+    import base64
+
+    raw = np.frombuffer(base64.b64decode(e.frames[0].rgb.data), dtype=np.uint8)  # type: ignore[union-attr]
+    assert np.array_equal(raw.reshape(12, 10, 3), ds["pixels"].values[0])
+    # the luminance raster gives the statistics
+    luma = (ds["pixels"].values.astype(float) * [0.299, 0.587, 0.114]).sum(-1)
+    assert e.stats.mean == pytest.approx(luma.mean(), rel=1e-4)
+
+
+def test_float_colours_are_stretched_and_gray_stacks_stay_single() -> None:
+    ds, schema = _stack(12, float_data=True)
+    e = DATA_SECTION_FUNCS["images"](data_context(ds, schema)).fields[0]  # type: ignore[attr-defined]
+    assert e.color == "rgb" and e.rgb_scale == "stretch"
+    ds, schema = _stack(12, rgb=False)
+    e = DATA_SECTION_FUNCS["images"](data_context(ds, schema)).fields[0]  # type: ignore[attr-defined]
+    assert e.color == "single" and e.frames[0].rgb is None and e.facet == {}
+
+
+def test_the_gallery_shows_every_image_of_a_small_stack(tmp_path: Path) -> None:
+    from mapi_spec.views import GalleryView
+
+    ds, schema = _stack(40)
+    v = DATA_SECTION_FUNCS["gallery"](data_context(ds, schema))
+    assert isinstance(v, GalleryView)
+    GalleryView.model_validate(v.model_dump())
+    assert v.selection == "all" and len(v.items) == v.n_images == 40
+    assert (v.color, v.frame_dim, v.channel_dim) == ("rgb", "image", "channel")
+    assert (v.source_height, v.source_width, v.thumb_height, v.thumb_width) == (12, 10, 12, 10)
+    assert [f.name for f in v.facets] == ["label", "split"]  # path: one image per level
+    assert v.facets[0].counts == {"cat": 20, "dog": 13, "bird": 7}
+    assert v.facets[1].source == "coord" and v.facets[1].counts == {"test": 10, "train": 30}
+    first = v.items[0]
+    assert first.label == "00000" and first.meta == {"label": "cat", "split": "test"}
+    import base64
+    import io
+
+    from PIL import Image
+
+    im = Image.open(io.BytesIO(base64.b64decode(first.png)))
+    assert im.size == (10, 12) and im.mode == "RGB"
+    assert np.array_equal(np.asarray(im), ds["pixels"].values[0])
+    # the ingest writes it with the other sections
+    ctx, index = _ingest(tmp_path, ds, schema)
+    status = _check_ingest(ctx, index)
+    assert status["gallery"].status == "ok" and status["images"].status == "ok"
+
+
+def test_a_large_stack_is_sampled_per_label_and_split_with_small_thumbnails() -> None:
+    from mapi_runner.worker import explore_science as es
+    from mapi_spec.views import MAX_GALLERY_ITEMS, MAX_GALLERY_THUMB
+
+    ds, schema = _stack(900)
+    big = ds.isel(y=np.arange(12).repeat(12), x=np.arange(10).repeat(10))  # 144 x 100 pixels
+    big = big.assign_coords(y=np.arange(144), x=np.arange(100))
+    v = DATA_SECTION_FUNCS["gallery"](data_context(big, schema.model_copy(update={"dims": {}})))
+    assert v.selection == "stratified" and len(v.items) == MAX_GALLERY_ITEMS  # type: ignore[attr-defined]
+    assert max(v.thumb_height, v.thumb_width) <= MAX_GALLERY_THUMB  # type: ignore[attr-defined]
+    assert (v.thumb_height, v.thumb_width) == (48, 34)  # type: ignore[attr-defined]
+    # every (label, split) cell is shown; the round-robin gives small classes their share
+    cells = {(i.meta["label"], i.meta["split"]) for i in v.items}  # type: ignore[attr-defined]
+    assert len(cells) == 6
+    per: dict[tuple[str, str], int] = {}
+    for i in v.items:  # type: ignore[attr-defined]
+        key = (str(i.meta["label"]), str(i.meta["split"]))
+        per[key] = per.get(key, 0) + 1
+    # 40 a cell; the bird test cell has only 37 images, the 3 left go to the next cells
+    assert per[("bird", "test")] == 37 and sum(per.values()) == 240
+    assert sorted(per.values()) == [37, 40, 40, 41, 41, 41]
+    # deterministic, sorted, distinct
+    again = DATA_SECTION_FUNCS["gallery"](data_context(big, schema.model_copy(update={"dims": {}})))
+    assert [i.index for i in again.items] == [i.index for i in v.items]  # type: ignore[attr-defined]
+    idx = [i.index for i in v.items]  # type: ignore[attr-defined]
+    assert idx == sorted(set(idx))
+    assert es._stratified_pick({("a",): [0, 1, 2, 3], ("b",): [9]}, 3) == [0, 3, 9]
+
+
+def test_a_stack_without_facets_is_an_even_sample_and_a_single_image_has_no_gallery() -> None:
+    from mapi_spec.views import MAX_GALLERY_ITEMS
+
+    ds, schema = _stack(300, label=False, split=False, float_data=True)
+    v = DATA_SECTION_FUNCS["gallery"](data_context(ds, schema))
+    assert v.selection == "even" and len(v.items) == MAX_GALLERY_ITEMS and not v.facets  # type: ignore[attr-defined]
+    assert v.items[0].index == 0 and v.items[-1].index == 299  # type: ignore[attr-defined]
+    assert any("stretched" in w for w in v.warnings_plain)  # type: ignore[attr-defined]
+    one = ds.isel(image=0)
+    c = data_context(one, None)
+    assert c.shapes.not_applicable["gallery"] == "no variable holds a stack of images"
+    with pytest.raises(SectionSkipped):
+        DATA_SECTION_FUNCS["gallery"](c)
+
+
+def test_pictures_at_255_are_not_a_saturated_detector() -> None:
+    from mapi_runner.worker.explore_science import structure_warnings
+
+    ds, schema = _stack(20, rgb=False)
+    ds["pixels"].values[:, :6] = 255  # a white background
+    assert not [
+        w for w in structure_warnings(data_context(ds, schema)) if w.code == "IMAGE_SATURATED"
+    ]

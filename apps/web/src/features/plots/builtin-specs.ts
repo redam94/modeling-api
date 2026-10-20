@@ -6,6 +6,7 @@
 import type { JsonObject, PlotDatasets, Row } from "@mapi/plot-sandbox/protocol";
 
 import type { MetricHistory } from "@/api/tracking";
+import type { CompareSeries } from "@/api/types";
 import type { MissingnessGrid, StateArray } from "@/lib/views";
 
 export interface BuiltPlot {
@@ -192,4 +193,109 @@ export function metricCurves(history: MetricHistory, opts: MetricCurvesOptions =
     });
   }
   return { datasets: { lines, points }, spec: { layer: layers } };
+}
+
+// ------------------------------------------------------------------------- v0.14 run comparison
+
+export interface CompareCurvesRun {
+  /** The run's label on the page (its name or short id, unique among the compared runs). */
+  runLabel: string;
+  history: CompareSeries[];
+}
+
+export interface CompareCurvesOptions {
+  /** Label key whose values set the line dash (`null`: every series of a run is solid). */
+  splitBy?: string | null | undefined;
+  logY?: boolean | undefined;
+}
+
+/**
+ * One metric key of 2..10 runs (the compare page): a line per run and series over `step`,
+ * coloured by run in run order (the palette order of the run chips), dashed by the value of the
+ * `splitBy` label. Points without a step are left out; a series with one point draws a point.
+ * Run names and label values are untrusted text: they travel as data, never as spec fields.
+ */
+export function compareCurves(series: readonly CompareCurvesRun[], key: string, opts: CompareCurvesOptions = {}): BuiltPlot {
+  const splitBy = opts.splitBy ?? null;
+  const lines: Row[] = [];
+  const points: Row[] = [];
+  let positive = true;
+  series.forEach(({ runLabel, history }, order) => {
+    for (const s of history) {
+      const labels = Object.entries(s.labels ?? {})
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ");
+      const stepped = s.steps.flatMap((step, i) => (step === null || step === undefined || s.values[i] === undefined ? [] : [{ step, value: s.values[i] }]));
+      const target = stepped.length === 1 ? points : lines;
+      for (const { step, value } of stepped) {
+        if (value <= 0) positive = false;
+        target.push({
+          step,
+          value,
+          run: runLabel,
+          order,
+          series: `${order}|${labels}`,
+          labels,
+          split: splitBy ? (s.labels?.[splitBy] ?? "(none)") : "",
+        });
+      }
+    }
+  });
+  const x: JsonObject = { field: "step", type: "quantitative", title: "Step", axis: { format: "~s" } };
+  const y: JsonObject = {
+    field: "value",
+    type: "quantitative",
+    title: key,
+    scale: opts.logY ? { type: positive ? "log" : "symlog" } : { zero: false },
+  };
+  const color: JsonObject = { field: "run", type: "nominal", title: "Run", sort: { field: "order", op: "min" } };
+  const dash: JsonObject = splitBy ? { strokeDash: { field: "split", type: "nominal", title: splitBy } } : {};
+  const tooltip: JsonObject[] = [
+    { field: "run", title: "Run" },
+    { field: "step", title: "Step" },
+    { field: "value", title: key, format: ".4~g" },
+    { field: "labels", title: "Labels" },
+  ];
+  const layers: JsonObject[] = [];
+  if (lines.length) {
+    layers.push({
+      data: { name: "lines" },
+      mark: { type: "line", strokeWidth: 1.6, interpolate: "linear" },
+      encoding: { x, y, color, ...dash, detail: { field: "series", type: "nominal" }, tooltip },
+    });
+  }
+  if (points.length) {
+    layers.push({
+      data: { name: "points" },
+      mark: { type: "point", filled: true, size: 60 },
+      encoding: { x, y, color, ...(splitBy ? { shape: { field: "split", type: "nominal", title: splitBy } } : {}), tooltip },
+    });
+  }
+  return { datasets: { lines, points }, spec: { layer: layers } };
+}
+
+/**
+ * One value per run as horizontal bars (the compare page's metric bars), in run order and in
+ * the run colours. Runs without a value have no bar. Run names travel as data.
+ */
+export function compareBars(rows: readonly { run: string; value: number | null }[], title: string): BuiltPlot {
+  const bars: Row[] = rows.flatMap((r, order) => (r.value === null || !Number.isFinite(r.value) ? [] : [{ run: r.run, value: r.value, order }]));
+  return {
+    datasets: { bars },
+    spec: {
+      data: { name: "bars" },
+      mark: { type: "bar", cornerRadiusEnd: 2 },
+      height: { step: 22 },
+      encoding: {
+        y: { field: "run", type: "nominal", title: null, sort: { field: "order", op: "min" } },
+        x: { field: "value", type: "quantitative", title },
+        color: { field: "run", type: "nominal", sort: { field: "order", op: "min" }, legend: null },
+        tooltip: [
+          { field: "run", title: "Run" },
+          { field: "value", title, format: ".4~g" },
+        ],
+      },
+    },
+  };
 }

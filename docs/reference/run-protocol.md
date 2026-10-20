@@ -141,9 +141,10 @@ values for each execution are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `tenant_id`, `project_id` | Always present (`default` in M1) |
 | `spec`, `spec_hash`, `catalog_digest` | The *resolved* spec JSON (with pinned `use:` ranges), its canonical hash, and the catalog snapshot that the server used to resolve it |
 | `inputs` | `name → SignedGet{url, expires_at, generation, size, crc32c, md5_hash?}`. The well-known names are `dataset` and `bundle`. Each URL is pinned to a generation and supports HTTP `Range`. The runner does a check of the size and the CRC32C after the download. If they do not agree, it exits with `13 INTEGRITY_ERROR`. |
-| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a necessary write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **create-only V4 POST policy** on the attempt prefix with a `content_length_range`. It cannot replace an object that exists. Thus it cannot overwrite the manifest or replace an output after the runner wrote it. `checkpoints` is a POST policy on `checkpoint_prefix`. It is present only for runs that can write checkpoints. |
+| `outputs` | `name → SignedPut \| PostPolicy`. `manifest` is a necessary write-once **signed PUT** for `{prefix}manifest.json`. `artifacts` is a **create-only V4 POST policy** on the attempt prefix with a `content_length_range`. It cannot replace an object that exists. Thus it cannot overwrite the manifest or replace an output after the runner wrote it. `checkpoints` is a POST policy on `checkpoint_prefix`. It is present only for runs that can write checkpoints. `media` (v0.14) is a create-only POST policy on `media_prefix` for the images and tables that the run logs. |
 | `resume` | The checkpoint objects of the newest earlier attempt that wrote checkpoints, as `SignedGet`s. The server ignores an attempt that stopped before its first checkpoint. |
 | `checkpoint_prefix` | `{attempt prefix}checkpoints/`, or `null` |
+| `media_prefix` | v0.14: `{attempt prefix}media/`, or absent. When `outputs` has `media`, its prefix must be `media_prefix`. |
 | `hmac_key` | The event HMAC key of the run (`new_hmac_key()`), in base64. It has a minimum of 32 random bytes. The logs never show it: `RunSpec.redacted()` removes it and all URLs. |
 | `limits` | `RunLimits`: `log_line_bytes` (4096), `log_total_bytes` (20 MiB), `max_event_bytes` (64 KiB), `progress_interval_s` (2 s), `max_output_bytes` and `scratch_bytes` (from the resource class), `max_output_objects` (10 000), and from v0.11 `tracking` (a `TrackingLimits`, see [Tracking budgets](#tracking-budgets)) |
 | `resource_class`, `deadline`, `created_at`, `labels` | The class (S/M/L/XL), a hard UTC deadline, and metadata |
@@ -187,7 +188,7 @@ Each event has these fields:
 | `run_id`, `attempt` | Must agree with the run and its current attempt |
 | `seq` | Starts at 0 for each attempt and increases by 1 for each line. The receiver removes duplicates on `(run_id, attempt, seq)`. Gaps are permitted, because the logs can lose entries. |
 | `ts` | Has a timezone and is normalised to UTC |
-| `type` | `state`, `progress`, `log`, `diagnostic`, `warning`, `checkpoint`, `metric`, `metrics`, `params`, `tags`, `complete` or `error` |
+| `type` | `state`, `progress`, `log`, `diagnostic`, `warning`, `checkpoint`, `metric`, `metrics`, `params`, `tags`, `media` (v0.14), `complete` or `error` |
 | `payload` | Validated against the payload model for `type`. Refer to the table below. |
 | `hmac` | Lower-case hex HMAC-SHA256 with the `hmac_key` of the run |
 
@@ -224,6 +225,7 @@ from one domain is never valid in a different domain.
 | `metrics` | `MetricBatchPayload{t0, series[]}` | v0.11. Points of metric series. See [Tracking events](#tracking-events). |
 | `params` | `ParamsPayload{params[]}` | v0.11. Run params. The first value of a key is kept. |
 | `tags` | `TagsPayload{tags[]}` | v0.11. Run tags. The last value of a key is kept. |
+| `media` | `MediaPayload{key, kind, content_type, name, sha256, size, crc32c, step?, labels, width?, height?, caption?}` | v0.14. An image or a table that the supervisor uploaded below `media_prefix`. See [Media](#media). |
 | `complete` | `CompletePayload{status, manifest_name, manifest_crc32c, objects, total_bytes}` | The last event of a successful attempt (`complete`) or of an attempt with checkpoints (`partial`) |
 | `error` | `ErrorPayload{code, failure_class, message, untrusted_text?}` | `code` must be equal to `failure_class.error_code` |
 
@@ -308,6 +310,77 @@ the most dropped points. The run does not fail.
 limit, the supervisor stops the run with `SANDBOX_VIOLATION` (tracking flood), like a log
 flood.
 
+From v0.14, `TrackingLimits` also has the budgets of the [media](#media) of a run:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `media_items` | 1000 | Different media items (key, labels and step) |
+| `media_bytes` | 256 MiB | Bytes of all media items of the run |
+| `media_item_bytes` | 8 MiB | Bytes of one media item (1024 to 8 MiB) |
+
+### Media <span class="mapi-badge">v0.14</span> { #media }
+
+The `media` event tells the server that the supervisor uploaded an image or a table of the
+run. Like the tracking events, the server does not keep it in the event list. It writes a row
+of `run_media`, and the event stream sends a `tracking` frame with `media: true`.
+
+A media item goes through these steps:
+
+1. The worker encodes the item (`ctx.log_image`, `log_figure` or `log_table`). It writes the
+   bytes to `{scratch}/media/<sha256>.<ext>` (create-only) and sends a `media` message to the
+   supervisor. `StartMessage.media` is `false` when the run has no `media` policy. Then the
+   worker does not write files.
+2. The supervisor opens the file with `O_NOFOLLOW` (a regular file only), with the size limit
+   `media_item_bytes`. It reads the bytes and deletes the file. It calculates the SHA-256 and
+   calls `check_media(kind, content_type, data)`.
+3. The supervisor uploads the bytes through the `media` POST policy to
+   `{media_prefix}<sha256>.<ext>`. An item with the same SHA-256 in the same attempt is not
+   uploaded again.
+4. The supervisor sends a `media` event with a `MediaPayload`.
+5. The server downloads the object from the runs bucket (a maximum of 8 MiB). It calculates
+   the SHA-256 again, and does a check of the size, the format and the image size. It writes
+   the bytes create-only to the bundles bucket at
+   `t/{tenant}/run-media/{run}/<sha256>.<ext>` (`run_media_store_key`). Then it writes the
+   row.
+
+The sandbox never writes to a shared path. The runs bucket deletes run objects after 30 days.
+The copy in the bundles bucket stays until the tenant is deleted.
+
+`MediaPayload`:
+
+| Field | Rule |
+|---|---|
+| `key` | A metric key. Use labels for qualifiers. |
+| `kind` | `image` or `table` |
+| `content_type` | `image/png` or `image/jpeg` (kind `image`), `application/json` (kind `table`) |
+| `name` | `<sha256>.<ext>` (`.png`, `.jpg` or `.json`): the object name below `media_prefix`. It must agree with `sha256` and `content_type`. |
+| `sha256` | 64 lowercase hex characters |
+| `size`, `crc32c` | 1 to 8 MiB. The CRC32C that the store calculated for the upload. |
+| `step`, `labels` | As for a metric point |
+| `width`, `height` | Necessary for an image (1 to 4096). Not valid for a table. |
+| `caption` | A maximum of 500 characters. It is untrusted text. |
+
+`check_media` (`mapi_spec.media`) accepts:
+
+- A PNG or a JPEG image of a maximum of 8 MiB, with a maximum of 4096 pixels on each side.
+  `sniff_image` reads the size from the PNG `IHDR` chunk, or from the first JPEG frame header
+  in the first MiB. It does not decode the pixels. GIF, SVG, WebP and other data are not
+  valid.
+- A table: UTF-8 JSON of a maximum of 1 MiB that validates as a `MediaTable` (`columns`,
+  and `rows` of equal length; a maximum of 10 000 rows, 64 columns and 200 000 cells; cells
+  are numbers, booleans, text of a maximum of 1000 characters, or `null`).
+
+The worker messages and the warnings for media:
+
+| Message or warning | Meaning |
+|---|---|
+| `media` (worker message, `MediaMessage`) | `file` (`<sha256>.<ext>`), `key`, `kind`, `content_type`, `step`, `labels` and `caption`. One message for each item. |
+| `MEDIA_IGNORED` (warning) | The run has no `media` policy. The supervisor ignores the media of the run (one warning). |
+| `MEDIA_BUDGET` (warning) | The run logged more than `media_items` or `media_bytes`. The supervisor counts the items of the attempt. The server counts the items of all attempts and the items logged through the API. Each one drops the extra items and writes one warning for the attempt. |
+| `MEDIA_INVALID` (warning) | The file is not a regular file, is too large, or `check_media` refused it. The text of the worker is in `untrusted_text`. |
+| `MEDIA_UPLOAD_FAILED` (warning) | The upload failed. The run continues. |
+| `MEDIA_REJECTED` (warning, server) | The server checks failed: the object is missing, or its SHA-256, size or format does not agree with the event. The server writes no row. |
+
 ## Exit codes
 
 The supervisor exits with `0` only after it uploads the manifest and sends the `complete`
@@ -376,8 +449,8 @@ not read the content of the objects:
 2. **Compare.** `verify_output_objects(manifest, listing, expected_prefix=…)` needs these
    conditions:
     - Each object in the manifest exists with the same size, CRC32C and MD5.
-    - No unexpected object exists below the prefix. `manifest.json` and `checkpoints/…` are
-      permitted.
+    - No unexpected object exists below the prefix. `manifest.json`, `checkpoints/…` and
+      (v0.14) `media/…` are permitted.
 
     Each difference is an `INTEGRITY_FAILURE` issue. The run moves to `FAILED(integrity)`, and
     the platform raises a security alert.
@@ -459,8 +532,8 @@ input never becomes a path.
 |---|---|---|
 | `mapi-{env}-quarantine` | `t/{tenant}/uploads/{upload_id}` | Signed PUT from the browser. 7-day lifecycle. |
 | `mapi-{env}-bootstrap` | `{nonce}` | The execution identity can get and delete, but it cannot list. 1-day lifecycle. |
-| `mapi-{env}-runs` | `t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]`, with `checkpoints/` in it | Written only through signed URLs |
-| `mapi-{env}-bundles` | `t/{tenant}/models/{model}/{version}/`: `bundle.zarr.zip`, `manifest.json`, `manifest.sig`, `diagnostics.json`, `plots.json`, `metrics.json`, `ui/…` | Control plane only. Write-once. |
+| `mapi-{env}-runs` | `t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]`, with `checkpoints/` and (v0.14) `media/` in it | Written only through signed URLs |
+| `mapi-{env}-bundles` | `t/{tenant}/models/{model}/{version}/`: `bundle.zarr.zip`, `manifest.json`, `manifest.sig`, `diagnostics.json`, `plots.json`, `metrics.json`, `ui/…`. From v0.14 also `t/{tenant}/run-media/{run}/<sha256>.<ext>` (the verified media of the runs). | Control plane only. Write-once. |
 | `mapi-{env}-data` | `t/{tenant}/datasets/{sha256}/`: `data.zarr.zip`, `schema.json`, `summary.json`, `profile.json`, `preview.json` | Content-addressed |
 
 The control plane gets access to storage only through the async `ObjectStore` protocol:

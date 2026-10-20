@@ -7,9 +7,10 @@
     The releases v0.6 to v0.9 gave other features: the spec builder, scientific models, tree
     datasets (M4) and the science gallery (M5). Thus the items on this page are not done
     yet. With them, **allow-listed experts can upload their own model plugins**. AI
-    assistants and agents also get a curated **MCP server**. Sweeps and simulation-based
-    calibration become single parent runs. Public code upload for all users comes after
-    these items, with its own controls (see the [roadmap](index.md#after-v06)).
+    assistants and agents also get a curated **MCP server**. Simulation-based calibration
+    becomes a single parent run. Sweeps are workflows with a `search.grid` node (v0.14
+    retired the `Sweep` document). Public code upload for all users comes after these
+    items, with its own controls (see the [roadmap](index.md#after-v06)).
 
 ## Plugin upload for allow-listed experts
 
@@ -48,29 +49,33 @@ returns each string from a user or a plugin as clearly delimited untrusted text.
 name cannot put hidden instructions into an agent. Tokens and scopes work the same as for
 other clients.
 
-## Sweeps as jobs, and what is already delivered
+## Sweeps, SBC and what is already delivered
 
 - **`optimize` runs** (delivered in v0.5). The sandbox optimises budgets *next to the
   model* with the planning module of mmm-framework. It uses the response curves of the
   posterior ([Optimise a budget](../tutorials/optimise-a-budget.md)).
 - **Backtests** (delivered in v0.5) run as workflow nodes on rolling-origin and
   expanding-window plans ([cookbook](../guides/workflow-cookbook.md)).
-- **`Sweep` and `SBC`** as one parent run that fans out and aggregates the results. For
-  example, a sensitivity sweep over a prior, or simulation-based calibration of a new
-  plugin. (The governance of v0.5 has a parametric-bootstrap version, `recovery.simulated`.)
+- **Sweeps** (delivered). The `search.grid` workflow node runs each point of a grid and logs
+  the scores of each point as metrics. v0.14 retired the `Sweep` document: the server does
+  not accept new ones. To compare sweeps, use the
+  [compare page](../guides/run-comparison.md).
+- **`SBC`** as one parent run that fans out and aggregates the results, for example the
+  simulation-based calibration of a new plugin. (The governance of v0.5 has a
+  parametric-bootstrap version, `recovery.simulated`.)
 - **Bayesian checks in a workflow** (delivered in v0.9). The recipe `bayes_workflow_audit`
   does a convergence gate, a posterior predictive check, a prior sensitivity check and a
   recovery check in one workflow run. Since v0.9, `recovery.simulated` simulates each dataset
   of a Bayesian model with predictive draws from its posterior predictive. `sci_spatial_ladder` fits its best model
   again with wider and narrower priors
   ([Bayesian models in a workflow](../concepts/workflows.md#bayesian-models-in-a-workflow)).
-  These checks run as nodes of the workflow, not as one parent run of a sweep.
+  These checks run as nodes of the workflow, not as one parent run.
 
 ## Exit criteria
 
 - Three sibling models are packaged as plugins and pass the contract kit.
 - A dev overlay is pushed and becomes runnable in less than five minutes.
-- An as-of backtest and a sensitivity sweep each run as a single parent.
+- An SBC of a new plugin runs as a single parent.
 
 We cut a release when it passes its exit criteria. Read the
 [changelog](../project/changelog.md).

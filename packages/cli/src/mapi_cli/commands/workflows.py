@@ -377,6 +377,13 @@ def run(
     resource_class: Annotated[
         ResourceClass | None, typer.Option("--resource-class", help="S, M, L or XL")
     ] = None,
+    experiment: Annotated[
+        str | None,
+        typer.Option(
+            "--experiment",
+            help="Put the workflow run and its node runs in this experiment (an id or a name)",
+        ),
+    ] = None,
     watch: Annotated[
         bool, typer.Option("--watch", "-w", help="Show node status live until the run ends")
     ] = False,
@@ -386,6 +393,11 @@ def run(
     out = st.output
     with st.client() as api:
         wf = resolve_workflow(api, workflow)
+        experiment_id = None
+        if experiment is not None:
+            from mapi_cli.commands.experiments import resolve_experiment
+
+            experiment_id = resolve_experiment(api, experiment).id
         started = api.workflows.run(
             wf.id,
             inputs=parse_assignments(inputs or [], what="--input", json_values=False),
@@ -393,6 +405,7 @@ def run(
             revision=revision,
             use_cache=not no_cache,
             resource_class=resource_class,
+            experiment_id=experiment_id,
         )
         if not watch:
             if out.json_mode:

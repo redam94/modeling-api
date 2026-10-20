@@ -30,6 +30,7 @@ from mapi_spec.run import (
     FailureClass,
     InvalidEvent,
     LogPayload,
+    MediaPayload,
     MetricBatchPayload,
     MetricPayload,
     MetricSeriesBatch,
@@ -232,6 +233,18 @@ PAYLOADS = [
     ),
     ParamsPayload(params=[ParamItem(key="fit.draws", value=1000)]),
     TagsPayload(tags=[TagItem(key="stage", value="candidate")]),
+    MediaPayload(
+        key="samples",
+        kind="image",
+        content_type="image/png",
+        name="ab" * 32 + ".png",
+        sha256="ab" * 32,
+        size=1200,
+        crc32c="4waSgw==",
+        step=3,
+        width=16,
+        height=16,
+    ),
 ]
 
 

@@ -205,3 +205,27 @@ export interface Page<T> {
   items: T[];
   next_cursor?: string | null;
 }
+
+// v0.14: media, experiments, saved views, run keys and run comparison.
+export type MediaKind = RunMedia["kind"];
+export type MediaContentType = RunMedia["content_type"];
+export type RunMedia = S["RunMedia"];
+export type MediaKeySummary = S["MediaKeySummary"];
+export type MediaWrite = S["MediaWrite"];
+export type Experiment = S["Experiment"];
+export type ExperimentCreate = S["ExperimentCreate"];
+export type ExperimentPatch = S["ExperimentPatch"];
+export type ExperimentRunsWrite = S["ExperimentRunsWrite"];
+export type ExperimentRunsResult = S["ExperimentRunsResult"];
+export type RunViewQuery = S["RunViewQuery"];
+export type RunView = S["RunView"];
+export type RunViewCreate = S["RunViewCreate"];
+export type RunViewPatch = S["RunViewPatch"];
+export type RunKeyCount = S["RunKeyCount"];
+export type RunKeys = S["RunKeys"];
+export type CompareSummary = S["CompareSummary"];
+export type CompareSeries = S["CompareSeries"];
+export type CompareMetric = S["CompareMetric"];
+export type CompareParam = S["CompareParam"];
+export type CompareMedia = S["CompareMedia"];
+export type RunCompare = S["RunCompare"];

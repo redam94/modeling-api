@@ -68,7 +68,7 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `schema` | `DimPolicy` (`fixed`/`extend`/`new_levels`), `DimSpec`, `Role`, `VarSpec`, `RaggedSpec`, `DataSchema`, `DataSchemaTemplate` |
 | `tree` | M4 tree datasets: `NodePath`, `TreeSchema` (one `DataSchema` per node, `flat()` merges a node selection), `NodeSelect` (`data.nodes`), `DataLayout` |
 | `effects` | `StepKind`, `SchemaEffect`, `ContextNeed`, `apply_effect`, `propagate` |
-| `spec` | `ModelSpec`, `ScoreRequest`, `Sweep`, `Backtest`, `SBC`, `Campaign` and their blocks |
+| `spec` | `ModelSpec`, `ScoreRequest`, `Backtest`, `SBC`, `Campaign` and their blocks (split kinds incl. `column` and `stratified`); `Sweep` (retired in v0.14: stored documents still load) |
 | `loader` | strict YAML 1.2/JSON loader, apiVersion upgrades, `canonical_json`, `spec_hash`, `dump_yaml` |
 | `capabilities` | `Representation` + aggregation/summary rules, `Capabilities`, `ModelManifest`, `OutputDecl` (`grid` for fields, `circular` for angles with a `period` attr), `OutputSelector`, `Diagnostic` |
 | `errors` | `ErrorCode`, `ERROR_INFO` (HTTP status), RFC 7807 `Problem`, `Issue`, `MapiError` hierarchy |
@@ -78,10 +78,10 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `refs` | `Version`, `VersionRange`, `UseRef`, `DatasetRef`, `EndpointRef`, `ModelVersionRef`, `SpecRef` |
 | `coords` | `CoordSummary`, `DataSummary`, pandas-compatible frequency arithmetic |
 | `template` | the tiny placeholder language used by schema templates and effects |
-| `sweep` | `expand_sweep` (grid → child specs), `set_pointer` |
 | `executor` | the `Executor` protocol, `RunSubmit`, `Handle`, `ExecStatus`, `ExecutorCaps`, `Isolation`, `RunKind`, `RunEvent` |
 | `run` | run protocol (M1): `RunState` + `transition()`, `RunSpec` bootstrap, event payloads and HMAC signing, stdout wire format, `OutputManifest`/`BundleManifest`, `RunnerEnv`, `RunnerExit` |
-| `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming |
+| `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming (`run_media_prefix`, `run_media_store_key`) |
+| `media` | v0.14 run media: `MediaKind`, content types, `media_name`, `sniff_image` (PNG/JPEG headers), `MediaTable`, `check_media` and the limits |
 | `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, `Me`, `UsageReport`, `ScoreSummaryTable` with `period` for a circular output, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` + `M2_ENDPOINTS` (= `ENDPOINTS`), `ROUTE_ACCESS` (scope and permission of every operation) |
 | `tenancy` | `Tenant`, `Project`, `TrustTier` and placement, data residency, `ProjectRole`, the `PERMISSIONS` matrix and `can()`, `Membership`, principals, `AuthContext`, `X-Mapi-Project` resolution |
 | `tokens` | `mapi_<prefix>_<secret><checksum>` tokens: generate, parse, peppered hashing, scopes and `scope_allows()`, `TokenCreate`/`TokenCreated`/`ApiToken` |

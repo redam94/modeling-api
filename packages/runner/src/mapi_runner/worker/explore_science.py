@@ -6,7 +6,10 @@ section        what it shows
 =============  ============================================================================
 ``structure``  the data shapes, every dim's part in the data and every variable's use
 ``images``     variables on a 2-D grid as rasters for the field viewer, per-frame
-               statistics, a histogram of every cell, class means, vector-field arrows
+               statistics, a histogram of every cell, class means, vector-field arrows;
+               v0.14: colour pictures (a red, green and blue channel dim) as RGB rasters
+``gallery``    v0.14: thumbnails of a stack of images (an image dim), an even sample of
+               each class and split, with the image counts of each facet level
 ``profiles``   curves along a numeric axis that is not time (one per frame), with peaks
 ``map``        polygons coloured per variable, a ratio layer, neighbour links, Moran's I
 ``network``    adjacency matrix (seriation order), node-link layout, degree statistics
@@ -24,6 +27,7 @@ to the exported plots of a section.
 
 from __future__ import annotations
 
+import base64
 import itertools
 import math
 import re
@@ -42,6 +46,10 @@ from mapi_spec.views import (
     MAX_FIELD_PIXELS,
     MAX_FIELDS,
     MAX_FRAME_STATS,
+    MAX_GALLERY_FACETS,
+    MAX_GALLERY_ITEMS,
+    MAX_GALLERY_LEVELS,
+    MAX_GALLERY_THUMB,
     MAX_IMAGE_GROUPS,
     MAX_MAP_AREAS,
     MAX_MAP_EDGES,
@@ -61,6 +69,9 @@ from mapi_spec.views import (
     ClarkEvans,
     FieldFrame,
     FrameStats,
+    GalleryFacet,
+    GalleryItem,
+    GalleryView,
     Histogram,
     Homophily,
     ImageComponent,
@@ -106,7 +117,10 @@ from mapi_runner.worker.rasters import (
     block_labels,
     block_mean,
     encode_raster,
+    encode_rgb,
     even,
+    luminance,
+    to_uint8,
 )
 from mapi_runner.worker.structure import Shape, Structure
 
@@ -349,6 +363,24 @@ def _colormap(var: str, lo: float, hi: float, single: bool) -> str:
     return "viridis"
 
 
+_RGB_LABELS: Final = (("r", "g", "b"), ("red", "green", "blue"))
+_IMAGE_ATTR: Final = "mapi_image"
+"""The attribute of the pixels an ``image_folder`` ingest writes (pictures, not detector
+readings: a white background at 255 is not saturation)."""
+
+
+def rgb_channel(ds: xr.Dataset, chan: str | None) -> bool:
+    """The channel dim holds red, green and blue: 3 or 4 levels (the 4th, alpha, is left
+    out), or labels ``r, g, b`` / ``red, green, blue`` first."""
+    if chan is None or chan not in ds.dims:
+        return False
+    n = int(ds.sizes[chan])
+    if n in (3, 4):
+        return True
+    labels = tuple(str(v).lower() for v in _labels(ds, chan)[:3])
+    return n >= 3 and labels in _RGB_LABELS
+
+
 _SAMPLE_CELLS: Final = 5_000_000
 """Cells of the sample that gives the histogram, the skew and the saturated share."""
 _CHUNK_CELLS: Final = 4_000_000
@@ -389,7 +421,9 @@ def saturated_share(sample: np.ndarray, lo: float, hi: float) -> float:
 
 class _Img:
     """One image entry to encode: values ``(F, C, H, W)`` (C = 2 for a vector field), read a
-    few frames at a time as float32 (never all the frames as float64)."""
+    few frames at a time as float32 (never all the frames as float64). A colour picture
+    (``rgb``) reads ``(F, 1, H, W, 3)`` and its values are the luminance; :meth:`colours`
+    gives the red, green and blue."""
 
     def __init__(
         self,
@@ -406,13 +440,22 @@ class _Img:
         self.y, self.x, self.frame, self.comp = y, x, frame, comp
         da = ds[var].isel(sel) if sel else ds[var]
         chan = shape.dims.get("channel")
-        if chan is not None and chan in da.dims:
+        self.rgb = comp is None and chan is not None and chan in da.dims and rgb_channel(ds, chan)
+        self.chan = chan if self.rgb else None
+        self.uint8 = da.dtype == np.uint8
+        if self.rgb:
+            assert chan is not None
+            da = da.isel({chan: slice(0, 3)})
+        elif chan is not None and chan in da.dims:
             da = da.isel({chan: 0})
         if frame is None:
             da = da.expand_dims("__frame")
         if comp is None:
             da = da.expand_dims("__comp")
-        order = (frame or "__frame", comp or "__comp", y, x)
+        order: tuple[str, ...] = (frame or "__frame", comp or "__comp", y, x)
+        if self.rgb:
+            assert chan is not None
+            order = (*order, chan)
         self.fdim = order[0]
         self.da = da.transpose(*order)
         self.n_frames = int(self.da.sizes[self.fdim])
@@ -433,9 +476,16 @@ class _Img:
         self.group_coord = shape.extra.get("group_coord") if frame is not None else None
 
     def values(self, frames: Sequence[int] | slice) -> np.ndarray:
-        """``(k, C, H, W)`` float32 of some frames."""
+        """``(k, C, H, W)`` float32 of some frames (a colour picture: the luminance)."""
         sel = frames if isinstance(frames, slice) else list(frames)
-        return np.asarray(self.da.isel({self.fdim: sel}).values, dtype=np.float32)
+        vals = np.asarray(self.da.isel({self.fdim: sel}).values, dtype=np.float32)
+        return luminance(vals) if self.rgb else vals
+
+    def colours(self, frames: Sequence[int] | slice) -> np.ndarray:
+        """``(k, 3, H, W)`` float32: the red, green and blue of some frames (``rgb`` only)."""
+        sel = frames if isinstance(frames, slice) else list(frames)
+        vals = np.asarray(self.da.isel({self.fdim: sel}).values, dtype=np.float32)
+        return np.moveaxis(vals[:, 0], -1, 1)
 
     def magnitude(self, vals: np.ndarray) -> np.ndarray:
         """``(k, H, W)``: the value, or the length of the vector."""
@@ -447,7 +497,8 @@ class _Img:
         """``(frame indices, values (k, C, H, W))`` of ``frames`` (default all), a few
         frames at a time."""
         idx = list(range(self.n_frames)) if frames is None else list(frames)
-        per = max(1, _CHUNK_CELLS // max(1, self.h * self.w * (2 if self.comp else 1)))
+        per_frame = self.h * self.w * (2 if self.comp else 3 if self.rgb else 1)
+        per = max(1, _CHUNK_CELLS // max(1, per_frame))
         for start in range(0, len(idx), per):
             part = idx[start : start + per]
             contiguous = part == list(range(part[0], part[-1] + 1))
@@ -526,8 +577,9 @@ def _plan(img: _Img, budget: int) -> tuple[int, list[int], int]:
         n_groups = min(MAX_IMAGE_GROUPS, len({str(v) for v in img.frame_labels}))
     n_frames = min(MAX_FIELD_FRAMES, len(img.frame_labels))
     extra = 1 if img.mask is not None else 0
+    per = 3 if img.rgb else 1  # an rgb raster counts as two rasters, next to the luminance
     while True:
-        cells = -(-h // f) * -(-w // f)
+        cells = -(-h // f) * -(-w // f) * per
         while n_frames > 1 and cells * (n_frames + extra + n_groups) > budget:
             n_frames -= 1
         while n_groups > 0 and cells * (n_frames + extra + n_groups) > budget:
@@ -555,9 +607,15 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
     f, frames, n_groups = _plan(img, budget)
     s = _Summary(img)
     lo, hi = s.lo, s.hi
-    log = bool(s.n and lo > 0 and hi / lo > 1e3)
+    log = bool(s.n and lo > 0 and hi / lo > 1e3) and not img.rgb
     enc = "log10" if log else "linear"
     vector = img.comp is not None
+    # colour pictures: 8-bit values as they are, other values stretched from the min to the max
+    span = (0.0, 255.0) if img.uint8 else (lo, hi)
+
+    def colour(rgb: np.ndarray) -> Any:
+        return encode_rgb(np.moveaxis(block_mean(rgb, f, f), 0, -1), *span)
+
     out: list[FieldFrame] = []
     for i in frames:
         vals = img.values([i])
@@ -566,6 +624,7 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
                 label=img.frame_labels[i] if img.frame is not None else None,
                 mean=encode_raster(block_mean(img.magnitude(vals)[0], f, f), enc),
                 arrows=arrows(block_mean(vals[0], f, f)) if vector else None,
+                rgb=colour(img.colours([i])[0]) if img.rgb else None,
             )
         )
     groups: list[ImageGroupMean] = []
@@ -576,17 +635,28 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
             pick = [k for k, lab in enumerate(labels) if lab == level]
             total: np.ndarray | None = None
             count: np.ndarray | None = None
-            for _part, vals in img.chunks(pick):
+            rgb_total: np.ndarray | None = None
+            for part, vals in img.chunks(pick):
                 bm = block_mean(img.magnitude(vals), f, f)
                 ok = np.isfinite(bm)
                 add = np.where(ok, bm, 0.0).sum(axis=0)
                 cnt = ok.sum(axis=0)
                 total = add if total is None else total + add
                 count = cnt if count is None else count + cnt
+                if img.rgb:
+                    cb = np.nan_to_num(block_mean(img.colours(part), f, f)).sum(axis=0)
+                    rgb_total = cb if rgb_total is None else rgb_total + cb
             assert total is not None and count is not None
             with np.errstate(invalid="ignore", divide="ignore"):
                 m = np.where(count > 0, total / np.maximum(count, 1), np.nan)
-            groups.append(ImageGroupMean(label=level, n=len(pick), mean=encode_raster(m, enc)))
+            rgb_mean = (
+                encode_rgb(np.moveaxis(rgb_total / max(1, len(pick)), 0, -1), *span)
+                if rgb_total is not None
+                else None
+            )
+            groups.append(
+                ImageGroupMean(label=level, n=len(pick), mean=encode_raster(m, enc), rgb=rgb_mean)
+            )
     mask = encode_raster(block_mean(img.mask, f, f)) if img.mask is not None else None
     fin = s.sample
     hist = _histogram(fin)
@@ -629,7 +699,7 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
         downsampled=f > 1,
         y_coords=block_labels(img.y_labels, f),
         x_coords=block_labels(img.x_labels, f),
-        colormap="magma" if vector else _colormap(img.var, lo, hi, True),
+        colormap="magma" if vector else ("gray" if img.rgb else _colormap(img.var, lo, hi, True)),
         log=log,
         origin=_origin(c.ds, img.y),
         encoding=enc,
@@ -645,6 +715,9 @@ def _image_entry(c: DataContext, img: _Img, budget: int) -> ImageEntry:
         group_by=img.group_coord if groups else None,
         groups=groups,
         components=components,
+        color="rgb" if img.rgb else "single",
+        channel_dim=img.chan,
+        rgb_scale="uint8" if img.uint8 else "stretch",
     )
 
 
@@ -655,7 +728,8 @@ def images(c: DataContext) -> ImagesView:
     for shape in shapes:
         facets = [d for d in shape.extra.get("facets", ()) if d in c.ds.dims]
         chan = shape.dims.get("channel")
-        if chan is not None:
+        # a colour picture shows its channels together; one gray channel is not a facet
+        if chan is not None and not rgb_channel(c.ds, chan) and c.ds.sizes[chan] > 1:
             facets.append(chan)
         levels = [_labels(c.ds, d) for d in facets]
         for var in shape.vars:
@@ -678,12 +752,188 @@ def images(c: DataContext) -> ImagesView:
         )
     if omitted:
         warn.append(f"The view does not show {len(omitted)} more images.")
+    if any(e.color == "rgb" for e in entries):
+        warn.append(
+            "The colour images show red, green and blue. The statistics, the histogram and "
+            "the frame line use the brightness (0.299 red + 0.587 green + 0.114 blue)."
+        )
     return ImagesView(
         fields=entries,
         omitted=omitted[:256],
         warnings_plain=warn,
         caption_plain="Shows each variable on its grid. Use the slider to go through the "
         "frames. The line under the image shows the mean of each frame.",
+    )
+
+
+# --------------------------------------------------------------------------- gallery
+
+
+_FACET_FIRST: Final = ("label", "split", "class")
+
+
+def _gallery_shape(c: DataContext) -> Shape:
+    """The first image shape whose frame dim has 2 or more levels (a stack of images)."""
+    for shape in c.shapes.of("image"):
+        frame = shape.dims.get("frame")
+        if frame is not None and int(c.ds.sizes[frame]) >= 2:
+            return shape
+    raise NotApplicable(
+        c.shapes.not_applicable.get("gallery", "no variable holds a stack of images")
+    )
+
+
+def _facet_values(da: xr.DataArray) -> list[str]:
+    return [str(jsonable(v)) for v in np.asarray(da.values).tolist()]
+
+
+def _gallery_facets(c: DataContext, frame: str) -> list[tuple[GalleryFacet, list[str]]]:
+    """Text, integer and boolean variables and coords along the frame dim with 2 to
+    :data:`MAX_GALLERY_LEVELS` levels: ``label``, ``split`` and ``class`` first, at most
+    :data:`MAX_GALLERY_FACETS` (with the level of every image)."""
+    found: list[tuple[int, int, GalleryFacet, list[str]]] = []
+    names = [(str(k), "coord") for k in c.ds.coords] + [(str(k), "var") for k in c.ds.data_vars]
+    for k, (name, source) in enumerate(names):
+        da = c.ds[name]
+        if name == frame or da.dims != (frame,) or da.dtype.kind not in "iuUOSTb":
+            continue
+        levels = _facet_values(da)
+        counts: dict[str, int] = {}
+        for v in levels:
+            counts[v] = counts.get(v, 0) + 1
+        if not 2 <= len(counts) <= MAX_GALLERY_LEVELS or len(counts) == len(levels):
+            continue  # one level, too many, or one image per level (an id or a path)
+        rank = _FACET_FIRST.index(name.lower()) if name.lower() in _FACET_FIRST else 99
+        facet = GalleryFacet(name=name[:128], source=source, counts=counts)
+        found.append((rank, k, facet, levels))
+    found.sort(key=lambda t: (t[0], t[1]))
+    return [(f, lv) for _r, _k, f, lv in found[:MAX_GALLERY_FACETS]]
+
+
+def _stratified_pick(cells: dict[tuple[str, ...], list[int]], budget: int) -> list[int]:
+    """At most ``budget`` positions: one image of each cell in turn (round-robin over the
+    cells in sorted order) until the budget is spent, then an even sample within each cell."""
+    order = sorted(cells)
+    take = dict.fromkeys(order, 0)
+    left = budget
+    while left > 0:
+        moved = False
+        for key in order:
+            if left and take[key] < len(cells[key]):
+                take[key] += 1
+                left -= 1
+                moved = True
+        if not moved:
+            break
+    out: list[int] = []
+    for key in order:
+        rows = cells[key]
+        out.extend(rows[i] for i in even(len(rows), take[key]))
+    return sorted(out)
+
+
+def _thumbnail(values: np.ndarray, rgb: bool, uint8: bool) -> tuple[np.ndarray, int]:
+    """``values`` ``(H, W, C)`` as uint8 ``(h, w[, 3])`` of at most :data:`MAX_GALLERY_THUMB`
+    pixels a side (block means): 8-bit data as it is, other data stretched from the image's
+    own minimum to its maximum."""
+    h, w = values.shape[:2]
+    f = max(1, -(-max(h, w) // MAX_GALLERY_THUMB))
+    chans = np.moveaxis(values[..., :3] if rgb else values[..., :1], -1, 0)
+    small = np.moveaxis(block_mean(chans.astype(np.float32), f, f), 0, -1)
+    if uint8:
+        out = to_uint8(small)
+    else:
+        fin = small[np.isfinite(small)]
+        lo, hi = (float(fin.min()), float(fin.max())) if fin.size else (0.0, 1.0)
+        out = to_uint8(small, lo, hi if hi > lo else lo + 1.0)
+    return (out if rgb else out[..., 0]), f
+
+
+def gallery(c: DataContext) -> GalleryView:
+    """``gallery``: thumbnails of the images of the first stack of images (an image shape
+    with a frame dim), an even sample of each class and split when there are more than
+    :data:`MAX_GALLERY_ITEMS`, and the image counts of each facet level."""
+    from mapi_sdk.media import encode_png
+
+    shape = _gallery_shape(c)
+    var = shape.vars[0]
+    frame, y, x = shape.dims["frame"], shape.dims["y"], shape.dims["x"]
+    chan = shape.dims.get("channel")
+    ds = c.ds
+    n = int(ds.sizes[frame])
+    rgb = rgb_channel(ds, chan)
+    da = ds[var]
+    extra = [d for d in da.dims if d not in (frame, y, x, chan)]
+    if extra:
+        da = da.isel(dict.fromkeys(extra, 0))
+    da = da.transpose(frame, y, x, *([chan] if chan is not None else []))
+    uint8 = da.dtype == np.uint8
+    facets = _gallery_facets(c, frame)
+    if n <= MAX_GALLERY_ITEMS:
+        picked, selection = list(range(n)), "all"
+    elif facets:
+        first = facets[0]
+        split = next((f for f in facets[1:] if f[0].name.lower() == "split"), None)
+        cells: dict[tuple[str, ...], list[int]] = {}
+        for i in range(n):
+            key = (first[1][i], split[1][i]) if split is not None else (first[1][i],)
+            cells.setdefault(key, []).append(i)
+        picked, selection = _stratified_pick(cells, MAX_GALLERY_ITEMS), "stratified"
+    else:
+        picked, selection = even(n, MAX_GALLERY_ITEMS), "even"
+    labels = _labels(ds, frame)
+    items: list[GalleryItem] = []
+    th = tw = 1
+    for i in picked:
+        vals = np.asarray(da.isel({frame: i}).values)
+        if vals.ndim == 2:
+            vals = vals[..., None]
+        thumb, _f = _thumbnail(vals, rgb, uint8)
+        th, tw = int(thumb.shape[0]), int(thumb.shape[1])
+        png, _w, _h = encode_png(thumb)
+        items.append(
+            GalleryItem(
+                index=i,
+                label=labels[i],
+                meta={f.name: lv[i] for f, lv in facets},
+                png=base64.b64encode(png).decode("ascii"),
+            )
+        )
+    h, w = int(ds.sizes[y]), int(ds.sizes[x])
+    if not items:
+        f0 = max(1, -(-max(h, w) // MAX_GALLERY_THUMB))
+        th, tw = -(-h // f0), -(-w // f0)
+    others = [v for s in c.shapes.of("image") for v in s.vars if v != var]
+    warn: list[str] = []
+    if extra:
+        warn.append(
+            f"{var} has more dims ({', '.join(str(d) for d in extra)}). The gallery shows the "
+            "first level of each."
+        )
+    if not uint8:
+        warn.append(
+            "The values are not 8-bit pixels. Each thumbnail is stretched from its smallest "
+            "to its largest value."
+        )
+    return GalleryView(
+        var=var,
+        frame_dim=frame,
+        y_dim=y,
+        x_dim=x,
+        channel_dim=chan,
+        color="rgb" if rgb else "gray",
+        source_height=h,
+        source_width=w,
+        thumb_height=th,
+        thumb_width=tw,
+        n_images=n,
+        items=items,
+        facets=[f for f, _lv in facets],
+        selection=selection,
+        other_vars=list(dict.fromkeys(others))[:256],
+        warnings_plain=warn,
+        caption_plain="Shows small copies of the images. Use the filters to show one class or "
+        "split. Click an image to see it larger.",
     )
 
 
@@ -1688,6 +1938,8 @@ def structure_warnings(c: DataContext) -> list[QualityWarning]:
             if c.roles.get(v) in _NOT_MEASURED:
                 continue  # a setting or a weight, not a reading of a detector
             da = ds[v]
+            if da.attrs.get(_IMAGE_ATTR) == "1":
+                continue  # pictures (an image folder): white at 255 is not a saturated detector
             if da.size < 100 or not _num_da(da):
                 continue
             lo, hi = float(da.min(skipna=True)), float(da.max(skipna=True))
@@ -1778,6 +2030,7 @@ def science_plots(section: str, ds: xr.Dataset, structure: Structure) -> list[di
 SCIENCE_SECTION_FUNCS: Final[dict[str, Callable[[DataContext], BaseModel]]] = {
     "structure": structure,
     "images": images,
+    "gallery": gallery,
     "profiles": profiles,
     "map": map_,
     "network": network,

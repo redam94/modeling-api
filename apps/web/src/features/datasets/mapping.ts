@@ -6,7 +6,12 @@
  * how files of one node combine) and raw HDF5 files (`Hdf5Mapping`: which arrays become
  * which variables, with which dims and coords). The checks mirror `mapi_spec.ingest`, so
  * every problem shows before the upload instead of as a refused request.
+ *
+ * v0.14: an image folder (`image_folder`): a zip of PNG/JPEG/TIFF images and a manifest table
+ * (`ImageFolderOptions`: which columns give the path, id, class label and split; colour mode;
+ * one size for every image).
  */
+import type { components } from "@/api/schema";
 import type { AssemblySource, Hdf5Coord, Hdf5Var, IngestAssembly, IngestMapping, InspectedArray, Role } from "@/api/types";
 import { guessColumn } from "@/lib/csv";
 
@@ -103,6 +108,8 @@ export function formatFromFilename(name: string): IngestMapping["format"] | null
   if (n.endsWith(".csv") || n.endsWith(".tsv") || n.endsWith(".txt")) return "csv";
   if (n.endsWith(".parquet") || n.endsWith(".pq")) return "parquet";
   if (n.endsWith(".zarr.zip")) return "zarr_zip";
+  // v0.14: any other zip is a folder of images with a manifest (select "zarr zip" for a zarr store)
+  if (n.endsWith(".zip")) return "image_folder";
   if (n.endsWith(".nc") || n.endsWith(".nc4") || n.endsWith(".netcdf")) return "netcdf";
   // M4: raw HDF5 (an xarray/h5netcdf-written file can use "netcdf" instead).
   if (n.endsWith(".h5") || n.endsWith(".hdf5") || n.endsWith(".he5")) return "hdf5";
@@ -439,4 +446,109 @@ export function toHdf5Mapping(vars: Hdf5VarDraft[], coords: Hdf5CoordDraft[]): I
         : { dim: c.dim, node: c.node, start: parseCoordValue(c.start), ...(c.step.trim() ? { step: parseCoordValue(c.step) } : {}) },
     );
   return { format: "hdf5", hdf5: { vars: outVars, coords: outCoords } };
+}
+
+// ======================================================================== image folders
+
+export type ImageFolderOptions = components["schemas"]["ImageFolderOptions"];
+export type ImageMode = NonNullable<ImageFolderOptions["mode"]>;
+export type ImageResize = NonNullable<ImageFolderOptions["resize"]>;
+
+/** The `mapi_spec.ingest` limits of an image folder. */
+export const MAX_IMAGES = 100_000;
+export const MAX_IMAGE_SIDE = 4096;
+export const DEFAULT_MAX_IMAGES = 20_000;
+const MANIFEST_SUFFIXES = [".csv", ".tsv", ".parquet"];
+
+/** The image-folder form as typed (text fields; empty = not set). */
+export interface ImageFolderDraft {
+  manifest: string;
+  pathColumn: string;
+  idColumn: string;
+  labelColumn: string;
+  splitColumn: string;
+  mode: ImageMode;
+  /** Resize every image to this size (both or neither). */
+  height: string;
+  width: string;
+  resize: ImageResize;
+  maxImages: string;
+}
+
+export const DEFAULT_IMAGE_FOLDER: ImageFolderDraft = {
+  manifest: "manifest.csv",
+  pathColumn: "path",
+  idColumn: "",
+  labelColumn: "",
+  splitColumn: "",
+  mode: "auto",
+  height: "",
+  width: "",
+  resize: "stretch",
+  maxImages: String(DEFAULT_MAX_IMAGES),
+};
+
+export interface ImageFolderProblem {
+  field: keyof ImageFolderDraft | null;
+  message: string;
+}
+
+const wholeNumber = (t: string) => (/^\d+$/.test(t.trim()) ? Number(t.trim()) : NaN);
+
+/** The problems of an image-folder form (the checks of `ImageFolderOptions`). */
+export function validateImageFolder(d: ImageFolderDraft): ImageFolderProblem[] {
+  const out: ImageFolderProblem[] = [];
+  const manifest = d.manifest.trim();
+  if (!manifest) out.push({ field: "manifest", message: "Type the path of the manifest file in the zip, such as manifest.csv." });
+  else if (manifest.startsWith("/") || manifest.includes("\\") || manifest.split("/").some((p) => p === "" || p === "." || p === ".."))
+    out.push({ field: "manifest", message: "The manifest path must be a relative path in the zip, such as manifest.csv or labels/train.csv. Do not use '..'." });
+  else if (!MANIFEST_SUFFIXES.some((x) => manifest.toLowerCase().endsWith(x))) out.push({ field: "manifest", message: "The manifest must be a .csv, .tsv or .parquet file." });
+  if (!d.pathColumn.trim()) out.push({ field: "pathColumn", message: "Type the name of the manifest column with the image paths." });
+  const roles: [keyof ImageFolderDraft, string][] = [
+    ["pathColumn", d.pathColumn.trim()],
+    ["idColumn", d.idColumn.trim()],
+    ["labelColumn", d.labelColumn.trim()],
+    ["splitColumn", d.splitColumn.trim()],
+  ];
+  const seen = new Map<string, keyof ImageFolderDraft>();
+  for (const [field, col] of roles) {
+    if (!col) continue;
+    if (col.length > 256) out.push({ field, message: "A column name can have a maximum of 256 characters." });
+    if (seen.has(col)) out.push({ field, message: `The column "${col}" has two uses. Use each column for one purpose only.` });
+    seen.set(col, field);
+  }
+  const h = d.height.trim();
+  const w = d.width.trim();
+  if (h || w) {
+    if (!h || !w) out.push({ field: h ? "width" : "height", message: "Type the height and the width, or leave both empty to keep the size of the images." });
+    for (const [field, t] of [["height", h], ["width", w]] as const) {
+      if (!t) continue;
+      const n = wholeNumber(t);
+      if (!(n >= 1 && n <= MAX_IMAGE_SIDE)) out.push({ field, message: `The ${field} must be a whole number from 1 to ${MAX_IMAGE_SIDE}.` });
+    }
+  }
+  const max = wholeNumber(d.maxImages);
+  if (!(max >= 1 && max <= MAX_IMAGES)) out.push({ field: "maxImages", message: `The maximum number of images must be a whole number from 1 to ${MAX_IMAGES.toLocaleString("en-US")}.` });
+  return out;
+}
+
+/** The `IngestMapping` of an image folder (only the options that differ from the defaults). */
+export function toImageFolderMapping(d: ImageFolderDraft): IngestMapping {
+  const images: ImageFolderOptions = {};
+  const manifest = d.manifest.trim();
+  if (manifest && manifest !== DEFAULT_IMAGE_FOLDER.manifest) images.manifest = manifest;
+  if (d.pathColumn.trim() && d.pathColumn.trim() !== DEFAULT_IMAGE_FOLDER.pathColumn) images.path_column = d.pathColumn.trim();
+  if (d.idColumn.trim()) images.id_column = d.idColumn.trim();
+  if (d.labelColumn.trim()) images.label_column = d.labelColumn.trim();
+  if (d.splitColumn.trim()) images.split_column = d.splitColumn.trim();
+  if (d.mode !== "auto") images.mode = d.mode;
+  const h = wholeNumber(d.height);
+  const w = wholeNumber(d.width);
+  if (Number.isFinite(h) && Number.isFinite(w)) {
+    images.size = [h, w];
+    if (d.resize !== "stretch") images.resize = d.resize;
+  }
+  const max = wholeNumber(d.maxImages);
+  if (Number.isFinite(max) && max !== DEFAULT_MAX_IMAGES) images.max_images = max;
+  return { format: "image_folder", images };
 }

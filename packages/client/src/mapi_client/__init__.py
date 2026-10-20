@@ -31,7 +31,11 @@
 * from v0.11 run tracking on ``runs``: ``update`` (name, note, tags), ``log_metric(s)``,
   ``log_params``, ``set_tags``, ``metrics``, ``metric_history``, ``params``, run search in
   ``list`` (``filters``, ``order_by``, ``columns``, ``tags``) and :meth:`Runs.track`, a
-  buffered :class:`RunTracker`; ``stream_events`` yields :class:`RunTrackingFrame`.
+  buffered :class:`RunTracker`; ``stream_events`` yields :class:`RunTrackingFrame`;
+* from v0.14 run media on ``runs`` (``media``, ``media_keys``, ``get_media``,
+  ``download_media`` - size, CRC32C and sha256 checked - ``log_image``, ``log_table``),
+  ``runs.compare`` and ``runs.keys``, ``list(experiment_id=...)``, and the resources
+  ``experiments`` (named groups of runs) and ``run_views`` (saved runs-table searches).
 
 >>> from mapi_client import Client               # doctest: +SKIP
 >>> with Client("http://127.0.0.1:8000") as api:
@@ -48,6 +52,7 @@ from mapi_client._m3_common import forecast_call
 from mapi_client._m4_common import AssemblyFile, InspectedUpload
 from mapi_client._sync import Client
 from mapi_client._tracking import AsyncRunTracker, RunTracker
+from mapi_client._v014_common import media_file_name
 from mapi_client._version import __version__
 from mapi_client.auth import BearerAuth, TokenProvider, default_auth
 from mapi_client.config import ClientConfig, ConfigError, load_config
@@ -117,6 +122,7 @@ __all__ = [
     "forecast_call",
     "http_status_of",
     "load_config",
+    "media_file_name",
     "problem_of",
     "retry_after_of",
 ]

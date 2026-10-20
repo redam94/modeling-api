@@ -74,6 +74,7 @@ from mapi_spec.spec import (
     ScoreRequest,
     Split,
 )
+from mapi_spec.tracking import TrackingLimits
 from mapi_spec.tree import ROOT, NodeSelect, NodeSelectionError, TreeSchema
 from mapi_spec.validate import ResolvedSpec, apply_defaults, validate_spec
 
@@ -155,6 +156,8 @@ __all__ = [
 SCHEMA_ATTR = "mapi_schema"
 DEFAULT_EVAL_METRICS = ("rmse", "mae", "mape")
 MAX_SMEAR_RESIDUALS = 200
+_NO_MEDIA = TrackingLimits(media_items=0, media_bytes=0)
+"""The limits of the fit's own :class:`MetricRecorder`: no media (the bundle keeps none)."""
 
 
 @dataclass(slots=True)
@@ -729,7 +732,8 @@ def _fit_from(
     outer = hooks.tracker
     if role == "evaluation" and env.spec.model.fit.mode is FitMode.EVALUATE_THEN_REFIT:
         outer = with_labels(outer, {"fit": "evaluation"}, param_prefix="evaluation.")
-    recorder = MetricRecorder() if env.record_metrics else None
+    # The bundle keeps no media: the recorder takes none (the outer tracker uploads them).
+    recorder = MetricRecorder(_NO_MEDIA) if env.record_metrics else None
     fctx = FitContext(
         seed=env.seed,
         schema=model_schema,

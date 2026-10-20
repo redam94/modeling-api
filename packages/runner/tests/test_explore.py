@@ -96,7 +96,9 @@ def test_every_section_has_an_implementation_and_a_recipe() -> None:
     assert set(DATA_SECTION_FUNCS) == set(DATA_SECTIONS)
     assert set(MODEL_SECTION_FUNCS) == set(MODEL_SECTIONS)
     assert set(CHEAP_SECTIONS) <= set(DATA_SECTIONS) and set(FIT_SECTIONS) <= set(MODEL_SECTIONS)
-    assert len(EXPLORER_RECIPES) == len(DATA_SECTIONS) + len(MODEL_SECTIONS)
+    # v0.14: the gallery shows thumbnails, it needs no plot recipe
+    covered = len(EXPLORER_RECIPES) + ("mapi.data-explorer.gallery/v1" not in EXPLORER_RECIPES)
+    assert covered == len(DATA_SECTIONS) + len(MODEL_SECTIONS)
 
 
 @pytest.mark.parametrize("facet", [None, ["geo"]])

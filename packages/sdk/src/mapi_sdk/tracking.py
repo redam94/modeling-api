@@ -11,6 +11,9 @@ Every context a plugin or workflow node sees (:class:`~mapi_sdk.models.FitContex
     ctx.log_param("solver", "lbfgs")
     ctx.set_tag("family", "gaussian")
     ctx.log_line("refit done", level="info", fields={"iterations": n})
+    ctx.log_image("samples", pixels, step=step)          # v0.14 media
+    if ctx.tracking_media:
+        ctx.log_figure("residuals", make_figure())
 
 The mixin validates every call (keys and labels with the :mod:`mapi_spec.tracking` helpers)
 whether or not a :class:`Tracker` is attached, so a bad key fails in a notebook the same way
@@ -18,19 +21,23 @@ it fails in a run. Non-finite values are dropped silently. The tracker attached 
 platform decides where the values go: the runner streams them as run events, the harness
 also records them into the bundle's ``metrics_history`` group (:class:`MetricRecorder`).
 
+Media (images, figures, tables) go only to a tracker that is also a :class:`MediaTracker`;
+without one the call validates its arguments and returns without encoding anything.
+
 Metric keys keep :data:`mapi_spec.tracking.METRIC_KEY_RE` (``loss``, ``step_size``);
 qualifiers such as the chain, the fold or the split are labels (``{"chain": "0"}``).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import math
 import re
 import threading
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Final, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Final, Protocol, cast, runtime_checkable
 
 import numpy as np
 import xarray as xr
@@ -56,6 +63,8 @@ from mapi_spec.tracking import (
     param_text,
 )
 
+from mapi_sdk.media import MediaItem, check_media_args, figure_item, image_item, table_item
+
 if TYPE_CHECKING:
     from mapi_spec.capabilities import ModelManifest
     from mapi_spec.spec import ModelSpec
@@ -63,10 +72,12 @@ if TYPE_CHECKING:
 __all__ = [
     "MAX_HISTORY_POINTS",
     "METRICS_HISTORY",
+    "MediaTracker",
     "MetricRecorder",
     "TeeTracker",
     "Tracker",
     "TrackingMixin",
+    "accepts_media",
     "spec_params",
     "with_labels",
 ]
@@ -119,6 +130,29 @@ class Tracker(Protocol):
     def chains(self, chains: Sequence[ChainProgress]) -> None: ...
 
     def flush(self) -> None: ...
+
+
+@runtime_checkable
+class MediaTracker(Protocol):
+    """Optional capability of a :class:`Tracker`: it accepts media (v0.14). Thread-safe.
+
+    Kept apart from :class:`Tracker` so trackers written before v0.14 stay valid.
+    """
+
+    def log_media(self, item: MediaItem) -> None: ...
+
+
+def accepts_media(tracker: object) -> bool:
+    """``True`` when ``tracker`` (or, for a tee or a labelled wrapper, an inner tracker)
+    is a :class:`MediaTracker`. A :class:`MetricRecorder` without a media budget
+    (``media_items=0``) takes none."""
+    if isinstance(tracker, MetricRecorder):
+        return tracker.limits.media_items > 0
+    if isinstance(tracker, TeeTracker):
+        return any(accepts_media(t) for t in tracker.trackers)
+    if isinstance(tracker, _Labelled):
+        return accepts_media(tracker.inner)
+    return isinstance(tracker, MediaTracker)
 
 
 # --------------------------------------------------------------------------- validation
@@ -333,17 +367,77 @@ class TrackingMixin:
         if self.tracker is not None:
             self.tracker.chains(items)
 
+    # ------------------------------------------------------------------- media (v0.14)
+    @property
+    def tracking_media(self) -> bool:
+        """``True`` when the tracker takes media (skip rendering expensive figures otherwise)."""
+        return accepts_media(self.tracker)
+
+    def _media_tracker(
+        self,
+        key: str,
+        step: int | None,
+        labels: Mapping[str, str] | None,
+        caption: str | None,
+    ) -> MediaTracker | None:
+        check_media_args(key, step, labels, caption)
+        tracker = self.tracker
+        return cast(MediaTracker, tracker) if accepts_media(tracker) else None
+
+    def log_image(
+        self,
+        key: str,
+        image: Any,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> None:
+        """Log an image: a numpy array (``(H, W)``, ``(H, W, 3)``, ``(H, W, 4)``; uint8, or
+        floats in ``[0, 1]``), PNG/JPEG bytes, a Pillow image or a ``(y, x[, channel])``
+        DataArray. ``step`` makes a series (a slider on the run page)."""
+        tracker = self._media_tracker(key, step, labels, caption)
+        if tracker is not None:
+            tracker.log_media(image_item(key, image, step=step, labels=labels, caption=caption))
+
+    def log_figure(
+        self,
+        key: str,
+        figure: Any,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> None:
+        """Log a matplotlib figure as a PNG image (rendered only when a tracker takes media)."""
+        tracker = self._media_tracker(key, step, labels, caption)
+        if tracker is not None:
+            tracker.log_media(figure_item(key, figure, step=step, labels=labels, caption=caption))
+
+    def log_table(
+        self,
+        key: str,
+        table: Any,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> None:
+        """Log a small table: a pandas DataFrame, a mapping of columns or a list of records."""
+        tracker = self._media_tracker(key, step, labels, caption)
+        if tracker is not None:
+            tracker.log_media(table_item(key, table, step=step, labels=labels, caption=caption))
+
 
 # --------------------------------------------------------------------------- trackers
 
 
 class MetricRecorder:
-    """In-memory :class:`Tracker` bounded by :class:`~mapi_spec.tracking.TrackingLimits`.
+    """In-memory :class:`Tracker` (and :class:`MediaTracker`) bounded by
+    :class:`~mapi_spec.tracking.TrackingLimits`.
 
     The fit harness records every fit with one and stores :meth:`history` in the bundle.
     Stepped points: the first value of a ``(series, step)`` wins; scalar points (no step):
-    the newest wins. Over-budget points, params, tags and lines are dropped and counted in
-    :attr:`dropped` by reason.
+    the newest wins. Over-budget points, params, tags, lines and media are dropped and
+    counted in :attr:`dropped` by reason. Media stay in memory (:attr:`media`); nothing of
+    them goes into the bundle.
     """
 
     def __init__(self, limits: TrackingLimits | None = None) -> None:
@@ -359,6 +453,9 @@ class MetricRecorder:
         self.lines: list[tuple[LogLevel, str, dict[str, LogFieldValue]]] = []
         self.dropped: dict[str, int] = {}
         self.last_chains: list[ChainProgress] = []
+        self.media: list[MediaItem] = []
+        self._media_shas: set[str] = set()
+        self._media_bytes = 0
 
     def _drop(self, reason: str, n: int = 1) -> None:
         self.dropped[reason] = self.dropped.get(reason, 0) + n
@@ -444,6 +541,21 @@ class MetricRecorder:
     def chains(self, chains: Sequence[ChainProgress]) -> None:
         with self._lock:
             self.last_chains = list(chains)
+
+    def log_media(self, item: MediaItem) -> None:
+        lim = self.limits
+        with self._lock:
+            if len(self.media) >= lim.media_items:
+                self._drop("media_limit")
+                return
+            new = item.sha256 not in self._media_shas
+            if new and self._media_bytes + item.size > lim.media_bytes:
+                self._drop("media_limit")
+                return
+            if new:  # the same bytes are stored once
+                self._media_shas.add(item.sha256)
+                self._media_bytes += item.size
+            self.media.append(item)
 
     def flush(self) -> None:
         return None
@@ -641,6 +753,11 @@ class TeeTracker:
         for t in self.trackers:
             t.chains(chains)
 
+    def log_media(self, item: MediaItem) -> None:
+        for t in self.trackers:
+            if accepts_media(t):
+                cast(MediaTracker, t).log_media(item)
+
     def flush(self) -> None:
         for t in self.trackers:
             t.flush()
@@ -664,13 +781,7 @@ class _Labelled:
         step: int | None = None,
         labels: Mapping[str, str] | None = None,
     ) -> None:
-        merged = {**self.labels, **(labels or {})}
-        if len(merged) > MAX_METRIC_LABELS:  # call labels win; drop fixed ones that do not fit
-            own = dict(labels or {})
-            room = MAX_METRIC_LABELS - len(own)
-            extra = [(k, v) for k, v in self.labels.items() if k not in own][: max(room, 0)]
-            merged = {**dict(extra), **own}
-        self.inner.log_metrics(values, step=step, labels=dict(sorted(merged.items())))
+        self.inner.log_metrics(values, step=step, labels=_merge_labels(self.labels, labels))
 
     def log_params(self, params: Mapping[str, ParamValue]) -> None:
         if self.param_prefix:
@@ -698,8 +809,28 @@ class _Labelled:
     def chains(self, chains: Sequence[ChainProgress]) -> None:
         self.inner.chains(chains)
 
+    def log_media(self, item: MediaItem) -> None:
+        if not accepts_media(self.inner):
+            return
+        merged = _merge_labels(self.labels, item.labels)
+        if merged != item.labels:
+            item = dataclasses.replace(item, labels=merged)
+        cast(MediaTracker, self.inner).log_media(item)
+
     def flush(self) -> None:
         self.inner.flush()
+
+
+def _merge_labels(fixed: Mapping[str, str], labels: Mapping[str, str] | None) -> dict[str, str]:
+    """Fixed labels plus call labels, sorted; call labels win, and fixed labels that do not
+    fit :data:`MAX_METRIC_LABELS` are dropped."""
+    merged = {**fixed, **(labels or {})}
+    if len(merged) > MAX_METRIC_LABELS:
+        own = dict(labels or {})
+        room = MAX_METRIC_LABELS - len(own)
+        extra = [(k, v) for k, v in fixed.items() if k not in own][: max(room, 0)]
+        merged = {**dict(extra), **own}
+    return dict(sorted(merged.items()))
 
 
 def with_labels(

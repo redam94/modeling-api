@@ -124,6 +124,7 @@ async def list_runs(
     state: RunState | None = None,
     spec_id: str | None = None,
     parent_run_id: str | None = None,
+    experiment_id: str | None = None,
     name: Annotated[str | None, Query(max_length=200)] = None,
     tag: Annotated[list[str] | None, Query()] = None,
     filters: Annotated[list[str] | None, Query(alias="filter")] = None,
@@ -132,7 +133,8 @@ async def list_runs(
 ) -> Page[Run]:
     """Runs of the project, newest first by default.
 
-    ``name`` is a case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
+    ``experiment_id`` (v0.14) keeps the runs of one experiment. ``name`` is a
+    case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
     (the run has the tag) or ``key:value``; ``filter`` (repeatable, at most 8) compares a
     metric series summary, a param, a tag or the name (``metric.rmse < 0.5``); ``order_by``
     sorts on one ref (``-metric.rmse``; runs without the value sort last); ``column``
@@ -151,6 +153,8 @@ async def list_runs(
         stmt = stmt.where(m.Run.spec_id == spec_id)
     if parent_run_id is not None:
         stmt = stmt.where(m.Run.parent_run_id == parent_run_id)
+    if experiment_id is not None:
+        stmt = stmt.where(m.Run.experiment_id == experiment_id)
     if name:
         stmt = stmt.where(m.Run.name.icontains(name, autoescape=True))
     for clause in query.where():
@@ -286,10 +290,11 @@ async def sse_stream(
     ``level`` and ``fields``.
 
     ``tracking`` frames (no ``id:`` either) carry the metric series summaries that changed
-    since the previous frame (at most 200 per frame) and whether params or tags changed;
-    clients refetch what they show. Only changes after the stream opened are sent: the
-    ``snapshot`` run view has the tags, and the metrics/params routes have the rest. A new
-    ``snapshot`` goes out when the state, the name or the note changes.
+    since the previous frame (at most 200 per frame) and whether params, tags or (v0.14)
+    media changed; clients refetch what they show. Only changes after the stream opened are
+    sent: the ``snapshot`` run view has the tags, and the metrics/params/media routes have
+    the rest. A new ``snapshot`` goes out when the state, the name, the note or the
+    experiment changes.
 
     Every ``sse_reauth_s`` the caller's credential is checked again
     (:func:`~mapi_server.auth.request.still_authorized`): once it no longer grants access
@@ -316,15 +321,16 @@ async def sse_stream(
         log_cursor: tuple[int, int] = (last_log[0], last_log[1]) if last_log else (0, -1)
         # one cursor per table: the tables are read in separate statements, so a shared
         # cursor could jump past a summary ``seq`` the summary read did not see yet
-        summary_cursor, params_cursor, tags_cursor, tags_count = tracking
+        summary_cursor, params_cursor, tags_cursor, tags_count, media_cursor = tracking
         # keyed by the progress row's own attempt: after an infra retry the row can still
         # hold the previous attempt's (higher) seq, which must not hold back the new one
         progress_key = (
             (first_progress.attempt, first_progress.seq) if first_progress is not None else (0, -1)
         )
         sent_state = view.state
-        # a rename or a new note (PATCH) changes no state: it is sent as a snapshot too
-        sent_meta = (run.name, run.note)
+        # a rename, a new note or a move to another experiment (PATCH) changes no state: it
+        # is sent as a snapshot too
+        sent_meta = (run.name, run.note, run.experiment_id)
         yield _frame(SseEventName.SNAPSHOT, view.model_dump_json(), retry=SSE_RETRY_MS)
         last_write = time.monotonic()
         while True:
@@ -417,17 +423,19 @@ async def sse_stream(
                         )
                     ).scalars()
                 )
-                _, params_mark, tags_mark, count = await _tracking_marks(
+                _, params_mark, tags_mark, count, media_mark = await _tracking_marks(
                     session, run_id, summaries=False
                 )
                 params_changed = params_mark > params_cursor
                 tags_changed = tags_mark > tags_cursor or count != tags_count
-                if series or params_changed or tags_changed:
+                media_changed = media_mark > media_cursor
+                if series or params_changed or tags_changed or media_changed:
                     frame = TrackingFrame(
                         run_id=run_id,
                         series=[series_dto(x) for x in series],
                         params=params_changed,
                         tags=tags_changed,
+                        media=media_changed,
                     )
                     frames.append(_frame(SseEventName.TRACKING, frame.model_dump_json()))
                     tags_count = count
@@ -435,8 +443,9 @@ async def sse_stream(
                         summary_cursor = series[-1].seq  # a full page: the rest next pass
                     params_cursor = max(params_cursor, params_mark)
                     tags_cursor = max(tags_cursor, tags_mark)
+                    media_cursor = max(media_cursor, media_mark)
                 state = RunState(run.state)
-                meta = (run.name, run.note)
+                meta = (run.name, run.note, run.experiment_id)
                 changed = state is not sent_state or meta != sent_meta
                 if changed or (state.terminal and len(rows) < _PAGE):
                     view = await run_view(session, run)
@@ -476,11 +485,11 @@ async def sse_stream(
 
 async def _tracking_marks(
     session: AsyncSession, run_id: str, *, summaries: bool = True
-) -> tuple[int, int, int, int]:
-    """``(max summary seq, max params seq, max tags seq, tag count)`` of a run (0 when none);
-    one statement. A deleted tag changes the count, not a ``seq``."""
+) -> tuple[int, int, int, int, int]:
+    """``(max summary seq, max params seq, max tags seq, tag count, max media seq)`` of a run
+    (0 when none); one statement. A deleted tag changes the count, not a ``seq``."""
 
-    def top(model: type[m.RunMetricSummary | m.RunParam | m.RunTag]) -> Any:
+    def top(model: type[m.RunMetricSummary | m.RunParam | m.RunTag | m.RunMedia]) -> Any:
         return (
             select(func.coalesce(func.max(model.seq), 0))
             .where(model.run_id == run_id)
@@ -494,10 +503,11 @@ async def _tracking_marks(
                 top(m.RunParam),
                 top(m.RunTag),
                 select(func.count()).where(m.RunTag.run_id == run_id).scalar_subquery(),
+                top(m.RunMedia),
             )
         )
     ).one()
-    return int(row[0]), int(row[1]), int(row[2]), int(row[3])
+    return int(row[0]), int(row[1]), int(row[2]), int(row[3]), int(row[4])
 
 
 def _log_payload(line: m.RunLog) -> dict[str, object]:

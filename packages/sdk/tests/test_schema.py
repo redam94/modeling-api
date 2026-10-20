@@ -232,3 +232,41 @@ def test_summaries_feed_coordplan() -> None:
     assert nocoord["i"].kind == "index" and nocoord["i"].end == 1
     floats = summarize_coords(xr.Dataset(coords={"f": [0.5]}))
     assert floats["f"].kind == "float"
+
+
+def test_uint8_pixels_infer_as_uint8_and_validate_without_conversion() -> None:
+    """v0.14: image pixels keep their 8-bit dtype; other unsigned ints infer as int64."""
+    px = np.arange(2 * 4 * 3 * 3, dtype=np.uint8).reshape(2, 4, 3, 3)
+    ds = xr.Dataset(
+        {
+            "pixels": (("image", "y", "x", "channel"), px),
+            "count": (("image",), np.array([1, 2], dtype=np.uint16)),
+        },
+        coords={
+            "image": ["a", "b"],
+            "y": np.arange(4),
+            "x": np.arange(3),
+            "channel": ["r", "g", "b"],
+        },
+    )
+    schema = infer_schema(ds)
+    assert schema.vars["pixels"].dtype == "uint8" and schema.vars["count"].dtype == "int64"
+    assert schema.vars["pixels"].missing == "forbid"
+    assert validate_dataset(schema, ds) == []
+    # a float array against a uint8 schema is refused; int64 values are compatible
+    bad = ds.assign(pixels=ds["pixels"].astype(float))
+    assert [i.message for i in validate_dataset(schema, bad)] == [
+        "'pixels' should hold uint8 values but holds float64"
+    ]
+    assert validate_dataset(schema, ds.assign(pixels=ds["pixels"].astype(np.int64))) == []
+    # bounds on integer pixels are still checked
+    bounded = schema.model_copy(
+        update={
+            "vars": {
+                **schema.vars,
+                "pixels": schema.vars["pixels"].model_copy(update={"bounds": (None, 50)}),
+            }
+        }
+    )
+    issues = validate_dataset(bounded, ds)
+    assert len(issues) == 1 and issues[0].count == int((px > 50).sum())

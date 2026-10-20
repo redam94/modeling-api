@@ -425,7 +425,8 @@ def test_parse_run_order() -> None:
 
 
 def test_v011_rows_are_part_of_the_table_with_access() -> None:
-    assert ENDPOINTS[-len(V011_ENDPOINTS) :] == V011_ENDPOINTS
+    v014 = len(api.V014_ENDPOINTS)  # the v0.14 rows follow the v0.11 rows
+    assert ENDPOINTS[-len(V011_ENDPOINTS) - v014 : -v014] == V011_ENDPOINTS
     by_op = {e.operation_id: e for e in V011_ENDPOINTS}
     assert set(by_op) == {
         "update_run", "list_run_metrics", "get_metric_history", "log_run_metrics",

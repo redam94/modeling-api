@@ -182,8 +182,10 @@ nav:
           - The Python client: guides/python-client.md
           - The HTTP API: guides/http-api.md
           - "Track metrics, params and tags": guides/tracking.md
+          - "Compare runs and use experiments": guides/run-comparison.md
           - "From a spreadsheet to a Guided draft": guides/guided-data.md
           - "Tree datasets, HDF5 and multi-file versions": guides/tree-data.md
+          - Image data: guides/image-data.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
           - Explore a dataset: guides/data-explorer.md

@@ -9,6 +9,10 @@
  * v0.10, `mode="data"` (the Data Explorer's `images` section): the raster is the data itself,
  * so there is one statistic ("Value") and no draws; an optional mask is shaded over the image,
  * and a strip of the per-frame statistics follows the frame slider (and picks a frame).
+ *
+ * v0.14, `color: "rgb"` (a picture with red, green and blue channels): the canvas shows the
+ * colours of each frame (`FieldFrame.rgb`); the readout gives the colour and the brightness
+ * (the `mean` raster, which the statistics and the histogram use).
  */
 import { Pause, Play } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
@@ -16,7 +20,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type P
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { availableStats, cellAt, colorTicks, decodeRaster, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, ROBUST_FACTOR, robustRange, type ColorScale, type FieldStat } from "./fields";
+import { availableStats, cellAt, colorTicks, decodeRaster, decodeRgb, displayRange, frameStatIndex, frameValues, gradientCss, maskWord, paint, paintMask, rasterRange, rgbAt, ROBUST_FACTOR, robustRange, type ColorScale, type FieldStat } from "./fields";
 import { num } from "./ui";
 import type { FieldArrows, FieldEntry, FieldRaster, FrameStats } from "./views";
 
@@ -44,6 +48,7 @@ const PLAY_MS = 450;
 export type FieldViewerMode = "model" | "data";
 
 const DATA_HINT = "The value of each cell in the data.";
+const RGB_HINT = "The colour of each cell in the data. The brightness is 0.299 red + 0.587 green + 0.114 blue.";
 
 function label(v: string | number | boolean | null | undefined): string {
   return v === null || v === undefined ? "—" : String(v);
@@ -213,6 +218,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
   const colormap = field.colormap ?? "viridis";
   const origin = field.origin ?? "upper";
   const current = stats.includes(stat) ? stat : "mean";
+  const rgb = data && field.color === "rgb";
 
   // Decoded rasters, cached per (frame, statistic, draw).
   // (the parent remounts the viewer with a new key for another field)
@@ -223,6 +229,8 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
     return cache.get(key) ?? null;
   };
   const shown = values(frame, current, draw);
+  // v0.14: the colours of the shown frame (an rgb field)
+  const rgba = useMemo(() => (rgb && fr.rgb ? decodeRgb(fr.rgb, width * height, origin, width) : null), [rgb, fr, width, height, origin]);
 
   // One colour scale per statistic group, shared by every frame and draw.
   const fullScale = useMemo((): ColorScale | null => {
@@ -255,9 +263,13 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
     const ctx = el?.getContext("2d");
     if (!el || !ctx) return;
     ctx.clearRect(0, 0, width, height);
+    if (rgb) {
+      if (rgba) ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
+      return;
+    }
     if (!shown || !scale) return;
     ctx.putImageData(new ImageData(paint(shown, width, height, scale, origin), width, height), 0, 0);
-  }, [shown, scale, width, height, origin]);
+  }, [rgb, rgba, shown, scale, width, height, origin]);
 
   // Data mode: the mask, decoded once (only when it has the image's size).
   const maskValues = useMemo(() => {
@@ -300,7 +312,8 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
   const read = (s: FieldStat, d = 0) => (at >= 0 ? (values(frame, s, d)?.[at] ?? NaN) : NaN);
   const frameDim = field.frame_dim ?? "frame";
   const vector = field.kind === "vector";
-  const statLabel = data ? "Value" : STAT_LABEL[current];
+  const statLabel = rgb ? "Colours" : data ? "Value" : STAT_LABEL[current];
+  const colourAt = rgba && at >= 0 ? rgbAt(rgba, at, width, height, origin) : null;
   const title = `${statLabel}${current === "draw" ? ` ${draw + 1}` : ""} of ${vector ? `the size of ${field.output}` : field.output}`;
   const statAt = frameStats ? frameStatIndex(frameStats.coords, fr.label) : -1;
   const cursorY = cell ? (origin === "lower" ? height - 1 - cell.row : cell.row) : 0;
@@ -339,7 +352,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
             Show the arrows
           </label>
         ) : null}
-        {robust ? (
+        {robust && !rgb ? (
           <label className="flex items-center gap-2 pb-1 text-[13px]">
             <input type="checkbox" className="accent-primary" checked={fullRange} onChange={(e) => setFullRange(e.target.checked)} />
             Colours for the full range
@@ -413,7 +426,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
             onPointerMove={onPointer}
             onKeyDown={onKey}
           >
-            <canvas ref={canvas} width={width} height={height} className="size-full" style={{ imageRendering: "pixelated" }} />
+            <canvas ref={canvas} width={width} height={height} className="size-full" style={{ imageRendering: "pixelated" }} data-color={rgb ? "rgb" : "single"} />
             {maskValues ? <canvas ref={maskCanvas} width={width} height={height} className="pointer-events-none absolute inset-0 size-full" style={{ imageRendering: "pixelated" }} aria-hidden data-testid="field-mask" /> : null}
             {vector && arrowsOn && fr.arrows ? <Arrows arrows={fr.arrows} width={width} height={height} origin={origin} /> : null}
             {cell ? (
@@ -423,7 +436,15 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
               </svg>
             ) : null}
           </div>
-          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust ? (data ? "the values" : "the posterior means") : null} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
+          {rgb ? (
+            <p className="text-[11px] text-muted-foreground" data-testid="rgb-note">
+              {rgba ? `Red, green and blue from ${field.channel_dim ?? "the channels"}${field.rgb_scale === "stretch" ? ", stretched from the smallest to the largest value" : " (0 to 255)"}.` : "This image has no colours."}
+            </p>
+          ) : scale ? (
+            <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust ? (data ? "the values" : "the posterior means") : null} />
+          ) : (
+            <p className="text-[13px] text-muted-foreground">This raster has no values.</p>
+          )}
         </div>
         <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-[13px]" aria-live="polite" data-testid="field-readout">
           {cell ? (
@@ -432,7 +453,15 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
               <dd className="tabular">{label(field.y_coords[cell.row])}</dd>
               <dt className="text-muted-foreground">{field.x_dim}</dt>
               <dd className="tabular">{label(field.x_coords[cell.col])}</dd>
-              <dt className="text-muted-foreground">{data ? "Value" : "Mean"}</dt>
+              {colourAt ? (
+                <>
+                  <dt className="text-muted-foreground">Red, green, blue</dt>
+                  <dd className="tabular" data-testid="rgb-readout">
+                    {colourAt.join(", ")}
+                  </dd>
+                </>
+              ) : null}
+              <dt className="text-muted-foreground">{rgb ? "Brightness" : data ? "Value" : "Mean"}</dt>
               <dd className="tabular">{num(read("mean"))}</dd>
               {maskValues ? (
                 <>
@@ -472,7 +501,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
           )}
         </dl>
       </div>
-      <p className="text-xs text-muted-foreground">{data ? DATA_HINT : STAT_HINT[current]}</p>
+      <p className="text-xs text-muted-foreground">{rgb ? RGB_HINT : data ? DATA_HINT : STAT_HINT[current]}</p>
     </div>
   );
 }

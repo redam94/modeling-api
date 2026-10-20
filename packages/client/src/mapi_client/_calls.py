@@ -337,8 +337,10 @@ def list_runs(
     filters: Sequence[str] = (),
     order_by: str | None = None,
     columns: Sequence[str] = (),
+    experiment_id: str | None = None,
 ) -> Call[Page[Run]]:
-    # v0.11 search (tags, filters, order_by, columns): see _calls_tracking.run_search_params
+    # v0.11 search (tags, filters, order_by, columns): see _calls_tracking.run_search_params;
+    # v0.14: experiment_id (exact)
     params: dict[str, str | int | list[str]] = {
         **page_params(
             limit,
@@ -346,6 +348,7 @@ def list_runs(
             kind=RunKind(kind).value if kind is not None else None,
             state=RunState(state).value if state is not None else None,
             spec_id=spec_id,
+            experiment_id=experiment_id,
         ),
         **run_search_params(
             parent_run_id=parent_run_id,

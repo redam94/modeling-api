@@ -175,9 +175,15 @@ class RunLiveFrame:
 @dataclass(frozen=True, slots=True)
 class RunTrackingFrame:
     """A live ``tracking`` frame (v0.11, no event id): the metric series that changed since
-    the last frame (their summaries) and whether params or tags changed (fetch them again)."""
+    the last frame (their summaries) and whether params, tags or (v0.14) media changed
+    (fetch them again)."""
 
     frame: TrackingFrame
+
+    @property
+    def media(self) -> bool:
+        """Images or tables of the run changed since the last frame (v0.14)."""
+        return self.frame.media
 
 
 @dataclass(frozen=True, slots=True)

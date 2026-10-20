@@ -430,6 +430,8 @@ def _check_values(
             issues.append(SchemaIssue(var=name, count=total, message=msg, context=ctx))
     if fam not in ("float", "int"):
         return
+    if fam == "int" and spec.missing_sentinel is None and spec.bounds is None:
+        return  # nothing to check: never copy a large integer array (image pixels) to floats
     values = np.asarray(da.values, dtype=float)
     if spec.missing_sentinel is not None:
         hits = int(np.sum(values == spec.missing_sentinel))
@@ -506,6 +508,8 @@ def _var_dtype(da: xr.DataArray) -> str:
         return "float32"
     if da.dtype == np.int32:
         return "int32"
+    if da.dtype == np.uint8:
+        return "uint8"  # v0.14: image pixels; other unsigned ints infer as int64
     fam = dtype_family(da.dtype)
     if fam not in _DTYPE_MAP:
         raise ValueError(f"variable {da.name!r} has unsupported dtype {da.dtype}")

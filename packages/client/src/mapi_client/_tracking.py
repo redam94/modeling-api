@@ -4,7 +4,8 @@ A :class:`RunTracker` collects metric points, params and tags and sends them in 
 (``POST /v1/runs/{run_id}/metrics`` of at most 1000 points, ``.../params`` of at most 500,
 one ``PATCH`` for the tags) when ``flush_every`` points wait and when the ``with`` block
 ends. Keys, labels and values are validated when they are logged, so a bad key fails at
-the call site, not at the flush. :class:`AsyncRunTracker` is the ``async with`` twin.
+the call site, not at the flush. Images and tables (v0.14) are sent at once, one request
+each. :class:`AsyncRunTracker` is the ``async with`` twin.
 """
 
 from __future__ import annotations
@@ -12,9 +13,9 @@ from __future__ import annotations
 import threading
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from mapi_spec.api import MetricPointIn
+from mapi_spec.api import MetricPointIn, RunMedia
 from mapi_spec.tracking import (
     MAX_TAG_VALUE_CHARS,
     ParamValue,
@@ -143,6 +144,34 @@ class RunTracker:
         """Buffer tags (the last value wins; ``None`` deletes the tag)."""
         self._buf.add_tags(tags)
 
+    def log_image(
+        self,
+        key: str,
+        image: Any,
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> RunMedia:
+        """Send one image now (see :meth:`Runs.log_image`)."""
+        return self._runs.log_image(
+            self.run_id, key, image, step=step, labels=labels, caption=caption
+        )
+
+    def log_table(
+        self,
+        key: str,
+        table: Any,
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> RunMedia:
+        """Send one table now (see :meth:`Runs.log_table`)."""
+        return self._runs.log_table(
+            self.run_id, key, table, step=step, labels=labels, caption=caption
+        )
+
     def flush(self) -> None:
         """Send everything buffered (metrics, then params, then tags)."""
         points, params, tags = self._buf.take()
@@ -201,6 +230,32 @@ class AsyncRunTracker:
 
     def set_tags(self, tags: Mapping[str, str | None]) -> None:
         self._buf.add_tags(tags)
+
+    async def log_image(
+        self,
+        key: str,
+        image: Any,
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> RunMedia:
+        return await self._runs.log_image(
+            self.run_id, key, image, step=step, labels=labels, caption=caption
+        )
+
+    async def log_table(
+        self,
+        key: str,
+        table: Any,
+        *,
+        step: int | None = None,
+        labels: Mapping[str, str] | None = None,
+        caption: str | None = None,
+    ) -> RunMedia:
+        return await self._runs.log_table(
+            self.run_id, key, table, step=step, labels=labels, caption=caption
+        )
 
     async def flush(self) -> None:
         points, params, tags = self._buf.take()

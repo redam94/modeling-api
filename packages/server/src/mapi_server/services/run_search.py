@@ -11,7 +11,9 @@ parsed refs into SQL over the tracking tables:
   default order (``-created_at``) keeps the original id cursor;
 * the **cursor** of a value order is ``[value..., id]`` (JSON ``null`` for a run without the
   value): the keyset predicate continues after it, nulls included;
-* **columns** are read for one page at a time (one query per kind of ref).
+* **columns** are read for one page at a time (one query per kind of ref);
+* **run keys** (v0.14, :func:`run_keys`): the metric series, param keys and tag keys of the
+  project's (or an experiment's) runs with how many runs have each, for the column picker.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from mapi_spec.api import RunKeyCount, RunKeys
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.tracking import (
     MAX_RUN_COLUMNS,
@@ -30,23 +33,32 @@ from mapi_spec.tracking import (
     RunRef,
     check_tag_key,
     labels_key,
+    parse_labels_key,
     parse_run_filter,
     parse_run_order,
     parse_run_ref,
 )
-from sqlalchemy import ColumnElement, and_, exists, or_, select, tuple_
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.services.runs import Scope
 
 __all__ = [
+    "MAX_KEY_METRICS",
+    "MAX_KEY_PARAMS",
+    "MAX_KEY_TAGS",
     "MAX_TAG_QUERIES",
     "RunQuery",
     "column_values",
     "parse_run_query",
+    "run_keys",
 ]
 
 MAX_TAG_QUERIES = 16
+MAX_KEY_METRICS = 500
+MAX_KEY_PARAMS = 500
+MAX_KEY_TAGS = 200
 
 _OPS: Mapping[str, Callable[[Any, Any], Any]] = {
     "<": operator.lt,
@@ -315,3 +327,51 @@ async def column_values(
             elif ref.kind == "created_at":
                 out[run.id][ref.text()] = run.created_at.isoformat().replace("+00:00", "Z")
     return out
+
+
+# ------------------------------------------------------------------------------- run keys
+
+
+async def run_keys(
+    session: AsyncSession, scope: Scope, experiment_id: str | None, prefix: str | None
+) -> RunKeys:
+    """Metric series, param keys and tag keys (platform ``mapi.`` tags included) of the runs
+    of the project, or of one experiment, with the number of runs that have each; most
+    common first, then by key. ``prefix`` keeps keys that start with it."""
+    truncated = False
+
+    async def count(
+        model: type[m.RunMetricSummary | m.RunParam | m.RunTag], cap: int, *, series: bool
+    ) -> list[RunKeyCount]:
+        nonlocal truncated
+        cols: list[Any] = [model.key]
+        if series:
+            cols.append(m.RunMetricSummary.labels_key)
+        n = func.count(func.distinct(model.run_id)).label("n")
+        stmt = select(*cols, n).where(
+            model.tenant_id == scope.tenant_id, model.project_id == scope.project_id
+        )
+        if experiment_id is not None:
+            stmt = stmt.join(m.Run, m.Run.id == model.run_id).where(
+                m.Run.experiment_id == experiment_id
+            )
+        if prefix:
+            stmt = stmt.where(model.key.startswith(prefix, autoescape=True))
+        rows = (
+            await session.execute(stmt.group_by(*cols).order_by(n.desc(), *cols).limit(cap + 1))
+        ).all()
+        if len(rows) > cap:
+            truncated = True
+        return [
+            RunKeyCount(
+                key=r.key,
+                labels=parse_labels_key(r.labels_key) if series else {},
+                runs=int(r.n),
+            )
+            for r in rows[:cap]
+        ]
+
+    metrics = await count(m.RunMetricSummary, MAX_KEY_METRICS, series=True)
+    params = await count(m.RunParam, MAX_KEY_PARAMS, series=False)
+    tags = await count(m.RunTag, MAX_KEY_TAGS, series=False)
+    return RunKeys(metrics=metrics, params=params, tags=tags, truncated=truncated)

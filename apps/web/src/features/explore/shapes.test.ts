@@ -69,7 +69,8 @@ describe("section list", () => {
     expect(plan.shown).toEqual(expect.arrayContaining(["ccf", "acf_pacf", "stationarity"]));
     // every section is in one of the two lists, once
     expect([...plan.shown, ...plan.hidden.map((h) => h.section)].sort()).toEqual([...DATA_SECTIONS].sort());
-    expect(missingSections(states, plan)).toEqual(["ccf", "acf_pacf", "stationarity"]);
+    // v0.14: the index of this fixture predates the gallery section, so it is missing too
+    expect(missingSections(states, plan)).toEqual(["ccf", "acf_pacf", "stationarity", "gallery"]);
   });
 
   it("uses a finished run's index first, else the ingest's", () => {

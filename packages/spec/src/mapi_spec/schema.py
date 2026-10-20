@@ -63,8 +63,9 @@ def tighten_policy(a: DimPolicy, b: DimPolicy) -> DimPolicy:
 
 
 DimKind = Literal["categorical", "time", "integer", "float", "index"]
-Dtype = Literal["float64", "float32", "int64", "int32", "bool", "str", "datetime64[ns]"]
-NUMERIC_DTYPES: frozenset[str] = frozenset({"float64", "float32", "int64", "int32"})
+Dtype = Literal["float64", "float32", "int64", "int32", "uint8", "bool", "str", "datetime64[ns]"]
+"""Variable dtypes; ``uint8`` (v0.14) holds 8-bit image pixels."""
+NUMERIC_DTYPES: frozenset[str] = frozenset({"float64", "float32", "int64", "int32", "uint8"})
 
 
 class DimSpec(StrictModel):

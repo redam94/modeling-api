@@ -19,8 +19,10 @@ section                   what it shows
 ``quality``               plain-language data-quality warnings with suggested actions
 ========================  ====================================================================
 
-plus the sections for scientific data (``structure``, ``images``, ``profiles``, ``map``,
-``network``, ``tree``, ``circular``, ``points``; :mod:`~mapi_runner.worker.explore_science`).
+plus the sections for scientific data (``structure``, ``images``, ``gallery``, ``profiles``,
+``map``, ``network``, ``tree``, ``circular``, ``points``;
+:mod:`~mapi_runner.worker.explore_science`). v0.14: the tabular statistics read an even sample
+of a variable with more than 5,000,000 cells (a stack of images), never the whole array.
 
 Every section reads the data shapes of :func:`~mapi_runner.worker.structure.detect_structure`
 (``DataContext.structure``): geometry (polygon rings, neighbour and tree links, x/y
@@ -94,6 +96,7 @@ from mapi_runner.worker.explore_common import (
 )
 from mapi_runner.worker.explore_common import fv as _fv
 from mapi_runner.worker.explore_science import SCIENCE_SECTION_FUNCS
+from mapi_runner.worker.rasters import even
 from mapi_runner.worker.structure import Structure, detect_structure, time_strength
 
 __all__ = [
@@ -305,6 +308,34 @@ def ingest_sections(structure: Structure) -> tuple[str, ...]:
     return tuple(out)
 
 
+_STAT_CELLS: Final = 5_000_000
+"""Cells of one variable that the tabular statistics (overview, distributions, missing values,
+outliers, quality) read: above it, an even sample along the first dim. A stack of 20 000
+images (v0.14) is never copied whole to floats."""
+
+
+def _stat_array(da: xr.DataArray) -> xr.DataArray:
+    """``da``, or an even sample of it along its first dim when it has more than
+    :data:`_STAT_CELLS` cells (a dim without a coord gets its positions as coords first, so
+    an outlier still names its place)."""
+    if da.size <= _STAT_CELLS or da.ndim == 0:
+        return da
+    d = da.dims[0]
+    n = int(da.sizes[d])
+    if d not in da.coords:
+        da = da.assign_coords({d: np.arange(n)})
+    return da.isel({d: even(n, max(1, _STAT_CELLS // max(1, da.size // n)))})
+
+
+def _sampled(c: DataContext, var: str) -> bool:
+    return int(c.ds[var].size) > _STAT_CELLS
+
+
+_SAMPLED_NOTE: Final = (
+    "Some variables have more than 5,000,000 values. The statistics use an even sample of them."
+)
+
+
 # ------------------------------------------------------------------------- series
 
 
@@ -461,8 +492,10 @@ def overview(c: DataContext) -> DataOverviewView:
         name = str(v)
         da = ds[name]
         numeric = _numeric(da)
-        arr = np.asarray(da.values)
-        miss = float(np.mean(~np.isfinite(arr.astype(float)))) if numeric and arr.size else 0.0
+        arr = np.asarray(_stat_array(da).values)
+        miss = 0.0
+        if numeric and arr.size and arr.dtype.kind not in "iub":  # integers are never missing
+            miss = float(np.mean(~np.isfinite(arr.astype(float))))
         distinct: int | None = None
         constant = False
         if numeric:
@@ -487,7 +520,7 @@ def overview(c: DataContext) -> DataOverviewView:
     issues = quality_warnings(c)
     serious = sum(1 for w in issues if w.severity != "info")
     infos = len(issues) - serious
-    n_cells = int(sum(int(np.asarray(ds[v].values).size) for v in ds.data_vars))
+    n_cells = int(sum(int(ds[v].size) for v in ds.data_vars))
     shape = " x ".join(_dim_phrase(d) for d in dims) or "no dimensions"
     period_txt = ""
     if c.time_dim is not None and dims:
@@ -565,7 +598,7 @@ def _distribution_columns(c: DataContext) -> dict[str, np.ndarray]:
     for var in c.vars:
         shape = tables.get(var)
         if shape is None:
-            out[var] = np.asarray(c.ds[var].values)
+            out[var] = np.asarray(_stat_array(c.ds[var]).values)
             continue
         col = shape.dims["columns"]
         da = c.ds[var].transpose(col, ...)
@@ -609,7 +642,9 @@ def distributions(c: DataContext) -> DistributionsView:
             )
         )
     return DistributionsView(
-        items=items, caption_plain="How the values of each variable are spread out."
+        items=items,
+        caption_plain="How the values of each variable are spread out.",
+        warnings_plain=[_SAMPLED_NOTE] if any(_sampled(c, v) for v in c.vars) else [],
     )
 
 
@@ -689,7 +724,7 @@ def missingness(c: DataContext) -> MissingnessView:
     share: dict[str, float] = {}
     gaps: dict[str, int] = {}
     for var in c.vars:
-        a = np.asarray(c.ds[var].values, dtype=float)
+        a = np.asarray(_stat_array(c.ds[var]).values, dtype=float)
         share[var] = float(np.mean(~np.isfinite(a))) if a.size else 0.0
         if c.time_dim is not None and c.time_dim in c.ds[var].dims:
             gaps[var] = max(
@@ -706,6 +741,7 @@ def missingness(c: DataContext) -> MissingnessView:
         share_by_var=share,
         longest_gap=gaps,
         caption_plain="Shows where values are missing (a darker cell shows more missing values).",
+        warnings_plain=[_SAMPLED_NOTE] if any(_sampled(c, v) for v in c.vars) else [],
     )
 
 
@@ -716,7 +752,7 @@ def outliers(c: DataContext) -> OutliersView:
     for var in c.vars:
         if var in c.curve_vars:
             continue
-        da = c.ds[var]
+        da = _stat_array(c.ds[var])
         a = np.asarray(da.values, dtype=float)
         scores = stats.outlier_scores(a, method)
         flags = np.abs(scores) > thr
@@ -729,7 +765,10 @@ def outliers(c: DataContext) -> OutliersView:
             dims = [str(d) for d in da.dims]
             for flat in order:
                 idx = np.unravel_index(int(flat), a.shape) if a.ndim else ()
-                coords = {d: _labels(c.ds, d)[i] for d, i in zip(dims, idx, strict=True)}
+                coords = {
+                    d: (jsonable(da[d].values[i]) if d in da.coords else _labels(c.ds, d)[i])
+                    for d, i in zip(dims, idx, strict=True)
+                }
                 points.append(
                     OutlierPoint(
                         coords=coords,
@@ -746,6 +785,7 @@ def outliers(c: DataContext) -> OutliersView:
         items=items,
         caption_plain=f"Shows the values that are more than {thr:g} robust standard deviations "
         "from the typical value.",
+        warnings_plain=[_SAMPLED_NOTE] if any(_sampled(c, v) for v in c.vars) else [],
     )
 
 
@@ -1173,7 +1213,7 @@ def quality_warnings(
                 )
             )
     for var in c.vars:
-        a = np.asarray(ds[var].values, dtype=float)
+        a = np.asarray(_stat_array(ds[var]).values, dtype=float)
         if a.size == 0:
             continue
         miss = float(np.mean(~np.isfinite(a)))

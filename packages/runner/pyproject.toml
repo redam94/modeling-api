@@ -26,6 +26,8 @@ dependencies = [
   # M4: NetCDF-4 groups and raw HDF5 uploads (read only after worker.hdf5_guard checks them).
   "h5py>=3.11",
   "h5netcdf>=1.4",
+  # v0.14: image_folder ingest decodes PNG/JPEG/TIFF in the sandboxed worker (HPND/MIT-CMU licence).
+  "pillow>=11.0",
 ]
 
 [dependency-groups]

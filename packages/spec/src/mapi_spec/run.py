@@ -44,6 +44,7 @@ from pydantic import (
     Field,
     JsonValue,
     ValidationError,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -65,6 +66,16 @@ from mapi_spec.executor import (
     RunSubmit,
 )
 from mapi_spec.loader import canonical_value, spec_hash
+from mapi_spec.media import (
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_SIDE,
+    MAX_MEDIA_CAPTION_CHARS,
+    MEDIA_KINDS,
+    MEDIA_NAME_RE,
+    MediaContentType,
+    MediaKind,
+    media_name,
+)
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.storage import (
     Crc32c,
@@ -113,6 +124,7 @@ __all__ = [
     "OUTPUT_CHECKPOINTS",
     "OUTPUT_MANIFEST",
     "OUTPUT_MANIFEST_SCHEMA",
+    "OUTPUT_MEDIA",
     "RUNNER_ENV_VARS",
     "RUNSPEC_SCHEMA",
     "STDOUT_EVENT_KEY",
@@ -138,6 +150,7 @@ __all__ = [
     "LogPayload",
     "ManifestObject",
     "ManifestSignature",
+    "MediaPayload",
     "MetricBatchPayload",
     "MetricPayload",
     "MetricSeriesBatch",
@@ -742,6 +755,40 @@ class TagsPayload(_Payload):
     tags: list[TagItem] = Field(..., min_length=1, max_length=MAX_TAGS_PER_RUN)
 
 
+class MediaPayload(_Payload):
+    """``media``: an image or a table the run logged, uploaded under the run's media prefix."""
+
+    key: MetricKey
+    kind: MediaKind
+    content_type: MediaContentType
+    name: str = Field(
+        ..., pattern=MEDIA_NAME_RE, description="Object name relative to the media prefix"
+    )
+    sha256: str = Field(..., pattern=r"^[0-9a-f]{64}$")
+    size: int = Field(..., ge=1, le=MAX_IMAGE_BYTES)
+    crc32c: Crc32c
+    step: int | None = Field(None, ge=0)
+    labels: MetricLabels = Field(default_factory=dict)
+    width: int | None = Field(None, ge=1, le=MAX_IMAGE_SIDE)
+    height: int | None = Field(None, ge=1, le=MAX_IMAGE_SIDE)
+    caption: str | None = Field(None, max_length=MAX_MEDIA_CAPTION_CHARS)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> MediaPayload:
+        if self.name != media_name(self.sha256, self.content_type):
+            raise ValueError("name must be '<sha256><ext>' of the sha256 and the content type")
+        if MEDIA_KINDS[self.content_type] != self.kind:
+            raise ValueError(
+                f"kind {self.kind!r} does not match content type {self.content_type!r}"
+            )
+        sized = self.width is not None and self.height is not None
+        if self.kind == "image" and not sized:
+            raise ValueError("an image has a width and a height")
+        if self.kind == "table" and (self.width is not None or self.height is not None):
+            raise ValueError("a table has no width or height")
+        return self
+
+
 EVENT_PAYLOAD_MODELS: Final[Mapping[RunEventType, type[BaseModel]]] = {
     RunEventType.STATE: StatePayload,
     RunEventType.PROGRESS: ProgressPayload,
@@ -755,6 +802,7 @@ EVENT_PAYLOAD_MODELS: Final[Mapping[RunEventType, type[BaseModel]]] = {
     RunEventType.METRICS: MetricBatchPayload,
     RunEventType.PARAMS: ParamsPayload,
     RunEventType.TAGS: TagsPayload,
+    RunEventType.MEDIA: MediaPayload,
 }
 """The payload model of each event type."""
 
@@ -917,6 +965,8 @@ OUTPUT_ARTIFACTS: Final = "artifacts"
 """Output name of the POST policy covering every other object under the attempt prefix."""
 OUTPUT_CHECKPOINTS: Final = "checkpoints"
 """Output name of the POST policy for checkpoints (only for checkpointable runs)."""
+OUTPUT_MEDIA: Final = "media"
+"""Output name of the POST policy for logged media (v0.14; create-only on ``media_prefix``)."""
 INPUT_DATASET: Final = "dataset"
 INPUT_BUNDLE: Final = "bundle"
 
@@ -980,6 +1030,11 @@ class RunSpec(StrictModel):
         default_factory=dict, max_length=1024, description="Checkpoints of the previous attempt"
     )
     checkpoint_prefix: ObjectName | None = None
+    media_prefix: ObjectName | None = Field(
+        None,
+        description="v0.14: where the supervisor uploads logged media (``{run_prefix}media/``)",
+        exclude_if=lambda v: v is None,
+    )
     hmac_key: str = Field(..., repr=False, description="Base64 per-run HMAC-SHA256 key")
     limits: RunLimits
     resource_class: ResourceClass
@@ -1056,13 +1111,13 @@ class RunSpec(StrictModel):
         decode_hmac_key(v)
         return v
 
-    @field_validator("checkpoint_prefix")
+    @field_validator("checkpoint_prefix", "media_prefix")
     @classmethod
-    def _ckpt(cls, v: str | None) -> str | None:
+    def _ckpt(cls, v: str | None, info: ValidationInfo) -> str | None:
         if v is not None:
             check_object_name(v)
             if not v.endswith("/"):
-                raise ValueError("checkpoint_prefix must end with '/'")
+                raise ValueError(f"{info.field_name} must end with '/'")
         return v
 
     @model_validator(mode="after")
@@ -1079,6 +1134,13 @@ class RunSpec(StrictModel):
             not isinstance(ckpt, PostPolicy) or ckpt.prefix != self.checkpoint_prefix
         ):
             raise ValueError("outputs['checkpoints'] must be a POST policy on checkpoint_prefix")
+        media = self.outputs.get(OUTPUT_MEDIA)
+        if media is not None and (
+            self.media_prefix is None
+            or not isinstance(media, PostPolicy)
+            or media.prefix != self.media_prefix
+        ):
+            raise ValueError("outputs['media'] must be a POST policy on media_prefix")
         return self
 
     def hmac_key_bytes(self) -> bytes:
@@ -1251,14 +1313,15 @@ def verify_output_objects(
     observed: Iterable[ObjectMeta],
     *,
     expected_prefix: str,
-    allowed_extra_prefixes: Iterable[str] = ("checkpoints/",),
+    allowed_extra_prefixes: Iterable[str] = ("checkpoints/", "media/"),
 ) -> VerificationResult:
     """Metadata-only FINALIZING check (plan §8.6), with no object content read.
 
     ``observed`` is the store listing of ``expected_prefix`` (server-computed size, CRC32C,
     MD5, generation). Every claimed object must exist with identical size and hashes, and
     no unexpected object may exist under the prefix except ``manifest.json`` and the
-    ``allowed_extra_prefixes`` (relative). Each discrepancy is an ``INTEGRITY_FAILURE``.
+    ``allowed_extra_prefixes`` (relative; checkpoints and, since v0.14, logged media). Each
+    discrepancy is an ``INTEGRITY_FAILURE``.
     """
     issues: list[Issue] = []
 

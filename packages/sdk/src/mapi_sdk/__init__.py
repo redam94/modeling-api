@@ -11,7 +11,8 @@ entry points:
 * :class:`Registry` / :func:`default_registry` - entry-point discovery;
 * :class:`InprocExecutor` - the in-process executor;
 * :mod:`mapi_sdk.tracking` - run tracking (v0.11): :class:`Tracker`, :class:`MetricRecorder`,
-  :class:`TeeTracker`, :func:`with_labels`;
+  :class:`TeeTracker`, :func:`with_labels`; media (v0.14): :class:`MediaTracker`,
+  :class:`MediaItem` and :func:`encode_png` (:mod:`mapi_sdk.media`);
 * :mod:`mapi_sdk.tree` - tree datasets (M4): :func:`select_nodes`, :func:`infer_tree_schema`,
   :func:`validate_tree`;
 * :mod:`mapi_sdk.testing` - the contract kit for plugin authors.
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     )
     from mapi_sdk.executors import InprocExecutor
     from mapi_sdk.harness import FitHooks, fit_spec, score_bundle
+    from mapi_sdk.media import MediaItem, encode_png
     from mapi_sdk.models import (
         PREDICTIONS,
         CustomModel,
@@ -69,6 +71,7 @@ if TYPE_CHECKING:
     from mapi_sdk.summarise import aggregate, hdi, thin_index
     from mapi_sdk.tracking import (
         METRICS_HISTORY,
+        MediaTracker,
         MetricRecorder,
         TeeTracker,
         Tracker,
@@ -102,6 +105,8 @@ _LAZY: dict[str, str] = {
     "Fitted": "mapi_sdk.models",
     "InprocExecutor": "mapi_sdk.executors",
     "METRICS_HISTORY": "mapi_sdk.tracking",
+    "MediaItem": "mapi_sdk.media",
+    "MediaTracker": "mapi_sdk.tracking",
     "MetricRecorder": "mapi_sdk.tracking",
     "MetricsReport": "mapi_sdk.bundle",
     "ModelPlugin": "mapi_sdk.models",
@@ -132,6 +137,7 @@ _LAZY: dict[str, str] = {
     "data_summary": "mapi_sdk.schema",
     "default_registry": "mapi_sdk.registry",
     "drop_context": "mapi_sdk.context",
+    "encode_png": "mapi_sdk.media",
     "extract_context": "mapi_sdk.context",
     "fit_spec": "mapi_sdk.harness",
     "hdi": "mapi_sdk.summarise",
@@ -194,6 +200,8 @@ __all__ = [
     "Fitted",
     "ForecastActuals",
     "InprocExecutor",
+    "MediaItem",
+    "MediaTracker",
     "MetricRecorder",
     "MetricsReport",
     "ModelPlugin",
@@ -224,6 +232,7 @@ __all__ = [
     "data_summary",
     "default_registry",
     "drop_context",
+    "encode_png",
     "extract_context",
     "fit_spec",
     "hdi",

@@ -1,4 +1,5 @@
-"""The five built-in train/holdout splits (plan §4.1 "Split" group).
+"""The seven built-in train/holdout splits (plan §4.1 "Split" group; v0.14 adds ``column``
+and ``stratified``).
 
 Splits are not pipeline steps: a spec chooses one in ``data.split`` and the harness applies
 it at the split stage (:func:`mapi_sdk.split.split_dataset`), after the stateless prefix.
@@ -12,6 +13,8 @@ settings schema and plain-language summaries for pickers and docs, plus a direct
 ``core.leave_group_out``  hold out whole groups (explicit ``groups`` or ``n`` random ones)
 ``core.last_per_group``   last ``last`` rows of each group with at least ``min_len`` rows
 ``core.mask_block``       random blocks over ``dims`` covering ``fraction`` of the cells
+``core.column``           the rows whose ``column`` value is in ``holdout`` (a fixed split)
+``core.stratified``       a random ``fraction`` of the rows of each level of ``by``
 ========================  ====================================================================
 """
 
@@ -28,9 +31,11 @@ from mapi_spec.abouts import SPLIT_ABOUTS
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import (
     AsOfSplit,
+    ColumnSplit,
     LastPerGroupSplit,
     LeaveGroupOutSplit,
     MaskBlockSplit,
+    StratifiedSplit,
     TimeHoldoutSplit,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -49,6 +54,8 @@ SplitModel = (
     | type[LeaveGroupOutSplit]
     | type[LastPerGroupSplit]
     | type[MaskBlockSplit]
+    | type[ColumnSplit]
+    | type[StratifiedSplit]
 )
 
 
@@ -169,6 +176,22 @@ SPLITS: tuple[SplitStrategy, ...] = (
         masks_cells=True,
         summary="Hold out random blocks of cells over several dims",
         summary_plain="Hides random patches of the data and checks the model fills them in",
+    ),
+    SplitStrategy(
+        "column",
+        ColumnSplit,
+        ordered=False,
+        masks_cells=False,
+        summary="Hold out the rows whose column value is in holdout (a fixed split)",
+        summary_plain="Uses the train and test assignment that the data already has",
+    ),
+    SplitStrategy(
+        "stratified",
+        StratifiedSplit,
+        ordered=False,
+        masks_cells=False,
+        summary="Hold out a random fraction of the rows of each class",
+        summary_plain="Tests the model on the same share of each class, selected at random",
     ),
 )
 

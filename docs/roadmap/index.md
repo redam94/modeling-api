@@ -23,7 +23,7 @@ timeline
     v0.7 · scientific models : four sci models : outputs on a grid : Fields in the Model Explorer
     v0.8 · M4 · tree datasets : NetCDF-4 and HDF5 groups : versions from several files : data.nodes and tree-input models
     v0.9 · M5 · science gallery : 15 sci models in all : 14 plot recipes : Bayesian workflow nodes and six recipes : tutorials for the case studies
-    planned · expert plugins and MCP : plugin upload for allow-listed experts : curated MCP server : sweeps and SBC as parent runs
+    planned · expert plugins and MCP : plugin upload for allow-listed experts : curated MCP server : SBC as parent runs
 ```
 
 | Release | Milestone | Theme | Status |
@@ -38,7 +38,7 @@ timeline
 | **v0.7** | | [Scientific models](../reference/models.md#scientific-models-mapi-plugin-science): four `sci.*` plugins with data on a map, an image or a grid. Outputs on a grid show in the **Fields** section of the Model Explorer. | <span class="mapi-badge">available</span> |
 | **v0.8** | M4 | [Tree datasets](../guides/tree-data.md): NetCDF-4 and HDF5 files with groups, raw HDF5 files, and versions made from several files. A spec selects the nodes that it reads. | <span class="mapi-badge">available</span> |
 | **v0.9** | M5 | [Science gallery](../tutorials/pymc-challenges/index.md): 15 `sci.*` models in all, 14 plot recipes, workflow nodes for Bayesian checks and plots, six workflow recipes and a tutorial for each case study. | <span class="mapi-badge">available</span> |
-| Not set | | [Expert plugins and MCP](expert-plugins.md): plugin upload for allow-listed experts, a curated MCP server for AI agents, and sweeps and SBC as parent runs. | <span class="mapi-badge mapi-badge--soon">planned</span> |
+| Not set | | [Expert plugins and MCP](expert-plugins.md): plugin upload for allow-listed experts, a curated MCP server for AI agents, and SBC as parent runs. | <span class="mapi-badge mapi-badge--soon">planned</span> |
 
 !!! note "Milestone names"
     The plan before v0.5 gave the names M4 and M5 to plugin upload and to public code upload.
@@ -187,7 +187,8 @@ from injection. The tools list and describe models, score an endpoint, read a ru
 plot.
 
 Budget optimisations already run as **in-sandbox `optimize` jobs**, and backtests run as
-workflow nodes (v0.5). **`Sweep` and `SBC`** each run as one parent. [More](expert-plugins.md).
+workflow nodes (v0.5). Sweeps are workflows with a `search.grid` node (v0.14 retired the
+`Sweep` document). **`SBC`** runs as one parent. [More](expert-plugins.md).
 
 ## After expert plugins { #after-v06 }
 

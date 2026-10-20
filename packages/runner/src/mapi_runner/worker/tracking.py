@@ -4,7 +4,9 @@
 Metric points are buffered per series and flushed by a daemon thread every
 ``TrackingLimits.flush_interval_s`` (and inline once 1000 points are buffered) as
 ``metrics`` messages of at most ``MAX_POINTS_PER_EVENT`` points; params and tags go out with
-the same flush; user log lines are sent at once. The worker keeps the run's tracking budgets
+the same flush; user log lines are sent at once. Media (v0.14, :meth:`WorkerTracker.log_media`)
+are written to ``{scratch}/media/<sha256>.<ext>`` and announced with one ``media`` message each;
+the supervisor verifies and uploads them. The worker keeps the run's tracking budgets
 itself (:class:`~mapi_runner.events.TrackingBudget`, the same one the supervisor applies), so
 a well-behaved run drops and counts excess points here and :meth:`WorkerTracker.close` reports
 them in one ``TRACKING_BUDGET`` warning.
@@ -14,12 +16,13 @@ from __future__ import annotations
 
 import contextlib
 import math
+import os
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from mapi_spec.run import (
     ChainProgress,
@@ -48,6 +51,7 @@ from pydantic import BaseModel
 
 from mapi_runner.channel import (
     MAX_WORKER_FRAME,
+    MediaMessage,
     MetricsMessage,
     ParamsMessage,
     TagsMessage,
@@ -56,12 +60,15 @@ from mapi_runner.channel import (
 from mapi_runner.events import TrackingBudget, log_size
 
 if TYPE_CHECKING:
+    from mapi_sdk.media import MediaItem
+
     from mapi_runner.worker.context import WorkerContext
 
 __all__ = ["WorkerTracker"]
 
 _MAX_SERIES_PER_EVENT = 64  # MetricBatchPayload.series max_length
 _LINE_MAX_CHARS = 4096  # LogPayload.line max_length
+_MEDIA_FLAGS: Final = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
 
 
 @dataclass(slots=True)
@@ -74,7 +81,8 @@ class _Series:
 
 
 class WorkerTracker:
-    """Thread-safe :class:`~mapi_sdk.tracking.Tracker` that batches into channel messages."""
+    """Thread-safe :class:`~mapi_sdk.tracking.Tracker` that batches into channel messages
+    (and a :class:`~mapi_sdk.tracking.MediaTracker`)."""
 
     def __init__(
         self,
@@ -97,6 +105,10 @@ class WorkerTracker:
         self._tags: dict[str, TagItem] = {}
         self._checked: set[tuple[str, str]] = set()
         self._closed = False
+        self._media_items = 0
+        self._media_bytes = 0
+        self._media_names: set[str] = set()
+        self._media_noted: set[str] = set()  # notes already written once
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -186,6 +198,81 @@ class WorkerTracker:
 
     def chains(self, chains: Sequence[ChainProgress]) -> None:
         self._ctx.set_chains(chains)
+
+    # -------------------------------------------------------------- MediaTracker
+    def log_media(self, item: MediaItem) -> None:
+        """Write ``item`` under ``media/`` and announce it. Never raises into model code:
+        a run without a media policy, a budget hit or an I/O error is one log line."""
+        try:
+            self._log_media(item)
+        except Exception as exc:
+            self._note_once(
+                "error", f"media: the item {item.key!r} was not logged: {type(exc).__name__}: {exc}"
+            )
+
+    def _log_media(self, item: MediaItem) -> None:
+        if not self._ctx.start.media:
+            self._note_once("ignored", "media: this run does not keep images or tables")
+            return
+        lim = self.limits
+        name = item.name
+        with self._lock:
+            if self._closed:
+                return
+            new = name not in self._media_names
+            size = len(item.data) if new else 0
+            if (
+                self._media_items >= lim.media_items
+                or self._media_bytes + size > lim.media_bytes
+                or len(item.data) > lim.media_item_bytes
+            ):
+                over = True
+            else:
+                over = False
+                self._media_items += 1
+                self._media_bytes += size
+                self._media_names.add(name)
+        if over:
+            self._note_once("budget", "media budget reached: later images and tables are dropped")
+            return
+        self._write_media(name, item.data)
+        self._send_msg(
+            MediaMessage(
+                file=name,
+                key=item.key,
+                kind=item.kind,
+                content_type=item.content_type,
+                step=item.step,
+                labels=dict(item.labels),
+                caption=item.caption,
+            )
+        )
+
+    def _write_media(self, name: str, data: bytes) -> None:
+        directory = self._ctx.media_dir
+        directory.mkdir(mode=0o700, exist_ok=True)
+        try:
+            fd = os.open(directory / name, _MEDIA_FLAGS, 0o600)
+        except FileExistsError:
+            return  # the same bytes are waiting for the supervisor
+        try:
+            view = memoryview(data)
+            while view:
+                view = view[os.write(fd, view) :]
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.unlink(directory / name)  # never leave a partial file to be reused
+            raise
+        finally:
+            os.close(fd)
+
+    def _note_once(self, what: str, message: str) -> None:
+        with self._lock:
+            if what in self._media_noted:
+                return
+            self._media_noted.add(what)
+        with contextlib.suppress(Exception):
+            self.log_line(message, level="warning")
 
     def flush(self) -> None:
         """Send every buffered point, param and tag (in order; one flush at a time)."""

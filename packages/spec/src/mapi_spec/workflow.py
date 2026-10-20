@@ -1245,6 +1245,11 @@ class WorkflowRunCreate(RequestModel):
     )
     use_cache: bool = Field(True, description="Reuse unchanged node results")
     resource_class: ResourceClass | None = None
+    experiment_id: Id | None = Field(
+        None,
+        description="Experiment of the workflow run and of every run it starts (v0.14; not an "
+        "archived one). Default: the experiment of the parent run, if any",
+    )
 
     model_config = dto_examples(
         {"params": {"alpha": 0.05}, "inputs": {"data": "dataset://growth/weekly_sales@v4"}}

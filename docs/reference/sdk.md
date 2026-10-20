@@ -96,6 +96,10 @@ methods (`mapi_sdk.tracking.TrackingMixin`):
 | `log_line(message, level="info", fields=None)` | A structured log line (stream `user`). The SDK cuts the message at 4096 characters. A maximum of 16 fields. |
 | `chains(chains)` | The progress of each chain, a list of `mapi_spec.run.ChainProgress` |
 | `tracking` | `True` when a tracker records the values |
+| `log_image(key, image, step=None, labels=None, caption=None)` | v0.14. An image: a numpy array (gray, RGB or RGBA), PNG or JPEG bytes, a Pillow image or a DataArray |
+| `log_figure(key, figure, step=None, labels=None, caption=None)` | v0.14. A matplotlib figure, saved as PNG |
+| `log_table(key, table, step=None, labels=None, caption=None)` | v0.14. A DataFrame, a dict of columns or a list of records |
+| `tracking_media` | v0.14. `True` when the tracker records media (`MediaTracker`) |
 
 Each method does a check of its input, also when no tracker is attached. A bad key, a bad
 label, a negative step or a bad level raises `ValueError` at the call. The SDK ignores
@@ -111,6 +115,25 @@ thread-safe:
 | `TeeTracker(*trackers)` | Sends each call to all the trackers that are not `None` |
 | `with_labels(tracker, labels, *, param_prefix="")` | Adds `labels` to each metric call. The labels of the call have priority. `param_prefix` goes before each param key (a key that becomes too long is not sent). |
 | `WorkerTracker` (`mapi_runner`) | Inside a run: sends the values to the platform each second |
+
+### Media <span class="mapi-badge">v0.14</span> { #media }
+
+Media use a separate, optional protocol: `mapi_sdk.MediaTracker` (one method,
+`log_media(item: MediaItem)`). A `Tracker` that does not have it does not get media. Thus
+the trackers of earlier releases continue to work. `log_image`, `log_figure` and `log_table`
+always do a check of the key, the labels, the step and the caption. They encode the item only
+when the tracker is a `MediaTracker`.
+
+| Name | What it does |
+|---|---|
+| `MediaItem` | A frozen item: `key`, `kind`, `content_type`, `data`, `sha256`, `step`, `labels`, `caption`, `width`, `height`. `name` is `<sha256>.<ext>`. |
+| `encode_png(array)` | `(png_bytes, width, height)` of an array of shape `(H, W)`, `(H, W, 1)`, `(H, W, 3)` or `(H, W, 4)`. `uint8` as is, booleans as 0 and 255, other integers in 0 to 255, floats in 0 to 1 (scaled by 255, NaN becomes 0). Other values raise `ValueError`. The same array always gives the same bytes. It uses numpy and zlib only. |
+| `mapi_sdk.media.image_item`, `figure_item`, `table_item` | Make a `MediaItem`. They raise `ValueError` for bad input or an item above the limits of `mapi_spec.media`. |
+
+`MetricRecorder.media` keeps the items in memory, within `media_items` and `media_bytes`.
+The items are not written into the bundle. `TeeTracker` and `with_labels` send media to the
+trackers that are `MediaTracker`s (`with_labels` adds its labels, and the labels of the call
+have priority).
 
 The harness connects the trackers:
 

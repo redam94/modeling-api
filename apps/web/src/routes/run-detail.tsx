@@ -31,7 +31,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
+import { RunExperiment, RunExperimentLink } from "@/features/experiments/run-experiment";
 import { LogsViewer } from "@/features/runs/logs-viewer";
+import { MediaPanel } from "@/features/runs/media-panel";
 import { MetricsPanel } from "@/features/runs/metrics-panel";
 import { ParamsPanel } from "@/features/runs/params-panel";
 import { TagBadges } from "@/features/runs/tag-badges";
@@ -233,6 +235,7 @@ export function RunDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="params">Params</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger value="notes">
             Notes
@@ -287,6 +290,7 @@ export function RunDetailPage() {
                           "—"
                         ),
                       ],
+                      ["Experiment", <RunExperimentLink key="e" experimentId={r.experiment_id} />],
                       ["Model version", r.model_version_id ? <Mono key="m">{shortId(r.model_version_id)}</Mono> : "—"],
                       ["Dataset", r.dataset_id ? <Link key="d" to="/datasets/$datasetId" params={{ datasetId: r.dataset_id }} className="hover:underline"><Mono>{shortId(r.dataset_id)}</Mono></Link> : "—"],
                       ["Retry of", r.retry_of ? <Link key="r" to="/runs/$runId" params={{ runId: r.retry_of }} className="hover:underline"><Mono>{shortId(r.retry_of)}</Mono></Link> : "—"],
@@ -318,6 +322,9 @@ export function RunDetailPage() {
         <TabsContent value="params">
           <ParamsPanel run={r} />
         </TabsContent>
+        <TabsContent value="media">
+          <MediaPanel runId={r.id} live={!terminal} />
+        </TabsContent>
         <TabsContent value="logs">
           <Card>
             <CardHeader>
@@ -330,7 +337,10 @@ export function RunDetailPage() {
           </Card>
         </TabsContent>
         <TabsContent value="notes">
-          <RunNotes run={r} edit={notesEdit} onEdit={setNotesEdit} />
+          <div className="grid gap-5">
+            <RunNotes run={r} edit={notesEdit} onEdit={setNotesEdit} />
+            <RunExperiment run={r} />
+          </div>
         </TabsContent>
       </Tabs>
     </>
