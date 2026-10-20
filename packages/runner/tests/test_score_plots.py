@@ -60,6 +60,7 @@ RAW = DataSchema.model_validate(
 )
 _TO_DATASET = {"period": "quarter", "count": "quakes", "area": "district"}
 _TO_CANON = {v: k for k, v in _TO_DATASET.items()}
+_BINDING = {"dims": {"period": "quarter", "area": "district"}, "vars": {"count": "quakes"}}
 
 
 def _rename(ds: xr.Dataset, names: dict[str, str]) -> xr.Dataset:
@@ -84,7 +85,8 @@ def _bundle(
             reverse=lambda ds: _rename(ds, _TO_DATASET),
         ),
         resolved=SimpleNamespace(
-            model=SimpleNamespace(input_schema=SimpleNamespace(targets=targets or ["count"]))
+            model=SimpleNamespace(input_schema=SimpleNamespace(targets=targets or ["count"])),
+            binding=SimpleNamespace(model_dump_json=lambda: json.dumps(_BINDING)),
         ),
     )
 
@@ -599,12 +601,33 @@ def test_summary_tables_list_only_the_plots_that_rendered(
     assert tables["cases"]["plots"] == ["sci.area_map"]
     assert "plots" not in tables["rr"]  # its fan did not render
     assert [p["id"] for p in ctx.written["plots.json"]] == ["core.fit_vs_actual", "sci.area_map"]
+    assert "binding" not in tree.children  # the stored result is left alone
     doc = summary_document(tree, None, b, plots={"rr": ["core.ppc_fan"]})
     assert doc is not None
     assert {t["variable"]: t.get("plots") for t in doc["tables"]} == {
         "cases": None,
         "rr": ["core.ppc_fan"],
     }
+
+
+def test_the_score_plots_see_the_binding_and_name_one_outcome(tmp_path: Path) -> None:
+    """A score with dataset names renames a multi-outcome MMM's ``outcome`` dim to the bound
+    dim (``product``): the plot input carries ``/binding``, so the waterfall shows one
+    product instead of adding the two up."""
+    from mapi_plots import examples as ex
+
+    contributions = ex.mmm_contributions(["premium", "basic"]).rename({"outcome": "product"})
+    contributions.attrs.pop("primary_outcome")  # only the binding names the outcome dim
+    tree = xr.DataTree.from_dict({"/": xr.Dataset(), "/derived/contributions": contributions})
+    b = _bundle({"y_hat": {"dims": ["time"], "units_of": "y"}}, ["y"])
+    b.resolved.binding = SimpleNamespace(
+        model_dump_json=lambda: json.dumps({"dims": {"outcome": "product"}, "vars": {}})
+    )
+    ctx = _ScoreCtx(tmp_path)
+    score_mod._write_tree(ctx, b, tree, ScorePlots(["mmm.waterfall"]))  # type: ignore[arg-type]
+    (plot,) = ctx.written["plots.json"]
+    assert "The chart shows the outcome premium" in json.dumps(plot)
+    assert "binding" not in tree.children
 
 
 # ------------------------------------------------------------------------- fit plots

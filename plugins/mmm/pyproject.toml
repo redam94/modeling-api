@@ -1,7 +1,7 @@
 [project]
 name = "mapi-plugin-mmm"
 version = "0.11.0"
-description = "Marketing-mix model plugins on mmm-framework (Bayesian and frequentist MMM)"
+description = "Marketing-mix model plugins on mmm-framework (Bayesian, frequentist, nested and multivariate MMM)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -12,6 +12,7 @@ dependencies = [
   "mapi-pymc",
   "mapi-steps",
   "mmm-framework==1.5.0",
+  "scipy>=1.13",
 ]
 
 [project.entry-points."mapi.models"]

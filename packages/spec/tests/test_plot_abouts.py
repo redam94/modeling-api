@@ -33,3 +33,33 @@ def test_changed_cards_describe_the_new_inputs() -> None:
     for word in ("hidden_states", "regimes", "summary", "state_dim='auto'", "select"):
         assert word in state
     assert "decomposition='exclude'" in (PLOT_ABOUTS["core.decomposition"].expert_notes or "")
+
+
+V012_CARDS = (
+    "mmm.roi",
+    "mmm.adstock",
+    "mmm.waterfall",
+    "mmm.spend_effect",
+    "mmm.lift_tests",
+    "mmm.effectiveness",
+    "mmm.mediation",
+    "mmm.cross_effects",
+    "core.energy",
+    "core.prior_posterior",
+)
+
+
+@pytest.mark.parametrize("plot_id", V012_CARDS)
+def test_the_v012_cards_name_their_settings_and_relate_to_plots(plot_id: str) -> None:
+    about = PLOT_ABOUTS[plot_id]
+    assert about.references and about.related
+    assert set(about.related) <= set(PLOT_ABOUTS)
+    notes = about.expert_notes or ""
+    assert "`hdi_prob`" in notes if plot_id.startswith("mmm.") else "`" in notes
+
+
+def test_the_outcome_selection_is_described_where_it_applies() -> None:
+    assert "`outcome`" in (PLOT_ABOUTS["mmm.waterfall"].expert_notes or "")
+    assert "main outcome" in " ".join(PLOT_ABOUTS["mmm.waterfall"].assumptions)
+    assert "`breakeven`" in (PLOT_ABOUTS["mmm.roi"].expert_notes or "")
+    assert "`bfmi_threshold`" in (PLOT_ABOUTS["core.energy"].expert_notes or "")

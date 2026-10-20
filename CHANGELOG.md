@@ -5,6 +5,100 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### MMM pack
+
+The marketing-mix models get two new models, two new kinds of data and the charts that a
+marketing team asks for. `mmm.nested` measures effects that go through an intermediate measure,
+for example visits or awareness. `mmm.multivariate` measures effects on two or more results at
+the same time. `mmm.bayesian` can now have channel effects that change over time, and counts
+or shares as the result. Each MMM fit logs its return on spend and other summaries with the
+v0.11 tracking API.
+
+#### Added
+- `mmm.nested` (mmm-framework `NestedMMM`): a national marketing mix with one or more
+  intermediate measures (`mediator` dim). Each measure can be measured in some periods only, or
+  not at all (`latent: true`). Each channel has a direct effect and an indirect effect through
+  each measure. The new derived quantity `mediation` gives the direct, indirect and total
+  effect of each channel and the part that goes through the measures. Lift tests calibrate the
+  total effect of a channel. The output `mediator_hat` gives the fitted measures.
+- `mmm.multivariate` (mmm-framework `MultivariateMMM`): a national marketing mix of two or more
+  results (`outcome` dim) with correlated noise. Cross-effects between the results can be
+  `halo`, `cannibalization` or `unconstrained`. Scores, response curves and budget plans use
+  the reduced form, thus a channel that moves one result also moves the results that it acts
+  on. The new derived quantity `cross_effects` gives each cross-effect. `outcomes[].weight`
+  gives the value of one unit of each result in the budget plan. The KPI of the plan is then
+  "weighted total of the outcomes", and a note of the plan gives the weights.
+- `mmm.bayesian` 1.1.0: time-varying channel effects. Put the channels in
+  `time_varying.channels`. Their effect is a random walk over the fit window.
+  `time_varying.forecast` sets the effect after the fit window: `random_walk` (default, the
+  range becomes wider with the horizon), `hold_last` or `mean`. A forecast tells you which
+  policy it used.
+- `mmm.bayesian` 1.1.0: the likelihoods `poisson` and `negative_binomial` (counts, log link)
+  and `beta` (shares between 0 and 1, logit link). `media_effect_sigma` sets the prior of the
+  channel effects of these likelihoods. The contributions of the channels still add up to
+  `y_hat`. The trend, the seasonality and the controls are then part of the baseline.
+- New derived quantities for every MMM: `adstock` (the part of the effect of a unit of spend
+  that comes in each later period, and the mean lag). `mmm.bayesian` and `mmm.frequentist` also
+  have `effectiveness` (the effect for each unit of spend in each period).
+- New plot recipes, each with an About card and example data:
+    - `mmm.roi`: the return on spend of each channel with a range, and the marginal return
+      (mROAS), against a break-even line.
+    - `mmm.adstock`: how the effect of spend decays over the next periods, with a range.
+    - `mmm.waterfall`: the contribution of each component to the total result.
+    - `mmm.spend_effect`: the share of spend against the share of the effect of each channel.
+    - `mmm.lift_tests`: the result of each lift test, with its error bar, next to the
+      estimate of the model.
+    - `mmm.effectiveness`: the effect of a unit of spend over time, for time-varying channels.
+    - `mmm.mediation`: the direct and indirect effect of each channel (`mmm.nested`).
+    - `mmm.cross_effects`: the effects between the results (`mmm.multivariate`).
+    - `core.energy`: the energy plot of the sampler and the BFMI of each chain.
+    - `core.prior_posterior`: the prior and the posterior of each parameter, with their overlap.
+- A fit with lift tests keeps the bundle group `lift_tests` (each test and the estimate of the
+  model for each draw).
+- Run tracking for every MMM: each fit logs the params `mmm.framework_version`,
+  `mmm.n_channels`, `mmm.n_periods`, `mmm.n_cells` and `mmm.link`, and the metrics `roi`,
+  `roi_p05`, `roi_p95`, `mroi` and `contribution_share` for each channel (label `channel`) and
+  `baseline_share`. `mmm.nested` and `mmm.multivariate` also send the progress of each chain
+  and the step metrics, as `mmm.bayesian` does.
+- Guided templates `mediated_mmm` (*Marketing mix with an intermediate measure*,
+  `mmm.nested`) and `multi_kpi_mmm` (*Marketing mix for related products*,
+  `mmm.multivariate`), with About cards. *Help me choose* recommends the two models and
+  templates for "a few related numbers over time".
+
+#### Changed
+- `geo_mmm` 2.1.0: the template also keeps `adstock` and draws `mmm.roi`.
+- The About cards of `mmm.nested` and `mmm.multivariate` now tell what the models can do:
+  national data, no control variables, and cross-effects that are associations. The card of
+  `mmm.bayesian` tells about time-varying effects, counts and shares.
+- Guided drafts: a question that allows missing values also suggests columns that are mostly
+  empty (for example a monthly survey). The labels of a wide covariate that has its own dim
+  keep their words (`site_visits`, not `site`).
+- The Guided report and the shared report show `mmm.roi` first when the spec draws it.
+
+#### Fixed
+- Score plots of `mmm.decomposition` and `mmm.waterfall` show one outcome when a score
+  renames the outcome dim to its dataset name. Before, they added all outcomes together.
+- The Guided what-if and the scenario presets of the several-results template use the spend
+  question, not the results question.
+- The mediated template does not ask for channel beliefs, because `mmm.nested` takes lift tests
+  only.
+- The data-shape hint of the national templates names the mediator or result columns.
+- The `mmm.multivariate` starter spec does not ask for the cross-effects plot when it sets no
+  cross-effects.
+- A budget plan for one weighted outcome names that outcome and its weight.
+- A very long `mmm.*` parameter value is cut to 6000 characters, not refused after sampling.
+
+#### Known gaps
+- `mmm.nested` and `mmm.multivariate` use national data only and take no control variables.
+- `mmm.multivariate` has no lift-test calibration and no promotion modulation.
+- The Guided template `multi_kpi_mmm` sets no weights and no cross-effects. Add them in the
+  spec editor.
+- The likelihoods binomial, beta-binomial and lognormal are not available.
+- A budget plan of a count model (log link) adds the increments of the channels. The
+  removal-based response curves are the correct view of each channel.
+- The approximate fits of `mmm.nested` and `mmm.multivariate` do not send their loss while
+  they fit.
+
 ## [0.11.0] — Run tracking — 2026-10-20
 
 ### Run tracking: metrics, parameters, tags and notes

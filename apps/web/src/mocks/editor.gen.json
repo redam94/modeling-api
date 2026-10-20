@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:82a59f04011f4cbcfb8bb8adb0bde43e6e1c79e712457e7efc918309583512e5",
+  "digest": "sha256:485607a8cac2c12c5ba373270905d3edcef3402d31cdb608ec77867c2995c2fa",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -276,7 +276,7 @@
       ],
       "difficulty": "intermediate",
       "example": "TV returns 2.1 euros for each euro of spend (range 1.4 to 2.9) and search returns 3.4.",
-      "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and products (MFF panels). Priors come from business beliefs. Lift tests are a calibration likelihood. NUTS through PyMC, nutpie or numpyro.",
+      "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and products (MFF panels). Priors come from business beliefs. Lift tests are a calibration likelihood. Time-varying channel coefficients are a random walk on the log coefficient, with a forecast policy (random walk, hold last, mean) after the fit window. Poisson and negative binomial (log link) and beta (logit link) likelihoods split the expected KPI into channel parts in proportion to their link-scale terms; ROI priors and lift tests apply only to the normal and Student-t likelihoods. NUTS through PyMC, nutpie or numpyro.",
       "fits": {
        "data_shape": [
         "one_series",
@@ -305,7 +305,8 @@
       "outputs": [
        "Contribution and return for each channel, with ranges",
        "Response curves",
-       "Budget plans and what-if answers"
+       "Budget plans and what-if answers",
+       "The effect of each channel over time, when the effect can change"
       ],
       "references": [
        {
@@ -328,7 +329,9 @@
       "use_when": [
        "You have two or more years of weekly sales and spend for each channel",
        "You want to know the return of each channel and plan budgets",
-       "You have results for each market or product and you want one model for all of them"
+       "You have results for each market or product and you want one model for all of them",
+       "Your result is a count (orders, sign-ups) or a share between 0 and 1",
+       "The effect of a channel changes over time, for example when an advertisement gets old"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -395,6 +398,28 @@
        ],
        "name": "marginal_cost",
        "units": "spend per target"
+      },
+      {
+       "cache": "fit",
+       "description": "Share of a unit of spend's total effect that lands each number of periods after the spend, per thinned draw (carry-over shape)",
+       "dims": [
+        "sample",
+        "channel",
+        "lag"
+       ],
+       "name": "adstock",
+       "units": "share"
+      },
+      {
+       "cache": "fit",
+       "description": "KPI per unit of spend at the average spend level with the channel effect of each period (changes over time only for time-varying channels)",
+       "dims": [
+        "sample",
+        "channel",
+        "time"
+       ],
+       "name": "effectiveness",
+       "units": "target per spend"
       }
      ],
      "description": "mmm-framework's Bayesian marketing-mix model: adstock and saturation per channel, trend and seasonality, national or hierarchical over geos and products, channel effects stated as returns on spend, business priors and lift tests as calibration, budget optimisation with mmm-framework planning.",
@@ -491,10 +516,18 @@
      "plots": [
       "core.ppc_fan",
       "core.convergence",
+      "core.energy",
       "core.posterior_forest",
+      "core.prior_posterior",
       "mmm.decomposition",
+      "mmm.waterfall",
       "mmm.response_curves",
-      "mmm.marginal_cost"
+      "mmm.marginal_cost",
+      "mmm.roi",
+      "mmm.spend_effect",
+      "mmm.adstock",
+      "mmm.lift_tests",
+      "mmm.effectiveness"
      ],
      "resources": {
       "default_class": "M",
@@ -898,6 +931,45 @@
         "title": "SeasonalitySettings",
         "type": "object"
        },
+       "TimeVaryingSettings": {
+        "additionalProperties": false,
+        "description": "Channels whose effect drifts over time (mmm-framework's time-varying coefficient:\na random walk on the log of the channel coefficient, one step per period).",
+        "properties": {
+         "channels": {
+          "description": "Channels whose effect may change over time (creative wear-out, changes in the market)",
+          "items": {
+           "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Channels",
+          "type": "array",
+          "x-ui-level": "advanced"
+         },
+         "forecast": {
+          "default": "random_walk",
+          "description": "The effect after the fit window: random_walk (continue the random walk, so the range widens with the horizon), hold_last (the last fitted value) or mean (the average over the fit window)",
+          "enum": [
+           "random_walk",
+           "hold_last",
+           "mean"
+          ],
+          "title": "Forecast",
+          "type": "string",
+          "x-ui-level": "advanced"
+         },
+         "innovation_sigma": {
+          "default": 0.15,
+          "description": "Prior scale of the change in the log effect from one period to the next (smaller: closer to a constant effect)",
+          "exclusiveMinimum": 0,
+          "maximum": 2,
+          "title": "Innovation Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         }
+        },
+        "title": "TimeVaryingSettings",
+        "type": "object"
+       },
        "TrendSettings": {
         "additionalProperties": false,
         "description": "The slow-moving baseline (mmm-framework ``TrendConfig``).",
@@ -1033,13 +1105,25 @@
        },
        "likelihood": {
         "default": "normal",
-        "description": "Observation noise: normal, or student_t for heavy-tailed outliers",
+        "description": "Observation model of the KPI: normal, student_t (heavy-tailed outliers), poisson or negative_binomial (counts, log link) or beta (shares between 0 and 1, logit link)",
         "enum": [
          "normal",
-         "student_t"
+         "student_t",
+         "poisson",
+         "negative_binomial",
+         "beta"
         ],
         "title": "Likelihood",
         "type": "string",
+        "x-ui-level": "advanced"
+       },
+       "media_effect_sigma": {
+        "default": 0.5,
+        "description": "Count and share likelihoods only: prior scale (half-normal) of a channel's largest effect on the link scale",
+        "exclusiveMinimum": 0,
+        "maximum": 5,
+        "title": "Media Effect Sigma",
+        "type": "number",
         "x-ui-level": "advanced"
        },
        "media_prior": {
@@ -1093,6 +1177,16 @@
         },
         "x-ui-level": "basic"
        },
+       "time_varying": {
+        "$ref": "#/$defs/TimeVaryingSettings",
+        "default": {
+         "channels": [],
+         "forecast": "random_walk",
+         "innovation_sigma": 0.15
+        },
+        "description": "Channels whose effect changes over time",
+        "x-ui-level": "advanced"
+       },
        "trend": {
         "$ref": "#/$defs/TrendSettings",
         "default": {
@@ -1108,7 +1202,7 @@
       "title": "BayesianSettings",
       "type": "object"
      },
-     "version": "1.0.0"
+     "version": "1.1.0"
     },
     "yanked": false
    },
@@ -1226,6 +1320,28 @@
        ],
        "name": "marginal_cost",
        "units": "spend per target"
+      },
+      {
+       "cache": "fit",
+       "description": "Share of a unit of spend's total effect that lands each number of periods after the spend, per thinned draw (carry-over shape)",
+       "dims": [
+        "sample",
+        "channel",
+        "lag"
+       ],
+       "name": "adstock",
+       "units": "share"
+      },
+      {
+       "cache": "fit",
+       "description": "KPI per unit of spend at the average spend level with the channel effect of each period (changes over time only for time-varying channels)",
+       "dims": [
+        "sample",
+        "channel",
+        "time"
+       ],
+       "name": "effectiveness",
+       "units": "target per spend"
       }
      ],
      "description": "mmm-framework's fast frequentist marketing-mix model: adstock and saturation chosen by an out-of-sample search, a ridge solve with non-negative channel effects and bootstrap intervals; seconds instead of minutes.",
@@ -1798,6 +1914,1339 @@
        }
       },
       "title": "FrequentistSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Advertising has an effect that continues for some time, and diminishing returns",
+       "The effects between the results are steady over the period",
+       "No other driver changes both the spend and the results"
+      ],
+      "avoid_when": [
+       "Only one result is important to you (use the standard marketing mix model)",
+       "You have results for each market (this model uses national data)",
+       "You must prove that one product takes sales from a different product (the model shows associations, not causes)"
+      ],
+      "data_needs": [
+       "One national column for each result and spend for each channel over time",
+       "The results use the same units, or you give a value for one unit of each result"
+      ],
+      "difficulty": "expert",
+      "example": "The advertising of the premium range also increases the sales of the basic range by 5%.",
+      "expert_notes": "mmm-framework mmm_extensions MultivariateMMM: one equation per outcome with shared or separate adstock, exponential saturation, trend and Fourier seasonality; a multivariate normal observation with an LKJ correlation prior. Cross-effects (psi) act on the observed source outcome, so they are associations that are confounded with the residual correlation. Scores, response curves and budget plans use the reduced form (I - P)^-1, so a channel that moves one outcome also moves the others through psi. National data only, no control variables, no lift-test calibration and no promotion modulation.",
+      "fits": {
+       "data_shape": [
+        "several_series"
+       ],
+       "drivers": [
+        "yes"
+       ],
+       "frequency": [
+        "daily",
+        "weekly"
+       ],
+       "goal": [
+        "explain_marketing",
+        "plan_budget"
+       ],
+       "history": [
+        "medium",
+        "long"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Contribution of each channel to each result, with ranges",
+       "Effects between the results (halo or cannibalization)",
+       "Response curves and budget plans for a weighted total of the results"
+      ],
+      "references": [
+       {
+        "title": "mmm-framework documentation",
+        "url": "https://redam94.github.io/mmm-framework/"
+       }
+      ],
+      "related": [
+       "mmm.bayesian",
+       "mmm.nested"
+      ],
+      "summary_plain": "Measures marketing effects on two or more results at the same time, such as the sales of related products. It also shows how the sales of one product move with the sales of a different product.",
+      "title": "Marketing mix for several results",
+      "typical_runtime": "long",
+      "use_when": [
+       "You have two or more results over time, such as the sales of related products",
+       "One marketing budget acts on all of the results",
+       "You think that the sales of one product go up or down with the sales of a different product"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": false,
+      "contribution_scale": "additive",
+      "decision": true,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "y_hat",
+       "contributions"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [
+       "carryover",
+       "inverse_units",
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "counterfactual",
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "fit",
+       "description": "Channel, baseline, trend and seasonality contributions per outcome over the fit window per thinned draw",
+       "dims": [
+        "sample",
+        "channel",
+        "outcome",
+        "time"
+       ],
+       "name": "contributions",
+       "units": "target"
+      },
+      {
+       "cache": "fit",
+       "description": "Weighted total of the outcomes per spend multiplier and channel per thinned draw, plus the curves per outcome",
+       "dims": [
+        "sample",
+        "channel",
+        "multiplier"
+       ],
+       "name": "response_curves",
+       "units": "target"
+      },
+      {
+       "cache": "fit",
+       "description": "Extra spend per extra unit of the weighted outcome total at current spend",
+       "dims": [
+        "sample",
+        "channel"
+       ],
+       "name": "marginal_cost",
+       "units": "spend per target"
+      },
+      {
+       "cache": "fit",
+       "description": "Share of a unit of spend's effect that lands each period later",
+       "dims": [
+        "sample",
+        "channel",
+        "lag"
+       ],
+       "name": "adstock"
+      },
+      {
+       "cache": "fit",
+       "description": "Effect of one outcome on another (target units per unit of source)",
+       "dims": [
+        "sample",
+        "pair"
+       ],
+       "name": "cross_effects",
+       "units": "target per target"
+      }
+     ],
+     "description": "mmm-framework's multivariate marketing-mix model: one national spend series per channel drives two or more outcomes, with correlated residuals and cross-effects between outcomes (cannibalization, halo); budgets are optimised on the weighted total of the outcomes.",
+     "family": "mmm",
+     "fit_schema": {
+      "properties": {
+       "chains": {
+        "maximum": 16,
+        "minimum": 1,
+        "type": "integer",
+        "x-ui-level": "basic"
+       },
+       "checkpoint": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "draws": {
+        "maximum": 20000,
+        "minimum": 1,
+        "type": "integer",
+        "x-ui-level": "basic"
+       },
+       "engine": {
+        "default": "nutpie",
+        "enum": [
+         "nutpie",
+         "pymc",
+         "numpyro",
+         "map",
+         "advi",
+         "fullrank_advi",
+         "pathfinder",
+         "laplace",
+         "smc"
+        ],
+        "x-ui-level": "advanced"
+       },
+       "keep": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "mode": {
+        "default": "evaluate_then_refit",
+        "enum": [
+         "evaluate_then_refit",
+         "train_only"
+        ],
+        "x-ui-level": "advanced"
+       },
+       "prior_predictive": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "seed": {
+        "minimum": 0,
+        "type": "integer",
+        "x-ui-level": "advanced"
+       },
+       "target_accept": {
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0.5,
+        "type": "number",
+        "x-ui-level": "advanced"
+       },
+       "tune": {
+        "maximum": 20000,
+        "minimum": 0,
+        "type": "integer",
+        "x-ui-level": "basic"
+       }
+      },
+      "type": "object"
+     },
+     "id": "mmm.multivariate",
+     "outputs": {
+      "contributions": {
+       "description": "Every channel, the baseline, trend and seasonality per outcome, with cross-effects passed through; they sum to y_hat",
+       "dims": [
+        "component",
+        "time"
+       ],
+       "dims_of": "y",
+       "units_of": "y"
+      },
+      "y_hat": {
+       "description": "Expected (or predictive) value of every outcome over time",
+       "dims": [
+        "time"
+       ],
+       "dims_of": "y",
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "core.ppc_fan",
+      "core.convergence",
+      "core.energy",
+      "core.prior_posterior",
+      "mmm.decomposition",
+      "mmm.waterfall",
+      "mmm.response_curves",
+      "mmm.roi",
+      "mmm.spend_effect",
+      "mmm.adstock",
+      "mmm.cross_effects"
+     ],
+     "resources": {
+      "default_class": "M",
+      "est_fit_seconds": 900,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "channel": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "outcome": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "time": {
+         "kind": "time",
+         "policy": "extend"
+        }
+       },
+       "vars": {
+        "spend": {
+         "dims": [
+          "channel",
+          "time"
+         ],
+         "dtype": "float64",
+         "future_required": true,
+         "role": "spend"
+        },
+        "y": {
+         "dims": [
+          "outcome",
+          "time"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "CrossEffectSettings": {
+        "additionalProperties": false,
+        "description": "An effect of one outcome on another (mmm-framework ``CrossEffectConfig``).",
+        "properties": {
+         "kind": {
+          "default": "unconstrained",
+          "description": "unconstrained (the data picks the sign), cannibalization (the source takes sales from the target) or halo (the source adds sales to the target)",
+          "enum": [
+           "unconstrained",
+           "cannibalization",
+           "halo"
+          ],
+          "title": "Kind",
+          "type": "string",
+          "x-ui-level": "basic"
+         },
+         "prior_sigma": {
+          "default": 0.3,
+          "description": "Prior sd of the effect (target units per unit of source)",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Prior Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "source": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string",
+          "x-ui-level": "basic"
+         },
+         "target": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string",
+          "x-ui-level": "basic"
+         }
+        },
+        "required": [
+         "source",
+         "target"
+        ],
+        "title": "CrossEffectSettings",
+        "type": "object"
+       },
+       "GridSettings": {
+        "additionalProperties": false,
+        "description": "Response-curve grids cached per thinned draw (Guided-mode sliders, optimisation).",
+        "properties": {
+         "marginal_step": {
+          "default": 0.01,
+          "description": "Relative spend change used for marginal cost (central difference)",
+          "exclusiveMinimum": 0,
+          "maximum": 0.25,
+          "title": "Marginal Step",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "max_multiplier": {
+          "default": 2.5,
+          "description": "Largest spend multiplier on the grid (1 = spend over the fit window, which the grid always holds)",
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Multiplier",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "points": {
+          "default": 26,
+          "description": "Grid points from 0 to max_multiplier (plus 1, today's spend, when the spacing skips it)",
+          "maximum": 201,
+          "minimum": 3,
+          "title": "Points",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         }
+        },
+        "title": "GridSettings",
+        "type": "object"
+       },
+       "OutcomeSettings": {
+        "additionalProperties": false,
+        "description": "One outcome (a label of the data's ``outcome`` dim) and its priors.",
+        "properties": {
+         "include_seasonality": {
+          "default": true,
+          "title": "Include Seasonality",
+          "type": "boolean",
+          "x-ui-level": "advanced"
+         },
+         "include_trend": {
+          "default": true,
+          "title": "Include Trend",
+          "type": "boolean",
+          "x-ui-level": "advanced"
+         },
+         "intercept_sigma": {
+          "default": 2.0,
+          "description": "Prior sd of the baseline level, in outcome standard deviations",
+          "exclusiveMinimum": 0,
+          "maximum": 20,
+          "title": "Intercept Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "media_sigma": {
+          "default": 0.5,
+          "description": "Prior sd of each channel effect, in outcome standard deviations",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Media Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "name": {
+          "description": "A label of the data's outcome dim",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string",
+          "x-ui-level": "basic"
+         },
+         "weight": {
+          "default": 1.0,
+          "description": "Value of one unit of this outcome in the budget objective (the plans and response curves use the weighted total of the outcomes)",
+          "maximum": 1000000.0,
+          "minimum": 0,
+          "title": "Weight",
+          "type": "number",
+          "x-ui-level": "basic"
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "title": "OutcomeSettings",
+        "type": "object"
+       },
+       "SeasonalitySettings": {
+        "additionalProperties": false,
+        "description": "Fourier seasonality (mmm-framework ``SeasonalityConfig``).",
+        "properties": {
+         "monthly_order": {
+          "anyOf": [
+           {
+            "maximum": 10,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Monthly Order",
+          "x-ui-level": "advanced"
+         },
+         "prior_sigma": {
+          "default": 0.3,
+          "description": "Prior sd of each Fourier coefficient, in KPI standard deviations (raise it for strongly seasonal categories)",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Prior Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "weekly_order": {
+          "anyOf": [
+           {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Daily data only",
+          "title": "Weekly Order",
+          "x-ui-level": "advanced"
+         },
+         "yearly_order": {
+          "anyOf": [
+           {
+            "maximum": 26,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 2,
+          "description": "Fourier pairs of the yearly cycle (0 or null: none)",
+          "title": "Yearly Order",
+          "x-ui-level": "basic"
+         }
+        },
+        "title": "SeasonalitySettings",
+        "type": "object"
+       },
+       "TrendSettings": {
+        "additionalProperties": false,
+        "description": "The slow-moving baseline (mmm-framework ``TrendConfig``).",
+        "properties": {
+         "changepoint_range": {
+          "default": 0.8,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Changepoint Range",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "growth_prior_sigma": {
+          "default": 0.5,
+          "description": "Prior sd of the linear slope, in KPI standard deviations over the whole history",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Growth Prior Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "kind": {
+          "default": "linear",
+          "description": "none, linear (default), piecewise (Prophet-style changepoints), spline or gp (a smooth Gaussian-process curve). Forecasts hold flexible trends at their last fitted level; a linear trend is extrapolated.",
+          "enum": [
+           "none",
+           "linear",
+           "piecewise",
+           "spline",
+           "gp"
+          ],
+          "title": "Kind",
+          "type": "string",
+          "x-ui-level": "basic"
+         },
+         "n_changepoints": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "N Changepoints",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         },
+         "n_knots": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 3,
+          "title": "N Knots",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         }
+        },
+        "title": "TrendSettings",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``mmm.multivariate`` (mmm-framework ``MultivariateMMM``).\n\nCanonical names (bind dataset names to these in ``data.bind``): dims ``time``,\n``channel`` and ``outcome``; target ``y(outcome, time)``; spend ``spend(channel,\ntime)``. National data only, no control variables. ``likelihood`` is not used: the\noutcomes share a correlated normal likelihood.",
+      "properties": {
+       "cross_effects": {
+        "description": "Effects of one outcome on another",
+        "items": {
+         "$ref": "#/$defs/CrossEffectSettings"
+        },
+        "maxItems": 28,
+        "title": "Cross Effects",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "frequency": {
+        "anyOf": [
+         {
+          "enum": [
+           "W",
+           "D",
+           "M"
+          ],
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Data frequency: W (weekly), D (daily) or M (monthly); default: read from the time labels",
+        "title": "Frequency",
+        "x-ui-level": "advanced"
+       },
+       "grid": {
+        "$ref": "#/$defs/GridSettings",
+        "default": {
+         "marginal_step": 0.01,
+         "max_multiplier": 2.5,
+         "points": 26
+        },
+        "x-ui-level": "advanced"
+       },
+       "likelihood": {
+        "default": "normal",
+        "description": "Observation noise: normal, or student_t for heavy-tailed outliers",
+        "enum": [
+         "normal",
+         "student_t"
+        ],
+        "title": "Likelihood",
+        "type": "string",
+        "x-ui-level": "advanced"
+       },
+       "lkj_eta": {
+        "default": 2.0,
+        "description": "LKJ concentration of the residual correlation (larger: closer to none)",
+        "exclusiveMinimum": 0,
+        "maximum": 50,
+        "title": "Lkj Eta",
+        "type": "number",
+        "x-ui-level": "advanced"
+       },
+       "outcomes": {
+        "description": "Settings per outcome; empty: every outcome of the data, with defaults",
+        "items": {
+         "$ref": "#/$defs/OutcomeSettings"
+        },
+        "maxItems": 8,
+        "title": "Outcomes",
+        "type": "array",
+        "x-ui-level": "basic"
+       },
+       "primary_outcome": {
+        "anyOf": [
+         {
+          "maxLength": 128,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "The outcome reports show first (default: the first outcome)",
+        "title": "Primary Outcome",
+        "x-ui-level": "basic"
+       },
+       "seasonality": {
+        "$ref": "#/$defs/SeasonalitySettings",
+        "default": {
+         "monthly_order": null,
+         "prior_sigma": 0.3,
+         "weekly_order": null,
+         "yearly_order": 2
+        },
+        "x-ui-level": "basic"
+       },
+       "share_adstock": {
+        "default": true,
+        "description": "One carry-over rate for every channel",
+        "title": "Share Adstock",
+        "type": "boolean",
+        "x-ui-level": "advanced"
+       },
+       "share_seasonality": {
+        "default": true,
+        "description": "One seasonal pattern for every outcome",
+        "title": "Share Seasonality",
+        "type": "boolean",
+        "x-ui-level": "advanced"
+       },
+       "share_trend": {
+        "default": false,
+        "description": "One trend for every outcome",
+        "title": "Share Trend",
+        "type": "boolean",
+        "x-ui-level": "advanced"
+       },
+       "trend": {
+        "$ref": "#/$defs/TrendSettings",
+        "default": {
+         "changepoint_range": 0.8,
+         "growth_prior_sigma": 0.5,
+         "kind": "linear",
+         "n_changepoints": 10,
+         "n_knots": 10
+        },
+        "x-ui-level": "basic"
+       }
+      },
+      "title": "MultivariateSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "Advertising has an effect that continues for some time, and diminishing returns",
+       "The intermediate measure carries all or part of the effect of a channel",
+       "No other driver changes both the spend and the sales"
+      ],
+      "avoid_when": [
+       "You only have sales and spend (use the standard marketing mix model)",
+       "You have results for each market or product (this model uses one national series)",
+       "Price, promotions or other drivers change sales much (this model has no control variables)"
+      ],
+      "data_needs": [
+       "One national series of sales and spend for each channel over time",
+       "One column for each intermediate measure. A measure can have empty periods"
+      ],
+      "difficulty": "expert",
+      "example": "Search ads increase visits, and the visits bring 40% of the effect of search on online sales.",
+      "expert_notes": "mmm-framework mmm_extensions NestedMMM: normalised geometric adstock (8 lags) and exponential saturation shared by the mediator and outcome equations. A measured mediator has Gaussian noise on its non-missing periods; a latent one is not observed (only the product of its two paths is identified). Outcome likelihood normal or Student-t, standardised. National data only, no control variables. Lift tests calibrate the total effect of a channel. NUTS through PyMC or nutpie, or ADVI.",
+      "fits": {
+       "data_shape": [
+        "several_series"
+       ],
+       "drivers": [
+        "yes"
+       ],
+       "frequency": [
+        "daily",
+        "weekly"
+       ],
+       "goal": [
+        "explain_marketing",
+        "plan_budget"
+       ],
+       "history": [
+        "medium",
+        "long"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "Direct and indirect contribution for each channel, with ranges",
+       "The part of the effect of each channel that goes through each measure",
+       "Fitted values of the intermediate measures",
+       "Response curves, budget plans and what-if answers"
+      ],
+      "references": [
+       {
+        "title": "mmm-framework documentation",
+        "url": "https://redam94.github.io/mmm-framework/"
+       }
+      ],
+      "related": [
+       "mmm.bayesian",
+       "mmm.multivariate"
+      ],
+      "summary_plain": "Measures marketing effects that go through an intermediate result. For example, ads bring visits to your website, and the visits bring sales.",
+      "title": "Marketing mix with steps in between",
+      "typical_runtime": "long",
+      "use_when": [
+       "You have an intermediate measure, such as visits, searches or awareness",
+       "You want to know how much of the effect of a channel goes through it",
+       "You measure the intermediate result only in some periods, for example with a monthly survey"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "calibration": [
+       "lift_tests"
+      ],
+      "checkpointable": false,
+      "contribution_scale": "additive",
+      "decision": true,
+      "deterministic_given_seed": false,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [
+       "y_hat",
+       "contributions"
+      ],
+      "inference": "mcmc",
+      "loo_valid": true,
+      "owns": [
+       "carryover",
+       "inverse_units",
+       "scaling"
+      ],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "counterfactual",
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [
+      {
+       "cache": "fit",
+       "description": "Channel, baseline, trend and seasonality contributions over the fit window per thinned draw",
+       "dims": [
+        "sample",
+        "channel",
+        "time"
+       ],
+       "name": "contributions",
+       "units": "target"
+      },
+      {
+       "cache": "fit",
+       "description": "Total contribution per spend multiplier and channel per thinned draw (Guided-mode slider grids, budget optimisation)",
+       "dims": [
+        "sample",
+        "channel",
+        "multiplier"
+       ],
+       "name": "response_curves",
+       "units": "target"
+      },
+      {
+       "cache": "fit",
+       "description": "Extra spend per extra unit of the KPI at current spend",
+       "dims": [
+        "sample",
+        "channel"
+       ],
+       "name": "marginal_cost",
+       "units": "spend per target"
+      },
+      {
+       "cache": "fit",
+       "description": "Share of a unit of spend's effect that lands each period later",
+       "dims": [
+        "sample",
+        "channel",
+        "lag"
+       ],
+       "name": "adstock"
+      },
+      {
+       "cache": "fit",
+       "description": "Direct and indirect (through each mediator) effect of each channel over the fit window",
+       "dims": [
+        "sample",
+        "channel",
+        "mediator"
+       ],
+       "name": "mediation",
+       "units": "target"
+      }
+     ],
+     "description": "mmm-framework's nested marketing-mix model: channels move mediators (visits, awareness, measured in some periods or latent) that move the KPI, plus direct channel effects; one national series, trend and seasonality, lift tests as calibration, budget optimisation.",
+     "family": "mmm",
+     "fit_schema": {
+      "properties": {
+       "chains": {
+        "maximum": 16,
+        "minimum": 1,
+        "type": "integer",
+        "x-ui-level": "basic"
+       },
+       "checkpoint": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "draws": {
+        "maximum": 20000,
+        "minimum": 1,
+        "type": "integer",
+        "x-ui-level": "basic"
+       },
+       "engine": {
+        "default": "nutpie",
+        "enum": [
+         "nutpie",
+         "pymc",
+         "numpyro",
+         "map",
+         "advi",
+         "fullrank_advi",
+         "pathfinder",
+         "laplace",
+         "smc"
+        ],
+        "x-ui-level": "advanced"
+       },
+       "keep": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "mode": {
+        "default": "evaluate_then_refit",
+        "enum": [
+         "evaluate_then_refit",
+         "train_only"
+        ],
+        "x-ui-level": "advanced"
+       },
+       "prior_predictive": {
+        "type": "object",
+        "x-ui-level": "advanced"
+       },
+       "seed": {
+        "minimum": 0,
+        "type": "integer",
+        "x-ui-level": "advanced"
+       },
+       "target_accept": {
+        "exclusiveMaximum": 1,
+        "exclusiveMinimum": 0.5,
+        "type": "number",
+        "x-ui-level": "advanced"
+       },
+       "tune": {
+        "maximum": 20000,
+        "minimum": 0,
+        "type": "integer",
+        "x-ui-level": "basic"
+       }
+      },
+      "type": "object"
+     },
+     "id": "mmm.nested",
+     "outputs": {
+      "contributions": {
+       "description": "Every channel's total effect (through the mediators and direct), the baseline, trend and seasonality; they sum to y_hat",
+       "dims": [
+        "component",
+        "time"
+       ],
+       "dims_of": "y",
+       "units_of": "y"
+      },
+      "mediator_hat": {
+       "description": "Expected mediators (latent mediators in standard units)",
+       "dims": [
+        "mediator",
+        "time"
+       ],
+       "units_of": "mediators"
+      },
+      "y_hat": {
+       "description": "Expected (or predictive) KPI over time",
+       "dims": [
+        "time"
+       ],
+       "dims_of": "y",
+       "units_of": "y"
+      }
+     },
+     "plots": [
+      "core.ppc_fan",
+      "core.convergence",
+      "core.energy",
+      "core.prior_posterior",
+      "mmm.decomposition",
+      "mmm.waterfall",
+      "mmm.response_curves",
+      "mmm.roi",
+      "mmm.spend_effect",
+      "mmm.adstock",
+      "mmm.mediation",
+      "mmm.lift_tests"
+     ],
+     "resources": {
+      "default_class": "M",
+      "est_fit_seconds": 900,
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {},
+      "template": {
+       "dims": {
+        "channel": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "mediator": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "time": {
+         "kind": "time",
+         "policy": "extend"
+        }
+       },
+       "vars": {
+        "mediators": {
+         "dims": [
+          "mediator",
+          "time"
+         ],
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "covariate"
+        },
+        "spend": {
+         "dims": [
+          "channel",
+          "time"
+         ],
+         "dtype": "float64",
+         "future_required": true,
+         "role": "spend"
+        },
+        "y": {
+         "dims": [
+          "time"
+         ],
+         "dtype": "float64",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "GridSettings": {
+        "additionalProperties": false,
+        "description": "Response-curve grids cached per thinned draw (Guided-mode sliders, optimisation).",
+        "properties": {
+         "marginal_step": {
+          "default": 0.01,
+          "description": "Relative spend change used for marginal cost (central difference)",
+          "exclusiveMinimum": 0,
+          "maximum": 0.25,
+          "title": "Marginal Step",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "max_multiplier": {
+          "default": 2.5,
+          "description": "Largest spend multiplier on the grid (1 = spend over the fit window, which the grid always holds)",
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Multiplier",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "points": {
+          "default": 26,
+          "description": "Grid points from 0 to max_multiplier (plus 1, today's spend, when the spacing skips it)",
+          "maximum": 201,
+          "minimum": 3,
+          "title": "Points",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         }
+        },
+        "title": "GridSettings",
+        "type": "object"
+       },
+       "MediatorSettings": {
+        "additionalProperties": false,
+        "description": "One mediator: a measured (or latent) result that channels move and that moves the\nKPI (mmm-framework ``MediatorConfig``).",
+        "properties": {
+         "channels": {
+          "anyOf": [
+           {
+            "items": {
+             "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Channels that move this mediator (default: every channel)",
+          "title": "Channels"
+         },
+         "direct_effect": {
+          "default": true,
+          "description": "The channels of this mediator also act on the KPI directly",
+          "title": "Direct Effect",
+          "type": "boolean"
+         },
+         "latent": {
+          "default": false,
+          "description": "The mediator is not measured: its series is ignored (it can be empty)",
+          "title": "Latent",
+          "type": "boolean"
+         },
+         "media_sign": {
+          "default": "positive",
+          "description": "Sign of the channel effects on the mediator",
+          "enum": [
+           "positive",
+           "none"
+          ],
+          "title": "Media Sign",
+          "type": "string"
+         },
+         "name": {
+          "description": "A mediator label",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+         },
+         "observation_sigma": {
+          "default": 0.1,
+          "description": "Prior scale of the measurement noise, in mediator standard deviations",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Observation Sigma",
+          "type": "number"
+         },
+         "outcome_sign": {
+          "default": "none",
+          "description": "Sign of the mediator's effect on the KPI",
+          "enum": [
+           "none",
+           "positive",
+           "negative"
+          ],
+          "title": "Outcome Sign",
+          "type": "string"
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "title": "MediatorSettings",
+        "type": "object"
+       },
+       "SeasonalitySettings": {
+        "additionalProperties": false,
+        "description": "Fourier seasonality (mmm-framework ``SeasonalityConfig``).",
+        "properties": {
+         "monthly_order": {
+          "anyOf": [
+           {
+            "maximum": 10,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Monthly Order",
+          "x-ui-level": "advanced"
+         },
+         "prior_sigma": {
+          "default": 0.3,
+          "description": "Prior sd of each Fourier coefficient, in KPI standard deviations (raise it for strongly seasonal categories)",
+          "exclusiveMinimum": 0,
+          "maximum": 5,
+          "title": "Prior Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "weekly_order": {
+          "anyOf": [
+           {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "description": "Daily data only",
+          "title": "Weekly Order",
+          "x-ui-level": "advanced"
+         },
+         "yearly_order": {
+          "anyOf": [
+           {
+            "maximum": 26,
+            "minimum": 0,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 2,
+          "description": "Fourier pairs of the yearly cycle (0 or null: none)",
+          "title": "Yearly Order",
+          "x-ui-level": "basic"
+         }
+        },
+        "title": "SeasonalitySettings",
+        "type": "object"
+       },
+       "TrendSettings": {
+        "additionalProperties": false,
+        "description": "The slow-moving baseline (mmm-framework ``TrendConfig``).",
+        "properties": {
+         "changepoint_range": {
+          "default": 0.8,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Changepoint Range",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "growth_prior_sigma": {
+          "default": 0.5,
+          "description": "Prior sd of the linear slope, in KPI standard deviations over the whole history",
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Growth Prior Sigma",
+          "type": "number",
+          "x-ui-level": "advanced"
+         },
+         "kind": {
+          "default": "linear",
+          "description": "none, linear (default), piecewise (Prophet-style changepoints), spline or gp (a smooth Gaussian-process curve). Forecasts hold flexible trends at their last fitted level; a linear trend is extrapolated.",
+          "enum": [
+           "none",
+           "linear",
+           "piecewise",
+           "spline",
+           "gp"
+          ],
+          "title": "Kind",
+          "type": "string",
+          "x-ui-level": "basic"
+         },
+         "n_changepoints": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "N Changepoints",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         },
+         "n_knots": {
+          "default": 10,
+          "maximum": 50,
+          "minimum": 3,
+          "title": "N Knots",
+          "type": "integer",
+          "x-ui-level": "advanced"
+         }
+        },
+        "title": "TrendSettings",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "Settings of ``mmm.nested`` (mmm-framework ``NestedMMM``).\n\nCanonical names: dims ``time``, ``channel`` and ``mediator``; target ``y(time)``;\nspend ``spend(channel, time)``; mediator series ``mediators(mediator, time)`` (missing\nvalues allowed). One national series, no control variables.",
+      "properties": {
+       "frequency": {
+        "anyOf": [
+         {
+          "enum": [
+           "W",
+           "D",
+           "M"
+          ],
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Data frequency: W (weekly), D (daily) or M (monthly); default: read from the time labels",
+        "title": "Frequency",
+        "x-ui-level": "advanced"
+       },
+       "grid": {
+        "$ref": "#/$defs/GridSettings",
+        "default": {
+         "marginal_step": 0.01,
+         "max_multiplier": 2.5,
+         "points": 26
+        },
+        "x-ui-level": "advanced"
+       },
+       "likelihood": {
+        "default": "normal",
+        "description": "Observation noise: normal, or student_t for heavy-tailed outliers",
+        "enum": [
+         "normal",
+         "student_t"
+        ],
+        "title": "Likelihood",
+        "type": "string",
+        "x-ui-level": "advanced"
+       },
+       "mediators": {
+        "description": "The mediators (default: every label of the mediator dim, measured, moved by every channel, with direct effects)",
+        "items": {
+         "$ref": "#/$defs/MediatorSettings"
+        },
+        "maxItems": 8,
+        "title": "Mediators",
+        "type": "array"
+       },
+       "seasonality": {
+        "$ref": "#/$defs/SeasonalitySettings",
+        "default": {
+         "monthly_order": null,
+         "prior_sigma": 0.3,
+         "weekly_order": null,
+         "yearly_order": 2
+        },
+        "x-ui-level": "basic"
+       },
+       "trend": {
+        "$ref": "#/$defs/TrendSettings",
+        "default": {
+         "changepoint_range": 0.8,
+         "growth_prior_sigma": 0.5,
+         "kind": "linear",
+         "n_changepoints": 10,
+         "n_knots": 10
+        },
+        "x-ui-level": "basic"
+       }
+      },
+      "title": "NestedSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -22644,6 +24093,64 @@
    {
     "about": {
      "assumptions": [
+      "A chain with an E-BFMI below 0.3 does not explore the tails well",
+      "The check needs some hundreds of draws in each chain"
+     ],
+     "avoid_when": [
+      "The model is not fitted with NUTS or HMC (there is no energy)",
+      "You want to know if the model is correct"
+     ],
+     "data_needs": [
+      "A sample_stats group with the energy of each draw in each chain"
+     ],
+     "difficulty": "expert",
+     "example": "The E-BFMI of chain 1 is 0.19, below 0.3. The blue histogram is much narrower than the grey one. The sampler does not reach the tails, so make the priors narrower or change the parameterisation.",
+     "expert_notes": "E-BFMI per chain = mean(diff(E)\u00b2) / var(E) (ArviZ `bfmi`, Betancourt 2016). The histograms pool the chains: marginal energy E \u2212 mean(E) per chain, transitions diff(E) \u2212 its mean per chain, on shared `bins` (40) between the 0.5% and 99.5% points. `bfmi_threshold` (0.3) sets the limit.",
+     "fits": {},
+     "outputs": [
+      "Two histograms: the energy (grey) and its change from one draw to the next (blue)",
+      "A bar for the E-BFMI of each chain with a dashed limit line",
+      "A caption that names the chains below the limit"
+     ],
+     "references": [
+      {
+       "title": "Betancourt (2016), Diagnosing suboptimal cotangent disintegrations in Hamiltonian Monte Carlo",
+       "url": "https://arxiv.org/abs/1604.00695"
+      },
+      {
+       "title": "ArviZ documentation",
+       "url": "https://python.arviz.org/en/stable/"
+      }
+     ],
+     "related": [
+      "core.convergence",
+      "core.pair",
+      "core.prior_posterior"
+     ],
+     "summary_plain": "Checks if the fitting method can move through all of the possible values of the model, including the extreme ones. A red bar shows a chain with a problem.",
+     "title": "Sampler energy",
+     "typical_runtime": "seconds",
+     "use_when": [
+      "You fitted a Bayesian model with NUTS or HMC and want to check the sampler",
+      "The convergence check is good, but you do not trust the extreme values"
+     ]
+    },
+    "id": "core.energy",
+    "persona": "expert",
+    "requires_groups": [
+     "sample_stats"
+    ],
+    "requires_representation": [
+     "draws"
+    ],
+    "summary": "The energy of the sampler and its change between draws, and the E-BFMI of each chain against a threshold.",
+    "title": "Sampler energy",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
       "Each dot uses the median (or mean) prediction only",
       "Cells with no actual value or no prediction are left out",
       "R\u00b2 and MAPE in the caption are for the cells on the chart"
@@ -23088,6 +24595,67 @@
    {
     "about": {
      "assumptions": [
+      "The prior draws are a fair sample of the prior (a thinned sample is enough)",
+      "A large overlap means that the data adds little. It does not mean that the prior is wrong"
+     ],
+     "avoid_when": [
+      "The model has no prior group",
+      "The model has hundreds of parameters (the chart shows the top ones only)"
+     ],
+     "data_needs": [
+      "A prior group and a posterior group with draws of the same variables"
+     ],
+     "difficulty": "expert",
+     "example": "beta[tv] moved most: its mean changed by 2.2 prior standard deviations. The prior and the posterior of sigma overlap by 21%, so the data told the model much about the noise. A parameter with 90% overlap depends mostly on its prior.",
+     "expert_notes": "Variables in both groups with draws (or `var_names`). Per cell: Gaussian KDE (Silverman) of prior and posterior on a shared grid of `points` (80); overlap = \u222b min(p, q). Cells are ranked by |mean_post \u2212 mean_prior| / sd_prior; at most `max_cells` (8) per variable and `max_vars` (12) variables. Overlap above `little` (0.8) is reported as 'the data adds little'.",
+     "fits": {},
+     "outputs": [
+      "One panel for each parameter with the prior (grey) and the posterior (blue)",
+      "Panels sorted by how far the mean moved, in prior standard deviations",
+      "A caption with the overlap of each pair and the parameters where the data adds little"
+     ],
+     "references": [
+      {
+       "title": "Gabry et al. (2019), Visualization in Bayesian workflow",
+       "url": "https://arxiv.org/abs/1709.01449"
+      },
+      {
+       "title": "ArviZ documentation",
+       "url": "https://python.arviz.org/en/stable/"
+      }
+     ],
+     "related": [
+      "core.posterior_forest",
+      "core.prior_predictive",
+      "mmm.prior_beliefs",
+      "core.energy"
+     ],
+     "summary_plain": "Shows, for each parameter, the values that the model allowed before it saw the data and the values after the fit. Parameters that the data moved most come first.",
+     "title": "Prior and posterior",
+     "typical_runtime": "seconds",
+     "use_when": [
+      "You want to know what the data taught the model",
+      "You want to find parameters that only the prior controls",
+      "You want to check that a prior is not too narrow"
+     ]
+    },
+    "id": "core.prior_posterior",
+    "persona": "expert",
+    "requires_groups": [
+     "prior",
+     "posterior"
+    ],
+    "requires_representation": [
+     "draws"
+    ],
+    "summary": "The prior and the posterior of each parameter in one panel, sorted by how far the data moved the parameter.",
+    "title": "Prior and posterior",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
       "The starting beliefs should allow your data, but they do not need to match it",
       "Values far outside anything possible show beliefs that are too wide"
      ],
@@ -23442,6 +25010,60 @@
    {
     "about": {
      "assumptions": [
+      "The shares at all lags add up to 1 for each draw",
+      "The shape of the carry-over does not change over time",
+      "The longest lag is the longest lag of the model"
+     ],
+     "avoid_when": [
+      "The model has no carry-over (adstock) part",
+      "You want the size of the effect, not its timing (use Contribution by component)"
+     ],
+     "data_needs": [
+      "An adstock group: the share of the effect at each lag for each channel, as draws",
+      "Optional: the average lag of each channel, and the frequency of the data"
+     ],
+     "difficulty": "intermediate",
+     "example": "TV has the longest carry-over: on average its effect comes 1.9 weeks after the spend. Search has 85% of its effect in the week of the spend. A TV campaign that ends today still adds sales for some weeks.",
+     "expert_notes": "`weight(sample, channel, lag)` is the adstock kernel of each draw normalised to sum 1. The average delay is `mean_lag` when present, else \u03a3 lag \u00d7 weight. Lines are medians and bands are HDIs at `hdi_prob` (0.9) per lag; `facet` gives one panel per channel. The unit word comes from `attrs['frequency']` (W, D or M).",
+     "fits": {},
+     "outputs": [
+      "A line and a shaded 90% range of the share of the effect at each lag, for each channel",
+      "A dot and a 90% range for the average delay of each channel",
+      "A caption that names the channel with the longest and the shortest carry-over"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.response_curves",
+      "mmm.decomposition",
+      "mmm.lift_tests"
+     ],
+     "summary_plain": "Shows how the effect of one unit of spend spreads over the weeks after the spend, for each channel. It also shows the average delay of the effect.",
+     "title": "Carry-over of the effect",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You want to know how long the effect of a campaign lasts",
+      "You plan the timing of campaigns, or you read a lift test that ended some weeks ago"
+     ]
+    },
+    "id": "mmm.adstock",
+    "persona": "both",
+    "requires_groups": [
+     "adstock"
+    ],
+    "requires_representation": [],
+    "summary": "How the effect of one unit of spend spreads over the periods after the spend, for each channel.",
+    "title": "Carry-over of the effect",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
       "All plans use the same model draws, so you can compare them draw by draw",
       "The first plan is the reference, unless you select a different one"
      ],
@@ -23491,6 +25113,58 @@
     ],
     "summary": "The spend allocation and the expected outcome of different budget plans.",
     "title": "Budget plan comparison",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The effect is the change in the target for a rise of one unit in the source",
+      "A link of the kind halo is positive and a link of the kind cannibalization is negative by construction"
+     ],
+     "avoid_when": [
+      "The model has one outcome",
+      "You want to prove cause and effect (the links are associations)"
+     ],
+     "data_needs": [
+      "A cross_effects group: the effect of each source outcome on each target outcome, as draws, with the kind of each link"
+     ],
+     "difficulty": "intermediate",
+     "example": "A rise of one unit in premium sales goes with 0.26 more units of basic sales, and the range does not include zero. The link from basic to premium is not clear.",
+     "expert_notes": "Reads `psi(sample, pair)` with the coords source, target and kind on `pair` and the units in `attrs['units']`. Dots are medians, ranges HDIs at `hdi_prob`. The links act on the observed source outcome, so they mix the effect with correlated noise between the outcomes: read them as associations.",
+     "fits": {},
+     "outputs": [
+      "A dot and a 90% range for each link, coloured by kind",
+      "A dashed line at zero",
+      "A caption that names the links whose range does not include zero"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.decomposition",
+      "mmm.waterfall",
+      "mmm.roi"
+     ],
+     "summary_plain": "Shows how a change in one outcome goes with a change in another outcome, for each pair that the model links. For example, more sales of a premium product can go with more sales of a basic product.",
+     "title": "Effects between outcomes",
+     "typical_runtime": "instant",
+     "use_when": [
+      "Your model has more than one outcome with links between them",
+      "You want to know if products help each other (halo) or take sales from each other (cannibalisation)"
+     ]
+    },
+    "id": "mmm.cross_effects",
+    "persona": "both",
+    "requires_groups": [
+     "cross_effects"
+    ],
+    "requires_representation": [],
+    "summary": "How a change in one outcome goes with a change in another outcome, for each pair that the model links.",
+    "title": "Effects between outcomes",
     "version": "1.0.0",
     "yanked": false
    },
@@ -23549,6 +25223,109 @@
    {
     "about": {
      "assumptions": [
+      "The effect is measured at the average spend level of each channel",
+      "After the end of the data, the effect follows the forecast rule of the model"
+     ],
+     "avoid_when": [
+      "No channel has a time-varying effect (the lines are then flat)",
+      "You want the effect of more or less spend (use Response curves)"
+     ],
+     "data_needs": [
+      "An effectiveness group: the KPI for each unit of spend in each period for each channel, as draws, and a flag for the time-varying channels"
+     ],
+     "difficulty": "intermediate",
+     "example": "The effect of TV went from 2.0 to 1.45 for each unit of spend (\u221228%) in the year. It was highest in January. Search and social have a constant effect and do not show.",
+     "expert_notes": "`effectiveness(sample, channel, time)` is \u03a3_cells steady-state KPI at the mean fit-window spend with the coefficient of period t, divided by that spend. Lines are medians, bands HDIs at `hdi_prob`. `only_varying` (default true) shows the channels with `time_varying` set (all channels when none is set); without the flag a channel varies when its median moves.",
+     "fits": {},
+     "outputs": [
+      "A line and a shaded 90% range for each time-varying channel over time",
+      "A caption with the first and the last value and the period of the highest value"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.roi",
+      "mmm.response_curves",
+      "mmm.decomposition"
+     ],
+     "summary_plain": "Shows the effect of one unit of spend in each period, for the channels whose effect can change over time. Use it to see if a channel becomes stronger or weaker.",
+     "title": "Effect of spend over time",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You fitted a model with time-varying channel effects",
+      "You think that a channel lost (or gained) effect, for example after a creative change"
+     ]
+    },
+    "id": "mmm.effectiveness",
+    "persona": "both",
+    "requires_groups": [
+     "effectiveness"
+    ],
+    "requires_representation": [],
+    "summary": "The effect of one unit of spend in each period, for channels whose effect changes over time.",
+    "title": "Effect of spend over time",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The test and the model measure the same thing in the same units",
+      "The range of a test is its result plus and minus 1.96 standard errors"
+     ],
+     "avoid_when": [
+      "The model has no lift tests",
+      "You want to know if the test itself is correct (the chart takes the test as given)"
+     ],
+     "data_needs": [
+      "A lift_tests group: the result and the standard error of each test, and the model's value for each test as draws"
+     ],
+     "difficulty": "intermediate",
+     "example": "The model agrees with three of four tests. For lift_1 (search), the test measured 80 and the model gives 140. Look at the period and the market of that test, then at the prior of search.",
+     "expert_notes": "Reads `observed(test)`, `observed_sd(test)` and `model(chain, draw, test)` (or a sample dim) with the coords channel, estimand, start, end and geo on `test`. The model agrees with a test when its HDI at `hdi_prob` overlaps observed \u00b1 `z` \u00d7 observed_sd (`z` = 1.96). Tests of different estimands get their own panel and scale.",
+     "fits": {},
+     "outputs": [
+      "Two rows for each test: the result of the test with its range (black) and the model's 90% range (blue)",
+      "One panel for each kind of result (contribution or marginal ROAS)",
+      "A caption that names the tests that the model does not agree with"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.roi",
+      "mmm.adstock",
+      "core.prior_posterior"
+     ],
+     "summary_plain": "Compares the result of each lift test with the value that the calibrated model gives for the same channel, period and market. It shows the tests that the model does not agree with.",
+     "title": "Lift tests and the model",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You calibrated the model with lift tests and want to see if it agrees with them",
+      "A test result looks strange and you want to compare it with the model"
+     ]
+    },
+    "id": "mmm.lift_tests",
+    "persona": "both",
+    "requires_groups": [
+     "lift_tests"
+    ],
+    "requires_representation": [],
+    "summary": "The result of each lift test beside the value that the calibrated model gives for the same channel and period.",
+    "title": "Lift tests and the model",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
       "The cost comes from the slope of each response curve between spend levels",
       "Very high costs are cut at the 98th percentile so that the chart stays readable"
      ],
@@ -23596,6 +25373,59 @@
     "requires_representation": [],
     "summary": "The cost (or the return) of the next unit of outcome at each spend level in each channel.",
     "title": "Marginal cost",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The direct part and the parts through the mediators add up to the total effect",
+      "The paths are the paths that the model allows. A path that the model does not have is zero"
+     ],
+     "avoid_when": [
+      "The model has no mediators",
+      "You want to prove cause and effect (the paths depend on the structure of the model)"
+     ],
+     "data_needs": [
+      "A mediation group: the direct effect and the effect through each mediator for each channel, as draws"
+     ],
+     "difficulty": "intermediate",
+     "example": "76% of the effect of TV goes through the mediators, most of it through awareness. Search works through visits. Social works directly: the ranges of its mediated paths include zero.",
+     "expert_notes": "Reads `direct(sample, channel)`, `indirect(sample, channel, mediator)`, `total` and `share_mediated` (computed from the others when missing). Bars stack the means (which add up); ranges are HDIs at `hdi_prob`. Effects are KPI totals over the fit window at actual spend. With a latent mediator only the product of the two path coefficients is identified; the chart shows it in KPI units.",
+     "fits": {},
+     "outputs": [
+      "A stacked bar for each channel: the direct part and one part for each mediator",
+      "A line for the 90% range of the total effect",
+      "A dot and a 90% range for the share of the effect through the mediators",
+      "A caption with the largest share, the largest path and the paths whose range includes zero"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.decomposition",
+      "mmm.roi",
+      "mmm.waterfall"
+     ],
+     "summary_plain": "Shows how much of the effect of each channel comes directly and how much comes through a mediator, such as site visits or brand awareness.",
+     "title": "Direct and mediated effects",
+     "typical_runtime": "instant",
+     "use_when": [
+      "Your model has mediators between the channels and the KPI",
+      "You want to know if a channel works through awareness or through visits"
+     ]
+    },
+    "id": "mmm.mediation",
+    "persona": "both",
+    "requires_groups": [
+     "mediation"
+    ],
+    "requires_representation": [],
+    "summary": "How much of the effect of each channel comes directly, and how much comes through each mediator, such as visits or awareness.",
+    "title": "Direct and mediated effects",
     "version": "1.0.0",
     "yanked": false
    },
@@ -23704,6 +25534,168 @@
     "requires_representation": [],
     "summary": "The expected outcome for each level of spend in each channel, with uncertainty.",
     "title": "Response curves",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "ROI is the contribution of a channel at current spend divided by its current spend",
+      "The contribution of a channel is measured against zero spend in that channel",
+      "Other channels and the baseline stay as they are"
+     ],
+     "avoid_when": [
+      "The KPI and the spend are not in the same money units (the break-even line then has no meaning; set `breakeven` to None)",
+      "You want the full curve of return against spend (use Response curves)"
+     ],
+     "data_needs": [
+      "A response_curves group: the contribution of each channel for each spend level, with the current spend",
+      "Optional: a marginal_cost group with the marginal ROI of each channel"
+     ],
+     "difficulty": "beginner",
+     "example": "Search has an ROI of 2.1 and social 0.55. The whole range of social is below 1.0, so social does not pay back its spend. TV has an ROI of 1.7, but its marginal ROI is 0.8: the next unit of TV spend returns less than it costs.",
+     "expert_notes": "Per draw: ROI = (f(current) \u2212 f(0)) / current, where f is the channel's response curve (extra dims such as geo summed) read by linear interpolation at `current_spend` (or at multiplier 1 when there is no current_spend). Marginal ROI comes from `marginal_cost.marginal_roi_total` when present, else from the slope (np.gradient) of each draw's curve at current spend. Dots are medians, ranges are HDIs at `hdi_prob` (0.9). `breakeven` (1.0, None for no line) draws the reference line and drives the caption. Channels with no spend have no ROI.",
+     "fits": {},
+     "outputs": [
+      "A dot and a 90% range for the ROI of each channel",
+      "A dot and a 90% range for the marginal ROI of each channel",
+      "A dashed line at the break-even point (1.0 by default)",
+      "A caption that names the best channel, the channels below the break-even point and the channels where the next unit returns less than it costs"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.response_curves",
+      "mmm.marginal_cost",
+      "mmm.spend_effect",
+      "mmm.budget_plans"
+     ],
+     "summary_plain": "Shows the return of each channel for each unit of its current spend, and the return of the next unit of spend. A dashed line marks the point where a channel pays back its spend.",
+     "title": "ROI and marginal ROI",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You want to know which channels pay back their spend",
+      "You want to know where the next unit of budget brings the most",
+      "You report the return of marketing to people who do not read models"
+     ]
+    },
+    "id": "mmm.roi",
+    "persona": "both",
+    "requires_groups": [
+     "response_curves"
+    ],
+    "requires_representation": [],
+    "summary": "The return of each channel for each unit of its current spend, and the return of the next unit of spend, with uncertainty.",
+    "title": "ROI and marginal ROI",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The share of effect is the share of the sum of all channel contributions, not of the KPI",
+      "A share of effect larger than the share of spend means an ROI above the average ROI of the channels. It does not tell where the next unit of spend goes best"
+     ],
+     "avoid_when": [
+      "You want the return of the next unit of spend (use ROI and marginal ROI)",
+      "Some channels have a negative effect (the shares then do not add up to 100%)"
+     ],
+     "data_needs": [
+      "A response_curves group: the contribution of each channel for each spend level, with the current spend"
+     ],
+     "difficulty": "beginner",
+     "example": "Search gets 20% of the spend and brings 29% of the effect. Social gets 27% of the spend but brings only 10% of the effect. Social is a candidate for a smaller budget.",
+     "expert_notes": "Effects come from the response curves at current spend (as in mmm.roi). The share of effect is computed per draw (contribution of c / sum over channels) and shown as median and HDI at `hdi_prob`; the share of spend is current_spend / its sum. Channels without spend count as zero spend.",
+     "fits": {},
+     "outputs": [
+      "A grey bar for the share of spend of each channel",
+      "A blue bar and a 90% range for the share of effect of each channel",
+      "A caption that names the channel with the best and the worst ratio of the two shares"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.roi",
+      "mmm.decomposition",
+      "mmm.budget_plans"
+     ],
+     "summary_plain": "Compares the share of the media budget that each channel gets with its share of the effect of all channels. A channel with a larger share of effect than of spend returns more than the average channel.",
+     "title": "Share of spend and share of effect",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You want a quick view of which channels get too much or too little budget",
+      "You present the results of a marketing mix model to people who do not read models"
+     ]
+    },
+    "id": "mmm.spend_effect",
+    "persona": "both",
+    "requires_groups": [
+     "response_curves"
+    ],
+    "requires_representation": [],
+    "summary": "The share of the media budget that each channel gets, beside its share of the effect of all channels.",
+    "title": "Share of spend and share of effect",
+    "version": "1.0.0",
+    "yanked": false
+   },
+   {
+    "about": {
+     "assumptions": [
+      "The parts add up to the KPI",
+      "Markets and other hidden dimensions are added up",
+      "A model with more than one outcome shows one outcome: the main outcome, unless you select one"
+     ],
+     "avoid_when": [
+      "You want to see the parts over time (use Contribution by component)",
+      "The model is multiplicative, so the parts do not add up"
+     ],
+     "data_needs": [
+      "A contributions group: the contribution of each channel and the baseline parts (baseline, trend, seasonality, controls), as draws"
+     ],
+     "difficulty": "beginner",
+     "example": "The total is 5,760. The baseline parts give 81% and TV gives 11%, the most of the channels. The range of social includes zero, so do not report its part as a fact.",
+     "expert_notes": "Each part is the sum over time and every non-channel dim per draw; the bar is the mean, the line the HDI at `hdi_prob` placed at the end of the step. Variables with a channel dim give one part per channel; other variables (and labels named baseline, trend, seasonality, intercept) are baseline parts. An `outcome` dim is reduced to `outcome`, else `attrs['primary_outcome']`, else its first level.",
+     "fits": {},
+     "outputs": [
+      "A bar for each baseline part, then for each channel from the largest to the smallest, then the total",
+      "A line for the 90% range of each step",
+      "A caption with the total, the baseline share and the largest channel"
+     ],
+     "references": [
+      {
+       "title": "mmm-framework documentation",
+       "url": "https://redam94.github.io/mmm-framework/"
+      }
+     ],
+     "related": [
+      "mmm.decomposition",
+      "core.decomposition",
+      "mmm.spend_effect"
+     ],
+     "summary_plain": "Shows how the baseline and each channel add up, step by step, to the total KPI of the period. The last bar is the total.",
+     "title": "Contribution waterfall",
+     "typical_runtime": "instant",
+     "use_when": [
+      "You want to explain the total sales of a period by its parts",
+      "You present the effect of marketing in a report or a deck"
+     ]
+    },
+    "id": "mmm.waterfall",
+    "persona": "both",
+    "requires_groups": [
+     "contributions"
+    ],
+    "requires_representation": [],
+    "summary": "How the baseline and each channel add up to the total KPI of the period, step by step.",
+    "title": "Contribution waterfall",
     "version": "1.0.0",
     "yanked": false
    },

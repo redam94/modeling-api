@@ -44,6 +44,71 @@ def _answers(template: str, columns: list[ColumnProfile]) -> dict[str, Any]:
 
 # ------------------------------------------------------------------------- role detection
 
+MEDIATED_COLUMNS = [
+    _col("Week", "date", n_rows=104, n_distinct=104, detected_freq="W-SUN", monotonic=True),
+    _col("Online Sales", "number", n_rows=104, min=900.0, max=4e4),
+    _col("TV_Spend", "number", n_rows=104, min=0.0, max=5e4),
+    _col("search_spend", "number", n_rows=104, min=0.0, max=2e4),
+    _col("site_visits", "integer", n_rows=104, min=1e3, max=9e4),
+    # a monthly survey: three weeks in four are empty
+    _col("brand_awareness", "number", n_rows=104, n_missing=78, min=0.1, max=0.6),
+]
+MULTI_KPI_COLUMNS = [
+    _col("week", "date", n_rows=104, n_distinct=104, detected_freq="W-SUN", monotonic=True),
+    _col("sales_premium", "number", n_rows=104, min=100.0, max=900.0),
+    _col("sales_basic", "number", n_rows=104, min=500.0, max=3e3),
+    _col("tv_cost", "number", n_rows=104, min=0.0, max=5e4),
+    _col("search_cost", "number", n_rows=104, min=0.0, max=2e4),
+]
+
+
+def test_role_detection_for_the_national_mmm_templates() -> None:
+    mediated = _answers("mediated_mmm", MEDIATED_COLUMNS)
+    assert mediated["kpi"] == "Online Sales" and mediated["date"] == "Week"
+    assert mediated["spend"] == ["TV_Spend", "search_spend"]
+    # the sparse survey column is a candidate: the question allows gaps
+    assert mediated["mediators"] == ["brand_awareness", "site_visits"]
+    multi = _answers("multi_kpi_mmm", MULTI_KPI_COLUMNS)
+    assert multi["kpis"] == ["sales_basic", "sales_premium"]
+    assert multi["spend"] == ["search_cost", "tv_cost"] and multi["frequency"] == "weekly"
+
+
+def test_national_mmm_drafts_become_wide_targets_and_mediators() -> None:
+    req = GuidedAnswers(template_id="mediated_mmm", name="m", dataset="d", columns=MEDIATED_COLUMNS,
+                        answers=_answers("mediated_mmm", MEDIATED_COLUMNS))  # fmt: skip
+    draft = build_draft(GUIDED_TEMPLATES["mediated_mmm"], req, project="p")
+    med = draft.mapping.wide["mediators"]
+    # labels keep the measure's words (a covariate of its own dim)
+    assert med.dim == "mediator" and med.missing == "allow"
+    assert med.columns == {"brand_awareness": "brand_awareness", "site_visits": "site_visits"}
+    assert draft.mapping.wide["spend"].columns == {"tv": "TV_Spend", "search": "search_spend"}
+    schema = draft_schema(draft.mapping, MEDIATED_COLUMNS)
+    assert schema.vars["mediators"].dims == ("week", "mediator")
+    assert schema.vars["mediators"].missing == "allow"
+    spec = ModelSpec.model_validate(draft.spec)
+    assert spec.model.use.id == "mmm.nested"
+    assert spec.data.bind.dims == {"channel": "channel", "mediator": "mediator", "time": "week"}
+    assert spec.data.bind.vars == {"y": "online_sales", "spend": "spend",
+                                   "mediators": "mediators"}  # fmt: skip
+    assert spec.outputs.derived[-1] == "mediation"
+    assert "mmm.mediation" in {p.id for p in spec.outputs.plots}
+
+    req = GuidedAnswers(template_id="multi_kpi_mmm", name="m", dataset="d",
+                        columns=MULTI_KPI_COLUMNS,
+                        answers=_answers("multi_kpi_mmm", MULTI_KPI_COLUMNS))  # fmt: skip
+    draft = build_draft(GUIDED_TEMPLATES["multi_kpi_mmm"], req, project="p")
+    y = draft.mapping.wide["y"]
+    assert (y.dim, y.role.value, y.missing) == ("outcome", "target", "forbid")
+    assert y.columns == {"basic": "sales_basic", "premium": "sales_premium"}
+    schema = draft_schema(draft.mapping, MULTI_KPI_COLUMNS)
+    assert schema.vars["y"].dims == ("week", "outcome")  # a valid schema: no name clash
+    spec = ModelSpec.model_validate(draft.spec)
+    assert spec.data.bind.vars == {"y": "y", "spend": "spend"}
+    assert spec.data.bind.dims == {"channel": "channel", "outcome": "outcome", "time": "week"}
+    assert "cross_effects" not in spec.outputs.derived and draft.issues == []
+    assert spec.model.settings.get("cross_effects") is None  # the spec editor adds them
+
+
 MMM_COLUMNS = [
     _col("Week", "date", n_distinct=104, detected_freq="W-SUN", monotonic=False),
     _col("Region", "string", n_distinct=10, sample=["north", "south"]),
@@ -273,6 +338,8 @@ def test_every_draft_passes_the_guided_lock(template: str) -> None:
         "weekly_forecast": {"kpi": "sales", "date": "week"},
         "store_demand": {"kpi": "units", "date": "week", "store": "store_id"},
         "customer_choice": _answers("customer_choice", CHOICE_COLUMNS),
+        "mediated_mmm": _answers("mediated_mmm", MEDIATED_COLUMNS),
+        "multi_kpi_mmm": _answers("multi_kpi_mmm", MULTI_KPI_COLUMNS),
     }[template]
     req = GuidedAnswers(template_id=template, name="n", dataset="d", answers=answers)
     draft = build_draft(GUIDED_TEMPLATES[template], req, project="p")

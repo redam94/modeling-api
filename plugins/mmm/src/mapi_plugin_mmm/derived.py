@@ -1,14 +1,15 @@
 """Derived quantities of the mmm-framework plugins, from posterior draws.
 
-Everything is computed with :class:`~mapi_plugin_mmm.forward.Replay` - the fitted model's
-own forward pass - on the fit window, over the thinned draws the harness asks for, in KPI
+Everything is computed with a :class:`~mapi_plugin_mmm.forward.ReplayLike` - the fitted
+model's own forward pass - on the fit window, over the thinned draws the harness asks for, in KPI
 and spend units of the model stage (the model owns scaling, so these are business units;
 ``to_original`` maps them further when the pipeline converts them).
 
 * ``contributions`` - ``channel_contribution(sample, channel, *panel, time)``,
   ``baseline`` (intercept and geo/product levels), ``trend``, ``seasonality`` and one
   ``(sample, *panel, time)`` variable per control, over the fit window. They sum to the
-  model's expected KPI.
+  model's expected KPI. A count or proportion likelihood has only the channels and the
+  baseline (the expected KPI without media).
 * ``response_curves`` - ``contribution(sample, channel, multiplier[, geo])``: the total
   contribution over the fit window when a channel's spend is scaled by ``multiplier``;
   ``spend(channel, multiplier)``, ``spend_by_geo(geo, channel, multiplier)``,
@@ -19,6 +20,12 @@ and spend units of the model stage (the model owns scaling, so these are busines
 * ``marginal_cost`` - ``marginal_cost(sample, channel[, geo])``: extra spend per extra unit
   of the KPI at current spend (central difference of ``grid.marginal_step``), its inverse
   ``marginal_roi`` and channel totals.
+* ``adstock`` - ``weight(sample, channel, lag)``: the share of a unit of spend's total
+  effect that lands ``lag`` periods after the spend (the carry-over kernel normalised to
+  one), and ``mean_lag(sample, channel)``.
+* ``effectiveness`` - ``effectiveness(sample, channel, time)``: KPI per unit of spend at
+  each cell's average spend level with the channel coefficient of period ``time``
+  (constant for channels that are not time-varying), and ``time_varying(channel)``.
 """
 
 from __future__ import annotations
@@ -31,14 +38,17 @@ import numpy as np
 import xarray as xr
 from mapi_spec.errors import ErrorCode, MapiError
 
-from mapi_plugin_mmm.forward import Components, Replay, history_arrays
-from mapi_plugin_mmm.framework import CHANNEL, GEO, PRODUCT, TIME, PanelData
+from mapi_plugin_mmm.forward import Components, ReplayLike, history_arrays
+from mapi_plugin_mmm.framework import CHANNEL, GEO, PRODUCT, TIME, PanelData, infer_frequency
 from mapi_plugin_mmm.settings import GridSettings
 
 __all__ = [
     "SAMPLE",
     "FitWindow",
+    "ToOriginal",
+    "adstock_dataset",
     "contributions_dataset",
+    "effectiveness_dataset",
     "marginal_cost_dataset",
     "response_curves_dataset",
 ]
@@ -70,7 +80,7 @@ def _convert(
 class FitWindow:
     """The replay over the fit window: fitted cells, history arrays and labels."""
 
-    replay: Replay
+    replay: ReplayLike
     fit: PanelData
     _units: dict[str, tuple[float, dict[str, Any]]] = field(default_factory=dict)
 
@@ -117,10 +127,21 @@ class FitWindow:
         )
 
     def channel_totals(self, multiplier: float) -> np.ndarray:
-        """``(S, C, n_cell)`` channel contributions over the window at ``multiplier``."""
-        spend, _ = self.arrays()
-        ch = self.replay.channel_at(spend * multiplier, np.arange(self.fit.n_periods), self.cells)
-        return np.asarray(ch.sum(axis=3) * self.replay.y_std)
+        """``(S, C, n_cell)`` channel contributions over the window at ``multiplier``
+        (:meth:`~mapi_plugin_mmm.forward.ReplayLike.channel_totals`)."""
+        spend, ctrl = self.arrays()
+        return self.replay.channel_totals(
+            spend, ctrl, np.arange(self.fit.n_periods), self.cells, float(multiplier)
+        )
+
+    def expected_cells(self) -> np.ndarray:
+        """``(S, n_cell)`` expected KPI over the window at the actual spend."""
+        return np.asarray(self.evaluate(1.0).mu.sum(axis=2))
+
+    def baseline_cells(self) -> np.ndarray:
+        """``(S, n_cell)`` KPI over the window that no channel explains: the expected KPI
+        minus every channel's total."""
+        return self.expected_cells() - self.channel_totals(1.0).sum(axis=1)
 
     # labelled helpers ----------------------------------------------------------------
     def panel_dims(self) -> list[str]:
@@ -148,26 +169,24 @@ class FitWindow:
 
 
 def contributions_dataset(win: FitWindow, to_original: ToOriginal | None) -> xr.Dataset:
-    """Channel, baseline, trend, seasonality and control contributions over the window."""
+    """Channel, baseline, trend, seasonality and control contributions over the window
+    (a count or proportion likelihood: channels and baseline only)."""
     comps = win.evaluate(1.0)
+    channel, terms, controls = comps.kpi_parts()
     n = comps.baseline.shape[0]
     sample = {SAMPLE: np.arange(n)}
     out: dict[str, xr.DataArray] = {}
-    ch = win.cube(comps.channel, [SAMPLE, CHANNEL], {**sample, CHANNEL: win.fit.channels})
+    ch = win.cube(channel, [SAMPLE, CHANNEL], {**sample, CHANNEL: win.fit.channels})
     out["channel_contribution"] = _convert(to_original, ch, "y", win)
-    out["baseline"] = _convert(to_original, win.cube(comps.baseline, [SAMPLE], sample), "y", win)
-    n_cell = comps.baseline.shape[1]
-    trend = np.broadcast_to(comps.trend[:, None, :], (n, n_cell, comps.trend.shape[1]))
-    season = np.broadcast_to(comps.seasonality[:, None, :], (n, n_cell, comps.seasonality.shape[1]))
-    out["trend"] = _convert(to_original, win.cube(np.asarray(trend), [SAMPLE], sample), "y", win)
-    out["seasonality"] = _convert(
-        to_original, win.cube(np.asarray(season), [SAMPLE], sample), "y", win
-    )
-    for k, name in enumerate(win.fit.controls.variables):
-        label = name if name not in out else f"{name}_contribution"
-        out[label] = _convert(
-            to_original, win.cube(comps.controls[:, k], [SAMPLE], sample), "y", win
+    names = ("baseline", "trend", "seasonality") if comps.link == "identity" else ("baseline",)
+    for name in names:
+        out[name] = _convert(
+            to_original, win.cube(np.asarray(terms[name]), [SAMPLE], sample), "y", win
         )
+    if comps.link == "identity":
+        for k, name in enumerate(win.fit.controls.variables):
+            label = name if name not in out else f"{name}_contribution"
+            out[label] = _convert(to_original, win.cube(controls[:, k], [SAMPLE], sample), "y", win)
     ds = xr.Dataset(out)
     ds.attrs = {"description": "Additive contributions over the fit window"}
     return ds
@@ -230,13 +249,7 @@ def response_curves_dataset(
     )  # largest single-cell, single-period spend
     peak = _convert(to_original, peak, "spend", win)
     peak.attrs["description"] = "largest spend of one cell in one period"
-    comps = win.evaluate(1.0)
-    base_cell = (
-        comps.baseline
-        + comps.trend[:, None, :]
-        + comps.seasonality[:, None, :]
-        + (comps.controls.sum(axis=1) if comps.controls.shape[1] else 0.0)
-    ).sum(axis=2)  # (S, n_cell)
+    base_cell = win.baseline_cells()  # (S, n_cell)
     variables: dict[str, xr.DataArray] = {
         "contribution": contribution,
         "spend": total,
@@ -330,4 +343,100 @@ def marginal_cost_dataset(
     ds["marginal_cost"].attrs["description"] = "extra spend per extra unit of the KPI"
     ds["marginal_roi"].attrs["description"] = "extra KPI per extra unit of spend"
     ds.attrs = {"step": float(h), "description": "Marginal cost and ROI at current spend"}
+    return ds
+
+
+def _frequency(win: FitWindow) -> str | None:
+    freq = getattr(win.replay, "frequency", None)
+    if freq in ("W", "D", "M"):
+        return str(freq)
+    try:
+        return infer_frequency(win.fit.times)
+    except MapiError:
+        return None
+
+
+def adstock_dataset(win: FitWindow) -> xr.Dataset:
+    """Carry-over shape per draw: ``weight(sample, channel, lag)`` (the kernel normalised
+    to sum to one; shorter kernels padded with zeros) and ``mean_lag(sample, channel)``."""
+    kernels = [np.asarray(k, dtype=float) for k in win.replay.kernels]
+    n = int(win.replay.n)
+    lags = max((k.shape[1] for k in kernels), default=1)
+    weight = np.zeros((n, len(kernels), lags))
+    for c, k in enumerate(kernels):
+        k = np.broadcast_to(k, (n, k.shape[1]))
+        total = k.sum(axis=1, keepdims=True)
+        weight[:, c, : k.shape[1]] = np.divide(k, total, out=np.zeros_like(k), where=total != 0)
+    lag = np.arange(lags)
+    coords: dict[str, Any] = {SAMPLE: np.arange(n), CHANNEL: list(win.fit.channels), "lag": lag}
+    w = xr.DataArray(weight, dims=[SAMPLE, CHANNEL, "lag"], coords=coords)
+    w.attrs["description"] = (
+        "share of a unit of spend's total effect that lands this many periods after the spend"
+    )
+    mean_lag = xr.DataArray(
+        (weight * lag[None, None, :]).sum(axis=2),
+        dims=[SAMPLE, CHANNEL],
+        coords={SAMPLE: coords[SAMPLE], CHANNEL: coords[CHANNEL]},
+    )
+    mean_lag.attrs["description"] = "average delay of the effect, in periods"
+    ds = xr.Dataset({"weight": w, "mean_lag": mean_lag})
+    ds.attrs = {"description": "Carry-over of spend into later periods, per thinned draw"}
+    freq = _frequency(win)
+    if freq is not None:
+        ds.attrs["frequency"] = freq
+    return ds
+
+
+def effectiveness_dataset(win: FitWindow, to_original: ToOriginal | None) -> xr.Dataset:
+    """KPI per unit of spend at each cell's average spend over the fit window, with the
+    channel coefficient of every fitted period (see the module doc)."""
+    fit = win.fit
+    spend, _ = win.arrays()  # (T, n_cell, C)
+    level = spend.mean(axis=0)  # (n_cell, C)
+    den = level.sum(axis=0)  # (C,)
+    cells = win.cells
+    tvp = set(getattr(win.replay, "tvp", {}) or {})
+    t = fit.n_periods
+
+    def per_spend(position: int) -> np.ndarray:
+        kpi = win.replay.steady_state(level, cells, position=position).sum(axis=1)  # (S, C)
+        return np.divide(
+            kpi,
+            den[None, :],
+            out=np.full_like(kpi, np.nan),
+            where=den[None, :] > 0,
+        )
+
+    if tvp:
+        eff = np.stack([per_spend(p) for p in range(t)], axis=2)  # (S, C, T)
+    else:
+        one = per_spend(t - 1)
+        eff = np.repeat(one[:, :, None], t, axis=2)
+    channels = list(fit.channels)
+    n = eff.shape[0]
+    da = xr.DataArray(
+        eff,
+        dims=[SAMPLE, CHANNEL, TIME],
+        coords={SAMPLE: np.arange(n), CHANNEL: channels, TIME: fit.times},
+    )
+    da = _convert(to_original, da, "y", win)
+    if to_original is not None:
+        factor, _ = win.unit_map(to_original, "spend")
+        if factor != 1.0:
+            attrs = dict(da.attrs)
+            da = da / factor
+            da.attrs = attrs
+    da.attrs.pop("units", None)
+    da.attrs["units_of"] = "y per spend"
+    da.attrs["description"] = "KPI per unit of spend at the average spend level"
+    flags = xr.DataArray(
+        np.array([c in tvp for c in range(len(channels))], dtype=bool),
+        dims=[CHANNEL],
+        coords={CHANNEL: channels},
+    )
+    ds = xr.Dataset({"effectiveness": da, "time_varying": flags})
+    ds.attrs = {
+        "description": "Channel effectiveness over the fit window (KPI per unit of spend at "
+        "the average spend level); constant for channels that are not time-varying"
+    }
     return ds

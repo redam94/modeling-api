@@ -815,6 +815,8 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "You have two or more years of weekly sales and spend for each channel",
             "You want to know the return of each channel and plan budgets",
             "You have results for each market or product and you want one model for all of them",
+            "Your result is a count (orders, sign-ups) or a share between 0 and 1",
+            "The effect of a channel changes over time, for example when an advertisement gets old",
         ],
         [
             "Spend changes very little over time (the model cannot measure the effect)",
@@ -830,6 +832,7 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "Contribution and return for each channel, with ranges",
             "Response curves",
             "Budget plans and what-if answers",
+            "The effect of each channel over time, when the effect can change",
         ],
         _I,
         _LONG,
@@ -838,7 +841,12 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         expert="mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic "
         "saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and "
         "products (MFF panels). Priors come from business beliefs. Lift tests are a "
-        "calibration likelihood. NUTS through PyMC, nutpie or numpyro.",
+        "calibration likelihood. Time-varying channel coefficients are a random walk on the "
+        "log coefficient, with a forecast policy (random walk, hold last, mean) after the fit "
+        "window. Poisson and negative binomial (log link) and beta (logit link) likelihoods "
+        "split the expected KPI into channel parts in proportion to their link-scale terms; "
+        "ROI priors and lift tests apply only to the normal and Student-t likelihoods. NUTS "
+        "through PyMC, nutpie or numpyro.",
         refs=[
             ("mmm-framework documentation", "https://redam94.github.io/mmm-framework/"),
             (
@@ -858,60 +866,106 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
     ),
     "mmm.nested": _a(
         "Marketing mix with steps in between",
-        "Measures marketing effects that work through an intermediate result. For example, ads "
-        "cause website visits, and the visits cause sales.",
+        "Measures marketing effects that go through an intermediate result. For example, ads "
+        "bring visits to your website, and the visits bring sales.",
         [
             "You have an intermediate measure, such as visits, searches or awareness",
             "You want to know how much of the effect of a channel goes through it",
-        ],
-        ["You only have sales and spend (use the standard marketing mix model)"],
-        ["Sales, the intermediate measure and spend for each channel over time"],
-        [
-            "The intermediate measure carries all or part of the effect",
-            "Advertising has carry-over and diminishing returns",
+            "You measure the intermediate result only in some periods, for example with a "
+            "monthly survey",
         ],
         [
-            "Direct and indirect contribution for each channel",
-            "Effects on the intermediate measure",
+            "You only have sales and spend (use the standard marketing mix model)",
+            "You have results for each market or product (this model uses one national series)",
+            "Price, promotions or other drivers change sales much (this model has no control "
+            "variables)",
+        ],
+        [
+            "One national series of sales and spend for each channel over time",
+            "One column for each intermediate measure. A measure can have empty periods",
+        ],
+        [
+            "Advertising has an effect that continues for some time, and diminishing returns",
+            "The intermediate measure carries all or part of the effect of a channel",
+            "No other driver changes both the spend and the sales",
+        ],
+        [
+            "Direct and indirect contribution for each channel, with ranges",
+            "The part of the effect of each channel that goes through each measure",
+            "Fitted values of the intermediate measures",
+            "Response curves, budget plans and what-if answers",
         ],
         _X,
         _LONG,
-        "Search ads increase visits by 12%, and visits explain 40% of online sales.",
+        "Search ads increase visits, and the visits bring 40% of the effect of search on online "
+        "sales.",
         related=["mmm.bayesian", "mmm.multivariate"],
-        expert="mmm-framework mmm_extensions nested (mediated) model: a mediator equation and "
-        "an outcome equation that share media transforms.",
+        expert="mmm-framework mmm_extensions NestedMMM: normalised geometric adstock (8 lags) "
+        "and exponential saturation shared by the mediator and outcome equations. A measured "
+        "mediator has Gaussian noise on its non-missing periods; a latent one is not observed "
+        "(only the product of its two paths is identified). Outcome likelihood normal or "
+        "Student-t, standardised. National data only, no control variables. Lift tests "
+        "calibrate the total effect of a channel. NUTS through PyMC or nutpie, or ADVI.",
         refs=[("mmm-framework documentation", "https://redam94.github.io/mmm-framework/")],
         fits={
-            "goal": ["explain_marketing"],
-            "data_shape": ["several_series", "panel"],
+            "goal": ["explain_marketing", "plan_budget"],
+            "data_shape": ["several_series"],
+            "frequency": ["daily", "weekly"],
             "history": ["medium", "long"],
+            "drivers": ["yes"],
             "uncertainty": ["essential", "nice"],
         },
     ),
     "mmm.multivariate": _a(
-        "Marketing mix for several products",
+        "Marketing mix for several results",
         "Measures marketing effects on two or more results at the same time, such as the sales "
-        "of related products. It also shows how the advertising of one product changes the "
-        "sales of another product.",
+        "of related products. It also shows how the sales of one product move with the sales of "
+        "a different product.",
         [
-            "You sell related products and you advertise them separately",
-            "You think that the advertising of one product changes the sales of another product",
+            "You have two or more results over time, such as the sales of related products",
+            "One marketing budget acts on all of the results",
+            "You think that the sales of one product go up or down with the sales of a different "
+            "product",
         ],
-        ["Only one result is important to you"],
-        ["Sales for each product, and spend for each channel and product over time"],
-        ["Cross-product effects are steady over the period"],
-        ["Contribution for each channel and product", "Cross-product effects"],
+        [
+            "Only one result is important to you (use the standard marketing mix model)",
+            "You have results for each market (this model uses national data)",
+            "You must prove that one product takes sales from a different product (the model "
+            "shows associations, not causes)",
+        ],
+        [
+            "One national column for each result and spend for each channel over time",
+            "The results use the same units, or you give a value for one unit of each result",
+        ],
+        [
+            "Advertising has an effect that continues for some time, and diminishing returns",
+            "The effects between the results are steady over the period",
+            "No other driver changes both the spend and the results",
+        ],
+        [
+            "Contribution of each channel to each result, with ranges",
+            "Effects between the results (halo or cannibalization)",
+            "Response curves and budget plans for a weighted total of the results",
+        ],
         _X,
         _LONG,
         "The advertising of the premium range also increases the sales of the basic range by 5%.",
         related=["mmm.bayesian", "mmm.nested"],
-        expert="mmm-framework mmm_extensions multivariate-outcome model with cross-effect "
-        "components and a correlated observation model.",
+        expert="mmm-framework mmm_extensions MultivariateMMM: one equation per outcome with "
+        "shared or separate adstock, exponential saturation, trend and Fourier seasonality; a "
+        "multivariate normal observation with an LKJ correlation prior. Cross-effects (psi) act "
+        "on the observed source outcome, so they are associations that are confounded with the "
+        "residual correlation. Scores, response curves and budget plans use the reduced form "
+        "(I - P)^-1, so a channel that moves one outcome also moves the others through psi. "
+        "National data only, no control variables, no lift-test calibration and no promotion "
+        "modulation.",
         refs=[("mmm-framework documentation", "https://redam94.github.io/mmm-framework/")],
         fits={
-            "goal": ["explain_marketing"],
-            "data_shape": ["several_series", "panel"],
+            "goal": ["explain_marketing", "plan_budget"],
+            "data_shape": ["several_series"],
+            "frequency": ["daily", "weekly"],
             "history": ["medium", "long"],
+            "drivers": ["yes"],
             "uncertainty": ["essential", "nice"],
         },
     ),
@@ -2639,6 +2693,83 @@ TEMPLATE_ABOUTS: Final[dict[str, About]] = {
         fits={
             "goal": ["explain_marketing", "plan_budget"],
             "data_shape": ["panel"],
+            "frequency": ["daily", "weekly"],
+            "history": ["medium", "long"],
+            "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "mediated_mmm": _a(
+        "Marketing mix with an intermediate measure",
+        "Find how much each marketing channel adds to your results, and how much of that effect "
+        "goes through visits, searches or awareness.",
+        [
+            "You have weekly sales, spend for each channel and one or more intermediate measures",
+            "You want to know which channels work through the intermediate measure",
+        ],
+        [
+            "You have results for each market (use Geo marketing mix)",
+            "You have less than a year of data",
+        ],
+        [
+            "A table with date, the result (sales), one spend column for each channel and one "
+            "column for each intermediate measure"
+        ],
+        [
+            "The effect of advertising continues for some time and has diminishing returns",
+            "No other driver (price, promotions) changes both the spend and the sales",
+        ],
+        [
+            "Direct and indirect contribution for each channel",
+            "What-if sliders",
+            "A budget plan",
+            "A scorecard",
+        ],
+        _I,
+        _LONG,
+        "Upload 2 years of weekly sales, site visits and TV, search and social spend.",
+        related=["mmm.nested", "mmm.bayesian", "core.resample"],
+        fits={
+            "goal": ["explain_marketing", "plan_budget"],
+            "data_shape": ["several_series"],
+            "frequency": ["daily", "weekly"],
+            "history": ["medium", "long"],
+            "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"],
+        },
+    ),
+    "multi_kpi_mmm": _a(
+        "Marketing mix for related products",
+        "Find how much each marketing channel adds to two or more results at the same time. Get "
+        "one budget plan for all of them.",
+        [
+            "You have weekly sales of two or more related products and spend for each channel",
+            "You want one budget plan for all of the results",
+        ],
+        [
+            "Only one result is important to you (use Geo marketing mix)",
+            "You have results for each market",
+            "You have less than a year of data",
+            "You want the effects between the results (set cross_effects of mmm.multivariate in "
+            "the spec editor)",
+        ],
+        ["A table with date, one column for each result and one spend column for each channel"],
+        [
+            "The effect of advertising continues for some time and has diminishing returns",
+        ],
+        [
+            "Contribution of each channel to each result",
+            "What-if sliders",
+            "A budget plan",
+            "A scorecard",
+        ],
+        _I,
+        _LONG,
+        "Upload 2 years of weekly sales of a premium and a basic range, and TV and search spend.",
+        related=["mmm.multivariate", "mmm.bayesian", "core.resample"],
+        fits={
+            "goal": ["explain_marketing", "plan_budget"],
+            "data_shape": ["several_series"],
             "frequency": ["daily", "weekly"],
             "history": ["medium", "long"],
             "drivers": ["yes"],

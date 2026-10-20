@@ -45,17 +45,20 @@ def _units(bundle: Bundle, var: str) -> str | None:
 
 def label_result(result: OptimizeResult, bundle: Bundle) -> OptimizeResult:
     """The plugin's result with the KPI's dataset name, the KPI and spend units of the model
-    stage and the time it was computed."""
+    stage and the time it was computed. A plugin that plans on something other than the
+    target (``mmm.multivariate``: a weighted total of the outcomes) keeps its own KPI label,
+    without units."""
     targets = bundle.model_schema.targets if bundle.model_schema is not None else []
     target = targets[0] if targets else "y"
+    own = result.kpi not in ("y", target)
     try:
-        kpi = bundle.binding.to_dataset(target)
+        kpi = result.kpi if own else bundle.binding.to_dataset(target)
     except (KeyError, ValueError):
         kpi = target
     return result.model_copy(
         update={
             "kpi": str(kpi)[:128],
-            "kpi_units": _units(bundle, target),
+            "kpi_units": None if own else _units(bundle, target),
             "spend_units": _units(bundle, "spend"),
             "computed_at": datetime.now(UTC),
         }

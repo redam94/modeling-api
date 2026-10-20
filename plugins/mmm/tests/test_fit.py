@@ -195,5 +195,10 @@ def test_a_calibrated_fit_uses_business_priors_and_lift_tests(registry: Registry
     cal = bundle.model.learned["calibration"]
     assert set(cal["translated_priors"]["roi"]) == {"tv"}
     assert cal["lift_tests"]["used"] == ["lift_0"]
+    tests = bundle.model.group("lift_tests")
+    assert tests["model"].dims == ("chain", "draw", "test")
+    assert list(tests["test"].values) == ["lift_0"]
+    assert list(tests["channel"].values) == ["search"]
+    assert list(tests["estimand"].values) == ["mroas"]
     roi = bundle.model.posterior["roi_tv"].values
     assert 0.1 < float(np.median(roi)) < 1.0

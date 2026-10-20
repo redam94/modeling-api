@@ -235,7 +235,7 @@ the string columns of these DataFrames.
 | `core.ppc` | `var`, `observed_var`, `num_draws` (50), `bins` (20), `levels` |
 | `core.ppc_fan` | `var`, `observed_var`, `along`, `facet`, `max_facets` (12), `levels` ([0.5, 0.9]), `point` (median), `split_at`, `columns` (3), `max_rows` |
 | `core.fit_vs_actual`, `core.residuals_over_time` | `var`, `observed_var`, `along`, `facet`, `max_facets`, `point` |
-| `core.decomposition`, `mmm.decomposition` | `vars`, `component` (auto / `channel`), `along`, `hdi_prob` (0.9), `max_components` (20). `core.decomposition` skips a variable with the attr `decomposition: exclude` if `vars` does not name it. |
+| `core.decomposition`, `mmm.decomposition` | `vars`, `component` (auto / `channel`), `along`, `hdi_prob` (0.9), `max_components` (20). `core.decomposition` skips a variable with the attr `decomposition: exclude` if `vars` does not name it. `mmm.decomposition` also has `outcome` (none: `attrs.primary_outcome` or the first level of an `outcome` dim). |
 | `core.model_comparison` | `ic` (auto: precomputed table, else WAIC), `var`, `model_dim` (model) |
 | `core.counterfactual` | `var`, `along`, `hdi_prob` (0.9), `bins` (30) |
 | `core.decision_distribution` | `var`, `candidate`, `hdi_prob`, `higher_is_better` (true), `max_candidates` (12) |
@@ -248,10 +248,20 @@ the string columns of these DataFrames.
 | `core.confusion` | `var`, `observed_var`, `positive`, `threshold` (0.5, or `auto`: the largest TPR − FPR), `normalize` (none \| true), `width` (260), `height` (240) |
 | `core.loss_curve` | `var`, `group` (auto \| fit_history \| metrics_history), `along` (step), `smooth` (none: a window of n / 50 steps), `log_y` (none: log when max / min > 50), `max_points` (2 000), `width` (560), `height` (220) |
 | `core.loo_pit` | `var` (a `log_likelihood` variable), `observed_var`, `prob` (0.95), `n_sim` (1 000), `seed` (0), `max_draws` (2 000), `k_threshold` (0.7) |
+| `core.energy` | `bfmi_threshold` (0.3), `bins` (40) |
+| `core.prior_posterior` | `var_names` (none: every variable in the two groups), `max_vars` (12), `max_cells` (8), `points` (80, the points of each density), `little` (0.8, the overlap above which the caption says that the data adds little) |
 | `mmm.response_curves` | `var`, `channel`, `grid`, `spend_var` (spend), `current_var` (current_spend), `hdi_prob`, `facet` |
 | `mmm.marginal_cost` | the same as response curves, + `metric` (cost \| roi), `clip_quantile` (0.98) |
 | `mmm.budget_plans` | `spend_var`, `outcome_var`, `plan`, `channel`, `reference`, `hdi_prob` |
 | `mmm.prior_beliefs` | `channel` (channel), `height` (26, the height of one channel row) |
+| `mmm.roi` | `hdi_prob` (0.9), `breakeven` (1.0; none: no line), `channel` (channel) |
+| `mmm.adstock` | `hdi_prob` (0.9), `facet` (false) |
+| `mmm.waterfall` | `hdi_prob` (0.9), `outcome` (none: `attrs.primary_outcome` or the first level) |
+| `mmm.spend_effect` | `hdi_prob` (0.9), `channel` (channel) |
+| `mmm.lift_tests` | `hdi_prob` (0.9), `z` (1.96, the width of the error bar of a test in standard errors) |
+| `mmm.effectiveness` | `hdi_prob` (0.9), `only_varying` (true) |
+| `mmm.mediation` | `hdi_prob` (0.9) |
+| `mmm.cross_effects` | `hdi_prob` (0.9) |
 | `ml.feature_importance` | `top` (20), `feature_dim` (feature), `source` (auto \| importance \| coefficients) |
 | `sci.field_map` | `var`, `group` (auto \| posterior \| predictions \| posterior_predictive), `y`, `x`, `frame`, `select`, `stats` ([mean, sd]; also median, z, q05, q95, draws), `n_draws` (3), `max_draws` (400), `max_cells` (40 000), `max_frames` (24), `colormap`, `log`, `origin`, `aspect` (equal \| auto), `columns` (3), `width` (760), `height` (280, one row of panels) |
 | `sci.vector_field` | the same as `sci.field_map` (no `n_draws`), + `component`, `stats` ([mean, sd]; also q05, q95), `arrows` (20) |
@@ -289,6 +299,25 @@ draws, or one probability for each cell), then in `summary` (`stat` mean, point 
 actual values come from `observed_data` or `observed`. The two arrays are aligned on their shared
 cells, and cells with NaN are left out. The target must have two values. The larger value is the
 positive class unless you set `positive`. The predictions must be from 0 to 1.
+
+### Marketing-mix recipes of v0.12
+
+All of these recipes accept draws with a `sample` dim or with `chain` and `draw` dims. A
+recipe that does not find its group or variable raises `RecipeDataError`. The runner then
+skips only that plot.
+
+| Recipe | Input | What it shows |
+|---|---|---|
+| `core.energy` | `sample_stats.energy(chain, draw)` | The centred marginal energy and the energy transitions (two histograms), and the BFMI of each chain, `mean(diff(E)²) / var(E)`. The caption names the chains below `bfmi_threshold`. |
+| `core.prior_posterior` | variables with `chain`/`draw` dims in `prior` and in `posterior` | A density of the prior and of the posterior for each parameter cell, ranked by `|Δmean| / sd(prior)`. The caption gives the overlap of each panel. An overlap above `little` (0.8) means that the data adds little. |
+| `mmm.roi` | `response_curves`: `contribution` at multiplier 1 divided by `current_spend` (other dims summed). `marginal_cost.marginal_roi_total`, else a central difference on the grid around 1 | A forest of the ROI of each channel (median and HDI), the mROAS next to it, and a break-even line |
+| `mmm.adstock` | `adstock`: `weight(sample, channel, lag)`, optional `mean_lag` | The weight of each lag with an HDI band, one line for each channel (or one panel with `facet`) |
+| `mmm.waterfall` | `contributions`: `channel_contribution` and every other variable as a component | The total of each component over the fit window as steps to the total result |
+| `mmm.spend_effect` | `response_curves`: `contribution` at multiplier 1 for each draw and `current_spend` | The share of spend and the share of effect of each channel side by side |
+| `mmm.lift_tests` | the `lift_tests` group: `observed(test)`, `observed_sd(test)`, `model(chain, draw, test)` and the coords `channel`, `estimand`, `start`, `end`, `geo` | Each test (value ± `z` standard errors) next to the model estimate (HDI) |
+| `mmm.effectiveness` | `effectiveness(sample, channel, time)`, `time_varying(channel)` | The effect of one unit of spend in each period with an HDI band |
+| `mmm.mediation` | `mediation`: `direct(sample, channel)`, `indirect(sample, channel, mediator)` | Stacked direct and indirect effects of each channel, with the share that the mediators carry |
+| `mmm.cross_effects` | `cross_effects`: `psi(sample, pair)` and the coords `source`, `target`, `kind` | A forest of each cross-effect with its kind |
 
 ### Scientific-model pack (`sci.*`)
 

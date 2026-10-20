@@ -13,6 +13,7 @@ section              source
 ``residuals``        actual - fitted over time, their ACF, Ljung-Box, Jarque-Bera,
                      Breusch-Pagan and ARCH-LM tests, histogram and normal QQ points
 ``decomposition``    the model's ``component`` output (contributions) summed over panel dims
+                     (the primary ``outcome`` of a multi-outcome model)
 ``response_curves``  the fit's ``response_curves`` grid (mean and 90% band per channel)
 ``irf`` / ``fevd``   a plugin's ``irf``/``fevd`` group or derived quantity (VAR/VECM)
 ``fields``           the outputs that declare a ``grid`` (in-sample expected values, one
@@ -119,6 +120,8 @@ MAX_BACKTEST_FOLDS: Final = 10
 MAX_BACKTEST_HORIZONS: Final = 32
 """Default horizons of a backtest whose plan names none: 1 .. min(test length, this)."""
 _MAX_PLOT_BYTES: Final = 2_000_000
+OUTCOME: Final = "outcome"
+"""The dim of a multi-outcome model's outputs (``mmm.multivariate``)."""
 
 
 def _fv(x: Any) -> float | None:
@@ -433,6 +436,17 @@ def residuals(c: ModelContext) -> ResidualDiagnosticsView:
     )
 
 
+def _primary_outcome(c: ModelContext, da: xr.DataArray, labels: list[str]) -> str:
+    """The ``primary_outcome`` attr of the scored contributions (or of the derived ones, as a
+    point estimate can drop attrs) when it is a label, else the first label."""
+    derived = c.bundle.model.derived.get("contributions")
+    for attrs in (da.attrs, derived.attrs if derived is not None else {}):
+        wanted = str(attrs.get("primary_outcome") or "")
+        if wanted in labels:
+            return wanted[:128]
+    return labels[0][:128] if labels else ""
+
+
 def decomposition(c: ModelContext) -> DecompositionView:
     t = _need_time(c)
     preds = c.predictions()
@@ -442,6 +456,20 @@ def decomposition(c: ModelContext) -> DecompositionView:
     da = p.contributions
     if "component" not in da.dims or t not in da.dims:
         raise SectionSkipped("the contributions of the model have no time dimension")
+    caption = "Shows how much each part of the model adds to the prediction over time."
+    # scored outputs carry dataset dim names: ``outcome`` may be bound to e.g. ``product``
+    binding = getattr(c.bundle, "binding", None)
+    outcome = binding.to_dataset(OUTCOME) if binding is not None else OUTCOME
+    if outcome not in da.dims:
+        outcome = OUTCOME
+    if outcome in da.dims:
+        # a multi-outcome model: parts of different KPIs do not add up, so show one outcome
+        labels = [str(v) for v in np.asarray(da[outcome].values)] if outcome in da.coords else []
+        pick = _primary_outcome(c, da, labels)
+        da = da.sel({outcome: pick}) if pick else da.isel({outcome: 0})
+        da = da.drop_vars(outcome, errors="ignore")
+        if pick:
+            caption += f" The model has more than one outcome. This view shows the outcome {pick}."
     other = [d for d in da.dims if d not in ("component", t)]
     total = da.sum(other) if other else da
     total = total.transpose("component", t)
@@ -462,7 +490,7 @@ def decomposition(c: ModelContext) -> DecompositionView:
         components=comps,
         shares=shares,
         scale="multiplicative" if scale == "multiplicative" else "additive",
-        caption_plain="Shows how much each part of the model adds to the prediction over time.",
+        caption_plain=caption,
     )
 
 

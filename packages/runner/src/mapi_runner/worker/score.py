@@ -347,6 +347,19 @@ def _drawn(plots: ScorePlots, rendered: Sequence[Mapping[str, Any]]) -> dict[str
     return {var: rids for var, rids in out.items() if rids}
 
 
+def _plot_input(bundle: Bundle, tree: xr.DataTree) -> xr.DataTree:
+    """``tree`` with the bundle's ``/binding`` (as the fit-time plot input has), so a recipe
+    finds the dataset names of canonical dims. A score with dataset names calls the ``outcome``
+    dim of a multi-outcome MMM e.g. ``product``, and the outcomes must not be added up."""
+    if "binding" in tree.children:
+        return tree
+    out = tree.copy(deep=False)  # the stored result keeps its own nodes
+    out["binding"] = xr.DataTree(
+        xr.Dataset(attrs={"json": bundle.resolved.binding.model_dump_json()})
+    )
+    return out
+
+
 def _write_tree(
     ctx: WorkerContext,
     bundle: Bundle,
@@ -361,7 +374,9 @@ def _write_tree(
     ctx.write_json("result.json", _result_json(tree))
     # the plots first: each summary table lists the rendered plots that draw its variable
     ctx.state(RunnerPhase.PLOTS, "rendering plots")
-    rendered = render_for(ctx, plots.refs, [*(plot_trees or []), tree], options=plots.options)
+    rendered = render_for(
+        ctx, plots.refs, [*(plot_trees or []), _plot_input(bundle, tree)], options=plots.options
+    )
     ctx.write_json("plots.json", rendered)
     summary = summary_document(tree, actuals, bundle, plots=_drawn(plots, rendered))
     if summary is not None:

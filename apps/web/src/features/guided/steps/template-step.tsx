@@ -19,13 +19,15 @@ const ICONS = { mmm: Megaphone, forecast: LineChart, tabular: Store, choice: Sho
 
 const FOR: Record<string, string[]> = {
   geo_mmm: ["Weekly spend per channel and results per market", "ROI per channel, what-if budgets"],
+  mediated_mmm: ["Weekly spend per channel, results and a measure in between such as visits", "Direct and indirect effect of each channel"],
+  multi_kpi_mmm: ["Weekly spend per channel and results for two or more products", "Effect of each channel on each product"],
   weekly_forecast: ["One weekly or daily series", "A forecast with a likely range"],
   store_demand: ["Units per store and week, with prices or promotions", "Low, likely and high demand"],
   customer_choice: ["Shopping trips per household with prices per product", "Which product wins, and why"],
 };
 
-/** The plan's order (§11): the marketing mix first, then forecasts, demand and choice. */
-const ORDER = ["geo_mmm", "weekly_forecast", "store_demand", "customer_choice"];
+/** The plan's order (§11): the marketing mix first (geo, mediated, several KPIs), then forecasts, demand and choice. */
+const ORDER = ["geo_mmm", "mediated_mmm", "multi_kpi_mmm", "weekly_forecast", "store_demand", "customer_choice"];
 
 export function sortTemplates(items: readonly GuidedTemplate[]): GuidedTemplate[] {
   const rank = (id: string) => (ORDER.includes(id) ? ORDER.indexOf(id) : ORDER.length);
@@ -127,7 +129,7 @@ export function TemplatePicker() {
   if (templates.isPending) return <LoadingRows rows={3} />;
   if (templates.isError) return <ErrorNotice error={templates.error} title="The app could not load the templates" onRetry={() => void templates.refetch()} />;
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Templates">
+    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Templates">
       {sortTemplates(templates.data.items).map((t) => (
         <li key={t.id} className="relative">
           <TemplateCard template={t} />

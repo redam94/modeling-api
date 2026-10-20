@@ -185,7 +185,7 @@ async def test_a_translation_is_validated_pinned_and_queued(
     assert run.state == RunState.QUEUED.value and run.priority == "interactive"
     job = PriorTranslationJob.model_validate(run.payload)
     assert job.draws == 300 and job.seed == 7
-    assert job.spec["model"]["use"] == "mmm.bayesian@1.0.0"  # resolved and pinned
+    assert job.spec["model"]["use"] == "mmm.bayesian@1.1.0"  # resolved and pinned
     assert "@sha256:" in str(job.spec["data"]["dataset"])  # pinned to the version's content
     assert set(run.inputs) == {"dataset"} and run.dataset_version == 1
     got = PriorTranslation.model_validate((await client.get(f"{URL}/{view.run.id}")).json())
