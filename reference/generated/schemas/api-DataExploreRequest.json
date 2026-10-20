@@ -1,4 +1,96 @@
 {
+  "$defs": {
+    "StructureHints": {
+      "additionalProperties": false,
+      "description": "Corrections to the structure the Data Explorer detects (each one overrides the rule\nfor that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,\n``frame_dim``), the node dim of a network or tree, the time dim, and variables that are\nangles or times of day with their units (``{\"wind_from\": \"deg\"}``).",
+      "properties": {
+        "angle_vars": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "enum": [
+                "deg",
+                "rad",
+                "h",
+                "d",
+                "month"
+              ],
+              "type": "string"
+            }
+          },
+          "title": "Angle Vars",
+          "type": "object"
+        },
+        "frame_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Dim"
+        },
+        "node_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node Dim"
+        },
+        "time_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Dim"
+        },
+        "x_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "X Dim"
+        },
+        "y_dim": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Y Dim"
+        }
+      },
+      "title": "StructureHints",
+      "type": "object"
+    }
+  },
   "$id": "https://schemas.mapi.dev/v1/api-DataExploreRequest.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
@@ -17,6 +109,20 @@
         "ccf",
         "stl",
         "quality"
+      ]
+    },
+    {
+      "hints": {
+        "angle_vars": {
+          "wind_from": "deg"
+        },
+        "x_dim": "col",
+        "y_dim": "row"
+      },
+      "sections": [
+        "structure",
+        "images",
+        "circular"
       ]
     }
   ],
@@ -59,6 +165,18 @@
       "default": null,
       "description": "Dim for group comparisons",
       "title": "Group By"
+    },
+    "hints": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StructureHints"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Corrections to the detected structure (image dims, node dim, angle variables)"
     },
     "kpi": {
       "anyOf": [
@@ -153,11 +271,20 @@
           "stl",
           "vif",
           "groups",
-          "quality"
+          "quality",
+          "structure",
+          "images",
+          "gallery",
+          "profiles",
+          "map",
+          "network",
+          "tree",
+          "circular",
+          "points"
         ],
         "type": "string"
       },
-      "maxItems": 13,
+      "maxItems": 22,
       "minItems": 1,
       "title": "Sections",
       "type": "array"

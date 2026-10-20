@@ -2253,6 +2253,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2448,6 +2456,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guided-data/" class="md-nav__link">
         
   
@@ -2484,6 +2548,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2688,6 +2808,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Forecasts, backtests and more, on demand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#error-by-horizon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error by horizon v0.11
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3015,6 +3152,8 @@
       
         
       
+        
+      
     
     
     
@@ -3294,6 +3433,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../workflows/" class="md-nav__link">
         
   
@@ -3450,6 +3617,8 @@
   
     
     
+      
+        
       
         
       
@@ -3729,6 +3898,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4260,7 +4457,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4282,14 +4479,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5537,6 +5734,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Forecasts, backtests and more, on demand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#error-by-horizon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error by horizon v0.11
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5673,6 +5887,11 @@ show:</p>
   advantage that is more than chance.</li>
 <li>The ranking for each metric.</li>
 <li>The fit statistics of each version.</li>
+<li><strong>Which version predicts new data best?</strong> (v0.10): the <code>core.model_comparison</code> plot. It shows
+  the expected log predictive density (elpd) of each version and its difference to the best
+  version. The card shows only when two or more versions have <code>elpd_loo</code> (or <code>elpd_waic</code>) on
+  the same number of observations. The description of the card tells you which of the two
+  estimates the plot shows.</li>
 </ul>
 <p>Time-series forecasters (statsmodels and the other <code>ts</code> models) forecast the full held-out
 period from one origin. Thus their errors make a single path, and no test of equal accuracy is
@@ -5742,6 +5961,15 @@ version:</p>
 <p>The answer (<code>202</code>) is an <code>Exploration</code>. Poll <code>GET /v1/explorations/{run_id}</code> to get the index
 and the signed view links. If you send the same request again, the answer is <code>200</code> from the
 last run.</p>
+<h3 id="error-by-horizon">Error by horizon <span class="mapi-badge">v0.11</span><a class="headerlink" href="#error-by-horizon" title="Permanent link">&para;</a></h3>
+<p>The backtest view has the error metrics for each horizon, pooled over all the folds
+(<code>BacktestView.by_horizon</code>, for example <code>by_horizon["4"]["mae"]</code>). Each fold also keeps its
+own <code>by_horizon</code>. If the plan has no <code>horizons</code>, the backtest uses the horizons 1 to the
+length of the first test window (a maximum of 32).</p>
+<p>The backtest section has a second chart, "Backtest error by horizon". It shows the pooled MAE
+for each number of periods ahead, and a light line for each fold. The chart shows only when
+two or more horizons have a pooled MAE. The error usually increases with the horizon. A fast
+increase tells you that the model is good only for short forecasts.</p>
 <h2 id="compare-model-versions">Compare model versions<a class="headerlink" href="#compare-model-versions" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>api<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$API</span><span class="s2">/v1/models:compare"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="s1">  "models": ["model://growth/sales-arimax@v3", "model://growth/sales-ets@v1",</span>
@@ -5756,6 +5984,11 @@ last run.</p>
 <li>Pairwise <strong>Diebold-Mariano</strong> tests on the held-out periods of the first version. The tests
   use the Harvey-Leybourne-Newbold small-sample correction and a Newey-West number of
   autocovariances. They answer the question "is the difference in accuracy more than chance?".</li>
+<li>The <code>core.model_comparison</code> plot (v0.10), in <code>ui/explore/plots/comparison.json</code> after the
+  metric bars. The view adds it when two or more versions have <code>elpd_loo</code> estimates on the same
+  number of observations (else <code>elpd_waic</code>). The difference to the best version has a standard
+  error when the two versions keep their pointwise values. To get <code>elpd_loo</code>, fit each version
+  with <code>keep: {log_likelihood: true}</code> and <code>evaluate.metrics: [elpd_loo]</code>.</li>
 </ul>
 <p>If a version forecasts the held-out periods from one origin (time-series forecasters), the
 view does not include the tests. It gives a warning. For more sections, add

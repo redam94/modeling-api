@@ -1,0 +1,637 @@
+{
+  "$defs": {
+    "Histogram": {
+      "additionalProperties": true,
+      "properties": {
+        "counts": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 201,
+          "minItems": 1,
+          "title": "Counts",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 202,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "edges",
+        "counts"
+      ],
+      "title": "Histogram",
+      "type": "object"
+    },
+    "Homophily": {
+      "additionalProperties": true,
+      "description": "The share of edges within one level of node attribute ``attr`` against the share\nexpected when edges ignore it.",
+      "properties": {
+        "attr": {
+          "maxLength": 256,
+          "title": "Attr",
+          "type": "string"
+        },
+        "expected_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Share"
+        },
+        "within_share": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Within Share"
+        }
+      },
+      "required": [
+        "attr"
+      ],
+      "title": "Homophily",
+      "type": "object"
+    },
+    "NetComponents": {
+      "additionalProperties": true,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "largest_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Largest Share",
+          "type": "number"
+        }
+      },
+      "required": [
+        "count",
+        "largest_share"
+      ],
+      "title": "NetComponents",
+      "type": "object"
+    },
+    "NetPositions": {
+      "additionalProperties": true,
+      "description": "Columnar layout positions, one per shown node.",
+      "properties": {
+        "x": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 300,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 300,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "NetPositions",
+      "type": "object"
+    },
+    "NetworkEdge": {
+      "additionalProperties": true,
+      "description": "An edge between shown nodes ``i`` and ``j`` (indices into ``labels``), weight ``w``.",
+      "properties": {
+        "i": {
+          "minimum": 0,
+          "title": "I",
+          "type": "integer"
+        },
+        "j": {
+          "minimum": 0,
+          "title": "J",
+          "type": "integer"
+        },
+        "w": {
+          "title": "W",
+          "type": "number"
+        }
+      },
+      "required": [
+        "i",
+        "j",
+        "w"
+      ],
+      "title": "NetworkEdge",
+      "type": "object"
+    },
+    "NetworkEntry": {
+      "additionalProperties": true,
+      "description": "A variable on a pair of node dims (``X``, ``X_``) drawn as a network.\n\n``labels`` are the shown nodes (at most :data:`MAX_NET_NODES`, the ones of highest\ndegree; ``omitted_nodes`` counts the rest); ``edges``, ``degree``, ``positions`` and\n``node_attrs`` index them. ``matrix`` (absent above :data:`MAX_NET_MATRIX` nodes) is the\nadjacency in seriation order: ``matrix[a][b]`` links ``labels[order[a]]`` and\n``labels[order[b]]``.",
+      "properties": {
+        "binary": {
+          "default": false,
+          "title": "Binary",
+          "type": "boolean"
+        },
+        "components": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NetComponents"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "degree": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 300,
+          "title": "Degree",
+          "type": "array"
+        },
+        "degree_hist": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Histogram"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "density": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Density"
+        },
+        "directed": {
+          "default": false,
+          "title": "Directed",
+          "type": "boolean"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/NetworkEdge"
+          },
+          "maxItems": 3000,
+          "title": "Edges",
+          "type": "array"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "homophily": {
+          "items": {
+            "$ref": "#/$defs/Homophily"
+          },
+          "maxItems": 32,
+          "title": "Homophily",
+          "type": "array"
+        },
+        "labels": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 300,
+          "title": "Labels",
+          "type": "array"
+        },
+        "matrix": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matrix"
+        },
+        "n_nodes": {
+          "minimum": 0,
+          "title": "N Nodes",
+          "type": "integer"
+        },
+        "node_attrs": {
+          "additionalProperties": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "maxProperties": 32,
+          "title": "Node Attrs",
+          "type": "object"
+        },
+        "node_dim": {
+          "maxLength": 256,
+          "title": "Node Dim",
+          "type": "string"
+        },
+        "omitted_edges": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Edges",
+          "type": "integer"
+        },
+        "omitted_nodes": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Nodes",
+          "type": "integer"
+        },
+        "order": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 140,
+          "title": "Order",
+          "type": "array"
+        },
+        "positions": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NetPositions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reciprocity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reciprocity"
+        },
+        "signed": {
+          "default": false,
+          "title": "Signed",
+          "type": "boolean"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "|w| below this is not drawn",
+          "title": "Threshold"
+        },
+        "transitivity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transitivity"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        },
+        "weighted": {
+          "default": true,
+          "title": "Weighted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "var",
+        "node_dim",
+        "n_nodes",
+        "labels"
+      ],
+      "title": "NetworkEntry",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-network.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``network``: adjacency heatmaps, node-link drawings and degree statistics.",
+  "examples": [
+    {
+      "caption_plain": "Shows which nodes are linked: as a matrix and as a drawing.",
+      "format": "mapi.data-explorer.network/v1",
+      "items": [
+        {
+          "binary": true,
+          "components": {
+            "count": 1,
+            "largest_share": 1.0
+          },
+          "degree": [
+            2.0,
+            2.0,
+            3.0,
+            1.0
+          ],
+          "degree_hist": {
+            "counts": [
+              1,
+              2,
+              1
+            ],
+            "edges": [
+              1.0,
+              2.0,
+              3.0,
+              4.0
+            ]
+          },
+          "density": 0.6667,
+          "directed": false,
+          "edges": [
+            {
+              "i": 0,
+              "j": 1,
+              "w": 1.0
+            },
+            {
+              "i": 0,
+              "j": 2,
+              "w": 1.0
+            },
+            {
+              "i": 1,
+              "j": 2,
+              "w": 1.0
+            },
+            {
+              "i": 2,
+              "j": 3,
+              "w": 1.0
+            }
+          ],
+          "facet": {},
+          "homophily": [
+            {
+              "attr": "office",
+              "expected_share": 0.4,
+              "within_share": 0.25
+            }
+          ],
+          "labels": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "matrix": [
+            [
+              0.0,
+              1.0,
+              1.0,
+              0.0
+            ],
+            [
+              1.0,
+              0.0,
+              1.0,
+              0.0
+            ],
+            [
+              1.0,
+              1.0,
+              0.0,
+              1.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0,
+              0.0
+            ]
+          ],
+          "n_nodes": 4,
+          "node_attrs": {
+            "office": [
+              1,
+              1,
+              2,
+              2
+            ]
+          },
+          "node_dim": "lawyer",
+          "omitted_edges": 0,
+          "omitted_nodes": 0,
+          "order": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "positions": {
+            "x": [
+              0.0,
+              1.0,
+              0.5,
+              0.5
+            ],
+            "y": [
+              0.0,
+              0.0,
+              0.8,
+              1.6
+            ]
+          },
+          "signed": false,
+          "transitivity": 0.6,
+          "var": "cowork",
+          "weighted": false
+        }
+      ],
+      "omitted": [],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.network/v1",
+      "default": "mapi.data-explorer.network/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/NetworkEntry"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "omitted": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Omitted",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "NetworkView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -95,6 +95,211 @@
       "title": "AssemblySource",
       "type": "object"
     },
+    "CollectionOptions": {
+      "additionalProperties": false,
+      "description": "How a client manifest and image parts become a collection version.\n\nThe manifest is a CSV, TSV or Parquet table with one row per image and at least the\nsha256 of each image's bytes. Its other columns become the id, label, split and path of\neach image, or are kept as coords.",
+      "properties": {
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Other columns kept as coords (default: all others)",
+          "title": "Columns"
+        },
+        "dim": {
+          "default": "image",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "id_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique ids of the image dim (default: the path, else the sha256)",
+          "title": "Id Column"
+        },
+        "label_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Class labels: the text variable 'label(image)', role target",
+          "title": "Label Column"
+        },
+        "max_images": {
+          "default": 100000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Images",
+          "type": "integer"
+        },
+        "mode": {
+          "default": "auto",
+          "description": "auto: rgb when an image has colour, else gray",
+          "enum": [
+            "auto",
+            "gray",
+            "rgb"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "path_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "path",
+          "description": "Kept as the coord 'path' (ignored when the default is missing)",
+          "title": "Path Column"
+        },
+        "resize": {
+          "default": "stretch",
+          "enum": [
+            "stretch",
+            "crop",
+            "pad"
+          ],
+          "title": "Resize",
+          "type": "string"
+        },
+        "sha256_column": {
+          "default": "sha256",
+          "description": "Lowercase hex sha256 of each image",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Sha256 Column",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Canonical (height, width) for samples and model defaults; each 1..4096",
+          "title": "Size"
+        },
+        "split_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Train/test assignment: the text coord 'split(image)'",
+          "title": "Split Column"
+        },
+        "var": {
+          "default": "pixels",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "title": "CollectionOptions",
+      "type": "object"
+    },
+    "CollectionSource": {
+      "additionalProperties": false,
+      "description": "``DatasetVersionCreate.collection``: a manifest upload plus the parts it needs.\n\n``base_version``: ``None`` uses the latest READY collection version of the dataset\n(when there is one) as the source of images the parts do not hold; ``0`` uses no base.",
+      "properties": {
+        "base_version": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Version"
+        },
+        "manifest_upload_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Manifest Upload Id",
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/$defs/CollectionOptions"
+        },
+        "part_upload_ids": {
+          "items": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Part Upload Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "manifest_upload_id"
+      ],
+      "title": "CollectionSource",
+      "type": "object"
+    },
     "DimMapping": {
       "additionalProperties": false,
       "description": "A dim of the dataset, read from one column of a tabular upload.",
@@ -472,6 +677,178 @@
       "title": "Hdf5Var",
       "type": "object"
     },
+    "ImageFolderOptions": {
+      "additionalProperties": false,
+      "description": "How a zip of images and a manifest table becomes ``pixels(image, y, x, channel)``.\n\nThe manifest has one row per image: the image path in the zip and, optionally, an id, a\nclass label and a train/test split. The images must have 8 bits per channel and one\nsize, unless ``size`` resizes them. Every byte is decoded inside the sandboxed ingest run.",
+      "examples": [
+        {
+          "label_column": "class",
+          "manifest": "manifest.csv",
+          "path_column": "file",
+          "split_column": "split"
+        },
+        {
+          "id_column": "id",
+          "label_column": "label",
+          "manifest": "labels.parquet",
+          "max_images": 5000,
+          "mode": "rgb",
+          "resize": "crop",
+          "size": [
+            32,
+            32
+          ]
+        }
+      ],
+      "properties": {
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Other columns kept as coords (default: all others)",
+          "title": "Columns"
+        },
+        "dim": {
+          "default": "image",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "id_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique labels of the image dim (default: the row number)",
+          "title": "Id Column"
+        },
+        "label_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Class labels: the text variable 'label(image)', role target",
+          "title": "Label Column"
+        },
+        "manifest": {
+          "default": "manifest.csv",
+          "description": "Path of the manifest in the zip",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Manifest",
+          "type": "string"
+        },
+        "max_images": {
+          "default": 20000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Max Images",
+          "type": "integer"
+        },
+        "mode": {
+          "default": "auto",
+          "description": "auto: rgb when an image has colour, else gray",
+          "enum": [
+            "auto",
+            "gray",
+            "rgb"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "path_column": {
+          "default": "path",
+          "description": "Image paths relative to the zip root",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Path Column",
+          "type": "string"
+        },
+        "resize": {
+          "default": "stretch",
+          "description": "How images are resized (only with size)",
+          "enum": [
+            "stretch",
+            "crop",
+            "pad"
+          ],
+          "title": "Resize",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "(height, width) to resize every image to; each 1..4096",
+          "title": "Size"
+        },
+        "split_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Train/test assignment: the text coord 'split(image)'",
+          "title": "Split Column"
+        },
+        "var": {
+          "default": "pixels",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "title": "ImageFolderOptions",
+      "type": "object"
+    },
     "IngestAssembly": {
       "additionalProperties": false,
       "description": "A dataset version built from several uploads (M4): every source is ingested in the\nsame sandboxed run (inputs ``upload.<i>``, ``i`` = the source's index), then combined\nper node. The result is a tree dataset unless every source lands in the root.",
@@ -656,6 +1033,21 @@
               }
             ]
           }
+        },
+        {
+          "format": "image_folder",
+          "images": {
+            "label_column": "class",
+            "manifest": "manifest.csv",
+            "path_column": "file",
+            "split_column": "split"
+          }
+        },
+        {
+          "format": "safetensors",
+          "weights": {
+            "max_parameters": 50000000
+          }
         }
       ],
       "properties": {
@@ -674,7 +1066,9 @@
             "mff",
             "zarr_zip",
             "netcdf",
-            "hdf5"
+            "hdf5",
+            "image_folder",
+            "safetensors"
           ],
           "title": "Format",
           "type": "string"
@@ -690,6 +1084,18 @@
           ],
           "default": null,
           "description": "M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')"
+        },
+        "images": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImageFolderOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.14: options of an 'image_folder' upload (defaults when left out)"
         },
         "layout": {
           "default": "dense",
@@ -737,6 +1143,18 @@
           "title": "Vars",
           "type": "object"
         },
+        "weights": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WeightsOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.15: options of a 'safetensors' upload (defaults when left out)"
+        },
         "wide": {
           "additionalProperties": {
             "$ref": "#/$defs/WideVarMapping"
@@ -762,6 +1180,7 @@
       "title": "IngestPreset",
       "type": "string"
     },
+    "JsonValue": {},
     "MeridianColumns": {
       "additionalProperties": false,
       "description": "Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.\n\n``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:\nthe *i*-th column of each belongs to the *i*-th entry of ``media_channels``\n(``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether\nthe KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).",
@@ -1176,6 +1595,58 @@
       "title": "VarMapping",
       "type": "object"
     },
+    "WeightsOptions": {
+      "additionalProperties": false,
+      "description": "A safetensors file of pretrained network weights (read in the sandboxed ingest run).\n\nThe file becomes a weights dataset: ``weights(param)`` float32 plus the tensor table in\nthe ``mapi_weights`` attr. Models and steps read it as a side table.",
+      "examples": [
+        {
+          "max_parameters": 50000000
+        },
+        {
+          "arch": {
+            "blocks": [
+              1,
+              1,
+              1
+            ],
+            "channels": 3,
+            "kind": "resnet",
+            "widths": [
+              16,
+              32,
+              64
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "arch": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Architecture JSON, when the file's __metadata__ has no 'mapi_arch'",
+          "title": "Arch"
+        },
+        "max_parameters": {
+          "default": 200000000,
+          "maximum": 500000000,
+          "minimum": 1,
+          "title": "Max Parameters",
+          "type": "integer"
+        }
+      },
+      "title": "WeightsOptions",
+      "type": "object"
+    },
     "WideVarMapping": {
       "additionalProperties": false,
       "description": "One variable read from several columns, one per label of ``dim`` (a wide table).\n\n``{\"dim\": \"channel\", \"columns\": {\"tv\": \"tv_spend\", \"search\": \"search_spend\"}}`` gives a\nvariable along ``channel`` (plus the table's other dims) with coords ``tv`` and\n``search``. Several wide variables may share a dim; their labels must then agree.",
@@ -1263,7 +1734,7 @@
   "$id": "https://schemas.mapi.dev/v1/api-DatasetVersionCreate.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Turn finished uploads into a new version via a sandboxed ingest run (202).\n\nExactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several\nfiles combined per node into one version, see :class:`IngestAssembly`).",
+  "description": "Turn finished uploads into a new version via a sandboxed ingest run (202).\n\nExactly one of: ``upload_id`` + ``mapping`` (one file), ``assembly`` (M4: several\nfiles combined per node into one version, see :class:`IngestAssembly`), or\n``collection`` (v0.15: an image collection from a manifest and image parts, see\n:class:`~mapi_spec.collection.CollectionSource`).",
   "examples": [
     {
       "mapping": {
@@ -1332,6 +1803,23 @@
         ]
       },
       "message": "2024 and 2025 cubes plus the instrument"
+    },
+    {
+      "collection": {
+        "manifest_upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+        "options": {
+          "label_column": "label",
+          "size": [
+            64,
+            64
+          ],
+          "split_column": "split"
+        },
+        "part_upload_ids": [
+          "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+        ]
+      },
+      "message": "Product photos, October"
     }
   ],
   "properties": {
@@ -1346,6 +1834,18 @@
       ],
       "default": null,
       "description": "M4: several uploads combined into one (tree) version"
+    },
+    "collection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CollectionSource"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.15: an image collection (a manifest upload and image part uploads)"
     },
     "mapping": {
       "anyOf": [

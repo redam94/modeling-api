@@ -1,0 +1,411 @@
+{
+  "$defs": {
+    "ProfileEntry": {
+      "additionalProperties": true,
+      "description": "A variable along a non-time axis (position, multipole, wavelength): one curve per\nlevel of ``frame_dim``; ``values`` of each frame align with ``coords``.",
+      "properties": {
+        "along": {
+          "maxLength": 256,
+          "title": "Along",
+          "type": "string"
+        },
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "frame_dim": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Dim"
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/ProfileFrame"
+          },
+          "maxItems": 60,
+          "minItems": 1,
+          "title": "Frames",
+          "type": "array"
+        },
+        "log_x": {
+          "default": false,
+          "title": "Log X",
+          "type": "boolean"
+        },
+        "log_y": {
+          "default": false,
+          "title": "Log Y",
+          "type": "boolean"
+        },
+        "omitted_frames": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Frames",
+          "type": "integer"
+        },
+        "peak": {
+          "items": {
+            "$ref": "#/$defs/ProfilePeak"
+          },
+          "maxItems": 60,
+          "title": "Peak",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "along",
+        "coords",
+        "frames"
+      ],
+      "title": "ProfileEntry",
+      "type": "object"
+    },
+    "ProfileFrame": {
+      "additionalProperties": true,
+      "description": "One curve of a profile (one level of the frame dim, or the only curve).",
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "title": "ProfileFrame",
+      "type": "object"
+    },
+    "ProfilePeak": {
+      "additionalProperties": true,
+      "description": "Where a curve is highest.",
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "ProfilePeak",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-profiles.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``profiles``: curves and spectra along a non-time axis.",
+  "examples": [
+    {
+      "caption_plain": "Shows each variable along its axis, one curve per frame.",
+      "format": "mapi.data-explorer.profiles/v1",
+      "items": [
+        {
+          "along": "position",
+          "coords": [
+            25.0,
+            75.0,
+            125.0,
+            175.0,
+            225.0
+          ],
+          "downsampled": false,
+          "facet": {},
+          "frame_dim": "hours",
+          "frames": [
+            {
+              "label": 0,
+              "values": [
+                10.0,
+                8.0,
+                3.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "label": 12,
+              "values": [
+                12.0,
+                10.0,
+                6.0,
+                2.0,
+                0.0
+              ]
+            }
+          ],
+          "log_x": false,
+          "log_y": false,
+          "omitted_frames": 0,
+          "peak": [
+            {
+              "at": 25.0,
+              "frame": 0,
+              "value": 10.0
+            },
+            {
+              "at": 25.0,
+              "frame": 12,
+              "value": 12.0
+            }
+          ],
+          "units": "cells",
+          "var": "cells"
+        },
+        {
+          "along": "multipole",
+          "coords": [
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "downsampled": false,
+          "facet": {},
+          "frames": [
+            {
+              "values": [
+                1000.0,
+                1050.0,
+                990.0,
+                1100.0,
+                1200.0
+              ]
+            }
+          ],
+          "log_x": true,
+          "log_y": false,
+          "omitted_frames": 0,
+          "peak": [
+            {
+              "at": 6,
+              "value": 1200.0
+            }
+          ],
+          "units": "uK^2",
+          "var": "reference_dl"
+        }
+      ],
+      "omitted": [],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.profiles/v1",
+      "default": "mapi.data-explorer.profiles/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ProfileEntry"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "omitted": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Omitted",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "ProfilesView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

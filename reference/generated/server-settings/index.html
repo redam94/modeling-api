@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4136,7 +4316,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4158,14 +4338,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5601,7 +5781,7 @@
 <tr>
 <td><code>MAPI_DOCKER_IMAGE</code></td>
 <td><code>str</code></td>
-<td><code>mapi/base-bayes:0.9.0</code></td>
+<td><code>mapi/base-bayes:0.15.0</code></td>
 <td>Runner image for runs without a mapped plugin (ingest, describe, ...)</td>
 </tr>
 <tr>
@@ -5627,6 +5807,12 @@
 <td><code>str</code></td>
 <td><code>runsc</code></td>
 <td></td>
+</tr>
+<tr>
+<td><code>MAPI_DOCKER_GPUS</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Give GPU-class run containers one NVIDIA GPU (a docker device request; needs the NVIDIA container toolkit on the host). Off: GPU-class runs use the CPU</td>
 </tr>
 <tr>
 <td><code>MAPI_EXECUTOR_WORKDIR</code></td>
@@ -5662,7 +5848,7 @@
 <td><code>MAPI_CLOUDRUN_JOB_TEMPLATE</code></td>
 <td><code>str</code></td>
 <td><code>mapi-{env}-{base}-{class}</code></td>
-<td>Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and {class} (s|m|l) are substituted. Must match the Jobs Terraform creates</td>
+<td>Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast|base-dl) and {class} (s|m|l|gpu) are substituted. Must match the Jobs Terraform creates</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PLUGIN_BASES</code></td>
@@ -5675,6 +5861,12 @@
 <td><code>str</code></td>
 <td><code>base-bayes</code></td>
 <td>Base for runs without a mapped plugin (ingest, describe)</td>
+</tr>
+<tr>
+<td><code>MAPI_CLOUDRUN_GPU_JOBS</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>The inventory has the GPU Job of base-dl (Terraform exec gpu_jobs), so GPU-class runs of dl models are placed on it. Off: the GPU class is not offered</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_SUBMITS_PER_MINUTE</code></td>
@@ -5849,6 +6041,12 @@
 <td><code>float</code></td>
 <td><code>300.0</code></td>
 <td>Sweep of expired upload intents and other expiring rows</td>
+</tr>
+<tr>
+<td><code>MAPI_TRACKING_RETENTION_DAYS</code></td>
+<td><code>int \| None</code></td>
+<td>unset</td>
+<td>Days after a run finishes that its metric points and user log lines are kept (unset: kept with the run). Summaries, params, tags and notes are always kept</td>
 </tr>
 <tr>
 <td><code>MAPI_CATALOG_PATH</code></td>

@@ -10,6 +10,18 @@
       "seq": 120,
       "stream": "stderr",
       "ts": "2026-10-15T09:30:00Z"
+    },
+    {
+      "attempt": 1,
+      "fields": {
+        "point": 3
+      },
+      "level": "warning",
+      "line": "grid point 3 failed: the model did not converge",
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "seq": 121,
+      "stream": "user",
+      "ts": "2026-10-15T09:30:00Z"
     }
   ],
   "properties": {
@@ -17,6 +29,58 @@
       "minimum": 1,
       "title": "Attempt",
       "type": "integer"
+    },
+    "fields": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Structured fields of a 'user' line (v0.11)",
+      "title": "Fields"
+    },
+    "level": {
+      "anyOf": [
+        {
+          "enum": [
+            "debug",
+            "info",
+            "warning",
+            "error"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Only on stream 'user' (v0.11)",
+      "title": "Level"
     },
     "line": {
       "maxLength": 4096,
@@ -40,7 +104,8 @@
       "enum": [
         "stdout",
         "stderr",
-        "system"
+        "system",
+        "user"
       ],
       "title": "Stream",
       "type": "string"

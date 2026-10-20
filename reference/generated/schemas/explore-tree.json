@@ -1,0 +1,399 @@
+{
+  "$defs": {
+    "PhyloSignal": {
+      "additionalProperties": true,
+      "description": "Moran's I of a trait with inverse patristic distance weights.",
+      "properties": {
+        "morans_i": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Morans I"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "PhyloSignal",
+      "type": "object"
+    },
+    "TipTrait": {
+      "additionalProperties": true,
+      "description": "One trait per tip, in the order of ``tips`` (tips sorted by their place ``y``).",
+      "properties": {
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "values"
+      ],
+      "title": "TipTrait",
+      "type": "object"
+    },
+    "TreeNodeLayout": {
+      "additionalProperties": true,
+      "description": "Columnar layout of the tree (one entry per node): ``x`` = distance from the root,\n``y`` = the vertical place (tips at 0, 1, 2, ...), ``parent`` = index of the parent\n(-1 for a root).",
+      "properties": {
+        "is_tip": {
+          "items": {
+            "type": "boolean"
+          },
+          "maxItems": 5000,
+          "title": "Is Tip",
+          "type": "array"
+        },
+        "label": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Label",
+          "type": "array"
+        },
+        "parent": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 5000,
+          "title": "Parent",
+          "type": "array"
+        },
+        "x": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 5000,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 5000,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "parent",
+        "is_tip",
+        "label"
+      ],
+      "title": "TreeNodeLayout",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-tree.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``tree``: a tree stored in variables (``parent``, ``branch_length``) drawn as a\ndendrogram with the traits of its tips. (Not a *tree dataset*, whose groups are picked\nwith ``?node=``.)",
+  "examples": [
+    {
+      "caption_plain": "Shows the tree with the traits of its tips.",
+      "depth": 2.0,
+      "format": "mapi.data-explorer.tree/v1",
+      "layout": {
+        "is_tip": [
+          true,
+          true,
+          true,
+          false,
+          false
+        ],
+        "label": [
+          "Homo_sapiens",
+          "Pan_troglodytes",
+          "Gorilla_gorilla",
+          null,
+          null
+        ],
+        "parent": [
+          3,
+          3,
+          4,
+          4,
+          -1
+        ],
+        "x": [
+          2.0,
+          2.0,
+          2.0,
+          1.0,
+          0.0
+        ],
+        "y": [
+          0.0,
+          1.0,
+          2.0,
+          0.5,
+          1.25
+        ]
+      },
+      "matched_by": "label",
+      "n_nodes": 5,
+      "n_tips": 3,
+      "node_dim": "node",
+      "roots": [
+        4
+      ],
+      "signal": [
+        {
+          "morans_i": 0.12,
+          "p_value": 0.4,
+          "var": "brain"
+        }
+      ],
+      "tip_dim": "species",
+      "tips": [
+        0,
+        1,
+        2
+      ],
+      "traits": [
+        {
+          "units": "cc",
+          "values": [
+            1350.0,
+            390.0,
+            500.0
+          ],
+          "var": "brain"
+        },
+        {
+          "units": "g",
+          "values": [
+            62000.0,
+            45000.0,
+            null
+          ],
+          "var": "body"
+        }
+      ],
+      "ultrametric": true,
+      "unmatched": 0,
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "depth": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Depth"
+    },
+    "format": {
+      "const": "mapi.data-explorer.tree/v1",
+      "default": "mapi.data-explorer.tree/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "layout": {
+      "$ref": "#/$defs/TreeNodeLayout"
+    },
+    "matched_by": {
+      "anyOf": [
+        {
+          "enum": [
+            "label",
+            "count",
+            "order"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Matched By"
+    },
+    "n_nodes": {
+      "minimum": 1,
+      "title": "N Nodes",
+      "type": "integer"
+    },
+    "n_tips": {
+      "minimum": 0,
+      "title": "N Tips",
+      "type": "integer"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "node_dim": {
+      "maxLength": 256,
+      "title": "Node Dim",
+      "type": "string"
+    },
+    "roots": {
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 5000,
+      "title": "Roots",
+      "type": "array"
+    },
+    "signal": {
+      "items": {
+        "$ref": "#/$defs/PhyloSignal"
+      },
+      "maxItems": 64,
+      "title": "Signal",
+      "type": "array"
+    },
+    "tip_dim": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tip Dim"
+    },
+    "tips": {
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 5000,
+      "title": "Tips",
+      "type": "array"
+    },
+    "traits": {
+      "items": {
+        "$ref": "#/$defs/TipTrait"
+      },
+      "maxItems": 64,
+      "title": "Traits",
+      "type": "array"
+    },
+    "ultrametric": {
+      "default": false,
+      "title": "Ultrametric",
+      "type": "boolean"
+    },
+    "unmatched": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Unmatched",
+      "type": "integer"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "node_dim",
+    "n_nodes",
+    "n_tips",
+    "layout"
+  ],
+  "title": "TreeView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

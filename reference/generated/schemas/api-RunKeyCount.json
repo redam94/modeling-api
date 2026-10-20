@@ -1,0 +1,43 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-RunKeyCount.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A metric series, param key or tag key, and how many runs have it.",
+  "examples": [
+    {
+      "key": "loss",
+      "labels": {
+        "split": "val"
+      },
+      "runs": 8
+    },
+    {
+      "key": "team",
+      "runs": 5
+    }
+  ],
+  "properties": {
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "runs": {
+      "minimum": 0,
+      "title": "Runs",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "key",
+    "runs"
+  ],
+  "title": "RunKeyCount",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

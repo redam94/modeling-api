@@ -245,12 +245,13 @@
       "type": "object"
     },
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"
@@ -480,6 +481,23 @@
     }
   ],
   "properties": {
+    "experiment_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Experiment of the new run (v0.14; not an archived one)",
+      "title": "Experiment Id"
+    },
     "kind": {
       "$ref": "#/$defs/RunKind"
     },

@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3308,6 +3458,8 @@
   
     
     
+      
+        
       
         
       
@@ -3587,6 +3739,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4118,7 +4298,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4140,14 +4320,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5683,13 +5863,33 @@ needs no Docker socket and works with all daemons. The two executors have these 
 </tbody>
 </table>
 <p><strong>Docker executor settings.</strong> <code>MAPI_DOCKER_IMAGES</code> maps a plugin namespace to its runner
-image. <code>mmm.*</code>, <code>sci.*</code> and <code>tabular.*</code> run in <code>mapi/base-bayes</code>, <code>sklearn.*</code> in <code>mapi/base-ml</code> and
-<code>ts.*</code> in <code>mapi/base-forecast</code>. A workflow node run goes to the image of the model that it
+image. <code>mmm.*</code>, <code>sci.*</code> and <code>tabular.*</code> (also <code>tabular.image_logistic</code>, v0.14) run in
+<code>mapi/base-bayes</code>, <code>sklearn.*</code> (with LightGBM and CatBoost from v0.14) in <code>mapi/base-ml</code>, and
+<code>ts.*</code> and <code>causal.*</code> in <code>mapi/base-forecast</code>. A workflow node run goes to the image of the model that it
 runs. This is its <code>model</code> parameter (for example a backtest or search of <code>ts.sarimax</code>). If
 there is no <code>model</code> parameter, it is the plugin of the model version that is bound to the
 node. Examples are a forecast, an evaluation or a governance check of a fitted model. Runs without a model
 plugin (ingest, describe, statistical tests) use <code>MAPI_DOCKER_IMAGE</code>. The defaults are the
 tags that <code>make docker-build</code> makes for the current version.</p>
+<p><strong>Deep learning and the GPU class</strong> <span class="mapi-badge">v0.15</span>. <code>dl.*</code> runs in
+<code>mapi/base-dl</code>. This image has <code>mapi-jax[cuda12]</code>: JAX with the NVIDIA CUDA wheels from pip,
+on python-slim (no NVIDIA base image). It is about 3 GB. <code>mapi/base-bayes</code> and
+<code>mapi/base-ml</code> also have <code>mapi-jax</code> for the CPU, so the step <code>dl.embed</code> works in front of
+their models.</p>
+<p>The docker executor accepts the resource class <code>GPU</code>:</p>
+<ul>
+<li>With <code>MAPI_DOCKER_GPUS=true</code>, the executor asks Docker for one NVIDIA GPU (a device
+  request with the driver <code>nvidia</code> and the capability <code>gpu</code>). The host needs the NVIDIA
+  driver and the <a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/">NVIDIA Container Toolkit</a>.</li>
+<li>With <code>MAPI_DOCKER_GPUS=false</code> (the default), the run gets the CPU and memory of the GPU
+  class and no GPU. JAX uses the CPU. The run shows the warning <code>GPU_UNAVAILABLE</code>.</li>
+</ul>
+<p>The local-process executor also accepts <code>GPU</code> and always uses the CPU.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The GPU path of <code>mapi/base-dl</code> is not tested. The project has no GPU. Do a test with a
+small run and make sure that the param <code>dl.backend</code> is <code>gpu</code>.</p>
+</div>
 <p><code>MAPI_DOCKER_NETWORK</code> must give the run a path to the object store, because the bootstrap
 object and each signed URL point at it. In compose, the run joins the network namespace of
 the shim (<code>container:mapi-gcs-shim</code>). An internal Docker network that holds only the shim

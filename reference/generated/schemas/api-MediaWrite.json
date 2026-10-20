@@ -1,0 +1,98 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-MediaWrite.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/runs/{run_id}/media``: log one image (PNG/JPEG) or table (JSON) to a run.\n\n``data`` is the standard base64 of the bytes (at most :data:`MAX_API_MEDIA_BYTES` decoded).\nA table is UTF-8 JSON of a :class:`~mapi_spec.media.MediaTable`.",
+  "examples": [
+    {
+      "caption": "Holdout counts per class",
+      "content_type": "application/json",
+      "data": "eyJjb2x1bW5zIjpbImNsYXNzIiwibiJdLCJyb3dzIjpbWyJjYXQiLDNdXX0=",
+      "key": "confusion_counts",
+      "kind": "table"
+    },
+    {
+      "content_type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==",
+      "key": "samples",
+      "kind": "image",
+      "step": 0
+    }
+  ],
+  "properties": {
+    "caption": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption"
+    },
+    "content_type": {
+      "enum": [
+        "image/png",
+        "image/jpeg",
+        "application/json"
+      ],
+      "title": "Content Type",
+      "type": "string"
+    },
+    "data": {
+      "maxLength": 5592408,
+      "minLength": 4,
+      "title": "Data",
+      "type": "string"
+    },
+    "key": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "image",
+        "table"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "labels": {
+      "maxProperties": 8,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{0,31}$": {
+          "pattern": "^[A-Za-z0-9_.\\-]{1,63}$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "step": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Step"
+    }
+  },
+  "required": [
+    "key",
+    "kind",
+    "content_type",
+    "data"
+  ],
+  "title": "MediaWrite",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

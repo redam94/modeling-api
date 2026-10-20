@@ -1,0 +1,48 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ExperimentRunsWrite.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/experiments/{experiment_id}/runs``: move runs into the experiment (``add``;\na run leaves its previous experiment) or out of it (``remove``).",
+  "examples": [
+    {
+      "add": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d1"
+      ]
+    },
+    {
+      "remove": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ]
+    }
+  ],
+  "properties": {
+    "add": {
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 200,
+      "title": "Add",
+      "type": "array"
+    },
+    "remove": {
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "maxItems": 200,
+      "title": "Remove",
+      "type": "array"
+    }
+  },
+  "title": "ExperimentRunsWrite",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

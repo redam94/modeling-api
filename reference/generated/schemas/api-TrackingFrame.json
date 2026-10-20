@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "MetricSeries": {
+      "description": "Summary of one metric series (key + labels) of a run; the newest attempt that logged it.",
+      "examples": [
+        {
+          "attempt": 1,
+          "count": 1400,
+          "first_ts": "2026-10-15T09:30:00Z",
+          "key": "step_size",
+          "labels": {
+            "chain": "0"
+          },
+          "last": 0.31,
+          "last_step": 1400,
+          "last_ts": "2026-10-15T09:31:00Z",
+          "max": 1.2,
+          "min": 0.02
+        },
+        {
+          "attempt": 1,
+          "count": 1,
+          "first_ts": "2026-10-15T09:30:00Z",
+          "key": "rmse",
+          "last": 12.7,
+          "last_step": null,
+          "last_ts": "2026-10-15T09:30:00Z",
+          "max": 12.7,
+          "min": 12.7
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "count": {
+          "description": "Stored points",
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "first_ts": {
+          "format": "date-time",
+          "title": "First Ts",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "last": {
+          "description": "Value of the newest point (by time, then step)",
+          "title": "Last",
+          "type": "number"
+        },
+        "last_step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Step of the newest point; null for a scalar",
+          "title": "Last Step"
+        },
+        "last_ts": {
+          "format": "date-time",
+          "title": "Last Ts",
+          "type": "string"
+        },
+        "max": {
+          "title": "Max",
+          "type": "number"
+        },
+        "min": {
+          "title": "Min",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "attempt",
+        "count",
+        "last",
+        "min",
+        "max",
+        "first_ts",
+        "last_ts"
+      ],
+      "title": "MetricSeries",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-TrackingFrame.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Data of the SSE ``tracking`` frame: the series that changed since the last frame, and\nwhether params, tags or (v0.14) media changed (fetch them again).",
+  "examples": [
+    {
+      "params": true,
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "series": [
+        {
+          "attempt": 1,
+          "count": 1400,
+          "first_ts": "2026-10-15T09:30:00Z",
+          "key": "step_size",
+          "labels": {
+            "chain": "0"
+          },
+          "last": 0.31,
+          "last_step": 1400,
+          "last_ts": "2026-10-15T09:31:00Z",
+          "max": 1.2,
+          "min": 0.02
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "media": {
+      "default": false,
+      "description": "Media changed since the last frame (v0.14)",
+      "title": "Media",
+      "type": "boolean"
+    },
+    "params": {
+      "default": false,
+      "title": "Params",
+      "type": "boolean"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/MetricSeries"
+      },
+      "maxItems": 200,
+      "title": "Series",
+      "type": "array"
+    },
+    "tags": {
+      "default": false,
+      "title": "Tags",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "run_id"
+  ],
+  "title": "TrackingFrame",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

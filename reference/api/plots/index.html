@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4128,7 +4308,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -4150,14 +4330,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6959,6 +7139,12 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 <code>core.rank_matrix</code>          P(rank = k) per item and pairwise P(i above j)
 <code>core.calibration</code>          PIT-ECDF difference with an envelope, or a reliability diagram
 <code>core.state_sequence</code>       observed series above stacked state probabilities
+<code>core.roc_pr</code>               ROC and precision-recall curves of a binary classifier
+<code>core.confusion</code>            2 x 2 confusion matrix at a probability threshold
+<code>core.loss_curve</code>           loss of an iterative fit (ADVI) per step, moving average
+<code>core.loo_pit</code>              LOO-PIT calibration and the PSIS Pareto k per observation
+<code>core.energy</code>               marginal energy vs energy transitions, E-BFMI per chain
+<code>core.prior_posterior</code>      prior and posterior densities per parameter, ranked by shift
 ============================  ==========================================================</p>
 <p>The MMM domain pack lives in :mod:<code>mapi_plots.packs.mmm</code> and the tabular-ML pack
 (<code>ml.feature_importance</code>) in :mod:<code>mapi_plots.packs.ml</code>, and the scientific-model pack
@@ -6966,9 +7152,11 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 :mod:<code>mapi_plots.packs.sci</code>, with the map, tree and polar recipes in
 :mod:<code>mapi_plots.packs.sci_maps</code>, the image and spectrum recipes in
 :mod:<code>mapi_plots.packs.sci_images</code> and <code>sci.point_pattern</code> in
-:mod:<code>mapi_plots.packs.sci_points</code>, and the network pack (<code>net.graph</code>; Plotly) in
-:mod:<code>mapi_plots.packs.net</code>. All are exposed through the
-<code>mapi.plots</code> entry-point group, so <code>mapi_sdk.registry.default_registry()</code> finds them.</p>
+:mod:<code>mapi_plots.packs.sci_points</code>, the network pack (<code>net.graph</code>; Plotly) in
+:mod:<code>mapi_plots.packs.net</code>, and the causal pack (<code>causal.impact</code>, <code>causal.pre_fit</code>,
+<code>causal.donor_weights</code>, <code>causal.event_study</code>) in :mod:<code>mapi_plots.packs.causal</code>. All are
+exposed through the <code>mapi.plots</code> entry-point group, so
+<code>mapi_sdk.registry.default_registry()</code> finds them.</p>
 
 
 

@@ -1,0 +1,30 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-MetricsWriteResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Points stored, and points that repeated an existing (series, step) and were ignored.",
+  "examples": [
+    {
+      "accepted": 2,
+      "duplicates": 0
+    }
+  ],
+  "properties": {
+    "accepted": {
+      "minimum": 0,
+      "title": "Accepted",
+      "type": "integer"
+    },
+    "duplicates": {
+      "minimum": 0,
+      "title": "Duplicates",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "accepted",
+    "duplicates"
+  ],
+  "title": "MetricsWriteResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -2468,6 +2468,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2660,6 +2668,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2696,6 +2760,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -3100,6 +3220,8 @@
       
         
       
+        
+      
     
     
     
@@ -3376,6 +3498,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3532,6 +3682,8 @@
   
     
     
+      
+        
       
         
       
@@ -3811,6 +3963,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4342,7 +4522,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4364,14 +4544,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5833,6 +6013,38 @@ call endpoints also have no limit.</p>
 <td>yes</td>
 <td>yes</td>
 <td>yes, and lift tests</td>
+</tr>
+<tr>
+<td><code>mediated_mmm</code> - Marketing mix with an intermediate measure <span class="mapi-badge">v0.12</span></td>
+<td><code>mmm.nested</code> (mmm-framework)</td>
+<td>The direct and indirect effect of each channel through visits, searches or awareness (national data)</td>
+<td>yes</td>
+<td>yes</td>
+<td>lift tests only</td>
+</tr>
+<tr>
+<td><code>multi_kpi_mmm</code> - Marketing mix for related products <span class="mapi-badge">v0.12</span></td>
+<td><code>mmm.multivariate</code> (mmm-framework)</td>
+<td>The effect of each channel on two or more results, and one budget plan for all of them (national data)</td>
+<td>yes</td>
+<td>yes</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>campaign_impact</code> - Effect of a campaign <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.impact</code></td>
+<td>The effect of a campaign, a launch or a price change on one series, with optional control series</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>geo_lift</code> - Geo-lift test <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.synthetic_control</code></td>
+<td>The effect of a campaign in test markets, against a mix of the other markets. The report gives a lift test for the MMM.</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
 <td><code>weekly_forecast</code> - Weekly forecast</td>

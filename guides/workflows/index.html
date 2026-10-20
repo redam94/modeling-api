@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../../models/statsmodels/">
+        <link rel="prev" href="../causal/">
       
       
         <link rel="next" href="../workflow-cookbook/">
@@ -2251,6 +2251,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2446,6 +2454,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guided-data/" class="md-nav__link">
         
   
@@ -2482,6 +2546,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2891,6 +3011,8 @@
       
         
       
+        
+      
     
     
     
@@ -3150,6 +3272,34 @@
     
   
     statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
   
 
     
@@ -3750,6 +3900,8 @@
       
         
       
+        
+      
     
     
     
@@ -3978,6 +4130,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4509,7 +4689,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4531,14 +4711,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6149,7 +6329,7 @@ ports, parameters and result fields.</p>
 </tbody>
 </table>
 <h2 id="start-from-the-gallery">Start from the gallery<a class="headerlink" href="#start-from-the-gallery" title="Permanent link">&para;</a></h2>
-<p>The gallery has ten templates. Each template has an About card in plain language
+<p>The gallery has eleven templates. Each template has an About card in plain language
 (<code>GET /v1/workflow-templates</code>):</p>
 <table>
 <thead>
@@ -6170,6 +6350,10 @@ ports, parameters and result fields.</p>
 <tr>
 <td><code>mmm_governed</code></td>
 <td>You need a marketing mix model that must pass the governance policy before a person uses it.</td>
+</tr>
+<tr>
+<td><code>geo_lift_mmm</code> <span class="mapi-badge">v0.13</span></td>
+<td>You ran a geo-lift test on one channel. You want the effect of the test, and a marketing mix model that agrees with it. See the <a href="../workflow-cookbook/#geo-lift-test-to-a-calibrated-mmm">cookbook</a>.</td>
 </tr>
 <tr>
 <td><code>forecast_bakeoff</code></td>
@@ -6731,6 +6915,13 @@ complete version, with Granger tests and a report.</p>
 <p>The node does a backtest of each grid point on the plan. <code>best</code> is the winning settings,
 fitted again on all the data (<code>best_settings</code>, <code>best_score</code> in the result). If a grid has
 more points than <code>max_points</code>, the node fails (<code>WORKFLOW_INVALID</code>) before it fits a point.</p>
+<p>From v0.11, the search run of the node logs each grid point. The search run is the first
+item in the <code>child_runs</code> of the node. The <code>run_id</code> of the node is the refit of the winner,
+which does not have this data. The <strong>Metrics</strong> tab of the search run shows the score of each
+point (step = the point number). The <strong>Params</strong> tab lists the settings of each point as
+<code>trial.&lt;i&gt;.&lt;pointer&gt;</code>, for example <code>trial.4.order/2 = 1</code>. The search run also gets the metric
+<code>best_rmse</code> (for <code>metric: rmse</code>) and the tag <code>grid.best_point</code>. See
+<a href="../workflow-cookbook/#grid-search-tracking">Read a grid search in the run page</a>.</p>
 <h3 id="gate-on-governance-and-keep-the-evidence">Gate on governance and keep the evidence<a class="headerlink" href="#gate-on-governance-and-keep-the-evidence" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">gov</span><span class="p p-Indicator">,</span><span class="nt"> use</span><span class="p">:</span><span class="w"> </span><span class="nv">governance.policy</span><span class="p p-Indicator">,</span><span class="nt"> inputs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="nv">select.model</span><span class="p p-Indicator">,</span><span class="nt"> data</span><span class="p">:</span><span class="w"> </span><span class="nv">inputs.data</span><span class="p p-Indicator">},</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nt">   with</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">submit</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">}}</span>
@@ -7036,6 +7227,10 @@ again. To calculate all nodes again, start a run with <code>"use_cache": false</
 </tr>
 </tbody>
 </table>
+<p>Each node that runs in a child run keeps its own metrics, params and tags (v0.11). To list the
+node runs of a workflow run, use <code>GET /v1/runs?parent_run_id=&lt;run_id&gt;</code>. Code in a node logs
+with the same methods as a model (<code>ctx.log_metric</code>, <code>ctx.log_params</code>, <code>ctx.set_tag</code>,
+<code>ctx.log_line</code>). See <a href="../tracking/#workflow-nodes">Track metrics, params and tags</a>.</p>
 <p>When a run is complete, the server sends the <code>workflow.run.succeeded</code> or <code>workflow.run.failed</code>
 <a href="../endpoints-and-webhooks/">webhook</a>. The webhook contains the run id, the workflow revision,
 the status and the outputs.</p>
@@ -7216,7 +7411,7 @@ row-level security, as all other data are.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../models/statsmodels/" class="md-footer__link md-footer__link--prev" aria-label="Previous: statsmodels time-series models">
+          <a href="../causal/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Measure the effect of a change">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -7226,7 +7421,7 @@ row-level security, as all other data are.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                statsmodels time-series models
+                Measure the effect of a change
               </div>
             </div>
           </a>

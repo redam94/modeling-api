@@ -1,0 +1,46 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-BlobQuery.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Which images (by sha256) a collection version of the dataset does not hold (v0.15).\n\n``base_version``: ``None`` compares with the latest READY collection version; ``0``\ncompares with nothing (every image is missing).",
+  "examples": [
+    {
+      "base_version": null,
+      "sha256": [
+        "abababababababababababababababababababababababababababababababab",
+        "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      ]
+    }
+  ],
+  "properties": {
+    "base_version": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Version"
+    },
+    "sha256": {
+      "items": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Sha256",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sha256"
+  ],
+  "title": "BlobQuery",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

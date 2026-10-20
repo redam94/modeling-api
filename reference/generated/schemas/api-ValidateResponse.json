@@ -113,10 +113,11 @@
         },
         "input": {
           "default": "dataset",
-          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. v0.15: 'collection' models implement fit_batches/score_batches and train on every image of an image collection through a lazy loader; they also read plain datasets",
           "enum": [
             "dataset",
-            "tree"
+            "tree",
+            "collection"
           ],
           "title": "Input",
           "type": "string"
@@ -611,6 +612,14 @@
           "title": "Resolved",
           "type": "string"
         },
+        "side_tables": {
+          "description": "v0.15: the data.side_tables entries the model reads (fit time only)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Side Tables",
+          "type": "array"
+        },
         "use": {
           "title": "Use",
           "type": "string"
@@ -937,6 +946,7 @@
             "float32",
             "int64",
             "int32",
+            "uint8",
             "bool",
             "str",
             "datetime64[ns]"

@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "RunKeyCount": {
+      "description": "A metric series, param key or tag key, and how many runs have it.",
+      "examples": [
+        {
+          "key": "loss",
+          "labels": {
+            "split": "val"
+          },
+          "runs": 8
+        },
+        {
+          "key": "team",
+          "runs": 5
+        }
+      ],
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "runs": {
+          "minimum": 0,
+          "title": "Runs",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "key",
+        "runs"
+      ],
+      "title": "RunKeyCount",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RunKeys.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/run-keys``: the tracked keys of the runs of a project (or an experiment),\nmost common first; the column picker of the runs table reads it.",
+  "examples": [
+    {
+      "metrics": [
+        {
+          "key": "rmse",
+          "runs": 12
+        },
+        {
+          "key": "loss",
+          "labels": {
+            "split": "val"
+          },
+          "runs": 8
+        }
+      ],
+      "params": [
+        {
+          "key": "settings.adstock.l_max",
+          "runs": 12
+        }
+      ],
+      "tags": [
+        {
+          "key": "team",
+          "runs": 5
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/RunKeyCount"
+      },
+      "maxItems": 500,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "params": {
+      "items": {
+        "$ref": "#/$defs/RunKeyCount"
+      },
+      "maxItems": 500,
+      "title": "Params",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "$ref": "#/$defs/RunKeyCount"
+      },
+      "maxItems": 200,
+      "title": "Tags",
+      "type": "array"
+    },
+    "truncated": {
+      "default": false,
+      "description": "A list was capped",
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "title": "RunKeys",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

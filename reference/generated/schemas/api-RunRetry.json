@@ -1,12 +1,13 @@
 {
   "$defs": {
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"

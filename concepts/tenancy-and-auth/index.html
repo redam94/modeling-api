@@ -2407,6 +2407,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2599,6 +2607,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2635,6 +2699,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -3039,6 +3159,8 @@
       
         
       
+        
+      
     
     
     
@@ -3315,6 +3437,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3471,6 +3621,8 @@
   
     
     
+      
+        
       
         
       
@@ -3750,6 +3902,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4281,7 +4461,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4303,14 +4483,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5859,7 +6039,7 @@ summary:</p>
 <td>run</td>
 <td>viewer</td>
 <td>runner</td>
-<td>—</td>
+<td>runner (v0.11: name, note, tags, metric and param writes. v0.14: media writes, experiments and saved views)</td>
 <td>—</td>
 <td><code>cancel</code>: runner</td>
 </tr>
@@ -5971,6 +6151,9 @@ specs, models and plots) through the API. No role or flag gives this access.</p>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">can</span><span class="p">(</span><span class="n">ProjectRole</span><span class="o">.</span><span class="n">RUNNER</span><span class="p">,</span> <span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="o">.</span><span class="n">RUN</span><span class="p">))</span>  <span class="c1"># True</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">can</span><span class="p">(</span><span class="n">ProjectRole</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">,</span> <span class="n">Action</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">ResourceKind</span><span class="o">.</span><span class="n">KILL_SWITCH</span><span class="p">))</span>  <span class="c1"># False: operators only</span>
 </span></code></pre></div>
+<p><strong>Experiments and saved views</strong> <span class="mapi-badge">v0.14</span> have no permissions of
+their own. They use the permissions of runs: a viewer can read them, and a runner (or a token
+with <code>runs:write</code>) can make, change and delete them.</p>
 <h2 id="who-can-call">Who can call<a class="headerlink" href="#who-can-call" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -6147,6 +6330,10 @@ owner. The token of an admin with <code>models:read</code> can only read.</p>
 <td>Make, edit and retire the governance policies of the project (policy-as-code)</td>
 </tr>
 <tr>
+<td><code>runs:write</code> (v0.11)</td>
+<td><code>models:read</code>, plus change the name, the note and the tags of runs, and log metrics and params to runs. From v0.14, also log images and tables to runs, and make, change and delete experiments and saved run views. Use it for a script that logs business KPIs after a deployment. <code>runs:create</code> does not give these writes.</td>
+</tr>
+<tr>
 <td><code>admin</code></td>
 <td>All actions that the role of the owner allows, except three: mint tokens, override a promotion gate and approve a validation</td>
 </tr>
@@ -6204,6 +6391,15 @@ These actions are:</p>
 <li>Changes to quotas and kill switches</li>
 <li>Artifact links that the platform mints</li>
 <li>Quota denials and refused run events</li>
+<li>Changes to the name, the note or the tags of a run (<code>run.update</code>, v0.11). The entry names
+  the changed fields and the number of tags. It never contains the text of the note.</li>
+<li>Metrics and params that a person or a script logged through the API (<code>run.log</code>, v0.11). The
+  entry gives the number of points or params. From v0.14, also images and tables (<code>media</code> and
+  <code>kind</code>).</li>
+<li>Changes to experiments (<code>experiment.create</code>, <code>experiment.update</code> and <code>experiment.delete</code>,
+  v0.14). A bulk move of runs is an <code>experiment.update</code> with the number of runs added and
+  removed.</li>
+<li>Changes to saved run views (<code>run_view.save</code> and <code>run_view.delete</code>, v0.14).</li>
 </ul>
 <p>Each entry records the platform id of the actor, the action, the resource, the result and a
 problem code. The platform keeps client IP addresses and user agents only as keyed HMACs.

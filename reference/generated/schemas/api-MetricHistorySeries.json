@@ -1,0 +1,94 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-MetricHistorySeries.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The points of one series, in step order (downsampled to ``max_points`` with LTTB).",
+  "examples": [
+    {
+      "attempt": 1,
+      "count": 3,
+      "downsampled": false,
+      "labels": {
+        "chain": "0"
+      },
+      "steps": [
+        1,
+        2,
+        3
+      ],
+      "ts": [
+        "2026-10-15T09:30:00Z",
+        "2026-10-15T09:30:00Z",
+        "2026-10-15T09:30:00Z"
+      ],
+      "values": [
+        0.9,
+        0.6,
+        0.45
+      ]
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "count": {
+      "description": "Stored points (before downsampling)",
+      "minimum": 0,
+      "title": "Count",
+      "type": "integer"
+    },
+    "downsampled": {
+      "default": false,
+      "title": "Downsampled",
+      "type": "boolean"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "steps": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "ts": {
+      "items": {
+        "format": "date-time",
+        "type": "string"
+      },
+      "title": "Ts",
+      "type": "array"
+    },
+    "values": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Values",
+      "type": "array"
+    }
+  },
+  "required": [
+    "attempt",
+    "count",
+    "steps",
+    "values",
+    "ts"
+  ],
+  "title": "MetricHistorySeries",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,299 @@
+{
+  "$defs": {
+    "RunMedia": {
+      "description": "An image or a table a run logged. ``caption`` is untrusted text; ``url`` is a signed GET\nof the stored copy (verify ``size`` and ``crc32c`` after the download).",
+      "examples": [
+        {
+          "attempt": 1,
+          "caption": "Predicted classes, epoch 3",
+          "content_type": "image/png",
+          "crc32c": "4waSgw==",
+          "created_at": "2026-10-15T09:30:00Z",
+          "expires_at": "2026-10-15T09:45:00Z",
+          "height": 64,
+          "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+          "key": "samples",
+          "kind": "image",
+          "labels": {
+            "split": "val"
+          },
+          "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          "size": 12034,
+          "source": "runner",
+          "step": 3,
+          "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f.png?alt=media",
+          "width": 64
+        },
+        {
+          "attempt": 1,
+          "content_type": "application/json",
+          "crc32c": "4waSgw==",
+          "created_at": "2026-10-15T09:30:00Z",
+          "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+          "key": "confusion_counts",
+          "kind": "table",
+          "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          "size": 412,
+          "source": "api"
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "content_type": {
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "application/json"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "crc32c": {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "title": "Crc32C",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "table"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "run_id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 1,
+          "title": "Size",
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "runner",
+            "api"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        }
+      },
+      "required": [
+        "id",
+        "run_id",
+        "attempt",
+        "key",
+        "kind",
+        "content_type",
+        "size",
+        "sha256",
+        "crc32c",
+        "source",
+        "created_at"
+      ],
+      "title": "RunMedia",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-CompareMedia.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One media series (key + labels) of one compared run, thinned evenly (the last is kept).",
+  "examples": [
+    {
+      "items": [
+        {
+          "attempt": 1,
+          "caption": "Predicted classes, epoch 3",
+          "content_type": "image/png",
+          "crc32c": "4waSgw==",
+          "created_at": "2026-10-15T09:30:00Z",
+          "expires_at": "2026-10-15T09:45:00Z",
+          "height": 64,
+          "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+          "key": "samples",
+          "kind": "image",
+          "labels": {
+            "split": "val"
+          },
+          "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+          "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          "size": 12034,
+          "source": "runner",
+          "step": 3,
+          "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f.png?alt=media",
+          "width": 64
+        }
+      ],
+      "key": "samples",
+      "kind": "image",
+      "labels": {
+        "split": "val"
+      },
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+    }
+  ],
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/RunMedia"
+      },
+      "maxItems": 50,
+      "title": "Items",
+      "type": "array"
+    },
+    "key": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "image",
+        "table"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "key",
+    "kind"
+  ],
+  "title": "CompareMedia",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

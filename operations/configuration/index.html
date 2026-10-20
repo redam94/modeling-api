@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3308,6 +3458,8 @@
   
     
     
+      
+        
       
         
       
@@ -3587,6 +3739,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4118,7 +4298,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4140,14 +4320,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6221,8 +6401,13 @@ server reads it as the <em>deployment profile</em>.</p>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_IMAGES</code></td>
-<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
+<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>, <code>causal</code>: <code>base-forecast</code>; <code>dl</code>: <code>base-dl</code> (v0.15)</td>
 <td>Plugin namespace to runner image (JSON), with the tag of the workspace version</td>
+</tr>
+<tr>
+<td><code>MAPI_DOCKER_GPUS</code></td>
+<td><code>false</code></td>
+<td>v0.15: give a run of the class <code>GPU</code> one NVIDIA GPU (a Docker device request). The host needs the NVIDIA Container Toolkit. With <code>false</code>, a GPU run uses the CPU and shows <code>GPU_UNAVAILABLE</code> (<a href="../docker/">docker</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_DOCKER_NETWORK</code></td>
@@ -6310,6 +6495,11 @@ server reads it as the <em>deployment profile</em>.</p>
 <td><code>MAPI_HOUSEKEEPING_INTERVAL_S</code></td>
 <td><code>300</code></td>
 <td>The sweep of expired upload intents (the server deletes their quarantine objects), expired browser sessions and abandoned sign-ins</td>
+</tr>
+<tr>
+<td><code>MAPI_TRACKING_RETENTION_DAYS</code></td>
+<td>unset</td>
+<td>v0.11. The days after a run finishes that the server keeps its metric points and its <code>user</code> log lines (1 to 36500). The housekeeping sweep deletes older rows in batches. The server always keeps the metric summaries, the value of each metric without a step, the params, the tags, the name and the note, thus search and comparison continue to work. If you do not set it, the server keeps the points while it keeps the run. See <a href="../../guides/tracking/#retention">Track metrics, params and tags</a>.</td>
 </tr>
 <tr>
 <td><code>MAPI_AUTO_RETRY_WINDOW_S</code></td>
@@ -6417,8 +6607,13 @@ server reads it as the <em>deployment profile</em>.</p>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_PLUGIN_BASES</code></td>
-<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>: <code>base-forecast</code></td>
+<td><code>mmm</code>, <code>sci</code>, <code>tabular</code>: <code>base-bayes</code>; <code>sklearn</code>: <code>base-ml</code>; <code>ts</code>, <code>causal</code>: <code>base-forecast</code>; <code>dl</code>: <code>base-dl</code> (v0.15)</td>
 <td>Plugin namespace to base image family (JSON)</td>
+</tr>
+<tr>
+<td><code>MAPI_CLOUDRUN_GPU_JOBS</code></td>
+<td><code>false</code></td>
+<td>v0.15: the inventory has the GPU Job of <code>base-dl</code> (Terraform <code>gpu_jobs</code>). Then runs of the class <code>GPU</code> of <code>dl</code> models go to it. With <code>false</code>, the executor does not offer the GPU class. Not verified against GCP (<a href="../cloud-run/#gpu-jobs">GPU jobs</a>)</td>
 </tr>
 <tr>
 <td><code>MAPI_CLOUDRUN_DEFAULT_BASE</code></td>
@@ -7091,7 +7286,7 @@ only <code>MAPI_*</code> variables.</p>
 </tr>
 <tr>
 <td><code>MAPI_WORKER_PACKAGES</code></td>
-<td>The packages that the <code>worker</code> target adds to <code>base-bayes</code> (<code>mapi-plugin-ts mapi-server[docker]</code>)</td>
+<td>The packages that the <code>worker</code> target adds to <code>base-bayes</code> (<code>mapi-plugin-ts mapi-plugin-causal mapi-server[docker]</code>)</td>
 </tr>
 <tr>
 <td><code>MAPI_NO_INSTALL</code></td>
@@ -7100,6 +7295,10 @@ only <code>MAPI_*</code> variables.</p>
 <tr>
 <td><code>MAPI_APT_PACKAGES</code></td>
 <td>The system packages of the runtime stage (<code>tini</code>, and <code>g++</code> for PyTensor)</td>
+</tr>
+<tr>
+<td><code>MAPI_XLA_PREALLOCATE</code>, <code>MAPI_XLA_FLAGS</code></td>
+<td>v0.15: the values of <code>XLA_PYTHON_CLIENT_PREALLOCATE</code> and <code>XLA_FLAGS</code> in the image (empty by default). <code>base-dl</code> sets <code>false</code> (GPU memory on demand) and <code>--xla_gpu_deterministic_ops=true</code> (deterministic GPU operations). Not verified on a GPU</td>
 </tr>
 <tr>
 <td><code>MAPI_ASSERT_PRESENT</code>, <code>MAPI_ASSERT_ABSENT</code></td>
@@ -7221,7 +7420,7 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 </tr>
 <tr>
 <td><code>MAPI_SCIENCE_DATA</code></td>
-<td>The folder of the three exported datasets (<code>scotland_lip.nc</code>, <code>heat_plate_e51.nc</code> and <code>lazega_coworkers.nc</code>) that <code>scripts/docs_screenshots_science.mjs</code> (<code>make docs-screenshots-science</code>) uploads, default <code>.local/science</code>. The script also reads <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_API_URL</code> and <code>MAPI_DEV_ACCOUNT</code></td>
+<td>The folder of the exported datasets that <code>scripts/docs_screenshots_science.mjs</code> (<code>make docs-screenshots-science</code>) uploads, default <code>.local/science</code>: <code>scotland_lip.nc</code>, <code>heat_plate_e51.nc</code> and <code>lazega_coworkers.nc</code> for the tutorials, and also <code>unc13_dstorm.nc</code>, <code>primates301.nc</code> and <code>bci_camera_traps.nc</code> for the Data Explorer. The script also reads <code>MAPI_WEB_ORIGIN</code>, <code>MAPI_API_URL</code> and <code>MAPI_DEV_ACCOUNT</code></td>
 </tr>
 <tr>
 <td><code>MAPI_GUIDED_SCREENSHOTS</code></td>

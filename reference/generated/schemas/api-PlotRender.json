@@ -102,6 +102,34 @@
           "title": "Draws Total",
           "type": "integer"
         },
+        "num_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Leapfrog steps of the latest draw (v0.11)",
+          "title": "Num Steps"
+        },
+        "step_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Current step size (v0.11)",
+          "title": "Step Size"
+        },
         "tuning": {
           "default": false,
           "title": "Tuning",
@@ -455,12 +483,13 @@
       "type": "object"
     },
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"
@@ -477,6 +506,7 @@
           "executor": "local-process",
           "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
           "kind": "fit",
+          "name": "weekly sales, adstock 4",
           "progress": {
             "chains": [
               {
@@ -507,6 +537,10 @@
           "spec_revision": 2,
           "started_at": "2026-10-15T09:30:05Z",
           "state": "running",
+          "tags": {
+            "stage": "candidate",
+            "team": "growth"
+          },
           "tenant_id": "default",
           "timeout": "45m",
           "updated_at": "2026-10-15T09:31:00Z"
@@ -538,6 +572,32 @@
           "minimum": 1,
           "title": "Attempt",
           "type": "integer"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Values of the requested `column` refs (list_runs only), keyed by RunRef.text()",
+          "title": "Columns"
         },
         "cost": {
           "$ref": "#/$defs/RunCost"
@@ -574,6 +634,23 @@
           ],
           "default": null,
           "title": "Executor"
+        },
+        "experiment_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Experiment of the run (v0.14)",
+          "title": "Experiment Id"
         },
         "failure_class": {
           "anyOf": [
@@ -632,6 +709,34 @@
           ],
           "default": null,
           "title": "Model Version Id"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Display name (v0.11)",
+          "title": "Name"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Free-text note (untrusted text, v0.11)",
+          "title": "Note"
         },
         "output_model_version_id": {
           "anyOf": [
@@ -781,6 +886,14 @@
         },
         "state": {
           "$ref": "#/$defs/RunState"
+        },
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Mutable run tags (v0.11; labels stay create-only)",
+          "title": "Tags",
+          "type": "object"
         },
         "tenant_id": {
           "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
@@ -1045,6 +1158,7 @@
         "executor": "local-process",
         "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
         "kind": "render",
+        "name": "weekly sales, adstock 4",
         "progress": null,
         "project_id": "default",
         "queued_at": "2026-10-15T09:30:00Z",
@@ -1054,6 +1168,10 @@
         "spec_revision": 2,
         "started_at": "2026-10-15T09:30:05Z",
         "state": "succeeded",
+        "tags": {
+          "stage": "candidate",
+          "team": "growth"
+        },
         "tenant_id": "default",
         "timeout": "45m",
         "updated_at": "2026-10-15T09:31:00Z"

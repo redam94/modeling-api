@@ -2253,6 +2253,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2448,6 +2456,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guided-data/" class="md-nav__link">
         
   
@@ -2484,6 +2548,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2993,6 +3113,8 @@
       
         
       
+        
+      
     
     
     
@@ -3272,6 +3394,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../workflows/" class="md-nav__link">
         
   
@@ -3428,6 +3578,8 @@
   
     
     
+      
+        
       
         
       
@@ -3707,6 +3859,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4238,7 +4418,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4260,14 +4440,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5565,11 +5745,11 @@ the model families, for persons who want the details. For the contract behind th
 <tbody>
 <tr>
 <td>What do you want to do?</td>
-<td>measure what marketing adds · plan a budget · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements</td>
+<td>measure what marketing adds · plan a budget · measure the effect of a campaign, a launch or a test · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements · put items or images into classes (v0.14)</td>
 </tr>
 <tr>
 <td>What does your data look like?</td>
-<td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid</td>
+<td>one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid · images, pictures of the same size (v0.14)</td>
 </tr>
 <tr>
 <td>How often do you record the data?</td>
@@ -5747,6 +5927,42 @@ can select explains itself. This also applies to your own plugins
 <td><code>mmm.frequentist</code> for a quick first look. The <code>mmm_governed</code> workflow to gate it on null tests.</td>
 </tr>
 <tr>
+<td>Measure marketing effects that go through visits, searches or awareness</td>
+<td><code>mmm.nested</code></td>
+<td>Direct and indirect effect of each channel. A measure can have empty periods, for example a monthly survey. National data.</td>
+<td>The <code>mediated_mmm</code> Guided template. <code>mmm.bayesian</code> when price or promotions change sales much (it takes controls).</td>
+</tr>
+<tr>
+<td>Measure marketing effects on two or more results, such as related products</td>
+<td><code>mmm.multivariate</code></td>
+<td>One budget, several results with correlated noise, and the effects between the results (associations, not causes). National data.</td>
+<td>The <code>multi_kpi_mmm</code> Guided template. One <code>mmm.bayesian</code> model for each result when the results do not interact.</td>
+</tr>
+<tr>
+<td>Measure marketing with a count (orders, sign-ups) or a share as the result</td>
+<td><code>mmm.bayesian</code> with <code>likelihood: poisson</code>, <code>negative_binomial</code> or <code>beta</code></td>
+<td>The predictions stay whole numbers or between 0 and 1</td>
+<td><code>normal</code> when the counts are large. ROI priors and lift tests need it.</td>
+</tr>
+<tr>
+<td>Measure the effect of a campaign, a launch or a price change on one series <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.impact</code></td>
+<td>The actual values against a prediction without the change, from the history and control series. The effect in each period and in total, with a range.</td>
+<td>The <code>campaign_impact</code> Guided template. <code>causal.synthetic_control</code> when you have the same number for many markets.</td>
+</tr>
+<tr>
+<td>Measure a geo-lift test (a campaign in some markets only) <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.synthetic_control</code></td>
+<td>A weighted mix of the other markets follows each test market. The result is a lift test for the MMM.</td>
+<td>The <code>geo_lift</code> Guided template. The <code>geo_lift_mmm</code> workflow calibrates <code>mmm.bayesian</code> with the test.</td>
+</tr>
+<tr>
+<td>Measure a change that some units got and other units never got <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.did</code></td>
+<td>Unit and time effects, and one effect for each period before and after the change (event study)</td>
+<td><code>causal.synthetic_control</code> when only a few units got the change</td>
+</tr>
+<tr>
 <td>Forecast one series with known drivers (price, promotions)</td>
 <td><code>ts.sarimax</code></td>
 <td>Past values, season and drivers. Prediction intervals. Forecasts from planned drivers.</td>
@@ -5762,7 +5978,7 @@ can select explains itself. This also applies to your own plugins
 <td>See the trend under the noise</td>
 <td><code>ts.unobserved_components</code></td>
 <td>Level, trend, season and noise as separate parts</td>
-<td><code>ts.hsgp_trend</code> for a Bayesian smooth trend</td>
+<td><code>ts.hsgp_trend</code> for a Bayesian smooth trend. <code>ts.bsts</code> for the same parts with ranges, gaps in the data and a <code>filter</code> mode.</td>
 </tr>
 <tr>
 <td>Know how an effect builds up over weeks</td>
@@ -5792,6 +6008,48 @@ can select explains itself. This also applies to your own plugins
 <td>Understand which product people select</td>
 <td><code>choice.multinomial_logit</code></td>
 <td>Price and promotion effects, household effects</td>
+<td></td>
+</tr>
+<tr>
+<td>Predict yes or no for each row <span class="mapi-badge">v0.14</span></td>
+<td><code>sklearn.tabular_classifier</code></td>
+<td>The probability of yes. Logistic regression, forests, xgboost, histogram boosting, LightGBM or CatBoost.</td>
+<td><code>sklearn.multiclass_classifier</code> for three or more classes</td>
+</tr>
+<tr>
+<td>Put each row into one of three or more classes <span class="mapi-badge">v0.14</span></td>
+<td><code>sklearn.multiclass_classifier</code></td>
+<td>The probability of each class. ROC and precision-recall curves for each class, and a confusion matrix.</td>
+<td><code>tabular.hierarchical_glm</code> with <code>family: ordinal</code> when the classes have an order</td>
+</tr>
+<tr>
+<td>Classify small images <span class="mapi-badge">v0.14</span></td>
+<td><code>tabular.image_logistic</code></td>
+<td>A Bayesian model on the main patterns of the pixels. A range for the probability of each class.</td>
+<td><code>sklearn.multiclass_classifier</code> on features that you calculate first, for larger images. See <a href="../image-data/">Image data</a>.</td>
+</tr>
+<tr>
+<td>Classify thousands of images or more <span class="mapi-badge">v0.15</span></td>
+<td><code>dl.cnn_classifier</code></td>
+<td>A neural network that trains on all images of a collection. Training curves, early stopping and checkpoints. The GPU class makes it faster.</td>
+<td><code>dl.finetune_classifier</code> when you have pretrained weights. See <a href="../deep-learning/">Deep learning</a>.</td>
+</tr>
+<tr>
+<td>Classify images with few labels and a pretrained network <span class="mapi-badge">v0.15</span></td>
+<td>the step <code>dl.embed</code> and <code>sklearn.multiclass_classifier</code></td>
+<td>Image features from a frozen network, then a fast classifier</td>
+<td><code>tabular.image_logistic</code> with <code>input: features</code> for a range on each probability</td>
+</tr>
+<tr>
+<td>Predict a value or a class for each row of a large table with a neural network <span class="mapi-badge">v0.15</span></td>
+<td><code>dl.mlp</code></td>
+<td>Relations that are not linear. Training and validation curves. Draws from the last layer.</td>
+<td><code>sklearn.tabular_regressor</code> first: on most tables, boosted trees are as good and faster</td>
+</tr>
+<tr>
+<td>Model counts with many zeros, shares or positive amounts <span class="mapi-badge">v0.14</span></td>
+<td><code>tabular.hierarchical_glm</code> with <code>family: zero_inflated_poisson</code>, <code>negative_binomial</code>, <code>beta</code> or <code>gamma</code></td>
+<td>Group effects with sharing, and a likelihood that fits the data</td>
 <td></td>
 </tr>
 <tr>

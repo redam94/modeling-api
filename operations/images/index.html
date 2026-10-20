@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3308,6 +3458,8 @@
   
     
     
+      
+        
       
         
       
@@ -3587,6 +3739,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4118,7 +4298,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4140,14 +4320,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5642,19 +5822,19 @@ three purposes:</p>
 </tr>
 <tr>
 <td><code>mapi/base-ml</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-sklearn</code> (<code>sklearn.*</code> plugins). <strong>No PyMC.</strong></td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-sklearn</code> with the <code>gbm</code> extra (<code>sklearn.*</code> plugins, LightGBM and CatBoost from v0.14) and <code>libgomp1</code> (for LightGBM). <strong>No PyMC.</strong></td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
 <tr>
 <td><code>mapi/base-forecast</code></td>
-<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code>, the <code>ts.*</code> plugins (<code>mapi-plugin-ts</code> and <code>mapi-plugin-statsmodels</code>)</td>
+<td><code>mapi-runner</code>, SDK, steps, plot recipes, workflow nodes, <code>mapi-pymc</code> with the <code>pathfinder</code> extra, the <code>ts.*</code> plugins (<code>mapi-plugin-ts</code> and <code>mapi-plugin-statsmodels</code>), the <code>causal.*</code> plugins (<code>mapi-plugin-causal</code>) and pymc-extras</td>
 <td><code>10001</code></td>
 <td><code>mapi-runner</code></td>
 </tr>
 <tr>
 <td><code>mapi/worker</code></td>
-<td><code>base-bayes</code> with the <code>ts.*</code> plugins and <code>mapi-server</code> (target <code>worker</code> of the base-bayes Dockerfile). Only for compose</td>
+<td><code>base-bayes</code> with the <code>ts.*</code> and <code>causal.*</code> plugins and <code>mapi-server</code> (target <code>worker</code> of the base-bayes Dockerfile). Only for compose</td>
 <td><code>10001</code></td>
 <td><code>mapi-server worker</code></td>
 </tr>
@@ -5678,6 +5858,14 @@ three purposes:</p>
 </tr>
 </tbody>
 </table>
+<p><code>causal.impact</code> uses the <code>ts.bsts</code> model of <code>mapi-plugin-ts</code>. Thus the <code>causal.*</code> plugins are
+in <code>mapi/base-forecast</code>, and <code>mapi/base-bayes</code> does not contain them. pymc-extras (state space
+models and the Pathfinder engine) adds preliz, Numba and Matplotlib. Thus <code>mapi/base-forecast</code>
+is larger than in v0.12. <code>mapi/base-bayes</code> also contains pymc-extras (the Pathfinder engine).</p>
+<p>From v0.14, <code>mapi-runner</code> depends on Pillow (for the <code>image_folder</code> ingest). Thus all runner
+images contain Pillow. Pillow decodes uploaded images only in the sandboxed ingest run, never
+in the control plane. LightGBM and CatBoost (about 150 MB) are only in <code>mapi/base-ml</code>.
+<code>tabular.image_logistic</code> runs in <code>mapi/base-bayes</code> and does not need Pillow.</p>
 <p><code>make docker-build IMAGES="server web"</code> builds a subset. <code>make docker-build</code> builds all
 images. It also builds <code>mapi/worker</code> when <code>base-bayes</code> is in the set. Each image has the OCI
 labels <code>title</code>, <code>version</code>, <code>revision</code> (git commit) and <code>created</code>.</p>
@@ -5712,9 +5900,11 @@ uses.</p>
 <ul>
 <li><strong>Package assertions.</strong> <code>images/common/assert_dists.py</code> does a check of
   <code>MAPI_ASSERT_PRESENT</code> and <code>MAPI_ASSERT_ABSENT</code> against the real environment. For example,
-  <code>base-ml</code> must not contain <code>pymc</code>, <code>pytensor</code> or <code>numba</code>. <code>server</code> must not contain
-  <code>numpy</code>, <code>xarray</code>, <code>pandas</code>, <code>scipy</code>, <code>pyarrow</code>, PyMC, <code>mapi_sdk</code>, <code>mapi_runner</code> or a
-  plugin.</li>
+  <code>base-ml</code> must not contain <code>pymc</code>, <code>pytensor</code> or <code>numba</code>, and must contain <code>pillow</code>,
+  <code>lightgbm</code> and <code>catboost</code> (v0.14). <code>base-bayes</code> and <code>base-forecast</code> must contain <code>pillow</code>
+  and must not contain <code>lightgbm</code> or <code>catboost</code>. <code>server</code> must not contain <code>numpy</code>, <code>xarray</code>,
+  <code>pandas</code>, <code>scipy</code>, <code>pyarrow</code>, PyMC, <code>pillow</code>, <code>lightgbm</code>, <code>catboost</code>, <code>mapi_sdk</code>,
+  <code>mapi_runner</code> or a plugin.</li>
 <li><strong>Import contracts in the control-plane image.</strong> The <code>contracts</code> stage of
   <code>images/server/Dockerfile</code> installs import-linter (hash-pinned from <code>uv.lock</code>) into a
   temporary copy of the environment. It runs the contracts of the repository against the

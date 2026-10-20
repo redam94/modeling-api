@@ -1,0 +1,47 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ParamsWrite.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409).",
+  "examples": [
+    {
+      "params": {
+        "analyst": "kim",
+        "holdout_weeks": 8
+      }
+    }
+  ],
+  "properties": {
+    "params": {
+      "maxProperties": 500,
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "maxLength": 6000,
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "title": "Params",
+      "type": "object"
+    }
+  },
+  "required": [
+    "params"
+  ],
+  "title": "ParamsWrite",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

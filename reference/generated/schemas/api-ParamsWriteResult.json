@@ -1,0 +1,30 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ParamsWriteResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Params stored, and params already stored with the same value.",
+  "examples": [
+    {
+      "accepted": 2,
+      "unchanged": 0
+    }
+  ],
+  "properties": {
+    "accepted": {
+      "minimum": 0,
+      "title": "Accepted",
+      "type": "integer"
+    },
+    "unchanged": {
+      "minimum": 0,
+      "title": "Unchanged",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "accepted",
+    "unchanged"
+  ],
+  "title": "ParamsWriteResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

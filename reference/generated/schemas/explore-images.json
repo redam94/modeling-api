@@ -1,0 +1,1217 @@
+{
+  "$defs": {
+    "FieldArrows": {
+      "additionalProperties": true,
+      "description": "The mean ``(x, y)`` components of a vector field on a coarse grid (one arrow per cell).\n\n``x``/``y`` are the arrow centres in raster pixel units (column, row; fractional, 0 =\nthe centre of the first pixel). ``u`` is the component along increasing column index and\n``v`` along increasing row index (so with ``origin=\"lower\"`` a positive ``v`` points up),\nboth ``[row][col]`` in the field's units.",
+      "properties": {
+        "u": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "title": "U",
+          "type": "array"
+        },
+        "v": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "title": "V",
+          "type": "array"
+        },
+        "x": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "u",
+        "v"
+      ],
+      "title": "FieldArrows",
+      "type": "object"
+    },
+    "FieldFrame": {
+      "additionalProperties": true,
+      "description": "One frame of a field (one level of its ``frame`` dim, or the only frame): the posterior\nmean, sd, 5% and 95% quantiles and a few draws, each a :class:`FieldRaster`. For a vector\nfield the rasters are of the magnitude ``sqrt(u**2 + v**2)`` (per draw, then summarised)\nand ``arrows`` holds the mean components.",
+      "properties": {
+        "arrows": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FieldArrows"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draws": {
+          "items": {
+            "$ref": "#/$defs/FieldRaster"
+          },
+          "maxItems": 16,
+          "title": "Draws",
+          "type": "array"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "mean": {
+          "$ref": "#/$defs/FieldRaster"
+        },
+        "q05": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FieldRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "q95": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FieldRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rgb": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RgbRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.14: the colour picture (color 'rgb')"
+        },
+        "sd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FieldRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "mean"
+      ],
+      "title": "FieldFrame",
+      "type": "object"
+    },
+    "FieldRaster": {
+      "additionalProperties": true,
+      "description": "One quantised raster: ``height`` x ``width`` cells, row-major (row 0 first).\n\n``data`` is the base64 of little-endian ``uint16`` codes, two bytes per cell. Code\n:data:`FIELD_NAN` (65535) is a missing cell; a code ``q`` in ``0..FIELD_LEVELS`` decodes\nto ``lo + (hi - lo) * q / FIELD_LEVELS`` (every code is ``lo`` when ``lo == hi``). When the\nfield's ``encoding`` is ``log10`` that number is ``log10`` of the value (values <= 0 are\nmissing). ``lo``/``hi`` are ``None`` only when every cell is missing. The step between two\ncodes is ``(hi - lo) / 65534``: four to five significant digits.",
+      "properties": {
+        "data": {
+          "maxLength": 102400,
+          "title": "Data",
+          "type": "string"
+        },
+        "hi": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hi"
+        },
+        "lo": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lo"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "FieldRaster",
+      "type": "object"
+    },
+    "FrameStats": {
+      "additionalProperties": true,
+      "description": "Statistics of every frame of an image (``coords`` = the frame labels; thinned evenly\nabove :data:`MAX_FRAME_STATS` frames, flagged with ``downsampled``).",
+      "properties": {
+        "coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Coords",
+          "type": "array"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "max": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Max",
+          "type": "array"
+        },
+        "mean": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Mean",
+          "type": "array"
+        },
+        "min": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Min",
+          "type": "array"
+        },
+        "missing_share": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 5000,
+          "title": "Missing Share",
+          "type": "array"
+        },
+        "sd": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Sd",
+          "type": "array"
+        }
+      },
+      "required": [
+        "coords",
+        "mean",
+        "sd",
+        "min",
+        "max",
+        "missing_share"
+      ],
+      "title": "FrameStats",
+      "type": "object"
+    },
+    "Histogram": {
+      "additionalProperties": true,
+      "properties": {
+        "counts": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 201,
+          "minItems": 1,
+          "title": "Counts",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 202,
+          "minItems": 2,
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "edges",
+        "counts"
+      ],
+      "title": "Histogram",
+      "type": "object"
+    },
+    "ImageComponent": {
+      "additionalProperties": true,
+      "description": "The histogram of one component of a vector field.",
+      "properties": {
+        "histogram": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Histogram"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "ImageComponent",
+      "type": "object"
+    },
+    "ImageEntry": {
+      "additionalProperties": true,
+      "description": "One data variable drawn as an image (a :class:`FieldEntry` with ``n_draws = 0``: each\nframe holds the data value in ``mean``; for a vector field the magnitude, with\n``arrows``). ``output`` repeats ``var`` so the field viewer reads it as is.\n\n``mask`` is the mask variable ``mask_var`` on the same raster: the share of frames where\nthe mask is true (0 or 1 for a mask without a frame dim).",
+      "properties": {
+        "channel_dim": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.14: the dim of the r, g, b channels",
+          "title": "Channel Dim"
+        },
+        "color": {
+          "default": "single",
+          "description": "v0.14: rgb pictures",
+          "enum": [
+            "single",
+            "rgb"
+          ],
+          "title": "Color",
+          "type": "string"
+        },
+        "colormap": {
+          "default": "viridis",
+          "enum": [
+            "viridis",
+            "magma",
+            "cividis",
+            "gray",
+            "diverging"
+          ],
+          "title": "Colormap",
+          "type": "string"
+        },
+        "component_dim": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component Dim"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ImageComponent"
+          },
+          "maxItems": 4,
+          "title": "Components",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "encoding": {
+          "default": "linear",
+          "description": "How the raster codes map to values (see FieldRaster)",
+          "enum": [
+            "linear",
+            "log10"
+          ],
+          "title": "Encoding",
+          "type": "string"
+        },
+        "facet": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Facet",
+          "type": "object"
+        },
+        "frame_dim": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Dim"
+        },
+        "frame_stats": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FrameStats"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/FieldFrame"
+          },
+          "maxItems": 24,
+          "minItems": 1,
+          "title": "Frames",
+          "type": "array"
+        },
+        "group_by": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group By"
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/ImageGroupMean"
+          },
+          "maxItems": 12,
+          "title": "Groups",
+          "type": "array"
+        },
+        "height": {
+          "maximum": 160,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "histogram": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Histogram"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "default": "scalar",
+          "enum": [
+            "scalar",
+            "vector"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "log": {
+          "default": false,
+          "description": "Draw log10 of the value",
+          "title": "Log",
+          "type": "boolean"
+        },
+        "log_counts": {
+          "default": false,
+          "description": "the histogram is skewed: show log counts",
+          "title": "Log Counts",
+          "type": "boolean"
+        },
+        "mask": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FieldRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mask_var": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mask Var"
+        },
+        "n_draws": {
+          "default": 0,
+          "description": "Posterior draws behind the statistics",
+          "minimum": 0,
+          "title": "N Draws",
+          "type": "integer"
+        },
+        "omitted_frames": {
+          "default": 0,
+          "description": "Frames left out by even thinning",
+          "minimum": 0,
+          "title": "Omitted Frames",
+          "type": "integer"
+        },
+        "origin": {
+          "default": "upper",
+          "enum": [
+            "upper",
+            "lower"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "output": {
+          "maxLength": 128,
+          "title": "Output",
+          "type": "string"
+        },
+        "rgb_scale": {
+          "default": "uint8",
+          "enum": [
+            "uint8",
+            "stretch"
+          ],
+          "title": "Rgb Scale",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "source_height": {
+          "minimum": 1,
+          "title": "Source Height",
+          "type": "integer"
+        },
+        "source_width": {
+          "minimum": 1,
+          "title": "Source Width",
+          "type": "integer"
+        },
+        "stats": {
+          "$ref": "#/$defs/ImageStats"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        },
+        "width": {
+          "maximum": 160,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "x_coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 160,
+          "title": "X Coords",
+          "type": "array"
+        },
+        "x_dim": {
+          "maxLength": 128,
+          "title": "X Dim",
+          "type": "string"
+        },
+        "y_coords": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 160,
+          "title": "Y Coords",
+          "type": "array"
+        },
+        "y_dim": {
+          "maxLength": 128,
+          "title": "Y Dim",
+          "type": "string"
+        }
+      },
+      "required": [
+        "output",
+        "y_dim",
+        "x_dim",
+        "height",
+        "width",
+        "source_height",
+        "source_width",
+        "y_coords",
+        "x_coords",
+        "frames",
+        "var"
+      ],
+      "title": "ImageEntry",
+      "type": "object"
+    },
+    "ImageGroupMean": {
+      "additionalProperties": true,
+      "description": "The mean raster of the frames with one label (``group_by`` of the entry).",
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "mean": {
+          "$ref": "#/$defs/FieldRaster"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "rgb": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RgbRaster"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.14: the mean colour picture"
+        }
+      },
+      "required": [
+        "n",
+        "mean"
+      ],
+      "title": "ImageGroupMean",
+      "type": "object"
+    },
+    "ImageStats": {
+      "additionalProperties": true,
+      "description": "Statistics over every cell of an image (all frames).",
+      "properties": {
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "missing_share": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Missing Share",
+          "type": "number"
+        },
+        "saturated_share": {
+          "default": 0.0,
+          "description": "share of the cells at the maximum value",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Saturated Share",
+          "type": "number"
+        },
+        "sd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sd"
+        }
+      },
+      "title": "ImageStats",
+      "type": "object"
+    },
+    "RgbRaster": {
+      "additionalProperties": true,
+      "description": "``height`` x ``width`` RGB pixels, row-major: the base64 of 3 bytes per cell (r, g, b\nin 0..255). Shown when the field's ``color`` is ``rgb`` (v0.14).",
+      "properties": {
+        "data": {
+          "maxLength": 102404,
+          "title": "Data",
+          "type": "string"
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "title": "RgbRaster",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-images.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``images``: data variables on a 2-D grid (pictures, movies, plates, vector fields)\nas quantised rasters for the field viewer, with per-frame statistics, a histogram of\nevery cell and class means. One view holds at most :data:`MAX_FIELD_CELLS` cells.",
+  "examples": [
+    {
+      "caption_plain": "Shows each variable on its grid. Use the slider to go through the frames.",
+      "fields": [
+        {
+          "colormap": "viridis",
+          "components": [],
+          "downsampled": false,
+          "encoding": "linear",
+          "facet": {},
+          "frame_dim": "quarter",
+          "frame_stats": {
+            "coords": [
+              "2009-01-01",
+              "2009-04-01"
+            ],
+            "downsampled": false,
+            "max": [
+              5.0,
+              7.0
+            ],
+            "mean": [
+              1.833,
+              3.0
+            ],
+            "min": [
+              0.0,
+              1.0
+            ],
+            "missing_share": [
+              0.0,
+              0.1667
+            ],
+            "sd": [
+              1.94,
+              2.55
+            ]
+          },
+          "frames": [
+            {
+              "draws": [],
+              "label": "2009-01-01",
+              "mean": {
+                "data": "AACSJCRJtm0AANq2",
+                "hi": 7.0,
+                "lo": 0.0
+              }
+            },
+            {
+              "draws": [],
+              "label": "2009-04-01",
+              "mean": {
+                "data": "kiSSJEiSJEn///7/",
+                "hi": 7.0,
+                "lo": 0.0
+              }
+            }
+          ],
+          "group_by": "label",
+          "groups": [
+            {
+              "label": 0,
+              "mean": {
+                "data": "VRWqKv9/qmoAAP7/",
+                "hi": 6.0,
+                "lo": 0.0
+              },
+              "n": 2
+            }
+          ],
+          "height": 2,
+          "histogram": {
+            "counts": [
+              5,
+              2,
+              2,
+              2
+            ],
+            "edges": [
+              0.0,
+              2.0,
+              4.0,
+              6.0,
+              8.0
+            ]
+          },
+          "kind": "scalar",
+          "log": false,
+          "log_counts": false,
+          "mask": {
+            "data": "/v/+//7//v8AAP7/",
+            "hi": 1.0,
+            "lo": 0.0
+          },
+          "mask_var": "visible",
+          "n_draws": 0,
+          "omitted_frames": 0,
+          "origin": "upper",
+          "output": "quakes",
+          "role": "target",
+          "source_height": 2,
+          "source_width": 3,
+          "stats": {
+            "max": 7.0,
+            "mean": 2.36,
+            "min": 0.0,
+            "missing_share": 0.083,
+            "saturated_share": 0.083,
+            "sd": 2.29
+          },
+          "units": "events",
+          "var": "quakes",
+          "width": 3,
+          "x_coords": [
+            0,
+            1,
+            2
+          ],
+          "x_dim": "col",
+          "y_coords": [
+            0,
+            1
+          ],
+          "y_dim": "row"
+        },
+        {
+          "colormap": "magma",
+          "component_dim": "component",
+          "components": [
+            {
+              "histogram": {
+                "counts": [
+                  7,
+                  9
+                ],
+                "edges": [
+                  -1.0,
+                  0.0,
+                  1.0
+                ]
+              },
+              "label": "x"
+            },
+            {
+              "histogram": {
+                "counts": [
+                  8,
+                  8
+                ],
+                "edges": [
+                  -1.0,
+                  0.0,
+                  1.0
+                ]
+              },
+              "label": "y"
+            }
+          ],
+          "downsampled": true,
+          "encoding": "linear",
+          "facet": {},
+          "frames": [
+            {
+              "arrows": {
+                "u": [
+                  [
+                    0.3
+                  ]
+                ],
+                "v": [
+                  [
+                    -0.2
+                  ]
+                ],
+                "x": [
+                  0.5
+                ],
+                "y": [
+                  0.5
+                ]
+              },
+              "draws": [],
+              "mean": {
+                "data": "AADGcXIc/v8=",
+                "hi": 1.0,
+                "lo": 0.1
+              }
+            }
+          ],
+          "groups": [],
+          "height": 2,
+          "kind": "vector",
+          "log": false,
+          "log_counts": false,
+          "n_draws": 0,
+          "omitted_frames": 0,
+          "origin": "upper",
+          "output": "displacement",
+          "role": "target",
+          "source_height": 4,
+          "source_width": 4,
+          "stats": {
+            "max": 1.2,
+            "mean": 0.45,
+            "min": 0.0,
+            "missing_share": 0.0,
+            "saturated_share": 0.0,
+            "sd": 0.3
+          },
+          "units": "um",
+          "var": "displacement",
+          "width": 2,
+          "x_coords": [
+            1,
+            3
+          ],
+          "x_dim": "col",
+          "y_coords": [
+            1,
+            3
+          ],
+          "y_dim": "row"
+        }
+      ],
+      "format": "mapi.data-explorer.images/v1",
+      "omitted": [],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "fields": {
+      "items": {
+        "$ref": "#/$defs/ImageEntry"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Fields",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.images/v1",
+      "default": "mapi.data-explorer.images/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "omitted": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Omitted",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "fields"
+  ],
+  "title": "ImagesView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

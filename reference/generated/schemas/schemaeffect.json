@@ -143,6 +143,7 @@
                 "float32",
                 "int64",
                 "int32",
+                "uint8",
                 "bool",
                 "str",
                 "datetime64[ns]"
@@ -264,6 +265,7 @@
                 "float32",
                 "int64",
                 "int32",
+                "uint8",
                 "bool",
                 "str",
                 "datetime64[ns]"
@@ -410,6 +412,7 @@
             "float32",
             "int64",
             "int32",
+            "uint8",
             "bool",
             "str",
             "datetime64[ns]"

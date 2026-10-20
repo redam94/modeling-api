@@ -1,0 +1,39 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ExperimentCreate.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "``POST /v1/experiments``: names are unique in a project (case is ignored).",
+  "examples": [
+    {
+      "description": "Compare adstock lengths 2, 4 and 8.",
+      "name": "adstock length study"
+    }
+  ],
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 20000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "ExperimentCreate",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

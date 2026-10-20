@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -3974,6 +4154,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tracking-in-the-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking in the worker v0.11
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sigterm-the-deadline-and-checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4267,7 +4458,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4289,14 +4480,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5525,6 +5716,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tracking-in-the-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracking in the worker v0.11
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sigterm-the-deadline-and-checkpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5632,6 +5834,7 @@
     S-&gt;&gt;W: spawn (scrubbed env, uid 10001), start message over a socketpair
     W-&gt;&gt;G: range-read inputs (signed GET)
     W--&gt;&gt;S: state / progress / diagnostic / metric / checkpoint messages
+    W--&gt;&gt;S: metrics / params / tags / user_log messages (v0.11)
     W--&gt;&gt;S: stdout + stderr (pipes, captured as log lines)
     S--&gt;&gt;X: stdout: {"mapi_event": …} (HMAC + seq per line)
     S-&gt;&gt;G: POST outputs (policy), PUT manifest.json
@@ -5727,6 +5930,13 @@ executor does this). Then the supervisor does not go into dev mode. It fails the
   in <code>untrusted_text</code>.
 - <strong>The supervisor coalesces progress.</strong> It sends a maximum of one <code>progress</code> event in each
   <code>limits.progress_interval_s</code> (2 s). The newest value wins.
+- <strong>Tracking data has budgets (v0.11).</strong> The supervisor counts each <code>metrics</code>, <code>params</code>,
+  <code>tags</code> and <code>user_log</code> message against <code>limits.tracking</code> (<code>TrackingLimits</code>). It does not keep
+  points or items that are more than a budget, and it counts them. At the end of the run, it
+  sends one <code>TRACKING_BUDGET</code> warning. More than <code>tracking_bytes</code> (64 MiB) of tracking
+  messages is <code>SANDBOX_VIOLATION</code> (tracking flood). The supervisor cleans the strings of each
+  message. It divides each payload with <code>split_for_events</code>, thus no event is larger than
+  <code>limits.max_event_bytes</code>. Tracking messages do not go through the progress coalescer.
 - <strong>The supervisor uploads outputs only from regular files.</strong> It opens each file with
   <code>O_NOFOLLOW</code>, relative to directories that it opened before. A symlink, FIFO or device in
   the outputs tree is a violation. The reserved names <code>manifest.json</code> and <code>checkpoints/</code> are
@@ -5741,6 +5951,25 @@ executor does this). Then the supervisor does not go into dev mode. It fails the
   more than <code>limits.scratch_bytes</code>, the result is <code>RESOURCE_EXHAUSTED</code>.</p>
 </li>
 </ul>
+<h2 id="tracking-in-the-worker">Tracking in the worker <span class="mapi-badge">v0.11</span><a class="headerlink" href="#tracking-in-the-worker" title="Permanent link">&para;</a></h2>
+<p>The worker gives a tracker to the model code (<code>WorkerContext.tracker</code>, a <code>WorkerTracker</code>).
+The harness puts it on <code>FitContext.tracker</code>, <code>ScoreContext.tracker</code> and, for workflow node
+runs, on <code>NodeContext.tracker</code>. The tracker has these properties:</p>
+<ul>
+<li>It is thread-safe. A sampler callback on a different thread can log points.</li>
+<li>It collects points for each series. A background thread sends them each
+  <code>flush_interval_s</code> (1 s). When 1000 points wait, the tracker sends them immediately.</li>
+<li>It does the same budget checks as the supervisor, thus a correct worker never gets to the
+  limits of the supervisor.</li>
+<li>It sends params and tags with the next flush. It sends a <code>user</code> log line immediately.</li>
+<li><code>chains()</code> keeps the newest per-chain progress. The next <code>progress</code> message has it in
+  <code>chains</code>.</li>
+</ul>
+<p>Before the worker sends its <code>result</code> or <code>error</code> message, it closes the tracker. Thus the last
+points are sent. When the tracker did not keep some points, it sends one <code>TRACKING_BUDGET</code>
+warning. The end-of-run metrics (<code>metric</code> events, for example the holdout <code>rmse</code>) are also
+kept as scalar series. The guide <a href="../../guides/tracking/">Track metrics, params and tags</a> shows
+the API that model code uses.</p>
 <h2 id="sigterm-the-deadline-and-checkpoints">SIGTERM, the deadline and checkpoints<a class="headerlink" href="#sigterm-the-deadline-and-checkpoints" title="Permanent link">&para;</a></h2>
 <p>The supervisor does these steps on SIGTERM, or when the time gets to the deadline minus the
 reserve:</p>
@@ -5880,7 +6109,7 @@ this sequence:</p>
 <td><code>score</code></td>
 <td>a <code>ScoreRequest</code>, or <code>{"request": …, "plots": […], "max_draws": n}</code></td>
 <td><code>bundle</code>, optional <code>bundle.manifest</code>, <code>dataset</code> (payload), <code>scenario</code>, <code>side.&lt;name&gt;</code>, <code>history</code> (v0.4)</td>
-<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>summary.json</code> (<code>ScoreSummary</code>: the summary as tables, at most 100 000 cells. v0.9: a circular output has <code>period</code>), <code>ui/summary.arrow</code>, <code>plots.json</code>. Forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). Counterfactuals add <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4).</td>
+<td><code>score.zarr.zip</code>, <code>result.json</code>, <code>summary.json</code> (<code>ScoreSummary</code>: the summary as tables, at most 100 000 cells. v0.9: a circular output has <code>period</code>), <code>ui/summary.arrow</code>, <code>plots.json</code>. Forecasts add <code>ui/guided/forecast.json</code> (<code>mapi.forecast/v1</code>). Counterfactuals add <code>ui/guided/counterfactual.json</code> (<code>mapi.counterfactual/v1</code>) (v0.4). Predict, forecast and evaluate add <code>ui/fields.json</code> (<code>FieldsView</code>) for a model with grid outputs</td>
 </tr>
 <tr>
 <td><code>evaluate</code></td>
@@ -5918,6 +6147,63 @@ and CRC32C.</p>
 <code>mapi_sdk.wire.to_arrow_table</code>. From v0.9, the schema metadata <code>mapi.dims</code> gives the names of
 the dim columns as a JSON list. Thus the web app keeps a numeric dim, for example a grid
 position in cm, as a key column and not as a value.</p>
+<p>A score run picks its default plots from the shape of the outputs, when the job does not
+give <code>plots</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Output (manifest declaration, result dims)</th>
+<th>Default plot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A <code>grid</code> output (y and x in the result)</td>
+<td><code>sci.field_map</code>, with <code>var</code>, <code>y</code>, <code>x</code> and the frame dim (when it is in the result) as options. The frame dim is the slider.</td>
+</tr>
+<tr>
+<td>A <code>grid</code> output with a <code>component</code> of size 2</td>
+<td><code>sci.vector_field</code>, with the same options</td>
+</tr>
+<tr>
+<td>An output on the areas of <code>ring_x</code>/<code>ring_y</code> (v0.10)</td>
+<td><code>sci.area_map</code> (<code>var</code>). The polygons come from the bundle.</td>
+</tr>
+<tr>
+<td>Probabilities over a dim with the name <code>state</code> or <code>regime</code> (v0.10): each cell has a sum of 1</td>
+<td><code>core.state_sequence</code> (<code>var</code>, <code>state_dim</code>)</td>
+</tr>
+<tr>
+<td>Evaluate: a binary output (observed values 0/1, predictions from 0 to 1) (v0.10)</td>
+<td><code>core.calibration</code>, <code>core.roc_pr</code>, <code>core.confusion</code> (<code>var</code>, <code>observed_var</code>)</td>
+</tr>
+<tr>
+<td>An output that is not a grid, over time, with at most one other dim of size more than 1</td>
+<td><code>core.ppc_fan</code> (<code>var</code>), for predict and forecast</td>
+</tr>
+</tbody>
+</table>
+<p>Each mode except counterfactual starts from the plots of before (<code>DEFAULT_PLOTS</code>). A
+counterfactual keeps <code>core.counterfactual</code>. A model with grid outputs or area outputs gets the
+fan only when it also has an output over time. A fan of a map adds the values of all cells.
+Evaluate draws <code>core.fit_vs_actual</code>. It adds <code>core.residuals_over_time</code> only when an output is
+over time. A binary output replaces the two plots with the three classifier plots
+(<code>BINARY_EVALUATE_PLOTS</code>). There is at most one plot for each recipe, so each recipe draws one
+output. The map draws the first grid output with a frame, else the first grid output. The other
+recipes draw the first areal, state or binary output in the sequence of the manifest.</p>
+<p>A state output must have a dim with the name <code>state</code> or <code>regime</code> (not only a name that contains
+the word, such as <code>us_state</code>). Its values must also be probabilities over that dim. Thus a panel
+output such as <code>sales(time, state)</code> for the states of a country does not get the state plot.</p>
+<p>The map draws from <code>/predictions</code>, so the runner keeps the full predictions of a grid model until
+the plots are done. From v0.10, the runner also keeps them for a model with area outputs and for
+each evaluate run. Thus the evaluate plots get <code>/predictions</code> and <code>/observed</code>. <code>score.zarr.zip</code>
+does not keep the two groups. The <code>summary.json</code> table of an output gives <code>plots</code> (v0.10): the
+ids of the rendered plots that draw it.</p>
+<p>A fit run adds <code>core.loss_curve</code> to the plots of a fit that has a <code>fit_history</code> group (an ADVI
+fit, v0.10).</p>
+<p>The output variables of a grid carry the attr <code>grid</code> (the <code>GridDecl</code> as JSON, with the
+dims renamed to the names of the result). <code>summary.json</code> gives <code>dims</code> and <code>time_dim</code> for each
+table, and orders the tables by size.</p>
 <p><code>scorecard.json</code> does the data checks on the raw dataset. The check <code>data.missing</code> (v0.9)
 does not count these variables:</p>
 <ul>

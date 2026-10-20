@@ -81,7 +81,14 @@
         "model.deprecate",
         "model.evidence_export",
         "endpoint.promote_not_validated",
-        "dataset.about_update"
+        "dataset.about_update",
+        "run.update",
+        "run.log",
+        "experiment.create",
+        "experiment.update",
+        "experiment.delete",
+        "run_view.save",
+        "run_view.delete"
       ],
       "title": "AuditAction",
       "type": "string"

@@ -281,10 +281,11 @@
         },
         "input": {
           "default": "dataset",
-          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+          "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. v0.15: 'collection' models implement fit_batches/score_batches and train on every image of an image collection through a lazy loader; they also read plain datasets",
           "enum": [
             "dataset",
-            "tree"
+            "tree",
+            "collection"
           ],
           "title": "Input",
           "type": "string"
@@ -683,6 +684,15 @@
           "title": "Settings Schema",
           "type": "object"
         },
+        "side_table_params": {
+          "description": "v0.15: settings keys whose value names a data.side_tables entry the model reads (pretrained weights, for example), like a step's side_table_params",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Side Table Params",
+          "type": "array"
+        },
         "version": {
           "title": "Version",
           "type": "string"
@@ -882,12 +892,13 @@
       "type": "string"
     },
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"

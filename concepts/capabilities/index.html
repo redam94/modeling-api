@@ -2362,6 +2362,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2554,6 +2562,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2590,6 +2654,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2994,6 +3114,8 @@
       
         
       
+        
+      
     
     
     
@@ -3270,6 +3392,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3426,6 +3576,8 @@
   
     
     
+      
+        
       
         
       
@@ -3705,6 +3857,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4236,7 +4416,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4258,14 +4438,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5639,7 +5819,7 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>input</code></td>
-<td><code>dataset</code> (the default) or <code>tree</code>. A <code>tree</code> model also gets the full tree dataset, next to the flat output of the pipeline (<a href="../../guides/tree-data/#models-that-read-the-whole-tree">Tree datasets</a>).</td>
+<td><code>dataset</code> (the default), <code>tree</code> or <code>collection</code> (v0.15). A <code>tree</code> model also gets the full tree dataset, next to the flat output of the pipeline (<a href="../../guides/tree-data/#models-that-read-the-whole-tree">Tree datasets</a>). A <code>collection</code> model trains on batches of all images of an image collection (<code>fit_batches</code>, <a href="../../guides/plugins/#fit-batches">Train on batches</a>). It also reads plain datasets.</td>
 </tr>
 <tr>
 <td><code>conditions_on_actuals</code></td>
@@ -5682,7 +5862,11 @@ its forms from manifests. Neither of them imports the plugin.</p>
 </tr>
 <tr>
 <td><code>resources</code></td>
-<td>Minimum and default resource class, estimated fit time, GPU</td>
+<td>Minimum and default resource class, estimated fit time, and <code>gpu</code> (the model can use the <code>GPU</code> class, v0.15)</td>
+</tr>
+<tr>
+<td><code>side_table_params</code></td>
+<td>v0.15: the settings whose values name side tables that the model reads, for example pretrained weights (<a href="../../guides/plugins/#model-side-tables">Read a side table in a model</a>)</td>
 </tr>
 <tr>
 <td><code>about</code>, <code>family</code></td>

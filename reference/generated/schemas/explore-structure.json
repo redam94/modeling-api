@@ -1,0 +1,500 @@
+{
+  "$defs": {
+    "ShapeView": {
+      "additionalProperties": true,
+      "description": "One detected data shape: which variables it shows, the dims it uses by role\n(``{\"y\": \"row\", \"x\": \"col\", \"frame\": \"quarter\"}``) and where to see it.",
+      "properties": {
+        "dims": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "title": "Dims",
+          "type": "object"
+        },
+        "kind": {
+          "enum": [
+            "timeseries",
+            "sequence",
+            "image",
+            "vector_field",
+            "areal_map",
+            "points",
+            "network",
+            "tree",
+            "circular",
+            "profile",
+            "table"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label_plain": {
+          "maxLength": 300,
+          "title": "Label Plain",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        },
+        "sections": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Sections",
+          "type": "array"
+        },
+        "vars": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "score",
+        "label_plain"
+      ],
+      "title": "ShapeView",
+      "type": "object"
+    },
+    "StructureDim": {
+      "additionalProperties": true,
+      "description": "One dim and the part it plays in the data (``role_in_data``).",
+      "properties": {
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "evenly_spaced": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evenly Spaced"
+        },
+        "kind": {
+          "maxLength": 32,
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 256,
+          "title": "Name",
+          "type": "string"
+        },
+        "role_in_data": {
+          "default": "other",
+          "enum": [
+            "time",
+            "sequence",
+            "frame",
+            "y",
+            "x",
+            "component",
+            "channel",
+            "area",
+            "vertex",
+            "node",
+            "pair",
+            "item",
+            "columns",
+            "tip",
+            "along",
+            "category",
+            "index",
+            "other"
+          ],
+          "title": "Role In Data",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        }
+      },
+      "required": [
+        "name",
+        "size",
+        "kind"
+      ],
+      "title": "StructureDim",
+      "type": "object"
+    },
+    "StructureVar": {
+      "additionalProperties": true,
+      "description": "One variable: its dims and how the explorer uses it.",
+      "properties": {
+        "dims": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Dims",
+          "type": "array"
+        },
+        "dtype": {
+          "maxLength": 64,
+          "title": "Dtype",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 256,
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 32,
+          "title": "Shape",
+          "type": "array"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "used_as": {
+          "default": "data",
+          "enum": [
+            "data",
+            "geometry",
+            "mask",
+            "weight",
+            "index",
+            "label"
+          ],
+          "title": "Used As",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dtype"
+      ],
+      "title": "StructureVar",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-structure.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``structure``: the data shapes found in the dataset (best first), every dim with its\npart in the data, every variable with its use, the sections in order of relevance and\nthe sections that do not apply (with the reason in plain words).",
+  "examples": [
+    {
+      "caption_plain": "Shows the shapes the explorer found in the data and the part each dimension plays.",
+      "categorical_dims": [],
+      "dims": [
+        {
+          "end": "2019-10-01",
+          "evenly_spaced": true,
+          "kind": "time",
+          "name": "quarter",
+          "role_in_data": "time",
+          "size": 44,
+          "start": "2009-01-01"
+        },
+        {
+          "end": 8,
+          "evenly_spaced": true,
+          "kind": "integer",
+          "name": "row",
+          "role_in_data": "y",
+          "size": 9,
+          "start": 0
+        },
+        {
+          "end": 11,
+          "evenly_spaced": true,
+          "kind": "integer",
+          "name": "col",
+          "role_in_data": "x",
+          "size": 12,
+          "start": 0
+        }
+      ],
+      "format": "mapi.data-explorer.structure/v1",
+      "not_applicable": {
+        "circular": "no variable is an angle or a time of day",
+        "correlation": "a correlation needs at least two numeric variables",
+        "groups": "the data has no dimension with groups to compare",
+        "map": "the data has no polygons (ring_x and ring_y)",
+        "network": "no variable links a dimension to itself (X, X_)",
+        "points": "no two variables give x and y positions",
+        "profiles": "no variable lies along a non-time axis",
+        "tree": "no variable gives the parent of each node",
+        "vif": "collinearity needs at least two drivers"
+      },
+      "recommended": [
+        "overview",
+        "structure",
+        "images",
+        "quality",
+        "distributions",
+        "timeseries",
+        "missingness",
+        "outliers"
+      ],
+      "shapes": [
+        {
+          "dims": {
+            "frame": "quarter",
+            "x": "col",
+            "y": "row"
+          },
+          "kind": "image",
+          "label_plain": "image: 9 x 12 cells, 44 quarter",
+          "score": 0.9,
+          "sections": [
+            "images"
+          ],
+          "vars": [
+            "quakes"
+          ]
+        },
+        {
+          "dims": {
+            "time": "quarter"
+          },
+          "kind": "timeseries",
+          "label_plain": "time series: 44 quarter (row and col summed)",
+          "score": 0.6,
+          "sections": [
+            "timeseries"
+          ],
+          "vars": [
+            "quakes"
+          ]
+        }
+      ],
+      "time_dim": "quarter",
+      "vars": [
+        {
+          "dims": [
+            "quarter",
+            "row",
+            "col"
+          ],
+          "dtype": "int64",
+          "name": "quakes",
+          "role": "target",
+          "shape": [
+            44,
+            9,
+            12
+          ],
+          "units": "events",
+          "used_as": "data"
+        }
+      ],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "categorical_dims": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Categorical Dims",
+      "type": "array"
+    },
+    "dims": {
+      "items": {
+        "$ref": "#/$defs/StructureDim"
+      },
+      "maxItems": 32,
+      "title": "Dims",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.structure/v1",
+      "default": "mapi.data-explorer.structure/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "not_applicable": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "maxProperties": 32,
+      "title": "Not Applicable",
+      "type": "object"
+    },
+    "recommended": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "title": "Recommended",
+      "type": "array"
+    },
+    "sequence_dim": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Sequence Dim"
+    },
+    "shapes": {
+      "items": {
+        "$ref": "#/$defs/ShapeView"
+      },
+      "maxItems": 64,
+      "title": "Shapes",
+      "type": "array"
+    },
+    "time_dim": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Time Dim"
+    },
+    "unit_dim": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit Dim"
+    },
+    "vars": {
+      "items": {
+        "$ref": "#/$defs/StructureVar"
+      },
+      "maxItems": 256,
+      "title": "Vars",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "title": "StructureView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

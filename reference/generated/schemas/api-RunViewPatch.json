@@ -1,0 +1,241 @@
+{
+  "$defs": {
+    "RunKind": {
+      "description": "What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.\n\n``sweep``, ``backtest``, ``sbc`` and ``campaign`` are fan-out *parents* (plan \u00a76.2,\nM4): they own child runs and never execute on an executor themselves.",
+      "enum": [
+        "ingest",
+        "describe",
+        "validate",
+        "fit",
+        "score",
+        "evaluate",
+        "derive",
+        "render",
+        "optimize",
+        "sweep",
+        "backtest",
+        "sbc",
+        "campaign",
+        "translate_priors",
+        "workflow",
+        "workflow_node",
+        "explore",
+        "governance",
+        "inspect"
+      ],
+      "title": "RunKind",
+      "type": "string"
+    },
+    "RunState": {
+      "description": "Lifecycle of a run (plan \u00a78.3). Terminal states never change again, except that a\n``PARTIAL`` run can be resumed (``RESUME`` \u2192 ``QUEUED`` with a new attempt).",
+      "enum": [
+        "created",
+        "rejected",
+        "queued",
+        "dispatching",
+        "provisioning",
+        "running",
+        "stalled",
+        "finalizing",
+        "succeeded",
+        "partial",
+        "failed",
+        "cancelling",
+        "cancelled"
+      ],
+      "title": "RunState",
+      "type": "string"
+    },
+    "RunViewQuery": {
+      "additionalProperties": false,
+      "description": "The ``list_runs`` query of a saved view; every filter, order and column is parsed with\nthe run-search grammar of :mod:`mapi_spec.tracking` at validation.",
+      "examples": [
+        {
+          "columns": [
+            "metric.rmse"
+          ],
+          "filters": [
+            "metric.rmse < 15"
+          ],
+          "kind": "fit",
+          "order_by": "metric.rmse"
+        },
+        {
+          "state": "succeeded",
+          "tags": [
+            "team:growth",
+            "candidate"
+          ]
+        }
+      ],
+      "properties": {
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Columns",
+          "type": "array"
+        },
+        "experiment_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Id"
+        },
+        "filters": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Filters",
+          "type": "array"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "order_by": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order By"
+        },
+        "parent_run_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Run Id"
+        },
+        "spec_id": {
+          "anyOf": [
+            {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spec Id"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "title": "RunViewQuery",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-RunViewPatch.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Change the name or the query of a saved view.",
+  "examples": [
+    {
+      "name": "best fits"
+    },
+    {
+      "query": {
+        "order_by": "-metric.r2"
+      }
+    }
+  ],
+  "properties": {
+    "name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "query": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunViewQuery"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "RunViewPatch",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

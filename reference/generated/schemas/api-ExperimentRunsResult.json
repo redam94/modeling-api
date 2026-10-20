@@ -1,0 +1,41 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ExperimentRunsResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Runs moved, and the ids that are not runs of the project (nothing was done for them).",
+  "examples": [
+    {
+      "added": 2,
+      "removed": 0
+    }
+  ],
+  "properties": {
+    "added": {
+      "minimum": 0,
+      "title": "Added",
+      "type": "integer"
+    },
+    "missing": {
+      "items": {
+        "examples": [
+          "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+        ],
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+        "type": "string"
+      },
+      "title": "Missing",
+      "type": "array"
+    },
+    "removed": {
+      "minimum": 0,
+      "title": "Removed",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "added",
+    "removed"
+  ],
+  "title": "ExperimentRunsResult",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

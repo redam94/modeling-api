@@ -85,12 +85,13 @@
       "type": "object"
     },
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"
@@ -177,6 +178,10 @@
           "default": null,
           "description": "In-memory filesystem budget",
           "title": "Scratch Bytes"
+        },
+        "tracking": {
+          "$ref": "#/$defs/TrackingLimits",
+          "description": "Run tracking budgets (v0.11)"
         }
       },
       "required": [
@@ -344,6 +349,95 @@
       ],
       "title": "SignedPut",
       "type": "object"
+    },
+    "TrackingLimits": {
+      "additionalProperties": false,
+      "description": "Per-run tracking budgets; the runner, the supervisor and the server enforce them.",
+      "properties": {
+        "flush_interval_s": {
+          "default": 1.0,
+          "maximum": 30,
+          "minimum": 0.1,
+          "title": "Flush Interval S",
+          "type": "number"
+        },
+        "log_bytes": {
+          "default": 2097152,
+          "minimum": 0,
+          "title": "Log Bytes",
+          "type": "integer"
+        },
+        "log_lines": {
+          "default": 10000,
+          "description": "User (structured) log lines",
+          "minimum": 0,
+          "title": "Log Lines",
+          "type": "integer"
+        },
+        "media_bytes": {
+          "default": 268435456,
+          "description": "Sum of the stored media bytes per run (v0.14)",
+          "minimum": 0,
+          "title": "Media Bytes",
+          "type": "integer"
+        },
+        "media_item_bytes": {
+          "default": 8388608,
+          "description": "Bytes of one media item (v0.14)",
+          "maximum": 8388608,
+          "minimum": 1024,
+          "title": "Media Item Bytes",
+          "type": "integer"
+        },
+        "media_items": {
+          "default": 1000,
+          "description": "Distinct media rows per run (v0.14)",
+          "minimum": 0,
+          "title": "Media Items",
+          "type": "integer"
+        },
+        "metric_points_per_series": {
+          "default": 10000,
+          "minimum": 1,
+          "title": "Metric Points Per Series",
+          "type": "integer"
+        },
+        "metric_points_total": {
+          "default": 500000,
+          "minimum": 1,
+          "title": "Metric Points Total",
+          "type": "integer"
+        },
+        "metric_series": {
+          "default": 1000,
+          "description": "Distinct (key, labels) series",
+          "minimum": 1,
+          "title": "Metric Series",
+          "type": "integer"
+        },
+        "params": {
+          "default": 5000,
+          "minimum": 0,
+          "title": "Params",
+          "type": "integer"
+        },
+        "tags": {
+          "default": 100,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Tags",
+          "type": "integer"
+        },
+        "tracking_bytes": {
+          "default": 67108864,
+          "description": "Hard cap on the bytes of tracking frames; above it the run fails with SANDBOX_VIOLATION",
+          "minimum": 1024,
+          "title": "Tracking Bytes",
+          "type": "integer"
+        }
+      },
+      "title": "TrackingLimits",
+      "type": "object"
     }
   },
   "$id": "https://schemas.mapi.dev/v1/runspec.json",
@@ -453,13 +547,14 @@
       "type": "string"
     },
     "input_layouts": {
-      "description": "M4: the layout of dataset inputs that are not a plain dataset (input name -> 'tree' for a data.tree.zip); absent inputs are 'dataset'",
+      "description": "M4: the layout of dataset inputs that are not a plain dataset (input name -> 'tree' for a data.tree.zip; v0.15: 'collection' for an image collection, whose manifest.parquet is the input and whose info and packs are the inputs <name>.info and <name>.pack.<i>); absent inputs are 'dataset'",
       "maxProperties": 256,
       "patternProperties": {
         "^[a-z][a-z0-9_.\\-]{0,63}$": {
           "enum": [
             "dataset",
-            "tree"
+            "tree",
+            "collection"
           ],
           "type": "string"
         }
@@ -490,6 +585,21 @@
     },
     "limits": {
       "$ref": "#/$defs/RunLimits"
+    },
+    "media_prefix": {
+      "anyOf": [
+        {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.14: where the supervisor uploads logged media (``{run_prefix}media/``)",
+      "title": "Media Prefix"
     },
     "nonce": {
       "pattern": "^[0-9a-f]{64}$",

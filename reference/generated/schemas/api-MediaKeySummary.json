@@ -1,0 +1,83 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-MediaKeySummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One media series (key + labels) of a run: how many items and which steps.",
+  "examples": [
+    {
+      "count": 5,
+      "first_step": 0,
+      "key": "samples",
+      "kind": "image",
+      "labels": {
+        "split": "val"
+      },
+      "last_created_at": "2026-10-15T09:30:00Z",
+      "last_step": 4
+    }
+  ],
+  "properties": {
+    "count": {
+      "minimum": 0,
+      "title": "Count",
+      "type": "integer"
+    },
+    "first_step": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "First Step"
+    },
+    "key": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "image",
+        "table"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "last_created_at": {
+      "format": "date-time",
+      "title": "Last Created At",
+      "type": "string"
+    },
+    "last_step": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Step"
+    }
+  },
+  "required": [
+    "key",
+    "kind",
+    "count",
+    "last_created_at"
+  ],
+  "title": "MediaKeySummary",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

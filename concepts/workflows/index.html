@@ -2429,6 +2429,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2621,6 +2629,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2657,6 +2721,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -3061,6 +3181,8 @@
       
         
       
+        
+      
     
     
     
@@ -3337,6 +3459,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3493,6 +3643,8 @@
   
     
     
+      
+        
       
         
       
@@ -3772,6 +3924,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4303,7 +4483,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4325,14 +4505,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5950,7 +6130,7 @@ its ports, parameter schema, result fields and an <a href="../about-and-choosing
 </tr>
 <tr>
 <td>Models</td>
-<td><code>model.fit</code> (all catalog models), <code>model.backtest</code>, <code>model.forecast</code>, <code>model.summary</code>, <code>model.score</code></td>
+<td><code>model.fit</code> (all catalog models), <code>model.backtest</code>, <code>model.forecast</code>, <code>model.summary</code>, <code>model.score</code>, <code>model.lift_test</code></td>
 </tr>
 <tr>
 <td>Evaluation</td>
@@ -6020,6 +6200,11 @@ labels of ADF. <code>mapi_spec.stattests.decide</code> keeps them correct.</p>
 </tr>
 </tbody>
 </table>
+<p><code>model.lift_test</code> <span class="mapi-badge">v0.13</span> reads the <code>impact</code> group of a causal
+model version (<code>causal.impact</code>, <code>causal.synthetic_control</code> or <code>causal.did</code>). It gives a
+<code>LiftTest</code> for the calibration of <code>mmm.bayesian</code>: the total effect over the effect window,
+with its sd and HDI. The <code>calibration</code> parameter of <code>model.fit</code> takes it, for example
+<code>{lift_tests: {$expr: "[nodes.lift.lift_test]"}}</code>.</p>
 <p>Validation finds the <code>recipe</code> of <code>plot.render</code> in the bundled recipes and in the plot catalog.
 An unknown recipe gives <code>REF_UNRESOLVED</code>.</p>
 <h3 id="tree-datasets-in-a-workflow">Tree datasets in a workflow<a class="headerlink" href="#tree-datasets-in-a-workflow" title="Permanent link">&para;</a></h3>
@@ -6071,6 +6256,10 @@ outer training window, for correct tuning.</p>
 <tr>
 <td><code>mmm_governed</code></td>
 <td>Driver collinearity, the mmm-framework marketing mix model with a holdout, the governance policy, a report and an evidence pack</td>
+</tr>
+<tr>
+<td><code>geo_lift_mmm</code></td>
+<td>A Bayesian synthetic control of a geo-lift test, the lift test that it gives (<code>model.lift_test</code>), <code>mmm.bayesian</code> calibrated with that lift test, the plots of the test and of the calibration, and a report. See <a href="../../guides/workflow-cookbook/#geo-lift-test-to-a-calibrated-mmm">the cookbook</a>.</td>
 </tr>
 <tr>
 <td><code>forecast_bakeoff</code></td>

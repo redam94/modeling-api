@@ -1,0 +1,76 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-MetricPointIn.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One metric point written through the API (``step`` null = a scalar, newest wins).",
+  "examples": [
+    {
+      "key": "revenue_lift",
+      "labels": {
+        "region": "north"
+      },
+      "value": 0.042
+    },
+    {
+      "key": "loss",
+      "step": 400,
+      "value": 1.23
+    }
+  ],
+  "properties": {
+    "key": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "labels": {
+      "maxProperties": 8,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{0,31}$": {
+          "pattern": "^[A-Za-z0-9_.\\-]{1,63}$",
+          "type": "string"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "step": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Step"
+    },
+    "ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Defaults to the time of the request",
+      "title": "Ts"
+    },
+    "value": {
+      "title": "Value",
+      "type": "number"
+    }
+  },
+  "required": [
+    "key",
+    "value"
+  ],
+  "title": "MetricPointIn",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

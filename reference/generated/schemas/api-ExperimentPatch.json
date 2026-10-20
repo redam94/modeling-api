@@ -1,0 +1,58 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-ExperimentPatch.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Merge patch of an experiment: a field left out is unchanged; ``description: null``\nclears the description (``name: null`` and ``archived: null`` change nothing).",
+  "examples": [
+    {
+      "name": "adstock study (final)"
+    },
+    {
+      "archived": true
+    }
+  ],
+  "properties": {
+    "archived": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Archived"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "maxLength": 20000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    }
+  },
+  "title": "ExperimentPatch",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -25,6 +25,34 @@
           "title": "Draws Total",
           "type": "integer"
         },
+        "num_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Leapfrog steps of the latest draw (v0.11)",
+          "title": "Num Steps"
+        },
+        "step_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Current step size (v0.11)",
+          "title": "Step Size"
+        },
         "tuning": {
           "default": false,
           "title": "Tuning",

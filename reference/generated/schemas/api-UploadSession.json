@@ -141,6 +141,19 @@
       "title": "Project Id",
       "type": "string"
     },
+    "received": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.15 (get_upload, renew_upload): the file arrived in the quarantine bucket",
+      "title": "Received"
+    },
     "size_bytes": {
       "title": "Size Bytes",
       "type": "integer"

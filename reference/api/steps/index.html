@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4128,7 +4308,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -4150,14 +4330,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5838,7 +6018,8 @@ build time; the control plane loads it to validate specs without importing step 
 
     <div class="doc doc-contents first">
 
-        <p>The five built-in train/holdout splits (plan §4.1 "Split" group).</p>
+        <p>The seven built-in train/holdout splits (plan §4.1 "Split" group; v0.14 adds <code>column</code>
+and <code>stratified</code>).</p>
 <p>Splits are not pipeline steps: a spec chooses one in <code>data.split</code> and the harness applies
 it at the split stage (:func:<code>mapi_sdk.split.split_dataset</code>), after the stateless prefix.
 This module gives each split kind a catalog identity (<code>core.&lt;kind&gt;@1.0.0</code>) with its
@@ -5850,6 +6031,8 @@ settings schema and plain-language summaries for pickers and docs, plus a direct
 <code>core.leave_group_out</code>  hold out whole groups (explicit <code>groups</code> or <code>n</code> random ones)
 <code>core.last_per_group</code>   last <code>last</code> rows of each group with at least <code>min_len</code> rows
 <code>core.mask_block</code>       random blocks over <code>dims</code> covering <code>fraction</code> of the cells
+<code>core.column</code>           the rows whose <code>column</code> value is in <code>holdout</code> (a fixed split)
+<code>core.stratified</code>       a random <code>fraction</code> of the rows of each level of <code>by</code>
 ========================  ====================================================================</p>
 
 

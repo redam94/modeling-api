@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4128,7 +4308,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -4150,14 +4330,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -8427,7 +8607,15 @@
   <code>governance</code> (check catalog, project and tenant policies), <code>validations</code> (requests,
   the review queue, approvals, evidence packs), <code>explorations</code> and the Data/Model
   Explorer, comparison and budget optimisation (<code>models.optimize</code>) methods, and About
-  cards with <em>Help me choose</em> on <code>catalog</code> (<code>abouts</code>, <code>chooser</code>, <code>recommend</code>).</li>
+  cards with <em>Help me choose</em> on <code>catalog</code> (<code>abouts</code>, <code>chooser</code>, <code>recommend</code>);</li>
+<li>from v0.11 run tracking on <code>runs</code>: <code>update</code> (name, note, tags), <code>log_metric(s)</code>,
+  <code>log_params</code>, <code>set_tags</code>, <code>metrics</code>, <code>metric_history</code>, <code>params</code>, run search in
+  <code>list</code> (<code>filters</code>, <code>order_by</code>, <code>columns</code>, <code>tags</code>) and :meth:<code>Runs.track</code>, a
+  buffered :class:<code>RunTracker</code>; <code>stream_events</code> yields :class:<code>RunTrackingFrame</code>;</li>
+<li>from v0.14 run media on <code>runs</code> (<code>media</code>, <code>media_keys</code>, <code>get_media</code>,
+  <code>download_media</code> - size, CRC32C and sha256 checked - <code>log_image</code>, <code>log_table</code>),
+  <code>runs.compare</code> and <code>runs.keys</code>, <code>list(experiment_id=...)</code>, and the resources
+  <code>experiments</code> (named groups of runs) and <code>run_views</code> (saved runs-table searches).</li>
 </ul>
 <blockquote>
 <blockquote>
@@ -9685,18 +9873,20 @@ with <code>409</code>). Check <code>revision.validation.valid</code> before runn
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">revision</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">use_cache</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">resource_class</span><span class="p">:</span> <span class="n"><span title="mapi_spec.resources.ResourceClass">ResourceClass</span></span> <span class="o">|</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">idempotency_key</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">wait</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">timeout</span><span class="p">:</span> <span class="n"><span title="float">float</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">poll_interval</span><span class="p">:</span> <span class="n"><span title="float">float</span></span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">raise_on_failure</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            WorkflowRun (mapi_spec.api.WorkflowRun)" href="../spec/#mapi_spec.workflow.WorkflowRun">WorkflowRun</a></span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">experiment_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">idempotency_key</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">wait</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">timeout</span><span class="p">:</span> <span class="n"><span title="float">float</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">poll_interval</span><span class="p">:</span> <span class="n"><span title="float">float</span></span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">raise_on_failure</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            WorkflowRun (mapi_spec.api.WorkflowRun)" href="../spec/#mapi_spec.workflow.WorkflowRun">WorkflowRun</a></span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
 
         <p>Start a run (inputs are references such as <code>dataset://growth/sales@latest</code>,
-pinned to an exact version at start). With <code>wait</code> the run is followed until it
+pinned to an exact version at start). <code>experiment_id</code> puts the run and every run
+it starts in that experiment (v0.14). With <code>wait</code> the run is followed until it
 is terminal and a failed or cancelled run raises its error.</p>
 
 
@@ -10050,7 +10240,9 @@ full :class:<code>~mapi_spec.api.Run</code>, no id) first on every connection, t
 events (<code>id:</code> = :attr:<code>RunEventView.id</code>) after <code>Last-Event-ID</code>, then live events, and
 finally <code>end</code> (the final run) before closing. <code>: keepalive</code> comments are heartbeats.
 <code>progress</code> and <code>log</code> frames are live and unpersisted: they carry no <code>id:</code> and are
-never replayed after a reconnect (:class:<code>RunLiveFrame</code>).</p>
+never replayed after a reconnect (:class:<code>RunLiveFrame</code>). <code>tracking</code> frames (v0.11, no id)
+tell which metric series changed and whether params or tags changed
+(:class:<code>RunTrackingFrame</code>).</p>
 <p><code>GET /v1/workflow-runs/{run_id}/events</code> follows the same pattern for workflow runs
 (v0.5): <code>snapshot</code> (the :class:<code>~mapi_spec.workflow.WorkflowRun</code> with every node), one
 frame per :class:<code>~mapi_spec.workflow.WorkflowEvent</code> (<code>event:</code> is its type, <code>id:</code> its

@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4223,7 +4403,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4245,14 +4425,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5589,6 +5769,10 @@ installed CLI makes that page.</p>
 <td><code>create</code>, <code>fit</code>, <code>get</code>, <code>list</code>, <code>wait</code>, <code>stream_events</code>, <code>events</code>, <code>logs</code>, <code>plots</code>, <code>cancel</code>, <code>resume</code>, <code>retry</code></td>
 </tr>
 <tr>
+<td><code>runs</code> tracking (v0.11)</td>
+<td><code>update</code>, <code>log_metric</code>, <code>log_metrics</code>, <code>log_params</code>, <code>set_tags</code>, <code>track</code>, <code>metrics</code>, <code>metric_history</code>, <code>params</code>; <code>list</code> also takes <code>parent_run_id</code>, <code>name</code>, <code>tags</code>, <code>filters</code>, <code>order_by</code> and <code>columns</code></td>
+</tr>
+<tr>
 <td><code>models</code></td>
 <td><code>list</code>, <code>get</code>, <code>versions</code>, <code>version</code>, <code>artifact</code>, <code>download</code>, <code>score</code></td>
 </tr>
@@ -5966,6 +6150,52 @@ by step:</p>
 </tr>
 </tbody>
 </table>
+<p>Run tracking (v0.11). <a href="../../guides/tracking/">Track metrics, params and tags</a> shows these
+commands with examples:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>--filter<span class="w"> </span>EXPR<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>--order-by<span class="w"> </span>REF<span class="o">]</span><span class="w"> </span><span class="o">[</span>--column<span class="w"> </span>REF<span class="o">]</span>...<span class="w"> </span><span class="o">[</span>--tag<span class="w"> </span>K<span class="o">[=</span>V<span class="o">]]</span>...<span class="w"> </span><span class="o">[</span>--name<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--parent<span class="w"> </span>RUN<span class="o">]</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>mapi<span class="w"> </span>runs<span class="w"> </span>metrics<span class="w"> </span>RUN<span class="w"> </span><span class="o">[</span>--key<span class="w"> </span>KEY<span class="o">]</span><span class="w"> </span><span class="o">[</span>--points<span class="w"> </span>N<span class="o">]</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>params<span class="w"> </span>RUN<span class="w"> </span><span class="o">[</span>--prefix<span class="w"> </span>TEXT<span class="o">]</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>mapi<span class="w"> </span>runs<span class="w"> </span>logs<span class="w"> </span>RUN<span class="w"> </span><span class="o">[</span>--stream<span class="w"> </span>user<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span>warning<span class="o">]</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-metric<span class="w"> </span>RUN<span class="w"> </span>KEY<span class="w"> </span>VALUE<span class="w"> </span><span class="o">[</span>--step<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--label<span class="w"> </span><span class="nv">K</span><span class="o">=</span>V<span class="o">]</span>...
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-param<span class="w"> </span>RUN<span class="w"> </span>KEY<span class="w"> </span>VALUE<span class="w"> </span><span class="o">[</span>--text<span class="o">]</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>mapi<span class="w"> </span>runs<span class="w"> </span>tag<span class="w"> </span>RUN<span class="w"> </span><span class="nv">K</span><span class="o">=</span>V...<span class="w"> </span><span class="o">[</span>--delete<span class="w"> </span>KEY<span class="o">]</span>...
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>mapi<span class="w"> </span>runs<span class="w"> </span>rename<span class="w"> </span>RUN<span class="w"> </span>NAME
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>mapi<span class="w"> </span>runs<span class="w"> </span>note<span class="w"> </span>RUN<span class="w"> </span><span class="o">(</span>TEXT<span class="w"> </span><span class="p">|</span><span class="w"> </span>-<span class="o">)</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runs ls</code></td>
+<td><code>--filter</code> (<code>-f</code>, a maximum of 8) and <code>--order-by</code> use the <a href="../http-api/#search-runs">search grammar</a>, for example <code>-f 'metric.rmse &lt; 12'</code>. Each <code>--column</code> (<code>-c</code>, a maximum of 16) adds a column to the table. The table has a <code>name</code> column</td>
+</tr>
+<tr>
+<td><code>runs metrics</code></td>
+<td>Without <code>--key</code>: one row for each series (key, labels, last, min, max, count). With <code>--key</code>: the downsampled points of that key (<code>--points</code>, the default is 1000)</td>
+</tr>
+<tr>
+<td><code>runs logs</code></td>
+<td><code>--level</code> shows the lines at that level or higher (<code>debug</code>, <code>info</code>, <code>warning</code>, <code>error</code>). Lines without a level count as <code>info</code></td>
+</tr>
+<tr>
+<td><code>runs log-param</code></td>
+<td>The CLI reads <code>VALUE</code> as a number, <code>true</code> or <code>false</code> when it can. <code>--text</code> keeps it as text</td>
+</tr>
+<tr>
+<td><code>runs log-metric</code>, <code>runs log-param</code>, <code>runs tag</code>, <code>runs rename</code>, <code>runs note</code></td>
+<td>Need the runner role (a token needs <code>runs:write</code>). <code>runs note RUN -</code> reads the note from stdin. <code>runs rename RUN ""</code> removes the name</td>
+</tr>
+<tr>
+<td><code>runs watch</code>, <code>fit --remote</code></td>
+<td>Show a maximum of one <code>metrics</code> line each 5 seconds (the newest values of a maximum of 4 series), one <code>params</code> line and one <code>tags</code> line when they change, and <code>user</code> log lines as <code>[level] text</code>. The stream only tells that the params or the tags changed. The CLI then reads them and shows the changed values</td>
+</tr>
+</tbody>
+</table>
 <p>Errors: for <code>QUOTA_EXCEEDED</code> and <code>RATE_LIMITED</code>, the CLI prints when to try again
 (<code>retry after 1h 30m</code>). With <code>--json</code>, the error document contains <code>retry_after_seconds</code>. No
 command prints a token. Tokens show as <code>mapi_&lt;prefix&gt;_…</code>.</p>
@@ -6021,8 +6251,8 @@ use the <code>local-process</code> executor with the real <code>mapi-runner</cod
 <p><code>mapi-plugin-science</code> has its own command. It writes the dataset of a pymc-challenges case
 study to a file that you can upload (<code>mapi datasets upload</code>, or <strong>Datasets → New dataset</strong> in
 the web app). It is not a <code>mapi</code> command:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>CASE<span class="w"> </span><span class="o">[</span>--challenges<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--out<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--spec<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--synthetic<span class="o">]</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>--list
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_plugin_science.export<span class="w"> </span>CASE<span class="w"> </span><span class="o">[</span>--challenges<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--out<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--spec<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--synthetic<span class="o">]</span>
 </span></code></pre></div>
 <table>
 <thead>

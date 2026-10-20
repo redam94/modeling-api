@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4219,6 +4399,17 @@
     <span class="md-ellipsis">
       
         model.forecast — Forecast with a model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modellift_test-make-a-lift-test-from-a-causal-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        model.lift_test — Make a lift test from a causal model
       
     </span>
   </a>
@@ -5010,7 +5201,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -5032,14 +5223,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6765,6 +6956,17 @@
     <span class="md-ellipsis">
       
         model.forecast — Forecast with a model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modellift_test-make-a-lift-test-from-a-causal-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        model.lift_test — Make a lift test from a causal model
       
     </span>
   </a>
@@ -8757,7 +8959,7 @@
 <p>Result fields (<code>nodes.&lt;id&gt;.&lt;field&gt;</code> in conditions): <code>best_settings</code> (object), <code>best_score</code> (number), <code>n_points</code> (integer), <code>nested</code> (boolean), <code>outer_scores</code> (array), <code>selected_per_fold</code> (array).</p>
 <details class="note">
 <summary>Expert detail</summary>
-<p>Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often.</p>
+<p>Every grid point is backtested on the plan and the best score wins. With a split.nested plan this is nested cross-validation: each outer fold picks its point on its own inner folds (inside its training window), refits it on the outer training window and scores it on the outer test window; best_score pools those outer forecasts (the honest estimate of the tuned model, free of the selection bias of scoring the winner on the folds that chose it) and best_settings is the point the outer folds chose most often. From v0.11, the search run of the node logs each grid point. The search run is the first of the node's child runs; the node's run is the refit of the winner. A param such as trial.3.adstock/l_max gives a setting of point 3. The scores are metrics with the point number as the step. The search run also gets a metric such as best_rmse and the tag grid.best_point. The Metrics and Params tabs of its run page show them.</p>
 </details>
 <h3 id="searchsarima_order-find-seasonal-orders"><code>search.sarima_order</code> — Find seasonal orders<a class="headerlink" href="#searchsarima_order-find-seasonal-orders" title="Permanent link">&para;</a></h3>
 <p>Adds seasonal past values and errors to the order search, for series with a pattern that repeats.</p>
@@ -8956,6 +9158,10 @@
 </tbody>
 </table>
 <p>Result fields (<code>nodes.&lt;id&gt;.&lt;field&gt;</code> in conditions): <code>metrics</code> (object), <code>by_horizon</code> (object), <code>n_folds</code> (integer).</p>
+<details class="note">
+<summary>Expert detail</summary>
+<p>From v0.11, the node run logs the metrics of each fold as scalar metrics with the label fold. The Metrics tab of the run page shows them.</p>
+</details>
 <h3 id="modelfit-fit-a-model"><code>model.fit</code> — Fit a model<a class="headerlink" href="#modelfit-fit-a-model" title="Permanent link">&para;</a></h3>
 <p>Fits a model from the catalog to the data and saves it as a model version. It can also score the model on a test period.</p>
 <p><em>Runs in</em> its own child run (a <code>fit</code> run for <code>model.fit</code>, else a <code>workflow_node</code> run). <em>Difficulty:</em> beginner. <em>Typical runtime:</em> minutes.</p>
@@ -9011,6 +9217,12 @@
 <td>Evaluation block (metrics)</td>
 </tr>
 <tr>
+<td><code>calibration</code></td>
+<td>object</td>
+<td></td>
+<td>The calibration block of the model (business priors and lift tests); lift tests can come from model.lift_test</td>
+</tr>
+<tr>
 <td><code>nodes</code></td>
 <td>object</td>
 <td></td>
@@ -9064,6 +9276,55 @@
 </tbody>
 </table>
 <p>Result fields (<code>nodes.&lt;id&gt;.&lt;field&gt;</code> in conditions): <code>total</code> (number).</p>
+<h3 id="modellift_test-make-a-lift-test-from-a-causal-model"><code>model.lift_test</code> — Make a lift test from a causal model<a class="headerlink" href="#modellift_test-make-a-lift-test-from-a-causal-model" title="Permanent link">&para;</a></h3>
+<p>Adds the effect that a causal model measured in the test period and gives it as a lift test. A marketing mix model can use this lift test as calibration.</p>
+<p><em>Runs in</em> a sandboxed <code>workflow_node</code> run. <em>Difficulty:</em> intermediate. <em>Typical runtime:</em> seconds.</p>
+<p><strong>Use it when:</strong> You measured a campaign or a geo test with causal.synthetic_control, causal.impact or causal.did and you want the marketing mix model to agree with the result; You want the total effect of a test with its uncertainty in one table.</p>
+<p><strong>Avoid it when:</strong> The model is not a causal model (the node needs the impact group of the model); The periods of the data are not dates (a lift test needs the start and end dates).</p>
+<p><strong>Example:</strong> TV in market geo_03 for six weeks with 50 000 extra spend: KPI change 4 100, 90% range 2 300 to 5 900.</p>
+<p><strong>Inputs:</strong> <code>model</code> (model_version).</p>
+<p><strong>Outputs:</strong> <code>table</code> (table).</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>channel</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>The marketing channel of the test (a channel of the marketing mix model)</td>
+</tr>
+<tr>
+<td><code>spend_delta</code></td>
+<td>number</td>
+<td><strong>required</strong></td>
+<td>The extra spend during the test, in spend units (a negative number for a holdout)</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td></td>
+<td>The id of the lift test (optional)</td>
+</tr>
+<tr>
+<td><code>hdi_prob</code></td>
+<td>number</td>
+<td><code>0.9</code></td>
+<td>The probability inside the range of kpi_delta</td>
+</tr>
+</tbody>
+</table>
+<p>Result fields (<code>nodes.&lt;id&gt;.&lt;field&gt;</code> in conditions): <code>lift_test</code> (object), <code>kpi_delta</code> (number), <code>se</code> (number), <code>hdi_low</code> (number), <code>hdi_high</code> (number), <code>p_positive</code> (number), <code>excludes_zero</code> (boolean), <code>relative_effect</code> (number), <code>start</code> (string), <code>end</code> (string), <code>geo</code> (string), <code>n_treated</code> (integer), <code>n_cells</code> (integer), <code>n_missing</code> (integer), <code>hdi_prob</code> (number), <code>model</code> (string).</p>
+<details class="note">
+<summary>Expert detail</summary>
+<p>The node reads only the impact group of the bundle. kpi_delta is the posterior mean of the sum of effect over the post cells and the treated units, se its standard deviation, and ci the HDI at hdi_prob (ci_level = hdi_prob). The test dates are the first and the last post period. geo is the treated unit when exactly one unit has post cells; with more units the lift test is national (geo null) and the node gives a warning. The effect includes the observation noise of the counterfactual (predictive draws), so the range is wide on purpose.</p>
+</details>
 <h3 id="modelscore-score-a-model"><code>model.score</code> — Score a model<a class="headerlink" href="#modelscore-score-a-model" title="Permanent link">&para;</a></h3>
 <p>Uses a fitted model version to predict, simulate, forecast or test a scenario. It gives the predictions as a dataset for the next steps.</p>
 <p><em>Runs in</em> a sandboxed <code>workflow_node</code> run. <em>Difficulty:</em> intermediate. <em>Typical runtime:</em> seconds.</p>

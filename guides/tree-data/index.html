@@ -16,7 +16,7 @@
         <link rel="prev" href="../guided-data/">
       
       
-        <link rel="next" href="../endpoints-and-webhooks/">
+        <link rel="next" href="../image-data/">
       
       
         
@@ -2253,6 +2253,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2428,6 +2436,62 @@
     
   
     The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
   
 
     
@@ -2772,6 +2836,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3171,6 +3291,8 @@
       
         
       
+        
+      
     
     
     
@@ -3450,6 +3572,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../workflows/" class="md-nav__link">
         
   
@@ -3606,6 +3756,8 @@
   
     
     
+      
+        
       
         
       
@@ -3885,6 +4037,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4416,7 +4596,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4438,14 +4618,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6460,6 +6640,12 @@ does not need <code>node</code>.</p>
 <p>The Data Explorer shows one node at a time. A <code>DataExploreRequest</code> takes an optional <code>node</code>.
 The default is the root, or the first node that has variables. The ingest writes the views of
 each node.</p>
+<p>The explorer finds the shapes of each node separately. For example, the E80 lens tree has
+two images of 81 × 81 pixels (<code>image</code> and <code>weight</code>) in the node <code>/image</code>, and an image of
+31 × 31 pixels (<code>psf</code>) in the node <code>/psf</code>. Thus each node has its own sections and its own
+sequence of sections. Do not confuse a tree dataset with the section <strong>Tree</strong>. That section
+shows a tree that is in the data of one node, for example the <code>parent</code> variable of a
+phylogeny. Refer to <a href="../data-explorer/#scientific-data">Scientific data</a>.</p>
 <h2 id="models-that-read-the-whole-tree">Models that read the whole tree<a class="headerlink" href="#models-that-read-the-whole-tree" title="Permanent link">&para;</a></h2>
 <p>Some models need more than the flat merge, for example the PSF of an instrument next to the
 image. A model declares <code>capabilities.input = "tree"</code> in its manifest. It then gets the whole
@@ -6784,13 +6970,13 @@ full list of controls.</p>
         
         
           
-          <a href="../endpoints-and-webhooks/" class="md-footer__link md-footer__link--next" aria-label="Next: Endpoints and webhooks">
+          <a href="../image-data/" class="md-footer__link md-footer__link--next" aria-label="Next: Image data">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Endpoints and webhooks
+                Image data
               </div>
             </div>
             <div class="md-footer__button md-icon">

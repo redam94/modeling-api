@@ -243,6 +243,24 @@
       "title": "Benchmarks",
       "type": "object"
     },
+    "by_horizon": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "description": "Error metrics per horizon, pooled over the folds",
+      "title": "By Horizon",
+      "type": "object"
+    },
     "caption_plain": {
       "anyOf": [
         {

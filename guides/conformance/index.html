@@ -2251,6 +2251,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2446,6 +2454,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guided-data/" class="md-nav__link">
         
   
@@ -2482,6 +2546,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2891,6 +3011,8 @@
       
         
       
+        
+      
     
     
     
@@ -3150,6 +3272,34 @@
     
   
     statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
   
 
     
@@ -3502,6 +3652,8 @@
       
         
       
+        
+      
     
     
     
@@ -3730,6 +3882,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4261,7 +4441,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4283,14 +4463,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5708,6 +5888,26 @@ the API of a stack that runs (<code>make dev</code>), as a user does: spec → <
 <td>The draft of the <code>geo_mmm</code> Guided template with business priors (ROI, contribution share, baseline share). The fit translates the priors, and a lift test is in the likelihood. Both agree with the simulation. ROI, baseline share and lift are checked against the truth. A forecast and the channel-off preset.</td>
 </tr>
 <tr>
+<td><code>e13_bsts</code> <span class="mapi-badge">v0.13</span></td>
+<td><code>ts.bsts</code></td>
+<td>The plan fixture E13. Monthly sales with missing months and a price driver. A forecast with future prices, predictive draws, the <code>filter</code> mode that returns an updated terminal state, <code>MODE_NOT_SUPPORTED</code> for counterfactual, <code>MISSING_FUTURE_COVARIATE</code> without future prices. LOO that is not valid.</td>
+</tr>
+<tr>
+<td><code>causal_impact</code> <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.impact</code></td>
+<td>Weekly sales with two control series and a simulated lift. The <code>impact</code> group and a total effect more than zero. <code>predict</code> over the data (the values without the change and the effect), a forecast of 4 weeks with the control series, <code>MISSING_FUTURE_COVARIATE</code> without them, <code>MODE_NOT_SUPPORTED</code> for counterfactual</td>
+</tr>
+<tr>
+<td><code>geo_lift</code> <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.synthetic_control</code></td>
+<td>Weekly sales of 12 markets. One test market is a mix of the other markets. The <code>impact</code> and <code>donor_weights</code> groups and the simulated lift. A score needs the donors without gaps. A new market is refused. No forecast.</td>
+</tr>
+<tr>
+<td><code>did_event_study</code> <span class="mapi-badge">v0.13</span></td>
+<td><code>causal.did</code></td>
+<td>Monthly sales of stores, some with a new layout. The event-study coefficients, the counterfactual mode (treatment set to 0), no month after the fit (the time effects are fixed), a missing treatment. No forecast.</td>
+</tr>
+<tr>
 <td><code>sm_arimax</code></td>
 <td><code>ts.sarimax</code></td>
 <td>Weekly sales for each geo with price and promotion drivers. An ARIMAX model for each series (statsmodels)</td>
@@ -5806,10 +6006,6 @@ the list of the plan, the fixtures and the deferrals agree:</p>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>E13 state-space</td>
-<td>A state-space plugin with the <code>filter</code> mode (vetted plugins, planned)</td>
-</tr>
 <tr>
 <td>E82-slim GP Bayesian optimisation</td>
 <td>The <code>recommend</code> mode and Campaign runs (planned)</td>

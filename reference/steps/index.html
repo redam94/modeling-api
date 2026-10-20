@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3686,6 +3838,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#plugin-steps-v015" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugin steps v0.15
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3766,6 +3929,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4300,7 +4491,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4322,14 +4513,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5662,6 +5853,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#plugin-steps-v015" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugin steps v0.15
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6180,8 +6382,18 @@ catalog identities. Thus, the UI and the docs can describe them:</p>
 <td><code>core.mask_block</code></td>
 <td>Random blocks of cells over many dims (the model must accept missing targets)</td>
 </tr>
+<tr>
+<td><code>core.column</code></td>
+<td>v0.14. A train and test assignment in the data: the rows with a value of <code>column</code> in <code>holdout</code></td>
+</tr>
+<tr>
+<td><code>core.stratified</code></td>
+<td>v0.14. Classes with very different sizes: the same share of the rows of each class of <code>by</code>, at random</td>
+</tr>
 </tbody>
 </table>
+<p>For the fields of <code>column</code> and <code>stratified</code>, see
+<a href="../spec-format/#column-and-stratified-splits">Column and stratified splits</a>.</p>
 <h2 id="the-catalog-the-api-uses">The catalog the API uses<a class="headerlink" href="#the-catalog-the-api-uses" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_steps.catalog<span class="w">            </span><span class="c1"># Catalog JSON: steps, settings schemas, effects</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>python<span class="w"> </span>-m<span class="w"> </span>mapi_steps.catalog<span class="w"> </span>--splits<span class="w">   </span><span class="c1"># … plus the split catalog</span>
@@ -6191,6 +6403,11 @@ against the JSON, and it does not import step code. The package also contains th
 <code>mapi_steps/catalog.json</code>.</p>
 <p>In a notebook, <code>mapi_steps.registry()</code> returns a registry with all the steps. The <code>mapi.steps</code>
 entry point also gives the steps to <code>mapi_sdk.default_registry()</code>.</p>
+<h2 id="plugin-steps-v015">Plugin steps <span class="mapi-badge">v0.15</span><a class="headerlink" href="#plugin-steps-v015" title="Permanent link">&para;</a></h2>
+<p>Packages other than <code>mapi-steps</code> can register steps through the <code>mapi.steps</code> entry point.
+<code>mapi-jax</code> registers <code>dl.embed</code>: it changes each image into image features
+(<code>embedding(image, feature)</code>) with a frozen pretrained network from a weights side table.
+Read <a href="../../guides/deep-learning/#image-features-and-a-simple-head">Deep learning</a>.</p>
 
 
 

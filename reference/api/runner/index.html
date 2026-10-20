@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../guides/workflows/" class="md-nav__link">
         
   
@@ -3310,6 +3460,8 @@
   
     
     
+      
+        
       
         
       
@@ -3592,6 +3744,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4128,7 +4308,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -4150,14 +4330,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6175,7 +6355,11 @@ validated against the models below; the worker is untrusted, so anything malform
 oversized or of an unknown type is a <code>SANDBOX_VIOLATION</code> on the supervisor side.</p>
 <p>Supervisor -&gt; worker: exactly one :class:<code>StartMessage</code> (no HMAC key, no output URLs).
 Worker -&gt; supervisor: <code>state</code>, <code>progress</code>, <code>diagnostic</code>, <code>warning</code>, <code>metric</code>,
-<code>checkpoint</code>, then exactly one terminal <code>result</code> or <code>error</code>.</p>
+<code>checkpoint</code>, the tracking messages <code>metrics</code> (batched metric points), <code>params</code>,
+<code>tags</code> and <code>user_log</code> (structured log lines, stream <code>user</code>), <code>media</code> (v0.14: one file
+the worker wrote under <code>{scratch}/media/</code>), then exactly one terminal
+<code>result</code> or <code>error</code>. The supervisor accounts every tracking message against
+<code>StartMessage.tracking</code> (the run's :class:<code>~mapi_spec.tracking.TrackingLimits</code>).</p>
 
 
 
@@ -6763,9 +6947,12 @@ Worker -&gt; supervisor: <code>state</code>, <code>progress</code>, <code>diagno
    10001 with no-new-privs when it runs as root, in <em>dev mode</em> otherwise;</li>
 <li>validates every worker message, turns them and the captured output into HMAC-signed
    events on its own stdout (the only thing ever written there), enforces the log, event,
-   scratch and output caps, and coalesces progress;</li>
+   tracking, scratch and output caps, and coalesces progress;</li>
 <li>handles SIGTERM and the run deadline (forward to the worker, wait for the checkpoint
    flush, upload a <code>partial</code> manifest);</li>
+<li>uploads the media the worker logs (v0.14: each file under <code>{scratch}/media/</code> is read
+   safely, hashed and checked by the supervisor, then sent through the run's <code>media</code> POST
+   policy) and emits one <code>media</code> event per item;</li>
 <li>uploads outputs with the signed POST policy (streaming, hashing as it goes), writes the
    signed :class:<code>~mapi_spec.run.OutputManifest</code> with the signed PUT and exits with a
    :class:<code>~mapi_spec.run.RunnerExit</code> code.</li>

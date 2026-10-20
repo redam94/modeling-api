@@ -1,0 +1,66 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-RunParam.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One run parameter. ``value`` is the text form; ``value_num`` is set for numbers.",
+  "examples": [
+    {
+      "key": "fit.draws",
+      "logged_at": "2026-10-15T09:30:00Z",
+      "source": "runner",
+      "value": "1000",
+      "value_num": 1000.0
+    },
+    {
+      "key": "settings.adstock.l_max",
+      "logged_at": "2026-10-15T09:30:00Z",
+      "source": "runner",
+      "value": "4",
+      "value_num": 4.0
+    }
+  ],
+  "properties": {
+    "key": {
+      "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "logged_at": {
+      "format": "date-time",
+      "title": "Logged At",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "runner",
+        "api"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "value": {
+      "title": "Value",
+      "type": "string"
+    },
+    "value_num": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value Num"
+    }
+  },
+  "required": [
+    "key",
+    "value",
+    "source",
+    "logged_at"
+  ],
+  "title": "RunParam",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

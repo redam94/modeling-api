@@ -186,7 +186,9 @@
         "mff",
         "zarr_zip",
         "netcdf",
-        "hdf5"
+        "hdf5",
+        "image_folder",
+        "safetensors"
       ],
       "title": "Format",
       "type": "string"

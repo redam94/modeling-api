@@ -1,0 +1,101 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-Experiment.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A named group of runs in a project (v0.14). A run is in at most one experiment.",
+  "examples": [
+    {
+      "archived": false,
+      "created_at": "2026-10-15T09:30:00Z",
+      "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+      "description": "Compare adstock lengths 2, 4 and 8 on weekly sales.",
+      "id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+      "last_run_at": "2026-10-15T10:30:00Z",
+      "name": "adstock length study",
+      "run_count": 6,
+      "updated_at": "2026-10-15T09:30:00Z"
+    }
+  ],
+  "properties": {
+    "archived": {
+      "default": false,
+      "description": "An archived experiment accepts no new runs",
+      "title": "Archived",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created By"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Untrusted text",
+      "title": "Description"
+    },
+    "id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "last_run_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Run At"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "run_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Run Count",
+      "type": "integer"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "Experiment",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

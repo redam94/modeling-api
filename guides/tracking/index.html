@@ -1,0 +1,6760 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fit, score and share labelled multi-dimensional models — safely.">
+      
+      
+        <meta name="author" content="Matthew Reda">
+      
+      
+      
+        <link rel="prev" href="../http-api/">
+      
+      
+        <link rel="next" href="../run-comparison/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Track metrics, params and tags - modeling-api</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#track-metrics-params-and-tags-v011" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="modeling-api" class="md-header__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            modeling-api
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Track metrics, params and tags
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Concepts
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../web-ui/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/spec-format/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Deployment
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../project/licensing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="modeling-api" class="md-nav__button md-logo" aria-label="modeling-api" data-md-component="logo">
+      
+  <img src="../../assets/logo.svg" alt="logo">
+
+    </a>
+    modeling-api
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.9/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.9
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../whats-new-0.5/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What's new in 0.5
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why modeling-api?
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart: zero to first model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/executor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runs and executors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first MMM in Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/google-sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect Google Sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/embed-a-chart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed a chart in Notion, Slack or BI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhook-receivers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Receive webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/optimise-a-budget/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimise a budget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/complex-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complex workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../tutorials/pymc-challenges/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Science models from pymc-challenges
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Science models from pymc-challenges
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e07-oklahoma-earthquakes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E07 Earthquakes in Oklahoma
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e18-scottish-lip-cancer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E18 Lip cancer disease map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e19-protein-signalling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E19 Protein signalling graph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e21-law-firm-network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E21 Law-firm network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e23-phylogenetic-regression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E23 Primate phylogenetic regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e31-indian-buffet-digits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E31 Indian buffet process on digits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e50-scratch-assay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E50 Scratch assay PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e51-heat-plate-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E51 Heat plate design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e58-storm-localisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E58 STORM localisation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e60-traction-force/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E60 Traction force microscopy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e61-turing-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E61 Turing patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e77-colour-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E77 Colour naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e79-cmb-lmc-mask/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E79 CMB behind the LMC mask
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e80-strong-lens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E80 Strong gravitational lens
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/pymc-challenges/e81-wind-and-activity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E81 Wind and animal activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../concepts/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/labelled-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labelled data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines and stages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/representations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Representations and summaries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/bundles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bundles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/coord-plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coord plans and typed errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/forecasting-with-actuals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasts with actuals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/capabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capabilities and manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/tenancy-and-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tenancy and authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/quotas-and-cost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quotas and cost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/guided-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/about-and-choosing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About cards and choosing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Using the platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Expert web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-model-in-the-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first model in the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-platform-tracks-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the platform tracks for you
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What an MMM fit logs v0.12
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-causal-fit-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a causal fit logs v0.13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-network-fit-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a network fit logs v0.15
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keys-labels-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys, labels and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-from-a-model-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a model plugin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-images-figures-and-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log images, figures and tables v0.14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a workflow node
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-from-a-notebook-or-a-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a notebook or a script
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-the-tracking-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the tracking data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#budgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Budgets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    From a spreadsheet to a Guided draft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tree-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../endpoints-and-webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints and webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Integrations hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a dataset
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model-explorer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate models with governance policies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../null-tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Can you trust this model? Null tests explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../choosing-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running it for teams
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Running it for teams
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-deletion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deleting and exporting data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelling
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modelling
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../port-a-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Port a model in 15 minutes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Write a step or model plugin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bring a PyMC model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tabular models (scikit-learn, xgboost)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mmm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guided-modelling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided modelling: priors, lift tests, scorecard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../time-series/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting and sequential models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/statsmodels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    statsmodels time-series models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows: tests, decisions, models, automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflow-cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots, recipes and templates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sharing-plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sharing plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conformance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Conformance corpus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/spec-format/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/spec-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/steps-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Steps catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-in models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/mmm-framework/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/models-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/workflow-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/governance-checks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Governance checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plots and the sanitizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/plots-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plot recipes catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI explorer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/run-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/gcs-shim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS shim
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI and Python client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/permissions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Permissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/server-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/generated/environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web app and plot sandbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../reference/api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sdk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/pymc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_pymc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/sklearn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_sklearn
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/plots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_plots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/runner/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_runner
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mapi_client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7" id="__nav_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/local-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local, without Docker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Container images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/gcp-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying to Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-hardening/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security hardening on Google Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication and isolation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/signup-and-abuse/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sign-up and abuse controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/cloud-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Run Jobs executor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/security-suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m2-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M2 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m3-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/m35-verification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    M3.5 verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../roadmap/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/platform-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The local platform (v0.2)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud and multi-tenant (v0.3)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/guided-ui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guided mode and integrations (v0.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/workflows-governance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows, governance and explorers (v0.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/expert-plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Planned: expert plugins and MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/writing-style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-platform-tracks-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the platform tracks for you
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What an MMM fit logs v0.12
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-causal-fit-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a causal fit logs v0.13
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-a-network-fit-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a network fit logs v0.15
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keys-labels-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys, labels and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-from-a-model-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a model plugin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-images-figures-and-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log images, figures and tables v0.14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a workflow node
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-from-a-notebook-or-a-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log from a notebook or a script
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-the-tracking-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the tracking data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#budgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Budgets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="track-metrics-params-and-tags-v011">Track metrics, params and tags <span class="mapi-badge">v0.11</span><a class="headerlink" href="#track-metrics-params-and-tags-v011" title="Permanent link">&para;</a></h1>
+<p>Each run keeps a log of what happened in it. Model code, workflow nodes and you (from a
+notebook, a script or the command line) can add to this log. The log has these parts:</p>
+<ul>
+<li><strong>Metrics.</strong> A metric is a series of points, for example the loss at each step of an
+  optimiser. A point without a step is a scalar, for example a business KPI.</li>
+<li><strong>Params.</strong> A param is a value that does not change, for example the number of draws.</li>
+<li><strong>Tags.</strong> A tag is a text value that you can change at any time, for example
+  <code>stage=candidate</code>.</li>
+<li><strong>The name and the note.</strong> A display name and a free-text note for the run.</li>
+<li><strong>Structured log lines.</strong> Log lines with a level (<code>debug</code>, <code>info</code>, <code>warning</code> or <code>error</code>)
+  and fields.</li>
+<li><strong>Images and tables</strong> <span class="mapi-badge">v0.14</span>. Images (PNG or JPEG),
+  matplotlib figures and small tables, for example a sample of predictions at each step.</li>
+</ul>
+<p>The run page in the web app shows all of them (the <strong>Metrics</strong>, <strong>Params</strong>, <strong>Media</strong>,
+<strong>Logs</strong> and <strong>Notes</strong> tabs). You can search for runs by their metrics, params and tags. To
+compare runs and to group them into experiments, see
+<a href="../run-comparison/">Compare runs and use experiments</a>.</p>
+<table>
+<thead>
+<tr>
+<th>See also</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../reference/http-api/#run-tracking">HTTP API: Run tracking</a></td>
+<td>The endpoints, the DTOs and the search grammar</td>
+</tr>
+<tr>
+<td><a href="../../reference/run-protocol/#tracking-events">Run protocol: Tracking events</a></td>
+<td>The <code>metrics</code>, <code>params</code> and <code>tags</code> events and the budgets</td>
+</tr>
+<tr>
+<td><a href="../../reference/sdk/#run-tracking">Python SDK</a></td>
+<td><code>FitContext.log_metric</code> and the other methods</td>
+</tr>
+<tr>
+<td><a href="../run-comparison/">Compare runs and use experiments</a></td>
+<td>The runs table, saved views, the compare page and experiments</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-the-platform-tracks-for-you">What the platform tracks for you<a class="headerlink" href="#what-the-platform-tracks-for-you" title="Permanent link">&para;</a></h2>
+<p>You do not have to write code for these items.</p>
+<p><strong>Params of the spec.</strong> Each fit logs these params:</p>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>The model and its version, for example <code>mmm.bayesian@1.2.0</code></td>
+</tr>
+<tr>
+<td><code>fit.engine</code>, <code>fit.draws</code>, <code>fit.tune</code>, <code>fit.chains</code>, <code>fit.target_accept</code>, <code>fit.seed</code>, <code>fit.mode</code></td>
+<td>Only the fields that the spec sets</td>
+</tr>
+<tr>
+<td><code>data.split</code></td>
+<td>The kind of split, when the spec has a split</td>
+</tr>
+<tr>
+<td><code>settings.&lt;path&gt;</code></td>
+<td>One param for each value of the model settings, for example <code>settings.adstock.l_max</code>. A list or a dict becomes compact JSON (a maximum of 500 characters). A maximum of 200 settings params.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Live chains.</strong> PyMC models (with nutpie or the PyMC NUTS sampler) and the MMMs
+(<code>mmm.bayesian</code>, <code>mmm.nested</code> and <code>mmm.multivariate</code>) send the progress of each chain while
+they sample. The run page shows the draws, the divergences
+and the step size of each chain.</p>
+<p><strong>Step metrics of samplers and optimisers.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Keys</th>
+<th>Labels</th>
+<th>Step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nutpie (PyMC models, <code>mmm.bayesian</code>, <code>mmm.nested</code>, <code>mmm.multivariate</code>)</td>
+<td><code>step_size</code>, <code>num_steps</code> (leapfrog steps of the latest draw), <code>divergences</code> (cumulative)</td>
+<td><code>chain</code></td>
+<td>The draws that the chain finished, with tuning (starts at 1)</td>
+</tr>
+<tr>
+<td>PyMC NUTS sampler (PyMC models, the MMMs with <code>nuts_sampler: pymc</code>)</td>
+<td><code>step_size</code>, <code>tree_depth</code>, <code>num_steps</code>, <code>divergences</code> (cumulative)</td>
+<td><code>chain</code></td>
+<td>The draw index, with tuning (starts at 1). For a long chain, each k-th draw and the last draw, k = ceil(n / 5000).</td>
+</tr>
+<tr>
+<td>ADVI</td>
+<td><code>loss</code> (negative ELBO)</td>
+<td>none</td>
+<td>The optimisation step (starts at 1). For a long fit, each k-th step, k = ceil(n / 5000).</td>
+</tr>
+<tr>
+<td>The evaluation fit of <code>evaluate_then_refit</code></td>
+<td>All of the above</td>
+<td>also <code>fit=evaluation</code></td>
+<td>As above. The params of the evaluation fit get the prefix <code>evaluation.</code>, for example <code>evaluation.n_obs</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>End-of-run metrics.</strong> The holdout metrics of a fit (for example <code>rmse</code> and <code>elpd_loo</code>)
+become scalar series.</p>
+<p><strong>scikit-learn.</strong> A fit of a <code>sklearn.*</code> model logs the hyperparameters of the estimator as
+<code>estimator.&lt;name&gt;</code> params (only numbers, booleans and text).</p>
+<p><strong>Marketing-mix models.</strong> Each MMM fit logs a summary of its result. See
+<a href="#mmm">What an MMM fit logs</a>.</p>
+<p><strong>Causal models and <code>ts.bsts</code>.</strong> Each fit logs the effect of the change and the fit before
+the change. See <a href="#what-a-causal-fit-logs">What a causal fit logs</a>.</p>
+<p><strong>Workflows.</strong> The <code>search.grid</code> node logs each grid point and its scores. The
+<code>model.backtest</code> node logs the metrics of each fold. See <a href="#workflow-nodes">Workflow nodes</a>.</p>
+<h2 id="mmm">What an MMM fit logs <span class="mapi-badge">v0.12</span><a class="headerlink" href="#mmm" title="Permanent link">&para;</a></h2>
+<p>At the end of a fit, each marketing-mix model (<code>mmm.bayesian</code>, <code>mmm.frequentist</code>,
+<code>mmm.nested</code> and <code>mmm.multivariate</code>) logs params and scalar metrics (no step). The metrics
+come from 200 thinned draws of the posterior (or of the bootstrap). Thus, you can sort and
+filter runs by the return of a channel.</p>
+<p><strong>Params.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Models</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mmm.framework_version</code></td>
+<td>all</td>
+<td>The version of mmm-framework</td>
+</tr>
+<tr>
+<td><code>mmm.n_channels</code></td>
+<td>all</td>
+<td>The number of channels</td>
+</tr>
+<tr>
+<td><code>mmm.n_periods</code></td>
+<td>all</td>
+<td>The number of periods of the fit window</td>
+</tr>
+<tr>
+<td><code>mmm.n_cells</code></td>
+<td>all</td>
+<td>The number of panel cells (geo and product combinations; 1 for national data)</td>
+</tr>
+<tr>
+<td><code>mmm.link</code></td>
+<td>all</td>
+<td><code>identity</code>, <code>log</code> (<code>poisson</code>, <code>negative_binomial</code>) or <code>logit</code> (<code>beta</code>)</td>
+</tr>
+<tr>
+<td><code>mmm.time_varying</code></td>
+<td><code>mmm.bayesian</code></td>
+<td>The time-varying channels, separated by commas (empty when there are none)</td>
+</tr>
+<tr>
+<td><code>mmm.mediators</code></td>
+<td><code>mmm.nested</code></td>
+<td>The mediators, separated by commas</td>
+</tr>
+<tr>
+<td><code>mmm.outcomes</code></td>
+<td><code>mmm.multivariate</code></td>
+<td>The outcomes, separated by commas</td>
+</tr>
+<tr>
+<td><code>mmm.cross_effects</code></td>
+<td><code>mmm.multivariate</code></td>
+<td>The number of cross-effects</td>
+</tr>
+</tbody>
+</table>
+<p>A param value has a maximum of 6000 characters. If a list of names is longer, the model cuts
+it and adds <code>...</code> at the end. The fit does not stop because of this.</p>
+<p><strong>Metrics.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Labels</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>roi</code></td>
+<td><code>channel</code></td>
+<td>The posterior mean of the return on spend: the contribution of the channel over the fit window divided by its spend</td>
+</tr>
+<tr>
+<td><code>roi_p05</code>, <code>roi_p95</code></td>
+<td><code>channel</code></td>
+<td>The 5th and the 95th percentile of the return on spend</td>
+</tr>
+<tr>
+<td><code>mroi</code></td>
+<td><code>channel</code></td>
+<td>The marginal return: the extra KPI for each extra unit of spend at the current spend (a central difference at 1 ± 1%)</td>
+</tr>
+<tr>
+<td><code>contribution_share</code></td>
+<td><code>channel</code></td>
+<td>The part of the total KPI that the channel gives</td>
+</tr>
+<tr>
+<td><code>baseline_share</code></td>
+<td>none</td>
+<td>The part of the total KPI with no media</td>
+</tr>
+</tbody>
+</table>
+<p>A channel with no spend gets no <code>roi</code>. The label value is the channel name with characters
+other than letters, digits, <code>_</code>, <code>.</code> and <code>-</code> changed to <code>_</code> (<code>TV spend</code> becomes <code>TV_spend</code>).
+For <code>mmm.multivariate</code>, the metrics use the weighted total of the outcomes. It also logs a
+<code>roi</code> for each outcome, with the labels <code>channel</code> and <code>outcome</code>.</p>
+<p>Find the runs where TV returns more than 2:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--filter<span class="w"> </span><span class="s2">"metric.roi{channel=tv} &gt; 2"</span><span class="w"> </span>--column<span class="w"> </span><span class="s2">"metric.roi{channel=tv}"</span>
+</span></code></pre></div>
+<h2 id="what-a-causal-fit-logs">What a causal fit logs <span class="mapi-badge">v0.13</span><a class="headerlink" href="#what-a-causal-fit-logs" title="Permanent link">&para;</a></h2>
+<p>At the end of a fit, <code>ts.bsts</code> and the causal models (<code>causal.impact</code>,
+<code>causal.synthetic_control</code> and <code>causal.did</code>) log params and scalar metrics (no step). Their
+samplers also send live chains and step metrics, as the other PyMC models do. The causal
+metrics come from the <code>impact</code> group of the bundle (a maximum of 500 draws), in the units of
+the target.</p>
+<p><strong>Params of <code>ts.bsts</code> and <code>causal.impact</code>.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bsts.trend</code></td>
+<td><code>level</code>, <code>local_linear</code> or <code>smooth</code></td>
+</tr>
+<tr>
+<td><code>bsts.seasonality</code></td>
+<td>The seasonal periods, separated by commas. <code>x3</code> gives the harmonics, for example <code>12,52.18x3</code>.</td>
+</tr>
+<tr>
+<td><code>bsts.regressors</code></td>
+<td>The drivers (the control series of <code>causal.impact</code>), separated by commas</td>
+</tr>
+<tr>
+<td><code>bsts.n_states</code></td>
+<td>The number of states of the model</td>
+</tr>
+<tr>
+<td><code>bsts.n_periods</code>, <code>bsts.missing_periods</code></td>
+<td>The number of periods of the fit, and the number of periods without a value</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Metrics of <code>ts.bsts</code>.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sigma_obs</code>, <code>sigma_level</code></td>
+<td>The posterior means of the observation noise and of the level innovations, in the units of the target</td>
+</tr>
+<tr>
+<td><code>one_step_rmse</code></td>
+<td>The error of the one-step-ahead predictions in the fitted range</td>
+</tr>
+<tr>
+<td><code>one_step_coverage_90</code></td>
+<td>The part of the observed values in the 90% interval of the one-step-ahead predictions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Params of the causal models.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Models</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>causal.intervention_start</code>, <code>causal.intervention_end</code></td>
+<td>all</td>
+<td>The dates (or period numbers) of the change. The end is empty when the change did not stop.</td>
+</tr>
+<tr>
+<td><code>causal.n_pre</code>, <code>causal.n_post</code></td>
+<td>all</td>
+<td>The number of periods before the start and in the effect window</td>
+</tr>
+<tr>
+<td><code>causal.n_treated</code></td>
+<td>all</td>
+<td>The number of treated units (1 for <code>causal.impact</code>)</td>
+</tr>
+<tr>
+<td><code>causal.n_donors</code>, <code>causal.weights</code></td>
+<td><code>causal.synthetic_control</code></td>
+<td>The number of donor markets, and <code>simplex</code> or <code>horseshoe</code></td>
+</tr>
+<tr>
+<td><code>causal.design</code>, <code>causal.staggered</code>, <code>causal.leads</code>, <code>causal.lags</code></td>
+<td><code>causal.did</code></td>
+<td>The design, if the units got the change at different times, and the event window</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Metrics of the causal models.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Labels</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>effect_total</code></td>
+<td>none (<code>unit</code> with two or more treated units)</td>
+<td>The mean of the total effect over the effect window</td>
+</tr>
+<tr>
+<td><code>effect_total_sd</code>, <code>effect_total_p05</code>, <code>effect_total_p95</code></td>
+<td>none</td>
+<td>The sd, the 5th and the 95th percentile of the total effect</td>
+</tr>
+<tr>
+<td><code>effect_average</code></td>
+<td>none</td>
+<td>The mean effect in one period</td>
+</tr>
+<tr>
+<td><code>effect_relative</code></td>
+<td>none (<code>unit</code> with two or more treated units)</td>
+<td>The total effect divided by the total of the values without the change</td>
+</tr>
+<tr>
+<td><code>p_effect_positive</code></td>
+<td>none (<code>unit</code> with two or more treated units)</td>
+<td>The probability that the total effect is more than zero</td>
+</tr>
+<tr>
+<td><code>pre_rmse</code>, <code>pre_mape</code></td>
+<td>none</td>
+<td>The error of the model before the change</td>
+</tr>
+<tr>
+<td><code>donor_weight</code></td>
+<td><code>unit</code>, <code>donor</code></td>
+<td><code>causal.synthetic_control</code>: the posterior mean of the weight, for the 10 largest donors of each treated unit</td>
+</tr>
+<tr>
+<td><code>att</code>, <code>att_p05</code>, <code>att_p95</code></td>
+<td>none</td>
+<td><code>causal.did</code>: the average effect after the change, with its interval</td>
+</tr>
+<tr>
+<td><code>event_coef</code></td>
+<td><code>event_time</code></td>
+<td><code>causal.did</code>: the posterior mean of the coefficient for each period relative to the change</td>
+</tr>
+</tbody>
+</table>
+<p>Find the geo-lift tests with an effect that is more than zero with a probability of 95% or
+more:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--filter<span class="w"> </span><span class="s2">"metric.p_effect_positive &gt;= 0.95"</span><span class="w"> </span>--column<span class="w"> </span>metric.effect_total
+</span></code></pre></div>
+<h2 id="what-a-network-fit-logs">What a network fit logs <span class="mapi-badge">v0.15</span><a class="headerlink" href="#what-a-network-fit-logs" title="Permanent link">&para;</a></h2>
+<p>The <code>dl</code> models of <code>mapi-jax</code> log the training while it runs:</p>
+<ul>
+<li><code>loss</code> and <code>accuracy</code> (classification) or <code>rmse</code> and <code>mae</code> (regression), with the label
+  <code>split=train</code> (batch values) and <code>split=val</code> (at the end of each evaluation);</li>
+<li><code>lr</code>, <code>grad_norm</code> and <code>epoch</code>;</li>
+<li>one log line for each epoch, with the fields <code>epoch</code>, <code>train_loss</code>, <code>val_loss</code> and
+  <code>images_per_second</code>;</li>
+<li>the params <code>dl.arch.*</code>, <code>dl.train.*</code>, <code>dl.backend</code>, <code>dl.device</code> and <code>dl.parameters</code>;</li>
+<li>the media <code>val_predictions</code> and <code>confusion</code> (label <code>split=val</code>) at a maximum of 20
+  evaluations.</li>
+</ul>
+<p>See <a href="../deep-learning/#read-the-training">Deep learning</a>.</p>
+<h2 id="keys-labels-and-values">Keys, labels and values<a class="headerlink" href="#keys-labels-and-values" title="Permanent link">&para;</a></h2>
+<p>Metric keys match <code>^[a-z][a-z0-9_]{0,63}$</code>. Write qualifiers as labels, not in the key:</p>
+<table>
+<thead>
+<tr>
+<th>Do not write</th>
+<th>Write</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>train/loss</code></td>
+<td>key <code>loss</code>, labels <code>{"split": "train"}</code></td>
+</tr>
+<tr>
+<td><code>rmse_fold_3</code></td>
+<td>key <code>rmse</code>, labels <code>{"fold": "3"}</code></td>
+</tr>
+<tr>
+<td><code>chain0.step_size</code></td>
+<td>key <code>step_size</code>, labels <code>{"chain": "0"}</code></td>
+</tr>
+</tbody>
+</table>
+<p>These rules apply:</p>
+<ul>
+<li>A series is one key and one set of labels. <code>loss</code> and <code>loss</code> with <code>{"split": "val"}</code> are
+  two series.</li>
+<li>A series has a maximum of 8 labels. A label key matches <code>^[a-z][a-z0-9_]{0,31}$</code>. A label
+  value matches <code>^[A-Za-z0-9_.\-]{1,63}$</code>.</li>
+<li>A metric value must be a finite number. The SDK ignores NaN and infinity.</li>
+<li>A param key and a tag key can have letters, digits, <code>_</code>, <code>.</code>, <code>-</code> and <code>/</code> (for example
+  <code>settings.adstock.l_max</code>). A param value is a boolean, a number or a text of a maximum of
+  6000 characters.</li>
+<li>A param does not change. If you log a param again with the same value, nothing occurs. A
+  different value is an error.</li>
+<li>A tag value is a text of a maximum of 1000 characters. The last value is kept. Tag keys
+  that start with <code>mapi.</code> are for the platform only.</li>
+<li>A step is an integer, 0 or more. For a stepped series, the first value of a step is kept.
+  For a scalar series (no step), the newest value is kept.</li>
+</ul>
+<h2 id="log-from-a-model-plugin">Log from a model plugin<a class="headerlink" href="#log-from-a-model-plugin" title="Permanent link">&para;</a></h2>
+<p><code>FitContext</code> and <code>ScoreContext</code> have the logging methods. The SDK does a check of each key
+and each label when you call the method, also in a notebook without a run. Thus a bad key
+fails at the line that has the error.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyModel</span><span class="p">(</span><span class="n">CustomModel</span><span class="p">):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">log_param</span><span class="p">(</span><span class="s2">"solver"</span><span class="p">,</span> <span class="s2">"lbfgs"</span><span class="p">)</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="s2">"family"</span><span class="p">,</span> <span class="s2">"gaussian"</span><span class="p">)</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>            <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">()</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>            <span class="n">ctx</span><span class="o">.</span><span class="n">log_metric</span><span class="p">(</span><span class="s2">"loss"</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">log_metrics</span><span class="p">({</span><span class="s2">"rmse"</span><span class="p">:</span> <span class="n">rmse</span><span class="p">,</span> <span class="s2">"mae"</span><span class="p">:</span> <span class="n">mae</span><span class="p">},</span> <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">"split"</span><span class="p">:</span> <span class="s2">"train"</span><span class="p">})</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">log_line</span><span class="p">(</span><span class="s2">"refit done"</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s2">"info"</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"iterations"</span><span class="p">:</span> <span class="n">n_steps</span><span class="p">})</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="o">...</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log_metric(key, value, step=None, labels=None)</code></td>
+<td>Log one point</td>
+</tr>
+<tr>
+<td><code>log_metrics(values, step=None, labels=None)</code></td>
+<td>Log some metrics with the same step and labels</td>
+</tr>
+<tr>
+<td><code>log_param(key, value)</code>, <code>log_params(params)</code></td>
+<td>Log params</td>
+</tr>
+<tr>
+<td><code>set_tag(key, value)</code>, <code>set_tags(tags)</code></td>
+<td>Set tags</td>
+</tr>
+<tr>
+<td><code>log_line(message, level="info", fields=None)</code></td>
+<td>Write a structured log line (a maximum of 16 fields)</td>
+</tr>
+<tr>
+<td><code>chains(chains)</code></td>
+<td>Report the progress of each chain (<code>mapi_spec.run.ChainProgress</code>)</td>
+</tr>
+<tr>
+<td><code>tracking</code></td>
+<td><code>True</code> when the platform records the values. Use it to skip metrics that take a long time to calculate.</td>
+</tr>
+</tbody>
+</table>
+<p>The methods are thread-safe. A sampler callback on a different thread can call them.</p>
+<p>Inside a run, the values go to the platform each second. The fit also writes them into the
+bundle: the model group <code>metrics_history</code> keeps the stepped series, the scalars, the params
+and the tags. The <code>core.loss_curve</code> plot reads this group. For the layout, see
+<a href="../../concepts/bundles/#metrics-history">Bundles</a>.</p>
+<h2 id="log-images-figures-and-tables">Log images, figures and tables <span class="mapi-badge">v0.14</span><a class="headerlink" href="#log-images-figures-and-tables" title="Permanent link">&para;</a></h2>
+<p>A run can log images, matplotlib figures and small tables. Each item has a key, and can have
+a step, labels and a caption, as a metric point has. Use the same key for the same picture at
+different steps, for example the predictions on a sample at each epoch.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyModel</span><span class="p">(</span><span class="n">CustomModel</span><span class="p">):</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_epochs</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>            <span class="o">...</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>            <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">tracking_media</span><span class="p">:</span>  <span class="c1"># skip the work when nothing records the images</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                <span class="n">ctx</span><span class="o">.</span><span class="n">log_image</span><span class="p">(</span><span class="s2">"samples"</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">epoch</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">"split"</span><span class="p">:</span> <span class="s2">"val"</span><span class="p">},</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                              <span class="n">caption</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Predictions after epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">fig</span> <span class="o">=</span> <span class="n">plot_residuals</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">log_figure</span><span class="p">(</span><span class="s2">"residuals"</span><span class="p">,</span> <span class="n">fig</span><span class="p">)</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">log_table</span><span class="p">(</span><span class="s2">"confusion_counts"</span><span class="p">,</span> <span class="n">counts_df</span><span class="p">,</span> <span class="n">caption</span><span class="o">=</span><span class="s2">"Holdout counts per class"</span><span class="p">)</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Accepts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log_image(key, image, step=None, labels=None, caption=None)</code></td>
+<td>A numpy array: <code>(height, width)</code> gray, <code>(height, width, 1)</code>, <code>(height, width, 3)</code> RGB or <code>(height, width, 4)</code> RGBA. <code>uint8</code> values as they are, booleans as 0 and 255, other integers from 0 to 255, floats from 0 to 1 (NaN becomes 0). Also PNG or JPEG bytes, a Pillow image or an <code>xarray.DataArray</code> with the dims <code>(y, x)</code> or <code>(y, x, channel)</code>.</td>
+</tr>
+<tr>
+<td><code>log_figure(key, figure, step=None, labels=None, caption=None)</code></td>
+<td>A matplotlib figure. The SDK saves it as a PNG file (100 dpi).</td>
+</tr>
+<tr>
+<td><code>log_table(key, table, step=None, labels=None, caption=None)</code></td>
+<td>A pandas DataFrame, a dict of columns or a list of records. Numbers, booleans, text and empty values. NaN and infinity become empty values. Dates become ISO text.</td>
+</tr>
+<tr>
+<td><code>tracking_media</code></td>
+<td><code>True</code> when the platform records images. A figure takes time to draw: use this property to skip it.</td>
+</tr>
+</tbody>
+</table>
+<p>The SDK does a check of the key, the labels, the step and the caption at each call, also
+without a run. A bad key fails at the line that has the error. Media keys follow the rules of
+metric keys. When nothing records the media (a notebook without a run, or a run that has no
+media upload), the call does not encode the image.</p>
+<p>Limits:</p>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Size of one image</td>
+<td>8 MiB, a maximum of 4096 pixels on each side</td>
+</tr>
+<tr>
+<td>Size of one table</td>
+<td>1 MiB, a maximum of 10 000 rows, 64 columns and 200 000 cells. A cell has a maximum of 1000 characters.</td>
+</tr>
+<tr>
+<td>Caption</td>
+<td>500 characters</td>
+</tr>
+<tr>
+<td>Items in the run</td>
+<td>1000</td>
+</tr>
+<tr>
+<td>Bytes in the run</td>
+<td>256 MiB</td>
+</tr>
+</tbody>
+</table>
+<p>The limits count the items of all attempts of the run and the items logged through the
+API. If a run logs more, the platform does not keep the extra items and each attempt gets one
+<code>MEDIA_BUDGET</code> warning. The run does not fail. An item that replaces another item (the same
+key, labels and step) frees the bytes of the old item.</p>
+<p><strong>What the platform does with an image.</strong> The worker writes the file in its scratch
+directory. The supervisor reads the file, calculates its SHA-256 and does a check of the
+format and the size. Then it uploads the file. The server downloads the file again, does the
+same checks, and keeps a copy in the bundles bucket. The platform accepts only PNG and JPEG
+images (no SVG, no GIF). For the details, see
+<a href="../../reference/run-protocol/#media">Run protocol: Media</a>.</p>
+<p><strong>Where you see the media.</strong></p>
+<ul>
+<li><strong>Web app.</strong> The <strong>Media</strong> tab of the run shows each key. A slider selects the step. A
+  select shows one value of a label. A table shows its first 200 rows. The
+  <a href="../run-comparison/#compare-runs">compare page</a> shows the images of several runs side by
+  side.</li>
+<li><strong>Python.</strong> <code>api.runs.media(run_id)</code> lists the items. <code>api.runs.download_media(run_id,
+  item)</code> gets the bytes and does a check of the size, the CRC32C and the SHA-256.</li>
+<li><strong>Command line.</strong> <code>mapi runs media RUN</code> lists the items. <code>--download DIR</code> writes the files.</li>
+</ul>
+<p><strong>Log media from a notebook.</strong> You can add an image or a table to a run that already exists,
+also after it finished. One request has a maximum of 4 MiB.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">log_image</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="s2">"holdout_map"</span><span class="p">,</span> <span class="s2">"map.png"</span><span class="p">,</span> <span class="n">caption</span><span class="o">=</span><span class="s2">"Holdout error by region"</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">log_table</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="s2">"lift_by_region"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"region"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"north"</span><span class="p">,</span> <span class="s2">"south"</span><span class="p">],</span> <span class="s2">"lift"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.04</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">]})</span>
+</span></code></pre></div>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-image<span class="w"> </span>run_01…<span class="w"> </span>holdout_map<span class="w"> </span>map.png<span class="w"> </span>--step<span class="w"> </span><span class="m">3</span><span class="w"> </span>--label<span class="w"> </span><span class="nv">split</span><span class="o">=</span>val<span class="w"> </span>--caption<span class="w"> </span><span class="s2">"Holdout error"</span>
+</span></code></pre></div>
+<h2 id="workflow-nodes">Log from a workflow node<a class="headerlink" href="#workflow-nodes" title="Permanent link">&para;</a></h2>
+<p>The <code>NodeContext</code> of a workflow node has the same methods. The values go to the run of the
+node.</p>
+<p><code>search.grid</code> logs these items in its search run. The search run is the first item in the
+<code>child_runs</code> of the node. The <code>run_id</code> of the node is the refit of the winner, which does
+not have these items.</p>
+<ul>
+<li>The params <code>grid.metric</code>, <code>grid.direction</code>, <code>grid.points</code> and <code>grid.nested</code>.</li>
+<li>One param for each value of each grid point: <code>trial.&lt;i&gt;.&lt;pointer&gt;</code>, for example
+  <code>trial.3.adstock/l_max = 4</code>.</li>
+<li>The scores of grid point <code>i</code> as metrics with step <code>i</code> (<code>mae</code>, <code>rmse</code>, <code>mape</code>, <code>smape</code>,
+  <code>mase</code>, <code>coverage_90</code>, when they are present). A nested search adds the labels
+  <code>{"stage": "inner", "fold": "&lt;j&gt;"}</code> to the inner scores. The outer scores have the label
+  <code>{"stage": "outer"}</code> and step <code>j</code>.</li>
+<li>The scalar <code>best_&lt;metric&gt;</code> (for example <code>best_rmse</code>) and the tag <code>grid.best_point</code>.</li>
+<li>A <code>warning</code> log line for each grid point that failed.</li>
+</ul>
+<p><code>model.backtest</code> logs the metrics of each fold as scalars with the label <code>{"fold": "&lt;j&gt;"}</code>.
+The inner fits of a backtest do not log step metrics.</p>
+<h2 id="log-from-a-notebook-or-a-script">Log from a notebook or a script<a class="headerlink" href="#log-from-a-notebook-or-a-script" title="Permanent link">&para;</a></h2>
+<p>You can add metrics, params and tags to a run that already exists, also after it finished.
+For example, log the revenue lift that you measured after you deployed the model. You need
+the runner role. An API token needs the <code>runs:write</code> scope.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mapi_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">api</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># MAPI_URL, MAPI_TOKEN and MAPI_PROJECT, or a profile</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">run_id</span> <span class="o">=</span> <span class="s2">"run_01jaf3q2x8m9v7k5h4g3f2e1d0"</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">log_metric</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="s2">"revenue_lift"</span><span class="p">,</span> <span class="mf">0.042</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">{</span><span class="s2">"region"</span><span class="p">:</span> <span class="s2">"north"</span><span class="p">})</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">log_params</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="p">{</span><span class="s2">"analyst"</span><span class="p">:</span> <span class="s2">"kim"</span><span class="p">,</span> <span class="s2">"holdout_weeks"</span><span class="p">:</span> <span class="mi">8</span><span class="p">})</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">set_tags</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="p">{</span><span class="s2">"stage"</span><span class="p">:</span> <span class="s2">"production"</span><span class="p">,</span> <span class="s2">"old_tag"</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>  <span class="c1"># None deletes a tag</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"weekly sales, adstock 4"</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">"Holiday weeks removed."</span><span class="p">)</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">with</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">track</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>      <span class="c1"># sends the points in batches</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="k">for</span> <span class="n">week</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">weekly_kpi</span><span class="p">:</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        <span class="n">t</span><span class="o">.</span><span class="n">log_metric</span><span class="p">(</span><span class="s2">"weekly_lift"</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">week</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>runs.log_metrics</code> sends a maximum of 1000 points in each request. It divides a larger
+list. <code>runs.track</code> keeps the points and sends them when 500 wait and when the <code>with</code> block
+ends.</p>
+<p>The same with the command line:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-metric<span class="w"> </span>run_01…<span class="w"> </span>revenue_lift<span class="w"> </span><span class="m">0</span>.042<span class="w"> </span>--label<span class="w"> </span><span class="nv">region</span><span class="o">=</span>north
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>mapi<span class="w"> </span>runs<span class="w"> </span>log-param<span class="w"> </span>run_01…<span class="w"> </span>analyst<span class="w"> </span>kim
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>mapi<span class="w"> </span>runs<span class="w"> </span>tag<span class="w"> </span>run_01…<span class="w"> </span><span class="nv">stage</span><span class="o">=</span>production<span class="w"> </span>--delete<span class="w"> </span>old_tag
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>mapi<span class="w"> </span>runs<span class="w"> </span>rename<span class="w"> </span>run_01…<span class="w"> </span><span class="s2">"weekly sales, adstock 4"</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>mapi<span class="w"> </span>runs<span class="w"> </span>note<span class="w"> </span>run_01…<span class="w"> </span><span class="s2">"Holiday weeks removed."</span>
+</span></code></pre></div>
+<p>The same with HTTP: <code>POST /v1/runs/{run_id}/metrics</code>, <code>POST /v1/runs/{run_id}/params</code> and
+<code>PATCH /v1/runs/{run_id}</code> (see <a href="../../reference/http-api/#run-tracking">HTTP API</a>).</p>
+<h2 id="read-the-tracking-data">Read the tracking data<a class="headerlink" href="#read-the-tracking-data" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Web app.</strong> Open the run. The <strong>Metrics</strong> tab shows a chart for each key. Use <strong>Colour
+  by</strong> to give each chain (or each other label) a colour. The <strong>Params</strong> tab shows the params
+  and the tags. The <strong>Logs</strong> tab has a level filter. The <strong>Notes</strong> tab changes the name, the
+  tags and the note.</li>
+<li><strong>Python.</strong> <code>api.runs.metrics(run_id)</code> lists the series with their summaries (<code>last</code>,
+  <code>min</code>, <code>max</code>, <code>count</code>). <code>api.runs.metric_history(run_id, "step_size", max_points=500)</code>
+  gets the points. <code>api.runs.params(run_id)</code> lists the params.</li>
+<li><strong>Command line.</strong> <code>mapi runs metrics RUN</code>, <code>mapi runs metrics RUN --key loss</code> and
+  <code>mapi runs params RUN</code>.</li>
+<li><strong>Several runs.</strong> The <a href="../run-comparison/#compare-runs">compare page</a> shows the curves of
+  2 to 10 runs on one chart.</li>
+</ul>
+<p>The server downsamples a long series to <code>max_points</code> (the default is 1000). It keeps the
+shape of the curve, the first point and the last point.</p>
+<h2 id="search-runs">Search runs<a class="headerlink" href="#search-runs" title="Permanent link">&para;</a></h2>
+<p><code>GET /v1/runs</code>, <code>api.runs.list(...)</code> and <code>mapi runs ls</code> can filter, sort and show runs by
+their tracking data:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mapi<span class="w"> </span>runs<span class="w"> </span>ls<span class="w"> </span>--filter<span class="w"> </span><span class="s1">'metric.rmse &lt; 12'</span><span class="w"> </span>--filter<span class="w"> </span><span class="s1">'param.fit.engine = nutpie'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--order-by<span class="w"> </span>metric.rmse<span class="w"> </span>--column<span class="w"> </span>metric.rmse<span class="w"> </span>--column<span class="w"> </span>param.settings.adstock.l_max
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">runs</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">list</span><span class="p">(</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="n">filters</span><span class="o">=</span><span class="p">[</span><span class="s2">"metric.loss{split=val}.min &lt; 0.3"</span><span class="p">,</span> <span class="s2">"tag.stage = candidate"</span><span class="p">],</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">order_by</span><span class="o">=</span><span class="s2">"-metric.elpd_loo"</span><span class="p">,</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"metric.elpd_loo"</span><span class="p">,</span> <span class="s2">"param.fit.draws"</span><span class="p">],</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>A metric filter compares the summary of one exact series. Add <code>.min</code>, <code>.max</code> or <code>.count</code> to
+compare a value different from the last value. A run that does not have the series does not
+match. For the full grammar, see <a href="../../reference/http-api/#search-runs">Search runs</a>.</p>
+<p>In the web app, the runs table shows tracked columns and has a filter bar. You can save a
+search as a view. See <a href="../run-comparison/#find-runs">Compare runs and use experiments</a>.</p>
+<h2 id="budgets">Budgets<a class="headerlink" href="#budgets" title="Permanent link">&para;</a></h2>
+<p>Each run has budgets for its tracking data. The defaults are:</p>
+<table>
+<thead>
+<tr>
+<th>Budget</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Points in one series</td>
+<td>10 000</td>
+</tr>
+<tr>
+<td>Points in the run</td>
+<td>500 000</td>
+</tr>
+<tr>
+<td>Series in the run</td>
+<td>1000</td>
+</tr>
+<tr>
+<td>Params</td>
+<td>5000</td>
+</tr>
+<tr>
+<td>Tags</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Structured log lines</td>
+<td>10 000 lines, 2 MiB</td>
+</tr>
+<tr>
+<td>Images and tables <span class="mapi-badge">v0.14</span></td>
+<td>1000 items, 256 MiB</td>
+</tr>
+</tbody>
+</table>
+<p>If a run logs more, the platform does not keep the extra points and the run gets one
+<code>TRACKING_BUDGET</code> warning. The run does not fail. A worker that sends more than 64 MiB of
+tracking data fails with <code>SANDBOX_VIOLATION</code>. An API write that is more than the budget gets
+<code>429 QUOTA_EXCEEDED</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Log curves with a step that grows slowly, for example each 10th step. The chart shows a
+maximum of 1000 points for each series.</p>
+</div>
+<h2 id="retention">Retention<a class="headerlink" href="#retention" title="Permanent link">&para;</a></h2>
+<p>An operator can set <code>MAPI_TRACKING_RETENTION_DAYS</code>. Then the server deletes the metric points
+and the structured log lines of runs that finished more days ago than the setting. The server
+keeps the summaries, the params, the tags, the name and the note. It also keeps the value of
+each metric without a step. Thus search continues to work for old runs. If you log more points
+to a series after this, the server adds them to the summary that it kept (count, minimum,
+maximum and the last value). See <a href="../../operations/configuration/">Configuration</a>.</p>
+<p>The retention setting does not delete images and tables. The server keeps them until you
+delete the tenant <span class="mapi-badge">v0.14</span>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../http-api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The HTTP API">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                The HTTP API
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../run-comparison/" class="md-footer__link md-footer__link--next" aria-label="Next: Compare runs and use experiments">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Compare runs and use experiments
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Documentation CC BY 4.0 · SDK Apache-2.0 · Platform AGPLv3 or commercial
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js"></script>
+      
+    
+  </body>
+</html>

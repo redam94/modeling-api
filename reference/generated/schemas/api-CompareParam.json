@@ -1,0 +1,56 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-CompareParam.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One param key over the compared runs (run id -> text value; ``null``: not logged).",
+  "examples": [
+    {
+      "differs": true,
+      "key": "settings.adstock.l_max",
+      "values": {
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0": "4",
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d1": "8"
+      }
+    },
+    {
+      "differs": true,
+      "key": "fit.draws",
+      "values": {
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0": "1000",
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d1": null
+      }
+    }
+  ],
+  "properties": {
+    "differs": {
+      "description": "Two runs have different values (or one has none)",
+      "title": "Differs",
+      "type": "boolean"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "values": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Values",
+      "type": "object"
+    }
+  },
+  "required": [
+    "key",
+    "values",
+    "differs"
+  ],
+  "title": "CompareParam",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -82,6 +82,71 @@
       "title": "DimOverview",
       "type": "object"
     },
+    "ShapeView": {
+      "additionalProperties": true,
+      "description": "One detected data shape: which variables it shows, the dims it uses by role\n(``{\"y\": \"row\", \"x\": \"col\", \"frame\": \"quarter\"}``) and where to see it.",
+      "properties": {
+        "dims": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "title": "Dims",
+          "type": "object"
+        },
+        "kind": {
+          "enum": [
+            "timeseries",
+            "sequence",
+            "image",
+            "vector_field",
+            "areal_map",
+            "points",
+            "network",
+            "tree",
+            "circular",
+            "profile",
+            "table"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label_plain": {
+          "maxLength": 300,
+          "title": "Label Plain",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Score",
+          "type": "number"
+        },
+        "sections": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Sections",
+          "type": "array"
+        },
+        "vars": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Vars",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "score",
+        "label_plain"
+      ],
+      "title": "ShapeView",
+      "type": "object"
+    },
     "VarOverview": {
       "additionalProperties": true,
       "properties": {
@@ -153,6 +218,27 @@
           ],
           "default": null,
           "title": "Units"
+        },
+        "used_as": {
+          "anyOf": [
+            {
+              "enum": [
+                "data",
+                "geometry",
+                "mask",
+                "weight",
+                "index",
+                "label"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How the explorer uses the variable: data, or geometry (polygon rings, neighbours, tree links), a mask, a weight, an index or a label. Absent for a plain time-series panel",
+          "title": "Used As"
         }
       },
       "required": [
@@ -228,6 +314,23 @@
       "default": null,
       "description": "1 = no issues found",
       "title": "Quality Score"
+    },
+    "shapes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ShapeView"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The detected data shapes, best first (absent for a plain time-series panel)",
+      "title": "Shapes"
     },
     "summary_plain": {
       "maxLength": 1000,

@@ -770,26 +770,245 @@
     },
     "Checkpoint": {
       "additionalProperties": false,
+      "description": "Resumable checkpoints: every N draws (samplers) or every N epochs (v0.15: networks).\n\nExactly one is set. The model must be checkpointable; otherwise validation warns and\nthe run ignores it.",
       "properties": {
         "every_draws": {
-          "maximum": 1000000,
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Every Draws"
+        },
+        "every_epochs": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.15: networks trained in epochs",
+          "title": "Every Epochs"
+        }
+      },
+      "title": "Checkpoint",
+      "type": "object"
+    },
+    "CollectionRead": {
+      "additionalProperties": false,
+      "description": "How a model that reads datasets sees a collection: a seeded sample as\n``pixels(image, y, x, channel)`` (``ModelSpec`` ``data.collection``).",
+      "properties": {
+        "max_samples": {
+          "default": 5000,
+          "maximum": 100000,
           "minimum": 1,
-          "title": "Every Draws",
+          "title": "Max Samples",
           "type": "integer"
+        },
+        "mode": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "gray",
+            "rgb"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "resize": {
+          "default": "stretch",
+          "enum": [
+            "stretch",
+            "crop",
+            "pad"
+          ],
+          "title": "Resize",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Default: the fit seed",
+          "title": "Seed"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "(height, width); default: the collection's size (needed when it has none)",
+          "title": "Size"
+        },
+        "stratify": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "label",
+          "description": "Keep the share of each level of this var or coord (none: uniform)",
+          "title": "Stratify"
+        }
+      },
+      "title": "CollectionRead",
+      "type": "object"
+    },
+    "ColumnSplit": {
+      "additionalProperties": false,
+      "description": "Hold out the rows whose value in ``column`` is one of ``holdout`` (a fixed split read\nfrom the data, v0.14).\n\n``column`` is a coord or a 1-D data variable along ``dim``. Values compare as text, so\n``holdout: [1]`` matches a stored ``1`` or ``\"1\"``. With ``train`` set, rows in neither\nlist are dropped; else every other row trains.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "column": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Column",
+          "type": "string"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "holdout": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Holdout",
+          "type": "array"
+        },
+        "kind": {
+          "const": "column",
+          "title": "Kind",
+          "type": "string"
+        },
+        "train": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Train"
         }
       },
       "required": [
-        "every_draws"
+        "kind",
+        "dim",
+        "column"
       ],
-      "title": "Checkpoint",
+      "title": "ColumnSplit",
       "type": "object"
     },
     "DataBlock": {
       "additionalProperties": false,
-      "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.",
+      "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.\n\nFor an image collection (v0.15), ``collection`` says how a model that reads datasets\nsees it (a seeded sample); a model that trains on batches reads every image.",
       "properties": {
         "bind": {
           "$ref": "#/$defs/Binding"
+        },
+        "collection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionRead"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.15: an image collection read by a model that reads datasets: a seeded sample as pixels(image, y, x, channel)"
         },
         "dataset": {
           "description": "Dataset reference dataset://project/name@version",
@@ -847,9 +1066,11 @@
               "discriminator": {
                 "mapping": {
                   "as_of": "#/$defs/AsOfSplit",
+                  "column": "#/$defs/ColumnSplit",
                   "last_per_group": "#/$defs/LastPerGroupSplit",
                   "leave_group_out": "#/$defs/LeaveGroupOutSplit",
                   "mask_block": "#/$defs/MaskBlockSplit",
+                  "stratified": "#/$defs/StratifiedSplit",
                   "time_holdout": "#/$defs/TimeHoldoutSplit"
                 },
                 "propertyName": "kind"
@@ -869,6 +1090,12 @@
                 },
                 {
                   "$ref": "#/$defs/MaskBlockSplit"
+                },
+                {
+                  "$ref": "#/$defs/ColumnSplit"
+                },
+                {
+                  "$ref": "#/$defs/StratifiedSplit"
                 }
               ]
             },
@@ -1953,12 +2180,13 @@
       "type": "object"
     },
     "ResourceClass": {
-      "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+      "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
       "enum": [
         "S",
         "M",
         "L",
-        "XL"
+        "XL",
+        "GPU"
       ],
       "title": "ResourceClass",
       "type": "string"
@@ -2322,9 +2550,77 @@
       "title": "StepCall",
       "type": "object"
     },
+    "StratifiedSplit": {
+      "additionalProperties": false,
+      "description": "Hold out a random ``fraction`` of the rows along ``dim`` in each level of ``by`` (the\nclass label; v0.14). A level with one row stays in training.",
+      "properties": {
+        "after_step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+          "title": "After Step"
+        },
+        "allow_leakage": {
+          "default": false,
+          "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+          "title": "Allow Leakage",
+          "type": "boolean"
+        },
+        "by": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "By",
+          "type": "string"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "fraction": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Fraction",
+          "type": "number"
+        },
+        "kind": {
+          "const": "stratified",
+          "title": "Kind",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "exclusiveMaximum": 4294967296,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "kind",
+        "dim",
+        "by",
+        "fraction"
+      ],
+      "title": "StratifiedSplit",
+      "type": "object"
+    },
     "Sweep": {
       "additionalProperties": false,
-      "description": "A grid over spec paths (JSON pointers) of a base revision, compared by a metric.",
+      "description": "A grid over spec paths (JSON pointers) of a base revision, compared by a metric.\n\nRetired in v0.14: stored documents still load; use a workflow with a search.grid node.\nThe server refuses new Sweep documents.",
       "properties": {
         "apiVersion": {
           "const": "mapi/v1",

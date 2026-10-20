@@ -1,0 +1,94 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-RunPatch.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to\n``null`` is deleted. ``experiment_id`` (v0.14) moves the run to another experiment;\n``null`` takes it out of its experiment.",
+  "examples": [
+    {
+      "name": "weekly sales, adstock 4",
+      "tags": {
+        "old": null,
+        "stage": "candidate"
+      }
+    },
+    {
+      "note": "Holdout error is high in week 52 (holiday)."
+    },
+    {
+      "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
+    }
+  ],
+  "properties": {
+    "experiment_id": {
+      "anyOf": [
+        {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Experiment Id"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "maxLength": 20000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "tags": {
+      "anyOf": [
+        {
+          "maxProperties": 100,
+          "patternProperties": {
+            "^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,127}$": {
+              "anyOf": [
+                {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tags"
+    }
+  },
+  "title": "RunPatch",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

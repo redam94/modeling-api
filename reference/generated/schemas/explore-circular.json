@@ -1,0 +1,460 @@
+{
+  "$defs": {
+    "CircularEntry": {
+      "additionalProperties": true,
+      "description": "One angle or time of day (``period`` = 360 degrees, 24 hours, ...): a rose per group.\n\n``bins`` are the ``len(counts) + 1`` bin edges in the variable's units. ``zero`` is where\n0 sits (``north`` = top, compass and clock) and ``clockwise`` the direction of increase.",
+      "properties": {
+        "bins": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 73,
+          "minItems": 2,
+          "title": "Bins",
+          "type": "array"
+        },
+        "clockwise": {
+          "default": true,
+          "title": "Clockwise",
+          "type": "boolean"
+        },
+        "group_by": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group By"
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/CircularGroup"
+          },
+          "maxItems": 13,
+          "minItems": 1,
+          "title": "Groups",
+          "type": "array"
+        },
+        "omitted_groups": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Omitted Groups",
+          "type": "integer"
+        },
+        "period": {
+          "exclusiveMinimum": 0,
+          "title": "Period",
+          "type": "number"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        },
+        "zero": {
+          "default": "north",
+          "enum": [
+            "north",
+            "east"
+          ],
+          "title": "Zero",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "period",
+        "bins",
+        "groups"
+      ],
+      "title": "CircularEntry",
+      "type": "object"
+    },
+    "CircularGroup": {
+      "additionalProperties": true,
+      "description": "Counts per bin and circular statistics of one group (or of all the data).",
+      "properties": {
+        "circular_sd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "in the variable's units",
+          "title": "Circular Sd"
+        },
+        "counts": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 72,
+          "minItems": 1,
+          "title": "Counts",
+          "type": "array"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "mean_direction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "in the variable's units",
+          "title": "Mean Direction"
+        },
+        "n": {
+          "minimum": 0,
+          "title": "N",
+          "type": "integer"
+        },
+        "rayleigh_p": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rayleigh P"
+        },
+        "rayleigh_z": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rayleigh Z"
+        },
+        "resultant_length": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "R: 0 = spread out",
+          "title": "Resultant Length"
+        }
+      },
+      "required": [
+        "n",
+        "counts"
+      ],
+      "title": "CircularGroup",
+      "type": "object"
+    },
+    "CircularPair": {
+      "additionalProperties": true,
+      "description": "Two circular variables on one dim: counts ``[a bin][b bin]`` and the circular\ncorrelation ``rho`` (Jammalamadaka-SenGupta).",
+      "properties": {
+        "a": {
+          "maxLength": 256,
+          "title": "A",
+          "type": "string"
+        },
+        "a_bins": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 73,
+          "minItems": 2,
+          "title": "A Bins",
+          "type": "array"
+        },
+        "b": {
+          "maxLength": 256,
+          "title": "B",
+          "type": "string"
+        },
+        "b_bins": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 73,
+          "minItems": 2,
+          "title": "B Bins",
+          "type": "array"
+        },
+        "counts": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Counts",
+          "type": "array"
+        },
+        "rho": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rho"
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "a_bins",
+        "b_bins",
+        "counts"
+      ],
+      "title": "CircularPair",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-circular.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``circular``: directions and times of day as rose diagrams, with the mean\ndirection, its strength and the Rayleigh test, per group.",
+  "examples": [
+    {
+      "caption_plain": "Shows each angle or time of day as a rose. The line shows the mean direction.",
+      "format": "mapi.data-explorer.circular/v1",
+      "items": [
+        {
+          "bins": [
+            0.0,
+            90.0,
+            180.0,
+            270.0,
+            360.0
+          ],
+          "clockwise": true,
+          "groups": [
+            {
+              "circular_sd": 75.0,
+              "counts": [
+                10,
+                20,
+                50,
+                20
+              ],
+              "label": "all",
+              "mean_direction": 182.0,
+              "n": 100,
+              "rayleigh_p": 0.0001,
+              "rayleigh_z": 17.6,
+              "resultant_length": 0.42
+            }
+          ],
+          "omitted_groups": 0,
+          "period": 360.0,
+          "units": "deg",
+          "var": "wind_from",
+          "zero": "north"
+        },
+        {
+          "bins": [
+            0.0,
+            6.0,
+            12.0,
+            18.0,
+            24.0
+          ],
+          "clockwise": true,
+          "group_by": "species",
+          "groups": [
+            {
+              "circular_sd": 3.9,
+              "counts": [
+                20,
+                2,
+                3,
+                15
+              ],
+              "label": "ocelot",
+              "mean_direction": 0.5,
+              "n": 40,
+              "rayleigh_p": 0.0001,
+              "rayleigh_z": 14.4,
+              "resultant_length": 0.6
+            },
+            {
+              "circular_sd": 3.2,
+              "counts": [
+                1,
+                14,
+                14,
+                1
+              ],
+              "label": "agouti",
+              "mean_direction": 12.0,
+              "n": 30,
+              "rayleigh_p": 0.0001,
+              "rayleigh_z": 14.7,
+              "resultant_length": 0.7
+            }
+          ],
+          "omitted_groups": 0,
+          "period": 24.0,
+          "units": "h",
+          "var": "clock_time",
+          "zero": "north"
+        }
+      ],
+      "pairs": [
+        {
+          "a": "hour_lst",
+          "a_bins": [
+            0.0,
+            12.0,
+            24.0
+          ],
+          "b": "wind_from",
+          "b_bins": [
+            0.0,
+            180.0,
+            360.0
+          ],
+          "counts": [
+            [
+              30,
+              20
+            ],
+            [
+              10,
+              40
+            ]
+          ],
+          "rho": 0.21
+        }
+      ],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "format": {
+      "const": "mapi.data-explorer.circular/v1",
+      "default": "mapi.data-explorer.circular/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/CircularEntry"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "pairs": {
+      "items": {
+        "$ref": "#/$defs/CircularPair"
+      },
+      "maxItems": 8,
+      "title": "Pairs",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "CircularView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

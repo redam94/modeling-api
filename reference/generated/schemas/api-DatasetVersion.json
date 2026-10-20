@@ -1,5 +1,223 @@
 {
   "$defs": {
+    "ClassCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "label": {
+          "maxLength": 256,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "count"
+      ],
+      "title": "ClassCount",
+      "type": "object"
+    },
+    "CollectionInfo": {
+      "additionalProperties": false,
+      "description": "``collection.json``: what a collection version holds.",
+      "properties": {
+        "base_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Version"
+        },
+        "classes": {
+          "description": "Image count per class, by count (descending) then label",
+          "items": {
+            "$ref": "#/$defs/ClassCount"
+          },
+          "maxItems": 1000,
+          "title": "Classes",
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Columns",
+          "type": "array"
+        },
+        "dim": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "format": {
+          "const": "mapi.collection/v1",
+          "default": "mapi.collection/v1",
+          "title": "Format",
+          "type": "string"
+        },
+        "formats": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "maxProperties": 8,
+          "title": "Formats",
+          "type": "object"
+        },
+        "label": {
+          "description": "The version has label(image)",
+          "title": "Label",
+          "type": "boolean"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "max_size": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Max Size",
+          "type": "array"
+        },
+        "min_size": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Min Size",
+          "type": "array"
+        },
+        "mode": {
+          "description": "Channels the images decode to",
+          "enum": [
+            "gray",
+            "rgb"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "n_images": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "N Images",
+          "type": "integer"
+        },
+        "new_images": {
+          "minimum": 0,
+          "title": "New Images",
+          "type": "integer"
+        },
+        "other_classes": {
+          "default": 0,
+          "description": "Classes not listed in classes",
+          "minimum": 0,
+          "title": "Other Classes",
+          "type": "integer"
+        },
+        "packs": {
+          "items": {
+            "$ref": "#/$defs/PackInfo"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "title": "Packs",
+          "type": "array"
+        },
+        "reused_images": {
+          "minimum": 0,
+          "title": "Reused Images",
+          "type": "integer"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "options.size, else the common size of all images, else none",
+          "title": "Size"
+        },
+        "split": {
+          "description": "The version has split(image)",
+          "title": "Split",
+          "type": "boolean"
+        },
+        "splits": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "maxProperties": 64,
+          "title": "Splits",
+          "type": "object"
+        },
+        "total_bytes": {
+          "description": "Stored bytes of the distinct images",
+          "minimum": 0,
+          "title": "Total Bytes",
+          "type": "integer"
+        },
+        "var": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "n_images",
+        "dim",
+        "var",
+        "label",
+        "split",
+        "mode",
+        "size",
+        "min_size",
+        "max_size",
+        "total_bytes",
+        "packs",
+        "new_images",
+        "reused_images",
+        "manifest_sha256"
+      ],
+      "title": "CollectionInfo",
+      "type": "object"
+    },
     "CoordSummary": {
       "additionalProperties": false,
       "description": "Metadata summary of one coordinate (never the full array for large dims).\n\n``values`` lists categorical levels when there are at most :attr:`MAX_LEVELS` of them;\nordered dims (time/integer) describe a range by ``start``/``end``/``size`` and whether\nthe coordinate is ``contiguous`` (no gaps at its frequency/step).",
@@ -512,6 +730,82 @@
       "title": "ObjectRef",
       "type": "object"
     },
+    "PackInfo": {
+      "additionalProperties": false,
+      "description": "One pack a collection version reads.",
+      "properties": {
+        "crc32c": {
+          "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+          "examples": [
+            "4waSgw=="
+          ],
+          "pattern": "^[A-Za-z0-9+/]{6}==$",
+          "title": "Crc32C",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "entries": {
+          "description": "Zip entries in the pack",
+          "minimum": 0,
+          "title": "Entries",
+          "type": "integer"
+        },
+        "images": {
+          "description": "Distinct images of this version stored in it",
+          "minimum": 0,
+          "title": "Images",
+          "type": "integer"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Uploads: the ingest input it came from ('part.0003'); base: none",
+          "title": "Input"
+        },
+        "md5": {
+          "description": "MD5 as GCS reports it: base64 of the 16-byte digest",
+          "pattern": "^[A-Za-z0-9+/]{22}==$",
+          "title": "Md5",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 22,
+          "title": "Size",
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "upload",
+            "base"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "size",
+        "crc32c",
+        "md5",
+        "entries",
+        "images",
+        "source"
+      ],
+      "title": "PackInfo",
+      "type": "object"
+    },
     "RaggedSpec": {
       "additionalProperties": false,
       "description": "Ragged nesting (``hh \u2192 trip``): long form (obs + index vars) or padded + mask.",
@@ -672,6 +966,7 @@
             "float32",
             "int64",
             "int32",
+            "uint8",
             "bool",
             "str",
             "datetime64[ns]"
@@ -873,9 +1168,94 @@
         }
       },
       "version": 4
+    },
+    {
+      "collection": {
+        "classes": [
+          {
+            "count": 700,
+            "label": "bottle"
+          },
+          {
+            "count": 500,
+            "label": "can"
+          }
+        ],
+        "dim": "image",
+        "formats": {
+          "jpeg": 1150,
+          "png": 50
+        },
+        "label": true,
+        "manifest_sha256": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+        "max_size": [
+          512,
+          512
+        ],
+        "min_size": [
+          48,
+          48
+        ],
+        "mode": "rgb",
+        "n_images": 1200,
+        "new_images": 1200,
+        "packs": [
+          {
+            "crc32c": "4waSgw==",
+            "digest": "5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+            "entries": 1200,
+            "images": 1200,
+            "input": "part.0000",
+            "md5": "XrY7u+Ae7tCTyyK7j1rNww==",
+            "size": 52430000,
+            "source": "upload"
+          }
+        ],
+        "reused_images": 0,
+        "size": [
+          64,
+          64
+        ],
+        "split": true,
+        "splits": {
+          "test": 240,
+          "train": 960
+        },
+        "total_bytes": 52428800,
+        "var": "pixels"
+      },
+      "created_at": "2026-10-15T09:30:00Z",
+      "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+      "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "issues": [],
+      "layout": "collection",
+      "project_id": "default",
+      "ready_at": "2026-10-15T09:40:10Z",
+      "ref": "dataset://default/product_photos@v5",
+      "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "size_bytes": 52428800,
+      "sources": [
+        "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+        "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+      ],
+      "status": "ready",
+      "tenant_id": "default",
+      "version": 5
     }
   ],
   "properties": {
+    "collection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CollectionInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "v0.15: what an image collection version holds (layout 'collection')"
+    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",
@@ -925,10 +1305,11 @@
     },
     "layout": {
       "default": "dataset",
-      "description": "M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema)",
+      "description": "M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema). v0.15: 'collection' versions are image collections (collection; data_schema has the virtual pixels variable)",
       "enum": [
         "dataset",
-        "tree"
+        "tree",
+        "collection"
       ],
       "title": "Layout",
       "type": "string"

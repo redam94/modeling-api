@@ -1,0 +1,534 @@
+{
+  "$defs": {
+    "ClarkEvans": {
+      "additionalProperties": true,
+      "description": "The Clark-Evans ratio of the points (R < 1: clustered, R > 1: regular).",
+      "properties": {
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "r": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "R"
+        },
+        "z": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Z"
+        }
+      },
+      "title": "ClarkEvans",
+      "type": "object"
+    },
+    "PointAnswers": {
+      "additionalProperties": true,
+      "description": "A text variable on (``by_dim``, points), such as the colour term each speaker gave\neach chip: the terms, the modal term per point, the share that gave it (agreement) and\nthe counts ``[point][term]``, aligned with the sample.",
+      "properties": {
+        "agreement": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Agreement",
+          "type": "array"
+        },
+        "by_dim": {
+          "maxLength": 256,
+          "title": "By Dim",
+          "type": "string"
+        },
+        "counts": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "maxItems": 5000,
+          "title": "Counts",
+          "type": "array"
+        },
+        "mode": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Mode",
+          "type": "array"
+        },
+        "terms": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Terms",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "by_dim",
+        "terms",
+        "mode",
+        "agreement"
+      ],
+      "title": "PointAnswers",
+      "type": "object"
+    },
+    "PointColour": {
+      "additionalProperties": true,
+      "description": "A numeric variable on the points, aligned with the sample.",
+      "properties": {
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "values"
+      ],
+      "title": "PointColour",
+      "type": "object"
+    },
+    "PointDensity": {
+      "additionalProperties": true,
+      "description": "Counts of all points on a grid (``counts[row][col]`` over ``y_edges`` x\n``x_edges``).",
+      "properties": {
+        "counts": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Counts",
+          "type": "array"
+        },
+        "x_edges": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 65,
+          "minItems": 2,
+          "title": "X Edges",
+          "type": "array"
+        },
+        "y_edges": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 65,
+          "minItems": 2,
+          "title": "Y Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x_edges",
+        "y_edges",
+        "counts"
+      ],
+      "title": "PointDensity",
+      "type": "object"
+    },
+    "PointSample": {
+      "additionalProperties": true,
+      "description": "The shown points (all of them, or an even sample): positions and their index along\n``point_dim``.",
+      "properties": {
+        "index": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 5000,
+          "title": "Index",
+          "type": "array"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "maxItems": 5000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Labels"
+        },
+        "x": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 5000,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "index"
+      ],
+      "title": "PointSample",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-points.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``points``: positions given by two variables (``x``, ``y``) on one dim, drawn as\ndots or as cells of a ``lattice``, coloured by a variable, a CIE Lab colour (``srgb``,\n``#rrggbb``) or the answers of a text variable.",
+  "examples": [
+    {
+      "answers": {
+        "agreement": [
+          0.9,
+          0.6,
+          0.5
+        ],
+        "by_dim": "speaker",
+        "counts": [
+          [
+            0,
+            1,
+            9
+          ],
+          [
+            2,
+            6,
+            2
+          ],
+          [
+            5,
+            3,
+            2
+          ]
+        ],
+        "mode": [
+          "W",
+          "F",
+          "B"
+        ],
+        "terms": [
+          "B",
+          "F",
+          "W"
+        ],
+        "var": "response"
+      },
+      "caption_plain": "Shows each point at its place. Select the colour.",
+      "colour": [
+        {
+          "values": [
+            96.0,
+            51.6,
+            61.7
+          ],
+          "var": "cie_l"
+        }
+      ],
+      "format": "mapi.data-explorer.points/v1",
+      "lab_vars": [
+        "cie_l",
+        "cie_a",
+        "cie_b"
+      ],
+      "lattice": true,
+      "n": 3,
+      "point_dim": "chip",
+      "sample": {
+        "index": [
+          0,
+          1,
+          2
+        ],
+        "labels": [
+          1,
+          2,
+          3
+        ],
+        "x": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "y": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "srgb": [
+        "#f5f5f5",
+        "#a83a3a",
+        "#3a7ca8"
+      ],
+      "warnings_plain": [],
+      "x": "wcs_col",
+      "y": "wcs_row"
+    }
+  ],
+  "properties": {
+    "answers": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PointAnswers"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "clark_evans": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClarkEvans"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "colour": {
+      "items": {
+        "$ref": "#/$defs/PointColour"
+      },
+      "maxItems": 32,
+      "title": "Colour",
+      "type": "array"
+    },
+    "density": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PointDensity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "format": {
+      "const": "mapi.data-explorer.points/v1",
+      "default": "mapi.data-explorer.points/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "lab_vars": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3,
+      "title": "Lab Vars",
+      "type": "array"
+    },
+    "lattice": {
+      "default": false,
+      "title": "Lattice",
+      "type": "boolean"
+    },
+    "n": {
+      "minimum": 0,
+      "title": "N",
+      "type": "integer"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "point_dim": {
+      "maxLength": 256,
+      "title": "Point Dim",
+      "type": "string"
+    },
+    "sample": {
+      "$ref": "#/$defs/PointSample"
+    },
+    "srgb": {
+      "anyOf": [
+        {
+          "items": {
+            "pattern": "^#[0-9a-f]{6}$",
+            "type": "string"
+          },
+          "maxItems": 5000,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Srgb"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    },
+    "x": {
+      "maxLength": 256,
+      "title": "X",
+      "type": "string"
+    },
+    "y": {
+      "maxLength": 256,
+      "title": "Y",
+      "type": "string"
+    }
+  },
+  "required": [
+    "point_dim",
+    "x",
+    "y",
+    "n",
+    "sample"
+  ],
+  "title": "PointsView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

@@ -1,0 +1,50 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-BlobMissing.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The answer to :class:`BlobQuery` (v0.15). Upload only the ``missing`` images.",
+  "examples": [
+    {
+      "base_version": 4,
+      "missing": [
+        "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      ],
+      "present": 1
+    }
+  ],
+  "properties": {
+    "base_version": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The version compared with (none: no base, every image is missing)",
+      "title": "Base Version"
+    },
+    "missing": {
+      "description": "Missing digests, in query order",
+      "items": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Missing",
+      "type": "array"
+    },
+    "present": {
+      "minimum": 0,
+      "title": "Present",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "base_version",
+    "missing",
+    "present"
+  ],
+  "title": "BlobMissing",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

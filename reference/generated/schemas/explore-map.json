@@ -1,0 +1,607 @@
+{
+  "$defs": {
+    "MapFrame": {
+      "additionalProperties": true,
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 2000,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "values"
+      ],
+      "title": "MapFrame",
+      "type": "object"
+    },
+    "MapLayer": {
+      "additionalProperties": true,
+      "description": "One value per area (``values``, the first frame or the only one); ``frames`` when\nthe variable has a second dim. ``derived_from`` names the variables of a derived layer\n(``ratio = target / exposure``).",
+      "properties": {
+        "derived_from": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Derived From",
+          "type": "array"
+        },
+        "frame_dim": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Dim"
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/MapFrame"
+          },
+          "maxItems": 60,
+          "title": "Frames",
+          "type": "array"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "units": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 2000,
+          "title": "Values",
+          "type": "array"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var",
+        "values"
+      ],
+      "title": "MapLayer",
+      "type": "object"
+    },
+    "MapPoints": {
+      "additionalProperties": true,
+      "description": "Columnar points (one per area).",
+      "properties": {
+        "x": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 2000,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": 2000,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "MapPoints",
+      "type": "object"
+    },
+    "MapRing": {
+      "additionalProperties": true,
+      "description": "One polygon ring of area ``area`` (an index into ``areas``); an area can have more\nthan one ring (islands).",
+      "properties": {
+        "area": {
+          "minimum": 0,
+          "title": "Area",
+          "type": "integer"
+        },
+        "x": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 20000,
+          "minItems": 1,
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 20000,
+          "minItems": 1,
+          "title": "Y",
+          "type": "array"
+        }
+      },
+      "required": [
+        "area",
+        "x",
+        "y"
+      ],
+      "title": "MapRing",
+      "type": "object"
+    },
+    "MoranRow": {
+      "additionalProperties": true,
+      "description": "Moran's I of one layer: ``morans_i`` against its expectation ``-1/(n-1)``, the z\nscore and the p value of ``permutations`` random permutations.",
+      "properties": {
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "morans_i": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Morans I"
+        },
+        "p_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "P Value"
+        },
+        "permutations": {
+          "default": 999,
+          "minimum": 0,
+          "title": "Permutations",
+          "type": "integer"
+        },
+        "var": {
+          "maxLength": 256,
+          "title": "Var",
+          "type": "string"
+        },
+        "weights": {
+          "default": "adjacency",
+          "enum": [
+            "adjacency",
+            "knn4"
+          ],
+          "title": "Weights",
+          "type": "string"
+        },
+        "z": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Z"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "title": "MoranRow",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-map.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``map``: areas (polygons) coloured by each data variable, the neighbour links and\nthe spatial autocorrelation of each layer.",
+  "examples": [
+    {
+      "area_dim": "district",
+      "areas": [
+        "A",
+        "B",
+        "C"
+      ],
+      "bbox": [
+        0.0,
+        0.0,
+        2.0,
+        2.0
+      ],
+      "caption_plain": "Shows each variable by area. Lines join neighbouring areas.",
+      "centroids": {
+        "x": [
+          0.5,
+          1.5,
+          1.0
+        ],
+        "y": [
+          0.5,
+          0.5,
+          1.5
+        ]
+      },
+      "decimated": false,
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "format": "mapi.data-explorer.map/v1",
+      "isolates": [],
+      "layers": [
+        {
+          "derived_from": [],
+          "frames": [],
+          "role": "target",
+          "units": "cases",
+          "values": [
+            9.0,
+            3.0,
+            5.0
+          ],
+          "var": "cases"
+        },
+        {
+          "derived_from": [],
+          "frames": [],
+          "role": "exposure",
+          "units": "cases",
+          "values": [
+            4.5,
+            3.0,
+            5.0
+          ],
+          "var": "expected"
+        },
+        {
+          "derived_from": [
+            "cases",
+            "expected"
+          ],
+          "frames": [],
+          "values": [
+            2.0,
+            1.0,
+            1.0
+          ],
+          "var": "cases / expected"
+        }
+      ],
+      "moran": [
+        {
+          "expected": -0.5,
+          "morans_i": -0.5,
+          "p_value": 1.0,
+          "permutations": 999,
+          "var": "cases",
+          "weights": "adjacency",
+          "z": 0.0
+        }
+      ],
+      "rings": [
+        {
+          "area": 0,
+          "x": [
+            0.0,
+            1.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "y": [
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "area": 1,
+          "x": [
+            1.0,
+            2.0,
+            2.0,
+            1.0,
+            1.0
+          ],
+          "y": [
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "area": 2,
+          "x": [
+            0.0,
+            2.0,
+            2.0,
+            0.0,
+            0.0
+          ],
+          "y": [
+            1.0,
+            1.0,
+            2.0,
+            2.0,
+            1.0
+          ]
+        }
+      ],
+      "warnings_plain": []
+    }
+  ],
+  "properties": {
+    "area_dim": {
+      "maxLength": 256,
+      "title": "Area Dim",
+      "type": "string"
+    },
+    "areas": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxItems": 2000,
+      "minItems": 1,
+      "title": "Areas",
+      "type": "array"
+    },
+    "bbox": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "xmin, ymin, xmax, ymax",
+      "title": "Bbox"
+    },
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "centroids": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MapPoints"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "decimated": {
+      "default": false,
+      "title": "Decimated",
+      "type": "boolean"
+    },
+    "edges": {
+      "items": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "maxItems": 20000,
+      "title": "Edges",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.map/v1",
+      "default": "mapi.data-explorer.map/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "isolates": {
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 2000,
+      "title": "Isolates",
+      "type": "array"
+    },
+    "layers": {
+      "items": {
+        "$ref": "#/$defs/MapLayer"
+      },
+      "maxItems": 64,
+      "title": "Layers",
+      "type": "array"
+    },
+    "moran": {
+      "items": {
+        "$ref": "#/$defs/MoranRow"
+      },
+      "maxItems": 64,
+      "title": "Moran",
+      "type": "array"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "rings": {
+      "items": {
+        "$ref": "#/$defs/MapRing"
+      },
+      "maxItems": 8000,
+      "title": "Rings",
+      "type": "array"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    }
+  },
+  "required": [
+    "area_dim",
+    "areas"
+  ],
+  "title": "MapView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

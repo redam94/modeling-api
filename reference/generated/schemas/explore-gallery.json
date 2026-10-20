@@ -1,0 +1,347 @@
+{
+  "$defs": {
+    "GalleryFacet": {
+      "additionalProperties": true,
+      "description": "A variable or coord along the image dim and the number of images of each level\n(levels past :data:`MAX_GALLERY_LEVELS` are counted in ``(other)``).",
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "maxProperties": 65,
+          "title": "Counts",
+          "type": "object"
+        },
+        "name": {
+          "maxLength": 128,
+          "title": "Name",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "var",
+            "coord"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source",
+        "counts"
+      ],
+      "title": "GalleryFacet",
+      "type": "object"
+    },
+    "GalleryItem": {
+      "additionalProperties": true,
+      "description": "One thumbnail of a ``gallery`` view: a base64 PNG of at most\n:data:`MAX_GALLERY_THUMB` pixels a side, and the facet values of its image (untrusted\ntext).",
+      "properties": {
+        "index": {
+          "description": "Position along the image dim",
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The image dim label",
+          "title": "Label"
+        },
+        "meta": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 16,
+          "title": "Meta",
+          "type": "object"
+        },
+        "png": {
+          "maxLength": 24000,
+          "title": "Png",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "png"
+      ],
+      "title": "GalleryItem",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/explore-gallery.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "``gallery``: thumbnails of the images of one variable (an even sample per facet level\nwhen there are more than :data:`MAX_GALLERY_ITEMS`), with the image counts per facet\nlevel (v0.14).",
+  "examples": [
+    {
+      "caption_plain": "Shows 4 of the 4 images. Use the chips to show one label or split.",
+      "channel_dim": "channel",
+      "color": "gray",
+      "facets": [
+        {
+          "counts": {
+            "circle": 2,
+            "square": 2
+          },
+          "name": "label",
+          "source": "var"
+        },
+        {
+          "counts": {
+            "test": 2,
+            "train": 2
+          },
+          "name": "split",
+          "source": "coord"
+        }
+      ],
+      "format": "mapi.data-explorer.gallery/v1",
+      "frame_dim": "image",
+      "items": [
+        {
+          "index": 0,
+          "label": "0",
+          "meta": {
+            "label": "circle",
+            "split": "train"
+          },
+          "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAE0lEQVR4nGNg+P+fAYiBJJgAcQF3nAv1WOTbDAAAAABJRU5ErkJggg=="
+        },
+        {
+          "index": 1,
+          "label": "1",
+          "meta": {
+            "label": "square",
+            "split": "train"
+          },
+          "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAEUlEQVR4nGNgAIP//2EEEAAAJ+wD/QDjYnMAAAAASUVORK5CYII="
+        },
+        {
+          "index": 2,
+          "label": "2",
+          "meta": {
+            "label": "circle",
+            "split": "test"
+          },
+          "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAE0lEQVR4nGNg+P+fAYiBJJgAcQF3nAv1WOTbDAAAAABJRU5ErkJggg=="
+        },
+        {
+          "index": 3,
+          "label": "3",
+          "meta": {
+            "label": "square",
+            "split": "test"
+          },
+          "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAEUlEQVR4nGNgAIP//2EEEAAAJ+wD/QDjYnMAAAAASUVORK5CYII="
+        }
+      ],
+      "n_images": 4,
+      "other_vars": [],
+      "selection": "all",
+      "source_height": 4,
+      "source_width": 4,
+      "thumb_height": 4,
+      "thumb_width": 4,
+      "var": "pixels",
+      "warnings_plain": [],
+      "x_dim": "x",
+      "y_dim": "y"
+    }
+  ],
+  "properties": {
+    "caption_plain": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption Plain"
+    },
+    "channel_dim": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Channel Dim"
+    },
+    "color": {
+      "enum": [
+        "gray",
+        "rgb"
+      ],
+      "title": "Color",
+      "type": "string"
+    },
+    "facets": {
+      "items": {
+        "$ref": "#/$defs/GalleryFacet"
+      },
+      "maxItems": 8,
+      "title": "Facets",
+      "type": "array"
+    },
+    "format": {
+      "const": "mapi.data-explorer.gallery/v1",
+      "default": "mapi.data-explorer.gallery/v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "frame_dim": {
+      "maxLength": 128,
+      "title": "Frame Dim",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/GalleryItem"
+      },
+      "maxItems": 240,
+      "title": "Items",
+      "type": "array"
+    },
+    "n_images": {
+      "minimum": 0,
+      "title": "N Images",
+      "type": "integer"
+    },
+    "node": {
+      "anyOf": [
+        {
+          "pattern": "^/(?:[A-Za-z_][A-Za-z0-9_.\\-]{0,63}(?:/[A-Za-z_][A-Za-z0-9_.\\-]{0,63}){0,7})?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "M4: the node of a tree dataset the view describes (absent for a flat dataset)",
+      "title": "Node"
+    },
+    "other_vars": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 256,
+      "title": "Other Vars",
+      "type": "array"
+    },
+    "selection": {
+      "enum": [
+        "all",
+        "stratified",
+        "even"
+      ],
+      "title": "Selection",
+      "type": "string"
+    },
+    "source_height": {
+      "minimum": 1,
+      "title": "Source Height",
+      "type": "integer"
+    },
+    "source_width": {
+      "minimum": 1,
+      "title": "Source Width",
+      "type": "integer"
+    },
+    "thumb_height": {
+      "maximum": 64,
+      "minimum": 1,
+      "title": "Thumb Height",
+      "type": "integer"
+    },
+    "thumb_width": {
+      "maximum": 64,
+      "minimum": 1,
+      "title": "Thumb Width",
+      "type": "integer"
+    },
+    "var": {
+      "maxLength": 256,
+      "title": "Var",
+      "type": "string"
+    },
+    "warnings_plain": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Warnings Plain",
+      "type": "array"
+    },
+    "x_dim": {
+      "maxLength": 128,
+      "title": "X Dim",
+      "type": "string"
+    },
+    "y_dim": {
+      "maxLength": 128,
+      "title": "Y Dim",
+      "type": "string"
+    }
+  },
+  "required": [
+    "var",
+    "frame_dim",
+    "y_dim",
+    "x_dim",
+    "color",
+    "source_height",
+    "source_width",
+    "thumb_height",
+    "thumb_width",
+    "n_images",
+    "selection"
+  ],
+  "title": "GalleryView",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

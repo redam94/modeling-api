@@ -377,6 +377,178 @@
       "title": "Hdf5Var",
       "type": "object"
     },
+    "ImageFolderOptions": {
+      "additionalProperties": false,
+      "description": "How a zip of images and a manifest table becomes ``pixels(image, y, x, channel)``.\n\nThe manifest has one row per image: the image path in the zip and, optionally, an id, a\nclass label and a train/test split. The images must have 8 bits per channel and one\nsize, unless ``size`` resizes them. Every byte is decoded inside the sandboxed ingest run.",
+      "examples": [
+        {
+          "label_column": "class",
+          "manifest": "manifest.csv",
+          "path_column": "file",
+          "split_column": "split"
+        },
+        {
+          "id_column": "id",
+          "label_column": "label",
+          "manifest": "labels.parquet",
+          "max_images": 5000,
+          "mode": "rgb",
+          "resize": "crop",
+          "size": [
+            32,
+            32
+          ]
+        }
+      ],
+      "properties": {
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Other columns kept as coords (default: all others)",
+          "title": "Columns"
+        },
+        "dim": {
+          "default": "image",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Dim",
+          "type": "string"
+        },
+        "id_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unique labels of the image dim (default: the row number)",
+          "title": "Id Column"
+        },
+        "label_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Class labels: the text variable 'label(image)', role target",
+          "title": "Label Column"
+        },
+        "manifest": {
+          "default": "manifest.csv",
+          "description": "Path of the manifest in the zip",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Manifest",
+          "type": "string"
+        },
+        "max_images": {
+          "default": 20000,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Max Images",
+          "type": "integer"
+        },
+        "mode": {
+          "default": "auto",
+          "description": "auto: rgb when an image has colour, else gray",
+          "enum": [
+            "auto",
+            "gray",
+            "rgb"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "path_column": {
+          "default": "path",
+          "description": "Image paths relative to the zip root",
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Path Column",
+          "type": "string"
+        },
+        "resize": {
+          "default": "stretch",
+          "description": "How images are resized (only with size)",
+          "enum": [
+            "stretch",
+            "crop",
+            "pad"
+          ],
+          "title": "Resize",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "(height, width) to resize every image to; each 1..4096",
+          "title": "Size"
+        },
+        "split_column": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Train/test assignment: the text coord 'split(image)'",
+          "title": "Split Column"
+        },
+        "var": {
+          "default": "pixels",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Var",
+          "type": "string"
+        }
+      },
+      "title": "ImageFolderOptions",
+      "type": "object"
+    },
     "IngestMapping": {
       "additionalProperties": false,
       "description": "How an upload becomes a labelled dataset (Meridian ``CoordToColumns`` style).\n\nTabular formats need a mapping; ``zarr_zip``/``netcdf`` are self-describing and may omit\n``dims``/``vars`` (with groups, they rename/select per node by name). A raw ``hdf5``\nfile (M4) needs ``hdf5`` (:class:`Hdf5Mapping`) instead of ``dims``/``vars``. Parsing\nhappens only inside a sandboxed ingest run.\n\nWith the ``mff`` preset the long table is first pivoted to one column\nper ``VariableName`` (plus ``Period`` and the key columns); ``vars`` and ``wide`` then\npick and rename those variables (``column`` = a ``VariableName`` value) and ``dims`` may\nrefine the dims the preset derives (``column`` = an MFF column). Without ``vars`` and\n``wide`` every variable is kept under its own name.",
@@ -509,6 +681,21 @@
               }
             ]
           }
+        },
+        {
+          "format": "image_folder",
+          "images": {
+            "label_column": "class",
+            "manifest": "manifest.csv",
+            "path_column": "file",
+            "split_column": "split"
+          }
+        },
+        {
+          "format": "safetensors",
+          "weights": {
+            "max_parameters": 50000000
+          }
         }
       ],
       "properties": {
@@ -527,7 +714,9 @@
             "mff",
             "zarr_zip",
             "netcdf",
-            "hdf5"
+            "hdf5",
+            "image_folder",
+            "safetensors"
           ],
           "title": "Format",
           "type": "string"
@@ -543,6 +732,18 @@
           ],
           "default": null,
           "description": "M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')"
+        },
+        "images": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImageFolderOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.14: options of an 'image_folder' upload (defaults when left out)"
         },
         "layout": {
           "default": "dense",
@@ -590,6 +791,18 @@
           "title": "Vars",
           "type": "object"
         },
+        "weights": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WeightsOptions"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.15: options of a 'safetensors' upload (defaults when left out)"
+        },
         "wide": {
           "additionalProperties": {
             "$ref": "#/$defs/WideVarMapping"
@@ -615,6 +828,7 @@
       "title": "IngestPreset",
       "type": "string"
     },
+    "JsonValue": {},
     "MeridianColumns": {
       "additionalProperties": false,
       "description": "Google Meridian's ``CoordToColumns`` contract for a wide CSV/Parquet table.\n\n``media``/``media_spend`` (and ``reach``/``frequency``/``rf_spend``) are parallel lists:\nthe *i*-th column of each belongs to the *i*-th entry of ``media_channels``\n(``rf_channels``). ``geo`` is omitted for a national model; ``kpi_type`` says whether\nthe KPI is revenue (ROI in currency) or a count (``revenue_per_kpi`` converts it).",
@@ -1027,6 +1241,58 @@
         "column"
       ],
       "title": "VarMapping",
+      "type": "object"
+    },
+    "WeightsOptions": {
+      "additionalProperties": false,
+      "description": "A safetensors file of pretrained network weights (read in the sandboxed ingest run).\n\nThe file becomes a weights dataset: ``weights(param)`` float32 plus the tensor table in\nthe ``mapi_weights`` attr. Models and steps read it as a side table.",
+      "examples": [
+        {
+          "max_parameters": 50000000
+        },
+        {
+          "arch": {
+            "blocks": [
+              1,
+              1,
+              1
+            ],
+            "channels": 3,
+            "kind": "resnet",
+            "widths": [
+              16,
+              32,
+              64
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "arch": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Architecture JSON, when the file's __metadata__ has no 'mapi_arch'",
+          "title": "Arch"
+        },
+        "max_parameters": {
+          "default": 200000000,
+          "maximum": 500000000,
+          "minimum": 1,
+          "title": "Max Parameters",
+          "type": "integer"
+        }
+      },
+      "title": "WeightsOptions",
       "type": "object"
     },
     "WideVarMapping": {

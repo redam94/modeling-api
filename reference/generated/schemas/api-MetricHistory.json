@@ -1,0 +1,165 @@
+{
+  "$defs": {
+    "MetricHistorySeries": {
+      "description": "The points of one series, in step order (downsampled to ``max_points`` with LTTB).",
+      "examples": [
+        {
+          "attempt": 1,
+          "count": 3,
+          "downsampled": false,
+          "labels": {
+            "chain": "0"
+          },
+          "steps": [
+            1,
+            2,
+            3
+          ],
+          "ts": [
+            "2026-10-15T09:30:00Z",
+            "2026-10-15T09:30:00Z",
+            "2026-10-15T09:30:00Z"
+          ],
+          "values": [
+            0.9,
+            0.6,
+            0.45
+          ]
+        }
+      ],
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "count": {
+          "description": "Stored points (before downsampling)",
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "downsampled": {
+          "default": false,
+          "title": "Downsampled",
+          "type": "boolean"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "steps": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "ts": {
+          "items": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": "Ts",
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "attempt",
+        "count",
+        "steps",
+        "values",
+        "ts"
+      ],
+      "title": "MetricHistorySeries",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mapi.dev/v1/api-MetricHistory.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "``GET /v1/runs/{run_id}/metrics/{key}``: every series of one metric key.",
+  "examples": [
+    {
+      "key": "step_size",
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "series": [
+        {
+          "attempt": 1,
+          "count": 3,
+          "downsampled": false,
+          "labels": {
+            "chain": "0"
+          },
+          "steps": [
+            1,
+            2,
+            3
+          ],
+          "ts": [
+            "2026-10-15T09:30:00Z",
+            "2026-10-15T09:30:00Z",
+            "2026-10-15T09:30:00Z"
+          ],
+          "values": [
+            0.9,
+            0.6,
+            0.45
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "key": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Key",
+      "type": "string"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "series": {
+      "items": {
+        "$ref": "#/$defs/MetricHistorySeries"
+      },
+      "maxItems": 64,
+      "title": "Series",
+      "type": "array"
+    },
+    "truncated": {
+      "default": false,
+      "description": "More series exist than were returned",
+      "title": "Truncated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "run_id",
+    "key"
+  ],
+  "title": "MetricHistory",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

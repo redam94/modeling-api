@@ -16,6 +16,24 @@
           "default": null,
           "title": "Message Plain"
         },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "not_applicable",
+                "insufficient_data",
+                "needs_option"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why a skipped section was skipped (absent in indexes written before the scientific sections: readers then list every section)",
+          "title": "Reason"
+        },
         "section": {
           "maxLength": 32,
           "title": "Section",
@@ -60,10 +78,49 @@
         },
         {
           "message_plain": "Less than two seasons of data.",
+          "reason": "insufficient_data",
           "section": "stl",
           "status": "skipped",
           "view": "ui/explore/stl.json"
         }
+      ],
+      "target": "dataset"
+    },
+    {
+      "order": [
+        "overview",
+        "structure",
+        "images",
+        "quality",
+        "distributions",
+        "timeseries",
+        "missingness"
+      ],
+      "ref": "dataset://seismology/oklahoma_quakes@v1",
+      "sections": [
+        {
+          "section": "overview",
+          "view": "ui/explore/overview.json"
+        },
+        {
+          "section": "structure",
+          "view": "ui/explore/structure.json"
+        },
+        {
+          "section": "images",
+          "view": "ui/explore/images.json"
+        },
+        {
+          "message_plain": "Not available: the data has no polygons.",
+          "reason": "not_applicable",
+          "section": "map",
+          "status": "skipped",
+          "view": "ui/explore/map.json"
+        }
+      ],
+      "shapes": [
+        "image",
+        "timeseries"
       ],
       "target": "dataset"
     }
@@ -89,6 +146,23 @@
       "description": "M4: the node of a tree dataset explored (absent for a flat dataset)",
       "title": "Node"
     },
+    "order": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Data Explorer: the sections in order of relevance for this data",
+      "title": "Order"
+    },
     "ref": {
       "description": "dataset://\u2026 or model://\u2026",
       "maxLength": 512,
@@ -102,6 +176,36 @@
       "maxItems": 32,
       "title": "Sections",
       "type": "array"
+    },
+    "shapes": {
+      "anyOf": [
+        {
+          "items": {
+            "enum": [
+              "timeseries",
+              "sequence",
+              "image",
+              "vector_field",
+              "areal_map",
+              "points",
+              "network",
+              "tree",
+              "circular",
+              "profile",
+              "table"
+            ],
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Data Explorer: the detected data shapes, best first",
+      "title": "Shapes"
     },
     "target": {
       "enum": [

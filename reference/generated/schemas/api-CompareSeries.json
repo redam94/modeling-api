@@ -1,0 +1,89 @@
+{
+  "$id": "https://schemas.mapi.dev/v1/api-CompareSeries.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The history of one series of one compared run (``steps`` and ``values`` have equal\nlengths; downsampled to ``max_points``).",
+  "examples": [
+    {
+      "attempt": 1,
+      "count": 3,
+      "labels": {
+        "split": "val"
+      },
+      "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+      "steps": [
+        1,
+        2,
+        3
+      ],
+      "values": [
+        0.9,
+        0.6,
+        0.45
+      ]
+    }
+  ],
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "count": {
+      "description": "Stored points (before downsampling)",
+      "minimum": 0,
+      "title": "Count",
+      "type": "integer"
+    },
+    "downsampled": {
+      "default": false,
+      "title": "Downsampled",
+      "type": "boolean"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "run_id": {
+      "examples": [
+        "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "values": {
+      "items": {
+        "type": "number"
+      },
+      "title": "Values",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "attempt",
+    "count",
+    "steps",
+    "values"
+  ],
+  "title": "CompareSeries",
+  "type": "object",
+  "x-mapi-contract-version": "0.2"
+}

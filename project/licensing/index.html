@@ -2244,6 +2244,14 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2436,6 +2444,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/tracking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Track metrics, params and tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/run-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare runs and use experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/guided-data/" class="md-nav__link">
         
   
@@ -2472,6 +2536,62 @@
     
   
     Tree datasets, HDF5 and multi-file versions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/image-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deep-learning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep learning
   
 
     
@@ -2876,6 +2996,8 @@
       
         
       
+        
+      
     
     
     
@@ -3152,6 +3274,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measure the effect of a change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/workflows/" class="md-nav__link">
         
   
@@ -3308,6 +3458,8 @@
   
     
     
+      
+        
       
         
       
@@ -3587,6 +3739,34 @@
     
   
     Marketing-mix models (mmm-framework)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/causal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Causal models and Bayesian structural time series
   
 
     
@@ -4118,7 +4298,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_26" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4140,14 +4320,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_25" id="__nav_6_25_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_26" id="__nav_6_26_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_26">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5501,8 +5681,8 @@ write models and integrations. The copyleft licence protects the hosted platform
 </thead>
 <tbody>
 <tr>
-<td><strong>SDK and contracts</strong>: <code>mapi-spec</code>, <code>mapi-sdk</code>, <code>mapi-pymc</code>, <code>mapi-sklearn</code></td>
-<td><code>packages/spec</code>, <code>packages/sdk</code>, <code>packages/sdk-pymc</code>, <code>packages/sdk-sklearn</code></td>
+<td><strong>SDK and contracts</strong>: <code>mapi-spec</code>, <code>mapi-sdk</code>, <code>mapi-pymc</code>, <code>mapi-sklearn</code>, <code>mapi-jax</code></td>
+<td><code>packages/spec</code>, <code>packages/sdk</code>, <code>packages/sdk-pymc</code>, <code>packages/sdk-sklearn</code>, <code>packages/sdk-jax</code></td>
 <td>Apache-2.0</td>
 </tr>
 <tr>
@@ -5555,7 +5735,10 @@ hold a commercial licence. For commercial terms, send an email to mattreda@mattr
 scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework (Apache-2.0).
 mmm-framework adds NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series models
 (<code>ts.sarimax</code>, <code>ts.var</code>, <code>ts.ets</code> and the other time-series models) run on statsmodels
-(BSD-3-Clause). The plot recipes use Altair and Plotly.</p>
+(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.15, the deep learning models
+(<code>mapi-jax</code>) use JAX, Flax and Optax (Apache-2.0). The <code>base-dl</code> image also has the NVIDIA
+CUDA runtime wheels from pip, which have the NVIDIA licence (NVIDIA Software License
+Agreement). <code>THIRD-PARTY-NOTICES.md</code> lists them.</p>
 <p>The visual workflow builder in the web app uses @xyflow/react (MIT). The API server connects
 to PostgreSQL through psycopg (LGPL-3.0). The server uses psycopg without modification, as a
 library that you install separately. Each library keeps its own licence.</p>
