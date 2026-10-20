@@ -35,6 +35,10 @@ periods of the forecast, not as a forecast fan of the sum over the grid.
   when there is one, for example `total` and not the sum of `rate` over the grid.
 - The summary tables are in the order of their size, so a truncated summary drops a large
   grid table and keeps `total`.
+- A model's field map (Score page and Model Explorer) colours the 1% to 99% range of the
+  posterior means when the quantiles and draws reach much wider, so a log-scale intensity
+  does not look flat; the mean, quantiles and draws still share the scale, and "Colours for
+  the full range" shows all of it.
 
 ### Data Explorer for scientific data
 
