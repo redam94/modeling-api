@@ -31,6 +31,12 @@ and score summaries are on the circle. `sci.heat_plate` lists `temperature` in
 `CustomModel.structural_missing`: the cells without a thermocouple do not count in the
 scorecard check "Few missing values" (`data.missing`).
 
+Score runs follow the shape of each output (v0.10). A `grid` output gets `sci.field_map`, or
+`sci.vector_field` for a `component` of size 2, with the frame dim as a slider, and the run
+writes `ui/fields.json` for the **Score** page. An areal output gets `sci.area_map`. The Data
+Explorer finds the structure of these datasets (images, profiles, maps, networks, trees,
+directions and points) and shows the matching picture sections (`docs/guides/data-explorer.md`).
+
 Each `*_data` module has the raw schema, a small example spec, a synthetic generator with the
 known truth and `from_challenges(path)`, which reads the real data file of the case study (E51
 and E61 simulate their data in the notebook: their loaders rebuild that experiment and read no

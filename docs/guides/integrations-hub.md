@@ -189,8 +189,9 @@ The **Plots and links** tab keeps the plots that you use in reports:
   shows the reason of the server.
 - **Create link** makes a read-only link with a token. The link expires after 7 to 365 days,
   and the default is 30 days. Optionally, you can limit the link to the sites that can frame it
-  (https origins). You can share only plots of the recipes of the platform. For other plots,
-  the app tells why the button is disabled. The app **shows the link and its `<iframe>` code
+  (https origins). You can share only plots of the recipes of the platform: `core.*`,
+  `mmm.*`, `ml.*`, `ts.*`, `choice.*` and, from v0.13, `causal.*`. For other plots, the app
+  tells why the button is disabled. The app **shows the link and its `<iframe>` code
   one time**. The table below each plot lists its links with their status, expiry and view
   count. **Revoke** stops a link immediately. Then viewers see "This link has expired".
 

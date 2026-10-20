@@ -89,6 +89,10 @@ rolling-origin backtest errors.
 
 ![Three versions side by side with Diebold-Mariano tests](../assets/screenshots/explorer-model-compare.png){ .mapi-shot }
 
+**Compare** compares model versions on held-out data. To compare the runs of a study (the
+metrics, params, curves and images that each run logged), use the compare page of the runs
+table. See [Compare runs and use experiments](run-comparison.md#compare-runs).
+
 **Optimise budget** (`/models/<model>/versions/<n>/optimize`) is only for marketing-mix
 models. It asks for these items:
 
@@ -208,7 +212,7 @@ view does not include the tests. It gives a warning. For more sections, add
 | `response_curves` | Mean contribution for each channel at each spend level, with a 90% band | MMMs with a response grid |
 | `irf` | Impulse responses (response × shock × horizon) with bands | VAR, VARMAX, VECM |
 | `fevd` | Forecast-error variance decomposition | VAR, VARMAX, VECM |
-| `fields` | Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data | models with an output that has a `grid` (maps, images, space-time fields) |
+| `fields` | Each output on a 2-D grid as an image: the mean, the sd, the mean÷sd, the 5% and 95% quantiles and some posterior draws for each frame, with arrows for a vector field. Play the draws to see some possible fields that agree with the data. From v0.10, when the quantiles and draws go much wider than the posterior means, the colours cover the 1% to 99% range of the means. Thus a log-scale intensity does not look flat. **Colours for the full range** shows all of it. | models with an output that has a `grid` (maps, images, space-time fields) |
 | `forecast` | A forecast fan over `horizon` periods after the history. The drivers stay at their last values | models that forecast |
 | `backtest` | New fits on a rolling-origin or expanding-window plan: metrics for each fold and horizon, against "same as last period" and "same as last season" | models over time |
 | `comparison` | More than one version side by side (above) | all |

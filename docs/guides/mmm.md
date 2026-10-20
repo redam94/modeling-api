@@ -405,6 +405,19 @@ This applies to `nuts_sampler: nutpie` and `nuts_sampler: pymc`. The approximate
 also logs summary metrics, such as the ROI of each channel (see
 [What an MMM fit logs](tracking.md#mmm)).
 
+## Compare MMM fits <span class="mapi-badge">v0.14</span> { #compare-fits }
+
+Each MMM fit logs the return on spend of each channel and other summaries (see
+[What an MMM fit logs](tracking.md#mmm)). Use these values to compare fits:
+
+1. Put the fits of a study in an experiment, for example the fits with adstock lengths 4, 6
+   and 8: `mapi fit spec.yaml --remote @ --experiment "adstock study"`.
+2. In the runs table, add the columns `metric.roi{channel=tv}` and `metric.baseline_share`.
+3. Select 2 to 10 runs and click **Compare**. The compare page shows the metrics, the params
+   that are different and the plots of the runs side by side.
+
+See [Compare runs and use experiments](run-comparison.md).
+
 ## The fast frequentist model
 
 `mmm.frequentist` takes the same data and settings, and answers in seconds:

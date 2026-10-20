@@ -223,6 +223,13 @@ carry-over together.
 skips a test that the fit window cuts (a holdout fit that ends in the test). It puts the
 skipped tests in a list.
 
+From v0.13, a geo-lift test that `causal.synthetic_control` measured can become a lift test.
+The workflow node `model.lift_test` makes the entry from the `impact` group of the causal
+model version. The workflow template `geo_lift_mmm` does the test, the lift test and the
+calibrated fit in one run. The report of the Guided template `geo_lift` shows the same entry
+to copy. See [Feed the result to the marketing mix model](../guides/causal.md#feed-the-result-to-the-marketing-mix-model)
+and [From a geo-lift test to a lift test for the MMM](causal.md#from-a-geo-lift-test-to-a-lift-test-for-the-mmm).
+
 ## Derived quantities
 
 Ask for them in `outputs.derived`. The plugin calculates them at fit time over the first
@@ -662,6 +669,23 @@ model:
 `estimator: constrained` (a convex program) needs the optional `cvxpy` dependency of
 mmm-framework. The images of the platform do not install it. Thus, the fit fails with
 `CAPABILITY_UNSUPPORTED`.
+
+## Run tracking <span class="mapi-badge">v0.11</span> { #run-tracking }
+
+Each fit logs params and metrics to its run (v0.12). The params tell the version of
+mmm-framework, the number of channels, periods and cells, and the link. The metrics give the
+return on spend of each channel with a range (`roi`, `roi_p05`, `roi_p95`), the marginal
+return (`mroi`), the share of each channel and the baseline share. Thus you can search, sort
+and compare MMM runs by the return of a channel:
+
+```bash
+mapi runs ls --filter "metric.roi{channel=tv} > 2" --column "metric.roi{channel=tv}"
+```
+
+The NUTS fits of `mmm.bayesian`, `mmm.nested` and `mmm.multivariate` also send the progress
+of each chain and the step metrics. See [What an MMM fit logs](../guides/tracking.md#mmm),
+[Live progress and cancel](../guides/mmm.md#live-progress) and
+[Compare runs and use experiments](../guides/run-comparison.md).
 
 ## Current limits
 

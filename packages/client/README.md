@@ -65,4 +65,35 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / MAPI_PROJECT / ~/.config/mapi/c
 - Budgets are optimised by the platform with mmm-framework
   (`POST /v1/models/{id}/versions/{v}:optimize`).
 
+**Run tracking (v0.11).**
+
+- `runs.update` (name, note, tags), `runs.log_metric` / `log_metrics` / `log_params` /
+  `set_tags` (also after a run finished; a token needs `runs:write`), and `runs.track(run_id)`,
+  a context manager that sends points in batches.
+- `runs.metrics`, `runs.metric_history` (LTTB-downsampled) and `runs.params`.
+- `runs.list(filters=["metric.rmse < 0.5"], order_by="-metric.rmse", columns=[...],
+  tags=..., name=..., parent_run_id=...)`; the search grammar is checked before the request
+  (`docs/guides/tracking.md`).
+
+**Media, comparison and experiments (v0.14).**
+
+- `runs.media`, `runs.media_keys`, `runs.get_media`, `runs.download_media` (checked for size,
+  CRC32C and sha256), `runs.log_image` and `runs.log_table` (at most 4 MiB per item).
+- `runs.keys()` and `runs.compare([...])` for 2 to 10 runs.
+- `api.experiments` (`list`, `get`, `find`, `create`, `update`, `delete`, `add_runs`,
+  `remove_runs`) and `api.run_views` (saved searches of the runs table);
+  `runs.create/fit/list(..., experiment_id=...)` and `workflows.run(..., experiment_id=...)`
+  (`docs/guides/run-comparison.md`).
+
+**Image collections and weights (v0.15).**
+
+- `datasets.upload_collection(dataset, folder, label_from_folder=True, state_file=...)`
+  hashes the images, asks `datasets.missing_images` which ones the base version lacks,
+  uploads only those in deterministic zip parts and makes a `collection` version. With a
+  `state_file` an interrupted upload resumes (`datasets.get_upload`,
+  `datasets.renew_upload`).
+- `datasets.upload_weights("weights.safetensors", dataset="resnet18")` makes a weights
+  dataset version for `dl.finetune_classifier` and `dl.embed`
+  (`docs/guides/image-data.md`, `docs/guides/deep-learning.md`).
+
 License: Apache License 2.0.

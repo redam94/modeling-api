@@ -223,6 +223,11 @@ gives the column of each dim and variable:
 --8<-- "cli_remote.sh:upload"
 ```
 
+A zip of images with a manifest table (v0.14) also needs a mapping, with
+`format: image_folder`. Refer to [Image data](image-data.md#upload-the-zip). For a folder of
+images and for network weights (v0.15), use `mapi datasets upload-images` and
+`mapi datasets upload-weights` (see [Image collections and weights](#v015)).
+
 ### Fit and follow
 
 `mapi fit SPEC --remote @` creates the spec. If the text changed, it adds a revision. Then it
@@ -325,7 +330,9 @@ options are in [Image data: collections](image-data.md#large-image-sets-collecti
 `{format: safetensors}`). `--arch` gives the architecture when the file has no `mapi_arch`
 metadata. Read [Deep learning](deep-learning.md#pretrained-weights).
 
-`--resource-class` accepts `GPU` wherever the CLI offers the option.
+`--resource-class` accepts `GPU` wherever the CLI offers the option, for example
+`mapi runs retry RUN --resource-class GPU`. Use it only for a model that uses a GPU. See
+[Deep learning: use the GPU class](deep-learning.md#use-the-gpu-class).
 
 ### Score
 
@@ -446,6 +453,11 @@ A draft stores nothing. Examine `spec.yaml`. Then upload the data with the mappi
 into model priors in a sandboxed run. It shows what the model then believes, for each channel
 ([Guided modelling](guided-modelling.md)).
 
+v0.12 and v0.13 add the templates `mediated_mmm`, `multi_kpi_mmm`, `campaign_impact` and
+`geo_lift` (see [Measure the effect of a change](causal.md)). Upgrade the CLI to v0.13 or
+later. A v0.12 CLI cannot read the list of templates from a v0.13 server: `mapi guided
+templates` fails.
+
 ### Sign-up and your workspace <span class="mapi-badge">v0.4</span> { #sign-up-and-your-workspace }
 
 ```bash
@@ -530,6 +542,10 @@ Start each one with `mapi workflows init <id>`. The cookbook shows the commands 
 | `sci_calibrate_then_design` | [Calibrate, then design](workflow-cookbook.md#calibrate-then-design) |
 | `bayes_workflow_audit` | [Bayesian workflow audit](workflow-cookbook.md#bayesian-workflow-audit) |
 | `sci_image_model_check` | [Image model check](workflow-cookbook.md#image-model-check) |
+
+From v0.13, the template `geo_lift_mmm` measures a geo-lift test and gives the result to
+`mmm.bayesian` as a lift test. See
+[Measure the effect of a change](causal.md#with-the-workflow-template-geo_lift_mmm).
 
 To get the data of a science case study, use `python -m mapi_plugin_science.export <case>`.
 Then upload the file with `mapi datasets upload`.

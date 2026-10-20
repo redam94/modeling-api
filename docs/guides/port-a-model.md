@@ -18,7 +18,7 @@ flowchart LR
 | | You write | The platform does |
 |---|---|---|
 | **`PyMCModel`** | `build(ds, settings, ctx) -> pm.Model` | Engines (nutpie, PyMC with segments that can continue, MAP, ADVI), convergence diagnostics, scores that build the model again and predict, new levels from the hyperprior, counterfactuals with common random numbers, fast scores |
-| **`SklearnModel`** | `estimator(settings)` | It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops / xgboost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions |
+| **`SklearnModel`** | `estimator(settings)` | It stacks labelled dims into rows and features. Also coordinate features, safe persistence (skops, xgboost JSON, LightGBM text, CatBoost JSON), quantile / bootstrap / conformal uncertainty, pooled new levels, contributions |
 | **`CustomModel`** | `fit(...)` and `score(...)` | Binding, preprocessing, splits, context tails, the canonical form of coordinates, inverse transforms, summaries, bundles |
 
 The three base classes get these items at no cost:
@@ -33,10 +33,13 @@ The three base classes get these items at no cost:
 ## 1. Pick a base class (0–3 min)
 
 - If your model is a **PyMC** model, use `mapi_pymc.PyMCModel`.
-- If your model is an **sklearn or xgboost estimator** on a design matrix, use
-  `mapi_sklearn.SklearnModel` (or the quantile, bootstrap, conformal or classifier variants).
+- If your model is an **sklearn, xgboost, LightGBM or CatBoost estimator** on a design matrix,
+  use `mapi_sklearn.SklearnModel` (or the quantile, bootstrap, conformal or classifier
+  variants). LightGBM and CatBoost need the extra `mapi-sklearn[gbm]`.
 - For all other models (statsmodels, JAX, a Kalman filter, closed-form mathematics), use
-  `mapi_sdk.CustomModel`.
+  `mapi_sdk.CustomModel`. A neural network that trains on many images also uses
+  `CustomModel`, with the hooks `fit_batches` and `score_batches` (see
+  [Train on batches](plugins.md#fit-batches) and [Deep learning](deep-learning.md)).
 
 ## 2. Declare the data contract (3–6 min)
 
@@ -117,6 +120,20 @@ three steps above. If your model is similar, see these sections:
 | It has its own sampler (for example Gibbs) | A `CustomModel` with `inference="mcmc"` and a `diagnostics` hook | [A model with its own sampler](plugins.md#a-model-with-its-own-sampler) |
 | Some NaN of an input are part of the design | `structural_missing` | [A model](plugins.md#a-model) |
 | Users must upload the data of a case study | An export case in `mapi_plugin_science.export.EXPORTS` | [Data for a case study](plugins.md#data-for-a-case-study-mapi-plugin-science) |
+
+### What the platform can show from your model <span class="mapi-badge">v0.10–v0.15</span> { #what-the-platform-can-show }
+
+These items are optional. Each one makes the run page or the model version show more:
+
+| You want | What to use | See |
+|---|---|---|
+| Standard plots for the model | The class attribute `plots`, a list of recipe ids. The **Insert** panel of the spec editor shows them first. A fit draws only the plots in `outputs.plots`. | [Default plots and metrics](sklearn.md#default-plots-and-metrics) |
+| Curves and values on the run page | `ctx.log_metric`, `ctx.log_params`, `ctx.set_tag` and `ctx.log_line` in `fit` and `score` | [Log metrics, params and tags](plugins.md#tracking) |
+| The progress of each chain of your own sampler | `ctx.chains([...])`, and step metrics with the label `chain` | [A model with its own sampler](plugins.md#a-model-with-its-own-sampler) |
+| Images, figures and small tables on the run page | `ctx.log_image`, `ctx.log_figure` and `ctx.log_table` | [Log images, figures and tables](tracking.md#log-images-figures-and-tables) |
+| Training on many images without all of them in memory | `Capabilities(input="collection")`, `fit_batches` and `score_batches` | [Train on batches](plugins.md#fit-batches) |
+| Checkpoints that a run can continue from | `ctx.fit_key` and `ctx.checkpoint_sink` | [Train on batches](plugins.md#fit-batches) |
+| A side table that only the model reads, for example pretrained weights | `side_table_params` and `ctx.side_tables` | [Read a side table in a model](plugins.md#model-side-tables) |
 
 ## 4. Write a tiny spec (11–13 min)
 
@@ -232,13 +249,15 @@ acme = "acme_models.steps:STEPS"          # STEPS = (ScaleStep,)
     - [x] `grid` on outputs that are images or maps, and `circular: true` (with a `period`
       attribute) on outputs that are angles
     - [x] `score_modes` that list only the modes that `score` can do
+    - [x] `plots` with the standard plots of the model, if it has them
     - [x] rules that join settings in a `model_validator`, not in `fit`
     - [x] a `log_likelihood` group if users compare variants by `elpd_loo`, or
       `loo_valid=False` with a reason
     - [x] settings as a `ModelSettings` subclass with defaults and descriptions (they become
       the form in the UI)
     - [x] a tiny spec, and `check_model` passes in CI
-    - [x] no pickle: native artifacts as skops, xgboost JSON or safetensors
+    - [x] no pickle: native artifacts as skops, xgboost JSON, LightGBM text, CatBoost JSON or
+      safetensors
 
 For the full guides with examples, see [PyMC](pymc.md), [scikit-learn and xgboost](sklearn.md)
 and [steps and custom models](plugins.md).

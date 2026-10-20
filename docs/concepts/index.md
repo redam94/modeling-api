@@ -81,7 +81,26 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 
     The static data that a model declares about itself: representation, score modes,
     outputs, derived quantities and the preprocessing that it owns. An output can be a field
-    on a grid or an angle on a circle.
+    on a grid or an angle on a circle. The default plots of a score run follow the shape of
+    each output (v0.10).
+
+-   **[Run tracking and experiments](run-tracking.md)** <span class="mapi-badge">v0.11</span>
+
+    Each run keeps its metrics, params, tags, notes, log lines and (v0.14) images and
+    tables. Search runs by their results. Group them in experiments, save views of the runs
+    table and compare 2 to 10 runs.
+
+-   **[Image data and collections](image-collections.md)** <span class="mapi-badge">v0.14</span>
+
+    An image folder becomes one `uint8` array. An image collection (v0.15) keeps up to
+    1 000 000 images in shared packs, uploads only new images and gives batches to the
+    networks.
+
+-   **[Measure the effect of a change](causal-effects.md)** <span class="mapi-badge">v0.13</span>
+
+    Actual values against a prediction of the values without the change. Three causal
+    designs, the `impact` group and the path from a geo-lift test to a calibrated marketing
+    mix model.
 
 -   **[Tenancy and authentication](tenancy-and-auth.md)** <span class="mapi-badge">v0.3</span>
 
@@ -92,6 +111,7 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 
     Quotas in vCPU-seconds for each token, each tenant and the full platform. Priority for
     interactive and batch runs. The exact cost of each run, from a versioned price table.
+    The resource classes, with the `GPU` class of v0.15.
 
 -   **[Guided mode](guided-mode.md)** <span class="mapi-badge">v0.4</span>
 
@@ -136,6 +156,12 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
 | **Output space** | The space of the output values after the inverse transforms, for example `raw` or `weekly`. |
 | **Bundle** | The verified result of a fit: states, model groups, native artifacts, manifest and hashes. |
 | **Run** | A unit of work (`fit`, `score`, …) that the platform sends to an executor as JSON. |
+| **Metric, param, tag** | The tracking data of a run (v0.11). A metric is a series of points with a key and labels. A param does not change. A tag can change. |
+| **Experiment** | A named group of runs in a project (v0.14). A run is in one experiment or in no experiment. |
+| **Media** | The images, figures and small tables that a run logs (v0.14) |
+| **Resource class** | The size of the machine of a run: `S`, `M`, `L`, `XL` or, from v0.15, `GPU` |
+| **Image collection** | A dataset version with the layout `collection` (v0.15): a manifest of images and packs of image files, shared in the tenant |
+| **Counterfactual** | The values without a change, which a model predicts. The effect of the change is the actual value minus the counterfactual. Also the score mode that scores a scenario against a baseline. |
 | **Workflow** | A versioned graph of nodes (tests, transforms, splits, searches, fits, summaries, scores, checks, plots, reports). A workflow run is a parent run. Its nodes run in the orchestrator, as sandboxed `workflow_node` runs or as child fits. |
 | **Policy** | The governance checks that a model must pass, with thresholds and severities, for each model family. A policy applies to a full tenant or to one project. Each policy has versions. |
 | **Validation** | The measurement of one model version against the current policies. It has results, evidence, approvals and a status (`draft` … `validated`). |

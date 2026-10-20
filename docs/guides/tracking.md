@@ -21,6 +21,7 @@ compare runs and to group them into experiments, see
 
 | See also | |
 |---|---|
+| [Run tracking and experiments](../concepts/run-tracking.md) | The concepts: what a run records, and how the platform stores and searches it |
 | [HTTP API: Run tracking](../reference/http-api.md#run-tracking) | The endpoints, the DTOs and the search grammar |
 | [Run protocol: Tracking events](../reference/run-protocol.md#tracking-events) | The `metrics`, `params` and `tags` events and the budgets |
 | [Python SDK](../reference/sdk.md#run-tracking) | `FitContext.log_metric` and the other methods |
@@ -64,6 +65,9 @@ become scalar series.
 
 **Causal models and `ts.bsts`.** Each fit logs the effect of the change and the fit before
 the change. See [What a causal fit logs](#what-a-causal-fit-logs).
+
+**Neural networks.** The `dl` models log their training curves, a log line for each epoch
+and images of the predictions. See [What a network fit logs](#what-a-network-fit-logs).
 
 **Workflows.** The `search.grid` node logs each grid point and its scores. The
 `model.backtest` node logs the metrics of each fold. See [Workflow nodes](#workflow-nodes).
@@ -163,6 +167,9 @@ the target.
 | `att`, `att_p05`, `att_p95` | none | `causal.did`: the average effect after the change, with its interval |
 | `event_coef` | `event_time` | `causal.did`: the posterior mean of the coefficient for each period relative to the change |
 
+For the models, see [Causal models and Bayesian structural time series](../models/causal.md).
+For the procedures, see [Measure the effect of a change](causal.md).
+
 Find the geo-lift tests with an effect that is more than zero with a probability of 95% or
 more:
 
@@ -180,8 +187,8 @@ The `dl` models of `mapi-jax` log the training while it runs:
 - one log line for each epoch, with the fields `epoch`, `train_loss`, `val_loss` and
   `images_per_second`;
 - the params `dl.arch.*`, `dl.train.*`, `dl.backend`, `dl.device` and `dl.parameters`;
-- the media `val_predictions` and `confusion` (label `split=val`) at a maximum of 20
-  evaluations.
+- for a classification, the media `val_predictions` and `confusion` (label `split=val`) at a
+  maximum of 20 evaluations.
 
 See [Deep learning](deep-learning.md#read-the-training).
 
@@ -206,7 +213,8 @@ These rules apply:
   `settings.adstock.l_max`). A param value is a boolean, a number or a text of a maximum of
   6000 characters.
 - A param does not change. If you log a param again with the same value, nothing occurs. A
-  different value is an error.
+  different value through the API is an error (409). A different value from the runner is
+  dropped, and the first value stays.
 - A tag value is a text of a maximum of 1000 characters. The last value is kept. Tag keys
   that start with `mapi.` are for the platform only.
 - A step is an integer, 0 or more. For a stepped series, the first value of a step is kept.

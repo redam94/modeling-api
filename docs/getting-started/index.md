@@ -1,6 +1,6 @@
 # Getting started
 
-You can start in five ways. All five use the same spec format, steps, models and bundles.
+You can start in six ways. All six use the same spec format, steps, models and bundles.
 
 <div class="grid cards" markdown>
 
@@ -43,6 +43,15 @@ You can start in five ways. All five use the same spec format, steps, models and
 
     [:octicons-arrow-right-24: pymc-challenges in the web app](../tutorials/pymc-challenges/index.md)
 
+-   :material-brain: **Train a network on images** <span class="mapi-badge">v0.15</span>
+
+    ---
+
+    Upload a folder of images with `mapi datasets upload-images`, fit `dl.cnn_classifier`,
+    and look at the training curves while it trains. Compare the runs on the compare page.
+
+    [:octicons-arrow-right-24: Deep learning](../guides/deep-learning.md)
+
 -   :material-language-python: **Use the library in your own process**
 
     ---
@@ -83,10 +92,13 @@ platform also needs Node.js 22+ with pnpm for the web app. Docker is optional
     uv add mapi-sdk mapi-steps                 # the runtime and the built-in steps
     uv add mapi-pymc                           # PyMC models
     uv add mapi-sklearn                        # scikit-learn and xgboost models
+    uv add "mapi-sklearn[gbm]"                 # also LightGBM and CatBoost classifiers
+    uv add mapi-jax                            # neural networks on JAX and Flax (dl.*)
     uv add "mapi-plots[recipes]"               # plot recipes (Altair, Plotly)
     uv add mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular   # the built-in models
     uv add mapi-plugin-statsmodels "mapi-workflows[runtime]"    # statsmodels models, workflows
     uv add mapi-plugin-science                 # science models (sci.*) and the export helper
+    uv add mapi-plugin-causal                  # causal models (causal.*)
     ```
 
     !!! note "Not on PyPI yet"
@@ -101,9 +113,10 @@ platform also needs Node.js 22+ with pnpm for the web app. Docker is optional
 | `mapi-sdk` | `mapi_sdk` | The runtime: steps, pipelines, coord plans, summaries, bundles, the in-process executor and the contract kit | xarray, numpy, zarr |
 | `mapi-steps` | `mapi_steps` | 28 built-in preprocessing steps and the split catalog | – |
 | `mapi-pymc` | `mapi_pymc` | `PyMCModel`: you write `build()`. You get engines, diagnostics, new levels and counterfactuals. | PyMC |
-| `mapi-sklearn` | `mapi_sklearn` | `SklearnModel`: you write `estimator()`. You get stacking, safe persistence and uncertainty. | scikit-learn, xgboost, skops |
+| `mapi-sklearn` | `mapi_sklearn` | `SklearnModel`: you write `estimator()`. You get stacking, safe persistence and uncertainty. | scikit-learn, xgboost, skops; LightGBM and CatBoost (the `gbm` extra) |
+| `mapi-jax` | `mapi_jax` | Neural networks: `dl.mlp`, `dl.cnn_classifier`, `dl.finetune_classifier` and the step `dl.embed`, with a shared trainer ([guide](../guides/deep-learning.md)) | JAX, Flax, Optax |
 | `mapi-plots` | `mapi_plots` | The JSON-only plot sanitizer and templates. Recipes come with the `recipes` extra. | Altair, Plotly (extra) |
-| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix (`mapi-plugin-mmm`, on mmm-framework), time series, statsmodels time series (`mapi-plugin-statsmodels`), tabular and science (`mapi-plugin-science`: 15 `sci.*` models for images, fields, maps and graphs) | as above; mmm-framework, statsmodels, scipy |
+| `mapi-plugin-*` | `mapi_plugin_*` | Built-in models: marketing mix (`mapi-plugin-mmm`, on mmm-framework), time series, statsmodels time series (`mapi-plugin-statsmodels`), tabular, causal (`mapi-plugin-causal`: `causal.impact`, `causal.synthetic_control` and `causal.did`) and science (`mapi-plugin-science`: 15 `sci.*` models for images, fields, maps and graphs) | as above; mmm-framework, statsmodels, pymc-extras, scipy |
 | `mapi-workflows` | `mapi_workflows` | The workflow engine, the node implementations and a local runner for notebooks ([guide](../guides/workflows.md#run-it-locally)) | The engine has none (pure Python, safe for the control plane). The node implementations are the `runtime` extra (numpy, xarray, scipy, statsmodels and the plot recipes of `mapi-plots[recipes]`). |
 | `mapi-conformance` | `mapi_conformance` | The conformance corpus and its runner | all of the above |
 | `mapi-client` | `mapi_client` | A typed Python client for the HTTP API ([guide](../guides/python-client.md)) | httpx (xarray optional) |
@@ -156,6 +169,10 @@ xgb_store_demand  tabular.regressor@1.0.0  ok        ok   ok 6/6  ok        ok 1
 -   :material-puzzle-outline: **[Port a model](../guides/port-a-model.md)**
 
     Bring your own PyMC, scikit-learn or hand-written model.
+
+-   :material-chart-line: **[Track and compare runs](../guides/tracking.md)**
+
+    Log metrics, params and tags to a run, and compare runs side by side.
 
 -   :material-connection: **[Tutorials](../tutorials/index.md)**
 

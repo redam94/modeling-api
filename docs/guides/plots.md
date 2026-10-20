@@ -184,6 +184,44 @@ tells you to request an aggregated output. The recipe shows summed means without
 Predicted-vs-actual plots and residual plots never need a total. Thus they compare these
 summaries cell by cell (one dot or line for each `store × sku`, with the color of the facet dim).
 
+## The plots that a run draws <span class="mapi-badge">v0.10</span> { #the-plots-that-a-run-draws }
+
+**A fit** draws only the plots in `outputs.plots` of the spec. Each model declares its
+standard plots, and the **Insert** panel of the spec editor shows them first. Some
+examples:
+
+| Model | Standard plots |
+|---|---|
+| scikit-learn regressors (also the quantile, bootstrap and conformal plugins) | `core.fit_vs_actual`, `core.residuals_over_time`, `ml.feature_importance` |
+| `sklearn.tabular_classifier` | `core.calibration`, `core.roc_pr`, `core.confusion`, `ml.feature_importance` |
+| `ts.gaussian_hmm`, the statsmodels Markov switching model | `core.state_sequence` |
+| The unobserved components model, ETS, `ts.hsgp_trend` | `core.decomposition` |
+
+The fit also adds some plots when the bundle has their data: `core.loss_curve` after an ADVI
+fit, and the [deep learning plots](#deep-learning) after a `dl` fit.
+
+**A score run** picks its default plots from the shape of each output. `job.plots` of the
+request replaces the defaults.
+
+| Output | Default plot |
+|---|---|
+| An output with a `grid` | `sci.field_map`, with the frame dim (for example `quarter`) as the slider |
+| An output with a `grid` and a `component` dim of size 2 | `sci.vector_field` |
+| An output on the areas of a map | `sci.area_map` |
+| Probabilities over a `state` or `regime` dim | `core.state_sequence` |
+| Evaluate | `core.fit_vs_actual`, and `core.residuals_over_time` when an output is over time |
+| Evaluate, a 0/1 target | `core.calibration`, `core.roc_pr` and `core.confusion`, in place of `core.fit_vs_actual` and `core.residuals_over_time` |
+| An output over time that is not a grid (predict and forecast) | `core.ppc_fan` |
+| A counterfactual | `core.counterfactual` |
+
+A model with grid or area outputs gets the fan only when it also has an output over time
+that is not a grid. A fan of a map adds all the cells, thus it does not help. The run page
+shows the plots of a run in its **Plots** card. See [The Expert web app](web-ui.md#run-detail).
+
+Plots are different from the images that a run logs (`ctx.log_image`). The **Media** tab of
+the run shows the logged images. See
+[Log images, figures and tables](tracking.md#log-images-figures-and-tables).
+
 ## Find a recipe in the web app
 
 The **Plots** tab of the **Catalog** shows a card for each recipe, with an example plot made
@@ -196,8 +234,9 @@ from synthetic data. The buttons above the cards filter the recipes by pack:
 - **Science** (`sci.*`)
 - **Networks** (`net.*`)
 
-A pack shows only when the catalog has a recipe of that pack. Type words in the search field to
-find a recipe by its id, title or About card. Click a card to see the About card and a larger
+A pack shows only when the catalog has a recipe of that pack. A pack without a name in this
+list, for example the causal pack, shows its prefix (`causal`) as the label. Type words in the
+search field to find a recipe by its id, title or About card. Click a card to see the About card and a larger
 example.
 
 ## Plots in a workflow

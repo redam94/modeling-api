@@ -154,7 +154,7 @@ changes from one fit to a different fit with the same seed.
 The run also logs the params `dl.arch.*`, `dl.train.*`, `dl.backend` (`cpu` or `gpu`),
 `dl.device` and `dl.parameters` (the number of weights).
 
-The **Media** tab shows two images at a maximum of 20 epochs:
+For a classification, the **Media** tab shows two images at a maximum of 20 epochs:
 
 - `val_predictions`: up to 16 validation images with the true class and the predicted class.
 - `confusion`: the confusion matrix of the validation data.
@@ -275,7 +275,16 @@ table.
     mapi datasets upload-weights tiny-resnet resnet.safetensors --arch arch.json
     ```
 
-    From Python, use the mapping `{"format": "safetensors"}`:
+    From Python, use `datasets.upload_weights`. It makes the mapping
+    `{"format": "safetensors"}` for you. `arch` is a dict or a JSON file:
+
+    ```python
+    version = api.datasets.upload_weights(
+        "resnet.safetensors", dataset="tiny-resnet", arch="arch.json"
+    )
+    ```
+
+    You can also give the mapping yourself:
 
     ```python
     from mapi_spec import IngestMapping, WeightsOptions

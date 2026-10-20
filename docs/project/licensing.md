@@ -19,8 +19,8 @@ The full texts are in the repository root: `LICENSE.md`, `LICENSE-APACHE.txt`,
 ## What this means in practice
 
 !!! success "Plugins you write are yours"
-    A step, model or plot recipe that you write with `mapi-sdk`, `mapi-pymc` or
-    `mapi-sklearn` uses Apache-2.0 libraries. You can use the licence that you want for it,
+    A step, model or plot recipe that you write with `mapi-sdk`, `mapi-pymc`,
+    `mapi-sklearn` or `mapi-jax` uses Apache-2.0 libraries. You can use the licence that you want for it,
     and a proprietary licence is also possible.
 
 !!! success "Applications that call the platform are not derivative works"
@@ -39,7 +39,10 @@ The SDK uses xarray, numpy, pandas, zarr and Pydantic. The model packages use Py
 scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework (Apache-2.0).
 mmm-framework adds NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series models
 (`ts.sarimax`, `ts.var`, `ts.ets` and the other time-series models) run on statsmodels
-(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.15, the deep learning models
+(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.13, `ts.bsts`, the causal
+models (`mapi-plugin-causal`, Apache-2.0) and the Pathfinder engine use pymc-extras
+(Apache-2.0). From v0.14, the runner decodes images with Pillow (MIT-CMU), and the
+classifiers of the `gbm` extra use LightGBM (MIT) and CatBoost (Apache-2.0). From v0.15, the deep learning models
 (`mapi-jax`) use JAX, Flax and Optax (Apache-2.0). The `base-dl` image also has the NVIDIA
 CUDA runtime wheels from pip, which have the NVIDIA licence (NVIDIA Software License
 Agreement). `THIRD-PARTY-NOTICES.md` lists them.

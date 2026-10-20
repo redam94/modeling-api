@@ -160,6 +160,21 @@ show them.
 An embed also contains its data inline. Thus you cannot embed a dataset that is larger than
 1.5 MB.
 
+The newer recipes follow the same rule:
+
+- The classifier plots (`core.roc_pr`, `core.confusion`, v0.10), the MMM plots (`mmm.roi` and
+  the other `mmm.*` plots of v0.12) and the causal plots (`causal.*`, v0.13) are platform
+  recipes. You can embed them. The share step of Guided mode also offers the `causal.*`
+  plots.
+- The deep-learning plots (`ml.training_curves`, `ml.confusion_epochs` and
+  `ml.misclassified`, v0.15) are in the `ml` pack. `ml.misclassified` is a Plotly plot. Thus
+  a render of it needs `MAPI_RENDER_PLOTLY_ENABLED` (see the note above).
+
+You save and share the plots of a model version. The images and tables that a run logs (the
+**Media** tab, v0.14) are not plots. To get their files, use `mapi runs media RUN --download
+DIR` or `api.runs.download_media` (see
+[Log images, figures and tables](tracking.md#log-images-figures-and-tables)).
+
 ### The embed page
 
 The link opens a page of the plot sandbox (`/embed/<token>`). The page reads the plot from the

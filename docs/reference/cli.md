@@ -47,6 +47,10 @@ with Client() as api:  # MAPI_URL / MAPI_TOKEN / ~/.config/mapi/config.toml / 12
 | `specs` | `validate`, `create`, `list`, `get`, `find`, `revise`, `upsert`, `revisions`, `revision`, `dry_run` |
 | `runs` | `create`, `fit`, `get`, `list`, `wait`, `stream_events`, `events`, `logs`, `plots`, `cancel`, `resume`, `retry` |
 | `runs` tracking (v0.11) | `update`, `log_metric`, `log_metrics`, `log_params`, `set_tags`, `track`, `metrics`, `metric_history`, `params`; `list` also takes `parent_run_id`, `name`, `tags`, `filters`, `order_by` and `columns` |
+| `runs` media and comparison (v0.14) | `media`, `media_keys`, `get_media`, `download_media`, `log_image`, `log_table`, `keys`, `compare`; `create`, `fit` and `list` also take `experiment_id`, and `update` can move a run (`experiment_id`) |
+| `experiments` (v0.14) | `list`, `get`, `find`, `create`, `update`, `delete`, `add_runs`, `remove_runs` |
+| `run_views` (v0.14) | `list`, `find`, `create`, `update`, `delete` |
+| `datasets` uploads and collections (v0.15) | `get_upload`, `renew_upload`, `missing_images`, `upload_collection`, `upload_weights` |
 | `models` | `list`, `get`, `versions`, `version`, `artifact`, `download`, `score` |
 | `plots` | `list`, `get`, `validate` |
 | `tenants` (v0.3) | `list`, `get`, `rename`, `projects`, `create_project`, `update_project`, `delete_project`, `members`, `add_member`, `set_role`, `remove_member`, `usage`, `audit` |
@@ -299,6 +303,71 @@ mapi runs note RUN (TEXT | -)
 | `runs log-param` | The CLI reads `VALUE` as a number, `true` or `false` when it can. `--text` keeps it as text |
 | `runs log-metric`, `runs log-param`, `runs tag`, `runs rename`, `runs note` | Need the runner role (a token needs `runs:write`). `runs note RUN -` reads the note from stdin. `runs rename RUN ""` removes the name |
 | `runs watch`, `fit --remote` | Show a maximum of one `metrics` line each 5 seconds (the newest values of a maximum of 4 series), one `params` line and one `tags` line when they change, and `user` log lines as `[level] text`. The stream only tells that the params or the tags changed. The CLI then reads them and shows the changed values |
+
+Media, comparison, experiments and saved views (v0.14).
+[Compare runs and use experiments](../guides/run-comparison.md) shows these commands with
+examples:
+
+```bash
+mapi runs ls [--experiment EXP] [--view VIEW] ...
+mapi runs media RUN [--key KEY] [--download DIR]
+mapi runs log-image RUN KEY FILE [--step N] [--label K=V]... [--caption TEXT]
+mapi runs compare RUN RUN... [-k KEY]... [--agg last|min|max] [--all-params]
+mapi runs views ls [-e EXP] | save NAME [-f EXPR]... [-c REF]... [--order-by REF] [--tag K[=V]]... [-e EXP] | rm VIEW [-y]
+mapi experiments ls [--name TEXT] [--archived | --active] | create NAME [--description TEXT] | show EXP
+mapi experiments rename EXP NAME | archive EXP | unarchive EXP | rm EXP [-y]
+mapi experiments add EXP RUN... | remove EXP RUN...
+mapi fit spec.yaml --remote @ --experiment EXP
+mapi workflows run WF --experiment EXP
+```
+
+| Command | Notes |
+|---|---|
+| `runs ls --experiment`, `--view` | `--experiment` (`-e`) takes an id or a name. `--view` uses the search of a saved view. Other options add to that search or replace a part of it |
+| `runs media` | Lists the images and tables of the run. `--download DIR` writes each file as `KEY-LABELS-STEP.EXT` |
+| `runs log-image` | Adds a PNG or JPEG file (a maximum of 4 MB) to the run, also after the run ended. Needs the runner role (a token needs `runs:write`) |
+| `runs compare` | Prints a table of metric values, then the params that are different. The default keys are the metrics that most of the runs have. `--all-params` also shows the params that are the same |
+| `runs views save` | Replaces a view that has the same name. With `-e`, the view shows only the runs of that experiment |
+| `experiments rm` | The runs stay, without an experiment. The saved views of the experiment are deleted. Asks you first (`--yes` skips this step) |
+| `experiments add` | A run moves out of its previous experiment. An archived experiment accepts no runs |
+
+Image collections and weights (v0.15). [Image data](../guides/image-data.md#large-image-sets-collections)
+and [Deep learning](../guides/deep-learning.md) show these commands with examples:
+
+```bash
+mapi datasets upload-images DATASET DIR [--label-from-folder | --manifest FILE --label-column C]
+    [--id-column C] [--split-column C] [--path-column C] [--size HxW] [--resize stretch|crop|pad]
+    [--mode auto|gray|rgb] [--base-version N | --no-base] [--part-size 256MB] [--state FILE] [--wait]
+mapi datasets missing-images DATASET DIR [--manifest FILE] [--base-version N | --no-base]
+mapi datasets upload-weights DATASET FILE.safetensors [--arch FILE] [--no-wait]
+mapi fit spec.yaml --remote @ --resource-class GPU
+```
+
+| Command | Notes |
+|---|---|
+| `datasets upload-images` | Calculates the SHA-256 of each image and uploads only the images that the base version does not have, in zip parts. With `--state`, run the same command again to continue an upload that stopped. Makes the dataset if it is not there |
+| `datasets missing-images` | Shows how many images of the folder the dataset does not have. It uploads nothing |
+| `datasets upload-weights` | Makes a weights dataset version from a `.safetensors` file. A model reads it as a side table. `--arch` gives the architecture JSON when the file does not have it. Waits for the ingest run by default |
+| `--resource-class GPU` | `fit --remote` and `workflows run` accept `GPU` (one NVIDIA L4). Only the models that use a GPU (`dl.cnn_classifier` and `dl.finetune_classifier`) run on it |
+
+**v0.14.** `runs.download_media` does a check of the size, the CRC32C and the SHA-256 of the
+item. `runs.log_image` accepts PNG or JPEG bytes or a file path. With `mapi-sdk`, it also
+accepts an array, a Pillow image or a `DataArray`. An item has a maximum of 4 MiB. The client
+can log media also after the run finished. `runs.compare` takes 2 to 10 run ids.
+`workflows.run(..., experiment_id=...)` puts the workflow run and each node run in the
+experiment. [Compare runs and use experiments](../guides/run-comparison.md) shows these
+calls.
+
+**v0.15.** `datasets.upload_collection(dataset, root, ...)` uploads a folder of images as a
+new collection version. It calculates the SHA-256 of each image. It asks the server for the
+images that the base version does not have (`missing_images`), and it uploads only these.
+The images go in deterministic zip parts of a maximum of `part_bytes`. With `state_file`, an
+upload that stopped continues: the client skips the parts that arrived and renews the
+upload links that expired. `base_version=None` compares with the latest ready collection
+version, and `base_version=0` uploads all images. `datasets.upload_weights(path, ...)`
+uploads a `.safetensors` file of network weights as a dataset version. Refer to
+[Image data](../guides/image-data.md#large-image-sets-collections) and
+[Deep learning](../guides/deep-learning.md#pretrained-weights).
 
 Errors: for `QUOTA_EXCEEDED` and `RATE_LIMITED`, the CLI prints when to try again
 (`retry after 1h 30m`). With `--json`, the error document contains `retry_after_seconds`. No

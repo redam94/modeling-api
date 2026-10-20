@@ -1,5 +1,5 @@
 ---
-description: Step-by-step tutorials - your first MMM in Guided mode, science models from pymc-challenges, complex workflows, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, and budget optimisation on mmm-framework.
+description: Step-by-step tutorials - your first MMM in Guided mode, science models from pymc-challenges, complex workflows, a forecast that tests and checks itself, null tests before a model goes live, Google Sheets, embedded charts, webhook receivers, budget optimisation on mmm-framework, the effect of a campaign, run comparison and image classification.
 ---
 
 # Tutorials
@@ -55,6 +55,35 @@ The Apps Scripts run against substitutes for the services of Google.
     efficient frontier.
 
     *For data scientists.* [:octicons-arrow-right-24: Start](../tutorials/optimise-a-budget.md)
+
+-   :material-chart-timeline-variant:{ .lg .middle } **Measure the effect of a campaign** <span class="mapi-badge">v0.13</span>
+
+    ---
+
+    Measure what a campaign, a launch or a geo-lift test changed, against a prediction
+    without the change. Then give the result of a geo-lift test to the marketing mix model.
+
+    *For analysts and data scientists.* [:octicons-arrow-right-24: Start](../guides/causal.md)
+
+-   :material-compare-horizontal:{ .lg .middle } **Compare runs in an experiment** <span class="mapi-badge">v0.14</span>
+
+    ---
+
+    Log metrics, params and images from a fit. Put the runs of a study in an experiment, and
+    compare 2 to 10 runs side by side.
+
+    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/run-comparison.md) ·
+    [Track metrics](../guides/tracking.md)
+
+-   :material-image-multiple-outline:{ .lg .middle } **Classify images** <span class="mapi-badge">v0.14</span>
+
+    ---
+
+    Upload a zip of images, look at them in the gallery, hold out a test set for each class
+    and fit a classifier. For large image sets, train a neural network on a collection.
+
+    *For data scientists.* [:octicons-arrow-right-24: Start](../guides/image-data.md) ·
+    [Deep learning](../guides/deep-learning.md)
 
 -   :material-graph-outline:{ .lg .middle } **A forecast that tests itself** <span class="mapi-badge">v0.5</span>
 

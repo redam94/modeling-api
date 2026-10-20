@@ -5,6 +5,23 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+This release updates the documentation for v0.10.0 to v0.15.0. It has no code changes.
+
+### Changed
+- New page "What's new in 0.10 to 0.15", first in the Home group of the nav, with screenshots
+  from the release checks. The home page, why, use cases, getting started and roadmap pages
+  describe run tracking, the MMM pack, causal models, run comparison, image data and deep
+  learning. The roadmap shows v1.0 (MLflow export, system metrics, retention) as planned.
+- New concept pages: run tracking, image collections and causal effects. Capabilities,
+  representations, bundles, workflows, quotas, security and architecture cover v0.10 to v0.15.
+- Guides, model pages and tutorials agree with the code: tracking, run comparison, image
+  data, deep learning, the explorers, the CLI, the Python client, the HTTP API, MMM, causal,
+  time series, sklearn and Guided mode.
+- Reference and operations pages cover the base-dl image, the GPU class on Docker and Cloud
+  Run (not tested on real hardware), the new settings and the new warning codes. Every package
+  and plugin README is current, including `mapi-jax` and `mapi-plugin-causal`.
+- The Guided templates screenshot shows all eight templates.
+
 ## [0.15.0] — Deep learning and image collections — 2026-10-20
 
 ### Deep learning and image collections

@@ -39,9 +39,19 @@ curl -s localhost:8000/v1/guided/templates | jq '.items[] | {id, title, plugin}'
 | Template | Built-in model | Data that it expects |
 |---|---|---|
 | `geo_mmm` | `mmm.bayesian` (mmm-framework) | One row for each market and week: the result, one spend column for each channel, and optional controls |
+| `mediated_mmm` (v0.12) | `mmm.nested` (mmm-framework) | One row for each week: the national result, one spend column for each channel, and one column for each intermediate measure (visits, awareness). A measure can have empty weeks. |
+| `multi_kpi_mmm` (v0.12) | `mmm.multivariate` (mmm-framework) | One row for each week: one column for each national result (two or more) and one spend column for each channel |
+| `campaign_impact` (v0.13) | `causal.impact` | One row for each week (or day): the result and optional control series. You also give the start date and the optional end date of the change. |
+| `geo_lift` (v0.13) | `causal.synthetic_control` | One row for each market and week: the result. You also give the names of the test markets and the start and end dates of the test. |
 | `weekly_forecast` | `ts.hsgp_trend` | One row for each week (or day): the series to forecast |
 | `store_demand` | `tabular.regressor` | One row for each store and week: the units sold and the drivers (price, promotions) |
 | `customer_choice` | `choice.multinomial_logit` | One row for each household and shopping trip: the product chosen, and one price (and promotion) column for each product |
+
+The `family` of a template is `mmm`, `forecast`, `tabular`, `choice` or `causal` (v0.13).
+A client older than v0.13 cannot read the list of templates from a v0.13 server. Upgrade the
+CLI and `mapi-client`. [Guided modelling](guided-modelling.md#mmm-templates) tells what each
+marketing-mix template asks, and [Measure the effect of a change](causal.md) tells the same
+for the causal templates.
 
 `GET /v1/guided/templates/{id}` gives one template with these items:
 
@@ -149,6 +159,15 @@ use comma, semicolon, tab or `|` separators. It must be UTF-8, and it can be gzi
 with groups become tree datasets, a raw HDF5 file (`hdf5`) needs a mapping of its arrays, and
 one version can come from several files. Refer to
 [Tree datasets, HDF5 and multi-file versions](tree-data.md).
+
+Image data has its own upload formats. They are not for Guided templates:
+
+- `image_folder` (v0.14): a zip of PNG, JPEG or TIFF images and a manifest table. See
+  [Image data](image-data.md).
+- An image collection (v0.15): a large set of images that the client uploads in parts. See
+  [Large image sets: collections](image-data.md#large-image-sets-collections).
+- `safetensors` (v0.15): a file of network weights that becomes a weights dataset. See
+  [Deep learning](deep-learning.md#pretrained-weights).
 
 | Mapping | What the ingest does |
 |---|---|

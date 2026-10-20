@@ -249,6 +249,9 @@ For the documents of these recipes, see the [workflow cookbook](workflow-cookboo
   `mapi explore compare model://growth/a@v1 model://growth/b@v1` (metrics, ranking and
   Diebold-Mariano tests). Alternatively, run a
   [bake-off workflow](workflow-cookbook.md#forecast-bake-off).
+- **Keep the candidates together.** From v0.14, put the fits of the candidates in one
+  experiment. The compare page then shows their metrics, params and plots side by side. See
+  [Compare runs and use experiments](run-comparison.md).
 - **Let the data decide the details.** The readiness workflow selects differencing and ARMA
   orders with tests and information criteria. It records the reasons.
 - **Make "good enough" explicit.** A governance policy changes "it looks fine" into checks.

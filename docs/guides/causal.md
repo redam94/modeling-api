@@ -178,3 +178,7 @@ group of units.
 Each causal fit logs the total effect, its interval, the relative effect and the error before
 the change as tracking metrics. Thus you can compare tests on the **Runs** page. See
 [What a causal fit logs](tracking.md#what-a-causal-fit-logs).
+
+From v0.14, put the fits of the tests of one study in an experiment. Then the runs table of
+the experiment can show the effect of each test in a column. The compare page shows 2 to 10
+fits side by side. See [Compare runs and use experiments](run-comparison.md).

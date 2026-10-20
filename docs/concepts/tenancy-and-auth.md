@@ -128,6 +128,11 @@ specs, models and plots) through the API. No role or flag gives this access.
 --8<-- "concepts_tenancy.py:can"
 ```
 
+**Uploads** <span class="mapi-badge">v0.15</span>: `get_upload` and `renew_upload` need
+`update` on the dataset, as `create_upload`, because their answer holds a signed PUT URL. A
+person who can only read the dataset can ask which images a collection does not have
+(`blobs/missing`), but cannot write its uploads.
+
 **Experiments and saved views** <span class="mapi-badge">v0.14</span> have no permissions of
 their own. They use the permissions of runs: a viewer can read them, and a runner (or a token
 with `runs:write`) can make, change and delete them.

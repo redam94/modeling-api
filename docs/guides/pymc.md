@@ -182,6 +182,27 @@ message in plain language and a suggested action:
 * `DIVERGENCES`
 * `TREE_DEPTH`
 
+### Plots for Bayesian checks { #plots-for-bayesian-checks }
+
+These plots of the core pack read the groups of a PyMC bundle. They are not default plots.
+Add them to `outputs.plots`, or in the plot builder:
+
+| Plot | What it shows | The fit must keep |
+|---|---|---|
+| `core.loo_pit` (v0.10) | The LOO-PIT check of calibration and the PSIS Pareto k of each observation | `keep: {log_likelihood: true, posterior_predictive: ...}` |
+| `core.energy` (v0.12) | The energy plot of the sampler and the BFMI of each chain | Nothing more: an MCMC fit writes `energy` to `sample_stats` |
+| `core.prior_posterior` (v0.12) | The prior and the posterior of each parameter, with their overlap | The `prior` group: `prior_predictive: {draws: N}` or `keep: {prior: true}` |
+
+```yaml
+outputs:
+  plots: [core.convergence, core.loo_pit, core.energy, core.prior_posterior]
+```
+
+When two or more versions of a model have `elpd_loo` (or `elpd_waic`), **Compare** in the
+Model Explorer shows the `core.model_comparison` plot (v0.10). See
+[Compare model versions](model-explorer.md#compare-model-versions) and
+[the plot catalog](plots.md#the-standard-catalog).
+
 ## Expected vs predictive, and counterfactuals
 
 `output.kind: expected` returns the Deterministic that you named in `expected` (without

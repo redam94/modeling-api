@@ -23,12 +23,12 @@ This page shows each page in the sequence of the navigation. The screenshots com
 | Element | What it does |
 |---|---|
 | Project switcher | Shows the tenant and the project for all the actions on the page, and your role there. You can switch to a different project, make a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Guided, Datasets, Build, Runs, Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under **Project**: Usage, Members and Tokens. Under **Platform**: Admin (operators only). Settings is at the bottom. **Collapse** (++cmd+b++) makes the sidebar narrow, with only icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Experiments (v0.14), Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under **Project**: Usage, Members and Tokens. Under **Platform**: Admin (operators only). Settings is at the bottom. **Collapse** (++cmd+b++) makes the sidebar narrow, with only icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette. Go to a page, start a new spec, change the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`. It is green when PostgreSQL, the object store and the catalog are ready. Otherwise, it is amber (*API degraded*) or red (*API unreachable*). It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch. This browser remembers it for each user. Until you make a selection, a self-service (`public` tier) workspace starts in Guided mode. All other workspaces (and platform operators) start in Expert mode. In Guided mode, `/` opens the Guided start page. If a project is locked to Guided mode, members below admin do not see the switch. |
 | Display icon | Light, dark or system theme. |
-| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. |
+| ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++e++ Experiments, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. |
 
 The app always shows text from a run or a plugin as plain text. This text includes log lines,
 tracebacks, warning messages and plot captions. The app removes ANSI escapes, control
@@ -76,6 +76,11 @@ The app then opens the upload panel.
 
     You map Parquet files in the same way, but without the local preview.
 
+- A **zip of images** with a manifest table (`.zip`) <span class="mapi-badge">v0.14</span> is
+  an *image folder*. The format select shows **image folder (zip)**. Type the name of the
+  manifest and its columns. The ingest makes one array of 8-bit pixels. Refer to
+  [Image data](image-data.md#upload-the-zip). A zip of images must be the only file of the
+  version.
 - A **NetCDF-4** or **HDF5** file with groups (`.nc`, `.h5`, `.hdf5`, `.he5`) becomes a
   [tree dataset](tree-data.md): one node for each group. A raw HDF5 file has no dim names.
   The app inspects the file first and shows its arrays (path, shape, dtype and dim hints).
@@ -525,8 +530,9 @@ these contents, and its digest identifies them:
   pack, its title, a summary and the bundle groups that it needs. The buttons above the cards
   filter the recipes by pack: **All plots**, **All models** (`core`), **Marketing mix**
   (`mmm`), **Machine learning** (`ml`), **Science** (`sci`) and **Networks** (`net`). A pack
-  shows only when the catalog has a recipe of that pack. You can also type words in the search
-  field.
+  shows only when the catalog has a recipe of that pack. A pack without a name in this list,
+  for example the causal pack (`causal`, v0.13), shows its prefix as the label. You can also
+  type words in the search field.
 
 Click a row of **Models** or **Steps** to see its full entry. Click a plot card to see its
 About card, a larger interactive example and its technical details. Specs can use only the
@@ -544,8 +550,8 @@ choosing](../concepts/about-and-choosing.md#in-the-web-app)).
   first agree with the structure of the data. For time series, it shows the time plots and
   the time patterns. For [scientific data](data-explorer.md#scientific-data), it shows
   images and fields, profiles and spectra, maps, networks, trees, roses of directions and
-  times of day, and points. The sections that do not apply to the data go in the closed list
-  **Not for this data**.
+  times of day, and points. For a dataset of images, it also shows the **Image gallery** (v0.14).
+  The sections that do not apply to the data go in the closed list **Not for this data**.
 - **Explore** on a model version opens the [Model Explorer](model-explorer.md#in-the-web-app).
   It shows parameters, diagnostics, fit, residuals, contributions, response curves,
   IRF/FEVD, forecasts, backtests, governance evidence and lineage.
@@ -618,6 +624,13 @@ These pages help you operate the platform for many persons and organisations. Th
 
 ## Where next
 
+- [Track metrics, params and tags](tracking.md): what the **Metrics**, **Params**, **Media**,
+  **Logs** and **Notes** tabs of a run show.
+- [Compare runs and use experiments](run-comparison.md): the runs table, saved views, the
+  compare page and the **Experiments** page.
+- [Image data](image-data.md) and [Deep learning](deep-learning.md): upload images, look at
+  them in the gallery and train a network.
+- [Measure the effect of a change](causal.md): the causal models and their plots.
 - [Your first model in the web app](first-model-in-the-ui.md): the E33 demo, step by step in
   the app, from upload to counterfactual.
 - [Web app and plot sandbox](../reference/web-app.md): build variables, the API client and

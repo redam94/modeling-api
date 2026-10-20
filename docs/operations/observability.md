@@ -15,6 +15,15 @@ The API and the worker send three signals:
   dispatch and finalization of each run. The server exports spans over OTLP/HTTP only when
   you configure a collector.
 
+!!! note "Run tracking is a different thing"
+    These signals tell about the platform. The metrics, params, tags, images and tables that
+    a model logs in a run (v0.11 and v0.14) are run data. They go through the run protocol
+    into the database and the bundles bucket, not to `/metrics`. Refer to
+    [Track metrics, params and tags](../guides/tracking.md) and
+    [Compare runs and use experiments](../guides/run-comparison.md). The budgets of the run
+    tracking give the warnings `TRACKING_BUDGET` and `MEDIA_BUDGET`
+    ([Troubleshooting](troubleshooting.md#warnings-on-a-run)).
+
 Nothing goes out from inside a sandbox. Each execution gets the `traceparent` of the
 dispatching span in `MAPI_TRACEPARENT`. Thus you can join the stderr diagnostics of the
 supervisor to the trace of the run, and no telemetry goes out of the exec project.
