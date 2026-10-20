@@ -39,8 +39,8 @@ compares them with the manifest. If a bundle is damaged or changed without permi
 | `/model/<group>` | ArviZ-named groups: `posterior`, `sample_stats`, `log_likelihood`, `observed_data`, … |
 | `/model/fit_history` | Fits in steps (ADVI): `loss(step)`, the loss of each optimization step, at most 5,000 steps |
 | `/model/metrics_history` | v0.11: the metrics, params and tags that the model logged during the fit (see [below](#metrics-history)) |
-| `/terminal_state` | Sequential models: the filtered state at the last fitted step |
-| `/native` | Safe native artifacts: skops files, xgboost JSON, … |
+| `/terminal_state` | Sequential models: the filtered state at the last fitted step. For example, a forecast of `ts.bsts` (v0.13) starts from it. |
+| `/native` | Safe native artifacts: skops files, xgboost JSON and, from v0.15, the safetensors weights of a network |
 | `/derived/<name>` | Derived quantities cached at fit (contributions, response curves) |
 | `/fit_coords/<stage>` | The fitted coordinates at each stage (CoordPlan checks against them) |
 | `/side_tables/<name>` | `pinned` side tables, frozen with the fit |
@@ -55,10 +55,29 @@ Some plugins keep more groups under `/model`. The standard plots read them:
 | `fit_history` | PyMC models with `engine: advi` | `loss(step)`: the negative ELBO of each step. The var attrs give `objective` and `engine`. When the fit has more steps than 5,000, the dataset attr `thinned_from` gives the number of steps. | `core.loss_curve` |
 | `hidden_states` | `ts.gaussian_hmm` | `state_prob(chain, draw, animal, step, state)` | `core.state_sequence` |
 | `regimes` | statsmodels Markov switching | `smoothed_prob(time, regime)`, `filtered_prob`, the transition matrix | `core.state_sequence` |
-| `components` | unobserved components, ETS, `ts.hsgp_trend` | One variable for each part of the series. A variable with the attr `decomposition: exclude` (a trend slope) is not an additive part. | `core.decomposition` |
+| `components` | unobserved components, ETS, `ts.hsgp_trend`, `ts.bsts` (v0.13) | One variable for each part of the series. A variable with the attr `decomposition: exclude` (a trend slope) is not an additive part. | `core.decomposition` |
 
 Each data variable of `fit_history` is one curve over `step`. The other dims of a variable are
 labels: the plot draws one line for each level.
+
+## The groups of the model packs <span class="mapi-badge">v0.12</span> { #model-pack-groups }
+
+The marketing-mix, causal and deep-learning models keep more groups under `/model`. Their
+plots and workflow nodes read these groups, not the posterior:
+
+| Group | Plugins | Holds | Read by |
+|---|---|---|---|
+| `lift_tests` (v0.12) | `mmm.bayesian`, when the fit used lift tests | Each lift test (`observed(test)`, `observed_sd(test)`) and the estimate of the model for each draw (`model(chain, draw, test)`) | `mmm.lift_tests` |
+| `impact` (v0.13) | `causal.impact`, `causal.synthetic_control`, `causal.did` | `actual`, `counterfactual`, `effect`, `cumulative_effect` and `post`, in the units of the target ([Measure the effect of a change](causal-effects.md)) | `causal.impact`, `causal.pre_fit`, `model.lift_test` |
+| `donor_weights` (v0.13) | `causal.synthetic_control` | `weight(sample, unit, donor)` and the error before the test, `pre_rmse(unit)` | `causal.donor_weights` |
+| `event_study` (v0.13) | `causal.did` | `coef(sample, event_time)`, `n_cells(event_time)` and the average effect after the change, `att(sample)` | `causal.event_study` |
+| `training` (v0.15) | `dl.mlp`, `dl.cnn_classifier`, `dl.finetune_classifier` | Values along `epoch`: `train_loss`, `val_loss`, the training and validation metric (`accuracy` or `rmse`) and `lr`. A classifier also keeps `confusion(epoch, true_class, pred_class)`, and then only the epochs with a confusion matrix. The attrs give `best_epoch`, `stopped_early`, `epochs_run` and `steps`. The group keeps a maximum of 200 epochs (50 for a classifier), always with the first, the best and the last. The attr `thinned_from` gives the number of epochs before. | `ml.training_curves`, `ml.confusion_epochs` |
+| `misclassified` (v0.15) | `dl.cnn_classifier`, `dl.finetune_classifier` | Up to 32 validation images that the network classified incorrectly at the best epoch, as small thumbnails with the true and the predicted label | `ml.misclassified` |
+| `posterior` (v0.15) | the `dl.*` models | `draw_id(chain, draw)`: one entry for each draw of the Laplace approximation or of MC dropout. The harness thins the draws of a score request from this group. | the score path |
+
+The `dl.*` models keep the trained network in `/native`: `weights.safetensors` and, for the
+Laplace draws, `laplace.safetensors`. These are safetensors files, not pickle. The
+architecture of the network is in the metadata of the weights file.
 
 ## The `metrics_history` group <span class="mapi-badge">v0.11</span> { #metrics-history }
 

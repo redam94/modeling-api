@@ -47,6 +47,9 @@ behaviour against a real Cloud Run Jobs execution (see
 | Send your data out over DNS | A DNS response policy that answers nothing outside Google APIs | **[verify M0]**. Until it passes, the platform does not put `verified` and `public` tenants on Cloud Run. |
 | Crash or take control of the API with a crafted file | The API parses only JSON and YAML. A sandbox opens all other files. | **Enforced** |
 | Make the sandbox read other files or load code with a crafted HDF5 file (v0.8) | The [HDF5 guard](#uploads-and-the-hdf5-guard) refuses links to other files, external storage, virtual datasets and filter plugins before a reader opens the file. | **Enforced** |
+| Forge the images or tables that a run logs, or make the API decode a hostile image (v0.14) | The supervisor uploads each media item through a create-only POST policy on the `media/` prefix of its attempt. The server downloads the object, calculates its SHA-256 again and reads only the PNG or JPEG header. It never decodes the pixels. It copies the verified bytes create-only to the bundles bucket. See [Run media and uploads](#run-media-and-uploads). | **Enforced** |
+| Change the images of a collection, or make a version read images that it does not own (v0.15) | Each pack has an address from the size, CRC32C and MD5 that the store calculated. The platform trusts no hash from the client. The packs of a tenant are under the prefix of that tenant. Each read of an image makes sure that its SHA-256 is correct. | **Enforced** |
+| Stop the sandbox with an image that is very large when it is decoded | The ingest reads the size from the header of each image before it decodes the image. It refuses images of more than 4096 × 4096 pixels and datasets that are more than the budget. | **Enforced** |
 | Replace or replay the files of a model | The control plane compares the outputs with the hashes and generations of the store. It copies them to a location where runs cannot write, and signs them. It checks the signature before each download link. | **Enforced**. We tested Cloud KMS signing against a fake. |
 | Fake progress or results | Only the supervisor writes events. It signs and numbers each event. The status from the executor decides if a run is alive. | **Enforced** |
 | Read the work of another organisation | Row-level security on all tables, which fails closed. The server checks ids against the tenant of the caller. A test uses the same pooled connections for two tenants. | **Enforced** |
@@ -150,6 +153,54 @@ The supervisor also points `HDF5_PLUGIN_PATH` at an empty directory in the envir
 worker. The inspect run uses the same guard and reads only metadata. Refer to
 [Tree datasets, HDF5 and multi-file versions](../guides/tree-data.md#security-the-hdf5-guard).
 
+### Run media and uploads <span class="mapi-badge">v0.14</span> { #run-media-and-uploads }
+
+From v0.14, more bytes come into the platform: the images and tables that a run logs, image
+uploads, and from v0.15 image collections and network weights. The same rules apply to all
+of them. The API reads only small JSON and headers. A sandbox opens the files. The control
+plane compares each object with the values that the store calculated.
+
+**Run media.** The worker writes each item to its scratch directory and sends a message to
+the supervisor. The supervisor reads the file with `O_NOFOLLOW` (a regular file only), with a
+size limit of 8 MiB. It calculates the SHA-256 and does a check of the format. Then it
+uploads the bytes through a create-only POST policy on the `media/` prefix of the attempt
+(`RunSpec.media_prefix`). The sandbox never writes to a shared path. When the server gets the
+`media` event, it does these steps:
+
+1. It downloads the object from the runs bucket (a maximum of 8 MiB).
+2. It calculates the SHA-256 again and does a check of the size and the CRC32C.
+3. It does a check of the format with `check_media`. An image must be PNG or JPEG, with a
+   maximum of 4096 pixels on each side. `sniff_image` reads the size from the header and
+   does not decode the pixels. A table must be JSON that validates as a `MediaTable`.
+4. It writes the bytes create-only to the bundles bucket, at
+   `t/{tenant}/run-media/{run}/<sha256>.<ext>`.
+
+If a check fails, the server keeps nothing and writes the warning `MEDIA_REJECTED`. A caption
+is untrusted text. An item that you log through the API (`POST /v1/runs/{run_id}/media`, a
+maximum of 4 MiB) goes through the same checks.
+
+**Image folders** (v0.14). Only the ingest run opens the zip. It refuses a path that is
+absolute, that contains `..` or a backslash, or that is not in the zip. It reads the size of
+each image from its header before it decodes the image. It refuses images of more than
+4096 × 4096 pixels, images with more than 8 bits, files of more than 32 MiB and datasets that
+need more values than the budget.
+
+**Image collections** (v0.15). The client uploads the manifest and the parts with signed PUT
+URLs for one object each. The collection ingest run reads each part in ranges. It never
+downloads a part in full. For each entry, it makes sure that the CRC-32 and the SHA-256 agree
+with the name of the entry, and it reads the header of the image. The finalizer calculates
+the address of each part again from the stored size, CRC32C and MD5 of the pinned
+generation. Then it copies the part create-only to `t/{tenant}/blobs/packs/{digest}.zip`.
+Each later run calculates the address of each pack again before it reads it, and each read of
+an image makes sure that its SHA-256 is correct. A pack with a different address stops the
+run with `INTEGRITY_FAILURE`. `get_upload` and `renew_upload` need `update` on the dataset,
+because their answer holds a signed PUT URL.
+
+**Network weights** (v0.15). A `safetensors` upload has a JSON header and raw tensors. It
+cannot run code when it loads. The ingest refuses a header of more than 8 MiB, more than 4096
+tensors and more parameters than the limit of the upload. The SDK reads safetensors files
+with numpy only.
+
 ### Outputs are claims
 
 A run can write only under the prefix of its own attempt, through a POST policy with a size
@@ -211,6 +262,10 @@ The CLI removes escape sequences before it prints.
   image must not contain numpy, xarray, PyMC, the SDK or a plugin. The import-linter
   contracts run against the installed packages in the server image build.
 - The web image installs JavaScript dependencies with `--frozen-lockfile --ignore-scripts`.
+- From v0.15, the import-linter contracts also forbid `mapi_jax`, `jax`, `flax` and `optax` in
+  the control plane and in the supervisor. The build of the `base-dl` runner image fails if
+  it contains `mapi-pymc`, `mapi-sklearn`, one of the plugin packages `mapi-plugin-mmm`,
+  `-tabular`, `-ts`, `-causal` or `-science`, `torch` or `tensorflow`.
 - The OpenAPI explorer of this documentation site loads a vendored, hash-pinned Redoc bundle.
   It sends no request outside the site.
 
@@ -241,6 +296,11 @@ The CLI removes escape sequences before it prints.
   Redoc from a public CDN. Use the [OpenAPI explorer](../reference/openapi.md) or
   `/openapi.json` instead.
 - The Vite dev server does not enforce the CSP of the app (see the table).
+- The platform keeps run media and the image packs of collections until the tenant is
+  deleted. A deleted dataset version does not delete its packs, because other versions can
+  use them (v0.14, v0.15).
+- The GPU path (the `base-dl` CUDA image and the GPU Job of Cloud Run) is not tested against
+  GCP or on a GPU (v0.15).
 - With the `local-process` executor, run code runs as the uid of the orchestrator. Thus, it
   can read the control key of the shim and the bundle-signing key. The orchestrator is
   non-dumpable and logs a warning at start-up. Run only trusted plugin code in this mode. See

@@ -77,6 +77,24 @@ Then the evaluation is too optimistic. Validation reports this:
 
 To change the error to a warning that you accept, set `allow_leakage: true` on the split.
 
+### Kinds of split
+
+`data.split.kind` selects how the platform holds out data:
+
+| Kind | Holds out |
+|---|---|
+| `time_holdout` | The end of an ordered dim: the `last` periods, a `fraction` or the periods `after` a coordinate |
+| `last_per_group` | The last rows along a dim in each group |
+| `as_of` | The coordinates after `as_of`, with an optional `gap` |
+| `leave_group_out` | Full groups of a dim: the `groups` that you name, or `n` random groups |
+| `mask_block` | Random blocks over some dims, for a `fraction` of the cells |
+| `column` <span class="mapi-badge">v0.14</span> | The rows with a value of a column that is in `holdout`, for example `split = test` |
+| `stratified` <span class="mapi-badge">v0.14</span> | The same random `fraction` of the rows in each level of a class label (`by`). A level with one row stays in training. |
+
+An [image collection](image-collections.md) takes only the row splits `column`,
+`stratified` and `leave_group_out`. For the fields of each kind, see the
+[spec format](../reference/spec-format.md#column-and-stratified-splits).
+
 ## Evaluate the way you will forecast
 
 `fit.mode: evaluate_then_refit` (the default) does these steps:
