@@ -95,7 +95,7 @@ function Arrows({ arrows, width, height, origin }: { arrows: FieldArrows; width:
   );
 }
 
-function ColorBar({ scale, units, title, clipped = false }: { scale: ColorScale; units?: string | null | undefined; title: string; clipped?: boolean }) {
+function ColorBar({ scale, units, title, clipped = null }: { scale: ColorScale; units?: string | null | undefined; title: string; clipped?: string | null }) {
   const ticks = colorTicks(scale);
   return (
     <figure className="grid gap-1" aria-label={`Colour scale: ${title}`}>
@@ -109,7 +109,7 @@ function ColorBar({ scale, units, title, clipped = false }: { scale: ColorScale;
         {title}
         {units ? ` (${units})` : ""}
         {scale.log ? ", log scale" : ""}
-        {clipped ? ". The colours cover 98% of the values. The lowest 1% and the highest 1% show the colours at the two ends." : ""}
+        {clipped ? `. The colours cover 98% of ${clipped}. Lower and higher values show the colours at the two ends.` : ""}
       </figcaption>
     </figure>
   );
@@ -238,14 +238,16 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
     const r = rasterRange(group, enc, log, colormap);
     return r ? { lo: r[0], hi: r[1], log, colormap } : null;
   }, [current, field, fr, frames, enc, log, colormap]);
-  // Data mode: the 1% to 99% range of the values of every frame when the full range is much
-  // wider (a few bright cells); a check box shows the full range.
+  // The 1% to 99% range of the means of every frame when the full range is much wider: in
+  // data mode a few bright cells, in model mode the tails of the quantiles and draws (a
+  // log-scale intensity whose draws reach 1e-12 and 1e2 while the means sit near 1e-2). The
+  // mean, quantiles and draws keep sharing it; a check box shows the full range.
   const robust = useMemo((): ColorScale | null => {
-    if (!data || !fullScale) return null;
+    if (!fullScale || current === "sd" || current === "ratio") return null;
     const r = robustRange(frames.map((f) => frameValues(field, f, "mean")), log, colormap);
     if (!r || fullScale.hi - fullScale.lo <= ROBUST_FACTOR * (r[1] - r[0])) return null;
     return { ...fullScale, lo: r[0], hi: r[1] };
-  }, [data, fullScale, frames, field, log, colormap]);
+  }, [current, fullScale, frames, field, log, colormap]);
   const scale = robust && !fullRange ? robust : fullScale;
 
   useEffect(() => {
@@ -421,7 +423,7 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
               </svg>
             ) : null}
           </div>
-          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
+          {scale ? <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust ? (data ? "the values" : "the posterior means") : null} /> : <p className="text-[13px] text-muted-foreground">This raster has no values.</p>}
         </div>
         <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-[13px]" aria-live="polite" data-testid="field-readout">
           {cell ? (

@@ -116,6 +116,27 @@ describe("field viewer in data mode (images of the Data Explorer)", () => {
     expect(screen.getAllByLabelText("Colours for the full range")).toHaveLength(1);
   });
 
+  it("gives a model map the colours of 98% of its means when the quantiles and draws reach far wider (lgcp forecast)", async () => {
+    const img = scienceExample("images").fields[0]!;
+    const means = Array.from({ length: 400 }, (_, i) => 0.01 + (i % 20) / 1000);
+    const frame = { ...img.frames[0]!, mean: encodeRaster(means), sd: encodeRaster(means.map((m) => m / 2)), q05: encodeRaster(means.map(() => 0)), q95: encodeRaster(means.map((m, i) => (i === 0 ? 100 : m * 3))) };
+    render(<FieldViewer field={{ ...img, width: 20, height: 20, frames: [frame] }} />);
+    const full = screen.getByLabelText("Colours for the full range");
+    expect(full).not.toBeChecked();
+    const bar = () => screen.getByRole("figure", { name: /^Colour scale/ });
+    expect(bar()).toHaveTextContent("98% of the posterior means");
+    expect(bar()).not.toHaveTextContent("100");
+    // the 95% quantile shares the scale of the means: comparable colours, ends clipped
+    await userEvent.click(screen.getByRole("button", { name: "95% quantile" }));
+    expect(bar()).toHaveTextContent("98% of the posterior means");
+    await userEvent.click(full);
+    expect(bar()).toHaveTextContent("100");
+    // the sd has its own scale: no clipping, no check box
+    await userEvent.click(screen.getByRole("button", { name: "Std. dev." }));
+    expect(screen.queryByLabelText("Colours for the full range")).toBeNull();
+    expect(bar()).not.toHaveTextContent("98%");
+  });
+
   it("keeps the model mode unchanged when no mode is given", () => {
     const img = scienceExample("images").fields[0]!;
     render(<FieldViewer field={img} />);
