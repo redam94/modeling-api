@@ -39,6 +39,7 @@ import {
   VifSection,
 } from "./data-sections";
 import { ExplorerNav, RecipePlots, RunBanner, SectionGate, type NavEntry } from "./explorer-shell";
+import { GallerySection } from "./gallery-section";
 import { CircularSection, ImagesSection, MapSection, NetworkSection, PointsSection, ProfilesSection, StructureSection, TreeSection } from "./science-sections";
 import { DATA_GROUPS, DATA_ORDER, DATA_SECTION_META, periodUnit } from "./sections-meta";
 import { missingSections, navPlan, readyText, runIndex } from "./shapes";
@@ -323,6 +324,8 @@ function SectionContent({ section, view, expert, unit, onSection }: { section: D
       return <StructureSection view={view as SectionViews["structure"]} expert={expert} onSection={onSection} />;
     case "images":
       return <ImagesSection view={view as SectionViews["images"]} expert={expert} />;
+    case "gallery":
+      return <GallerySection view={view as SectionViews["gallery"]} expert={expert} />;
     case "profiles":
       return <ProfilesSection view={view as SectionViews["profiles"]} expert={expert} />;
     case "map":

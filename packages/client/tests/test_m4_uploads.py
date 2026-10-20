@@ -121,6 +121,8 @@ def test_hdf5_needs_a_mapping_and_netcdf_hdf5_cross_read() -> None:
     assert mapping_reads("netcdf", "hdf5") and mapping_reads("hdf5", "netcdf")
     assert mapping_reads("mff", "csv") and not mapping_reads("hdf5", "csv")
     assert not mapping_reads("mff", "hdf5")
+    # v0.14: an image folder is a plain zip (classified zarr_zip by its name)
+    assert mapping_reads("image_folder", "zarr_zip") and not mapping_reads("image_folder", "csv")
 
 
 def test_datatree_source_is_a_tree_zarr_zip() -> None:

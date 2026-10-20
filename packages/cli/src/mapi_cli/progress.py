@@ -9,6 +9,10 @@ value per series, shown as one ``metrics ...`` line at most every :data:`METRICS
 seconds (and once more at the end); ``params``/``tags`` events (and, for a remote run, the
 params and tags that changed after a ``tracking`` frame) print one line each; user log lines
 (stream ``user``) print as ``[level] line``.
+
+Media (v0.14): a ``media`` event prints ``media image samples step 3 (12 KB)``, at most one
+line every :data:`METRICS_EVERY_S` seconds (the newest item is shown; once more at the end);
+a ``tracking`` frame with ``media`` set prints that the run logged new images or tables.
 """
 
 from __future__ import annotations
@@ -55,6 +59,14 @@ def _value(v: Any) -> str:
     return f"{v:.4g}" if isinstance(v, float) else str(v)
 
 
+def _size(n: float) -> str:
+    if n < 1024:
+        return f"{n:.0f} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.0f} KB"
+    return f"{n / (1024 * 1024):.1f} MB"
+
+
 def _pairs(items: Any, value_key: str = "value") -> str:
     """``k=v, ...`` of ``[{"key", "value"}]`` items, cut to 200 characters."""
     parts = [
@@ -83,6 +95,8 @@ class EventRenderer:
         self._latest: dict[str, tuple[float, int | None]] = {}
         self._metrics_at: float | None = None
         self._metrics_dirty = False
+        self._media_at: float | None = None
+        self._media_text: Text | None = None  # the newest media line not printed yet
         self._progress = Progress(
             # Titles and messages are shown verbatim: markup=False, so a "[link=...]" or a
             # stray "[/]" in a worker-supplied message is text, never rich markup.
@@ -112,6 +126,8 @@ class EventRenderer:
         if self.enabled:
             if self._metrics_dirty:
                 self._metrics_line()
+            if self._media_text is not None:
+                self._media_line()
             self._progress.stop()
 
     def _set(self, *, fraction: float | None = None, message: str | None = None) -> None:
@@ -173,6 +189,32 @@ class EventRenderer:
             self._update_metric(_series_name(s.key, s.labels), s.last, s.last_step)
         if frame.series:
             self._maybe_metrics_line()
+        if frame.media:
+            self._media_update(Text("media ", style="cyan") + Text("new images or tables"))
+
+    # ---- media (v0.14)
+
+    def _media_update(self, text: Text) -> None:
+        self._media_text = text
+        now = self._clock()
+        if self._media_at is None or now - self._media_at >= METRICS_EVERY_S:
+            self._media_line()
+
+    def _media_line(self) -> None:
+        self._media_at = self._clock()
+        if self._media_text is not None:
+            self._line(self._media_text)
+        self._media_text = None
+
+    def _media_event(self, p: Mapping[str, Any]) -> None:
+        name = _series_name(p.get("key"), p.get("labels"))
+        parts = [str(p.get("kind") or "item"), name]
+        step = p.get("step")
+        if isinstance(step, int) and not isinstance(step, bool):
+            parts.append(f"step {step}")
+        size = _num(p.get("size"))
+        text = " ".join(parts) + (f" ({_size(size)})" if size is not None else "")
+        self._media_update(Text("media ", style="cyan") + safe(text[:_LINE_CHARS]))
 
     def params(self, params: Mapping[str, Any]) -> None:
         """One ``params:`` line (a remote watch reads them after a ``tracking`` frame)."""
@@ -216,6 +258,8 @@ class EventRenderer:
                 self._line(safe(line, "dim"))
         elif kind is RunEventType.METRICS:
             self._metrics_event(p)
+        elif kind is RunEventType.MEDIA:
+            self._media_event(p)
         elif kind is RunEventType.PARAMS:
             self._line(Text("params: ", style="cyan") + safe(_pairs(p.get("params"))))
         elif kind is RunEventType.TAGS:

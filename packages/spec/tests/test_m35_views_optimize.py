@@ -138,7 +138,7 @@ def test_view_shapes_are_checked() -> None:
 
 
 def test_sections_and_index() -> None:
-    assert len(DATA_SECTIONS) == 21 and len(MODEL_SECTIONS) == 12
+    assert len(DATA_SECTIONS) == 22 and len(MODEL_SECTIONS) == 12
     assert explore_view_name("stl") == "ui/explore/stl.json"
     with pytest.raises(ValueError):
         explore_view_name("../../secrets")

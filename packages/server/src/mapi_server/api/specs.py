@@ -40,7 +40,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.guided import enforce_guided_lock
 from mapi_server.services.runs import now
-from mapi_server.services.specs import Validation, validate_document
+from mapi_server.services.specs import Validation, refuse_retired_kind, validate_document
 from mapi_server.services.submit import submit_spec_run
 
 __all__ = ["DiffEntry", "SpecDiff", "diff_documents", "router"]
@@ -168,6 +168,7 @@ async def create_spec(ctx: Ctx, session: Session, body: SpecCreate) -> SpecDoc:
     In a Guided-locked project, members below admin may store Guided specs only (``403``
     with the offending pointers otherwise; see ``Project.guided_locked``)."""
     v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    refuse_retired_kind(v)
     name, kind = _name_and_kind(v)
     await enforce_guided_lock(session, ctx.scope, ctx.request, v.document)
     ts = now()
@@ -252,6 +253,7 @@ async def create_spec_revision(
             pointer="/body/parent_revision",
         )
     v = await validate_document(session, ctx.scope, ctx.catalogs, text=body.yaml)
+    refuse_retired_kind(v)
     name, kind = _name_and_kind(v)
     parent = await _rev(session, spec, spec.latest_revision)
     await enforce_guided_lock(session, ctx.scope, ctx.request, v.document, parent.document)

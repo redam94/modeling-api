@@ -14,7 +14,7 @@ import type {
   TrackingFrame,
 } from "@/api/tracking";
 import { MAX_RUN_NAME_CHARS, MAX_TAGS_PER_RUN, METRIC_KEY_RE, RESERVED_TAG_PREFIX, TAG_KEY_RE } from "@/api/tracking";
-import type { Problem, Run } from "@/api/types";
+import type { Experiment, Problem, Run } from "@/api/types";
 import { env } from "@/env";
 
 import { mockDivergences, mockStepSize, trackingFixtures, type MockSeries, type MockTracking } from "./fixtures";
@@ -119,10 +119,10 @@ export function advanceTracking(state: TrackingState, runId: string): TrackingFr
     s.points.push({ step, value: s.key === "step_size" ? mockStepSize(chain, step) : mockDivergences(chain, step), ts });
     changed.push(s);
   }
-  return changed.length ? { run_id: runId, series: changed.map(summary), params: false, tags: false } : null;
+  return changed.length ? { run_id: runId, series: changed.map(summary), params: false, tags: false, media: false } : null;
 }
 
-export function createTrackingHandlers(state: TrackingState, ctx: { runs: Map<string, Run> }): HttpHandler[] {
+export function createTrackingHandlers(state: TrackingState, ctx: { runs: Map<string, Run>; experiments?: Map<string, Experiment> }): HttpHandler[] {
   const tracking = (id: string): MockTracking => {
     let t = state.get(id);
     if (!t) {
@@ -136,8 +136,8 @@ export function createTrackingHandlers(state: TrackingState, ctx: { runs: Map<st
       const run = ctx.runs.get(String(params.id));
       if (!run) return problem(404, "NOT_FOUND", "Not found", "no such run");
       const body = (await request.json()) as RunPatch;
-      if (!body || typeof body !== "object" || !["name", "note", "tags"].some((k) => k in body)) {
-        return problem(422, "SCHEMA_INVALID", "Invalid request", "set at least one of name, note and tags");
+      if (!body || typeof body !== "object" || !["name", "note", "tags", "experiment_id"].some((k) => k in body)) {
+        return problem(422, "SCHEMA_INVALID", "Invalid request", "set at least one of name, note, tags and experiment_id");
       }
       const next: Run = { ...run, tags: { ...(run.tags ?? {}) }, updated_at: new Date().toISOString() };
       if ("name" in body) {
@@ -146,6 +146,13 @@ export function createTrackingHandlers(state: TrackingState, ctx: { runs: Map<st
         next.name = name;
       }
       if ("note" in body) next.note = body.note || null;
+      // v0.14: move the run to an experiment (null: out of its experiment)
+      if ("experiment_id" in body) {
+        const exp = body.experiment_id ? ctx.experiments?.get(body.experiment_id) : null;
+        if (body.experiment_id && !exp) return problem(422, "SCHEMA_INVALID", "Invalid request", "no such experiment");
+        if (exp?.archived) return problem(409, "CONFLICT", "Conflict", "the experiment is archived");
+        next.experiment_id = body.experiment_id ?? null;
+      }
       for (const [k, v] of Object.entries(body.tags ?? {})) {
         if (!TAG_KEY_RE.test(k) || k.startsWith(RESERVED_TAG_PREFIX)) return problem(422, "SCHEMA_INVALID", "Invalid request", `tag key '${k}' is not allowed`);
         if (v === null) delete next.tags![k];

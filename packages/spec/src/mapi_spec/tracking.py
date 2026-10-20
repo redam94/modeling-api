@@ -1,5 +1,8 @@
 """Run tracking (v0.11): metric, param, tag and log-field keys, budgets and the run-search grammar.
 
+v0.14 adds the media budgets of :class:`TrackingLimits` and the caps of run comparison,
+experiments and saved views (``MAX_COMPARE_*``, ``MAX_EXPERIMENT_*``, :data:`MAX_RUN_VIEWS`).
+
 Every component that records or reads run tracking data agrees on what lives here:
 
 * key and label regexes with their annotated types (:data:`MetricKey`, :data:`ParamKey`,
@@ -39,6 +42,15 @@ from mapi_spec._types import METRIC_RE, StrictModel
 __all__ = [
     "LOG_FIELD_KEY_RE",
     "LOG_LEVELS",
+    "MAX_COMPARE_KEYS",
+    "MAX_COMPARE_MEDIA_ITEMS",
+    "MAX_COMPARE_MEDIA_KEYS",
+    "MAX_COMPARE_PARAMS",
+    "MAX_COMPARE_RUNS",
+    "MAX_COMPARE_SERIES",
+    "MAX_EXPERIMENT_DESCRIPTION_CHARS",
+    "MAX_EXPERIMENT_NAME_CHARS",
+    "MAX_EXPERIMENT_RUNS_WRITE",
     "MAX_LOG_FIELDS",
     "MAX_LOG_FIELD_CHARS",
     "MAX_METRIC_LABELS",
@@ -51,6 +63,7 @@ __all__ = [
     "MAX_RUN_FILTERS",
     "MAX_RUN_NAME_CHARS",
     "MAX_RUN_NOTE_CHARS",
+    "MAX_RUN_VIEWS",
     "MAX_SERIES_PER_HISTORY",
     "MAX_TAGS_PER_RUN",
     "MAX_TAG_VALUE_CHARS",
@@ -124,6 +137,27 @@ SCALAR_STEP: Final = -1
 """Storage sentinel for a point without a step (server only; never on the wire)."""
 MAX_RUN_FILTERS: Final = 8
 MAX_RUN_COLUMNS: Final = 16
+
+# v0.14: run comparison, experiments and saved views
+MAX_COMPARE_RUNS: Final = 10
+"""Runs one ``GET /v1/run-compare`` compares (at least 2)."""
+MAX_COMPARE_KEYS: Final = 12
+"""Metric keys whose histories one comparison returns."""
+MAX_COMPARE_MEDIA_KEYS: Final = 4
+MAX_COMPARE_MEDIA_ITEMS: Final = 50
+"""Items per run and media series in a comparison (evenly thinned; the last is kept)."""
+MAX_COMPARE_SERIES: Final = 16
+"""Series per run and metric key in a comparison."""
+MAX_COMPARE_PARAMS: Final = 2000
+MAX_RUN_VIEWS: Final = 200
+"""Saved run views per project."""
+MAX_EXPERIMENT_RUNS_WRITE: Final = 200
+"""Run ids one ``POST /v1/experiments/{id}/runs`` adds (and removes)."""
+MAX_EXPERIMENT_NAME_CHARS: Final = 200
+MAX_EXPERIMENT_DESCRIPTION_CHARS: Final = 20_000
+
+_MAX_IMAGE_BYTES: Final = 8 * 1024 * 1024
+"""= :data:`mapi_spec.media.MAX_IMAGE_BYTES` (media imports this module; a test pins them)."""
 
 _METRIC_KEY = re.compile(METRIC_KEY_RE)
 _LABEL_KEY = re.compile(METRIC_LABEL_KEY_RE)
@@ -262,6 +296,16 @@ class TrackingLimits(StrictModel):
         "SANDBOX_VIOLATION",
     )
     flush_interval_s: float = Field(1.0, ge=0.1, le=30)
+    media_items: int = Field(1000, ge=0, description="Distinct media rows per run (v0.14)")
+    media_bytes: int = Field(
+        256 * 1024 * 1024, ge=0, description="Sum of the stored media bytes per run (v0.14)"
+    )
+    media_item_bytes: int = Field(
+        _MAX_IMAGE_BYTES,
+        ge=1024,
+        le=_MAX_IMAGE_BYTES,
+        description="Bytes of one media item (v0.14)",
+    )
 
 
 # ================================================================================== run search

@@ -107,11 +107,12 @@ describe("metrics model", () => {
 
 describe("run stream tracking frames", () => {
   const initial: RunStreamState = { status: "open", detail: null, events: [], progress: null, trackingTick: 0, changedKeys: [] };
-  const frame = (keys: string[], extra: { params?: boolean; tags?: boolean } = {}) => ({
+  const frame = (keys: string[], extra: { params?: boolean; tags?: boolean; media?: boolean } = {}) => ({
     run_id: "run_1",
     series: keys.map((k) => series(k, {})),
     params: extra.params ?? false,
     tags: extra.tags ?? false,
+    media: extra.media ?? false,
   });
 
   it("counts frames and exposes the changed keys, never storing them as events", () => {
@@ -128,12 +129,18 @@ describe("run stream tracking frames", () => {
     let c = mergeTracking(null, frame(["loss"]));
     c = mergeTracking(c, frame(["rmse"], { tags: true }));
     expect([...c.keys].sort()).toEqual(["loss", "rmse"]);
-    expect(c).toMatchObject({ params: false, tags: true });
+    expect(c).toMatchObject({ params: false, tags: true, media: false });
+    // v0.14: a media frame in the window refetches the media of the run.
+    c = mergeTracking(c, frame([], { media: true }));
+    c = mergeTracking(c, frame(["loss"]));
+    expect(c.media).toBe(true);
     expect(trackingKeys(frame(["b", "a", "b"]))).toEqual(["a", "b"]);
   });
 
   it("validates the frame JSON", () => {
-    expect(parseTrackingFrame({ run_id: "run_1", series: [series("loss", {}), { key: 3 }], params: true })).toMatchObject({ params: true, tags: false });
+    expect(parseTrackingFrame({ run_id: "run_1", series: [series("loss", {}), { key: 3 }], params: true })).toMatchObject({ params: true, tags: false, media: false });
+    expect(parseTrackingFrame({ run_id: "run_1", series: [], media: true })).toMatchObject({ media: true });
+    expect(parseTrackingFrame({ run_id: "run_1", series: [], media: "yes" })).toMatchObject({ media: false });
     expect(parseTrackingFrame({ run_id: "run_1", series: [series("loss", {}), { key: 3 }] })!.series).toHaveLength(1);
     expect(parseTrackingFrame({ series: [] })).toBeNull();
     expect(parseTrackingFrame([])).toBeNull();

@@ -1,0 +1,516 @@
+{
+  "generated_by": "packages/spec/tests/test_compare_media_contract.py (MAPI_UPDATE_SNAPSHOTS=1); do not edit",
+  "vectors": [
+    {
+      "kind": "ref",
+      "input": "name",
+      "text": "name",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "created_at",
+      "text": "created_at",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": " name ",
+      "text": "name",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.rmse",
+      "text": "metric.rmse",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.rmse.min",
+      "text": "metric.rmse.min",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.rmse.max",
+      "text": "metric.rmse.max",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.rmse.count",
+      "text": "metric.rmse.count",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.rmse.last",
+      "text": "metric.rmse",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split=val}",
+      "text": "metric.loss{split=val}",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split=val,fold=2}.min",
+      "text": "metric.loss{fold=2,split=val}.min",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{fold=2,split=val}",
+      "text": "metric.loss{fold=2,split=val}",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{}",
+      "text": "metric.loss",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "metric.Loss",
+      "error": "run ref 'metric.Loss': metric key 'Loss' must match ^[a-z][a-z0-9_]{0,63}$ (use labels, not '/' or '.', for qualifiers such as the split or the chain)"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss/val",
+      "error": "run ref 'metric.loss/val': metric key 'loss/val' must match ^[a-z][a-z0-9_]{0,63}$ (use labels, not '/' or '.', for qualifiers such as the split or the chain)"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss.avg",
+      "error": "run ref 'metric.loss.avg': aggregate 'avg' is not one of last, min, max, count"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split}",
+      "error": "run ref 'metric.loss{split}': labels 'split': 'split' is not 'key=value'"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split=val,split=val}",
+      "error": "run ref 'metric.loss{split=val,split=val}': labels 'split=val,split=val': label 'split' is repeated"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{Split=val}",
+      "error": "run ref 'metric.loss{Split=val}': metric label key 'Split' must match ^[a-z][a-z0-9_]{0,31}$"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split=a b}",
+      "error": "run ref 'metric.loss{split=a b}': metric label value 'a b' (label 'split') must match ^[A-Za-z0-9_.\\-]{1,63}$"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.",
+      "error": "run ref 'metric.': write a metric as 'metric.KEY', 'metric.KEY{label=value}' or 'metric.KEY.AGG'"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss{split=val",
+      "error": "run ref 'metric.loss{split=val': write a metric as 'metric.KEY', 'metric.KEY{label=value}' or 'metric.KEY.AGG'"
+    },
+    {
+      "kind": "ref",
+      "input": "param.lr",
+      "text": "param.lr",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "param.fit.draws",
+      "text": "param.fit.draws",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "param.settings/adstock",
+      "text": "param.settings/adstock",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "param.",
+      "error": "run ref 'param.': param key '' must match ^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$"
+    },
+    {
+      "kind": "ref",
+      "input": "param.a b",
+      "error": "run ref 'param.a b': param key 'a b' must match ^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$"
+    },
+    {
+      "kind": "ref",
+      "input": "tag.team",
+      "text": "tag.team",
+      "error": null
+    },
+    {
+      "kind": "ref",
+      "input": "tag.mapi.source",
+      "error": "run ref 'tag.mapi.source': tag key 'mapi.source' is reserved (prefix 'mapi.')"
+    },
+    {
+      "kind": "ref",
+      "input": "tag.",
+      "error": "run ref 'tag.': tag key '' must match ^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,127}$"
+    },
+    {
+      "kind": "ref",
+      "input": "tags.team",
+      "error": "run ref 'tags.team' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "ref",
+      "input": "bogus",
+      "error": "run ref 'bogus' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "ref",
+      "input": "",
+      "error": "run ref '' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.loss.min.max",
+      "error": "run ref 'metric.loss.min.max': write a metric as 'metric.KEY', 'metric.KEY{label=value}' or 'metric.KEY.AGG'"
+    },
+    {
+      "kind": "ref",
+      "input": "param.xyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "error": "run ref 'param.xyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy': param key 'xyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy' must match ^[A-Za-z0-9_][A-Za-z0-9_.\\-/]{0,249}$"
+    },
+    {
+      "kind": "ref",
+      "input": "metric.a{k1=1,k2=2,k3=3,k4=4,k5=5,k6=6,k7=7,k8=8,k9=9}",
+      "error": "run ref 'metric.a{k1=1,k2=2,k3=3,k4=4,k5=5,k6=6,k7=7,k8=8,k9=9}': a metric has at most 8 labels, got 9"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse < 3",
+      "text": "metric.rmse",
+      "op": "<",
+      "value": 3.0,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse<3",
+      "text": "metric.rmse",
+      "op": "<",
+      "value": 3.0,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse <= 0.5",
+      "text": "metric.rmse",
+      "op": "<=",
+      "value": 0.5,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse >= -1e3",
+      "text": "metric.rmse",
+      "op": ">=",
+      "value": -1000.0,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse != 2",
+      "text": "metric.rmse",
+      "op": "!=",
+      "value": 2.0,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse = 1_000",
+      "text": "metric.rmse",
+      "op": "=",
+      "value": 1000.0,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.loss{split=val}.min > 0.1",
+      "text": "metric.loss{split=val}.min",
+      "op": ">",
+      "value": 0.1,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse ~ 3",
+      "error": "filter 'metric.rmse ~ 3': a metric filter takes one of <= >= != < > ="
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse < abc",
+      "error": "filter 'metric.rmse < abc': 'abc' is not a number"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse < inf",
+      "error": "filter 'metric.rmse < inf': the value must be a finite number"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse < nan",
+      "error": "filter 'metric.rmse < nan': the value must be a finite number"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse",
+      "error": "filter 'metric.rmse' has no operator (one of <= >= != < > = ~)"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse <",
+      "error": "filter 'metric.rmse <': '' is not a number"
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr = 0.01",
+      "text": "param.lr",
+      "op": "=",
+      "value": "0.01",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr < 0.01",
+      "text": "param.lr",
+      "op": "<",
+      "value": 0.01,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr ~ adam",
+      "text": "param.lr",
+      "op": "~",
+      "value": "adam",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr != x",
+      "text": "param.lr",
+      "op": "!=",
+      "value": "x",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr >= 1e-3",
+      "text": "param.lr",
+      "op": ">=",
+      "value": 0.001,
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr < x",
+      "error": "filter 'param.lr < x': 'x' is not a number"
+    },
+    {
+      "kind": "filter",
+      "input": "param.lr = ",
+      "text": "param.lr",
+      "op": "=",
+      "value": "",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "tag.team = growth",
+      "text": "tag.team",
+      "op": "=",
+      "value": "growth",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "tag.team ~ grow",
+      "text": "tag.team",
+      "op": "~",
+      "value": "grow",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "tag.team != a",
+      "text": "tag.team",
+      "op": "!=",
+      "value": "a",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "tag.team < 3",
+      "error": "filter 'tag.team < 3': a tag filter takes one of != = ~"
+    },
+    {
+      "kind": "filter",
+      "input": "name = best run",
+      "text": "name",
+      "op": "=",
+      "value": "best run",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "name ~ adstock",
+      "text": "name",
+      "op": "~",
+      "value": "adstock",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "name != x",
+      "error": "filter 'name != x': a name filter takes one of = ~"
+    },
+    {
+      "kind": "filter",
+      "input": "created_at > 2026-01-01",
+      "error": "filter 'created_at > 2026-01-01': 'created_at' is valid only in order_by and column"
+    },
+    {
+      "kind": "filter",
+      "input": "bogus = 1",
+      "error": "filter 'bogus = 1': run ref 'bogus ' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "filter",
+      "input": "= 1",
+      "error": "filter '= 1': run ref '' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.loss{split=v=1} < 2",
+      "error": "filter 'metric.loss{split=v=1} < 2': run ref 'metric.loss{split=v=1} ': metric label value 'v=1' (label 'split') must match ^[A-Za-z0-9_.\\-]{1,63}$"
+    },
+    {
+      "kind": "filter",
+      "input": "param.path = a<b",
+      "text": "param.path",
+      "op": "=",
+      "value": "a<b",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "tag.k = a=b",
+      "text": "tag.k",
+      "op": "=",
+      "value": "a=b",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse =< 3",
+      "error": "filter 'metric.rmse =< 3': '< 3' is not a number"
+    },
+    {
+      "kind": "filter",
+      "input": "metric.rmse !~ 3",
+      "error": "filter 'metric.rmse !~ 3': the operator is not one of <= >= != < > = ~"
+    },
+    {
+      "kind": "filter",
+      "input": "param.name = it's",
+      "text": "param.name",
+      "op": "=",
+      "value": "it's",
+      "error": null
+    },
+    {
+      "kind": "filter",
+      "input": "param.x = \"q\"",
+      "text": "param.x",
+      "op": "=",
+      "value": "\"q\"",
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "metric.rmse",
+      "text": "metric.rmse",
+      "descending": false,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "-metric.rmse",
+      "text": "metric.rmse",
+      "descending": true,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": " -metric.loss{split=val}.min ",
+      "text": "metric.loss{split=val}.min",
+      "descending": true,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "name",
+      "text": "name",
+      "descending": false,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "-created_at",
+      "text": "created_at",
+      "descending": true,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "param.lr",
+      "text": "param.lr",
+      "descending": false,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "-tag.team",
+      "text": "tag.team",
+      "descending": true,
+      "error": null
+    },
+    {
+      "kind": "order",
+      "input": "--metric.rmse",
+      "error": "order_by '--metric.rmse': run ref '-metric.rmse' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "order",
+      "input": "-",
+      "error": "order_by '-': run ref '' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "order",
+      "input": "bogus",
+      "error": "order_by 'bogus': run ref 'bogus' must be 'metric.KEY', 'param.KEY', 'tag.KEY', 'name' or 'created_at'"
+    },
+    {
+      "kind": "order",
+      "input": "metric.rmse desc",
+      "error": "order_by 'metric.rmse desc': run ref 'metric.rmse desc': metric key 'rmse desc' must match ^[a-z][a-z0-9_]{0,63}$ (use labels, not '/' or '.', for qualifiers such as the split or the chain)"
+    }
+  ]
+}

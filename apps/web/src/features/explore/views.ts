@@ -77,11 +77,11 @@ export const CLASSIC_DATA_SECTIONS = [
   "quality",
 ] as const;
 
-/** The sections for scientific data (pictures of N-D data: images, maps, networks, ...). */
-export const SCIENCE_SECTIONS = ["structure", "images", "profiles", "map", "network", "tree", "circular", "points"] as const;
+/** The sections for scientific data (pictures of N-D data: images, maps, networks, ...; v0.14: + `gallery`). */
+export const SCIENCE_SECTIONS = ["structure", "images", "gallery", "profiles", "map", "network", "tree", "circular", "points"] as const;
 export type ScienceSection = (typeof SCIENCE_SECTIONS)[number];
 
-/** Every Data Explorer section, in the order of `mapi_spec.views.DATA_SECTIONS` (21). */
+/** Every Data Explorer section, in the order of `mapi_spec.views.DATA_SECTIONS` (22). */
 export const DATA_SECTIONS = [...CLASSIC_DATA_SECTIONS, ...SCIENCE_SECTIONS] as const;
 export type DataSection = (typeof DATA_SECTIONS)[number];
 
@@ -131,6 +131,7 @@ export interface SectionViews {
   quality: QualityView;
   structure: StructureView;
   images: ImagesView;
+  gallery: GalleryView;
   profiles: ProfilesView;
   map: MapView;
   network: NetworkView;
@@ -168,6 +169,7 @@ export const VIEW_FORMAT: { [S in ExplorerSection]: string } = {
   quality: "mapi.data-explorer.quality/v1",
   structure: "mapi.data-explorer.structure/v1",
   images: "mapi.data-explorer.images/v1",
+  gallery: "mapi.data-explorer.gallery/v1",
   profiles: "mapi.data-explorer.profiles/v1",
   map: "mapi.data-explorer.map/v1",
   network: "mapi.data-explorer.network/v1",
@@ -282,6 +284,13 @@ export type CircularPair = V["CircularPair"];
 export type CircularView = V["CircularView"];
 export type PointAnswers = V["PointAnswers"];
 export type PointsView = V["PointsView"];
+
+// v0.14: colour pictures and the gallery of an image stack (`mapi_spec.views`).
+export type RgbRaster = V["RgbRaster"];
+export type GalleryItem = V["GalleryItem"];
+export type GalleryFacet = V["GalleryFacet"];
+/** `gallery`: thumbnails of the images of one variable, an even sample per facet level. */
+export type GalleryView = V["GalleryView"] & { items: GalleryItem[]; facets: GalleryFacet[] };
 
 /** The hints of an explore run (`DataExploreRequest.hints`): they override the detection. */
 export type StructureHints = ApiSchemas["StructureHints"];

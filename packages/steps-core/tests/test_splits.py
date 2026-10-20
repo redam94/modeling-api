@@ -24,6 +24,8 @@ def test_catalog_entries() -> None:
         "core.leave_group_out",
         "core.last_per_group",
         "core.mask_block",
+        "core.column",
+        "core.stratified",
     ]
     for e in entries:
         assert e.ref.endswith("@1.0.0")
@@ -74,3 +76,21 @@ def test_group_and_cell_splits(weekly: xr.Dataset) -> None:
     with pytest.raises(MapiError) as err:
         ms.split_strategy("mask_block").split(weekly, {"dims": ["geo"], "fraction": 0.5})
     assert err.value.code is ErrorCode.SPLIT_INVALID
+
+
+def test_column_and_stratified_strategies() -> None:
+    """v0.14: the row splits of image (and other unit-level) data."""
+    n = 12
+    ds = xr.Dataset(
+        {"label": ("image", np.array(["a", "b", "c"] * 4))},
+        coords={"image": [f"{i:02d}" for i in range(n)], "split": ("image", ["train", "test"] * 6)},
+    )
+    col = ms.split_strategy("core.column")
+    assert not col.ordered and not col.masks_cells
+    res = col.split(ds, {"dim": "image", "column": "split"})
+    assert res.holdout.sizes["image"] == 6 and set(res.holdout.split.values) == {"test"}
+    strat = ms.split_strategy("stratified@1")
+    res = strat.split(ds, {"dim": "image", "by": "label", "fraction": 0.5, "seed": 2})
+    assert sorted(res.holdout.label.values) == ["a", "a", "b", "b", "c", "c"]
+    with pytest.raises(ValidationError):
+        strat.parse({"dim": "image", "by": "label", "fraction": 1.5})

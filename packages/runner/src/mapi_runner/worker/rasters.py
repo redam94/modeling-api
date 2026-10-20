@@ -1,5 +1,6 @@
 """Quantised rasters for the field viewer (Model Explorer ``fields``, Data Explorer
-``images``): uint16 encoding, NaN-aware block means, even thinning and arrow grids."""
+``images``): uint16 encoding, NaN-aware block means, even thinning and arrow grids; v0.14:
+RGB rasters of colour pictures and their luminance."""
 
 from __future__ import annotations
 
@@ -9,9 +10,29 @@ import warnings
 from typing import Any
 
 import numpy as np
-from mapi_spec.views import FIELD_LEVELS, FIELD_NAN, MAX_FIELD_ARROWS, FieldArrows, FieldRaster
+from mapi_spec.views import (
+    FIELD_LEVELS,
+    FIELD_NAN,
+    MAX_FIELD_ARROWS,
+    FieldArrows,
+    FieldRaster,
+    RgbRaster,
+)
 
-__all__ = ["arrows", "block_labels", "block_mean", "encode_raster", "even"]
+__all__ = [
+    "LUMA",
+    "arrows",
+    "block_labels",
+    "block_mean",
+    "encode_raster",
+    "encode_rgb",
+    "even",
+    "luminance",
+    "to_uint8",
+]
+
+LUMA = (0.299, 0.587, 0.114)
+"""ITU-R BT.601 weights of red, green and blue in the brightness of a colour."""
 
 
 def _fv(x: Any) -> float | None:
@@ -85,3 +106,32 @@ def arrows(mean: np.ndarray) -> FieldArrows:
         u=[[_fv(v) for v in row] for row in coarse[0]],
         v=[[_fv(v) for v in row] for row in coarse[1]],
     )
+
+
+def luminance(values: np.ndarray) -> np.ndarray:
+    """The brightness ``0.299 r + 0.587 g + 0.114 b`` of RGB values ``(..., 3)`` (float32;
+    NaN where a channel is missing)."""
+    x = np.asarray(values, dtype=np.float32)
+    return np.asarray(x[..., 0] * LUMA[0] + x[..., 1] * LUMA[1] + x[..., 2] * LUMA[2])
+
+
+def to_uint8(values: np.ndarray, lo: float = 0.0, hi: float = 255.0) -> np.ndarray:
+    """Values mapped from ``[lo, hi]`` onto 0..255 (clipped and rounded; NaN -> 0). The
+    default range keeps 8-bit pixels as they are."""
+    x = np.asarray(values, dtype=np.float64)
+    span = hi - lo
+    if span > 0 and math.isfinite(span):
+        x = (x - lo) * (255.0 / span)
+    else:
+        x = np.where(np.isfinite(x), 0.0, x)
+    return np.asarray(np.clip(np.nan_to_num(np.rint(x), nan=0.0), 0, 255), dtype=np.uint8)
+
+
+def encode_rgb(values: np.ndarray, lo: float = 0.0, hi: float = 255.0) -> RgbRaster:
+    """RGB values ``(height, width, 3)`` as a :class:`~mapi_spec.views.RgbRaster` (3 bytes a
+    cell, row-major), mapped from ``[lo, hi]`` (default: 8-bit values as they are)."""
+    x = np.asarray(values)
+    if x.ndim != 3 or x.shape[-1] != 3:
+        raise ValueError(f"an rgb raster needs (height, width, 3) values, not {x.shape}")
+    data = to_uint8(x, lo, hi) if x.dtype != np.uint8 else x
+    return RgbRaster(data=base64.b64encode(np.ascontiguousarray(data).tobytes()).decode("ascii"))

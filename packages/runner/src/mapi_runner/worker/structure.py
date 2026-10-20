@@ -13,7 +13,8 @@ shape               found when
 ``image``           a numeric variable on a spatial pair of dims (``row``/``col``, ``y``/``x``,
                     ``lat``/``lon``, with a prefix or suffix), else (no time dim, no media,
                     spend or control) on its last two numeric dims of 8+ levels
-``vector_field``    an image with a ``component`` dim of size 2
+``vector_field``    an image with a ``component`` dim of size 2 (``channel``: a ``channel``,
+                    ``band`` or ``rgb`` dim of 1, 3 or 4 levels; v0.14: 3 or 4 make colour)
 ``circular``        a numeric variable in degrees or radians (not a lat/lon/temperature), or in
                     hours/days/months with a name of a time of day (``hour_lst``)
 ``profile``         variables along a numeric non-time axis (position, multipole, ...)
@@ -85,6 +86,10 @@ ANGLE_PERIODS: Final[dict[str, tuple[float, str]]] = {
 """Units of a circular variable: ``units -> (period, canonical units)``."""
 _COMPONENT_LABELS: Final = ({"x", "y"}, {"u", "v"}, {"0", "1"}, {"dx", "dy"}, {"east", "north"})
 _CHANNEL_NAMES: Final = ("rgb", "channel", "channels", "band", "bands", "colour", "color")
+_CLASS_NAMES: Final = ("label", "labels", "class", "classes", "category", "target", "species")
+"""Names of a variable or coord along the frame dim that gives the class of each image: the
+class means of the ``images`` section use it first (v0.14)."""
+_MAX_GROUP_LEVELS: Final = 12
 _X_STRONG: Final = frozenset({"col", "column", "lon", "lng", "longitude", "easting"})
 _Y_STRONG: Final = frozenset({"row", "lat", "latitude", "northing"})
 _X_BARE: Final = frozenset({"x", "east"})
@@ -138,6 +143,7 @@ _NOT_FOR: Final = {
     "tree": "no variable gives the parent of each node of a tree",
     "circular": "no variable is an angle, a direction or a time of day",
     "points": "no two variables give the x and y positions of points",
+    "gallery": "no variable holds a stack of images",
 }
 
 
@@ -407,6 +413,33 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}" + ("" if low.endswith("s") else "s")
 
 
+def _group_along(ds: xr.Dataset, frame: str, roles: Mapping[str, Role]) -> str | None:
+    """The coord or 1-D variable (text or integers) along ``frame`` with 2 to 12 levels whose
+    means the ``images`` section shows: a class (``label``, ``class`` or a target) first, then
+    coords, then variables (v0.14: a 1-D ``label`` variable of an image folder)."""
+    cands: list[tuple[int, int, str]] = []
+    names = [str(n) for n in ds.coords] + [str(n) for n in ds.data_vars]
+    for k, name in enumerate(names):
+        da = ds[name]
+        is_var = name in ds.data_vars
+        if name == frame or da.dims != (frame,) or (is_var and da.dtype.kind not in "iuUOSTb"):
+            continue
+        classy = name.lower() in _CLASS_NAMES or (is_var and roles.get(name) is Role.TARGET)
+        cands.append((0 if classy else (1 if not is_var else 2), k, name))
+    for _rank, _k, name in sorted(cands):
+        levels = np.unique(np.asarray(ds[name].values).astype(str))
+        if 2 <= levels.size <= _MAX_GROUP_LEVELS:
+            return name
+    return None
+
+
+def _gallery_applies(s: Structure, sizes: Mapping[str, int]) -> bool:
+    """An image shape (not a vector field) with a frame dim of 2 or more levels."""
+    return any(
+        "frame" in shape.dims and sizes.get(shape.dims["frame"], 0) >= 2 for shape in s.of("image")
+    )
+
+
 def detect_structure(
     ds: xr.Dataset,
     schema: DataSchema | None,
@@ -594,7 +627,11 @@ def detect_structure(
             None,
         )
         chan = next(
-            (d for d in rest if sizes[d] in (3, 4) and d.lower() in _CHANNEL_NAMES and d != comp),
+            (
+                d
+                for d in rest
+                if sizes[d] in (1, 3, 4) and d.lower() in _CHANNEL_NAMES and d != comp
+            ),
             None,
         )
         rest2 = [d for d in rest if d not in (comp, chan)]
@@ -626,15 +663,7 @@ def detect_structure(
             dim_roles[comp] = "component"
         if chan:
             dim_roles[chan] = "channel"
-        group_coord = None
-        if frame is not None:
-            for cname, coord in ds.coords.items():
-                cn = str(cname)
-                if cn != frame and coord.dims == (frame,):
-                    cvals = np.asarray(coord.values)
-                    if 2 <= np.unique(cvals.astype(str)).size <= 12:
-                        group_coord = cn
-                        break
+        group_coord = _group_along(ds, frame, roles) if frame is not None else None
         dims_map = {"y": y, "x": x}
         for role, d in (("frame", frame), ("component", comp), ("channel", chan)):
             if d is not None:
@@ -1014,6 +1043,8 @@ def _not_applicable(
     for section, ks in need.items():
         if not kinds & ks:
             out[section] = _NOT_FOR[section]
+    if not _gallery_applies(s, {str(d): int(n) for d, n in ds.sizes.items()}):
+        out["gallery"] = _NOT_FOR["gallery"]
     if s.time_dim is None and s.sequence_dim is None:
         out["timeseries"] = "the data has no time dimension"
     if s.time_dim is None:
@@ -1052,6 +1083,8 @@ def _recommended(s: Structure, na: Mapping[str, str], ndims: int) -> tuple[str, 
         if sec in ("timeseries", "correlation") or sec in order:
             continue
         order.append(sec)
+        if sec == "images":
+            order.append("gallery")  # left out below when it does not apply
     order += ["quality", "distributions"]
     if s.time_dim is not None or s.sequence_dim is not None:
         order.append("timeseries")

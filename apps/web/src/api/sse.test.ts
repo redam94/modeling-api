@@ -129,7 +129,7 @@ describe("followRunEvents", () => {
     const calls: (string | null)[] = [];
     const summary = { key: "step_size", labels: { chain: "0" }, attempt: 1, count: 3, last: 0.12, last_step: 30, min: 0.12, max: 0.6, first_ts: "t", last_ts: "t" };
     const responses = [
-      sse(frame("state", event(6), 6) + frame("tracking", { run_id: "run_1", series: [summary], params: true, tags: false }) + frame("tracking", { series: [] })),
+      sse(frame("state", event(6), 6) + frame("tracking", { run_id: "run_1", series: [summary], params: true, tags: false, media: true }) + frame("tracking", { series: [] })),
       sse(frame("end", run("succeeded"))),
     ];
     const fetchImpl = vi.fn(async (_u: RequestInfo | URL, init?: RequestInit) => {
@@ -145,7 +145,7 @@ describe("followRunEvents", () => {
     });
     expect(onEvent.mock.calls.map((c) => (c[0] as RunEventView).id)).toEqual([6]);
     expect(onTracking).toHaveBeenCalledTimes(1); // the malformed frame (no run_id) is dropped
-    expect(onTracking).toHaveBeenCalledWith({ run_id: "run_1", series: [summary], params: true, tags: false });
+    expect(onTracking).toHaveBeenCalledWith({ run_id: "run_1", series: [summary], params: true, tags: false, media: true });
     expect(calls).toEqual([null, "6"]);
   });
 

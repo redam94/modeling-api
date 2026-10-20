@@ -11,6 +11,7 @@ from mapi_sdk.bundle import assert_no_pickle
 from mapi_sdk.errors import BundleError
 from mapi_sklearn.estimators import (
     ESTIMATORS,
+    GBM_MODULES,
     build_estimator,
     choice_from_instance,
     get_entry,
@@ -27,6 +28,14 @@ from sklearn.svm import SVR
 KINDS = sorted(ESTIMATORS)
 
 
+def _importable(module: str) -> bool:
+    try:
+        __import__(module)
+    except ImportError:
+        return False
+    return True
+
+
 def _data(task: str, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
     rng = np.random.default_rng(seed)
     X = rng.normal(size=(120, 3))
@@ -38,11 +47,12 @@ def _data(task: str, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
 
 
 def test_registry_entries_are_consistent() -> None:
-    assert len(KINDS) == 12
+    assert len(KINDS) == 15
     for kind, entry in ESTIMATORS.items():
         assert entry.kind == kind
         assert entry.choice.model_fields["kind"].annotation is not None
-        assert entry.load_class().__name__ == entry.name
+        if entry.module not in GBM_MODULES or _importable(entry.module):
+            assert entry.load_class().__name__ == entry.name
         if entry.quantile == "per_level":
             assert entry.quantile_setter is not None
         assert entry.task in ("regression", "classification")
@@ -58,6 +68,8 @@ def test_registry_entries_are_consistent() -> None:
 @pytest.mark.parametrize("kind", KINDS)
 def test_every_estimator_fits_and_round_trips_without_pickle(kind: str) -> None:
     entry = get_entry(kind)
+    if entry.module in GBM_MODULES:
+        pytest.importorskip(entry.module)
     choice = resolve_choice({"kind": kind})
     X, y = _data(entry.task)
     est = build_estimator(choice, seed=3, n_jobs=1)
@@ -66,13 +78,17 @@ def test_every_estimator_fits_and_round_trips_without_pickle(kind: str) -> None:
     assert_no_pickle({artifact_name(entry, "point", 0): raw})
     assert b"\x80\x04\x95" not in raw[:64]
     back = load_estimator(entry, raw, name="m")
-    assert type(back) is type(est)
+    if entry.persistence == "lightgbm":  # a booster wrapped as a classifier
+        assert type(back).__name__ == "_BoosterClassifier"
+    else:
+        assert type(back) is type(est)
     if entry.task == "classification":
         np.testing.assert_allclose(back.predict_proba(X), est.predict_proba(X))
     else:
         np.testing.assert_allclose(back.predict(X), est.predict(X))
     name = artifact_name(entry, "quantile", 7)
-    assert name == f"quantile/0007{'.xgb.json' if entry.persistence == 'xgboost' else '.skops'}"
+    suffix = {"xgboost": ".xgb.json", "lightgbm": ".lgb.txt", "catboost": ".cb.json"}
+    assert name == f"quantile/0007{suffix.get(entry.persistence, '.skops')}"
 
 
 @pytest.mark.parametrize(

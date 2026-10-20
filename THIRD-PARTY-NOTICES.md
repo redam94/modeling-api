@@ -12,7 +12,7 @@ are compiled into the web app and the plot sandbox, so their licence texts (wher
 the package ships one) are reproduced at the end of this file. NOTICE files are
 reproduced verbatim.
 
-## Python packages (138)
+## Python packages (141)
 
 Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 
@@ -32,6 +32,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `attrs` | 26.1.0 | MIT |
 | `better-optimize` | 0.4.2 | MIT |
 | `cachetools` | 6.2.6 | MIT |
+| `catboost` | 1.2.10 | Apache-2.0 |
 | `certifi` | 2026.7.22 | MPL-2.0 |
 | `cffi` | 2.1.1 | MIT-0 |
 | `charset-normalizer` | 3.5.2 | MIT |
@@ -49,6 +50,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `fonttools` | 4.67.0 | MIT |
 | `formulaic` | 1.2.2 | MIT |
 | `google-crc32c` | 1.9.0 | Apache-2.0 |
+| `graphviz` | 0.21 | MIT |
 | `greenlet` | 3.5.6 | MIT AND PSF-2.0 |
 | `h11` | 0.16.0 | MIT |
 | `h5netcdf` | 1.8.1 | BSD-3-Clause |
@@ -68,6 +70,7 @@ Shipped in the runner, worker, API and GCS-shim images (`uv.lock`).
 | `kiwisolver` | 1.5.1 | BSD-3-Clause |
 | `lark` | 1.3.1 | MIT |
 | `lazy-loader` | 0.6 | BSD-3-Clause |
+| `lightgbm` | 4.7.0 | MIT |
 | `llvmlite` | 0.49.0 | BSD-2-Clause AND Apache-2.0 WITH LLVM-exception |
 | `loguru` | 0.7.3 | MIT |
 | `mako` | 1.4.3 | MIT |

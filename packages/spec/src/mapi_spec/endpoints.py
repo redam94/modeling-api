@@ -537,8 +537,8 @@ def policy_relaxations(old: EvaluationPolicy, new: EvaluationPolicy) -> list[str
     return out
 
 
-_FAMILY = {"float64": "num", "float32": "num", "int64": "num", "int32": "num", "bool": "bool",
-           "str": "str", "datetime64[ns]": "time"}  # fmt: skip
+_FAMILY = {"float64": "num", "float32": "num", "int64": "num", "int32": "num", "uint8": "num",
+           "bool": "bool", "str": "str", "datetime64[ns]": "time"}  # fmt: skip
 
 
 def schema_breaks(old: DataSchema, new: DataSchema) -> list[str]:

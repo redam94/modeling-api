@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1.26@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 #
-# mapi/base-ml - the tabular ML runner image (plan §7 tier T0): scikit-learn and xgboost.
+# mapi/base-ml - the tabular ML runner image (plan §7 tier T0): scikit-learn, xgboost, LightGBM
+# and CatBoost.
 #
 # Ships mapi-runner with the SDK, built-in steps, plot recipes and mapi-sklearn, whose
-# `sklearn.*` plugins (point, quantile, bootstrap, conformal regressors and a classifier) are
-# the tabular models. It deliberately contains NO PyMC/PyTensor (the build fails if they
-# appear), which keeps it small and free of a C++ toolchain. The `tabular.*` plugin package is
+# `sklearn.*` plugins (point, quantile, bootstrap, conformal regressors, a binary and a multiclass
+# classifier) are the tabular models. The `gbm` extra of mapi-sklearn adds LightGBM and CatBoost
+# (LightGBM links libgomp, installed with apt). It deliberately contains NO PyMC/PyTensor (the
+# build fails if they appear), which keeps it small and free of a C++ toolchain. The `tabular.*` plugin package is
 # not included because its `tabular.hierarchical_glm` model is a PyMC model; it ships in
 # base-bayes. Build from the repository root:
 #
@@ -19,12 +21,12 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 # ------------------------------------------------------------------- image-specific settings
 ARG MAPI_IMAGE_NAME=base-ml
-ARG MAPI_DESCRIPTION="modeling-api runner: scikit-learn/xgboost models (sklearn.*), steps and plot recipes"
-ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn"
+ARG MAPI_DESCRIPTION="modeling-api runner: scikit-learn/xgboost/LightGBM/CatBoost models (sklearn.*), steps and plot recipes"
+ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-sklearn[gbm]"
 # xgboost pulls a 300 MB NVIDIA NCCL wheel on Linux; it is only used for multi-GPU training.
 ARG MAPI_NO_INSTALL="nvidia-nccl-cu13"
-ARG MAPI_APT_PACKAGES="tini"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy h5py h5netcdf mapi-sklearn scikit-learn xgboost skops vl-convert-python"
+ARG MAPI_APT_PACKAGES="tini libgomp1"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows statsmodels scipy h5py h5netcdf mapi-sklearn scikit-learn xgboost skops vl-convert-python pillow lightgbm catboost"
 ARG MAPI_ASSERT_ABSENT="pymc pytensor nutpie numba pymc-extras mapi-pymc mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-science mapi-plugin-causal mapi-server mapi-gcs-shim nvidia-nccl-cu13"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)

@@ -38,7 +38,13 @@ predicted probabilities (the mean over draws), per held-out cell with a label:
 ``log_score``       mean log probability of the observed label (higher is better;
                     probabilities are floored at 1e-12)
 ``brier``           mean multi-class Brier score ``sum_j (p_j - [j = y])^2`` (0 is perfect)
+``auc``             macro one-vs-rest ROC AUC: the mean over the categories that have both
+                    outcomes in the holdout (skipped when fewer than two such categories)
 ==================  =========================================================================
+
+Multiclass classifiers (v0.14) predict ``y_hat(*rows, class)`` with the attribute
+``meaning = "class_probability"``; for those the observed target may also be numeric labels
+(integral numbers compare as text, ``3.0`` as ``"3"``).
 
 Labels are matched to categories exactly, else after lower-casing and collapsing every run
 of non-alphanumerics to ``_`` (``Coke Zero`` matches ``coke_zero``); a label matching no
@@ -93,6 +99,7 @@ CATEGORICAL_METRICS: tuple[str, ...] = (
     "accuracy_lift",
     "log_score",
     "brier",
+    "auc",
 )
 """Holdout metrics of categorical targets (see the module doc)."""
 BINARY_METRICS: tuple[str, ...] = ("auc", "brier", "log_score", "accuracy")
@@ -168,9 +175,12 @@ def categorical_dim(pred: xr.DataArray, observed: xr.DataArray) -> str | None:
     """The category dim of a probability prediction for a text target, else ``None``.
 
     ``pred`` must carry every dim of ``observed`` plus exactly one more (besides sample
-    dims such as ``chain`` and ``draw``), and ``observed`` must hold labels.
+    dims such as ``chain`` and ``draw``), and ``observed`` must hold labels, or numeric
+    labels when ``pred`` says it holds class probabilities (``meaning: class_probability``).
     """
-    if not _is_text(observed):
+    if not _is_text(observed) and not (
+        pred.attrs.get("meaning") == "class_probability" and observed.dtype.kind in "iufb"
+    ):
         return None
     extra = [str(d) for d in pred.dims if d not in observed.dims and str(d) not in _SAMPLE_DIMS]
     if len(extra) != 1 or not set(map(str, observed.dims)) <= set(map(str, pred.dims)):
@@ -182,6 +192,13 @@ def _label_key(label: Any) -> str:
     return _KEY.sub("_", str(label).strip().lower()).strip("_")
 
 
+def _label_text(value: Any) -> str:
+    """A label as text; integral numbers drop the fraction (``3.0`` -> ``"3"``)."""
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
 def _label_codes(obs: np.ndarray, categories: Sequence[Any]) -> np.ndarray:
     """Category index per observed label (``-1`` when it matches none)."""
     exact = {str(c): j for j, c in enumerate(categories)}
@@ -191,7 +208,7 @@ def _label_codes(obs: np.ndarray, categories: Sequence[Any]) -> np.ndarray:
     flat = obs.reshape(-1)
     codes = np.full(flat.shape, -1, dtype=np.int64)
     for i, value in enumerate(flat.tolist()):
-        text = str(value)
+        text = _label_text(value)
         codes[i] = exact.get(text, loose.get(_label_key(text), -1))
     return codes.reshape(obs.shape)
 
@@ -228,6 +245,15 @@ def _categorical_metrics(
     hit = codes >= 0
     p_obs = np.where(hit, p[rows, np.where(hit, codes, 0)], 0.0)
     for name in wanted:
+        if name == "auc":
+            auc = _macro_auc(p, codes) if n else None
+            if isinstance(auc, str):
+                skipped[name] = auc
+            elif auc is not None:
+                values[name] = auc
+            else:
+                skipped[name] = "no holdout observations"
+            continue
         if name not in CATEGORICAL_METRICS:
             skipped[name] = "not defined for a categorical target (use accuracy, log_score, brier)"
             continue
@@ -251,6 +277,18 @@ def _categorical_metrics(
                 onehot[rows[hit], codes[hit]] = 1.0
                 values[name] = float(np.mean(((p - onehot) ** 2).sum(axis=1)))
     return values, skipped
+
+
+def _macro_auc(p: np.ndarray, codes: np.ndarray) -> float | str:
+    """Macro one-vs-rest AUC over the categories with both outcomes, or the skip reason."""
+    aucs = [
+        a
+        for j in range(p.shape[1])
+        if (a := binary_auc(p[:, j], (codes == j).astype(np.float64))) is not None
+    ]
+    if len(aucs) < 2:
+        return "AUC needs at least two categories with both outcomes in the holdout"
+    return float(np.mean(aucs))
 
 
 def mase_scale(train: np.ndarray, m: int | None) -> float | None:

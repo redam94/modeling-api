@@ -4,6 +4,9 @@
  * an array mapping (raw HDF5, from an inspect run), and a place in the tree: its node and how
  * it combines with the other files of that node. Files go straight to signed URLs; only the
  * sandboxed ingest (and inspect) runs read them.
+ *
+ * v0.14: an image folder (a zip of images and a manifest table, `image_folder`) has its own
+ * options form and must be the only file of the version.
  */
 import { FileUp, Layers, Plus, Search, Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
@@ -21,11 +24,13 @@ import { parseCsv, type CsvPreview } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
 import { useStartInspect, useUploadInspection } from "./api";
+import { ImageFolderForm } from "./image-folder-form";
 import { ArrayBrowser, Hdf5Mapper } from "./inspection";
 import {
   combineFileText,
   combineSummaryText,
   coordDrafts,
+  DEFAULT_IMAGE_FOLDER,
   DEFAULT_PLACEMENT,
   formatFromFilename,
   initialHdf5Vars,
@@ -35,8 +40,10 @@ import {
   safeName,
   toAssembly,
   toHdf5Mapping,
+  toImageFolderMapping,
   toIngestMapping,
   validateHdf5,
+  validateImageFolder,
   validateMappings,
   validatePlacements,
   type ColumnMapping,
@@ -44,6 +51,7 @@ import {
   type DimPolicy,
   type Hdf5CoordDraft,
   type Hdf5VarDraft,
+  type ImageFolderDraft,
   type Placement,
   type PlacementProblem,
 } from "./mapping";
@@ -61,6 +69,7 @@ const FORMATS: { value: Format; label: string }[] = [
   { value: "zarr_zip", label: "zarr zip" },
   { value: "netcdf", label: "netCDF (or HDF5 written by xarray)" },
   { value: "hdf5", label: "raw HDF5 (map the arrays)" },
+  { value: "image_folder", label: "image folder (zip)" },
 ];
 
 interface SourceUpload {
@@ -83,6 +92,8 @@ interface Source {
   inspection: UploadInspection | null;
   hdf5Vars: Hdf5VarDraft[];
   hdf5Coords: Hdf5CoordDraft[];
+  /** v0.14: the options of an image folder. */
+  images: ImageFolderDraft;
 }
 
 let sourceSeq = 0;
@@ -96,7 +107,7 @@ async function newSource(file: File, format: Format | null): Promise<Source> {
     mappings = initialMappings(preview.header, preview.rows);
   }
   sourceSeq += 1;
-  return { key: `src-${sourceSeq}`, file, format, preview, mappings, placement: { ...DEFAULT_PLACEMENT }, upload: null, inspectRunId: null, inspection: null, hdf5Vars: [], hdf5Coords: [] };
+  return { key: `src-${sourceSeq}`, file, format, preview, mappings, placement: { ...DEFAULT_PLACEMENT }, upload: null, inspectRunId: null, inspection: null, hdf5Vars: [], hdf5Coords: [], images: { ...DEFAULT_IMAGE_FOLDER } };
 }
 
 const tabularFormat = (f: Format | null) => f === "csv" || f === "parquet";
@@ -106,6 +117,7 @@ const cleanName = (name: string) => name.replace(/[/\\\u0000-\u001f]/g, "_");
 function sourceMapping(s: Source): IngestMapping {
   if (tabularFormat(s.format)) return toIngestMapping(s.format, s.mappings);
   if (s.format === "hdf5") return toHdf5Mapping(s.hdf5Vars, s.hdf5Coords);
+  if (s.format === "image_folder") return toImageFolderMapping(s.images);
   return { format: s.format! };
 }
 
@@ -153,7 +165,12 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
               ? s.inspection
                 ? validateHdf5(s.hdf5Vars, s.hdf5Coords, s.inspection.arrays ?? []).map((p) => p.message)
                 : ["List the arrays of the file first (Upload and list the arrays)."]
-              : [],
+              : s.format === "image_folder"
+                ? [
+                    ...validateImageFolder(s.images).map((p) => p.message),
+                    ...(sources.length > 1 ? [`${s.file.name}: an image folder must be the only file of the version. Remove the other files, or upload the images in a new version.`] : []),
+                  ]
+                : [],
         ]),
       ),
     [sources],
@@ -252,7 +269,7 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
         >
           <UploadCloud className="size-6 text-muted-foreground" />
           <p className="max-w-[52ch] text-muted-foreground">
-            Drop a CSV, Parquet, zarr zip, netCDF or HDF5 file here. For a CSV file, this page shows a preview in your browser before the upload. You can select several files: they become one version.
+            Drop a CSV, Parquet, zarr zip, netCDF or HDF5 file, or a zip of images with a manifest table, here. For a CSV file, this page shows a preview in your browser before the upload. You can select several files: they become one version.
           </p>
           <Button variant="outline" onClick={() => inputRef.current?.click()}>
             <FileUp /> Choose files
@@ -468,6 +485,11 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
           onMappings={(f) => onPatch((cur) => ({ mappings: f(cur.mappings) }))}
         />
       ) : null}
+
+      {s.format === "image_folder" && editable ? (
+        <ImageFolderForm id={s.key} name={name} draft={s.images} expert={expert} onChange={(p) => onPatch((cur) => ({ images: { ...cur.images, ...p } }))} />
+      ) : null}
+      {s.format === "image_folder" && editable && !single ? <ProblemList id={`${s.key}-only`} label={`Problems with ${name}`} messages={problems.filter((m) => m.includes("must be the only file"))} /> : null}
 
       {canInspect && editable ? (
         <InspectSection

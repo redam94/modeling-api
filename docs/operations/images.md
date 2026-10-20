@@ -19,7 +19,7 @@ make docker-pin-check                  # every base image pinned by digest?
 | Image | Contents | Runs as | Entry point |
 |---|---|---|---|
 | `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `mmm.*`, `tabular.*` and `sci.*` plugins (`mapi-plugin-science`, which uses SciPy), a C++ compiler for PyTensor | `10001` | `mapi-runner` |
-| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` (`sklearn.*` plugins). **No PyMC.** | `10001` | `mapi-runner` |
+| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` with the `gbm` extra (`sklearn.*` plugins, LightGBM and CatBoost from v0.14) and `libgomp1` (for LightGBM). **No PyMC.** | `10001` | `mapi-runner` |
 | `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc` with the `pathfinder` extra, the `ts.*` plugins (`mapi-plugin-ts` and `mapi-plugin-statsmodels`), the `causal.*` plugins (`mapi-plugin-causal`) and pymc-extras | `10001` | `mapi-runner` |
 | `mapi/worker` | `base-bayes` with the `ts.*` and `causal.*` plugins and `mapi-server` (target `worker` of the base-bayes Dockerfile). Only for compose | `10001` | `mapi-server worker` |
 | `mapi/server` | The control plane: `mapi-server`, `mapi-spec`, the JSON-only `mapi-plots` core, the JSON-only `mapi-workflows` engine, docker-py. **No science dependencies.** | `10001` | `mapi-server api` (or `worker`, `migrate`) |
@@ -30,6 +30,11 @@ make docker-pin-check                  # every base image pinned by digest?
 in `mapi/base-forecast`, and `mapi/base-bayes` does not contain them. pymc-extras (state space
 models and the Pathfinder engine) adds preliz, Numba and Matplotlib. Thus `mapi/base-forecast`
 is larger than in v0.12. `mapi/base-bayes` also contains pymc-extras (the Pathfinder engine).
+
+From v0.14, `mapi-runner` depends on Pillow (for the `image_folder` ingest). Thus all runner
+images contain Pillow. Pillow decodes uploaded images only in the sandboxed ingest run, never
+in the control plane. LightGBM and CatBoost (about 150 MB) are only in `mapi/base-ml`.
+`tabular.image_logistic` runs in `mapi/base-bayes` and does not need Pillow.
 
 `make docker-build IMAGES="server web"` builds a subset. `make docker-build` builds all
 images. It also builds `mapi/worker` when `base-bayes` is in the set. Each image has the OCI
@@ -68,9 +73,11 @@ If an image is not what it claims to be, the build fails:
 
 - **Package assertions.** `images/common/assert_dists.py` does a check of
   `MAPI_ASSERT_PRESENT` and `MAPI_ASSERT_ABSENT` against the real environment. For example,
-  `base-ml` must not contain `pymc`, `pytensor` or `numba`. `server` must not contain
-  `numpy`, `xarray`, `pandas`, `scipy`, `pyarrow`, PyMC, `mapi_sdk`, `mapi_runner` or a
-  plugin.
+  `base-ml` must not contain `pymc`, `pytensor` or `numba`, and must contain `pillow`,
+  `lightgbm` and `catboost` (v0.14). `base-bayes` and `base-forecast` must contain `pillow`
+  and must not contain `lightgbm` or `catboost`. `server` must not contain `numpy`, `xarray`,
+  `pandas`, `scipy`, `pyarrow`, PyMC, `pillow`, `lightgbm`, `catboost`, `mapi_sdk`,
+  `mapi_runner` or a plugin.
 - **Import contracts in the control-plane image.** The `contracts` stage of
   `images/server/Dockerfile` installs import-linter (hash-pinned from `uv.lock`) into a
   temporary copy of the environment. It runs the contracts of the repository against the

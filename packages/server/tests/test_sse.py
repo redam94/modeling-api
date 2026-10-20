@@ -214,6 +214,52 @@ async def test_live_stream_sends_tracking_frames_and_log_levels(ctx: ServerConte
     assert log["json"]["payload"]["fields"] == {"fold": 1}
 
 
+async def test_media_rows_and_experiment_moves_reach_the_stream(ctx: ServerContext) -> None:
+    """v0.14: a stored media item sets ``media`` on a tracking frame (no series), and moving
+    the run to an experiment sends a new snapshot."""
+    from mapi_server_testkit.media import media_payload, png_bytes, upload_media
+
+    att = await _provisioned(ctx)
+    await ctx.hub.start()
+    frames: list[str] = []
+
+    async def consume() -> None:
+        async for frame in sse_stream(ctx, None, att.run_id, 0):
+            frames.append(frame)
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0.2)
+    data = png_bytes(4, 3)
+    payload = media_payload(data)
+    await upload_media(ctx, att.run_id, 1, data, payload.name)
+    await EventIngestor(ctx).ingest(signed_event(att, 0, payload))
+    await asyncio.sleep(0.3)
+    async with ctx.db.session() as s:
+        s.add(
+            m.Experiment(
+                id="exp_live",
+                tenant_id="default",
+                project_id="default",
+                name="live",
+                name_key="live",
+            )
+        )
+        await s.flush()
+        run = await load_run(s, None, att.run_id, for_update=True)
+        run.experiment_id = "exp_live"
+        await notify_run(s, run.id, "run")
+    await asyncio.sleep(0.3)
+    async with ctx.db.session() as s:
+        run = await load_run(s, None, att.run_id, for_update=True)
+        await apply_transition(s, run, RunTrigger.FAIL_USER, Actor.RECONCILER)
+    await asyncio.wait_for(task, 5)
+    parsed = [f for f in parse_frames("".join(frames)) if "event" in f]
+    tracking = [f["json"] for f in parsed if f["event"] == "tracking"]
+    assert any(f["media"] and not f["series"] for f in tracking), tracking
+    snaps = [f["json"]["experiment_id"] for f in parsed if f["event"] == "snapshot"]
+    assert snaps[0] is None and "exp_live" in snaps
+
+
 async def test_tracking_frames_do_not_skip_a_summary_committed_between_reads(
     ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -227,7 +273,7 @@ async def test_tracking_frames_do_not_skip_a_summary_committed_between_reads(
     real = runs_api._tracking_marks
     calls = 0
 
-    async def racing_marks(*args: Any, **kwargs: Any) -> tuple[int, int, int, int]:
+    async def racing_marks(*args: Any, **kwargs: Any) -> tuple[int, int, int, int, int]:
         nonlocal calls
         calls += 1
         if calls == 2:  # the loop's first marks read: the summary read already ran

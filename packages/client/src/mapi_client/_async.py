@@ -148,6 +148,7 @@ from mapi_client._m35_async import (
     AsyncWorkflows,
 )
 from mapi_client._tracking import AsyncRunTracker
+from mapi_client._v014_async import AsyncExperiments, AsyncRunsV014Mixin, AsyncRunViews
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -235,6 +236,8 @@ class AsyncClient:
         self.governance = AsyncGovernance(self)
         self.validations = AsyncValidations(self)
         self.explorations = AsyncExplorations(self)
+        self.experiments = AsyncExperiments(self)
+        self.run_views = AsyncRunViews(self)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -756,11 +759,18 @@ class AsyncSpecs(_Resource):
         return await self._c.send(calls.dry_run_spec(spec_id, revision, idempotency_key))
 
 
-class AsyncRuns(_Resource):
+class AsyncRuns(_Resource, AsyncRunsV014Mixin):
     async def create(
-        self, run: RunCreate | Mapping[str, Any], *, idempotency_key: str | None = None
+        self,
+        run: RunCreate | Mapping[str, Any],
+        *,
+        idempotency_key: str | None = None,
+        experiment_id: str | None = None,
     ) -> Run:
-        return await self._c.send(calls.create_run(as_run_create(run), idempotency_key))
+        body = as_run_create(run)
+        if experiment_id is not None:  # v0.14: the run's experiment (not an archived one)
+            body = body.model_copy(update={"experiment_id": experiment_id})
+        return await self._c.send(calls.create_run(body, idempotency_key))
 
     async def fit(
         self,
@@ -770,6 +780,7 @@ class AsyncRuns(_Resource):
         resource_class: ResourceClass | str | None = None,
         labels: Mapping[str, str] | None = None,
         idempotency_key: str | None = None,
+        experiment_id: str | None = None,
     ) -> Run:
         body = RunCreate(
             kind=RunKind.FIT,
@@ -777,6 +788,7 @@ class AsyncRuns(_Resource):
             revision=revision,
             resource_class=ResourceClass(resource_class) if resource_class else None,
             labels=dict(labels or {}),
+            experiment_id=experiment_id,
         )
         return await self.create(body, idempotency_key=idempotency_key)
 
@@ -795,6 +807,7 @@ class AsyncRuns(_Resource):
         filters: Sequence[str] = (),
         order_by: str | None = None,
         columns: Sequence[str] = (),
+        experiment_id: str | None = None,
         limit: int | None = None,
     ) -> AsyncPaginator[Run]:
         """Runs, newest first unless ``order_by`` says otherwise.
@@ -804,7 +817,7 @@ class AsyncRuns(_Resource):
         ``"param.fit.draws >= 1000"``, ``"tag.stage = candidate"``, ``"name ~ weekly"``),
         ``order_by`` (``"-metric.rmse"``, ``"created_at"``) and ``columns`` (refs whose values
         come back in ``Run.columns``). Bad grammar raises :class:`ValueError` before the
-        request.
+        request. ``experiment_id`` (v0.14) keeps the runs of one experiment.
         """
         tcalls.run_search_params(
             tags=tags, filters=filters, order_by=order_by, columns=columns
@@ -822,6 +835,7 @@ class AsyncRuns(_Resource):
                 filters=filters,
                 order_by=order_by,
                 columns=columns,
+                experiment_id=experiment_id,
             )
         )
 
@@ -983,10 +997,12 @@ class AsyncRuns(_Resource):
         name: str | tcalls.Unset | None = tcalls.UNSET,
         note: str | tcalls.Unset | None = tcalls.UNSET,
         tags: Mapping[str, str | None] | None = None,
+        experiment_id: str | tcalls.Unset | None = tcalls.UNSET,
     ) -> Run:
-        """Set the run's name, note or tags (a field left ``UNSET`` is unchanged; ``None``
-        clears the name/note; a tag set to ``None`` is deleted)."""
-        body = tcalls.run_patch(name=name, note=note, tags=tags)
+        """Set the run's name, note, tags or experiment (a field left ``UNSET`` is unchanged;
+        ``None`` clears the name/note or takes the run out of its experiment; a tag set to
+        ``None`` is deleted)."""
+        body = tcalls.run_patch(name=name, note=note, tags=tags, experiment_id=experiment_id)
         return await self._c.send(tcalls.update_run(run_id, body))
 
     async def set_tags(self, run_id: str, tags: Mapping[str, str | None]) -> Run:

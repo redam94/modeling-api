@@ -590,9 +590,53 @@ for run in api.runs.list(
     print(run.id, run.name, run.columns)
 ```
 
-The other filters of `runs.list` are `kind`, `state`, `spec_id`, `parent_run_id` and `name`.
-For the grammar, see [Search runs](../reference/http-api.md#search-runs). For the logging API
-inside a model, see [Track metrics, params and tags](tracking.md).
+The other filters of `runs.list` are `kind`, `state`, `spec_id`, `parent_run_id`, `name`
+and (v0.14) `experiment_id`. For the grammar, see
+[Search runs](../reference/http-api.md#search-runs). For the logging API inside a model, see
+[Track metrics, params and tags](tracking.md).
+
+## Media, experiments and comparison <span class="mapi-badge">v0.14</span> { #v014 }
+
+```python
+# images and tables of a run
+api.runs.log_image(run_id, "holdout_map", "map.png", caption="Holdout error by region")
+api.runs.log_table(run_id, "lift", {"region": ["north", "south"], "lift": [0.04, 0.02]})
+for item in api.runs.media(run_id, key="samples"):
+    png = api.runs.download_media(run_id, item)   # checks the size, CRC32C and SHA-256
+
+# experiments
+exp = api.experiments.create("adstock length study", description="Adstock 2, 4 and 8.")
+api.experiments.add_runs(exp.id, [run_a, run_b])
+run = api.runs.fit(spec_id, revision, experiment_id=exp.id)
+api.runs.update(run_c, experiment_id=exp.id)        # move one run (None: no experiment)
+
+# compare and save a search
+cmp = api.runs.compare([run_a, run_b], keys=["loss"], media_keys=["samples"])
+view = api.run_views.create(
+    "best fits", {"filters": ["metric.rmse < 12"], "order_by": "metric.rmse"},
+    experiment_id=exp.id,
+)
+runs = api.runs.list(experiment_id=exp.id, columns=["metric.rmse"])
+```
+
+| Call | What it does |
+|---|---|
+| `runs.media(run_id, key=None, kind=None, attempt=None, links=True)` | The images and tables of a run (`RunMedia`). With `links`, each item has a signed `url`. |
+| `runs.media_keys(run_id, attempt=None)` | The media series with their counts and steps (`MediaKeySummary`) |
+| `runs.get_media(run_id, media_id)` | One item with a new signed `url` |
+| `runs.download_media(run_id, media)` | The bytes. The client does a check of the size, the CRC32C and the SHA-256. |
+| `runs.log_image(run_id, key, image, step=None, labels=None, caption=None)` | Log PNG or JPEG bytes or a file path. With `mapi-sdk`, also a numpy array, a Pillow image or a DataArray. A maximum of 4 MiB. |
+| `runs.log_table(run_id, key, table, step=None, labels=None, caption=None)` | Log a DataFrame, a dict of columns or a list of records |
+| `runs.track(run_id)` | Also has `log_image` and `log_table` (sent immediately) |
+| `runs.keys(experiment_id=None, prefix=None)` | The metric series, param keys and tag keys of the runs (`RunKeys`) |
+| `runs.compare(run_ids, keys=(), media_keys=(), max_points=300, params=True)` | Compare 2 to 10 runs (`RunCompare`) |
+| `experiments.list(name=None, archived=None)`, `get`, `find(name_or_id)` | Find experiments |
+| `experiments.create(name, description=None)`, `update(id, name=…, description=…, archived=…)`, `delete(id)` | Manage experiments |
+| `experiments.add_runs(id, run_ids)`, `remove_runs(id, run_ids)` | Move runs (a maximum of 200 in each request) |
+| `run_views.list(experiment_id=None)`, `find`, `create(name, query, experiment_id=None)`, `update(id, name=…, query=…)`, `delete(id)` | Saved views of the runs table |
+
+The async client has the same calls. For the web app and the CLI, see
+[Compare runs and use experiments](run-comparison.md).
 
 ## Async
 

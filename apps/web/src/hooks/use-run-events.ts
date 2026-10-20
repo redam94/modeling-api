@@ -59,12 +59,19 @@ export interface TrackingChanges {
   keys: Set<string>;
   params: boolean;
   tags: boolean;
+  /** v0.14: media items were logged. */
+  media: boolean;
 }
 
 export function mergeTracking(prev: TrackingChanges | null, frame: TrackingFrame): TrackingChanges {
   const keys = new Set(prev?.keys);
   for (const k of trackingKeys(frame)) keys.add(k);
-  return { keys, params: Boolean(prev?.params) || frame.params, tags: Boolean(prev?.tags) || frame.tags };
+  return {
+    keys,
+    params: Boolean(prev?.params) || frame.params,
+    tags: Boolean(prev?.tags) || frame.tags,
+    media: Boolean(prev?.media) || frame.media,
+  };
 }
 
 /** Tracking refetches happen at most this often (a fit can send a frame every second). */
@@ -88,7 +95,7 @@ export function progressFromEvent(e: RunStreamEvent): ProgressSnapshot | null {
 /**
  * Follow a run over SSE. Snapshot/end frames refresh the cached `Run` (so every view of it
  * updates); persisted events accumulate here; progress frames update the live snapshot;
- * `tracking` frames refetch the changed metrics, params and tags (at most every 2 s).
+ * `tracking` frames refetch the changed metrics, params, tags and media (at most every 2 s).
  * Does nothing for terminal runs beyond loading the persisted events once.
  */
 export function useRunEvents(run: Run | undefined): RunStreamState {
@@ -118,6 +125,7 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
       for (const key of c.keys) void qc.invalidateQueries({ queryKey: qk.metricHistory(scope.key, runId, key) });
       if (c.params) void qc.invalidateQueries({ queryKey: qk.runParams(scope.key, runId) });
       if (c.tags) void qc.invalidateQueries({ queryKey: qk.run(scope.key, runId), exact: true });
+      if (c.media) void qc.invalidateQueries({ queryKey: qk.runMediaData(scope.key, runId) });
     };
     const setRun = (r: Run) => {
       qc.setQueryData(qk.run(scope.key, r.id), r);
@@ -130,8 +138,9 @@ export function useRunEvents(run: Run | undefined): RunStreamState {
         onEnd: (r) => {
           setRun(r);
           void qc.invalidateQueries({ queryKey: qk.runLists(scope.key) });
-          // The runner flushes its last metric batch before the run ends.
+          // The runner flushes its last metric batch (and media) before the run ends.
           void qc.invalidateQueries({ queryKey: qk.runMetricData(scope.key, runId) });
+          void qc.invalidateQueries({ queryKey: qk.runMediaData(scope.key, runId) });
         },
         onTracking: (frame) => {
           if (frame.run_id !== runId) return;

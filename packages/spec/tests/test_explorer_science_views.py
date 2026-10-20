@@ -18,6 +18,7 @@ from mapi_spec.views import (
     CircularView,
     DataOverviewView,
     ExplorerIndex,
+    GalleryView,
     ImagesView,
     MapView,
     NetworkView,
@@ -35,6 +36,7 @@ DATA = Path(__file__).parent / "data" / "explorer_science"
 VIEWS: dict[str, type[BaseModel]] = {
     "structure": StructureView,
     "images": ImagesView,
+    "gallery": GalleryView,
     "profiles": ProfilesView,
     "map": MapView,
     "network": NetworkView,
@@ -50,7 +52,7 @@ def _doc(section: str) -> dict[str, Any]:
 
 
 def test_the_science_sections_are_data_sections() -> None:
-    assert len(DATA_SECTIONS) == 21 and DATA_SECTIONS[-8:] == SCIENCE_SECTIONS
+    assert len(DATA_SECTIONS) == 22 and DATA_SECTIONS[-9:] == SCIENCE_SECTIONS
     assert set(VIEWS) == set(SCIENCE_SECTIONS)
     for s in SCIENCE_SECTIONS:
         assert explore_view_name(s) == f"ui/explore/{s}.json"

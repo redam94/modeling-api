@@ -1513,8 +1513,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
     "core.roc_pr": _a(
         "ROC and precision-recall curves",
         "Shows how well the predicted probabilities separate the yes cases from the no cases "
-        "at all thresholds. A curve near the top-left corner (ROC) or the top-right corner "
-        "(precision-recall) shows a good separation.",
+        "at all thresholds, for a binary or multiclass target. A curve near the top-left "
+        "corner (ROC) or the top-right corner (precision-recall) shows a good separation.",
         [
             "You predict a yes/no outcome and want one number for how well the model puts "
             "the cases in order",
@@ -1522,9 +1522,9 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "false alarms at all thresholds",
             "The yes cases are rare. The precision-recall curve shows this better than the "
             "ROC curve",
+            "You classify into three or more classes and want a curve for each class",
         ],
         [
-            "The target has more than two values",
             "You want to know if the probabilities are correct (use Calibration)",
             "You need the result at one threshold (use Confusion matrix)",
         ],
@@ -1532,6 +1532,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "Predicted probabilities of the positive class, with draws or one value for each "
             "cell (posterior_predictive, predictions or draws group, or a score summary)",
             "The actual 0/1 values (observed_data or observed group)",
+            "For a multiclass target: the probability of each class along a class dim, and "
+            "the actual class labels",
         ],
         [
             "The larger of the two actual values is the positive class, unless you set `positive`",
@@ -1546,6 +1548,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
             "The AUC and the average precision in the titles of the panels",
             "A caption with a verdict on the AUC and the base rate. With draws, the caption "
             "also gives a 90% range of the AUC",
+            "For a multiclass target: one curve for each class against all other classes (the "
+            "12 most frequent classes), and the macro AUC in the title",
         ],
         _I,
         _NOW,
@@ -1560,14 +1564,17 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "Verdict on the AUC: >= 0.9 very well, >= 0.8 well, >= 0.7 fairly well, else not "
         "well. `positive` picks the value of the positive class (default: the larger one); "
         "`var` and `observed_var` pick the pair. On imbalanced data, read the precision-"
-        "recall panel: the ROC curve can look good while most alarms are false.",
+        "recall panel: the ROC curve can look good while most alarms are false. Multiclass "
+        "(a class dim on the prediction, or more than two observed classes): one-vs-rest "
+        "curves per class, the macro AUC is the mean over the classes, `classes` picks the "
+        "classes to draw and `positive` is not used.",
         refs=[_FAWCETT, _SAITO],
     ),
     "core.confusion": _a(
         "Confusion matrix",
-        "Counts the cases that the model classifies correctly and incorrectly at one "
-        "probability threshold. The four boxes are the true and false positives and the true "
-        "and false negatives.",
+        "Counts the cases that the model classifies correctly and incorrectly, for a binary "
+        "or multiclass target. For yes/no, the four boxes are the true and false positives "
+        "and the true and false negatives at one probability threshold.",
         [
             "You must change the probabilities into yes/no decisions and want to see the errors",
             "You want the precision, the recall and the specificity at one threshold",
@@ -1575,7 +1582,6 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         ],
         [
             "You want to see all thresholds (use ROC and precision-recall curves)",
-            "The target has more than two values",
         ],
         [
             "Predicted probabilities of the positive class, with draws or one value for each "
@@ -1592,6 +1598,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         [
             "A 2 × 2 matrix of the actual class against the predicted class, with counts or "
             "with the share of each actual class",
+            "For a multiclass target: a K × K matrix of the most probable class (up to 30 "
+            "classes; the other classes are put together), with the accuracy and the macro F1",
             "A caption with the accuracy, the precision, the recall (sensitivity), the "
             "specificity, the F1 score and the threshold",
         ],
@@ -1607,7 +1615,8 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "`normalize='true'` divides each row (actual class) by its count; 'none' shows "
         "counts. Precision = TP/(TP+FP), recall = TP/(TP+FN), specificity = TN/(TN+FP), "
         "F1 = 2PR/(P+R). `positive`, `var` and `observed_var` work as in ROC and "
-        "precision-recall curves.",
+        "precision-recall curves. Multiclass: the predicted class is the argmax of the class "
+        "probabilities; `threshold` and `positive` are not used (the caption says so).",
         refs=[_FAWCETT],
     ),
     "core.loss_curve": _a(

@@ -16,6 +16,10 @@ dependencies = [
   "xgboost>=3.0",
 ]
 
+[project.optional-dependencies]
+# LightGBM and CatBoost estimators (v0.14), imported lazily. The base-ml image installs the extra.
+gbm = ["lightgbm>=4.5,<5", "catboost>=1.2.7,<2"]
+
 [project.entry-points."mapi.models"]
 sklearn = "mapi_sklearn.plugins:PLUGINS"
 

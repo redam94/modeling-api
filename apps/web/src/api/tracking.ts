@@ -38,12 +38,14 @@ export const MAX_RUN_NOTE_CHARS = 20_000;
 export const MAX_TAG_VALUE_CHARS = 1000;
 export const MAX_TAGS_PER_RUN = 100;
 
-/** Data of the SSE `tracking` frame: summaries that changed, and whether params/tags did. */
+/** Data of the SSE `tracking` frame: summaries that changed, and whether params/tags/media did. */
 export interface TrackingFrame {
   run_id: string;
   series: MetricSeries[];
   params: boolean;
   tags: boolean;
+  /** v0.14: the run logged media since the last frame. */
+  media: boolean;
 }
 
 /** The run's name, `null` when it has none (or only spaces). */
@@ -146,5 +148,5 @@ export function parseTrackingFrame(v: unknown): TrackingFrame | null {
           typeof s === "object" && s !== null && typeof (s as MetricSeries).key === "string" && typeof (s as MetricSeries).last === "number",
       )
     : [];
-  return { run_id: f.run_id, series, params: f.params === true, tags: f.tags === true };
+  return { run_id: f.run_id, series, params: f.params === true, tags: f.tags === true, media: f.media === true };
 }

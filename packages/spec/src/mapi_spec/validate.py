@@ -62,7 +62,15 @@ from mapi_spec.schema import (
     policy_is_at_least_as_tight,
     tighten_policy,
 )
-from mapi_spec.spec import Binding, FutureCovariates, ModelSpec, ScorePolicy, ScoreRequest
+from mapi_spec.spec import (
+    Binding,
+    ColumnSplit,
+    FutureCovariates,
+    ModelSpec,
+    ScorePolicy,
+    ScoreRequest,
+    StratifiedSplit,
+)
 from mapi_spec.template import TemplateError
 from mapi_spec.tree import NodeSelectionError, TreeSchema
 
@@ -746,6 +754,37 @@ def _check_split(
                         context={"stage": stage.name, "dims": sorted(schema.dims)},
                         suggested_action="Set data.split.after_step to the stage where the dim "
                         "exists (for example, after a resample step).",
+                    )
+                )
+        # v0.14 column/stratified splits read a variable or a coord along their dim
+        if isinstance(split, ColumnSplit | StratifiedSplit):
+            field, column = (
+                ("column", split.column) if isinstance(split, ColumnSplit) else ("by", split.by)
+            )
+            dim = split.dim
+        else:
+            field, column, dim = "", None, ""
+        if column is not None and dim in schema.dims and column != dim:
+            var = schema.vars.get(column)
+            if var is None:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SPLIT_INVALID,
+                        severity=Severity.INFO,
+                        pointer=f"/data/split/{field}",
+                        message=f"{column!r} is not a variable at stage {stage.name!r}. The "
+                        f"fit checks that it is a coordinate along {dim!r}",
+                    )
+                )
+            elif list(var.dims) != [dim]:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.SPLIT_INVALID,
+                        pointer=f"/data/split/{field}",
+                        message=f"split {field} {column!r} must lie along {dim!r} only. "
+                        f"It has the dims {list(var.dims)}",
+                        suggested_action="Use a variable or a coordinate with the one dim of "
+                        "the split.",
                     )
                 )
         fdim = split.forecast_dim

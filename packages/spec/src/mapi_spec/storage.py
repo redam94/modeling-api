@@ -38,6 +38,7 @@ from pydantic import (
 
 from mapi_spec._types import StrictModel
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.media import MEDIA_NAME_RE
 
 __all__ = [
     "BUCKET_RE",
@@ -74,6 +75,8 @@ __all__ = [
     "md5_base64",
     "quarantine_key",
     "run_checkpoint_prefix",
+    "run_media_prefix",
+    "run_media_store_key",
     "run_prefix",
 ]
 
@@ -702,6 +705,30 @@ def run_checkpoint_prefix(
 ) -> str:
     """``{run_prefix}checkpoints/``: where segmented sampling writes resumable state."""
     return run_prefix(tenant_id, run_id, attempt, task_index) + "checkpoints/"
+
+
+def run_media_prefix(
+    tenant_id: str, run_id: str, attempt: int, task_index: int | None = None
+) -> str:
+    """``{run_prefix}media/``: where the supervisor uploads the media a run logs (v0.14)."""
+    return run_prefix(tenant_id, run_id, attempt, task_index) + "media/"
+
+
+_MEDIA_NAME = re.compile(MEDIA_NAME_RE)
+
+
+def run_media_store_key(tenant_id: str, run_id: str, name: str) -> str:
+    """``t/{tenant}/run-media/{run}/{name}`` in the bundles bucket: the verified media copy.
+
+    The runs bucket expires run scratch; media the server verified are kept here until the
+    tenant is deleted. ``name`` must be a media name (``<sha256>.<ext>``).
+    """
+    if not isinstance(name, str) or _MEDIA_NAME.match(name) is None:
+        raise ValueError(f"media name {name!r} must match {MEDIA_NAME_RE}")
+    return (
+        f"t/{check_segment(tenant_id, 'tenant_id')}/run-media/"
+        f"{check_segment(run_id, 'run_id')}/{name}"
+    )
 
 
 def bundle_prefix(tenant_id: str, model_id: str, version: int) -> str:

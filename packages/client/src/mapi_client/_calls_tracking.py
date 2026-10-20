@@ -281,8 +281,10 @@ def run_patch(
     name: str | Unset | None = UNSET,
     note: str | Unset | None = UNSET,
     tags: Mapping[str, str | None] | None = None,
+    experiment_id: str | Unset | None = UNSET,
 ) -> RunPatch:
-    """A :class:`RunPatch` with only the given fields (``UNSET``: leave out; ``None``: clear)."""
+    """A :class:`RunPatch` with only the given fields (``UNSET``: leave out; ``None``: clear;
+    ``experiment_id=None`` takes the run out of its experiment)."""
     fields: dict[str, object] = {}
     if not isinstance(name, Unset):
         fields["name"] = name
@@ -290,8 +292,10 @@ def run_patch(
         fields["note"] = note
     if tags:
         fields["tags"] = {check_tag_key(k): v for k, v in tags.items()}
+    if not isinstance(experiment_id, Unset):
+        fields["experiment_id"] = experiment_id
     if not fields:
-        raise ValueError("set at least one of name, note or tags")
+        raise ValueError("set at least one of name, note, tags or experiment_id")
     return RunPatch.model_validate(fields)
 
 

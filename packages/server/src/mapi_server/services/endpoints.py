@@ -857,7 +857,7 @@ def inline_summary(
     return DataSummary(vars=list(payload.data_vars), coords=coords, observed=observed)
 
 
-_NUMERIC: Final = frozenset({"float64", "float32", "int64", "int32", "bool"})
+_NUMERIC: Final = frozenset({"float64", "float32", "int64", "int32", "uint8", "bool"})
 
 
 def _refuse_text(

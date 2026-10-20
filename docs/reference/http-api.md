@@ -980,7 +980,7 @@ workflow nodes and notebooks.
 
 | Endpoint | Purpose | Request | Response | Success | Errors |
 |---|---|---|---|---|---|
-| `PATCH /v1/runs/{run_id}` | Set the name, the note or the tags of a run. This is a merge patch: a field that is not in the body does not change. `null` clears the name or the note. A tag with the value `null` is deleted. A run has a maximum of 100 tags. The labels of a run do not change. | `RunPatch` | `Run` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
+| `PATCH /v1/runs/{run_id}` | Set the name, the note or the tags of a run. This is a merge patch: a field that is not in the body does not change. `null` clears the name or the note. A tag with the value `null` is deleted. A run has a maximum of 100 tags. The labels of a run do not change. From v0.14, `experiment_id` moves the run to an experiment (`null` takes it out of its experiment). | `RunPatch` | `Run` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
 | `GET /v1/runs/{run_id}/metrics` | The metric series of a run, with a summary of each (`count`, `last`, `last_step`, `min`, `max`). The order is key, then labels. Filters: `key`, `attempt` | — | `Page[MetricSeries]` | 200 | `NOT_FOUND` |
 | `GET /v1/runs/{run_id}/metrics/{key}` | The points of one metric key, for each series (a maximum of 64 series). The server downsamples each series to `max_points` (10 to 10 000, default 1000) with LTTB and keeps the first and the last point. Filters: `attempt`, `label` (`k:v`, repeatable, all must match) | — | `MetricHistory` | 200 | `NOT_FOUND`, `SCHEMA_INVALID` |
 | `POST /v1/runs/{run_id}/metrics` | Log metric points to a run. The run can be in any state, thus you can log a KPI after the run finished. A maximum of 1000 points for each request. A point that repeats a stored (series, step) is ignored and counted in `duplicates`. | `MetricsWrite` | `MetricsWriteResult` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `QUOTA_EXCEEDED` (the tracking budget of the run is full) |
@@ -1005,6 +1005,7 @@ attempt that logged the series. `MetricHistorySeries` has three lists of equal l
 | Parameter | Value |
 |---|---|
 | `parent_run_id` | Only the child runs of this run (for example, the node runs of a workflow run). |
+| `experiment_id` | v0.14: only the runs of this experiment. |
 | `name` | The runs whose name contains this text (case-insensitive). |
 | `tag` | `key` (the run has the tag) or `key:value` (exact value). Repeatable: all must match. |
 | `filter` | A comparison, for example `metric.rmse < 0.5`. Repeatable, a maximum of 8: all must match. |
@@ -1070,6 +1071,8 @@ metrics, the params or the tags of the run change. The `data:` is a `TrackingFra
 - `series`: the `MetricSeries` summaries that changed after the last frame (a maximum of
   200).
 - `params` and `tags`: `true` if the params or the tags changed. Get them again.
+- `media` (v0.14): `true` if the run logged images or tables. Get them again from
+  `GET /v1/runs/{run_id}/media-keys`.
 
 A `tracking` frame has no `id:`, and the server does not replay it. A client that connects
 again gets the current values from the endpoints above. The run events `metrics`, `params` and
@@ -1086,7 +1089,103 @@ data: {"run_id":"run_01jaf3q2x8m9v7k5h4g3f2e1d0","series":[{"key":"step_size","l
 The setting `MAPI_TRACKING_RETENTION_DAYS` (no default: keep all) deletes the metric points
 and the `user` log lines of runs that finished more days ago than the setting. The server
 keeps the summaries, the params, the tags, the name and the note. Thus, search and comparison
-of old runs continue to work. See [Configuration](../operations/configuration.md).
+of old runs continue to work. See [Configuration](../operations/configuration.md). The setting
+does not delete media (v0.14).
+
+## Media, comparison, experiments and saved views <span class="mapi-badge">v0.14</span> { #v014 }
+
+v0.14 adds these parts to run tracking:
+
+- **Media.** A run can log images (PNG or JPEG) and small tables (JSON). The runner uploads
+  them during the run (see [Run protocol: Media](run-protocol.md#media)). You can also log them
+  through the API, also after the run finished.
+- **Comparison.** One request gets the summaries, the metric histories, the params and the
+  media of 2 to 10 runs.
+- **Experiments.** An experiment is a named group of runs. A run is in a maximum of one
+  experiment.
+- **Saved views.** A saved view is a `list_runs` query with a name, shared in the project.
+
+The guide [Compare runs and use experiments](../guides/run-comparison.md) shows the web app,
+the client and the CLI.
+
+### Endpoints { #v014-endpoints }
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/runs/{run_id}/media` | The media of a run. The order is key, labels, step. Filters: `key`, `kind`, `attempt`. With `links` (default `true`), each item has a signed `url` and `expires_at`. | — | `Page[RunMedia]` | 200 | `NOT_FOUND` |
+| `GET /v1/runs/{run_id}/media/{media_id}` | One media item, always with a signed `url` | — | `RunMedia` | 200 | `NOT_FOUND` |
+| `POST /v1/runs/{run_id}/media` | Log one image or table to a run (any state). `data` is the standard base64 of the bytes, a maximum of 4 MiB after decoding. The server checks `Content-Length` before it reads the body. | `MediaWrite` | `RunMedia` | 201 | `NOT_FOUND`, `SCHEMA_INVALID` (bad base64, the bytes are not the content type, an image side is more than 4096), `QUOTA_EXCEEDED` (the media budget of the run is full), `PAYLOAD_TOO_LARGE` |
+| `GET /v1/runs/{run_id}/media-keys` | The media series of a run (key and labels), with the number of items and the first and last step. Filter: `attempt` | — | `Page[MediaKeySummary]` | 200 | `NOT_FOUND` |
+| `GET /v1/run-compare` | Compare runs. `run` (repeatable, 2 to 10, no duplicates), `key` (a maximum of 12 metric keys; the default is the 12 keys that most of the runs have), `media_key` (a maximum of 4), `max_points` (10 to 2000, default 300), `params` (default `true`) | — | `RunCompare` | 200 | `NOT_FOUND` (a run is not in the project), `SCHEMA_INVALID` |
+| `GET /v1/run-keys` | The metric series, the param keys and the tag keys of the runs of the project, or of one experiment (`experiment_id`), with the number of runs that have each. `prefix` keeps the keys that start with the text. | — | `RunKeys` | 200 | `SCHEMA_INVALID` |
+| `GET /v1/experiments` | The experiments of the project, newest first. Filters: `name` (contains, case-insensitive), `archived` | — | `Page[Experiment]` | 200 | — |
+| `POST /v1/experiments` | Make an experiment. Names are unique in a project (case is ignored). | `ExperimentCreate` | `Experiment` | 201 | `SCHEMA_INVALID`, `CONFLICT` (the name is in use) |
+| `GET /v1/experiments/{experiment_id}` | One experiment, with `run_count` and `last_run_at` | — | `Experiment` | 200 | `NOT_FOUND` |
+| `PATCH /v1/experiments/{experiment_id}` | Rename, describe, archive or unarchive (merge patch) | `ExperimentPatch` | `Experiment` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `CONFLICT` |
+| `DELETE /v1/experiments/{experiment_id}` | Delete an experiment. Its runs stay, with no experiment. Its saved views are deleted. | — | — | 204 | `NOT_FOUND` |
+| `POST /v1/experiments/{experiment_id}/runs` | Move runs into the experiment (`add`) or out of it (`remove`), a maximum of 200 ids each. A run that is added leaves its earlier experiment. `missing` lists the ids that are not runs of the project. | `ExperimentRunsWrite` | `ExperimentRunsResult` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `CONFLICT` (the experiment is archived) |
+| `GET /v1/run-views` | The saved views of the project, in name order. Filter: `experiment_id` | — | `Page[RunView]` | 200 | — |
+| `POST /v1/run-views` | Save a view. Names are unique for each project and experiment (case is ignored). A project has a maximum of 200 views. | `RunViewCreate` | `RunView` | 201 | `SCHEMA_INVALID` (a filter, an order or a column is not valid: the pointer is `/query/filters/<i>`), `CONFLICT`, `QUOTA_EXCEEDED` |
+| `PATCH /v1/run-views/{view_id}` | Rename a view or change its query | `RunViewPatch` | `RunView` | 200 | `NOT_FOUND`, `SCHEMA_INVALID`, `CONFLICT` |
+| `DELETE /v1/run-views/{view_id}` | Delete a saved view | — | — | 204 | `NOT_FOUND` |
+
+All these endpoints need the `X-Mapi-Project` header (or a project in the token). Reads need
+`read` on `run` (a viewer can read). Writes need `update` on `run` (the runner role or higher,
+or an API token with the `runs:write` scope). The writes make audit events:
+`experiment.create`, `experiment.update` (also bulk moves, with the numbers added and
+removed), `experiment.delete`, `run_view.save` (create and update) and `run_view.delete`.
+A media write through the API is a `run.log` event. A `PATCH` of a run that moves it is a
+`run.update` event with `experiment_id` in the fields.
+
+`RunCreate` and `PATCH /v1/runs/{run_id}` take `experiment_id`. An unknown experiment is
+`422 SCHEMA_INVALID` with the pointer `/experiment_id`. An archived experiment is
+`409 CONFLICT`. `Run` has the field `experiment_id`. A workflow node run gets the experiment
+of its workflow run. A retry gets the experiment of the run that it retries.
+
+### The DTOs { #v014-dtos }
+
+- `RunMedia`: `id` (`rm_…`), `run_id`, `attempt`, `key`, `labels`, `step`, `kind` (`image` or
+  `table`), `content_type` (`image/png`, `image/jpeg` or `application/json`), `size`,
+  `sha256` (`sha256:<hex>`), `crc32c`, `width` and `height` (images), `caption` (untrusted
+  text), `source` (`runner` or `api`), `created_at`, and with links `url` and `expires_at`.
+  Do a check of `size` and `crc32c` after the download.
+- `MediaKeySummary`: `key`, `labels`, `kind`, `count`, `first_step`, `last_step`,
+  `last_created_at`.
+- `MediaWrite`: `key`, `kind`, `content_type`, `data` (base64), `step`, `labels`, `caption`
+  (a maximum of 500 characters). A table is UTF-8 JSON of a `MediaTable` (`mapi_spec.media`):
+  `{"columns": [...], "rows": [[...], ...]}`.
+- `Experiment`: `id` (`exp_…`), `name`, `description`, `archived`, `created_by`,
+  `created_at`, `updated_at`, `run_count`, `last_run_at`. `ExperimentCreate` has `name`
+  (1 to 200 characters, no control characters) and `description` (a maximum of 20 000
+  characters). `ExperimentPatch` has `name`, `description` (`null` clears it) and `archived`.
+- `ExperimentRunsWrite`: `add` and `remove` (a minimum of one id in all, no id in both).
+  `ExperimentRunsResult`: `added`, `removed`, `missing`.
+- `RunView`: `id` (`rv_…`), `name`, `experiment_id`, `query`, `created_by`, `created_at`,
+  `updated_at`. `RunViewCreate` has `name`, `experiment_id` and `query`. `RunViewPatch` has
+  `name` or `query`.
+- `RunViewQuery`: the query of `list_runs`: `kind`, `state`, `name`, `spec_id`,
+  `experiment_id`, `parent_run_id`, `tags` (`key` or `key:value`, a maximum of 16),
+  `filters` (a maximum of 8), `order_by` and `columns` (a maximum of 16). The
+  [search grammar](#search-runs) applies.
+- `RunKeys`: `metrics` (a maximum of 500), `params` (a maximum of 500) and `tags` (a maximum
+  of 200), each a list of `RunKeyCount` (`key`, `labels`, `runs`), most common first.
+  `truncated` is `true` when a list is cut.
+- `RunCompare`: `runs` (in the order of the `run` values), `summaries` (`CompareSummary`: a
+  `MetricSeries` with `run_id`; a maximum of 1000), `metrics` (`CompareMetric`: `key` and
+  `series`, a list of `CompareSeries` with `run_id`, `labels`, `attempt`, `count`,
+  `downsampled`, `steps` and `values`; a maximum of 16 series for each run and key),
+  `params` (`CompareParam`: `key`, `values` (run id to text, `null` when the run did not log
+  it) and `differs`; a maximum of 2000), `media` (`CompareMedia`: `run_id`, `key`, `labels`,
+  `kind` and `items`, a maximum of 50 `RunMedia` with links for each series, thinned evenly,
+  the last item kept) and `truncated` (`summaries`, `series`, `params` or `media` when cut).
+
+```bash
+curl -G "$MAPI/v1/run-compare" -H "Authorization: Bearer $MAPI_TOKEN" \
+  -H "X-Mapi-Project: growth" \
+  --data-urlencode run=run_01jaf3q2x8m9v7k5h4g3f2e1d0 \
+  --data-urlencode run=run_01jaf3q2x8m9v7k5h4g3f2e1d1 \
+  --data-urlencode key=loss --data-urlencode media_key=samples
+```
 
 ## DTO index
 
@@ -1097,10 +1196,11 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 |---|---|
 | Envelope | `Page[T]`, `ObjectRef`, `ArtifactLink`, `Health`, `HealthCheck`, `Problem` (`mapi_spec`) |
 | Projects | `Project` |
-| Datasets | `DatasetCreate`, `Dataset`, `UploadCreate`, `UploadSession`, `IngestMapping`, `DimMapping`, `VarMapping`, `DatasetVersionCreate`, `DatasetVersion`, `DatasetVersionStatus` |
+| Datasets | `DatasetCreate`, `Dataset`, `UploadCreate`, `UploadSession`, `IngestMapping`, `DimMapping`, `VarMapping`, `ImageFolderOptions` (v0.14, `mapi_spec.ingest`), `DatasetVersionCreate`, `DatasetVersion`, `DatasetVersionStatus` |
 | Specs | `SpecCreate`, `SpecDoc`, `SpecRevisionCreate`, `SpecRevision`, `ValidateRequest`, `ValidateResponse`, `StageSchema` |
 | Runs | `RunCreate`, `RunRetry`, `Run`, `RunCost`, `ProgressSnapshot`, `RunEventView`, `LogLine`, `SseEventName` |
 | Run tracking (v0.11) | `RunPatch`, `MetricSeries`, `MetricHistory`, `MetricHistorySeries`, `MetricPointIn`, `MetricsWrite`, `MetricsWriteResult`, `RunParam`, `ParamsWrite`, `ParamsWriteResult`, `TrackingFrame`, `TrackingLimits`, `RunRef`, `RunFilter`, `RunOrder` (`mapi_spec.tracking`) |
+| Media, comparison, experiments and views (v0.14) | `RunMedia`, `MediaKeySummary`, `MediaWrite`, `MediaTable` (`mapi_spec.media`), `Experiment`, `ExperimentCreate`, `ExperimentPatch`, `ExperimentRunsWrite`, `ExperimentRunsResult`, `RunView`, `RunViewCreate`, `RunViewPatch`, `RunViewQuery`, `RunKeys`, `RunKeyCount`, `RunCompare`, `CompareSummary`, `CompareSeries`, `CompareMetric`, `CompareParam`, `CompareMedia` |
 | Models | `Model`, `ModelVersion`, `Scorecard`, `ScorecardItem`, `Lineage`, `ScoreCall`, `ScoreInline`, `ScoreCallResult`, `ModelInputSchema`, `BundleManifest` (`mapi_spec.run`) |
 | Plots and catalog | `PlotListItem`, `PlotSpec` (`mapi_spec`), `PlotValidateResponse`, `CatalogResponse`, `ModelCatalogEntry`, `StepCatalogEntry`, `PlotCatalogEntry` (`mapi_spec`) |
 | Identity (v0.3) | `Me`, `MeTenant`, `MeProject`, `Tenant`, `TenantCreate`, `TenantUpdate`, `TenantAdminUpdate`, `ProjectCreate`, `ProjectUpdate`, `Membership`, `MembershipCreate`, `MembershipUpdate`, `Principal` (`mapi_spec.tenancy`) |

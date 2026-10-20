@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { FIELDS_FIXTURE } from "@/mocks/explore";
 
-import { availableStats, cellAt, colorAt, colormapLut, colorTicks, decodeRaster, displayRange, encodeRaster, FIELD_NAN, frameValues, gradientCss, paint, rasterRange, robustRange } from "./fields";
+import { availableStats, cellAt, colorAt, colormapLut, colorTicks, decodeRaster, decodeRgb, displayRange, encodeRaster, encodeRgb, FIELD_NAN, frameValues, gradientCss, paint, rasterRange, rgbAt, robustRange } from "./fields";
 import { parseView } from "./views";
 
 function b64(codes: number[]): string {
@@ -101,5 +101,34 @@ describe("colour maps", () => {
     expect(cellAt(0.99, 0.01, 4, 3)).toEqual({ row: 0, col: 3 });
     expect(cellAt(0.99, 0.01, 4, 3, "lower")).toEqual({ row: 2, col: 3 });
     expect(cellAt(1.5, -1, 4, 3)).toEqual({ row: 0, col: 3 });
+  });
+});
+
+describe("rgb rasters (v0.14)", () => {
+  const cells = [
+    [255, 0, 0],
+    [0, 255, 0],
+    [0, 0, 255],
+    [10, 20, 30],
+  ] as const;
+
+  it("decodes (r, g, b) triplets to opaque RGBA pixels, row 0 at the top", () => {
+    const rgba = decodeRgb(encodeRgb(cells), 4)!;
+    expect(Array.from(rgba)).toEqual([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 10, 20, 30, 255]);
+    expect(rgbAt(rgba, 3, 2, 2)).toEqual([10, 20, 30]);
+  });
+
+  it("flips the rows for origin lower and reads a cell back by its data index", () => {
+    const rgba = decodeRgb(encodeRgb(cells), 4, "lower", 2)!;
+    // the data's first row (red, green) is drawn at the bottom
+    expect(Array.from(rgba.slice(8, 16))).toEqual([255, 0, 0, 255, 0, 255, 0, 255]);
+    expect(rgbAt(rgba, 0, 2, 2, "lower")).toEqual([255, 0, 0]);
+    expect(rgbAt(rgba, 9, 2, 2)).toBeNull();
+  });
+
+  it("refuses a raster with the wrong number of cells or bad base64", () => {
+    expect(decodeRgb(encodeRgb(cells), 5)).toBeNull();
+    expect(decodeRgb({ data: "%%%" }, 1)).toBeNull();
+    expect(decodeRgb({ data: "" }, 0)).toEqual(new Uint8ClampedArray(0));
   });
 });

@@ -11,15 +11,20 @@ notebook, a script or the command line) can add to this log. The log has these p
 - **The name and the note.** A display name and a free-text note for the run.
 - **Structured log lines.** Log lines with a level (`debug`, `info`, `warning` or `error`)
   and fields.
+- **Images and tables** <span class="mapi-badge">v0.14</span>. Images (PNG or JPEG),
+  matplotlib figures and small tables, for example a sample of predictions at each step.
 
-The run page in the web app shows all of them (the **Metrics**, **Params**, **Logs** and
-**Notes** tabs). You can search for runs by their metrics, params and tags.
+The run page in the web app shows all of them (the **Metrics**, **Params**, **Media**,
+**Logs** and **Notes** tabs). You can search for runs by their metrics, params and tags. To
+compare runs and to group them into experiments, see
+[Compare runs and use experiments](run-comparison.md).
 
 | See also | |
 |---|---|
 | [HTTP API: Run tracking](../reference/http-api.md#run-tracking) | The endpoints, the DTOs and the search grammar |
 | [Run protocol: Tracking events](../reference/run-protocol.md#tracking-events) | The `metrics`, `params` and `tags` events and the budgets |
 | [Python SDK](../reference/sdk.md#run-tracking) | `FitContext.log_metric` and the other methods |
+| [Compare runs and use experiments](run-comparison.md) | The runs table, saved views, the compare page and experiments |
 
 ## What the platform tracks for you
 
@@ -228,6 +233,81 @@ bundle: the model group `metrics_history` keeps the stepped series, the scalars,
 and the tags. The `core.loss_curve` plot reads this group. For the layout, see
 [Bundles](../concepts/bundles.md#metrics-history).
 
+## Log images, figures and tables <span class="mapi-badge">v0.14</span> { #log-images-figures-and-tables }
+
+A run can log images, matplotlib figures and small tables. Each item has a key, and can have
+a step, labels and a caption, as a metric point has. Use the same key for the same picture at
+different steps, for example the predictions on a sample at each epoch.
+
+```python
+class MyModel(CustomModel):
+    def fit(self, data, ctx):
+        for epoch in range(1, n_epochs + 1):
+            ...
+            if ctx.tracking_media:  # skip the work when nothing records the images
+                ctx.log_image("samples", grid, step=epoch, labels={"split": "val"},
+                              caption=f"Predictions after epoch {epoch}")
+        fig = plot_residuals(...)
+        ctx.log_figure("residuals", fig)
+        ctx.log_table("confusion_counts", counts_df, caption="Holdout counts per class")
+```
+
+| Method | Accepts |
+|---|---|
+| `log_image(key, image, step=None, labels=None, caption=None)` | A numpy array: `(height, width)` gray, `(height, width, 1)`, `(height, width, 3)` RGB or `(height, width, 4)` RGBA. `uint8` values as they are, booleans as 0 and 255, other integers from 0 to 255, floats from 0 to 1 (NaN becomes 0). Also PNG or JPEG bytes, a Pillow image or an `xarray.DataArray` with the dims `(y, x)` or `(y, x, channel)`. |
+| `log_figure(key, figure, step=None, labels=None, caption=None)` | A matplotlib figure. The SDK saves it as a PNG file (100 dpi). |
+| `log_table(key, table, step=None, labels=None, caption=None)` | A pandas DataFrame, a dict of columns or a list of records. Numbers, booleans, text and empty values. NaN and infinity become empty values. Dates become ISO text. |
+| `tracking_media` | `True` when the platform records images. A figure takes time to draw: use this property to skip it. |
+
+The SDK does a check of the key, the labels, the step and the caption at each call, also
+without a run. A bad key fails at the line that has the error. Media keys follow the rules of
+metric keys. When nothing records the media (a notebook without a run, or a run that has no
+media upload), the call does not encode the image.
+
+Limits:
+
+| Limit | Value |
+|---|---|
+| Size of one image | 8 MiB, a maximum of 4096 pixels on each side |
+| Size of one table | 1 MiB, a maximum of 10 000 rows, 64 columns and 200 000 cells. A cell has a maximum of 1000 characters. |
+| Caption | 500 characters |
+| Items in the run | 1000 |
+| Bytes in the run | 256 MiB |
+
+The limits count the items of all attempts of the run and the items logged through the
+API. If a run logs more, the platform does not keep the extra items and each attempt gets one
+`MEDIA_BUDGET` warning. The run does not fail. An item that replaces another item (the same
+key, labels and step) frees the bytes of the old item.
+
+**What the platform does with an image.** The worker writes the file in its scratch
+directory. The supervisor reads the file, calculates its SHA-256 and does a check of the
+format and the size. Then it uploads the file. The server downloads the file again, does the
+same checks, and keeps a copy in the bundles bucket. The platform accepts only PNG and JPEG
+images (no SVG, no GIF). For the details, see
+[Run protocol: Media](../reference/run-protocol.md#media).
+
+**Where you see the media.**
+
+- **Web app.** The **Media** tab of the run shows each key. A slider selects the step. A
+  select shows one value of a label. A table shows its first 200 rows. The
+  [compare page](run-comparison.md#compare-runs) shows the images of several runs side by
+  side.
+- **Python.** `api.runs.media(run_id)` lists the items. `api.runs.download_media(run_id,
+  item)` gets the bytes and does a check of the size, the CRC32C and the SHA-256.
+- **Command line.** `mapi runs media RUN` lists the items. `--download DIR` writes the files.
+
+**Log media from a notebook.** You can add an image or a table to a run that already exists,
+also after it finished. One request has a maximum of 4 MiB.
+
+```python
+api.runs.log_image(run_id, "holdout_map", "map.png", caption="Holdout error by region")
+api.runs.log_table(run_id, "lift_by_region", {"region": ["north", "south"], "lift": [0.04, 0.02]})
+```
+
+```bash
+mapi runs log-image run_01… holdout_map map.png --step 3 --label split=val --caption "Holdout error"
+```
+
 ## Log from a workflow node { #workflow-nodes }
 
 The `NodeContext` of a workflow node has the same methods. The values go to the run of the
@@ -300,6 +380,8 @@ The same with HTTP: `POST /v1/runs/{run_id}/metrics`, `POST /v1/runs/{run_id}/pa
   gets the points. `api.runs.params(run_id)` lists the params.
 - **Command line.** `mapi runs metrics RUN`, `mapi runs metrics RUN --key loss` and
   `mapi runs params RUN`.
+- **Several runs.** The [compare page](run-comparison.md#compare-runs) shows the curves of
+  2 to 10 runs on one chart.
 
 The server downsamples a long series to `max_points` (the default is 1000). It keeps the
 shape of the curve, the first point and the last point.
@@ -326,6 +408,9 @@ A metric filter compares the summary of one exact series. Add `.min`, `.max` or 
 compare a value different from the last value. A run that does not have the series does not
 match. For the full grammar, see [Search runs](../reference/http-api.md#search-runs).
 
+In the web app, the runs table shows tracked columns and has a filter bar. You can save a
+search as a view. See [Compare runs and use experiments](run-comparison.md#find-runs).
+
 ## Budgets
 
 Each run has budgets for its tracking data. The defaults are:
@@ -338,6 +423,7 @@ Each run has budgets for its tracking data. The defaults are:
 | Params | 5000 |
 | Tags | 100 |
 | Structured log lines | 10 000 lines, 2 MiB |
+| Images and tables <span class="mapi-badge">v0.14</span> | 1000 items, 256 MiB |
 
 If a run logs more, the platform does not keep the extra points and the run gets one
 `TRACKING_BUDGET` warning. The run does not fail. A worker that sends more than 64 MiB of
@@ -356,3 +442,6 @@ keeps the summaries, the params, the tags, the name and the note. It also keeps 
 each metric without a step. Thus search continues to work for old runs. If you log more points
 to a series after this, the server adds them to the summary that it kept (count, minimum,
 maximum and the last value). See [Configuration](../operations/configuration.md).
+
+The retention setting does not delete images and tables. The server keeps them until you
+delete the tenant <span class="mapi-badge">v0.14</span>.

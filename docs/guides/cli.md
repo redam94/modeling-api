@@ -271,6 +271,40 @@ mapi runs ls --tag stage=candidate --name adstock --parent RUN
 For the grammar of `--filter`, `--order-by` and `--column`, see
 [Search runs](../reference/http-api.md#search-runs).
 
+### Media, experiments and comparison <span class="mapi-badge">v0.14</span> { #v014 }
+
+```bash
+mapi runs media RUN                                  # key, labels, step, kind, size, caption
+mapi runs media RUN --key samples --download out/    # files KEY-LABELS-STEP.EXT
+mapi runs log-image RUN holdout_map map.png --step 3 --label split=val --caption "Holdout error"
+
+mapi experiments create "adstock length study" --description "Adstock 2, 4 and 8 weeks."
+mapi experiments add "adstock length study" RUN RUN
+mapi experiments ls
+mapi experiments show "adstock length study"
+mapi experiments rename "adstock length study" "adstock study"
+mapi experiments archive "adstock study"            # unarchive makes it accept runs again
+mapi experiments remove "adstock study" RUN
+mapi experiments rm "adstock study"                 # the runs stay
+mapi fit spec.yaml --remote @ --experiment "adstock study"
+mapi workflows run weekly-readiness -i data=dataset://growth/sales@latest \
+  --experiment "adstock study"                     # the node runs join it too
+mapi runs ls --experiment "adstock study" --column metric.rmse
+
+mapi runs compare RUN RUN RUN --key loss --key rmse --agg min
+mapi runs views save "best fits" --filter 'metric.rmse < 12' --order-by metric.rmse \
+  --column metric.rmse
+mapi runs views ls
+mapi runs ls --view "best fits"
+mapi runs views rm "best fits"
+```
+
+An experiment argument (`EXP`) is an id or the exact name of the experiment. `mapi runs
+compare` shows a table of the metrics (one column for each run), then the params that are
+different (`--all-params` shows all params). `mapi runs ls --view` uses the search of the
+view. The other options add to the search or replace a part of it. `mapi runs watch` shows a
+line for each image that the run logs (a maximum of one line each 5 seconds).
+
 ### Score
 
 ```bash

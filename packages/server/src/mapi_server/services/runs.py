@@ -117,6 +117,7 @@ def run_dto(
         labels=run.labels,
         name=run.name,
         note=run.note,
+        experiment_id=run.experiment_id,
         tags=dict(tags or {}),
         columns=dict(columns) if columns is not None else None,
         created_at=run.created_at,
@@ -165,8 +166,10 @@ async def create_run(
     retry_of: str | None = None,
     catalog_digest: str | None = None,
     checkpointable: bool = False,
+    experiment_id: str | None = None,
 ) -> m.Run:
-    """Insert a run in ``CREATED`` (callers then ``accept`` or ``reject`` it)."""
+    """Insert a run in ``CREATED`` (callers then ``accept`` or ``reject`` it).
+    ``experiment_id`` was checked by the caller (or is inherited from a run)."""
     if kind.is_parent:
         raise NotImplementedError(f"{kind.value!r} fan-out parents arrive in M4")
     ts = now()
@@ -191,6 +194,7 @@ async def create_run(
         inputs=dict(inputs or {}),
         catalog_digest=catalog_digest,
         checkpointable=checkpointable,
+        experiment_id=experiment_id,
         infra_retries=0,
         finalize_attempts=0,
         last_event_id=0,

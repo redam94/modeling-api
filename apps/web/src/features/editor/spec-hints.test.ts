@@ -27,6 +27,8 @@ const BASE = {
       },
     },
     TimeHoldoutSplit: { type: "object", properties: { dim: { type: "string" }, after_step: { anyOf: [{ type: "string" }, { type: "null" }] } } },
+    ColumnSplit: { type: "object", properties: { dim: { type: "string" }, column: { type: "string" } } },
+    StratifiedSplit: { type: "object", properties: { dim: { type: "string" }, by: { type: "string" } } },
     StepCall: { type: "object", properties: { id: { type: "string" }, use: USE, with: { type: "object" } } },
     ModelBlock: { type: "object", properties: { use: USE, settings: { type: "object" } } },
     OutputsBlock: { type: "object", properties: { plots: { type: "array", items: USE }, derived: { type: "array", items: { type: "string" } } } },
@@ -161,6 +163,12 @@ describe("enrichSpecSchema", () => {
     expect(deref(out, at(settings, "properties", "adstock"))).toEqual({ type: "object" });
     expect(bodies(def("OutputsBlock", "properties", "plots", "items"))).toEqual(["mmm.decomposition", "core.ppc_fan"]);
     expect(bodies(def("OutputsBlock", "properties", "derived", "items"))).toEqual(["contributions"]);
+  });
+
+  it("offers the raw names to the column and stratified splits (v0.14)", () => {
+    expect(bodies(def("ColumnSplit", "properties", "dim"))).toEqual(["geo", "time"]);
+    expect(bodies(def("ColumnSplit", "properties", "column"))).toEqual(expect.arrayContaining(["y", "geo"]));
+    expect(bodies(def("StratifiedSplit", "properties", "by"))).toEqual(bodies(def("ColumnSplit", "properties", "column")));
   });
 
   it("uses stage schemas from validation once there are any", () => {

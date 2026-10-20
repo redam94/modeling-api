@@ -205,6 +205,11 @@ catalog identities. Thus, the UI and the docs can describe them:
 | `core.leave_group_out` | New markets or stores: hold out full groups |
 | `core.last_per_group` | Panels and choice data: the last rows of each group that has a minimum of `min_len` rows |
 | `core.mask_block` | Random blocks of cells over many dims (the model must accept missing targets) |
+| `core.column` | v0.14. A train and test assignment in the data: the rows with a value of `column` in `holdout` |
+| `core.stratified` | v0.14. Classes with very different sizes: the same share of the rows of each class of `by`, at random |
+
+For the fields of `column` and `stratified`, see
+[Column and stratified splits](spec-format.md#column-and-stratified-splits).
 
 ## The catalog the API uses
 

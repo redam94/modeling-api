@@ -553,23 +553,23 @@ async def metric_history(
     max_points: int,
     attempt: int | None = None,
     labels: Mapping[str, str] | None = None,
+    max_series: int = MAX_SERIES_PER_HISTORY,
 ) -> MetricHistory:
-    """The points of every series of ``key`` (at most 64, by labels), each downsampled with
-    :func:`lttb` on ``(step, value)`` to ``max_points``. ``attempt`` defaults to each series'
-    summary attempt; ``labels`` keeps series whose labels contain every given pair."""
+    """The points of every series of ``key`` (at most ``max_series``, 64 by default, by
+    labels), each downsampled with :func:`lttb` on ``(step, value)`` to ``max_points``.
+    ``attempt`` defaults to each series' summary attempt; ``labels`` keeps series whose
+    labels contain every given pair."""
     s = m.RunMetricSummary
     stmt = select(s).where(s.run_id == run.id, s.key == key)
     if labels:
         stmt = stmt.where(s.labels.contains(dict(labels)))
     summaries = list(
-        (
-            await session.execute(stmt.order_by(s.labels_key).limit(MAX_SERIES_PER_HISTORY + 1))
-        ).scalars()
+        (await session.execute(stmt.order_by(s.labels_key).limit(max_series + 1))).scalars()
     )
-    truncated = len(summaries) > MAX_SERIES_PER_HISTORY
+    truncated = len(summaries) > max_series
     out: list[MetricHistorySeries] = []
     p = m.RunMetric
-    for summary in summaries[:MAX_SERIES_PER_HISTORY]:
+    for summary in summaries[:max_series]:
         att = attempt if attempt is not None else summary.attempt
         rows = (
             await session.execute(

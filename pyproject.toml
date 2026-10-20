@@ -5,7 +5,7 @@ name = "modeling-api"
 version = "0.13.0"
 requires-python = ">=3.12"
 dependencies = [
-  "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn", "mapi-steps", "mapi-plots[recipes]",
+  "mapi-spec", "mapi-sdk", "mapi-pymc", "mapi-sklearn[gbm]", "mapi-steps", "mapi-plots[recipes]",
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-plugin-statsmodels",
   "mapi-plugin-science", "mapi-plugin-causal", "mapi-conformance", "mapi-workflows[runtime,testing]",
@@ -94,6 +94,7 @@ forbidden_modules = [
   "mapi_plugin_science", "mapi_plugin_causal", "mapi_plots.recipes", "mapi_plots.packs",
   "mapi_workflows.runtime", "mapi_workflows.testing",
   "numpy", "xarray", "pandas", "pyarrow", "zarr", "scipy", "statsmodels", "pymc_extras",
+  "PIL", "lightgbm", "catboost",
 ]
 
 [[tool.importlinter.contracts]]
@@ -120,7 +121,7 @@ forbidden_modules = [
   "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
   "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
   "mapi_plugin_statsmodels", "mapi_plugin_science", "mapi_plugin_causal", "statsmodels",
-  "mapi_workflows", "pymc_extras", "numpy", "xarray", "pandas",
+  "mapi_workflows", "pymc_extras", "numpy", "xarray", "pandas", "PIL",
 ]
 
 [[tool.importlinter.contracts]]

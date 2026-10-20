@@ -21,8 +21,8 @@ ARG MAPI_PACKAGES="mapi-runner mapi-steps mapi-pymc[pathfinder] mapi-plugin-ts m
 ARG MAPI_NO_INSTALL=""
 # PyTensor compiles C at run time, so the Bayesian images need a C++ compiler.
 ARG MAPI_APT_PACKAGES="tini g++"
-ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels mapi-plugin-causal statsmodels scipy h5py h5netcdf pymc pytensor nutpie pymc-extras vl-convert-python"
-ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-sklearn mapi-server mapi-gcs-shim"
+ARG MAPI_ASSERT_PRESENT="mapi-runner mapi-sdk mapi-spec mapi-steps mapi-plots mapi-workflows mapi-pymc mapi-plugin-ts mapi-plugin-statsmodels mapi-plugin-causal statsmodels scipy h5py h5netcdf pymc pytensor nutpie pymc-extras vl-convert-python pillow"
+ARG MAPI_ASSERT_ABSENT="mmm-framework mapi-plugin-mmm mapi-plugin-tabular mapi-plugin-science mapi-sklearn mapi-server mapi-gcs-shim lightgbm catboost"
 
 # ===================================== shared runner build: part 1 (identical in base-* images)
 ARG VERSION=0.0.0-dev

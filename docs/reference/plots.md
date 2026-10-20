@@ -245,8 +245,8 @@ the string columns of these DataFrames.
 | `core.rank_matrix` | `var`, `group`, `dim`, `select`, `descending` (true: rank 1 is the largest value), `max_items` (30), `max_draws` (4 000), `labels` (auto \| always \| never) |
 | `core.calibration` | `var`, `observed_var`, `kind` (auto \| continuous \| binary), `prob` (0.95), `bins` (10), `n_sim` (1 000), `seed` (0) |
 | `core.state_sequence` | `var`, `group` (auto \| hidden_states \| regimes \| posterior \| predictions \| posterior_predictive \| summary \| root), `state_dim` (auto: `state`, then `regime`), `along`, `observed_var`, `select` (none: the first level of each other dim), `max_states` (10), `max_times` (2 000), `max_draws` (4 000), `width` (640), `height` (140) |
-| `core.roc_pr` | `var`, `observed_var`, `positive` (the larger target value), `max_points` (500, 20 to 5 000), `width` (320), `height` (280) |
-| `core.confusion` | `var`, `observed_var`, `positive`, `threshold` (0.5, or `auto`: the largest TPR − FPR), `normalize` (none \| true), `width` (260), `height` (240) |
+| `core.roc_pr` | `var`, `observed_var`, `positive` (the larger target value), `max_points` (500, 20 to 5 000), `classes` (v0.14, multiclass: the classes to draw; default the 12 most frequent), `width` (320), `height` (280) |
+| `core.confusion` | `var`, `observed_var`, `positive`, `threshold` (0.5, or `auto`: the largest TPR − FPR), `normalize` (none \| true), `width` (260), `height` (240). Multiclass (v0.14): `threshold` and `positive` are not used. |
 | `core.loss_curve` | `var`, `group` (auto \| fit_history \| metrics_history), `along` (step), `smooth` (none: a window of n / 50 steps), `log_y` (none: log when max / min > 50), `max_points` (2 000), `width` (560), `height` (220) |
 | `core.loo_pit` | `var` (a `log_likelihood` variable), `observed_var`, `prob` (0.95), `n_sim` (1 000), `seed` (0), `max_draws` (2 000), `k_threshold` (0.7) |
 | `core.energy` | `bfmi_threshold` (0.3), `bins` (40) |
@@ -289,8 +289,8 @@ These recipes are in the core pack (`mapi_plots.recipes.extras`, `classification
 | `core.rank_matrix` | P(rank = k) for each item, sorted by the expected rank, and the matrix of P(row above column). Input: draws `(…, item)`. |
 | `core.calibration` | Continuous targets: the PIT-ECDF difference with a simultaneous envelope (simulated). Targets with values 0 and 1: a reliability diagram with a binomial band for each bin and a histogram of the predicted probabilities. A point prediction (no draws, values from 0 to 1) uses the reliability diagram. A point prediction of a target that is not 0/1 gives an error, because the PIT check needs draws. |
 | `core.state_sequence` | The observed series (points coloured by the most likely state) above the stacked state probabilities. Input: probabilities `(…, state, time)` with or without draws, a score summary with a `stat` dim (the plot uses `mean`), or integer state draws `(chain, draw, time)`. The default variable is `smoothed_prob`, `state_prob` or `filtered_prob`. Without `select`, the plot fixes each other dim at its first level and the caption names that level. |
-| `core.roc_pr` | Two panels: the ROC curve with the diagonal of a random guess, and the precision-recall curve with the base rate. The titles give the AUC and the average precision. With draws, the caption gives the 90% interval of the AUC (up to 500 draws). |
-| `core.confusion` | The 2 × 2 table of the actual class and the predicted class at the threshold, as counts or as the share of each actual class. The caption gives the accuracy, the precision, the recall, the specificity, the F1 score and the threshold. |
+| `core.roc_pr` | Two panels: the ROC curve with the diagonal of a random guess, and the precision-recall curve with the base rate. The titles give the AUC and the average precision. With draws, the caption gives the 90% interval of the AUC (up to 500 draws). Multiclass (v0.14): one-vs-rest curves in a colour for each class, the macro AUC in the title, and the number of classes that are not drawn in the caption. |
+| `core.confusion` | The 2 × 2 table of the actual class and the predicted class at the threshold, as counts or as the share of each actual class. The caption gives the accuracy, the precision, the recall, the specificity, the F1 score and the threshold. Multiclass (v0.14): a K × K table of the most probable class (a maximum of 30 classes; the other classes are `(other)`), with the accuracy and the macro F1. |
 | `core.loss_curve` | The raw loss (light) and a rolling mean (dark) over the steps, one line for each level of an extra dim (at most 8). The caption gives the first and the last smoothed value and the change over the last 10% of the steps. |
 | `core.loo_pit` | The LOO-PIT ECDF difference with a simultaneous envelope (when `posterior_predictive` and `observed_data` are present), and the PSIS Pareto k of each observation with lines at 0.5 and `k_threshold`. |
 
@@ -298,8 +298,12 @@ The recipes `core.calibration`, `core.roc_pr` and `core.confusion` share one inp
 look for the prediction in the `posterior_predictive`, `predictions` and `draws` groups (with
 draws, or one probability for each cell), then in `summary` (`stat` mean, point or median). The
 actual values come from `observed_data` or `observed`. The two arrays are aligned on their shared
-cells, and cells with NaN are left out. The target must have two values. The larger value is the
-positive class unless you set `positive`. The predictions must be from 0 to 1.
+cells, and cells with NaN are left out. For a binary target, the target must have two values.
+The larger value is the positive class unless you set `positive`. The predictions must be from
+0 to 1. From v0.14, `core.roc_pr` and `core.confusion` change to multiclass when the prediction
+has a class dim (`meaning: class_probability`, the probabilities of the classes add up to 1)
+or when the actual target has more than two values. The actual classes can be text or whole
+numbers (`3.0` is the class `3`).
 
 ### Marketing-mix recipes of v0.12
 

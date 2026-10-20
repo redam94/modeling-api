@@ -62,6 +62,7 @@ from mapi_server.services.bundles import verified_bundle_object, verify_bundle_i
 from mapi_server.services.catalog import CatalogSnapshot
 from mapi_server.services.cost import run_estimate
 from mapi_server.services.evidence import placement_problem
+from mapi_server.services.experiments import check_run_experiment
 from mapi_server.services.quotas import admit_run
 from mapi_server.services.runs import Scope, apply_transition, create_run, now
 from mapi_server.services.runspec import StoredRef
@@ -544,10 +545,13 @@ def _needs_history(request: ScoreRequest) -> bool:
 
 
 async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate) -> m.Run:
-    """``POST /v1/runs``."""
+    """``POST /v1/runs``. ``experiment_id`` (v0.14) must be an experiment of the project
+    that is not archived (unknown: 422 at ``/experiment_id``; archived: 409)."""
+    if body.experiment_id is not None:
+        await check_run_experiment(session, ctx.scope, body.experiment_id)
     if body.kind in (RunKind.FIT, RunKind.VALIDATE):
         assert body.spec_id is not None and body.revision is not None
-        return await submit_spec_run(
+        run = await submit_spec_run(
             session,
             ctx,
             kind=body.kind,
@@ -557,18 +561,23 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
             timeout=body.timeout,
             labels=dict(body.labels),
         )
-    assert body.model_version_id is not None
-    return await submit_model_run(
-        session,
-        ctx,
-        kind=body.kind,
-        model_version_id=body.model_version_id,
-        request=body.request,
-        params=dict(body.params),
-        resource_class=body.resource_class,
-        timeout=body.timeout,
-        labels=dict(body.labels),
-    )
+    else:
+        assert body.model_version_id is not None
+        run = await submit_model_run(
+            session,
+            ctx,
+            kind=body.kind,
+            model_version_id=body.model_version_id,
+            request=body.request,
+            params=dict(body.params),
+            resource_class=body.resource_class,
+            timeout=body.timeout,
+            labels=dict(body.labels),
+        )
+    if body.experiment_id is not None:
+        run.experiment_id = body.experiment_id
+        await session.flush()
+    return run
 
 
 async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
@@ -610,6 +619,8 @@ async def submit_retry(
     if old.state != RunState.FAILED.value:
         raise Conflict(f"only failed runs can be retried (run is {old.state})")
     await _refuse_orchestrated_retry(session, old)
+    if old.experiment_id is not None:  # the retry joins it: an archived one refuses (409)
+        await check_run_experiment(session, ctx.scope, old.experiment_id)
     if old.model_version_id is not None:  # its pinned bundle inputs must still verify
         mv = await _ready_model_version(session, ctx.scope, old.model_version_id)
         await verify_bundle_inputs(ctx.store, ctx.signer, mv, old.inputs)
@@ -642,6 +653,7 @@ async def submit_retry(
         retry_of=old.id,
         catalog_digest=old.catalog_digest,
         checkpointable=old.checkpointable,
+        experiment_id=old.experiment_id,  # v0.14: a retry stays in its run's experiment
     )
     return await _accept(session, ctx, run, untrusted=old.untrusted_code)
 

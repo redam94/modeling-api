@@ -23,6 +23,7 @@ from mapi_cli.commands import (
     config,
     datasets,
     endpoints,
+    experiments,
     explore,
     fit,
     governance,
@@ -124,6 +125,7 @@ app.command("serve", context_settings={"allow_extra_args": True, "ignore_unknown
     serve.serve
 )
 app.add_typer(runs.app, name="runs")
+app.add_typer(experiments.app, name="experiments")
 app.add_typer(datasets.app, name="datasets")
 app.add_typer(plugin.app, name="plugin")
 app.add_typer(spec_cmd.app, name="spec")

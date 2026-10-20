@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
-from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER
+from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER, MediaWrite
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import MapiError, Problem
 from mapi_spec.run import (
@@ -35,17 +35,21 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 import mapi_server
 from mapi_server.api import (
     admin,
+    compare,
     datasets,
     endpoints,
+    experiments,
     explore,
     governance,
     guided,
     internal,
+    media,
     meta,
     models,
     optimize,
     plots,
     prior_translations,
+    run_views,
     runs,
     specs,
     tenancy,
@@ -114,10 +118,17 @@ PROBLEM_MODELS: tuple[type[BaseModel], ...] = (Problem,)
 """The RFC 7807 problem document, referenced by the routes' documented error responses
 (:func:`mapi_server.api.problems.problem_responses`)."""
 
+RAW_BODY_MODELS: tuple[type[BaseModel], ...] = (MediaWrite,)
+"""Request bodies a route reads itself (size-capped before parsing); their routes reference
+these components in ``openapi_extra``."""
+
 
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
     _, top = models_json_schema(
-        [(model, "serialization") for model in (*EVENT_PAYLOAD_MODELS, *PROBLEM_MODELS)],
+        [
+            *((model, "serialization") for model in (*EVENT_PAYLOAD_MODELS, *PROBLEM_MODELS)),
+            *((model, "validation") for model in RAW_BODY_MODELS),
+        ],
         ref_template="#/components/schemas/{model}",
     )
     schemas = doc.setdefault("components", {}).setdefault("schemas", {})
@@ -409,6 +420,11 @@ def create_app(
         guided.router,
         runs.router,
         tracking.router,
+        media.router,
+        compare.router,
+        experiments.router,
+        run_views.router,
+        run_views.keys_router,
         models.router,
         models.plots_router,
         prior_translations.router,

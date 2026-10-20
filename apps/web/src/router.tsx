@@ -1,11 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link } from "@tanstack/react-router";
 
-import type { RunKind, RunState } from "@/api/types";
 import { EmptyState } from "@/components/common";
 import { AppShell } from "@/components/shell/app-shell";
 import { isNodePath } from "@/features/datasets/tree";
-import { RUN_KINDS, RUN_STATES } from "@/lib/run-state";
+import { validateRunsSearch, type RunsSearch } from "@/features/runs/run-search";
 import { HomePage } from "@/routes/home";
 
 /*
@@ -19,6 +18,7 @@ const page = {
   catalog: () => import("@/routes/catalog"),
   choose: () => import("@/routes/choose"),
   datasets: () => import("@/routes/datasets"),
+  experiments: () => import("@/routes/experiments"),
   exploreData: () => import("@/routes/explore-data"),
   exploreModel: () => import("@/routes/explore-model"),
   guided: () => import("@/routes/guided"),
@@ -26,6 +26,7 @@ const page = {
   members: () => import("@/routes/members"),
   models: () => import("@/routes/models"),
   optimize: () => import("@/routes/optimize"),
+  runCompare: () => import("@/routes/run-compare"),
   runDetail: () => import("@/routes/run-detail"),
   runs: () => import("@/routes/runs"),
   score: () => import("@/routes/score"),
@@ -111,18 +112,42 @@ const specRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { rev?: number | undefined } => ({ rev: positiveInt(s.rev) }),
 });
 
+// v0.14: the runs workspace keeps its filters, columns, order and saved view in the URL.
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs",
   component: lazyRouteComponent(page.runs, "RunsPage"),
-  validateSearch: (s: Record<string, unknown>): { state?: RunState | undefined; kind?: RunKind | undefined } => ({
-    state: oneOf(s.state, RUN_STATES),
-    kind: oneOf(s.kind, RUN_KINDS),
+  validateSearch: (s: Record<string, unknown>): RunsSearch => validateRunsSearch(s),
+});
+
+/** Metric (or media) keys (`mapi_spec.tracking.METRIC_KEY_RE`). An empty list is kept: the
+ * user cleared every key (no list at all means the default keys). */
+function metricKeys(v: unknown, max: number): string[] | undefined {
+  if (Array.isArray(v) && v.length === 0) return [];
+  const list = Array.isArray(v) ? v.filter((k): k is string => typeof k === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(k)) : [];
+  return list.length ? [...new Set(list)].slice(0, max) : undefined;
+}
+
+export interface RunCompareSearch {
+  runs: string[];
+  keys?: string[] | undefined;
+  media?: string[] | undefined;
+}
+
+// v0.14: compare 2..10 runs. A static segment, so it wins over `/runs/$runId`.
+const runCompareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/runs/compare",
+  component: lazyRouteComponent(page.runCompare, "RunComparePage"),
+  validateSearch: (s: Record<string, unknown>): RunCompareSearch => ({
+    runs: Array.isArray(s.runs) ? [...new Set(s.runs.map(idParam).filter((r): r is string => Boolean(r)))].slice(0, 10) : [],
+    keys: metricKeys(s.keys, 12),
+    media: metricKeys(s.media, 4),
   }),
 });
 
-/** v0.11 tabs of the run page (Overview is the default, without `?tab=`). */
-export const RUN_TABS = ["metrics", "params", "logs", "notes"] as const;
+/** Tabs of the run page (Overview is the default, without `?tab=`): v0.11, v0.14 media. */
+export const RUN_TABS = ["metrics", "params", "media", "logs", "notes"] as const;
 export type RunTab = (typeof RUN_TABS)[number];
 
 const runRoute = createRoute({
@@ -130,6 +155,22 @@ const runRoute = createRoute({
   path: "/runs/$runId",
   component: lazyRouteComponent(page.runDetail, "RunDetailPage"),
   validateSearch: (s: Record<string, unknown>): { tab?: RunTab | undefined } => ({ tab: oneOf(s.tab, RUN_TABS) }),
+});
+
+// v0.14: experiments (named groups of runs) and one experiment with its runs.
+const experimentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/experiments",
+  component: lazyRouteComponent(page.experiments, "ExperimentsPage"),
+  validateSearch: (s: Record<string, unknown>): { archived?: boolean | undefined } => ({ archived: s.archived === true || s.archived === "true" ? true : undefined }),
+});
+
+const experimentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/experiments/$experimentId",
+  component: lazyRouteComponent(page.experiments, "ExperimentPage"),
+  // the runs table of the page, without the experiment (the page fixes it)
+  validateSearch: (s: Record<string, unknown>): RunsSearch => ({ ...validateRunsSearch(s), experiment: undefined }),
 });
 
 const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: lazyRouteComponent(page.models, "ModelsPage") });
@@ -172,7 +213,7 @@ const catalogRoute = createRoute({
 
 // M3.5: the explorers, model comparison, budget optimisation and Help me choose.
 // v0.10: + the eight sections for scientific data (a hand copy of `features/explore/views.ts DATA_SECTIONS`).
-export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality", "structure", "images", "profiles", "map", "network", "tree", "circular", "points"] as const;
+export const DATA_EXPLORER_TABS = ["overview", "distributions", "timeseries", "missingness", "outliers", "correlation", "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality", "structure", "images", "gallery", "profiles", "map", "network", "tree", "circular", "points"] as const;
 export const MODEL_EXPLORER_TABS = ["summary", "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf", "fevd", "fields", "forecast", "backtest", "governance", "lineage"] as const;
 
 const exploreDataRoute = createRoute({
@@ -420,7 +461,10 @@ export const routeTree = rootRoute.addChildren([
   newSpecRoute,
   specRoute,
   runsRoute,
+  runCompareRoute,
   runRoute,
+  experimentsRoute,
+  experimentRoute,
   modelsRoute,
   modelRoute,
   modelVersionRoute,

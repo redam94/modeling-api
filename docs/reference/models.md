@@ -34,6 +34,7 @@ each lift likelihood.
 | `causal.synthetic_control@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict | `geo_lift` |
 | `causal.did@1` <span class="mapi-badge">v0.13</span> | `mapi-plugin-causal` | draws | predict, counterfactual | `did_event_study` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
+| `tabular.image_logistic@1` <span class="mapi-badge">v0.14</span> | `mapi-plugin-tabular` | draws | predict, evaluate | contract kit (`shapes_dataset`) |
 | `tabular.regressor@1` | `mapi-plugin-tabular` | quantiles | predict, forecast, counterfactual, evaluate | `xgb_store_demand` |
 | `choice.multinomial_logit@1` | `mapi-plugin-tabular` | draws (Bayesian bootstrap) | predict, forecast, counterfactual, evaluate | `e84_lite` |
 | `ts.sarimax@1` | `mapi-plugin-statsmodels` | quantiles | predict, forecast, evaluate | `sm_arimax` |
@@ -67,7 +68,7 @@ Plugins use **canonical names** for their inputs. Bind the names of your dataset
 the `data.bind` block of the spec. Outputs come back with your names (reverse binding). New
 variables, for example `y_hat`, keep their names.
 
-The `mapi-sklearn` package also registers five general tabular plugins (see
+The `mapi-sklearn` package also registers six general tabular plugins (see
 [Tabular models](../guides/sklearn.md)):
 
 - `sklearn.tabular_regressor`
@@ -75,6 +76,9 @@ The `mapi-sklearn` package also registers five general tabular plugins (see
 - `sklearn.tabular_bootstrap`
 - `sklearn.tabular_conformal`
 - `sklearn.tabular_classifier`
+- `sklearn.multiclass_classifier` <span class="mapi-badge">v0.14</span>: the probability of
+  each of 3 or more classes (`y_hat(..., class)`). See
+  [Multiclass classification](../guides/sklearn.md#multiclass).
 
 !!! tip "Every setting, generated"
     The platform makes the [models catalog](generated/models-catalog.md) from the installed
@@ -282,11 +286,65 @@ platform maps `county_idx` again.
 | Setting | Default | Meaning |
 |---|---|---|
 | `group_dim` | `county` | The grouping dim |
-| `family` | `normal` | `normal`, `student_t`, `poisson` (log link) or `bernoulli` (logit) |
+| `family` | `normal` | `normal`, `student_t`, `poisson` (log link) or `bernoulli` (logit). From v0.14 (model version 1.1.0) also the families in the table below. |
+| `n_categories` | none | v0.14: the number of ordered categories (2 to 50). Necessary for `ordinal`. |
 | `covariates` | `[]` | Predictors over `obs` |
 | `varying_slopes` | `[]` | Covariates whose slope varies by group |
 | `group_covariates` | `[]` | Predictors over the group dim |
 | `centered` | false | Use centred group effects |
+
+**Families of v0.14.** `mu` is the expected value of `y`.
+
+| Family | Link | Extra parameter | Data |
+|---|---|---|---|
+| `negative_binomial` | log | `alpha ~ HalfNormal` (dispersion) | Counts: whole numbers, 0 or more |
+| `zero_inflated_poisson` | log | `psi ~ Beta(2, 2)`: the probability of the count process. `mu = psi · exp(eta)`. | Counts with many zeros |
+| `zero_inflated_negative_binomial` | log | `alpha` and `psi` | Counts with many zeros and a large spread |
+| `beta` | logit | `kappa ~ HalfNormal(50)` (precision) | Shares strictly between 0 and 1 |
+| `gamma` | log | `alpha ~ HalfNormal(5)` (shape) | Positive amounts, more than 0 |
+| `ordinal` | cumulative logit | `cutpoints`: `n_categories − 1` sorted values. The intercept is 0. `mu = Σ k · p_k`. | Whole numbers from 0 to `n_categories − 1` |
+
+If the target does not agree with the family (for example a negative count, or a share of
+exactly 0 or 1 for `beta`), the fit stops with a clear message.
+
+## `tabular.image_logistic` — classify small images <span class="mapi-badge">v0.14</span>
+
+This plugin classifies small images, for example the images of an
+[image folder upload](../guides/image-data.md). It is a Bayesian multinomial logistic regression
+on the main patterns of the pixels.
+
+**Inputs.** `pixels(image, y, x, channel)` with the dtype `uint8` (role covariate) and the
+target `label(image)` as text (role target, missing values allowed). `image` is categorical
+with `new_levels` (strategy `pooled`). `y` and `x` are integer dims and `channel` is a
+categorical dim, all `fixed`.
+
+**Model.** The pixels are divided by 255. With `downsample` more than 1, the model takes the
+mean of blocks of pixels. With `features: pca` (the default), the model calculates the first
+`n_components` principal components of the training images and uses their standardised scores.
+With `features: pixels`, it uses the pixels (a maximum of `max_features` values). Then:
+`alpha ~ ZeroSumNormal(2)` over the classes, `beta ~ ZeroSumNormal(prior_sigma)` over the
+features and the classes, and `label ~ Categorical(softmax(alpha + Z · beta))`. The default
+engine is nutpie.
+
+**Outputs.** `y_hat(chain, draw, image, class)`: the probability of each class (a maximum of
+500 draws), with the attribute `meaning: class_probability`. The bundle keeps the PCA basis in
+the group `features`. The fit logs the params `image.features`, `image.n_components`,
+`image.height` and `image.width`, the metric `explained_variance`, and the images
+`pca_components` and `class_means` (the **Media** tab). The plots are `core.roc_pr`,
+`core.confusion` and `core.convergence`. `loo` is not valid for this model.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `pixels`, `target`, `image_dim` | `pixels`, `label`, `image` | The names of the inputs |
+| `features` | `pca` | `pca` or `pixels` |
+| `n_components` | 16 | The number of components (2 to 64, a maximum of the training images − 1) |
+| `downsample` | 1 | The size of the pixel blocks (1 to 16) |
+| `max_features` | 256 | `pixels`: the maximum of (height / downsample) × (width / downsample) × channels |
+| `prior_sigma` | 1.0 | The prior scale of `beta` (more than 0, a maximum of 10) |
+| `class_order` | none | The classes in a fixed sequence (a maximum of 50) |
+
+`mapi_plugin_tabular.image_data.shapes_dataset()` makes a small example dataset (circles,
+squares and crosses, 16 × 16 pixels, with a `split` coordinate).
 
 ## `tabular.regressor` — quantile regression for panels
 

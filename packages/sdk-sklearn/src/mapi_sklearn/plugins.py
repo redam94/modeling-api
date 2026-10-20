@@ -11,6 +11,7 @@ sklearn.tabular_quantiles  quantiles     ``{kind: quantile, quantiles: [...]}``
 sklearn.tabular_bootstrap  draws         ``{kind: bootstrap, n: 50, by: store}``
 sklearn.tabular_conformal  interval      ``{kind: conformal, alpha: 0.1, calibration: 0.2}``
 sklearn.tabular_classifier point         binary class probability
+sklearn.multiclass_classifier point      one probability per class (``y_hat(..., class)``)
 ========================== ============= ==================================================
 """
 
@@ -21,9 +22,11 @@ from mapi_sklearn.model import (
     SklearnClassifier,
     SklearnConformalModel,
     SklearnModel,
+    SklearnMulticlassClassifier,
     SklearnQuantileModel,
 )
 from mapi_sklearn.settings import (
+    MulticlassClassifierSettings,
     TabularBootstrapSettings,
     TabularClassifierSettings,
     TabularConformalSettings,
@@ -33,6 +36,7 @@ from mapi_sklearn.settings import (
 
 __all__ = [
     "PLUGINS",
+    "MulticlassClassifier",
     "TabularBootstrap",
     "TabularClassifier",
     "TabularConformal",
@@ -98,7 +102,22 @@ class TabularClassifier(SklearnClassifier[TabularClassifierSettings]):
     Settings = TabularClassifierSettings
     id = "sklearn.tabular_classifier"
     version = VERSION
-    description = "Binary classification: the probability that the target is the positive class."
+    description = (
+        "Binary classification: the probability that the target is the positive class "
+        "(scikit-learn, xgboost, LightGBM or CatBoost classifiers)."
+    )
+
+
+class MulticlassClassifier(SklearnMulticlassClassifier[MulticlassClassifierSettings]):
+    """One probability per class."""
+
+    Settings = MulticlassClassifierSettings
+    id = "sklearn.multiclass_classifier"
+    version = VERSION
+    description = (
+        "Multiclass classification with an allow-listed scikit-learn, xgboost, LightGBM or "
+        "CatBoost classifier: the probability of each class of a text or integer target."
+    )
 
 
 PLUGINS = (
@@ -107,5 +126,6 @@ PLUGINS = (
     TabularBootstrap,
     TabularConformal,
     TabularClassifier,
+    MulticlassClassifier,
 )
 """Every built-in plugin (the ``mapi.models`` entry point loads this tuple)."""

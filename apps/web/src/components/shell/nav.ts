@@ -6,6 +6,7 @@ import {
   Compass,
   Database,
   FileCode2,
+  FlaskConical,
   Gauge,
   Home,
   KeyRound,
@@ -93,6 +94,8 @@ export const EXPERT_NAV: NavItem[] = [
   { to: "/datasets", label: "Datasets", icon: Database, chord: "d", description: "Upload, map and examine data" },
   { to: "/build", label: "Build", icon: FileCode2, chord: "b", description: "Write and validate model specs" },
   { to: "/runs", label: "Runs", icon: Activity, chord: "r", description: "Fits, dry-runs, ingests and scores" },
+  // v0.14: named groups of runs to compare.
+  { to: "/experiments", label: "Experiments", icon: FlaskConical, chord: "e", description: "Named groups of runs to compare" },
   { to: "/models", label: "Models", icon: Boxes, chord: "m", description: "Examine fitted model versions" },
   { to: "/score", label: "Score", icon: Gauge, chord: "s", description: "Forecasts, scenarios and counterfactuals" },
   // M3.5: automated analyses and the governance that validates models.

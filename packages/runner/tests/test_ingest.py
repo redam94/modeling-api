@@ -337,3 +337,34 @@ def test_parquet_and_netcdf_uploads(tmp_path: Path) -> None:
     assert mschema.vars["sales"].role is Role.TARGET
     with pytest.raises(MapiError, match="rows"):
         _read_table(pq, "parquet", max_rows=5)
+
+
+def test_the_profile_of_8_bit_pixels_counts_levels_and_the_preview_has_no_pixels() -> None:
+    """v0.14: an image stack (pixels with ``mapi_image``) keeps profile and preview small."""
+    import xarray as xr
+    from mapi_sdk.schema import infer_schema
+
+    rng = np.random.default_rng(2)
+    px = rng.integers(0, 256, (30, 5, 4, 3)).astype(np.uint8)
+    ds = xr.Dataset(
+        {"pixels": (("image", "y", "x", "channel"), px, {"mapi_image": "1"})},
+        coords={
+            "image": [f"{i:02d}" for i in range(30)],
+            "y": np.arange(5),
+            "x": np.arange(4),
+            "channel": ["r", "g", "b"],
+            "path": ("image", [f"{i}.png" for i in range(30)]),
+        },
+    )
+    prof = profile(ds, infer_schema(ds), [], b"")["vars"]["pixels"]
+    flat = px.astype(float).ravel()
+    assert prof["count"] == flat.size and prof["missing"] == 0
+    assert prof["mean"] == pytest.approx(flat.mean()) and prof["std"] == pytest.approx(flat.std())
+    assert (prof["min"], prof["max"]) == (flat.min(), flat.max())
+    assert prof["p95"] == pytest.approx(np.quantile(flat, 0.95), abs=2)
+    pv = preview(ds, 10)
+    assert pv["total_rows"] == 30 and [c["name"] for c in pv["columns"]] == ["image", "path"]
+    # without the attribute a 4-D variable previews one row per cell, as before
+    plain = ds.copy(deep=True)
+    plain["pixels"].attrs = {}
+    assert preview(plain, 10)["total_rows"] == px.size

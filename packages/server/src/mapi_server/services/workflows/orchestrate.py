@@ -597,6 +597,7 @@ class WorkflowOrchestrator:
         run.parent_run_id = env.wr.run_id
         run.token_id = env.run.token_id
         run.created_by = env.run.created_by
+        run.experiment_id = env.run.experiment_id  # v0.14: node runs join the workflow's
         await admit(env.session, self.ctx, run, audit_action=None)
         await apply_transition(env.session, run, RunTrigger.ACCEPT, Actor.API)
 
