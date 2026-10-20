@@ -8,25 +8,21 @@ spend. Business priors become ROI priors (:mod:`mapi_plugin_mmm.calibration`), l
 become mmm-framework experiment likelihoods, and budgets are optimised with
 mmm-framework's ``planning`` (:mod:`mapi_plugin_mmm.planning`). See
 :mod:`mapi_plugin_mmm.base` for fit, score and the bundle layout.
+
+v1.1: time-varying channel effects (``time_varying``: a random walk on the log
+coefficient, with a forecast policy after the fit window), count and proportion
+likelihoods (``poisson``, ``negative_binomial``, ``beta``: channel effects are positive
+coefficients on the link scale, without business priors or lift tests), a ``lift_tests``
+bundle group, the ``adstock`` and ``effectiveness`` derived quantities, and model-level run
+tracking (:mod:`mapi_plugin_mmm.tracking`).
 """
 
 from __future__ import annotations
 
-import _thread
-import contextlib
-import threading
-from collections.abc import Callable, Iterator
 from typing import Any, ClassVar, Final
 
 import xarray as xr
 from mapi_pymc.diagnostics import convergence_diagnostics
-from mapi_pymc.engines import (
-    EngineHooks,
-    nutpie_progress,
-    pymc_draw_callback,
-    pymc_nutpie_progress,
-)
-from mapi_sdk.errors import RunCancelled
 from mapi_sdk.models import FitContext, FitOutput, PriorTranslation
 from mapi_spec.calibration import PriorTranslationJob
 from mapi_spec.capabilities import Capabilities, Diagnostic, Representation, ResourceHint
@@ -34,24 +30,30 @@ from mapi_spec.errors import ErrorCode, MapiError, Severity
 from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import FitConfig
 
-from mapi_plugin_mmm.base import FrameworkMMM, diagnostics_from
+from mapi_plugin_mmm.base import FrameworkMMM, _clean, diagnostics_from
 from mapi_plugin_mmm.calibration import (
+    LiftPlan,
+    check_calibration,
     lift_measurements,
+    lift_test_group,
     prior_preview,
     translate_business_priors,
     unit_scales,
     with_priors,
 )
+from mapi_plugin_mmm.forward import LIKELIHOOD_LINK, Posterior, Replay
 from mapi_plugin_mmm.framework import (
     APPROX_ENGINES,
     MCMC_ENGINES,
-    EnginePlan,
     PanelData,
+    check_likelihood_data,
     engine_plan,
+    framework_version,
     make_model,
-    quiet,
 )
+from mapi_plugin_mmm.sampling import run_sampler
 from mapi_plugin_mmm.settings import BayesianSettings, mcmc_fit_schema
+from mapi_plugin_mmm.tracking import log_mmm_summary, summary_window
 
 __all__ = ["MMMBayesian"]
 
@@ -63,7 +65,7 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
     """mmm-framework's Bayesian marketing-mix model."""
 
     id = "mmm.bayesian"
-    version = "1.0.0"
+    version = "1.1.0"
     Settings = BayesianSettings
     family = "mmm"
     capabilities = Capabilities(
@@ -81,10 +83,18 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
     plots: ClassVar[list[str]] = [
         "core.ppc_fan",
         "core.convergence",
+        "core.energy",
         "core.posterior_forest",
+        "core.prior_posterior",
         "mmm.decomposition",
+        "mmm.waterfall",
         "mmm.response_curves",
         "mmm.marginal_cost",
+        "mmm.roi",
+        "mmm.spend_effect",
+        "mmm.adstock",
+        "mmm.lift_tests",
+        "mmm.effectiveness",
     ]
     resources = ResourceHint(
         min_class=ResourceClass.S, default_class=ResourceClass.M, est_fit_seconds=900
@@ -110,6 +120,8 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
         self, ds: xr.Dataset, s: BayesianSettings, cfg: FitConfig, ctx: FitContext
     ) -> FitOutput:
         data, freq = self._panel(ds, s, with_target=True)
+        assert data.y is not None
+        check_likelihood_data(data.y, s.likelihood)
         seed = cfg.seed if cfg.seed is not None else ctx.seed
         plan = engine_plan(
             cfg.engine,
@@ -121,54 +133,28 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
             default_engine=self.default_engine,
         )
         calibration: dict[str, Any] = {}
-        s, experiments = self._calibrate(ds, data, freq, s, ctx, seed, calibration)
+        s, lift = self._calibrate(ds, data, freq, s, ctx, seed, calibration)
+        if s.time_varying.channels and data.geos and s.hierarchy.media_by_geo:
+            for ch in s.time_varying.channels:
+                ctx.info(f"{ch} is time-varying, so its effect is the same in every geo")
+        if not s.identity_link and data.geos and s.hierarchy.media_by_geo:
+            ctx.info(
+                f"with a {s.likelihood} likelihood, the effect of each channel is the same "
+                "in every geo"
+            )
         ctx.progress(0.05, "building the mmm-framework model")
         model = make_model(data, s, frequency=freq, plan=plan)
-        if experiments:
-            model.add_experiment_calibration(experiments)
+        if lift is not None and lift.measurements:
+            model.add_experiment_calibration(lift.measurements)
         ctx.check_cancelled()
         ctx.progress(0.1, f"sampling ({plan.engine})")
-        kwargs: dict[str, Any] = {"progressbar": False}
-        live: contextlib.AbstractContextManager[Any] = contextlib.nullcontext()
-        if plan.method == "nuts":
-            kwargs["nuts_sampler"] = plan.nuts_sampler
-            kwargs["tune"] = plan.tune
-            kwargs["chains"] = plan.chains
-            if plan.target_accept is not None:
-                kwargs["target_accept"] = plan.target_accept
-            hooks = EngineHooks.for_context(ctx, progress=_window(ctx, 0.1, 0.9))
-            if plan.nuts_sampler == "nutpie":
-                live = _nutpie_live(hooks, ctx)
-            elif plan.nuts_sampler == "pymc":
-                kwargs["callback"] = _pymc_callback(hooks, plan)
-        elif plan.method == "smc":
-            kwargs["chains"] = plan.chains
-        else:
-            kwargs.pop("progressbar")
-        try:
-            with quiet(), live:
-                result = model.fit(
-                    draws=plan.draws, random_seed=plan.seed, method=plan.method, **kwargs
-                )
-        except MapiError:
-            raise
-        except KeyboardInterrupt:
-            # nutpie stops on the interrupt the cancel request raised (see _nutpie_live)
-            if _cancelled(ctx):
-                raise RunCancelled("run was cancelled while sampling") from None
-            raise
-        except Exception as exc:
-            if _cancelled(ctx):
-                raise RunCancelled("run was cancelled while sampling") from exc
-            raise MapiError(
-                "mmm-framework failed to fit the model",
-                code=ErrorCode.USER_CODE_ERROR,
-                untrusted_text=f"{type(exc).__name__}: {exc}"[:8000],
-            ) from exc
-        # an aborted nutpie run returns its partial trace: never make a model from it
-        ctx.check_cancelled()
+        result = run_sampler(model.fit, plan, ctx)
         ctx.progress(0.9, "posterior ready")
         groups = self._groups(model, data, cfg, bayesian=True)
+        if lift is not None:
+            tests = lift_test_group(lift, groups["posterior"])
+            if tests is not None:
+                groups["lift_tests"] = _clean(tests)
         diagnostics: list[Diagnostic] = list(diagnostics_from(result.diagnostics))
         if plan.mcmc:
             free = [rv.name for rv in model.model.free_RVs]
@@ -190,6 +176,27 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
         )
         if calibration:
             learned["calibration"] = calibration
+        if not s.identity_link:
+            learned["media_prior"] = "coefficient"
+        if ctx.tracking:
+            ctx.progress(0.95, "summarising the fit")
+            tvp = s.time_varying
+
+            def replay(post: xr.Dataset) -> Replay:
+                return Replay(model, data, Posterior.from_dataset(post), tvp_forecast=tvp.forecast)
+
+            log_mmm_summary(
+                ctx,
+                summary_window(replay, groups["posterior"], data),
+                params={
+                    "mmm.framework_version": framework_version(),
+                    "mmm.n_channels": len(data.channels),
+                    "mmm.n_periods": data.n_periods,
+                    "mmm.n_cells": data.n_cells,
+                    "mmm.link": LIKELIHOOD_LINK[s.likelihood],
+                    "mmm.time_varying": ",".join(tvp.channels),
+                },
+            )
         ctx.progress(1.0, "fit complete")
         return FitOutput(groups=groups, learned=learned, diagnostics=diagnostics)
 
@@ -203,12 +210,15 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
         ctx: FitContext,
         seed: int,
         record: dict[str, Any],
-    ) -> tuple[BayesianSettings, list[Any]]:
+    ) -> tuple[BayesianSettings, LiftPlan | None]:
         """Apply the spec's calibration block: translate business priors that no
         ``translate_priors`` run translated yet; map lift tests to experiments."""
         cal = ctx.calibration
         if cal is None or cal.empty:
-            return s, []
+            return s, None
+        check_calibration(
+            s, business_priors=cal.business_priors is not None, lift_tests=bool(cal.lift_tests)
+        )
         scales = unit_scales(ds, ctx.to_original)
         if cal.business_priors is not None and cal.prior_translation_run is None:
             ctx.progress(0.01, "translating business priors")
@@ -232,14 +242,13 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
                 )
             s = with_priors(s, outcome.priors)
             record["translated_priors"] = outcome.priors
-        experiments: list[Any] = []
+        lift: LiftPlan | None = None
         if cal.lift_tests:
-            plan = lift_measurements(cal.lift_tests, data, scales)
-            experiments = plan.measurements
-            record["lift_tests"] = plan.record()
-            for tid, why in plan.skipped.items():
+            lift = lift_measurements(cal.lift_tests, data, scales)
+            record["lift_tests"] = lift.record()
+            for tid, why in lift.skipped.items():
                 ctx.info(f"lift test {tid} skipped: {why}")
-        return s, experiments
+        return s, lift
 
     def translate_priors(
         self,
@@ -250,6 +259,7 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
     ) -> PriorTranslation:
         """Business priors to ``priors.roi`` / ``priors.intercept`` with a prior-predictive
         preview in business units (:mod:`mapi_plugin_mmm.calibration`)."""
+        check_calibration(s, business_priors=True, lift_tests=bool(job.lift_tests), pointer="")
         data, freq = self._panel(ds, s, with_target=True)
         seed = job.seed if job.seed is not None else ctx.seed
         scales = unit_scales(ds, ctx.to_original)
@@ -282,43 +292,3 @@ class MMMBayesian(FrameworkMMM[BayesianSettings]):
         )
         ctx.progress(1.0, "priors translated")
         return PriorTranslation(result=result, preview=preview)
-
-
-# ---------------------------------------------------------------------- live sampling
-
-
-def _window(ctx: FitContext, lo: float, hi: float) -> Callable[[float, str], None]:
-    def report(fraction: float, message: str) -> None:
-        ctx.progress(lo + (hi - lo) * fraction, message)
-
-    return report
-
-
-def _cancelled(ctx: FitContext) -> bool:
-    return ctx.cancel is not None and ctx.cancel.cancelled
-
-
-@contextlib.contextmanager
-def _nutpie_live(hooks: EngineHooks, ctx: FitContext) -> Iterator[None]:
-    """Live progress, chains and step metrics of PyMC's nutpie sampler; a cancel request
-    interrupts the main thread once (nutpie's blocking ``sample`` then stops and returns
-    its partial trace, which :meth:`MMMBayesian.fit` discards)."""
-    report = nutpie_progress(hooks)
-    interrupted = threading.Event()
-
-    def on_progress(progress: list[Any]) -> None:
-        report(progress)
-        if _cancelled(ctx) and not interrupted.is_set():
-            interrupted.set()
-            _thread.interrupt_main()
-
-    with pymc_nutpie_progress(on_progress):
-        yield
-
-
-def _pymc_callback(hooks: EngineHooks, plan: EnginePlan) -> Callable[[Any, Any], None]:
-    """``pm.sample`` callback for PyMC's own NUTS: progress, chains, the step metrics
-    ``step_size``, ``num_steps``, ``tree_depth`` and cumulative ``divergences`` per chain
-    (as the sdk-pymc ``pymc`` engine) and cancellation (``RunCancelled`` raised here stops
-    the sampler)."""
-    return pymc_draw_callback(hooks, plan)

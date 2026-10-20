@@ -18,6 +18,11 @@ id                 plugin                      for
 =================  ==========================  =============================================
 ``geo_mmm``        ``mmm.bayesian``            marketing mix by market (what-if, priors;
                                                mmm-framework's BayesianMMM)
+``mediated_mmm``   ``mmm.nested``              national marketing mix whose channels act
+                                               through measured intermediate results
+                                               (visits, awareness)
+``multi_kpi_mmm``  ``mmm.multivariate``        national marketing mix of several KPI
+                                               columns with cross-effects between them
 ``weekly_forecast````ts.hsgp_trend``           one weekly series, forecast ahead
 ``store_demand``   ``tabular.regressor``       demand per store and week (quantiles)
 ``customer_choice````choice.multinomial_logit``which product customers choose on each
@@ -341,7 +346,7 @@ the template's pipeline only aggregates to weeks."""
 
 GEO_MMM = GuidedTemplate(
     id="geo_mmm",
-    version="2.0.0",
+    version="2.1.0",
     title="Geo marketing mix",
     description_plain="Find how much each marketing channel adds to your results in each "
     "market. See what occurs when you move budget from one channel to a different channel.",
@@ -400,9 +405,9 @@ GEO_MMM = GuidedTemplate(
             "settings": MMM_TEMPLATE_SETTINGS,
             "fit": _MMM_FIT,
         },
-        "outputs": {"derived": ["contributions", "response_curves", "marginal_cost"],
+        "outputs": {"derived": ["contributions", "response_curves", "marginal_cost", "adstock"],
                     "plots": ["core.ppc_fan", "core.convergence", "mmm.decomposition",
-                              "mmm.response_curves"],
+                              "mmm.response_curves", "mmm.roi"],
                     "ui_draws": 300},
         "evaluate": {"metrics": ["mape", "coverage_90"]},
         "execution": {"resource_class": "M", "timeout": "45m"},
@@ -418,6 +423,172 @@ GEO_MMM = GuidedTemplate(
                "/model/settings/saturation": "advanced", "/model/settings/trend": "advanced",
                "/model/settings/seasonality": "advanced", "/model/fit": "advanced",
                "/pipeline": "hidden", "/execution": "advanced"},
+)  # fmt: skip
+
+_MMM_CHECKS: Final = ["convergence.rhat", "convergence.ess", "convergence.divergences",
+                      "holdout.mape", "holdout.coverage_90", "plausibility.negative_roi",
+                      "plausibility.roi_absurd", "plausibility.share_outlier",
+                      "plausibility.baseline_share", "data.missing", "data.history",
+                      "data.spend_variation"]  # fmt: skip
+"""The scorecard checks of the MMM templates (none of them is about geos)."""
+_EXT_SETTINGS: Final[dict[str, JsonValue]] = {
+    "trend": {"kind": "linear"},
+    "seasonality": {"yearly_order": 2},
+}
+"""Settings of the national extension MMMs (``mmm.nested``, ``mmm.multivariate``): the
+engine fixes geometric adstock and exponential saturation, so only the baseline is set."""
+_EXT_UI_LEVELS: Final[dict[str, UiLevel]] = {
+    "/model/settings/trend": "advanced", "/model/settings/seasonality": "advanced",
+    "/model/fit": "advanced", "/pipeline": "hidden", "/execution": "advanced",
+}  # fmt: skip
+NESTED_MODEL_ID: Final = "mmm.nested"
+MULTIVARIATE_MODEL_ID: Final = "mmm.multivariate"
+MEDIATOR_VAR: Final = "mediators"
+"""``mmm.nested``'s mediator series ``mediators(mediator, time)`` and the dataset variable the
+``mediators`` answer becomes (a variable may not share its dim's name)."""
+
+
+def _weekly(skipna: bool = False) -> dict[str, JsonValue]:
+    step: dict[str, JsonValue] = {
+        "dim": "time", "freq": "W-SUN", "how": "sum", "full_periods_only": True,
+    }  # fmt: skip
+    if skipna:
+        # a mediator measured in some periods only: a week of missing values stays missing
+        step["skipna"] = True
+        step["how_vars"] = {MEDIATOR_VAR: "mean"}
+    return {"id": "weekly", "use": "core.resample@^1", "with": step}
+
+
+MEDIATED_MMM = GuidedTemplate(
+    id="mediated_mmm",
+    title="Marketing mix with an intermediate measure",
+    description_plain="Find how much each marketing channel adds to your results, and how "
+    "much of that effect goes through an intermediate measure such as visits or awareness.",
+    family="mmm",
+    plugin=f"{NESTED_MODEL_ID}@^1",
+    questions=[
+        GuidedQuestion(
+            id="kpi", prompt_plain="Which column is the result you want to explain?",
+            help_plain="Usually revenue, sales or sign-ups.", kind="column", role=Role.TARGET,
+            accepts=["number", "integer"], keywords=_KPI_WORDS,
+        ),
+        GuidedQuestion(
+            id="date", prompt_plain="Which column holds the date or week?", kind="column",
+            dim="time", dim_spec=_TIME_DIM, accepts=["date"], keywords=_DATE_WORDS,
+        ),
+        GuidedQuestion(
+            id="spend", prompt_plain="Which columns are media spend (one per channel)?",
+            help_plain="Select each column that shows the money spent on a channel.",
+            kind="columns", role=Role.SPEND, wide_dim="channel", as_var="spend",
+            accepts=["number", "integer"], keywords=_SPEND_WORDS,
+        ),
+        GuidedQuestion(
+            id="mediators",
+            prompt_plain="Which columns are intermediate measures (visits, searches, "
+            "awareness)?",
+            help_plain="Select each column that the advertising changes before it changes the "
+            "result. A measure can have empty periods, for example a monthly survey.",
+            kind="columns", role=Role.COVARIATE, wide_dim="mediator", as_var=MEDIATOR_VAR,
+            accepts=["number", "integer"], missing="allow",
+            keywords=["awareness", "visits", "visit", "traffic", "search", "searches",
+                      "consideration", "survey", "footfall", "sessions"],
+        ),
+        _FREQ,
+        _HOLDOUT,
+    ],
+    spec_template={
+        "apiVersion": API_VERSION,
+        "kind": "ModelSpec",
+        "metadata": {"name": "{{name}}", "project": "{{project}}",
+                     "labels": {"family": "mmm", "guided": "mediated_mmm"}},
+        "data": {
+            "dataset": "{{dataset}}",
+            "bind": {"dims": {"channel": "channel", "mediator": "mediator", "time": "{{date}}"},
+                     "vars": {"y": "{{kpi}}", "spend": "spend",
+                              MEDIATOR_VAR: "{{mediators}}"}},
+            "split": {"kind": "time_holdout", "dim": "time", "last": "{{holdout_periods}}",
+                      "after_step": "weekly"},
+        },
+        "pipeline": [_weekly(skipna=True)],
+        "model": {
+            "use": f"{NESTED_MODEL_ID}@^1",
+            "settings": _EXT_SETTINGS,
+            "fit": _MMM_FIT,
+        },
+        "outputs": {"derived": ["contributions", "response_curves", "marginal_cost", "adstock",
+                                "mediation"],
+                    "plots": ["core.ppc_fan", "core.convergence", "mmm.decomposition",
+                              "mmm.response_curves", "mmm.mediation", "mmm.roi"],
+                    "ui_draws": 300},
+        "evaluate": {"metrics": ["mape", "coverage_90"]},
+        "execution": {"resource_class": "M", "timeout": "45m"},
+    },
+    defaults={"holdout_periods": 8, "frequency": "weekly"},
+    scorecard_checks=_MMM_CHECKS,
+    tasks=["whatif", "forecast", "counterfactual", "lift_tests"],
+    ui_levels=_EXT_UI_LEVELS,
+)  # fmt: skip
+
+MULTI_KPI_MMM = GuidedTemplate(
+    id="multi_kpi_mmm",
+    title="Marketing mix for related products",
+    description_plain="Find how much each marketing channel adds to two or more results at the "
+    "same time, such as the sales of related products. Get one budget plan for all of them.",
+    family="mmm",
+    plugin=f"{MULTIVARIATE_MODEL_ID}@^1",
+    questions=[
+        GuidedQuestion(
+            id="kpis", prompt_plain="Which columns are the results you want to explain (one per "
+            "product or KPI)?",
+            help_plain="Select two or more columns, for example the sales of each product. "
+            "Use the same units in each column.",
+            kind="columns", role=Role.TARGET, wide_dim="outcome", as_var="y",
+            accepts=["number", "integer"], keywords=_KPI_WORDS,
+        ),
+        GuidedQuestion(
+            id="date", prompt_plain="Which column holds the date or week?", kind="column",
+            dim="time", dim_spec=_TIME_DIM, accepts=["date"], keywords=_DATE_WORDS,
+        ),
+        GuidedQuestion(
+            id="spend", prompt_plain="Which columns are media spend (one per channel)?",
+            help_plain="Select each column that shows the money spent on a channel.",
+            kind="columns", role=Role.SPEND, wide_dim="channel", as_var="spend",
+            accepts=["number", "integer"], keywords=_SPEND_WORDS,
+        ),
+        _FREQ,
+        _HOLDOUT,
+    ],
+    spec_template={
+        "apiVersion": API_VERSION,
+        "kind": "ModelSpec",
+        "metadata": {"name": "{{name}}", "project": "{{project}}",
+                     "labels": {"family": "mmm", "guided": "multi_kpi_mmm"}},
+        "data": {
+            "dataset": "{{dataset}}",
+            "bind": {"dims": {"channel": "channel", "outcome": "outcome", "time": "{{date}}"},
+                     "vars": {"y": "{{kpis}}", "spend": "spend"}},
+            "split": {"kind": "time_holdout", "dim": "time", "last": "{{holdout_periods}}",
+                      "after_step": "weekly"},
+        },
+        "pipeline": [_weekly()],
+        "model": {
+            "use": f"{MULTIVARIATE_MODEL_ID}@^1",
+            "settings": _EXT_SETTINGS,
+            "fit": _MMM_FIT,
+        },
+        # no cross-effects: the questions do not tell which result acts on which (the spec
+        # editor adds them, with `cross_effects` and `mmm.cross_effects`)
+        "outputs": {"derived": ["contributions", "response_curves", "marginal_cost", "adstock"],
+                    "plots": ["core.ppc_fan", "core.convergence", "mmm.decomposition",
+                              "mmm.response_curves", "mmm.waterfall", "mmm.roi"],
+                    "ui_draws": 300},
+        "evaluate": {"metrics": ["mape", "coverage_90"]},
+        "execution": {"resource_class": "M", "timeout": "45m"},
+    },
+    defaults={"holdout_periods": 8, "frequency": "weekly"},
+    scorecard_checks=_MMM_CHECKS,
+    tasks=["whatif", "forecast", "counterfactual"],
+    ui_levels=_EXT_UI_LEVELS,
 )  # fmt: skip
 
 WEEKLY_FORECAST = GuidedTemplate(
@@ -609,7 +780,7 @@ CUSTOMER_CHOICE = GuidedTemplate(
 
 GUIDED_TEMPLATES: Final[dict[str, GuidedTemplate]] = {
     t.id: t.model_copy(update={"about": TEMPLATE_ABOUTS[t.id]})
-    for t in (GEO_MMM, WEEKLY_FORECAST, STORE_DEMAND, CUSTOMER_CHOICE)
+    for t in (GEO_MMM, MEDIATED_MMM, MULTI_KPI_MMM, WEEKLY_FORECAST, STORE_DEMAND, CUSTOMER_CHOICE)
 }
 """The built-in guided templates, by id (``GET /v1/guided/templates``)."""
 
@@ -798,7 +969,8 @@ def _score(q: GuidedQuestion, col: ColumnProfile) -> tuple[float, list[str]]:
     if q.role is not None and col.n_distinct == 1 and col.n_rows > 1:
         score -= 0.3
         why.append("always the same value")
-    if col.n_rows and col.n_missing / col.n_rows > 0.5:
+    if col.n_rows and col.n_missing / col.n_rows > 0.5 and q.missing != "allow":
+        # a question that allows gaps (a monthly survey, a ragged panel) takes sparse columns
         score -= 0.3
         why.append("mostly empty")
     return max(0.0, min(1.0, score)), why
@@ -1122,6 +1294,15 @@ def _wide_label_issues(wide: Mapping[str, WideVarMapping]) -> list[Issue]:
     return out
 
 
+def _label_noise(template: GuidedTemplate, q: GuidedQuestion) -> Sequence[str]:
+    """Words a wide answer's labels drop. The question's keywords go when another question
+    shares the wide dim (``price_coke`` and ``promo_coke`` both label ``coke``) or the
+    columns are spend or targets (``sales_premium`` labels ``premium``); a covariate of its
+    own dim keeps them (``site_visits`` stays a visits measure, not ``site``)."""
+    shared = any(o.wide_dim == q.wide_dim for o in template.questions if o.id != q.id)
+    return q.keywords if shared or q.role is not Role.COVARIATE else ()
+
+
 def build_draft(
     template: GuidedTemplate,
     answers: GuidedAnswers,
@@ -1191,7 +1372,7 @@ def build_draft(
                 dims[name] = DimMapping(column=cols[0], spec=spec)
                 values[q.id] = name
             elif q.wide_dim is not None and q.as_var is not None:
-                labels = [channel_label(c, q.keywords) for c in cols]
+                labels = [channel_label(c, _label_noise(template, q)) for c in cols]
                 if len(set(labels)) != len(labels):
                     labels = [safe_name(c) for c in cols]
                 claim(q.as_var, q.id, cols[0])

@@ -545,3 +545,55 @@ def test_a_bundle_input_gets_its_metrics_from_the_metrics_sidecar(tmp_path: Path
     files = {"compare.0": archive, "compare.0.metrics": sidecar}
     got = load_bundle(_BundleInputs(tmp_path, files), "compare.0", "-")
     assert got.metrics == b.metrics
+
+
+def _outcome_ctx(
+    contrib: xr.DataArray, derived_attrs: dict[str, Any] | None = None, binding: Any = None
+) -> Any:
+    from types import SimpleNamespace
+
+    pred = SimpleNamespace(contributions=contrib)
+    derived = {} if derived_attrs is None else {"contributions": xr.Dataset(attrs=derived_attrs)}
+    caps = SimpleNamespace(contribution_scale="additive")
+    return SimpleNamespace(
+        time_dim="time",
+        predictions=lambda: [pred],
+        bundle=SimpleNamespace(
+            model=SimpleNamespace(derived=derived, manifest=SimpleNamespace(capabilities=caps)),
+            binding=binding,
+        ),
+    )
+
+
+def test_the_decomposition_of_a_multi_outcome_model_shows_one_outcome() -> None:
+    """Contributions over (component, outcome, time): the parts of the primary outcome
+    (attrs, else the first label), never the sum over outcomes."""
+    t = pd.date_range("2024-01-07", periods=6, freq="W-SUN")
+    vals = np.zeros((3, 2, 6))
+    vals[:, 0] = [[1.0], [2.0], [10.0]]  # premium
+    vals[:, 1] = [[5.0], [0.0], [50.0]]  # basic
+    da = xr.DataArray(
+        vals,
+        dims=("component", "outcome", "time"),
+        coords={"component": ["tv", "search", "baseline"], "outcome": ["premium", "basic"],
+                "time": t},
+    )  # fmt: skip
+    from mapi_runner.worker.explore_model import decomposition as section
+
+    first = section(_outcome_ctx(da)).model_dump()
+    assert first["components"]["tv"] == [1.0] * 6 and "outcome premium" in first["caption_plain"]
+    da.attrs["primary_outcome"] = "basic"
+    chosen = section(_outcome_ctx(da)).model_dump()
+    assert chosen["components"]["tv"] == [5.0] * 6 and chosen["components"]["search"] == [0.0] * 6
+    assert "outcome basic" in chosen["caption_plain"]
+    da.attrs.clear()
+    derived = section(_outcome_ctx(da, {"primary_outcome": "basic"})).model_dump()
+    assert derived["components"]["baseline"] == [50.0] * 6
+    # scored outputs use dataset names: the outcome dim bound to "product"
+    from mapi_sdk.binding import BindingMap
+
+    bound = da.rename(outcome="product")
+    bound.attrs["primary_outcome"] = "basic"
+    binding = BindingMap({"dims": {"outcome": "product"}, "vars": {}})
+    named = section(_outcome_ctx(bound, binding=binding)).model_dump()
+    assert named["components"]["tv"] == [5.0] * 6 and "outcome basic" in named["caption_plain"]

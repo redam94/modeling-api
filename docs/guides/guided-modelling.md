@@ -20,6 +20,38 @@ All the tasks that touch data run in the sandbox. The control plane only validat
 | Forecast | a `forecast` score run | `ui/guided/forecast.json` (`ForecastView`) and a fan chart with the split line |
 | Counterfactual | a `counterfactual` score run | `ui/guided/counterfactual.json` (`CounterfactualView`) |
 
+## The marketing-mix templates <span class="mapi-badge">v0.12</span> { #mmm-templates }
+
+Three Guided templates make a marketing-mix model. Select the template that agrees with your
+data:
+
+| Template | Model | Your data | Tasks |
+|---|---|---|---|
+| `geo_mmm` - Geo marketing mix | `mmm.bayesian` | The result, spend for each channel and optional controls, for each market | what-if, forecast, counterfactual, business priors, lift tests |
+| `mediated_mmm` - Marketing mix with an intermediate measure | `mmm.nested` | One national result, spend for each channel and one or more intermediate measures (visits, searches, awareness) | what-if, forecast, counterfactual, lift tests |
+| `multi_kpi_mmm` - Marketing mix for related products | `mmm.multivariate` | Two or more national results (one column for each) and spend for each channel | what-if, forecast, counterfactual |
+
+**`mediated_mmm`** asks for the result, the date, the spend columns and the intermediate
+measures. The measures become one variable along the `mediator` dim. A measure can have
+empty periods, for example a monthly survey. Role detection also suggests columns that are
+mostly empty for this question. The labels keep the words of each column (`site_visits`).
+The weekly resample takes the mean of each measure in a week and keeps a week without a
+value empty. The report shows `mmm.mediation`: the direct and the indirect effect of each
+channel.
+
+**`multi_kpi_mmm`** asks for two or more result columns. They become `y` along the
+`outcome` dim (`sales_premium` labels `premium`). Use the same units in each column. The
+what-if sliders and the budget plan use the total of the results. The report shows
+`mmm.waterfall` for each result. The template does not set effects between the results,
+because the answers do not tell which result acts on which. To add them, open the spec in
+the editor and set `cross_effects` of `mmm.multivariate` (then add the derived quantity
+`cross_effects` and the chart `mmm.cross_effects`). These effects are associations, not
+causes.
+
+The two templates fit national data only. They take no control variables, and they do not
+have business priors. All three templates keep `adstock` and show `mmm.roi`. They use the
+same scorecard checks.
+
 ## Business priors
 
 A business prior gives a belief about one channel, in the units that persons use:

@@ -34,16 +34,17 @@ You do not have to write code for these items.
 | `data.split` | The kind of split, when the spec has a split |
 | `settings.<path>` | One param for each value of the model settings, for example `settings.adstock.l_max`. A list or a dict becomes compact JSON (a maximum of 500 characters). A maximum of 200 settings params. |
 
-**Live chains.** PyMC models (with nutpie or the PyMC NUTS sampler) and `mmm.bayesian` send
-the progress of each chain while they sample. The run page shows the draws, the divergences
+**Live chains.** PyMC models (with nutpie or the PyMC NUTS sampler) and the MMMs
+(`mmm.bayesian`, `mmm.nested` and `mmm.multivariate`) send the progress of each chain while
+they sample. The run page shows the draws, the divergences
 and the step size of each chain.
 
 **Step metrics of samplers and optimisers.**
 
 | Source | Keys | Labels | Step |
 |---|---|---|---|
-| nutpie (PyMC models, `mmm.bayesian`) | `step_size`, `num_steps` (leapfrog steps of the latest draw), `divergences` (cumulative) | `chain` | The draws that the chain finished, with tuning (starts at 1) |
-| PyMC NUTS sampler (PyMC models, `mmm.bayesian` with `nuts_sampler: pymc`) | `step_size`, `tree_depth`, `num_steps`, `divergences` (cumulative) | `chain` | The draw index, with tuning (starts at 1). For a long chain, each k-th draw and the last draw, k = ceil(n / 5000). |
+| nutpie (PyMC models, `mmm.bayesian`, `mmm.nested`, `mmm.multivariate`) | `step_size`, `num_steps` (leapfrog steps of the latest draw), `divergences` (cumulative) | `chain` | The draws that the chain finished, with tuning (starts at 1) |
+| PyMC NUTS sampler (PyMC models, the MMMs with `nuts_sampler: pymc`) | `step_size`, `tree_depth`, `num_steps`, `divergences` (cumulative) | `chain` | The draw index, with tuning (starts at 1). For a long chain, each k-th draw and the last draw, k = ceil(n / 5000). |
 | ADVI | `loss` (negative ELBO) | none | The optimisation step (starts at 1). For a long fit, each k-th step, k = ceil(n / 5000). |
 | The evaluation fit of `evaluate_then_refit` | All of the above | also `fit=evaluation` | As above. The params of the evaluation fit get the prefix `evaluation.`, for example `evaluation.n_obs`. |
 
@@ -53,8 +54,56 @@ become scalar series.
 **scikit-learn.** A fit of a `sklearn.*` model logs the hyperparameters of the estimator as
 `estimator.<name>` params (only numbers, booleans and text).
 
+**Marketing-mix models.** Each MMM fit logs a summary of its result. See
+[What an MMM fit logs](#mmm).
+
 **Workflows.** The `search.grid` node logs each grid point and its scores. The
 `model.backtest` node logs the metrics of each fold. See [Workflow nodes](#workflow-nodes).
+
+## What an MMM fit logs <span class="mapi-badge">v0.12</span> { #mmm }
+
+At the end of a fit, each marketing-mix model (`mmm.bayesian`, `mmm.frequentist`,
+`mmm.nested` and `mmm.multivariate`) logs params and scalar metrics (no step). The metrics
+come from 200 thinned draws of the posterior (or of the bootstrap). Thus, you can sort and
+filter runs by the return of a channel.
+
+**Params.**
+
+| Param | Models | Value |
+|---|---|---|
+| `mmm.framework_version` | all | The version of mmm-framework |
+| `mmm.n_channels` | all | The number of channels |
+| `mmm.n_periods` | all | The number of periods of the fit window |
+| `mmm.n_cells` | all | The number of panel cells (geo and product combinations; 1 for national data) |
+| `mmm.link` | all | `identity`, `log` (`poisson`, `negative_binomial`) or `logit` (`beta`) |
+| `mmm.time_varying` | `mmm.bayesian` | The time-varying channels, separated by commas (empty when there are none) |
+| `mmm.mediators` | `mmm.nested` | The mediators, separated by commas |
+| `mmm.outcomes` | `mmm.multivariate` | The outcomes, separated by commas |
+| `mmm.cross_effects` | `mmm.multivariate` | The number of cross-effects |
+
+A param value has a maximum of 6000 characters. If a list of names is longer, the model cuts
+it and adds `...` at the end. The fit does not stop because of this.
+
+**Metrics.**
+
+| Metric | Labels | Value |
+|---|---|---|
+| `roi` | `channel` | The posterior mean of the return on spend: the contribution of the channel over the fit window divided by its spend |
+| `roi_p05`, `roi_p95` | `channel` | The 5th and the 95th percentile of the return on spend |
+| `mroi` | `channel` | The marginal return: the extra KPI for each extra unit of spend at the current spend (a central difference at 1 ± 1%) |
+| `contribution_share` | `channel` | The part of the total KPI that the channel gives |
+| `baseline_share` | none | The part of the total KPI with no media |
+
+A channel with no spend gets no `roi`. The label value is the channel name with characters
+other than letters, digits, `_`, `.` and `-` changed to `_` (`TV spend` becomes `TV_spend`).
+For `mmm.multivariate`, the metrics use the weighted total of the outcomes. It also logs a
+`roi` for each outcome, with the labels `channel` and `outcome`.
+
+Find the runs where TV returns more than 2:
+
+```bash
+mapi runs ls --filter "metric.roi{channel=tv} > 2" --column "metric.roi{channel=tv}"
+```
 
 ## Keys, labels and values
 

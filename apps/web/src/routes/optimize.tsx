@@ -126,7 +126,7 @@ export function OptimizePage() {
       <div className="grid gap-6">
         {header}
         <EmptyState icon={<Wallet />} title="This model does not optimise budgets">
-          A budget plan needs a marketing-mix model (mmm.bayesian or mmm.frequentist). The model must know how each channel responds to spend.
+          A budget plan needs a marketing-mix model: mmm.bayesian, mmm.frequentist, mmm.nested or mmm.multivariate. The model must know how each channel responds to spend.
         </EmptyState>
       </div>
     );

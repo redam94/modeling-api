@@ -26,6 +26,8 @@ the runner from a fitted bundle or a score output, so every plugin gets them for
 ``core.confusion``            2 x 2 confusion matrix at a probability threshold
 ``core.loss_curve``           loss of an iterative fit (ADVI) per step, moving average
 ``core.loo_pit``              LOO-PIT calibration and the PSIS Pareto k per observation
+``core.energy``               marginal energy vs energy transitions, E-BFMI per chain
+``core.prior_posterior``      prior and posterior densities per parameter, ranked by shift
 ============================  ==========================================================
 
 The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
@@ -54,6 +56,7 @@ from mapi_plots.recipes._base import (
     recipe,
 )
 from mapi_plots.recipes.batch import RenderReport, render_plots
+from mapi_plots.recipes.bayes import energy, prior_posterior
 from mapi_plots.recipes.classification import confusion, roc_pr
 from mapi_plots.recipes.comparison import model_comparison
 from mapi_plots.recipes.data import data_overview
@@ -112,6 +115,8 @@ _STANDARD: tuple[Recipe[Any], ...] = (
     confusion,
     loss_curve,
     loo_pit,
+    energy,
+    prior_posterior,
 )
 
 

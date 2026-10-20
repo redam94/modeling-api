@@ -108,7 +108,8 @@ def response_grid_view(bundle: Bundle, *, kpi: str | None = None) -> ResponseGri
         else spend[:, int(np.argmin(np.abs(np.asarray(rc["multiplier"].values) - 1.0)))]
     )
     body: dict[str, Any] = {
-        "kpi": (kpi or _target_name(bundle))[:128],
+        # a multi-outcome model names its (weighted) KPI on the curves
+        "kpi": str(kpi or rc.attrs.get("kpi") or _target_name(bundle))[:128],
         "kpi_units": _units(da),
         "spend_units": _units(rc["spend"]),
         "periods": max(1, int(rc.attrs.get("periods", 1))),

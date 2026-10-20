@@ -360,3 +360,31 @@ def test_plot_examples_are_self_contained_and_keyed_by_ref() -> None:
     with pytest.raises(ValidationError, match="keyed by recipe ref"):
         PlotExamples.model_validate({"plots": {"core.ppc_fan": inline}})
     assert AboutKind.PLOT.value == "plot"
+
+
+def test_the_mmm_pack_cards_match_the_engine() -> None:
+    """v0.12: the extension MMMs are national, take no control variables and show
+    associations between results; the chooser finds them for several related series."""
+    fits = {"goal": ["explain_marketing", "plan_budget"], "data_shape": ["several_series"],
+            "frequency": ["daily", "weekly"], "history": ["medium", "long"], "drivers": ["yes"],
+            "uncertainty": ["essential", "nice"]}  # fmt: skip
+    for model in ("mmm.nested", "mmm.multivariate"):
+        about = MODEL_ABOUTS[model]
+        assert about.fits == fits
+        text = " ".join(about.avoid_when + about.data_needs).lower()
+        assert "national" in text, model
+    assert "no control variables" in " ".join(MODEL_ABOUTS["mmm.nested"].avoid_when)
+    assert "associations" in " ".join(MODEL_ABOUTS["mmm.multivariate"].avoid_when)
+    assert "Lift tests" in (MODEL_ABOUTS["mmm.nested"].expert_notes or "")
+    assert "no lift-test" in (MODEL_ABOUTS["mmm.multivariate"].expert_notes or "")
+    bayes = MODEL_ABOUTS["mmm.bayesian"]
+    assert any("count" in u for u in bayes.use_when)
+    assert any("changes over time" in u for u in bayes.use_when)
+    for template, model in (("mediated_mmm", "mmm.nested"), ("multi_kpi_mmm", "mmm.multivariate")):
+        assert TEMPLATE_ABOUTS[template].fits == fits
+        assert TEMPLATE_ABOUTS[template].related[0] == model
+    answers = chooser_answers_from_query(
+        {"goal": ["explain_marketing"], "data_shape": ["several_series"]}
+    )
+    ranked = recommend(answers, _models(), limit=4)
+    assert {r.id for r in ranked.items[:2]} == {"mmm.nested", "mmm.multivariate"}

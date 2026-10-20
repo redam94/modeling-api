@@ -44,7 +44,7 @@ import {
   type LiftTestRow,
   type PriorsForm,
 } from "../priors";
-import { GUIDED_MESSAGE, hasTask, valueAt, wideVarOf } from "../session";
+import { GUIDED_MESSAGE, priorsSections, valueAt, wideVarOf } from "../session";
 import type { PriorTranslationResult } from "../types";
 import { RangeSlider } from "../ui";
 import type { GuidedSession } from "../use-session";
@@ -324,10 +324,11 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
   const [error, setError] = useState<string | null>(null);
   const start = useStartPriorTranslation();
   const translation = usePriorTranslation(runId);
-  const lifts = hasTask(session.template, "lift_tests");
+  // a model without business priors (mmm.nested) refuses them: no beliefs card, no preview
+  const { beliefs, lifts } = priorsSections(session.template);
 
-  const bp = toBusinessPriors(form, { kpi: null, spend: null });
-  const problems = beliefProblems(form);
+  const bp = beliefs ? toBusinessPriors(form, { kpi: null, spend: null }) : null;
+  const problems = beliefs ? beliefProblems(form) : [];
   const lift = toLiftTests(form.liftTests, channels);
   const key = beliefsKey(bp, lift.tests);
   const translationFits = translation.data?.done && translation.data.result && (previewKey === key || (previewKey === null && runId === savedRun));
@@ -386,63 +387,65 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
 
   return (
     <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <div className="grid gap-1">
-            <CardTitle>Your channels</CardTitle>
-            <CardDescription>
-              Tell the model what you already believe. Give a range that you are fairly sure of. If you have no view on a channel, do not select it. Then the data alone decides. All the fields here are optional.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-1.5">
-            <span className="text-[13px] font-medium">Describe each channel by</span>
-            <SegmentedControl<BeliefMode>
-              label="Describe each channel by"
-              value={form.mode}
-              onValueChange={(m) => setForm((f) => withMode(f, m))}
-              options={[
-                { value: "roi", label: "Return on spend" },
-                { value: "share", label: "Share of results" },
-              ]}
-              className="justify-self-start"
-            />
-          </div>
-          <ul className="grid gap-3" aria-label="Beliefs per channel">
-            {form.channels.map((row, i) => (
-              <ChannelRow key={row.channel} row={row} mode={form.mode} onChange={(r) => update(i, r)} error={channelError(row.channel)} />
-            ))}
-          </ul>
-          <details className="rounded-lg border px-4 py-3" open={form.baseline.enabled}>
-            <summary className="cursor-pointer text-[13px] font-medium">Results without any media (optional)</summary>
-            <div className="grid gap-3 pt-3">
-              <div className="flex items-center gap-2">
-                <Checkbox id="baseline-on" checked={form.baseline.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, baseline: { ...f.baseline, enabled: v === true } }))} />
-                <Label htmlFor="baseline-on">I have a view on the share of results that happen without any media</Label>
-              </div>
-              {form.baseline.enabled ? (
-                <div className="grid gap-1.5">
-                  <RangeSlider label="Baseline share" value={[form.baseline.low, form.baseline.high]} min={0} max={1} step={0.01} format={(v) => share(v)} onValueChange={([low, high]) => setForm((f) => ({ ...f, baseline: { ...f.baseline, low, high } }))} />
-                  <p className="text-xs text-muted-foreground">
-                    Between {share(form.baseline.low)} and {share(form.baseline.high)} of the results occur without media.
-                  </p>
-                  {problems.find((p) => p.where === "baseline") ? (
-                    <p role="alert" className="text-xs font-medium text-destructive">
-                      {problems.find((p) => p.where === "baseline")?.message}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+      {beliefs ? (
+        <Card>
+          <CardHeader>
+            <div className="grid gap-1">
+              <CardTitle>Your channels</CardTitle>
+              <CardDescription>
+                Tell the model what you already believe. Give a range that you are fairly sure of. If you have no view on a channel, do not select it. Then the data alone decides. All the fields here are optional.
+              </CardDescription>
             </div>
-          </details>
-          {problems.filter((p) => p.where === "").map((p) => (
-            <p key={p.message} role="alert" className="text-[13px] font-medium text-destructive">
-              {p.message}
-            </p>
-          ))}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-1.5">
+              <span className="text-[13px] font-medium">Describe each channel by</span>
+              <SegmentedControl<BeliefMode>
+                label="Describe each channel by"
+                value={form.mode}
+                onValueChange={(m) => setForm((f) => withMode(f, m))}
+                options={[
+                  { value: "roi", label: "Return on spend" },
+                  { value: "share", label: "Share of results" },
+                ]}
+                className="justify-self-start"
+              />
+            </div>
+            <ul className="grid gap-3" aria-label="Beliefs per channel">
+              {form.channels.map((row, i) => (
+                <ChannelRow key={row.channel} row={row} mode={form.mode} onChange={(r) => update(i, r)} error={channelError(row.channel)} />
+              ))}
+            </ul>
+            <details className="rounded-lg border px-4 py-3" open={form.baseline.enabled}>
+              <summary className="cursor-pointer text-[13px] font-medium">Results without any media (optional)</summary>
+              <div className="grid gap-3 pt-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="baseline-on" checked={form.baseline.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, baseline: { ...f.baseline, enabled: v === true } }))} />
+                  <Label htmlFor="baseline-on">I have a view on the share of results that happen without any media</Label>
+                </div>
+                {form.baseline.enabled ? (
+                  <div className="grid gap-1.5">
+                    <RangeSlider label="Baseline share" value={[form.baseline.low, form.baseline.high]} min={0} max={1} step={0.01} format={(v) => share(v)} onValueChange={([low, high]) => setForm((f) => ({ ...f, baseline: { ...f.baseline, low, high } }))} />
+                    <p className="text-xs text-muted-foreground">
+                      Between {share(form.baseline.low)} and {share(form.baseline.high)} of the results occur without media.
+                    </p>
+                    {problems.find((p) => p.where === "baseline") ? (
+                      <p role="alert" className="text-xs font-medium text-destructive">
+                        {problems.find((p) => p.where === "baseline")?.message}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </details>
+            {problems.filter((p) => p.where === "").map((p) => (
+              <p key={p.message} role="alert" className="text-[13px] font-medium text-destructive">
+                {p.message}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {lifts ? (
         <Card>
@@ -482,33 +485,35 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
         </Card>
       ) : null}
 
-      <Card>
-        <CardContent className="grid gap-4 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-[60ch] text-[13px] text-muted-foreground">
-              See what your beliefs mean before the fit. A quick, secure simulation shows the results that they predict.
-            </p>
-            <Button variant="outline" onClick={() => void preview()} disabled={!bp || blocking || start.isPending || !canPreview}>
-              {start.isPending || (translation.data && !translation.data.done) ? <Spinner /> : <Eye />} Preview what this means
-            </Button>
-          </div>
-          {translation.data && !translation.data.done ? (
-            <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
-              <Spinner /> The app simulates the results of your beliefs…
-            </p>
-          ) : null}
-          {translation.isError ? <ErrorNotice error={translation.error} title="The app could not load the preview" /> : null}
-          {translation.data?.done && translation.data.run.state !== "succeeded" ? (
-            <ErrorNotice error={new Error(translation.data.run.problem?.detail ?? "The preview run did not finish.")} title="The preview did not work" />
-          ) : null}
-          {translation.data?.done && translation.data.result ? (
-            <>
-              {!translationFits ? <p className="text-xs text-warning">You changed your beliefs after this preview. Click Preview what this means again to see the new beliefs.</p> : null}
-              <PreviewPanel result={translation.data.result} form={form} />
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+      {beliefs ? (
+        <Card>
+          <CardContent className="grid gap-4 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="max-w-[60ch] text-[13px] text-muted-foreground">
+                See what your beliefs mean before the fit. A quick, secure simulation shows the results that they predict.
+              </p>
+              <Button variant="outline" onClick={() => void preview()} disabled={!bp || blocking || start.isPending || !canPreview}>
+                {start.isPending || (translation.data && !translation.data.done) ? <Spinner /> : <Eye />} Preview what this means
+              </Button>
+            </div>
+            {translation.data && !translation.data.done ? (
+              <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
+                <Spinner /> The app simulates the results of your beliefs…
+              </p>
+            ) : null}
+            {translation.isError ? <ErrorNotice error={translation.error} title="The app could not load the preview" /> : null}
+            {translation.data?.done && translation.data.run.state !== "succeeded" ? (
+              <ErrorNotice error={new Error(translation.data.run.problem?.detail ?? "The preview run did not finish.")} title="The preview did not work" />
+            ) : null}
+            {translation.data?.done && translation.data.result ? (
+              <>
+                {!translationFits ? <p className="text-xs text-warning">You changed your beliefs after this preview. Click Preview what this means again to see the new beliefs.</p> : null}
+                <PreviewPanel result={translation.data.result} form={form} />
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-[13px] text-destructive">

@@ -1,14 +1,16 @@
 # Marketing-mix models
 
-`mapi-plugin-mmm` contains the marketing-mix models (MMMs) of the platform. The two models
+`mapi-plugin-mmm` contains the marketing-mix models (MMMs) of the platform. The four models
 use [mmm-framework](../models/mmm-framework.md):
 
 | Plugin | What it is | Use it when |
 |---|---|---|
 | `mmm.bayesian` | The Bayesian MMM of mmm-framework, national or hierarchical over geos and products | You want the contribution and the return of each channel with honest ranges. You also want business priors and lift tests, what-if answers and budget plans |
 | `mmm.frequentist` | The ridge estimator of mmm-framework with bootstrap intervals | You need a first result in seconds, or you want to compare many set-ups quickly |
+| `mmm.nested` <span class="mapi-badge">v0.12</span> | The nested (mediated) model of mmm-framework, national | Your channels act through an intermediate measure, such as visits or awareness, and you want to know how much of each effect goes through it |
+| `mmm.multivariate` <span class="mapi-badge">v0.12</span> | The multivariate-outcome model of mmm-framework, national | One budget acts on two or more results, such as the sales of related products |
 
-The two plugins register through the `mapi.models` entry point. Thus a spec only gives their
+The plugins register through the `mapi.models` entry point. Thus a spec only gives their
 names: `use: mmm.bayesian@^1`. This guide shows a complete analysis. The
 [model reference](../models/mmm-framework.md) gives all the settings, and how each setting
 maps onto mmm-framework.
@@ -93,7 +95,9 @@ It comes with a simulator (`e33_dataset`) with known true contributions.
 | `hierarchy.media_by_geo` | advanced | `false` | Channel effects for each geo, partially pooled |
 | `media_prior` | advanced | `roi` | Channel effects given as returns on spend |
 | `priors` | advanced | - | `roi.<c>: {mu, sigma}`, `roi_default`, `intercept` |
-| `likelihood` | advanced | `normal` | `student_t` for heavy-tailed outliers |
+| `likelihood` | advanced | `normal` | `student_t` for heavy-tailed outliers; `poisson`, `negative_binomial` for counts; `beta` for shares |
+| `media_effect_sigma` | advanced | 0.5 | The prior scale of the channel effects of a count or share likelihood |
+| `time_varying` | advanced | none | `channels`, `innovation_sigma` (0.15) and `forecast` (`random_walk`) of time-varying channel effects |
 | `new_levels` | advanced | `pooled` | How the model scores unseen geos/products |
 | `controls` | advanced | auto | Control variables (default: all other numeric variables over time) |
 | `grid` | advanced | 0-2.5x in 26 steps | The spend-multiplier grid of the response curves |
@@ -171,6 +175,159 @@ Business priors (ROI or share ranges) and lift tests calibrate the model through
 `calibration` block of the spec. See [Guided modelling](guided-modelling.md) and
 [the model reference](../models/mmm-framework.md#priors-in-business-terms).
 
+## Effects that change over time <span class="mapi-badge">v0.12</span> { #time-varying }
+
+Use this when the effect of a channel changes during the data, for example when an
+advertisement gets old.
+
+1. Put the channel in `time_varying.channels`. Remove its ROI prior, if it has one.
+2. Select the forecast policy after the fit window.
+3. Add `effectiveness` to `outputs.derived` and `mmm.effectiveness` to `outputs.plots`.
+
+```yaml
+model:
+  use: mmm.bayesian@^1
+  settings:
+    adstock: {kind: geometric, l_max: 8}
+    saturation: {kind: hill}
+    time_varying: {channels: [tv], innovation_sigma: 0.15, forecast: hold_last}
+outputs:
+  derived: [contributions, response_curves, marginal_cost, adstock, effectiveness]
+  plots: [core.ppc_fan, mmm.decomposition, mmm.effectiveness, mmm.roi]
+```
+
+The chart shows the effect of one unit of spend in each period, with a range. A forecast with
+`random_walk` has a range that becomes wider with the horizon. Use `hold_last` if you think
+that the last effect continues. Response curves and budget plans use the average effect over
+the fit window. Refer to
+[Effects that change over time](../models/mmm-framework.md#time-varying-effects).
+
+## Counts and shares <span class="mapi-badge">v0.12</span> { #counts-and-shares }
+
+Use a count likelihood when the KPI is a number of items, such as orders, sign-ups or
+visits. Use `beta` when the KPI is a share between 0 and 1.
+
+1. Set `likelihood` to `poisson`, `negative_binomial` or `beta`.
+2. Remove `priors.roi` and `priors.roi_default`. These likelihoods use coefficient priors.
+3. Remove the `calibration` block. Business priors and lift tests need a normal or Student-t
+   likelihood.
+
+```yaml
+model:
+  use: mmm.bayesian@^1
+  settings:
+    likelihood: negative_binomial   # use poisson only when the variance is near the mean
+    media_effect_sigma: 0.5
+    adstock: {kind: geometric, l_max: 8}
+    saturation: {kind: hill}
+```
+
+The contributions still add up to `y_hat`, in KPI units. The baseline then includes the
+trend, the seasonality and the controls. A predictive score gives whole numbers for a count
+and values between 0 and 1 for a share. Refer to
+[Counts and shares](../models/mmm-framework.md#counts-and-shares).
+
+## Effects through an intermediate measure <span class="mapi-badge">v0.12</span> { #nested }
+
+Use `mmm.nested` when you measure a step between the spend and the KPI, for example site
+visits or brand awareness from a monthly survey. The Guided template **Marketing mix with an
+intermediate measure** (`mediated_mmm`) makes this spec from your columns.
+
+1. Put the measures in one variable along a `mediator` dim. Leave the periods without a value
+   empty.
+2. Bind the dims `channel`, `mediator` and `time`, and bind the measures to `mediators`.
+3. Optionally, give each mediator its channels and signs in `mediators`.
+
+```yaml
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: online-mmm, project: growth}
+data:
+  dataset: dataset://growth/online_weekly@latest
+  bind:
+    dims: {channel: channel, mediator: mediator, time: week}
+    vars: {y: online_sales, spend: spend, mediators: measures}
+  split: {kind: time_holdout, dim: time, last: 8}
+model:
+  use: mmm.nested@^1
+  settings:
+    trend: {kind: linear}
+    seasonality: {yearly_order: 2}
+    mediators:
+      - {name: awareness, channels: [tv, social], observation_sigma: 0.2}
+      - {name: visits, outcome_sign: positive}
+  fit: {mode: evaluate_then_refit, engine: nutpie, tune: 1000, draws: 1000, chains: 4, seed: 7}
+outputs:
+  derived: [contributions, response_curves, marginal_cost, adstock, mediation]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.mediation, mmm.roi]
+```
+
+`mmm.mediation` shows the direct and the indirect effect of each channel. Lift tests
+calibrate the total effect of a channel, as for `mmm.bayesian`.
+
+!!! note
+    The nested model uses national data only and takes no control variables. If price or
+    promotions change your sales much, `mmm.bayesian` with controls is a better start.
+
+## Several results <span class="mapi-badge">v0.12</span> { #multivariate }
+
+Use `mmm.multivariate` when one budget acts on two or more results, for example the sales of
+a premium range and a basic range. The Guided template **Marketing mix for related products**
+(`multi_kpi_mmm`) makes a start of this spec from your columns, without weights and without
+cross-effects. Add them in the spec editor.
+
+1. Put the results in `y` along an `outcome` dim.
+2. Give each outcome a `weight`: the value of one unit of it in a budget plan.
+3. Add the cross-effects that you expect, with their kind.
+
+```yaml
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: range-mmm, project: growth}
+data:
+  dataset: dataset://growth/ranges_weekly@latest
+  bind:
+    dims: {channel: channel, outcome: outcome, time: week}
+    vars: {y: sales, spend: spend}
+  split: {kind: time_holdout, dim: time, last: 8}
+model:
+  use: mmm.multivariate@^1
+  settings:
+    trend: {kind: linear}
+    seasonality: {yearly_order: 2}
+    outcomes: [{name: premium, weight: 3.0}, {name: basic, weight: 1.0}]
+    cross_effects: [{source: premium, target: basic, kind: halo}]
+  fit: {mode: evaluate_then_refit, engine: nutpie, tune: 1000, draws: 1000, chains: 4, seed: 7}
+outputs:
+  derived: [contributions, response_curves, marginal_cost, adstock, cross_effects]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.cross_effects, mmm.roi]
+```
+
+Response curves, the ROI and budget plans use the weighted total of the outcomes. The
+decomposition and the waterfall show the primary outcome. This is also true for a score that
+gives the dataset's names, where the outcome dim has the name that you bound (for example,
+`product`). Set `outcome` on `mmm.decomposition` or `mmm.waterfall` to show a different one.
+
+!!! warning "Read cross-effects as associations"
+    Do not use a cross-effect as proof that one product takes sales from a different product.
+    The model cannot separate it from the correlation of the noise. Use a test to measure a
+    cause.
+
+## Charts for a marketing team <span class="mapi-badge">v0.12</span> { #charts }
+
+Add these recipes to `outputs.plots`. Each chart has a caption in plain words.
+
+| Question | Recipe | Needs in `outputs.derived` |
+|---|---|---|
+| Which channel returns the most for each unit of spend? | `mmm.roi` | `response_curves` (and `marginal_cost` for the marginal return) |
+| How long does the effect of spend continue? | `mmm.adstock` | `adstock` |
+| What adds up to the total result? | `mmm.waterfall` | `contributions` |
+| Does each channel get spend in proportion to its effect? | `mmm.spend_effect` | `response_curves` |
+| Do the lift tests agree with the model? | `mmm.lift_tests` | none (the fit keeps the `lift_tests` group) |
+| Does the effect of a channel change over time? | `mmm.effectiveness` | `effectiveness` |
+| Did the sampler explore the posterior well? | `core.energy` | none |
+| How much did the data change each prior? | `core.prior_posterior` | none |
+
 ## Optimising budgets
 
 The platform optimises budgets with the planning module of mmm-framework. You do not need an
@@ -214,7 +371,10 @@ for each posterior draw.
   and makes no model version.
 
 This applies to `nuts_sampler: nutpie` and `nuts_sampler: pymc`. The approximate methods
-(ADVI, Pathfinder) of mmm-framework do not send progress while they fit.
+(ADVI, Pathfinder) of mmm-framework do not send progress while they fit. From v0.12,
+`mmm.nested` and `mmm.multivariate` send the same progress and step metrics. Each MMM fit
+also logs summary metrics, such as the ROI of each channel (see
+[What an MMM fit logs](tracking.md#mmm)).
 
 ## The fast frequentist model
 
@@ -228,7 +388,7 @@ Use it for a first look. Then fit `mmm.bayesian` before you make decisions.
 
 ## Trust, but verify
 
-The two plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`). The kit tests
+The four plugins pass the SDK contract kit (`mapi_sdk.testing.check_model`). The kit tests
 these items:
 
 - Bundle round trips.

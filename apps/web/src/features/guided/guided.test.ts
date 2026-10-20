@@ -12,7 +12,7 @@ import { amount, band, etaText, holdoutFraction, multiplierText, phaseSlot, sign
 import { fanPlot, distributionPlot } from "./plots";
 import { beliefProblems, beliefsKey, coverageSentence, formFromCalibration, newLiftRow, toBusinessPriors, toLiftTests, withCalibration, withMode } from "./priors";
 import { columnKind, detectFrequency, detectMeridian, detectMff, profileTable, profilesFromNames, seriesFor, tableFromText, tableProblems } from "./profile";
-import { advancedChanges, datasetNameOf, defaultSessionName, guidedTemplateOf, slugify, stepsFor, timeDimOf, valueAt, wideVarOf } from "./session";
+import { advancedChanges, datasetNameOf, defaultSessionName, guidedTemplateOf, priorsSections, slugify, stepsFor, timeDimOf, valueAt, wideVarOf } from "./session";
 import type { GuidedTemplate } from "./types";
 import { parseCounterfactualView, parseForecastView } from "./views";
 
@@ -212,6 +212,24 @@ describe("sessions", () => {
     expect(wideVarOf(tpl("customer_choice"))).toEqual({ variable: "price", dim: "product", question: "prices" });
   });
 
+  it("takes the spend question, not a wide result question, as the what-if variable", () => {
+    // multi_kpi_mmm asks for its KPIs (y over outcome) before the spend: the exact what-if
+    // and the presets sent spend_var 'y' and channel_dim 'outcome'
+    expect(tpl("multi_kpi_mmm").questions.find((q) => q.kind === "columns")?.id).toBe("kpis");
+    expect(wideVarOf(tpl("multi_kpi_mmm"))).toEqual({ variable: "spend", dim: "channel", question: "spend" });
+    expect(wideVarOf(tpl("mediated_mmm"))).toEqual({ variable: "spend", dim: "channel", question: "spend" });
+    const onlyTarget = { questions: tpl("multi_kpi_mmm").questions.filter((q) => q.id !== "spend") };
+    expect(wideVarOf(onlyTarget)).toBeNull();
+  });
+
+  it("asks for channel beliefs only where the model takes business priors", () => {
+    // mmm.nested takes lift tests only: its preview and save used to send business priors
+    expect(priorsSections(tpl("mediated_mmm"))).toEqual({ beliefs: false, lifts: true });
+    expect(stepsFor(tpl("mediated_mmm")).map((s) => s.id)).toContain("priors");
+    expect(priorsSections(tpl("geo_mmm"))).toEqual({ beliefs: true, lifts: true });
+    expect(priorsSections(tpl("multi_kpi_mmm"))).toEqual({ beliefs: false, lifts: false });
+  });
+
   it("marks advanced settings changed in Expert mode", () => {
     const base = { model: { fit: { draws: 500 }, settings: { pooling: "partial", adstock: { kind: "geometric" } } }, pipeline: [{ id: "a" }] };
     expect(advancedChanges(tpl("geo_mmm"), base, base)).toEqual([]);
@@ -351,6 +369,29 @@ describe("Guided usability fixes (M3 tester run)", () => {
     const ids = shareOrder([{ id: "core.convergence" }, { id: "core.ppc_fan" }, { id: "mmm.decomposition" }, { id: "mmm.response_curves" }]).map((p) => p.id);
     expect(ids).toEqual(["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.convergence"]);
   });
+
+  it("offers the v0.12 MMM charts first: ROI, curves, waterfall, decomposition, mediation, cross-effects", async () => {
+    const { shareOrder } = await import("./steps/share-step");
+    const input = ["core.convergence", "mmm.cross_effects", "core.ppc_fan", "mmm.mediation", "mmm.decomposition", "mmm.waterfall", "mmm.adstock", "mmm.response_curves", "mmm.roi"];
+    const ids = shareOrder(input.map((id) => ({ id }))).map((p) => p.id);
+    expect(ids).toEqual(["mmm.roi", "mmm.response_curves", "mmm.waterfall", "mmm.decomposition", "mmm.mediation", "mmm.cross_effects", "core.ppc_fan", "mmm.adstock", "core.convergence"]);
+  });
+
+  it("shows two charts on the results page: ROI first when the model has it", async () => {
+    const { reportPlots } = await import("./steps/report-step");
+    const ids = (xs: string[]) => reportPlots(xs.map((id) => ({ id }))).map((p) => p.id);
+    expect(ids(["core.ppc_fan", "core.convergence", "mmm.response_curves", "mmm.roi"])).toEqual(["mmm.roi", "mmm.response_curves"]);
+    expect(ids(["core.ppc_fan", "mmm.response_curves"])).toEqual(["mmm.response_curves", "core.ppc_fan"]);
+    expect(ids(["core.convergence", "core.fit_vs_actual"])).toEqual(["core.fit_vs_actual"]);
+    expect(ids(["core.convergence"])).toEqual([]);
+  });
+
+  it("orders the template cards: the three marketing-mix templates first", async () => {
+    const { sortTemplates } = await import("./steps/template-step");
+    const ids = ["customer_choice", "zz_other", "multi_kpi_mmm", "weekly_forecast", "mediated_mmm", "store_demand", "geo_mmm"];
+    const sorted = sortTemplates(ids.map((id) => ({ id, title: id }) as unknown as GuidedTemplate)).map((t) => t.id);
+    expect(sorted).toEqual(["geo_mmm", "mediated_mmm", "multi_kpi_mmm", "weekly_forecast", "store_demand", "customer_choice", "zz_other"]);
+  });
 });
 
 describe("an unfinished experiment (M3 review)", () => {
@@ -384,6 +425,14 @@ describe("the upload hint (M3 review)", () => {
     expect(dataShapePlain(tpl("store_demand"))).toMatch(/one row for each store and week/);
     expect(dataShapePlain(tpl("weekly_forecast"))).not.toMatch(/MFF|market/);
     expect(dataShapePlain({ family: "other" as GuidedTemplate["family"], description_plain: "Anything." })).toMatch(/^A CSV or Parquet file/);
+    // the national MMM templates need no market column, and need their extra columns
+    const mediated = dataShapePlain(tpl("mediated_mmm"));
+    expect(mediated).toMatch(/whole country/);
+    expect(mediated).toMatch(/a column for each intermediate measure/);
+    expect(mediated).not.toMatch(/market/);
+    const multi = dataShapePlain(tpl("multi_kpi_mmm"));
+    expect(multi).toMatch(/a result column for each product or KPI/);
+    expect(multi).not.toMatch(/market/);
   });
 });
 

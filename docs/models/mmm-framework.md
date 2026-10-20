@@ -3,12 +3,14 @@
 From v0.5, all marketing-mix models (MMM) on the platform run on
 [mmm-framework](https://redam94.github.io/mmm-framework/) (PyPI `mmm-framework==1.5.0`,
 Apache-2.0). mmm-framework is a Bayesian MMM framework that uses PyMC. `mapi-plugin-mmm`
-puts it behind the platform contract as two built-in models:
+puts it behind the platform contract as four built-in models:
 
 | Model | In plain words | Engine |
 |---|---|---|
 | `mmm.bayesian` | Measures how much each marketing channel adds to your sales, in total or per market. It also shows what will occur if you move budget between channels. | mmm-framework `BayesianMMM`: NUTS (nutpie, PyMC or NumPyro), or fast approximations (MAP, ADVI, Pathfinder) |
 | `mmm.frequentist` | Gives a first estimate in seconds. Its ranges come from samples of the data, not from the uncertainty of a full Bayesian model. | mmm-framework's ridge estimator with bootstrap intervals |
+| `mmm.nested` <span class="mapi-badge">v0.12</span> | Measures marketing effects that go through an intermediate result, for example visits or awareness. | mmm-framework `NestedMMM` (`mmm_extensions`): NUTS (nutpie or PyMC) or ADVI |
+| `mmm.multivariate` <span class="mapi-badge">v0.12</span> | Measures marketing effects on two or more results at the same time, and the effects between the results. | mmm-framework `MultivariateMMM` (`mmm_extensions`): NUTS (nutpie or PyMC) or ADVI |
 
 Each model has an **About card** in plain language. The card tells what the model is for,
 when not to use it, what data it needs and what you get from it. *Help me choose* in the web
@@ -117,6 +119,8 @@ campaign rows.
 | `priors.roi.<c>: {mu, sigma}` | `MediaChannelConfig.roi_prior_mu/roi_prior_sigma` |
 | `priors.intercept: {mu, sigma}` | `ModelConfig.intercept_prior_mu/sigma` |
 | `likelihood: student_t` | `LikelihoodConfig(family=student_t)` |
+| `likelihood: poisson`, `negative_binomial`, `beta` | a platform subclass of `BayesianMMM` that replaces `_build_likelihood` (see [Counts and shares](#counts-and-shares)) |
+| `time_varying.channels`, `innovation_sigma` | `MediaChannelConfig(time_varying=True, tvp_innovation_sigma=...)` for each channel in the list |
 | `fit.engine` | `nutpie`/`pymc`/`numpyro`: NUTS with that backend. `map`, `advi`, `fullrank_advi`, `pathfinder`, `laplace`, `smc`: `BayesianMMM.fit(method=...)` |
 | `fit.tune`, `draws`, `chains`, `target_accept`, `seed` | the same `fit()` arguments |
 
@@ -139,6 +143,12 @@ A fit keeps these items. It never keeps them as a pickle:
 - A thinned prior of the free parameters (for the prior/posterior overlap on the scorecard).
 - The observed KPI.
 - A `fit_data` group with the KPI, the spend and the control features at the model stage.
+- A `lift_tests` group when the fit used lift tests <span class="mapi-badge">v0.12</span>:
+  the value and the standard error of each test, and the estimate of the model for each draw.
+  The `mmm.lift_tests` chart reads it.
+
+`mmm.nested` and `mmm.multivariate` keep the same groups. Their thinned prior comes from a
+prior predictive sample of the graph.
 
 When you score, the plugin makes the `BayesianMMM` again from `fit_data`. The same data give
 the same scaling, Fourier features and trend basis. Then the plugin calculates the fitted
@@ -228,6 +238,39 @@ Ask for them in `outputs.derived`. The plugin calculates them at fit time over t
   scorecard read them.
 - `marginal_cost`: the extra spend for each extra unit of KPI at the current spend, and its
   inverse.
+- `adstock` <span class="mapi-badge">v0.12</span>: `weight(sample, channel, lag)`. This is
+  the part of the total effect of one unit of spend that comes `lag` periods later. The
+  weights of each draw add up to 1. `mean_lag(sample, channel)` is the mean delay. Every MMM
+  has it.
+- `effectiveness` <span class="mapi-badge">v0.12</span> (`mmm.bayesian`, `mmm.frequentist`):
+  `effectiveness(sample, channel, time)`. This is the KPI for each unit of spend at the average
+  spend of the fit window, with the coefficient of period `time`. It is constant for a channel
+  that is not time-varying. `time_varying(channel)` tells which channels change.
+- `mediation` (`mmm.nested`) and `cross_effects` (`mmm.multivariate`): refer to the sections
+  of these models below.
+
+### Charts <span class="mapi-badge">v0.12</span>
+
+Put the recipes in `outputs.plots`. Each recipe reads the derived quantities or bundle groups
+in the table. A recipe that does not find its data gives a clear error and the other plots
+continue.
+
+| Recipe | Reads | Shows |
+|---|---|---|
+| `mmm.roi` | `response_curves`, optional `marginal_cost` | The return on spend of each channel with a range, and the marginal return (mROAS), against break-even |
+| `mmm.adstock` | `adstock` | How the effect of spend decays over the next periods, with a range |
+| `mmm.waterfall` | `contributions` | The contribution of each component to the total result |
+| `mmm.spend_effect` | `response_curves` | The share of spend against the share of the effect of each channel |
+| `mmm.lift_tests` | the `lift_tests` group | Each lift test with its error bar, next to the estimate of the model |
+| `mmm.effectiveness` | `effectiveness` | The effect of one unit of spend over time (time-varying channels) |
+| `mmm.mediation` | `mediation` | The direct and indirect effect of each channel |
+| `mmm.cross_effects` | `cross_effects` | The effects between the results |
+| `core.energy` | `sample_stats.energy` | The energy plot of the sampler and the BFMI of each chain |
+| `core.prior_posterior` | `prior`, `posterior` | The prior and the posterior of each parameter, with their overlap |
+
+`mmm.waterfall` and `mmm.decomposition` have the setting `outcome`. With an `outcome` dim
+(`mmm.multivariate`), they show the primary outcome unless you select a different one.
+[Plots reference](../reference/plots.md) gives the settings of each recipe.
 
 ## Budget optimisation
 
@@ -373,6 +416,225 @@ A workflow can do all these steps on a schedule. The `mmm_governed` gallery temp
 `mmm.bayesian` on a geo panel. It runs the policy with `submit: true` and keeps the evidence
 pack (`mapi workflows init mmm_governed`).
 
+## Effects that change over time <span class="mapi-badge">v0.12</span> { #time-varying-effects }
+
+The effect of a channel can change, for example when an advertisement gets old or when a
+competitor starts to spend. Put the channel in `time_varying.channels`:
+
+```yaml
+model:
+  use: mmm.bayesian@^1
+  settings:
+    adstock: {kind: geometric, l_max: 8}
+    saturation: {kind: hill}
+    time_varying:
+      channels: [tv]
+      innovation_sigma: 0.15   # how fast the effect can change from one period to the next
+      forecast: random_walk    # random_walk (default), hold_last or mean
+```
+
+The coefficient of a time-varying channel is `exp(level + sigma x cumsum(z))`, with the
+cumulative sum centred over the fit window. This is a random walk on the log coefficient.
+`beta_<channel>` is its mean over time. The platform keeps the path of each draw and uses it
+when you score. In the fit window, each period uses its own coefficient.
+
+After the fit window, `time_varying.forecast` sets the coefficient:
+
+- `random_walk`: the walk continues from the last period, with the fitted step size. The range
+  becomes wider with the horizon. A scenario and its baseline use the same path.
+- `hold_last`: the coefficient of the last fitted period.
+- `mean`: the mean coefficient of the fit window.
+
+A forecast tells you the policy in its notes. These rules also apply:
+
+- A time-varying channel cannot have an ROI prior (`priors.roi`). The validation refuses the
+  spec. A business prior on its ROI also gives an error.
+- Lift tests on a time-varying channel are allowed. The test uses the coefficients of its own
+  periods.
+- With `hierarchy.media_by_geo`, a time-varying channel has one national path. The fit tells
+  you this.
+- Response curves and budget plans use the average effect over the fit window. The decision
+  objective and `steady_state` use the coefficient of the last fitted period.
+
+The `effectiveness` derived quantity and the `mmm.effectiveness` chart show the path of each
+channel.
+
+## Counts and shares <span class="mapi-badge">v0.12</span> { #counts-and-shares }
+
+The default likelihood is `normal` (or `student_t`). For a count, such as orders or sign-ups,
+use `poisson` or `negative_binomial`. For a share between 0 and 1, such as a market share,
+use `beta`:
+
+```yaml
+model:
+  use: mmm.bayesian@^1
+  settings:
+    likelihood: negative_binomial
+    media_effect_sigma: 0.5     # half-normal prior of each channel effect on the log scale
+    adstock: {kind: geometric, l_max: 8}
+    saturation: {kind: hill}
+```
+
+| Likelihood | Data | Link | Extra parameter |
+|---|---|---|---|
+| `poisson` | integers, 0 or more | log | none |
+| `negative_binomial` | integers, 0 or more | log | `nb_alpha ~ Gamma(2, 0.1)` (dispersion) |
+| `beta` | values between 0 and 1 (not 0 and not 1) | logit | `beta_kappa ~ Gamma(2, 0.05)` (precision) |
+
+The fit does a check of the data. If a value does not agree with the likelihood, the fit
+stops with `SCHEMA_INVALID` at `/data`. With these likelihoods, the KPI is not
+standardised. Thus, these rules apply:
+
+- The channel effects use coefficient priors (`HalfNormal(media_effect_sigma)`), not ROI
+  priors. `priors.roi` and `priors.roi_default` give a validation error. The default
+  intercept prior is centred on `log(mean y)` or `logit(mean y)`.
+- Business priors and lift tests give `CALIBRATION_UNSUPPORTED`.
+- The terms add up on the link scale, not in KPI units. The platform splits the expected KPI
+  into parts that add up to `y_hat`. The `baseline` is the KPI with no media. Each channel
+  gets a part of the rest, in proportion to its term on the link scale. The trend, the
+  seasonality and the controls are part of the baseline. The score tells you this.
+- Response curves and the return on spend are removal-based: the KPI with the actual spend
+  minus the KPI with no spend on the channel. A predictive score draws counts (or shares)
+  from the likelihood with seeded random numbers. A scenario and its baseline use the same
+  random numbers.
+
+## The nested model (`mmm.nested`) <span class="mapi-badge">v0.12</span> { #nested }
+
+`mmm.nested` measures effects that go through an intermediate measure (a *mediator*). For
+example, TV ads increase brand awareness, and awareness increases sales. Each mediator has
+its own equation. The channels that you select act on it. The mediator then acts on the KPI.
+The channels can also act on the KPI directly.
+
+**Data.** One national series. The model has no geo or product dims and takes no control
+variables.
+
+| Name | Dims | Role |
+|---|---|---|
+| `time` | - | the period dim (`extend`) |
+| `channel` | - | one label for each media channel (`fixed`) |
+| `mediator` | - | one label for each intermediate measure (`fixed`) |
+| `y` | `(time)` | the KPI |
+| `spend` | `(channel, time)` | the spend for each channel (`future_required`) |
+| `mediators` | `(mediator, time)` | the measured values. Missing values are allowed: a survey can have values in some periods only. |
+
+```yaml
+model:
+  use: mmm.nested@^1
+  settings:
+    trend: {kind: linear}
+    seasonality: {yearly_order: 2}
+    likelihood: normal           # or student_t
+    mediators:
+      - name: awareness
+        channels: [tv, social]   # the channels that move it (default: all)
+        direct_effect: true      # the channels also act on the KPI directly
+        observation_sigma: 0.1   # noise of the survey, in mediator standard deviations
+      - name: visits
+        outcome_sign: positive   # the effect of visits on the KPI is not negative
+  fit: {mode: evaluate_then_refit, engine: nutpie, tune: 1000, draws: 1000, chains: 4, seed: 7}
+outputs:
+  derived: [contributions, response_curves, marginal_cost, adstock, mediation]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.mediation, mmm.roi]
+```
+
+With `latent: true`, the platform does not read the column of that mediator (it can be all
+empty). Then only the product of the two paths is identified. The chart shows the paths in KPI
+units, which are identified. With an empty `mediators` list, each label of the `mediator` dim
+gets the defaults.
+
+**How it maps onto mmm-framework.** The engine fixes the media transforms: a normalised
+geometric adstock with 8 lags and the saturation `1 - exp(-lambda x)`. The media is scaled by
+its maximum, the KPI is standardised, and each measured mediator is standardised with its own
+mean and standard deviation (kept in `learned`).
+
+**Outputs.**
+
+- `y_hat(time)`.
+- `contributions(component, time)`: one component for each channel (its total effect: direct
+  plus indirect), `baseline`, `trend` and `seasonality`. They add up to `y_hat`.
+- `mediator_hat(mediator, time)`: the fitted mediators, in their units (latent mediators in
+  standard units).
+
+**Derived quantity `mediation`.** `direct(sample, channel)`, `indirect(sample, channel,
+mediator)` and `total(sample, channel)` are KPI totals over the fit window at the actual
+spend. `share_mediated(sample, channel)` is the part of the total that goes through the
+mediators. `mmm.mediation` draws them.
+
+**Lift tests** calibrate the total effect of a channel, in the same way as for
+`mmm.bayesian`. Business priors are not available (`CALIBRATION_UNSUPPORTED`).
+
+## The multivariate model (`mmm.multivariate`) <span class="mapi-badge">v0.12</span> { #multivariate }
+
+`mmm.multivariate` measures the effect of one marketing budget on two or more results, for
+example the sales of a premium and a basic range. Each result (*outcome*) has its own
+equation. The noise of the results is correlated. Cross-effects let the sales of one product
+move the sales of a different product.
+
+**Data.** One national series of each outcome. The model takes no control variables.
+
+| Name | Dims | Role |
+|---|---|---|
+| `time` | - | the period dim (`extend`) |
+| `channel` | - | one label for each media channel (`fixed`) |
+| `outcome` | - | one label for each result (`fixed`) |
+| `y` | `(outcome, time)` | the KPIs |
+| `spend` | `(channel, time)` | the spend for each channel (`future_required`) |
+
+```yaml
+model:
+  use: mmm.multivariate@^1
+  settings:
+    trend: {kind: linear}
+    seasonality: {yearly_order: 2}
+    outcomes:
+      - {name: premium, weight: 3.0}   # one unit of premium is worth 3 units in the plan
+      - {name: basic, weight: 1.0}
+    primary_outcome: premium
+    cross_effects:
+      - {source: premium, target: basic, kind: halo}
+    lkj_eta: 2.0
+    share_adstock: true
+  fit: {mode: evaluate_then_refit, engine: nutpie, tune: 1000, draws: 1000, chains: 4, seed: 7}
+outputs:
+  derived: [contributions, response_curves, marginal_cost, adstock, cross_effects]
+  plots: [core.ppc_fan, core.convergence, mmm.decomposition, mmm.cross_effects, mmm.roi]
+```
+
+| Cross-effect `kind` | Prior | Sign |
+|---|---|---|
+| `halo` | half-normal (`prior_sigma`) | positive: the source helps the target |
+| `cannibalization` | negative half-normal | negative: the source takes sales from the target |
+| `unconstrained` | normal | either |
+
+!!! warning "Cross-effects are associations"
+    Do not read a cross-effect as proof that one product takes sales from a different
+    product. In the engine, a cross-effect acts on the observed sales of the source. Thus,
+    it is confounded with the correlation of the noise. Use a test to measure a cause.
+
+**Scores and plans use the reduced form.** In the engine, the source term uses the observed
+source outcome. A forecast has no observed outcome. Thus, the platform solves
+`Y = (I - P)^-1 c` for each draw and period, with `P[k, s] = psi[s, k]`. A channel that moves
+outcome A then also moves outcome B through the cross-effect. If the cross-effects of a draw
+make a loop with no solution (`|det(I - P)| < 1e-6`), the score fails with
+`CAPABILITY_UNSUPPORTED`.
+
+**Outputs.** `y_hat(outcome, time)` and `contributions(component, outcome, time)`: the
+channels, `baseline`, `trend` and `seasonality`, through the reduced form. They add up to
+`y_hat` for each outcome. The attribute `primary_outcome` names the primary outcome.
+
+**One value for planning.** Response curves, marginal costs, the ROI metrics and budget
+plans use the weighted total `sum_k weight_k x outcome_k`. Give weights that convert each
+outcome to the same units (for example, the margin of one unit). `response_curves` also has
+`contribution_by_outcome` and `baseline_by_outcome`. When only one outcome has a weight that
+is more than 0, the budget plan and the response curves give the name of that outcome as the
+KPI. A note on the plan gives its weight.
+
+**Derived quantity `cross_effects`.** `psi(sample, pair)` with the coords `source`, `target`
+and `kind` of each pair (`"premium→basic"`), in target units for each unit of source.
+`mmm.cross_effects` draws them.
+
+This model has no lift-test calibration, no business priors and no promotion modulation.
+
 ## The frequentist model
 
 `mmm.frequentist` uses the same data and settings (but no priors, likelihood or GP trend).
@@ -404,17 +666,22 @@ mmm-framework. The images of the platform do not install it. Thus, the fit fails
 ## Current limits
 
 - The platform does not give these mmm-framework features: the multiplicative (log-log)
-  specification, effects that change with time, price and promotion levers, events and
-  interactions between channels. The forward pass of the platform is for the additive model
-  only.
-- The `mmm_extensions` of mmm-framework (nested/mediated models and models with many
-  outcomes) are not available yet. `mmm.nested` and `mmm.multivariate` have About cards but
-  no plugin.
+  specification, price and promotion levers, events and interactions between channels.
+- `mmm.nested` and `mmm.multivariate` use national data only and take no control variables.
+  Their media transforms are fixed (geometric adstock with 8 lags, exponential saturation).
+- `mmm.multivariate` has no lift-test calibration and no promotion modulation.
+- The likelihoods binomial, beta-binomial and lognormal are not available. They need a
+  trials variable or a multiplicative path.
+- A budget plan of a count model (log link) adds the increments of the channels. Under a log
+  link, the channels do not add up exactly in KPI units. The removal-based response curves
+  are the correct view of each channel.
+- The approximate fits (ADVI) of `mmm.nested` and `mmm.multivariate` do not send their loss
+  while they fit.
 - Fits run on the CPU. Only the NumPyro backend uses JAX.
 
 ## Trust, but verify
 
-The two models pass the SDK contract kit (`mapi_sdk.testing.check_model`). The kit tests
+The four models pass the SDK contract kit (`mapi_sdk.testing.check_model`). The kit tests
 these items:
 
 - Bundle round trips.

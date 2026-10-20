@@ -729,6 +729,331 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "`height` setting here is the height of one channel row (default 26).",
         refs=[_MMM_DOCS],
     ),
+    "mmm.roi": _a(
+        "ROI and marginal ROI",
+        "Shows the return of each channel for each unit of its current spend, and the return "
+        "of the next unit of spend. A dashed line marks the point where a channel pays back "
+        "its spend.",
+        [
+            "You want to know which channels pay back their spend",
+            "You want to know where the next unit of budget brings the most",
+            "You report the return of marketing to people who do not read models",
+        ],
+        [
+            "The KPI and the spend are not in the same money units (the break-even line then "
+            "has no meaning; set `breakeven` to None)",
+            "You want the full curve of return against spend (use Response curves)",
+        ],
+        [
+            "A response_curves group: the contribution of each channel for each spend level, "
+            "with the current spend",
+            "Optional: a marginal_cost group with the marginal ROI of each channel",
+        ],
+        [
+            "ROI is the contribution of a channel at current spend divided by its current spend",
+            "The contribution of a channel is measured against zero spend in that channel",
+            "Other channels and the baseline stay as they are",
+        ],
+        [
+            "A dot and a 90% range for the ROI of each channel",
+            "A dot and a 90% range for the marginal ROI of each channel",
+            "A dashed line at the break-even point (1.0 by default)",
+            "A caption that names the best channel, the channels below the break-even point "
+            "and the channels where the next unit returns less than it costs",
+        ],
+        _B,
+        _NOW,
+        "Search has an ROI of 2.1 and social 0.55. The whole range of social is below 1.0, so "
+        "social does not pay back its spend. TV has an ROI of 1.7, but its marginal ROI is "
+        "0.8: the next unit of TV spend returns less than it costs.",
+        related=[
+            "mmm.response_curves",
+            "mmm.marginal_cost",
+            "mmm.spend_effect",
+            "mmm.budget_plans",
+        ],
+        expert="Per draw: ROI = (f(current) − f(0)) / current, where f is the channel's "
+        "response curve (extra dims such as geo summed) read by linear interpolation at "
+        "`current_spend` (or at multiplier 1 when there is no current_spend). Marginal ROI "
+        "comes from `marginal_cost.marginal_roi_total` when present, else from the slope "
+        "(np.gradient) of each draw's curve at current spend. Dots are medians, ranges are "
+        "HDIs at `hdi_prob` (0.9). `breakeven` (1.0, None for no line) draws the reference "
+        "line and drives the caption. Channels with no spend have no ROI.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.spend_effect": _a(
+        "Share of spend and share of effect",
+        "Compares the share of the media budget that each channel gets with its share of the "
+        "effect of all channels. A channel with a larger share of effect than of spend "
+        "returns more than the average channel.",
+        [
+            "You want a quick view of which channels get too much or too little budget",
+            "You present the results of a marketing mix model to people who do not read models",
+        ],
+        [
+            "You want the return of the next unit of spend (use ROI and marginal ROI)",
+            "Some channels have a negative effect (the shares then do not add up to 100%)",
+        ],
+        [
+            "A response_curves group: the contribution of each channel for each spend level, "
+            "with the current spend",
+        ],
+        [
+            "The share of effect is the share of the sum of all channel contributions, not of "
+            "the KPI",
+            "A share of effect larger than the share of spend means an ROI above the average "
+            "ROI of the channels. It does not tell where the next unit of spend goes best",
+        ],
+        [
+            "A grey bar for the share of spend of each channel",
+            "A blue bar and a 90% range for the share of effect of each channel",
+            "A caption that names the channel with the best and the worst ratio of the two shares",
+        ],
+        _B,
+        _NOW,
+        "Search gets 20% of the spend and brings 29% of the effect. Social gets 27% of the "
+        "spend but brings only 10% of the effect. Social is a candidate for a smaller budget.",
+        related=["mmm.roi", "mmm.decomposition", "mmm.budget_plans"],
+        expert="Effects come from the response curves at current spend (as in mmm.roi). The "
+        "share of effect is computed per draw (contribution of c / sum over channels) and "
+        "shown as median and HDI at `hdi_prob`; the share of spend is current_spend / its "
+        "sum. Channels without spend count as zero spend.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.adstock": _a(
+        "Carry-over of the effect",
+        "Shows how the effect of one unit of spend spreads over the weeks after the spend, "
+        "for each channel. It also shows the average delay of the effect.",
+        [
+            "You want to know how long the effect of a campaign lasts",
+            "You plan the timing of campaigns, or you read a lift test that ended some weeks ago",
+        ],
+        [
+            "The model has no carry-over (adstock) part",
+            "You want the size of the effect, not its timing (use Contribution by component)",
+        ],
+        [
+            "An adstock group: the share of the effect at each lag for each channel, as draws",
+            "Optional: the average lag of each channel, and the frequency of the data",
+        ],
+        [
+            "The shares at all lags add up to 1 for each draw",
+            "The shape of the carry-over does not change over time",
+            "The longest lag is the longest lag of the model",
+        ],
+        [
+            "A line and a shaded 90% range of the share of the effect at each lag, for each "
+            "channel",
+            "A dot and a 90% range for the average delay of each channel",
+            "A caption that names the channel with the longest and the shortest carry-over",
+        ],
+        _I,
+        _NOW,
+        "TV has the longest carry-over: on average its effect comes 1.9 weeks after the spend. "
+        "Search has 85% of its effect in the week of the spend. A TV campaign that ends today "
+        "still adds sales for some weeks.",
+        related=["mmm.response_curves", "mmm.decomposition", "mmm.lift_tests"],
+        expert="`weight(sample, channel, lag)` is the adstock kernel of each draw normalised "
+        "to sum 1. The average delay is `mean_lag` when present, else Σ lag × weight. Lines "
+        "are medians and bands are HDIs at `hdi_prob` (0.9) per lag; `facet` gives one panel "
+        "per channel. The unit word comes from `attrs['frequency']` (W, D or M).",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.waterfall": _a(
+        "Contribution waterfall",
+        "Shows how the baseline and each channel add up, step by step, to the total KPI of "
+        "the period. The last bar is the total.",
+        [
+            "You want to explain the total sales of a period by its parts",
+            "You present the effect of marketing in a report or a deck",
+        ],
+        [
+            "You want to see the parts over time (use Contribution by component)",
+            "The model is multiplicative, so the parts do not add up",
+        ],
+        [
+            "A contributions group: the contribution of each channel and the baseline parts "
+            "(baseline, trend, seasonality, controls), as draws",
+        ],
+        [
+            "The parts add up to the KPI",
+            "Markets and other hidden dimensions are added up",
+            "A model with more than one outcome shows one outcome: the main outcome, unless "
+            "you select one",
+        ],
+        [
+            "A bar for each baseline part, then for each channel from the largest to the "
+            "smallest, then the total",
+            "A line for the 90% range of each step",
+            "A caption with the total, the baseline share and the largest channel",
+        ],
+        _B,
+        _NOW,
+        "The total is 5,760. The baseline parts give 81% and TV gives 11%, the most of the "
+        "channels. The range of social includes zero, so do not report its part as a fact.",
+        related=["mmm.decomposition", "core.decomposition", "mmm.spend_effect"],
+        expert="Each part is the sum over time and every non-channel dim per draw; the bar is "
+        "the mean, the line the HDI at `hdi_prob` placed at the end of the step. Variables "
+        "with a channel dim give one part per channel; other variables (and labels named "
+        "baseline, trend, seasonality, intercept) are baseline parts. An `outcome` dim is "
+        "reduced to `outcome`, else `attrs['primary_outcome']`, else its first level.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.lift_tests": _a(
+        "Lift tests and the model",
+        "Compares the result of each lift test with the value that the calibrated model "
+        "gives for the same channel, period and market. It shows the tests that the model "
+        "does not agree with.",
+        [
+            "You calibrated the model with lift tests and want to see if it agrees with them",
+            "A test result looks strange and you want to compare it with the model",
+        ],
+        [
+            "The model has no lift tests",
+            "You want to know if the test itself is correct (the chart takes the test as given)",
+        ],
+        [
+            "A lift_tests group: the result and the standard error of each test, and the "
+            "model's value for each test as draws",
+        ],
+        [
+            "The test and the model measure the same thing in the same units",
+            "The range of a test is its result plus and minus 1.96 standard errors",
+        ],
+        [
+            "Two rows for each test: the result of the test with its range (black) and the "
+            "model's 90% range (blue)",
+            "One panel for each kind of result (contribution or marginal ROAS)",
+            "A caption that names the tests that the model does not agree with",
+        ],
+        _I,
+        _NOW,
+        "The model agrees with three of four tests. For lift_1 (search), the test measured 80 "
+        "and the model gives 140. Look at the period and the market of that test, then at "
+        "the prior of search.",
+        related=["mmm.roi", "mmm.adstock", "core.prior_posterior"],
+        expert="Reads `observed(test)`, `observed_sd(test)` and `model(chain, draw, test)` (or a "
+        "sample dim) with the coords channel, estimand, start, end and geo on `test`. The model "
+        "agrees with a test when its HDI at `hdi_prob` overlaps observed ± `z` × observed_sd "
+        "(`z` = 1.96). Tests of different estimands get their own panel and scale.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.effectiveness": _a(
+        "Effect of spend over time",
+        "Shows the effect of one unit of spend in each period, for the channels whose effect "
+        "can change over time. Use it to see if a channel becomes stronger or weaker.",
+        [
+            "You fitted a model with time-varying channel effects",
+            "You think that a channel lost (or gained) effect, for example after a creative change",
+        ],
+        [
+            "No channel has a time-varying effect (the lines are then flat)",
+            "You want the effect of more or less spend (use Response curves)",
+        ],
+        [
+            "An effectiveness group: the KPI for each unit of spend in each period for each "
+            "channel, as draws, and a flag for the time-varying channels",
+        ],
+        [
+            "The effect is measured at the average spend level of each channel",
+            "After the end of the data, the effect follows the forecast rule of the model",
+        ],
+        [
+            "A line and a shaded 90% range for each time-varying channel over time",
+            "A caption with the first and the last value and the period of the highest value",
+        ],
+        _I,
+        _NOW,
+        "The effect of TV went from 2.0 to 1.45 for each unit of spend (−28%) in the year. "
+        "It was highest in January. Search and social have a constant effect and do not show.",
+        related=["mmm.roi", "mmm.response_curves", "mmm.decomposition"],
+        expert="`effectiveness(sample, channel, time)` is Σ_cells steady-state KPI at the mean "
+        "fit-window spend with the coefficient of period t, divided by that spend. Lines are "
+        "medians, bands HDIs at `hdi_prob`. `only_varying` (default true) shows the channels "
+        "with `time_varying` set (all channels when none is set); without the flag a channel "
+        "varies when its median moves.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.mediation": _a(
+        "Direct and mediated effects",
+        "Shows how much of the effect of each channel comes directly and how much comes "
+        "through a mediator, such as site visits or brand awareness.",
+        [
+            "Your model has mediators between the channels and the KPI",
+            "You want to know if a channel works through awareness or through visits",
+        ],
+        [
+            "The model has no mediators",
+            "You want to prove cause and effect (the paths depend on the structure of the model)",
+        ],
+        [
+            "A mediation group: the direct effect and the effect through each mediator for "
+            "each channel, as draws",
+        ],
+        [
+            "The direct part and the parts through the mediators add up to the total effect",
+            "The paths are the paths that the model allows. A path that the model does not "
+            "have is zero",
+        ],
+        [
+            "A stacked bar for each channel: the direct part and one part for each mediator",
+            "A line for the 90% range of the total effect",
+            "A dot and a 90% range for the share of the effect through the mediators",
+            "A caption with the largest share, the largest path and the paths whose range "
+            "includes zero",
+        ],
+        _I,
+        _NOW,
+        "76% of the effect of TV goes through the mediators, most of it through awareness. "
+        "Search works through visits. Social works directly: the ranges of its mediated "
+        "paths include zero.",
+        related=["mmm.decomposition", "mmm.roi", "mmm.waterfall"],
+        expert="Reads `direct(sample, channel)`, `indirect(sample, channel, mediator)`, "
+        "`total` and `share_mediated` (computed from the others when missing). Bars stack "
+        "the means (which add up); ranges are HDIs at `hdi_prob`. Effects are KPI totals "
+        "over the fit window at actual spend. With a latent mediator only the product of "
+        "the two path coefficients is identified; the chart shows it in KPI units.",
+        refs=[_MMM_DOCS],
+    ),
+    "mmm.cross_effects": _a(
+        "Effects between outcomes",
+        "Shows how a change in one outcome goes with a change in another outcome, for each "
+        "pair that the model links. For example, more sales of a premium product can go with "
+        "more sales of a basic product.",
+        [
+            "Your model has more than one outcome with links between them",
+            "You want to know if products help each other (halo) or take sales from each "
+            "other (cannibalisation)",
+        ],
+        [
+            "The model has one outcome",
+            "You want to prove cause and effect (the links are associations)",
+        ],
+        [
+            "A cross_effects group: the effect of each source outcome on each target outcome, "
+            "as draws, with the kind of each link",
+        ],
+        [
+            "The effect is the change in the target for a rise of one unit in the source",
+            "A link of the kind halo is positive and a link of the kind cannibalization is "
+            "negative by construction",
+        ],
+        [
+            "A dot and a 90% range for each link, coloured by kind",
+            "A dashed line at zero",
+            "A caption that names the links whose range does not include zero",
+        ],
+        _I,
+        _NOW,
+        "A rise of one unit in premium sales goes with 0.26 more units of basic sales, and "
+        "the range does not include zero. The link from basic to premium is not clear.",
+        related=["mmm.decomposition", "mmm.waterfall", "mmm.roi"],
+        expert="Reads `psi(sample, pair)` with the coords source, target and kind on `pair` "
+        "and the units in `attrs['units']`. Dots are medians, ranges HDIs at `hdi_prob`. The "
+        "links act on the observed source outcome, so they mix the effect with correlated "
+        "noise between the outcomes: read them as associations.",
+        refs=[_MMM_DOCS],
+    ),
     # ============================================================ ml pack
     "ml.feature_importance": _a(
         "Feature importance",
@@ -1757,5 +2082,93 @@ PLOT_ABOUTS: Final[dict[str, About]] = {
         "Positions are the posterior mean of `positions` (first two coordinates); else a "
         "spectral layout of the normalised Laplacian refined with seeded Fruchterman-Reingold "
         "steps. The matrix order is the Fiedler vector, within `group` levels.",
+    ),
+    # ============================================================ core: sampler checks (v0.12)
+    "core.energy": _a(
+        "Sampler energy",
+        "Checks if the fitting method can move through all of the possible values of the "
+        "model, including the extreme ones. A red bar shows a chain with a problem.",
+        [
+            "You fitted a Bayesian model with NUTS or HMC and want to check the sampler",
+            "The convergence check is good, but you do not trust the extreme values",
+        ],
+        [
+            "The model is not fitted with NUTS or HMC (there is no energy)",
+            "You want to know if the model is correct",
+        ],
+        [
+            "A sample_stats group with the energy of each draw in each chain",
+        ],
+        [
+            "A chain with an E-BFMI below 0.3 does not explore the tails well",
+            "The check needs some hundreds of draws in each chain",
+        ],
+        [
+            "Two histograms: the energy (grey) and its change from one draw to the next (blue)",
+            "A bar for the E-BFMI of each chain with a dashed limit line",
+            "A caption that names the chains below the limit",
+        ],
+        _X,
+        _SEC,
+        "The E-BFMI of chain 1 is 0.19, below 0.3. The blue histogram is much narrower than "
+        "the grey one. The sampler does not reach the tails, so make the priors narrower or "
+        "change the parameterisation.",
+        related=["core.convergence", "core.pair", "core.prior_posterior"],
+        expert="E-BFMI per chain = mean(diff(E)²) / var(E) (ArviZ `bfmi`, Betancourt 2016). "
+        "The histograms pool the chains: marginal energy E − mean(E) per chain, transitions "
+        "diff(E) − its mean per chain, on shared `bins` (40) between the 0.5% and 99.5% "
+        "points. `bfmi_threshold` (0.3) sets the limit.",
+        refs=[
+            (
+                "Betancourt (2016), Diagnosing suboptimal cotangent disintegrations in "
+                "Hamiltonian Monte Carlo",
+                "https://arxiv.org/abs/1604.00695",
+            ),
+            _ARVIZ,
+        ],
+    ),
+    "core.prior_posterior": _a(
+        "Prior and posterior",
+        "Shows, for each parameter, the values that the model allowed before it saw the data "
+        "and the values after the fit. Parameters that the data moved most come first.",
+        [
+            "You want to know what the data taught the model",
+            "You want to find parameters that only the prior controls",
+            "You want to check that a prior is not too narrow",
+        ],
+        [
+            "The model has no prior group",
+            "The model has hundreds of parameters (the chart shows the top ones only)",
+        ],
+        [
+            "A prior group and a posterior group with draws of the same variables",
+        ],
+        [
+            "The prior draws are a fair sample of the prior (a thinned sample is enough)",
+            "A large overlap means that the data adds little. It does not mean that the "
+            "prior is wrong",
+        ],
+        [
+            "One panel for each parameter with the prior (grey) and the posterior (blue)",
+            "Panels sorted by how far the mean moved, in prior standard deviations",
+            "A caption with the overlap of each pair and the parameters where the data adds little",
+        ],
+        _X,
+        _SEC,
+        "beta[tv] moved most: its mean changed by 2.2 prior standard deviations. The prior and "
+        "the posterior of sigma overlap by 21%, so the data told the model much about the "
+        "noise. A parameter with 90% overlap depends mostly on its prior.",
+        related=[
+            "core.posterior_forest",
+            "core.prior_predictive",
+            "mmm.prior_beliefs",
+            "core.energy",
+        ],
+        expert="Variables in both groups with draws (or `var_names`). Per cell: Gaussian KDE "
+        "(Silverman) of prior and posterior on a shared grid of `points` (80); overlap = ∫ "
+        "min(p, q). Cells are ranked by |mean_post − mean_prior| / sd_prior; at most "
+        "`max_cells` (8) per variable and `max_vars` (12) variables. Overlap above `little` "
+        "(0.8) is reported as 'the data adds little'.",
+        refs=[_GABRY, _ARVIZ],
     ),
 }

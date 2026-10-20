@@ -13760,7 +13760,9 @@
     "use_when": [
      "You have two or more years of weekly sales and spend for each channel",
      "You want to know the return of each channel and plan budgets",
-     "You have results for each market or product and you want one model for all of them"
+     "You have results for each market or product and you want one model for all of them",
+     "Your result is a count (orders, sign-ups) or a share between 0 and 1",
+     "The effect of a channel changes over time, for example when an advertisement gets old"
     ],
     "avoid_when": [
      "Spend changes very little over time (the model cannot measure the effect)",
@@ -13777,7 +13779,8 @@
     "outputs": [
      "Contribution and return for each channel, with ranges",
      "Response curves",
-     "Budget plans and what-if answers"
+     "Budget plans and what-if answers",
+     "The effect of each channel over time, when the effect can change"
     ],
     "difficulty": "intermediate",
     "typical_runtime": "long",
@@ -13797,7 +13800,7 @@
       "title": "Jin et al. (2017), Bayesian methods for media mix modeling with carryover and shape effects"
      }
     ],
-    "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and products (MFF panels). Priors come from business beliefs. Lift tests are a calibration likelihood. NUTS through PyMC, nutpie or numpyro.",
+    "expert_notes": "mmm-framework BayesianMMM: geometric/Weibull adstock, Hill or logistic saturation, trend options, Fourier seasonality, and hierarchical pooling over geos and products (MFF panels). Priors come from business beliefs. Lift tests are a calibration likelihood. Time-varying channel coefficients are a random walk on the log coefficient, with a forecast policy (random walk, hold last, mean) after the fit window. Poisson and negative binomial (log link) and beta (logit link) likelihoods split the expected KPI into channel parts in proportion to their link-scale terms; ROI priors and lift tests apply only to the normal and Student-t likelihoods. NUTS through PyMC, nutpie or numpyro.",
     "fits": {
      "goal": [
       "explain_marketing",

@@ -2,7 +2,8 @@
 
 The check skips the roles ``constant``, ``index`` and ``mask`` and the variables a model
 declares in ``structural_missing`` (the science tests cover those). An MMM model declares
-nothing, and its target and spend are observations, so a gap in them counts as before.
+nothing except ``mmm.nested``, whose mediator series may have gaps by design (a monthly survey
+in weekly data). The target and spend are observations, so a gap in them counts as before.
 """
 
 from __future__ import annotations
@@ -56,8 +57,9 @@ def _registry() -> Registry:
 
 def test_mmm_models_declare_no_structural_missing() -> None:
     reg = _registry()
-    for plugin in PLUGINS:
-        assert not getattr(plugin, "structural_missing", ())
+    declared = {p.id: tuple(getattr(p, "structural_missing", ()) or ()) for p in PLUGINS}
+    assert declared.pop("mmm.nested") == ("mediators",)
+    assert not any(declared.values())
     data, _ = e33_dataset()
     bundle = _bundle(e33_raw_schema(data))
     bundle.resolved.model.resolved = reg.model(load_model_spec(E33_SPEC_YAML).model.use).ref()
