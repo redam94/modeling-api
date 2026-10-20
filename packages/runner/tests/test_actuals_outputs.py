@@ -157,3 +157,20 @@ def test_the_summary_tables_mark_circular_outputs_with_their_period() -> None:
         assert isinstance(mean, float) and isinstance(lo, float) and isinstance(hi, float)
         assert min(mean, 360.0 - mean) < 2.0  # north, not south
         assert lo > 300.0 and hi < 60.0  # the interval crosses the seam
+
+
+def test_the_summary_tables_name_their_dims_and_time_dim() -> None:
+    """With the bundle, each table says which columns are coordinates and which one is time
+    (dataset names, or canonical names when the output asks for them); the ``ScoreSummary``
+    contract keeps both."""
+    bundle, _, tree = _scored(None)
+    summary = ScoreSummary.model_validate(summary_document(tree, None, bundle))
+    [table] = summary.tables
+    assert table.dims == ["region", "month"] and table.time_dim == "month"
+    assert table.columns[: len(table.dims)] == table.dims
+    _, _, ctree = _scored(None, names="canonical")
+    [canon] = ScoreSummary.model_validate(summary_document(ctree, None, bundle)).tables
+    assert canon.dims == ["geo", "time"] and canon.time_dim == "time"
+    # without the bundle the time dim is unknown; the dims are still there
+    [plain] = ScoreSummary.model_validate(summary_document(tree)).tables
+    assert plain.dims == ["region", "month"] and plain.time_dim is None

@@ -7,7 +7,7 @@ that *is* kept has passed the JSON sanitizer, which the control plane runs again
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 import xarray as xr
@@ -22,11 +22,13 @@ def render_for(
     ctx: WorkerContext,
     refs: Iterable[str],
     trees: Iterable[xr.DataTree | Callable[[], xr.DataTree | None]],
+    options: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Render ``refs`` against each tree in turn until every plot is drawn.
 
     A tree may be given lazily (a callable), so expensive inputs (an evaluation score of the
-    holdout) are only computed when some plot still needs them.
+    holdout) are only computed when some plot still needs them. ``options`` maps a recipe id
+    to its settings (the same for every tree).
     """
     wanted = [str(r) for r in refs]
     if not wanted:
@@ -42,7 +44,7 @@ def render_for(
             continue
         with warnings.catch_warnings():  # e.g. all-NaN bands over a forecast's history
             warnings.simplefilter("ignore", RuntimeWarning)
-            report = render_plots(tree, todo, registry=ctx.registry)
+            report = render_plots(tree, todo, registry=ctx.registry, options=options)
         for plot in report.to_json():
             done[str(plot["id"])] = plot
         for issue in report.issues:

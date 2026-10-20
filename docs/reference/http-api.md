@@ -302,7 +302,9 @@ transitions between them.
 **Score summaries.** When a score run succeeds, `ScoreCallResult.summary` (`ScoreSummary`)
 holds the requested summary as plain tables (the `summary.json` of the run). Each
 `ScoreSummaryTable` has the coordinate columns (one for each dim), then one column for each
-statistic. If the summary has more than 100 000 cells, `truncated` is `true`. Use the
+statistic. `dims` names the coordinate columns, and `time_dim` names the dim that is time
+when there is one. A server that predates these two fields leaves them out. The tables are in
+the order of their size. If the summary has more than 100 000 cells, `truncated` is `true`. Use the
 `score.zarr.zip` output for all the values. From v0.9, the table of a circular output
 (`OutputDecl.circular`, for example a direction) has the field `period` (one turn, in the
 units of the output). The statistics are then on the circle:

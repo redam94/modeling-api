@@ -14168,7 +14168,8 @@ export interface components {
          * @description One output variable's summary as a table: the coordinate columns (one per dim), then
          *     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
          *     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
-         *     circle (see the field).
+         *     circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
+         *     which one is time; a server that predates them leaves both out.
          * @example {
          *       "columns": [
          *         "geo",
@@ -14176,6 +14177,10 @@ export interface components {
          *         "mean",
          *         "hdi_90_lower",
          *         "hdi_90_upper"
+         *       ],
+         *       "dims": [
+         *         "geo",
+         *         "time"
          *       ],
          *       "rows": [
          *         [
@@ -14186,6 +14191,7 @@ export interface components {
          *           1633.9
          *         ]
          *       ],
+         *       "time_dim": "time",
          *       "variable": "revenue"
          *     }
          */
@@ -14193,12 +14199,22 @@ export interface components {
             /** Columns */
             columns: string[];
             /**
+             * Dims
+             * @description The coordinate columns (the leading columns); the rest are statistics
+             */
+            dims?: string[] | null;
+            /**
              * Period
              * @description Set for a circular output (an angle that wraps at one turn, in the output's units): the statistics are on the circle. `mean` is the circular mean, the intervals are centred on it, and every value is in [0, period). An interval with lower > upper crosses the seam (from 350 to 10 degrees)
              */
             period?: number | null;
             /** Rows */
             rows: (string | number | boolean | null)[][];
+            /**
+             * Time Dim
+             * @description The dim that is time, when there is one
+             */
+            time_dim?: string | null;
             /** Variable */
             variable: string;
         };

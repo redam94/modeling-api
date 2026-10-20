@@ -164,11 +164,14 @@ function RunPlot({ plot, outputs }: { plot: PlotSpec; outputs: ArtifactLink[] })
   );
 }
 
-/** Plots the score run rendered, fetched sanitized from the API and drawn in the sandbox. */
-function RunPlots({ runId, outputs }: { runId: string; outputs: ArtifactLink[] }) {
+/**
+ * Plots the score run rendered, fetched sanitized from the API and drawn in the sandbox; the
+ * ids in `hide` are left out (the page shows those outputs another way).
+ */
+function RunPlots({ runId, outputs, hide }: { runId: string; outputs: ArtifactLink[]; hide: readonly string[] }) {
   const plots = useRunPlots(runId);
   if (plots.isError) return <ErrorNotice error={plots.error} title="Cannot load the plots of the run" />;
-  const items = plots.data?.items ?? [];
+  const items = (plots.data?.items ?? []).filter((p) => !hide.includes(p.id));
   if (!items.length) return null;
   return (
     <section aria-label="Run plots" className="grid gap-4">
@@ -222,15 +225,16 @@ function OutputDownload({ link }: { link: ArtifactLink }) {
 
 /**
  * Score outputs: the run's own plots (forecast fan, counterfactual band) first, then the list
- * of signed links; Arrow outputs open as a table and a quick chart.
+ * of signed links; Arrow outputs open as a table and a quick chart. `hidePlots` names run
+ * plots to leave out.
  */
-export function ScoreResults({ outputs, runId }: { outputs: ArtifactLink[]; runId?: string | undefined }) {
+export function ScoreResults({ outputs, runId, hidePlots = [] }: { outputs: ArtifactLink[]; runId?: string | undefined; hidePlots?: readonly string[] }) {
   const [open, setOpen] = useState<string | null>(outputs.find(isArrow)?.name ?? outputs[0]?.name ?? null);
   const current = outputs.find((o) => o.name === open) ?? null;
   if (!outputs.length) return <p className="text-muted-foreground">The run finished, but it did not make output files.</p>;
   return (
     <div className="grid gap-4">
-      {runId ? <RunPlots runId={runId} outputs={outputs} /> : null}
+      {runId ? <RunPlots runId={runId} outputs={outputs} hide={hidePlots} /> : null}
       <ul className="grid gap-1">
         {outputs.map((o) => (
           <li key={o.name} className={cn("flex flex-wrap items-center gap-3 rounded-md border px-3 py-2", o.name === open && "border-primary/50 bg-accent/40")}>

@@ -21649,7 +21649,7 @@
         "type": "object"
       },
       "ScoreSummaryTable": {
-        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field).",
+        "description": "One output variable's summary as a table: the coordinate columns (one per dim), then\none column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.\n``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the\ncircle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and\nwhich one is time; a server that predates them leaves both out.",
         "examples": [
           {
             "columns": [
@@ -21658,6 +21658,10 @@
               "mean",
               "hdi_90_lower",
               "hdi_90_upper"
+            ],
+            "dims": [
+              "geo",
+              "time"
             ],
             "rows": [
               [
@@ -21668,6 +21672,7 @@
                 1633.9
               ]
             ],
+            "time_dim": "time",
             "variable": "revenue"
           }
         ],
@@ -21679,6 +21684,22 @@
             "maxItems": 256,
             "title": "Columns",
             "type": "array"
+          },
+          "dims": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The coordinate columns (the leading columns); the rest are statistics",
+            "title": "Dims"
           },
           "period": {
             "anyOf": [
@@ -21718,6 +21739,19 @@
             },
             "title": "Rows",
             "type": "array"
+          },
+          "time_dim": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The dim that is time, when there is one",
+            "title": "Time Dim"
           },
           "variable": {
             "maxLength": 256,

@@ -7,15 +7,19 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "@/env";
-import { createHandlers } from "@/mocks/handlers";
+import { createHandlers, createState } from "@/mocks/handlers";
 import editorGen from "@/mocks/editor.gen.json";
+import { EXTRA_MODEL_IDS } from "@/mocks/explore";
 import { MODEL_ID, modelVersion } from "@/mocks/fixtures";
+import { gridScoreHandlers } from "@/mocks/score-fields";
 import { routeTree } from "@/router";
 
-const server = setupServer(...createHandlers());
+const state = createState();
+const server = setupServer(...createHandlers(state));
 beforeAll(() => {
   server.listen({ onUnhandledRequest: "bypass" });
   window.scrollTo = () => undefined; // jsdom: the router restores scroll on navigation
+  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext; // jsdom has no canvas
 });
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
@@ -186,5 +190,31 @@ describe("ScorePage", () => {
     expect(within(table).getByText("+2")).toBeInTheDocument(); // predicted − actual
     expect(within(table).getByText(/^[-−]16$/)).toBeInTheDocument();
     expect(within(table).getByText("forecast")).toBeInTheDocument();
+  });
+
+  it("shows a gridded forecast as a map with a slider over its periods, and the other outputs by shape", async () => {
+    server.use(...gridScoreHandlers(state));
+    renderAt(`/score?model=${EXTRA_MODEL_IDS.fields}&version=1`);
+    await userEvent.click(await screen.findByRole("button", { name: /^Forecast$/ }, { timeout: 3000 }));
+    const section = await screen.findByRole("region", { name: "Results by output" }, { timeout: 3000 });
+    // The grid output is the default: the field viewer with its frame slider.
+    const viewer = await within(section).findByTestId("field-viewer", undefined, { timeout: 3000 });
+    expect(within(viewer).getByRole("slider", { name: /period/ })).toHaveAttribute("aria-valuetext", "period 2019");
+    const output = within(section).getByLabelText("Output");
+    expect(within(output).getByRole("option", { name: "total (over time)" })).toBeInTheDocument();
+    // The field viewer replaces the run's static field map; the fan stays.
+    const results = screen.getByRole("region", { name: "Results" });
+    expect(await within(results).findByText("Posterior predictive fan")).toBeInTheDocument();
+    expect(within(results).queryByText("Field map")).toBeNull();
+
+    await userEvent.selectOptions(output, "total");
+    expect(within(section).queryByTestId("field-viewer")).toBeNull();
+    expect(within(section).getByTitle("total over period")).toBeInTheDocument();
+    expect(within(section).getByText("The band is the hdi 90 interval.")).toBeInTheDocument();
+
+    await userEvent.selectOptions(output, "peak");
+    const tiles = within(section).getByLabelText("peak: summary");
+    expect(tiles).toHaveTextContent("mean9.5");
+    expect(tiles).toHaveTextContent("hdi 906.25 – 13");
   });
 });

@@ -144,22 +144,35 @@ def _target_name(bundle: Bundle) -> str:
 # ============================================================================== score views
 
 
-def _kpi_var(bundle: Bundle, ds: xr.Dataset) -> str | None:
+def _kpi_var(
+    bundle: Bundle, ds: xr.Dataset, *, skip_grids: bool = True, time: str | None = None
+) -> str | None:
     """The prediction variable holding the KPI (an output in target units, not a
-    decomposition), by its name in ``ds``."""
+    decomposition), by its name in ``ds``. Outputs off a 2-D grid come first (``total`` of a
+    gridded model, not its map summed over space), unless ``skip_grids`` is false, but only
+    one in target units or over time (``time``, else a datetime dim): a model whose other
+    outputs are scalars (a wave speed) still gets its gridded KPI."""
     manifest = bundle.model.manifest
     targets = (
         bundle.resolved.model.input_schema.targets if bundle.resolved.model.input_schema else []
     )
     binding = bundle.binding
-    for name, decl in manifest.outputs.items():
-        if "component" in decl.dims:
-            continue
-        if decl.units_of is not None and decl.units_of not in targets:
-            continue
-        for candidate in (name, binding.to_dataset(name)):
-            if candidate in ds:
-                return candidate
+    for grids in (False, True) if skip_grids else (True,):
+        for name, decl in manifest.outputs.items():
+            if "component" in decl.dims or (not grids and decl.grid is not None):
+                continue
+            if decl.units_of is not None and decl.units_of not in targets:
+                continue
+            for candidate in (name, binding.to_dataset(name)):
+                if candidate not in ds:
+                    continue
+                if (
+                    grids
+                    or decl.grid is not None
+                    or decl.units_of is not None
+                    or _time_dim(ds[candidate], time) is not None
+                ):
+                    return candidate
     return None
 
 
@@ -251,11 +264,12 @@ def forecast_view(
     node = tree["predictions"]
     assert isinstance(node, xr.DataTree)
     pred = node.to_dataset(inherit=False)
-    var = _kpi_var(bundle, pred)
+    horizon = bundle.binding.to_dataset(req.horizon.dim)
+    var = _kpi_var(bundle, pred, time=horizon)
     if var is None:
         return None
     da = pred[var]
-    t = _time_dim(da, bundle.binding.to_dataset(req.horizon.dim))
+    t = _time_dim(da, horizon)
     if t is None or not {"chain", "draw"} <= set(map(str, da.dims)):
         return None
     values, summed = _samples(da, [t])

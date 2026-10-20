@@ -1454,11 +1454,24 @@ class ScoreSummaryTable(_Response):
     """One output variable's summary as a table: the coordinate columns (one per dim), then
     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
-    circle (see the field)."""
+    circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
+    which one is time; a server that predates them leaves both out."""
 
     variable: str = Field(..., max_length=256)
     columns: list[str] = Field(..., max_length=256)
     rows: list[list[SummaryCell]]
+    dims: list[str] | None = Field(
+        None,
+        max_length=64,
+        description="The coordinate columns (the leading columns); the rest are statistics",
+        exclude_if=lambda v: v is None,
+    )
+    time_dim: str | None = Field(
+        None,
+        max_length=256,
+        description="The dim that is time, when there is one",
+        exclude_if=lambda v: v is None,
+    )
     period: float | None = Field(
         None,
         gt=0,
@@ -1474,6 +1487,8 @@ class ScoreSummaryTable(_Response):
             "variable": "revenue",
             "columns": ["geo", "time", "mean", "hdi_90_lower", "hdi_90_upper"],
             "rows": [["de", "2026-01-05", 1520.4, 1402.1, 1633.9]],
+            "dims": ["geo", "time"],
+            "time_dim": "time",
         }
     )
 

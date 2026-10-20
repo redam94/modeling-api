@@ -406,3 +406,20 @@ def test_reference_docs_list_every_m2_endpoint_and_the_scoping_rules() -> None:
         assert f"`{tier.value}`" in tenancy, tier
     for needle in ("QUOTA_EXCEEDED", "RATE_LIMITED", "interactive", "batch", "vCPU-second"):
         assert needle in quotas, needle
+
+
+def test_score_summary_tables_name_their_dims_and_old_tables_still_parse() -> None:
+    from mapi_spec.api import ScoreSummaryTable
+    from mapi_spec.views import SCORE_FIELDS_VIEW
+
+    old = {"variable": "total", "columns": ["quarter", "mean"], "rows": [["2024Q1", 3.0]]}
+    table = ScoreSummaryTable.model_validate(old)
+    assert table.dims is None and table.time_dim is None
+    assert table.model_dump(mode="json") == old  # unset fields stay off the wire
+    new = ScoreSummaryTable.model_validate({**old, "dims": ["quarter"], "time_dim": "quarter"})
+    assert new.model_dump(mode="json") == {**old, "dims": ["quarter"], "time_dim": "quarter"}
+    example = ScoreSummaryTable.model_json_schema()["examples"][0]
+    assert ScoreSummaryTable.model_validate(example).dims == ["geo", "time"]
+    with pytest.raises(ValidationError):
+        ScoreSummaryTable.model_validate({**old, "dims": ["d"] * 65})
+    assert SCORE_FIELDS_VIEW == "ui/fields.json"

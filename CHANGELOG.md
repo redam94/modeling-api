@@ -5,6 +5,37 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Score results by output shape
+
+The plots of a score run now follow the shape of each output. A gridded output, for example
+the intensity of the earthquake model `sci.lgcp_grid`, shows as a map with a slider over the
+periods of the forecast, not as a forecast fan of the sum over the grid.
+
+#### Added
+- The runner picks the default score plots from the shape of the outputs (predict, forecast
+  and evaluate). A `grid` output gets `sci.field_map`, or `sci.vector_field` when it has a
+  `component` of size 2, with the frame dim (`quarter`) as the slider. A time series output
+  that is not a grid (`total[period]`) gets `core.ppc_fan`. A model with grid outputs and no
+  such time series gets no fan. A model with no grid outputs keeps the plots of before, and
+  `job.plots` still replaces the defaults.
+- A predict, forecast or evaluate run of a model with grid outputs writes `ui/fields.json`
+  (`FieldsView`, `mapi_spec.views.SCORE_FIELDS_VIEW`): the same field view as the Model
+  Explorer, made from the predictions.
+- The output variables of a grid in `score.zarr.zip` carry the attr `grid` (the `GridDecl` as
+  JSON, with the dataset names of the dims). Thus a download can be plotted as a map.
+- `ScoreSummaryTable` has two optional fields: `dims` (the coordinate columns) and `time_dim`
+  (the dim that is time). A server that predates them leaves both out.
+- **Score** in the web app shows a view for each output by its shape: a map with a frame
+  slider for a grid, a line with a band for a time series, intervals for a categorical output
+  and tiles for a scalar. When `ui/fields.json` is there, the map replaces the
+  `sci.field_map` and `sci.vector_field` plots in the plot list.
+
+#### Changed
+- The KPI of a guided forecast (`ui/guided/forecast.json`) is an output that is not a grid
+  when there is one, for example `total` and not the sum of `rate` over the grid.
+- The summary tables are in the order of their size, so a truncated summary drops a large
+  grid table and keeps `total`.
+
 ### Data Explorer for scientific data
 
 The Data Explorer now shows graphs of scientific data, not only time series. It finds the

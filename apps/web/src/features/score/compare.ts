@@ -48,19 +48,19 @@ export interface CompareMetrics {
   coverage: number | null;
 }
 
-const CENTERS = ["mean", "median", "point", "q50"];
+export const CENTERS = ["mean", "median", "point", "q50"];
 
 function num(v: Cell | undefined): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-function quantile(name: string): number | null {
+export function quantile(name: string): number | null {
   const m = /^q(\d+)(?:_(\d+))?$/.exec(name);
   return m ? Number(`${m[1]}.${m[2] ?? "0"}`) : null;
 }
 
 /** The widest interval in the stats: `<x>_lower`/`<x>_upper` columns, else the outer quantiles. */
-function bandOf(stats: string[]): Comparison["band"] {
+export function bandOf(stats: string[]): Comparison["band"] {
   const pairs = stats.filter((s) => s.endsWith("_lower")).map((s) => s.slice(0, -6)).filter((b) => stats.includes(`${b}_upper`));
   const widest = pairs.sort((a, b) => Number(/\d+/.exec(b)?.[0] ?? 0) - Number(/\d+/.exec(a)?.[0] ?? 0))[0];
   if (widest) return { lower: `${widest}_lower`, upper: `${widest}_upper`, label: widest.replace("_", " ") };
