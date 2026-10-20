@@ -56,6 +56,12 @@ def test_nutpie_fit_streams_progress_chains_and_step_metrics(stage: xr.Dataset) 
     assert len(rec.last_chains) == 2
     live = [f for f, m in events if m.startswith("chain ")]
     assert live and all(0.1 <= f <= 0.9 for f in live)
+    # the model-level summary (mapi_plugin_mmm.tracking)
+    assert rec.params["mmm.link"] == "identity" and rec.params["mmm.time_varying"] == ""
+    assert rec.params["mmm.n_channels"] == 2 and rec.params["mmm.n_cells"] == 1
+    assert {("roi", "channel=tv"), ("mroi", "channel=search"), ("baseline_share", "")} <= set(
+        series
+    )
 
 
 @pytest.mark.skipif(not engine_available("nutpie"), reason="nutpie is not installed")

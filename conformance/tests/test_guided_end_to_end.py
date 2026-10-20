@@ -57,6 +57,27 @@ def _geo_table(rng: np.random.Generator) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _mediated_table(rng: np.random.Generator) -> pd.DataFrame:
+    rows = []
+    for k, w in enumerate(_weeks(80)):
+        tv, search = rng.uniform(0, 100), rng.uniform(0, 40)
+        visits = 1000 + 8 * tv + 20 * search + rng.normal(0, 50)
+        awareness = 0.2 + 0.002 * tv if k % 4 == 0 else None  # a monthly survey
+        rows.append({"Week": w, "Online Sales": 300 + 0.4 * visits + 2 * search,
+                     "TV Spend": tv, "Search Spend": search, "Site Visits": visits,
+                     "Brand Awareness": awareness})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+def _multi_kpi_table(rng: np.random.Generator) -> pd.DataFrame:
+    rows = []
+    for w in _weeks(80):
+        tv, search = rng.uniform(0, 100), rng.uniform(0, 40)
+        rows.append({"week": w, "sales_premium": 200 + 2 * tv, "sales_basic": 800 + 3 * search,
+                     "tv_cost": tv, "search_cost": search})  # fmt: skip
+    return pd.DataFrame(rows)
+
+
 def _forecast_table(rng: np.random.Generator) -> pd.DataFrame:
     return pd.DataFrame({"week": _weeks(80), "orders": 100 + rng.poisson(20, 80)})
 
@@ -91,6 +112,8 @@ def _choice_table(rng: np.random.Generator) -> pd.DataFrame:
 
 TABLES = {
     "geo_mmm": _geo_table,
+    "mediated_mmm": _mediated_table,
+    "multi_kpi_mmm": _multi_kpi_table,
     "weekly_forecast": _forecast_table,
     "store_demand": _store_table,
     "customer_choice": _choice_table,

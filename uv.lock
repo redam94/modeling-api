@@ -2324,6 +2324,7 @@ dependencies = [
     { name = "mapi-spec" },
     { name = "mapi-steps" },
     { name = "mmm-framework" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
@@ -2333,6 +2334,7 @@ requires-dist = [
     { name = "mapi-spec", editable = "packages/spec" },
     { name = "mapi-steps", editable = "packages/steps-core" },
     { name = "mmm-framework", specifier = "==1.5.0" },
+    { name = "scipy", specifier = ">=1.13" },
 ]
 
 [[package]]

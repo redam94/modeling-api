@@ -23,6 +23,7 @@ scaling (``y_mean``, ``y_std``, the media and control scales) exactly.
 from __future__ import annotations
 
 import contextlib
+import functools
 import io
 import logging
 import math
@@ -58,6 +59,8 @@ __all__ = [
     "FIT_DATA",
     "GEO",
     "MCMC_ENGINES",
+    "MEDIATOR",
+    "OUTCOME",
     "PANEL_DIMS",
     "PRODUCT",
     "RESERVED_COMPONENTS",
@@ -70,6 +73,7 @@ __all__ = [
     "EnginePlan",
     "PanelData",
     "build_configs",
+    "check_likelihood_data",
     "detect_controls",
     "engine_plan",
     "framework_version",
@@ -92,6 +96,10 @@ SEASONALITY: Final = "seasonality"
 RESERVED_COMPONENTS: Final = (BASELINE, TREND, SEASONALITY)
 FIT_DATA: Final = "fit_data"
 """Bundle group holding the model-stage fit data (``y``, ``spend``, control features)."""
+MEDIATOR: Final = "mediator"
+"""Dim of the mediator series of ``mmm.nested``."""
+OUTCOME: Final = "outcome"
+"""Dim of the outcomes of ``mmm.multivariate``."""
 
 _MFF_DIM = {GEO: "Geography", PRODUCT: "Product"}
 _SYNTHETIC_START = "2000-01-02"
@@ -591,6 +599,24 @@ def _finite(
     )
 
 
+def check_likelihood_data(y: np.ndarray, family: str) -> None:
+    """``SCHEMA_INVALID`` when the KPI cannot come from the likelihood ``family``:
+    counts need non-negative whole numbers, the beta family values strictly between 0
+    and 1."""
+    vals = np.asarray(y, dtype=float)
+    if family in ("poisson", "negative_binomial"):
+        if (vals < 0).any() or not np.allclose(vals, np.round(vals)):
+            raise _schema_error(
+                f"a {family} likelihood needs a KPI of counts (whole numbers of 0 or more)",
+                "/data",
+            )
+    elif family == "beta" and ((vals <= 0).any() or (vals >= 1).any()):
+        raise _schema_error(
+            "a beta likelihood needs a KPI of shares (values more than 0 and less than 1)",
+            "/data",
+        )
+
+
 # ======================================================================== configs
 
 
@@ -696,6 +722,7 @@ def build_configs(
     )
     from mmm_framework.config.enums import LikelihoodFamily
     from mmm_framework.config.likelihood import LikelihoodConfig
+    from mmm_framework.config.priors import PriorConfig
     from mmm_framework.model.trend_config import TrendConfig, TrendType
 
     dims = [DimensionType.PERIOD]
@@ -709,14 +736,34 @@ def build_configs(
         raise _schema_error(
             f"settings.channels names unknown channels {unknown}", "/model/settings/channels"
         )
+    tvp: set[str] = set()
+    if bayes:
+        assert isinstance(s, BayesianSettings)
+        tvp = set(s.time_varying.channels)
+        unknown = sorted(tvp - set(data.channels))
+        if unknown:
+            raise MapiError(
+                f"time_varying.channels names channels the data does not have: {unknown}",
+                code=ErrorCode.SETTINGS_INVALID,
+                pointer="/model/settings/time_varying/channels",
+            )
     media = []
     for ch in data.channels:
         extra: dict[str, Any] = {}
         if bayes:
             assert isinstance(s, BayesianSettings)
             roi = s.priors.roi.get(ch)
-            if roi is not None:
+            if not s.identity_link:
+                # count/share families: a positive coefficient on the link scale,
+                # passed explicitly so mmm-framework honours it (_explicit_prior)
+                extra["coefficient_prior"] = PriorConfig.half_normal(
+                    sigma=float(s.media_effect_sigma)
+                )
+            elif roi is not None:
                 extra = {"roi_prior_mu": float(roi.mu), "roi_prior_sigma": float(roi.sigma)}
+            if ch in tvp:
+                extra["time_varying"] = True
+                extra["tvp_innovation_sigma"] = float(s.time_varying.innovation_sigma)
         media.append(
             MediaChannelConfig(
                 name=ch,
@@ -768,15 +815,19 @@ def build_configs(
             "nutpie": InferenceMethod.BAYESIAN_NUTPIE,
             "numpyro": InferenceMethod.BAYESIAN_NUMPYRO,
         }[sampler]
-        model_kwargs["media_prior_mode"] = s.media_prior
+        model_kwargs["media_prior_mode"] = s.media_prior if s.identity_link else "coefficient"
         if s.priors.roi_default is not None:
             model_kwargs["media_roi_prior_mu"] = float(s.priors.roi_default.mu)
             model_kwargs["media_roi_prior_sigma"] = float(s.priors.roi_default.sigma)
         if s.priors.intercept is not None:
             model_kwargs["intercept_prior_mu"] = float(s.priors.intercept.mu)
             model_kwargs["intercept_prior_sigma"] = float(s.priors.intercept.sigma)
-        if s.likelihood == "student_t":
-            model_kwargs["likelihood"] = LikelihoodConfig(family=LikelihoodFamily.STUDENT_T)
+        elif not s.identity_link:
+            # the KPI is not standardised: centre the intercept on the link of its mean
+            model_kwargs["intercept_prior_mu"] = _link_of_mean(data, s.likelihood)
+            model_kwargs["intercept_prior_sigma"] = 1.0
+        if s.likelihood != "normal":
+            model_kwargs["likelihood"] = LikelihoodConfig(family=LikelihoodFamily(s.likelihood))
         if plan is not None:
             model_kwargs.update(
                 n_chains=plan.chains,
@@ -816,6 +867,54 @@ def build_configs(
     return mff, model, trend
 
 
+def _link_of_mean(data: PanelData, family: str) -> float:
+    """The link (log or logit) of the KPI's mean: the default intercept prior's centre."""
+    mean = float(np.mean(data.y)) if data.y is not None and data.y.size else 1.0
+    if family == "beta":
+        p = min(max(mean, 1e-4), 1 - 1e-4)
+        return float(math.log(p / (1 - p)))
+    return float(math.log(max(mean, 1e-3)))
+
+
+@functools.cache
+def _platform_mmm_class() -> type[BayesianMMM]:
+    """``BayesianMMM`` with the count and proportion observation blocks mmm-framework
+    leaves to subclasses (``_build_likelihood``); the Gaussian families call the parent,
+    so their graphs are unchanged.
+
+    * ``poisson``: ``y ~ Poisson(exp(mu))``;
+    * ``negative_binomial``: ``y ~ NegativeBinomial(mu=exp(mu), alpha)``,
+      ``nb_alpha ~ Gamma(2, 0.1)``;
+    * ``beta``: ``y ~ Beta(p * kappa, (1 - p) * kappa)``, ``p = sigmoid(mu)``,
+      ``beta_kappa ~ Gamma(2, 0.05)``.
+    """
+    import pymc as pm
+    import pytensor.tensor as pt
+    from mmm_framework.config.enums import LikelihoodFamily
+    from mmm_framework.model import BayesianMMM
+
+    class PlatformMMM(BayesianMMM):
+        def _build_likelihood(self, mu: Any, sigma: Any) -> Any:
+            family = self._likelihood_config.family
+            if family is LikelihoodFamily.POISSON:
+                return pm.Poisson("y_obs", mu=pt.exp(mu), observed=self.y, dims="obs")
+            if family is LikelihoodFamily.NEGATIVE_BINOMIAL:
+                alpha = pm.Gamma("nb_alpha", alpha=2.0, beta=0.1)
+                return pm.NegativeBinomial(
+                    "y_obs", mu=pt.exp(mu), alpha=alpha, observed=self.y, dims="obs"
+                )
+            if family is LikelihoodFamily.BETA:
+                kappa = pm.Gamma("beta_kappa", alpha=2.0, beta=0.05)
+                p = pm.math.sigmoid(mu)
+                return pm.Beta(
+                    "y_obs", alpha=p * kappa, beta=(1 - p) * kappa, observed=self.y, dims="obs"
+                )
+            return super()._build_likelihood(mu, sigma)
+
+    PlatformMMM.__name__ = PlatformMMM.__qualname__ = "PlatformMMM"
+    return PlatformMMM
+
+
 def make_model(
     data: PanelData,
     s: BayesianSettings | FrequentistSettings,
@@ -823,14 +922,16 @@ def make_model(
     frequency: str,
     plan: EnginePlan | None = None,
 ) -> BayesianMMM:
-    """A (not yet fitted) mmm-framework ``BayesianMMM`` over ``data``."""
+    """A (not yet fitted) mmm-framework ``BayesianMMM`` over ``data`` (Bayesian settings:
+    :func:`_platform_mmm_class`, which adds the count and proportion likelihoods)."""
     from mmm_framework.model import BayesianMMM
 
     mff, model_cfg, trend = build_configs(data, s, frequency=frequency, plan=plan)
     panel = data.to_panel(mff, frequency)
+    cls = _platform_mmm_class() if isinstance(s, BayesianSettings) else BayesianMMM
     with quiet():
         try:
-            return BayesianMMM(panel, model_cfg, trend)
+            return cls(panel, model_cfg, trend)
         except (ValueError, NotImplementedError) as exc:
             raise MapiError(
                 "mmm-framework refused the model configuration",

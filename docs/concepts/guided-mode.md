@@ -56,6 +56,8 @@ A template (`GuidedTemplate`) is data. It contains these items:
 | Template | Plugin | For | What-if | Forecast | Business priors |
 |---|---|---|---|---|---|
 | `geo_mmm` - Geo marketing mix | `mmm.bayesian` (mmm-framework) | The contribution of each channel in each market; budget changes between channels | yes | yes | yes, and lift tests |
+| `mediated_mmm` - Marketing mix with an intermediate measure <span class="mapi-badge">v0.12</span> | `mmm.nested` (mmm-framework) | The direct and indirect effect of each channel through visits, searches or awareness (national data) | yes | yes | lift tests only |
+| `multi_kpi_mmm` - Marketing mix for related products <span class="mapi-badge">v0.12</span> | `mmm.multivariate` (mmm-framework) | The effect of each channel on two or more results, and one budget plan for all of them (national data) | yes | yes | — |
 | `weekly_forecast` - Weekly forecast | `ts.hsgp_trend` | One series, some weeks or months ahead, with a range | — | yes | — |
 | `store_demand` - Demand by store | `tabular.regressor` | Units for each store and week from prices and promotions (low/median/high) | — | yes | — |
 | `customer_choice` - Customer choice | `choice.multinomial_logit` | The product that customers select, and how price changes the selection | presets | — | — |

@@ -23,7 +23,10 @@ setting                         mmm-framework
 ``media_prior``                 ``ModelConfig.media_prior_mode``
 ``priors.roi.<c>``              ``MediaChannelConfig.roi_prior_mu/roi_prior_sigma``
 ``priors.intercept``            ``ModelConfig.intercept_prior_mu/intercept_prior_sigma``
-``likelihood``                  ``ModelConfig.likelihood.family``
+``likelihood``                  ``ModelConfig.likelihood.family`` (count and proportion
+                                families through the plugin's own observation block)
+``media_effect_sigma``          ``MediaChannelConfig.coefficient_prior`` (count/proportion)
+``time_varying.channels``       ``MediaChannelConfig.time_varying`` (``tvp_innovation_sigma``)
 ==============================  ================================================================
 """
 
@@ -37,6 +40,7 @@ from mapi_sdk.models import ModelSettings
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 __all__ = [
+    "IDENTITY_FAMILIES",
     "AdstockKind",
     "AdstockSettings",
     "BayesianSettings",
@@ -44,6 +48,7 @@ __all__ = [
     "FrequentistSettings",
     "GridSettings",
     "HierarchySettings",
+    "LikelihoodFamily",
     "NormalPrior",
     "PanelDim",
     "PriorSettings",
@@ -51,8 +56,10 @@ __all__ = [
     "SaturationKind",
     "SaturationSettings",
     "SeasonalitySettings",
+    "TimeVaryingSettings",
     "TrendKind",
     "TrendSettings",
+    "TvpForecast",
     "mcmc_fit_schema",
 ]
 
@@ -67,6 +74,10 @@ SaturationKind = Literal["logistic", "hill", "michaelis_menten", "tanh", "root",
 TrendKind = Literal["none", "linear", "piecewise", "spline", "gp"]
 PanelDim = Literal["geo", "product"]
 Frequency = Literal["W", "D", "M"]
+LikelihoodFamily = Literal["normal", "student_t", "poisson", "negative_binomial", "beta"]
+TvpForecast = Literal["random_walk", "hold_last", "mean"]
+IDENTITY_FAMILIES = frozenset({"normal", "student_t"})
+"""Likelihood families on the standardised, identity-link KPI scale."""
 
 
 class _Sub(BaseModel):
@@ -282,6 +293,44 @@ class GridSettings(_Sub):
         return grid if 1.0 in grid else sorted([*grid, 1.0])
 
 
+class TimeVaryingSettings(_Sub):
+    """Channels whose effect drifts over time (mmm-framework's time-varying coefficient:
+    a random walk on the log of the channel coefficient, one step per period)."""
+
+    channels: list[str] = Field(
+        default_factory=list,
+        max_length=64,
+        description="Channels whose effect may change over time (creative wear-out, "
+        "changes in the market)",
+        json_schema_extra=ADVANCED,
+    )
+    innovation_sigma: float = Field(
+        0.15,
+        gt=0,
+        le=2,
+        description="Prior scale of the change in the log effect from one period to the "
+        "next (smaller: closer to a constant effect)",
+        json_schema_extra=ADVANCED,
+    )
+    forecast: TvpForecast = Field(
+        "random_walk",
+        description="The effect after the fit window: random_walk (continue the random "
+        "walk, so the range widens with the horizon), hold_last (the last fitted value) or "
+        "mean (the average over the fit window)",
+        json_schema_extra=ADVANCED,
+    )
+
+    @field_validator("channels")
+    @classmethod
+    def _unique(cls, v: list[str]) -> list[str]:
+        bad = [k for k in v if not k or len(k) > _LABEL_MAX]
+        if bad:
+            raise ValueError(f"invalid channel labels {bad}")
+        if len(set(v)) != len(v):
+            raise ValueError("time_varying.channels lists each channel once")
+        return v
+
+
 def _check_controls(v: list[str] | None) -> list[str] | None:
     if v is None:
         return v
@@ -372,16 +421,47 @@ class BayesianSettings(_Common):
         description="Prior overrides (written by business-prior translation)",
         json_schema_extra=ADVANCED,
     )
-    likelihood: Literal["normal", "student_t"] = Field(
+    likelihood: LikelihoodFamily = Field(
         "normal",
-        description="Observation noise: normal, or student_t for heavy-tailed outliers",
+        description="Observation model of the KPI: normal, student_t (heavy-tailed "
+        "outliers), poisson or negative_binomial (counts, log link) or beta (shares "
+        "between 0 and 1, logit link)",
         json_schema_extra=ADVANCED,
     )
+    media_effect_sigma: float = Field(
+        0.5,
+        gt=0,
+        le=5,
+        description="Count and share likelihoods only: prior scale (half-normal) of a "
+        "channel's largest effect on the link scale",
+        json_schema_extra=ADVANCED,
+    )
+    time_varying: TimeVaryingSettings = Field(
+        TimeVaryingSettings(),
+        description="Channels whose effect changes over time",
+        json_schema_extra=ADVANCED,
+    )
+
+    @property
+    def identity_link(self) -> bool:
+        """``True`` for the Gaussian families (standardised KPI, additive contributions)."""
+        return self.likelihood in IDENTITY_FAMILIES
 
     @model_validator(mode="after")
     def _check(self) -> BayesianSettings:
         if self.hierarchy.media_by_geo and "geo" not in self.hierarchy.pool_over:
             raise ValueError("hierarchy.media_by_geo needs 'geo' in hierarchy.pool_over")
+        if not self.identity_link and (self.priors.roi or self.priors.roi_default):
+            raise ValueError(
+                f"a {self.likelihood} likelihood states channel effects as coefficients on "
+                "the link scale: priors.roi and priors.roi_default do not apply"
+            )
+        both = sorted(set(self.time_varying.channels) & set(self.priors.roi))
+        if both:
+            raise ValueError(
+                f"channels {both} are time-varying, so an ROI prior (priors.roi) does not "
+                "apply to them"
+            )
         return self
 
 

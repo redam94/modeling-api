@@ -36,6 +36,15 @@ export function exploreTitle(template: Pick<GuidedTemplate, "tasks" | "family">)
   return "Scenarios";
 }
 
+/**
+ * The parts of the "What you believe" step: beliefs about each channel only where the model
+ * takes business priors, experiments only where it takes lift tests (`mediated_mmm` takes lift
+ * tests only, and its model refuses business priors).
+ */
+export function priorsSections(template: Pick<GuidedTemplate, "tasks">): { beliefs: boolean; lifts: boolean } {
+  return { beliefs: hasTask(template, "business_priors"), lifts: hasTask(template, "lift_tests") };
+}
+
 /** The steps of a template's flow (business priors only where the template takes them). */
 export function stepsFor(template: Pick<GuidedTemplate, "tasks" | "family">): StepDef[] {
   const steps: StepDef[] = [{ id: "data", title: "Your data", question: "What does each column contain?" }];
@@ -132,9 +141,18 @@ const DATA_SHAPES: Partial<Record<GuidedTemplate["family"], string>> = {
   choice: "A CSV file or a Parquet file with one row for each shopping trip. Each row has the customer, the selected product and a price column for each product. It can also have a promotion column for each product.",
 };
 
+/** Templates whose data differs from the rest of their family (national, more columns). */
+const TEMPLATE_SHAPES: Record<string, string> = {
+  mediated_mmm:
+    "A CSV file or a Parquet file with one row for each week (or day) for the whole country. Each row has the result, a spend column for each channel and a column for each intermediate measure, such as visits or awareness. An intermediate measure can have empty rows, for example a monthly survey.",
+  multi_kpi_mmm:
+    "A CSV file or a Parquet file with one row for each week (or day) for the whole country. Each row has a result column for each product or KPI, in the same units, and a spend column for each channel.",
+};
+
 /** What the upload should look like for this template, in plain words. */
-export function dataShapePlain(template: Pick<GuidedTemplate, "family" | "description_plain">): string {
-  return DATA_SHAPES[template.family] ?? `A CSV or Parquet file with the data for this analysis: ${template.description_plain}`;
+export function dataShapePlain(template: Pick<GuidedTemplate, "family" | "description_plain"> & { id?: string }): string {
+  const own = template.id !== undefined ? TEMPLATE_SHAPES[template.id] : undefined;
+  return own ?? DATA_SHAPES[template.family] ?? `A CSV or Parquet file with the data for this analysis: ${template.description_plain}`;
 }
 
 export type PeriodUnit = "day" | "week" | "month" | "period";
@@ -180,9 +198,15 @@ export function timeDimOf(template: Pick<GuidedTemplate, "spec_template">): stri
   return "time";
 }
 
-/** The wide variable and dim the template's spend (or price) question builds. */
+/**
+ * The wide variable and dim the template's spend (or price) question builds: the spend
+ * question when there is one, else the first other wide question. A wide result question (the
+ * KPIs of `multi_kpi_mmm`, `y` over `outcome`) is never it: a what-if changes spend, not the
+ * result.
+ */
 export function wideVarOf(template: Pick<GuidedTemplate, "questions">): { variable: string; dim: string; question: string } | null {
-  const q = template.questions.find((x) => x.kind === "columns" && x.wide_dim && x.as_var && x.required !== false);
+  const wide = template.questions.filter((x) => x.kind === "columns" && x.wide_dim && x.as_var && x.required !== false && x.role !== "target");
+  const q = wide.find((x) => x.role === "spend") ?? wide[0];
   return q && q.as_var && q.wide_dim ? { variable: q.as_var, dim: q.wide_dim, question: q.id } : null;
 }
 

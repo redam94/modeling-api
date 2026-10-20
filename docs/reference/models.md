@@ -15,6 +15,8 @@ declare it. Such a spec fails static validation with `CALIBRATION_UNSUPPORTED`:
 |---|---|---|
 | `mmm.bayesian` | yes - log-normal ROI priors for each channel (`priors.roi`) and the `intercept` | yes - mmm-framework experiment likelihoods (marginal ROAS or contribution) |
 | `mmm.frequentist` | no | no |
+| `mmm.nested` | no | yes - the total effect of a channel (marginal ROAS or contribution) |
+| `mmm.multivariate` | no | no |
 
 [Guided modelling](../guides/guided-modelling.md) gives the math of the translation and of
 each lift likelihood.
@@ -23,6 +25,8 @@ each lift likelihood.
 |---|---|---|---|---|
 | `mmm.bayesian@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | `e33`, `guided_mmm` |
 | `mmm.frequentist@1` | `mapi-plugin-mmm` | draws (bootstrap) | predict, forecast, counterfactual, evaluate | `mmm_frequentist` |
+| `mmm.nested@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | contract kit (`examples_nested`) |
+| `mmm.multivariate@1` | `mapi-plugin-mmm` | draws | predict, forecast, counterfactual, evaluate | contract kit (`examples_multivariate`) |
 | `ts.hsgp_trend@1` | `mapi-plugin-ts` | draws | predict, forecast, evaluate | `c08` |
 | `ts.gaussian_hmm@1` | `mapi-plugin-ts` | draws | predict, forecast, filter, evaluate | `e24` |
 | `tabular.hierarchical_glm@1` | `mapi-plugin-tabular` | draws | predict, counterfactual, evaluate | `e02` |
@@ -80,6 +84,9 @@ This plugin uses the `BayesianMMM` of mmm-framework. It has these parts:
 - Baselines with partial pooling across geos and products. Channel effects for each geo are
   optional.
 - Channel effects as returns on spend.
+- Channel effects that change over time (`time_varying`) <span class="mapi-badge">v0.12</span>.
+- The likelihoods `normal`, `student_t`, `poisson`, `negative_binomial` (counts) and `beta`
+  (shares) <span class="mapi-badge">v0.12</span>.
 
 The model owns scaling, carry-over and units (`owns: [scaling, carryover,
 inverse_units]`). Thus the pipeline only converts currencies and resamples. With
@@ -98,6 +105,42 @@ control. Their sum is `y_hat`.
 [Marketing-mix models on mmm-framework](../models/mmm-framework.md) tells how the settings
 map to mmm-framework. It also tells about priors, lift tests and optimisation. For a complete
 analysis, read the [marketing-mix guide](../guides/mmm.md).
+
+## `mmm.nested`: marketing mix with an intermediate measure <span class="mapi-badge">v0.12</span>
+
+This plugin uses the `NestedMMM` of mmm-framework (`mmm_extensions`). Channels act on one or
+more mediators (for example visits or awareness), and the mediators act on the KPI. The
+channels can also act on the KPI directly. A measured mediator can have empty periods. A
+latent mediator has no data.
+
+**Inputs.** National data only: `y(time)`, `spend(channel, time)` and
+`mediators(mediator, time)` (missing values allowed). There are no control variables. `channel`
+and `mediator` are `fixed`. `time` extends.
+
+**Outputs.** `y_hat(time)`, `contributions(component, time)` (each channel with its total
+effect, `baseline`, `trend`, `seasonality`; their sum is `y_hat`) and
+`mediator_hat(mediator, time)`. Derived: `contributions`, `response_curves`,
+`marginal_cost`, `adstock` and `mediation` (direct, indirect and total effect of each
+channel). Lift tests calibrate the total effect of a channel.
+
+## `mmm.multivariate`: marketing mix for several results <span class="mapi-badge">v0.12</span>
+
+This plugin uses the `MultivariateMMM` of mmm-framework (`mmm_extensions`). Each outcome has
+its own equation. The noise of the outcomes is correlated (LKJ prior). Cross-effects
+(`halo`, `cannibalization`, `unconstrained`) link the outcomes. They are associations, not
+causes. Scores and budget plans use the reduced form. Thus, a channel that moves one outcome
+also moves the outcomes that it links to.
+
+**Inputs.** National data only: `y(outcome, time)` and `spend(channel, time)`. There are no
+control variables. `channel` and `outcome` are `fixed`. `time` extends.
+
+**Outputs.** `y_hat(outcome, time)` and `contributions(component, outcome, time)`. Their sum
+is `y_hat` for each outcome. Derived: `contributions`, `response_curves` (the weighted total
+of the outcomes, and each outcome), `marginal_cost`, `adstock` and `cross_effects`. There is
+no lift-test calibration.
+
+[Marketing-mix models on mmm-framework](../models/mmm-framework.md#nested) gives the settings
+of the two models.
 
 ## `mmm.frequentist`: fast marketing mix
 

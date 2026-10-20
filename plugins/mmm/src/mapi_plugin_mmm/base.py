@@ -18,7 +18,11 @@ mean, ``predictive`` adds observation noise from a seeded generator (a counterfa
 scenario and baseline share it) - and ``contributions(chain, draw, component, *panel,
 time)``: every channel, ``baseline`` (intercept and level offsets), ``trend``,
 ``seasonality`` and every control; they sum to ``y_hat`` (``contribution_scale:
-additive``). Outputs are in the model stage's units (``owns: inverse_units``).
+additive``). With a count or proportion likelihood the contributions are every channel
+and ``baseline`` (the expected KPI without media, which then holds the trend, seasonality
+and controls; see :meth:`~mapi_plugin_mmm.forward.Components.kpi_parts`), and predictive
+draws come from the family itself. Outputs are in the model stage's units (``owns:
+inverse_units``).
 """
 
 from __future__ import annotations
@@ -37,7 +41,9 @@ from mapi_spec.spec import FitConfig, ScoreRequest
 
 from mapi_plugin_mmm.derived import (
     FitWindow,
+    adstock_dataset,
     contributions_dataset,
+    effectiveness_dataset,
     marginal_cost_dataset,
     response_curves_dataset,
 )
@@ -146,6 +152,22 @@ DERIVED: Final[list[dict[str, Any]]] = [
         "units": "spend per target",
         "cache": "fit",
         "description": "Extra spend per extra unit of the KPI at current spend",
+    },
+    {
+        "name": "adstock",
+        "dims": ["sample", CHANNEL, "lag"],
+        "units": "share",
+        "cache": "fit",
+        "description": "Share of a unit of spend's total effect that lands each number of "
+        "periods after the spend, per thinned draw (carry-over shape)",
+    },
+    {
+        "name": "effectiveness",
+        "dims": ["sample", CHANNEL, TIME],
+        "units": "target per spend",
+        "cache": "fit",
+        "description": "KPI per unit of spend at the average spend level with the channel "
+        "effect of each period (changes over time only for time-varying channels)",
     },
 ]
 _PRIOR_KEEP: Final = 200
@@ -264,7 +286,13 @@ class FrameworkMMM[SettingsT: BayesianSettings | FrequentistSettings](CustomMode
             controls=self._controls(fitted),
             frequency=self._frequency(fitted),
         )
-        rp = Replay(model, fit, Posterior.from_dataset(post))
+        tv = getattr(s, "time_varying", None)
+        rp = Replay(
+            model,
+            fit,
+            Posterior.from_dataset(post),
+            tvp_forecast=tv.forecast if tv is not None else "random_walk",
+        )
         self._cache = (fitted, post, rp, fit)
         return rp, fit
 
@@ -403,22 +431,24 @@ class FrameworkMMM[SettingsT: BayesianSettings | FrequentistSettings](CustomMode
         kind = "expected"
         noise = "none"
         if ctx.kind == "predictive":
-            mu = mu + comps.noise(ctx.seed)
+            mu = comps.predictive(ctx.seed)
             kind, noise = "predictive", "crn_seeded"
-        parts = [comps.channel.transpose(1, 0, 2, 3)]  # (C, S, n_cell, n)
+        channel, terms, ctrl_parts = comps.kpi_parts()
+        parts = [channel.transpose(1, 0, 2, 3)]  # (C, S, n_cell, n)
         labels = list(fit.channels)
-        n_cell = len(cells)
-        n = rp.n
-        for name, arr in (
-            (BASELINE, comps.baseline),
-            (TREND, np.broadcast_to(comps.trend[:, None, :], (n, n_cell, pos.size))),
-            (SEASONALITY, np.broadcast_to(comps.seasonality[:, None, :], (n, n_cell, pos.size))),
-        ):
-            parts.append(np.asarray(arr)[None])
+        identity = comps.link == "identity"
+        names = (BASELINE, TREND, SEASONALITY) if identity else (BASELINE,)
+        for name in names:
+            parts.append(np.asarray(terms[name])[None])
             labels.append(name)
-        if comps.controls.shape[1]:
-            parts.append(comps.controls.transpose(1, 0, 2, 3))
+        if identity and ctrl_parts.shape[1]:
+            parts.append(ctrl_parts.transpose(1, 0, 2, 3))
             labels += list(controls.variables)
+        if not identity:
+            ctx.info(
+                f"with a {comps.family} likelihood, the trend, the seasonality and the "
+                "controls are part of the baseline"
+            )
         contrib = np.concatenate(parts, axis=0).transpose(1, 0, 2, 3)  # (S, K, n_cell, n)
         y_hat = self._labelled(mu, data, fitted, lead=[], lead_coords={})
         y_hat.attrs = {"kind": kind, "noise": noise}
@@ -537,6 +567,10 @@ class FrameworkMMM[SettingsT: BayesianSettings | FrequentistSettings](CustomMode
             return response_curves_dataset(win, s.grid, to_original)
         if name == "marginal_cost":
             return marginal_cost_dataset(win, s.grid, to_original)
+        if name == "adstock":
+            return adstock_dataset(win)
+        if name == "effectiveness":
+            return effectiveness_dataset(win, to_original)
         raise MapiError(
             f"model {self.id!r} has no derived quantity {name!r}",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,

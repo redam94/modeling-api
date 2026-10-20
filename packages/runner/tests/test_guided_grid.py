@@ -85,3 +85,16 @@ def test_a_view_the_contract_refuses_is_reported_as_invalid(
     assert RESPONSE_GRID_VIEW not in written
     [(code, message)] = warnings
     assert code == "VIEW_INVALID" and "what-if grid" in message
+
+
+def test_the_grid_names_the_kpi_of_the_curves_when_the_caller_gives_none() -> None:
+    """A multi-outcome MMM names its weighted KPI on the curves (``attrs["kpi"]``); the
+    target's dataset name is the last fallback and an explicit ``kpi`` wins."""
+    rc = curves(multipliers=[0.0, 1.0, 2.0])
+    plain = response_grid_view(fake_bundle(rc))  # type: ignore[arg-type]
+    assert plain is not None and plain.kpi == "y"
+    rc.attrs["kpi"] = "weighted total of the outcomes"
+    named = response_grid_view(fake_bundle(rc))  # type: ignore[arg-type]
+    assert named is not None and named.kpi == "weighted total of the outcomes"
+    given = response_grid_view(fake_bundle(rc), kpi="sales")  # type: ignore[arg-type]
+    assert given is not None and given.kpi == "sales"

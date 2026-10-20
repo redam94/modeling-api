@@ -18,7 +18,12 @@ from pydantic import ValidationError
 
 
 def test_the_package_registers_the_mmm_framework_models() -> None:
-    assert [p.id for p in PLUGINS] == ["mmm.bayesian", "mmm.frequentist"]
+    assert [p.id for p in PLUGINS] == [
+        "mmm.bayesian",
+        "mmm.frequentist",
+        "mmm.nested",
+        "mmm.multivariate",
+    ]
     assert {p.id for p in PLUGINS} <= PLANNED_MODEL_IDS
 
 

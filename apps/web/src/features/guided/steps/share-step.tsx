@@ -171,7 +171,16 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
 }
 
 /** Charts people share first: results before the sampler's diagnostics (offered last). */
-const SHARE_FIRST = ["mmm.response_curves", "mmm.decomposition", "core.ppc_fan", "core.fit_vs_actual"];
+const SHARE_FIRST = [
+  "mmm.roi",
+  "mmm.response_curves",
+  "mmm.waterfall",
+  "mmm.decomposition",
+  "mmm.mediation",
+  "mmm.cross_effects",
+  "core.ppc_fan",
+  "core.fit_vs_actual",
+];
 
 export function shareOrder<T extends { id: string }>(plots: T[]): T[] {
   const rank = (p: T) => {

@@ -254,6 +254,16 @@ function ModelPlotFigure({ mv, plot }: { mv: ModelVersion; plot: ModelPlot }) {
   );
 }
 
+/** The charts on the results page, in this order: ROI, response curves, then the fit; two at most. */
+const REPORT_FIRST = ["mmm.roi", "mmm.response_curves", "core.ppc_fan", "core.fit_vs_actual"];
+
+export function reportPlots<T extends { id: string }>(plots: readonly T[]): T[] {
+  return plots
+    .filter((p) => REPORT_FIRST.includes(p.id))
+    .sort((a, b) => REPORT_FIRST.indexOf(a.id) - REPORT_FIRST.indexOf(b.id))
+    .slice(0, 2);
+}
+
 export function ReportStep({ session }: { session: GuidedSession }) {
   const navigate = useNavigate();
   const mv = session.modelVersion;
@@ -272,7 +282,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const best = [...rows].sort((a, b) => (b.roi?.mean ?? -Infinity) - (a.roi?.mean ?? -Infinity))[0];
   const mape = holdoutFraction(mv, "mape");
   const coverage = holdoutFraction(mv, "coverage_90") ?? holdoutFraction(mv, "coverage_80");
-  const shown = (plots.data ?? []).filter((p) => p.id === "core.ppc_fan" || p.id === "core.fit_vs_actual" || p.id === "mmm.response_curves").slice(0, 2);
+  const shown = reportPlots(plots.data ?? []);
   const stale = session.lastGoodFit.spec_revision !== session.latest.revision;
   return (
     <div className="grid gap-8">

@@ -76,6 +76,8 @@ Each plot contains these items:
 | `core.confusion` | The 2 × 2 table of actual and predicted classes at one threshold, with accuracy, precision, recall, specificity and F1 | draws or point probabilities, `observed_data` |
 | `core.loss_curve` | The loss of each step of a fit (for example ADVI), raw and smoothed | `fit_history` or `metrics_history` |
 | `core.loo_pit` | The LOO-PIT check of calibration and the Pareto k of each observation | `log_likelihood`, `posterior_predictive`, `observed_data` |
+| `core.energy` <span class="mapi-badge">v0.12</span> | The marginal energy and the energy transitions of the sampler, and the BFMI of each chain against a threshold | `sample_stats` with `energy` |
+| `core.prior_posterior` <span class="mapi-badge">v0.12</span> | The prior and the posterior of each parameter, ranked by how much the data moved it, with their overlap | `prior`, `posterior` |
 
 The **marketing-mix pack** (`mmm.*`) adds these plots:
 
@@ -85,6 +87,22 @@ The **marketing-mix pack** (`mmm.*`) adds these plots:
 - A channel decomposition
 - Your beliefs and the priors (`mmm.prior_beliefs`): the range that you gave for each
   channel, next to the values that the model allows before it sees your sales
+
+From v0.12, the pack also has these plots:
+
+| Recipe | What it shows | Reads |
+|---|---|---|
+| `mmm.roi` | The return on spend of each channel with a range, and the marginal return (mROAS), against a break-even line | `response_curves`, optional `marginal_cost` |
+| `mmm.adstock` | The part of the effect of spend that comes in each later period, with a range and the mean delay | `adstock` |
+| `mmm.waterfall` | The contribution of each component (baseline, trend, channels) to the total result | `contributions` |
+| `mmm.spend_effect` | The share of spend against the share of the effect of each channel | `response_curves` |
+| `mmm.lift_tests` | The result of each lift test with its error bar, next to the estimate of the model | `lift_tests` |
+| `mmm.effectiveness` | The effect of one unit of spend over time, for time-varying channels | `effectiveness` |
+| `mmm.mediation` | The direct and the indirect effect of each channel (`mmm.nested`) | `mediation` |
+| `mmm.cross_effects` | The effects between the results (`mmm.multivariate`) | `cross_effects` |
+
+`mmm.decomposition` and `mmm.waterfall` show one outcome of a model with an `outcome` dim:
+the primary outcome, or the outcome that you set in `outcome`.
 
 The **tabular pack** (`ml.*`) adds `ml.feature_importance`. This plot shows ranked tree
 importances, or signed coefficients for linear estimators. It reads them from the groups that

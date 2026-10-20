@@ -54,11 +54,14 @@ GEO_COLUMNS = [
 # ------------------------------------------------------------------------------- templates
 
 
-def test_the_four_built_in_templates() -> None:
-    assert set(GUIDED_TEMPLATES) == {"geo_mmm", "weekly_forecast", "store_demand",
+def test_the_six_built_in_templates() -> None:
+    assert set(GUIDED_TEMPLATES) == {"geo_mmm", "mediated_mmm", "multi_kpi_mmm",
+                                     "weekly_forecast", "store_demand",
                                      "customer_choice"}  # fmt: skip
     plugins = {t.id: (t.plugin, t.plugin_available) for t in GUIDED_TEMPLATES.values()}
     assert plugins["geo_mmm"] == ("mmm.bayesian@^1", True)
+    assert plugins["mediated_mmm"] == ("mmm.nested@^1", True)
+    assert plugins["multi_kpi_mmm"] == ("mmm.multivariate@^1", True)
     assert plugins["weekly_forecast"] == ("ts.hsgp_trend@^1", True)
     assert plugins["store_demand"] == ("tabular.regressor@^1", True)
     choice = GUIDED_TEMPLATES["customer_choice"]
@@ -374,3 +377,36 @@ def test_the_geo_mmm_fits_long_enough_for_its_scorecard() -> None:
     a Guided user cannot change the fit, so the template samples longer and more carefully."""
     fit = get_template("geo_mmm").spec_template["model"]["fit"]  # type: ignore[index,call-overload]
     assert fit["draws"] >= 1000 and fit["tune"] >= 1000 and fit["target_accept"] >= 0.95  # type: ignore[index]
+
+
+def test_the_mmm_templates_of_v012() -> None:
+    """v0.12: geo_mmm caches adstock and shows ROI; the national templates use the
+    extension MMMs with their own derived quantities and charts."""
+    geo = get_template("geo_mmm")
+    assert geo.version == "2.1.0"
+    out = geo.spec_template["outputs"]
+    assert out["derived"][-1] == "adstock" and out["plots"][-1] == "mmm.roi"  # type: ignore[index,call-overload]
+    mediated, multi = get_template("mediated_mmm"), get_template("multi_kpi_mmm")
+    # multi_kpi_mmm has no cross-effects (no question tells which result acts on which)
+    for template, extra in ((mediated, ["mediation"]), (multi, [])):
+        spec = template.spec_template
+        assert spec["model"]["settings"] == {"trend": {"kind": "linear"},  # type: ignore[index,call-overload]
+                                             "seasonality": {"yearly_order": 2}}  # fmt: skip
+        assert spec["model"]["fit"] == get_template("geo_mmm").spec_template["model"]["fit"]  # type: ignore[index,call-overload]
+        assert spec["outputs"]["derived"] == ["contributions", "response_curves",  # type: ignore[index,call-overload]
+                                              "marginal_cost", "adstock", *extra]  # fmt: skip
+        assert {f"mmm.{x}" for x in extra} <= set(spec["outputs"]["plots"])  # type: ignore[index,call-overload,arg-type]
+        assert template.scorecard_checks == geo.scorecard_checks
+        assert template.about is not None and template.about.fits["data_shape"] == [
+            "several_series"
+        ]
+    assert mediated.tasks == ["whatif", "forecast", "counterfactual", "lift_tests"]
+    assert multi.tasks == ["whatif", "forecast", "counterfactual"]
+    q = mediated.question("mediators")
+    assert (q.wide_dim, q.missing, q.role.value if q.role else None) == (
+        "mediator",
+        "allow",
+        "covariate",
+    )
+    k = multi.question("kpis")
+    assert (k.wide_dim, k.as_var, k.role.value if k.role else None) == ("outcome", "y", "target")

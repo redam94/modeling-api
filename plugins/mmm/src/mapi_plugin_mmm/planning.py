@@ -333,11 +333,7 @@ def optimize_budget_plan(win: FitWindow, req: OptimizeRequest, *, seed: int) -> 
 
 def _baseline(win: FitWindow) -> np.ndarray:
     """``(D,)`` KPI over the fit window that no channel explains."""
-    comps = win.evaluate(1.0)
-    total = comps.baseline + comps.trend[:, None, :] + comps.seasonality[:, None, :]
-    if comps.controls.shape[1]:
-        total = total + comps.controls.sum(axis=1)
-    return np.asarray(total.sum(axis=(1, 2)))
+    return np.asarray(win.baseline_cells().sum(axis=1))
 
 
 def thin_index(n: int, k: int) -> np.ndarray:

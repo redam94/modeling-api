@@ -26,8 +26,10 @@ from mapi_spec.resources import ResourceClass
 from mapi_spec.spec import FitConfig
 
 from mapi_plugin_mmm.base import FrameworkMMM
-from mapi_plugin_mmm.framework import EnginePlan, make_model, quiet
+from mapi_plugin_mmm.forward import Posterior, Replay
+from mapi_plugin_mmm.framework import EnginePlan, framework_version, make_model, quiet
 from mapi_plugin_mmm.settings import FrequentistSettings
+from mapi_plugin_mmm.tracking import log_mmm_summary, summary_window
 
 __all__ = ["MMMFrequentist", "cvxpy_available"]
 
@@ -144,5 +146,21 @@ class MMMFrequentist(FrameworkMMM[FrequentistSettings]):
             {"engine": plan.engine, "method": "frequentist", "draws": s.bootstrap,
              "fit_diagnostics": diag},
         )  # fmt: skip
+        if ctx.tracking:
+
+            def replay(post: xr.Dataset) -> Replay:
+                return Replay(model, data, Posterior.from_dataset(post))
+
+            log_mmm_summary(
+                ctx,
+                summary_window(replay, groups["posterior"], data),
+                params={
+                    "mmm.framework_version": framework_version(),
+                    "mmm.n_channels": len(data.channels),
+                    "mmm.n_periods": data.n_periods,
+                    "mmm.n_cells": data.n_cells,
+                    "mmm.link": "identity",
+                },
+            )
         ctx.progress(1.0, "fit complete")
         return FitOutput(groups=groups, learned=learned, diagnostics=diagnostics)

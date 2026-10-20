@@ -65,6 +65,17 @@ kernel jointly (``BayesianMMM.add_experiment_calibration``):
 
 ``geo`` restricts the measurement to that geo (``holdout_regions``). Tests after the data
 or cut by the fit window (a holdout fit ending inside the test) are skipped and listed.
+The tests used are kept in the bundle's ``lift_tests`` group (:func:`lift_test_group`):
+the measured value and its standard error next to the model's own estimand per draw.
+
+Limits
+======
+
+A count or proportion likelihood models the KPI on a link scale: the ROI parameterisation
+and the identity-scale experiment likelihood do not apply, so business priors and lift
+tests are ``CALIBRATION_UNSUPPORTED`` (:func:`check_calibration`). A time-varying channel
+has no single ROI, so a business prior on it is an ``error`` issue; lift tests on it are
+used (mmm-framework evaluates the estimand with the coefficient of each test period).
 """
 
 from __future__ import annotations
@@ -101,7 +112,9 @@ __all__ = [
     "LiftPlan",
     "TranslationOutcome",
     "UnitScales",
+    "check_calibration",
     "lift_measurements",
+    "lift_test_group",
     "lift_window_cut",
     "prior_preview",
     "translate_business_priors",
@@ -237,8 +250,39 @@ def _range(
     return hi / _ZERO_LOW_RATIO, hi
 
 
+def check_calibration(
+    s: BayesianSettings,
+    *,
+    business_priors: bool = False,
+    lift_tests: bool = False,
+    pointer: str = "/calibration",
+) -> None:
+    """``CALIBRATION_UNSUPPORTED`` for business priors or lift tests on a model with a
+    count or proportion likelihood (see the module doc)."""
+    if s.identity_link:
+        return
+    for used, what, path in (
+        (business_priors, "business priors", "business_priors"),
+        (lift_tests, "lift tests", "lift_tests"),
+    ):
+        if used:
+            raise MapiError(
+                f"a {s.likelihood} likelihood models the KPI on a link scale, so {what} do "
+                "not apply. Use the normal or the student_t likelihood to calibrate the model",
+                code=ErrorCode.CALIBRATION_UNSUPPORTED,
+                pointer=f"{pointer}/{path}",
+            )
+
+
 def with_priors(s: BayesianSettings, priors: dict[str, Any]) -> BayesianSettings:
     """``s`` with prior overrides merged (translated keys win, per channel for ``roi``)."""
+    tvp = sorted(set(priors.get("roi") or {}) & set(s.time_varying.channels))
+    if tvp:
+        raise MapiError(
+            f"the effect of {tvp[0]} varies over time, so a prior on its ROI does not apply",
+            code=ErrorCode.BUSINESS_PRIORS_INVALID,
+            pointer=_pointer("priors", "roi", tvp[0]),
+        )
     raw = s.model_dump(mode="json", exclude_none=True)
     old = raw.get("priors") or {}
     merged = {**old, **priors}
@@ -276,6 +320,16 @@ def translate_business_priors(
                     pointer=here,
                     severity=Severity.ERROR,
                     action="Use the channel names exactly as they are in the data.",
+                )
+            )
+            continue
+        if label in s.time_varying.channels:
+            issues.append(
+                _issue(
+                    f"the effect of {label} varies over time, so a prior on its ROI does not apply",
+                    pointer=here,
+                    severity=Severity.ERROR,
+                    action="Remove the channel from business priors or from time_varying.channels.",
                 )
             )
             continue
@@ -669,11 +723,14 @@ def lift_window_cut(days: np.ndarray, start: date, end: date) -> bool:
 
 @dataclass(slots=True)
 class LiftPlan:
-    """mmm-framework measurements for the usable tests, plus what was skipped and why."""
+    """mmm-framework measurements for the usable tests, plus what was skipped and why.
+    ``rows`` describes each used test (``id``, ``channel``, ``estimand`` - contribution
+    or mroas -, ``start``, ``end``, ``geo`` - empty when national)."""
 
     measurements: list[Any]
     used: list[str]
     skipped: dict[str, str]
+    rows: list[dict[str, str]] = field(default_factory=list)
 
     def record(self) -> dict[str, Any]:
         return {"used": list(self.used), "skipped": dict(self.skipped)}
@@ -685,9 +742,11 @@ def lift_measurements(
     scales: UnitScales,
     *,
     pointer: str = "/calibration/lift_tests",
+    outcome: str | None = None,
 ) -> LiftPlan:
     """``ExperimentMeasurement`` per usable lift test (see the module doc). Unknown
-    channels or geos are ``SCHEMA_INVALID`` at the test's pointer."""
+    channels or geos are ``SCHEMA_INVALID`` at the test's pointer. ``outcome`` names the
+    outcome the measurements refer to (multi-outcome models; ``None``: the only one)."""
     from mmm_framework.calibration import ExperimentEstimand, ExperimentMeasurement
 
     times = np.asarray(data.times)
@@ -701,6 +760,7 @@ def lift_measurements(
     out: list[Any] = []
     used: list[str] = []
     skipped: dict[str, str] = {}
+    rows: list[dict[str, str]] = []
     for i, test in enumerate(tests):
         here = f"{pointer}/{i}"
         tid = test.id or f"lift_{i}"
@@ -751,6 +811,8 @@ def lift_measurements(
             "holdout_regions": [test.geo] if test.geo is not None else None,
             "name": f"lift_{len(out)}",
         }
+        if outcome is not None:
+            common["outcome"] = outcome
         delta = test.spend_delta
         if delta > 0:
             if window_spend <= 0:
@@ -791,4 +853,52 @@ def lift_measurements(
                 continue
         out.append(m)
         used.append(tid)
-    return LiftPlan(out, used, skipped)
+        rows.append(
+            {
+                "id": tid,
+                "channel": test.channel,
+                "estimand": "mroas" if delta > 0 else "contribution",
+                "start": str(test.start),
+                "end": str(test.end),
+                "geo": test.geo or "",
+            }
+        )
+    return LiftPlan(out, used, skipped, rows)
+
+
+def lift_test_group(plan: LiftPlan, posterior: xr.Dataset) -> xr.Dataset | None:
+    """The bundle's ``lift_tests`` group (``None`` without used tests): ``observed(test)``
+    and ``observed_sd(test)`` (the measurement and its standard error, model-stage units:
+    KPI for a contribution, KPI per unit of spend for an mroas), ``model(chain, draw,
+    test)`` (the model's estimand, ``<name>_model_estimand``) and the string coords
+    ``channel``, ``estimand``, ``start``, ``end``, ``geo`` over ``test``."""
+    if not plan.measurements:
+        return None
+    keep: list[int] = []
+    model: list[xr.DataArray] = []
+    for k, m in enumerate(plan.measurements):
+        name = f"{m.name}_model_estimand"
+        if name not in posterior:
+            continue
+        da = posterior[name]
+        extra = [d for d in da.dims if d not in ("chain", "draw")]
+        if extra:  # pragma: no cover - mmm-framework registers a scalar per experiment
+            continue
+        keep.append(k)
+        model.append(da.drop_vars([c for c in da.coords if c not in ("chain", "draw")]))
+    if not keep:
+        return None
+    rows = [plan.rows[k] if k < len(plan.rows) else {} for k in keep]
+    ids = [r.get("id", plan.used[k]) for r, k in zip(rows, keep, strict=True)]
+    coords: dict[str, Any] = {"test": np.asarray(ids, dtype=str)}
+    for key in ("channel", "estimand", "start", "end", "geo"):
+        coords[key] = ("test", np.asarray([str(r.get(key, "")) for r in rows], dtype=str))
+    ms = [plan.measurements[k] for k in keep]
+    out = xr.Dataset(
+        {
+            "observed": ("test", np.asarray([float(m.value) for m in ms])),
+            "observed_sd": ("test", np.asarray([float(m.se) for m in ms])),
+            "model": xr.concat(model, dim="test").transpose("chain", "draw", "test"),
+        }
+    )
+    return out.assign_coords(coords)

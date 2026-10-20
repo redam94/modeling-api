@@ -19,30 +19,40 @@ import pandas as pd
 import xarray as xr
 
 __all__ = [
+    "adstock_dataset",
     "area_map_tree",
     "bundle_tree",
     "calibration_tree",
     "classifier_tree",
     "contributions",
     "counterfactual_tree",
+    "cross_effects_dataset",
     "decision_dataset",
+    "effectiveness_dataset",
     "ensemble_tree",
     "example_inputs",
     "feature_importance_tree",
     "field_tree",
     "group_effects_tree",
     "image_tree",
+    "lift_tests_dataset",
     "loo_tree",
     "loss_history_tree",
+    "marginal_cost_dataset",
+    "mediation_dataset",
+    "mmm_contributions",
+    "mmm_tree",
     "network_tree",
     "panel_data",
     "phylogeny_tree",
     "plans_dataset",
     "point_pattern_tree",
     "prior_beliefs_dataset",
+    "prior_group",
     "profile_tree",
     "regime_tree",
     "response_curves",
+    "response_grid",
     "rose_tree",
     "score_tree",
     "spectrum_tree",
@@ -104,13 +114,24 @@ def bundle_tree(bias: float = 0.0) -> xr.DataTree:
     pc = {**coords, "geo": GEOS, "week": WEEKS}
     diverging = np.zeros((CHAINS, DRAWS), dtype=bool)
     diverging[0, :3] = True
+    # chain 0 mixes well (E-BFMI ~ 2); chain 1 is an AR(0.9) walk (E-BFMI ~ 0.2)
+    energy = 500 + 10 * _rng(14).standard_normal((CHAINS, DRAWS))
+    walk = _rng(15).standard_normal(DRAWS)
+    for i in range(1, DRAWS):
+        walk[i] = 0.9 * walk[i - 1] + np.sqrt(1 - 0.81) * walk[i]
+    energy[1] = 500 + 10 * walk
     return xr.DataTree.from_dict(
         {
             "/": xr.Dataset(attrs={"bundle_id": "bundle-123"}),
             "/model/posterior": posterior,
             "/model/sample_stats": xr.Dataset(
-                {"diverging": (("chain", "draw"), diverging)}, coords=coords
+                {
+                    "diverging": (("chain", "draw"), diverging),
+                    "energy": (("chain", "draw"), energy),
+                },
+                coords=coords,
             ),
+            "/model/prior": prior_group(),
             "/model/posterior_predictive": xr.Dataset({"revenue": (dims, pp)}, coords=pc),
             "/model/prior_predictive": xr.Dataset({"revenue": (dims, prior)}, coords=pc),
             "/model/observed_data": obs[["revenue"]],
@@ -118,6 +139,21 @@ def bundle_tree(bias: float = 0.0) -> xr.DataTree:
             "/derived/contributions": contributions(),
             "/derived/response_curves": response_curves(),
         }
+    )
+
+
+def prior_group() -> xr.Dataset:
+    """A thinned prior (one chain, 200 draws) of the :func:`bundle_tree` parameters: wide
+    intercepts, a half-normal effect and noise scale."""
+    n = 200
+    rng = _rng(16)
+    return xr.Dataset(
+        {
+            "alpha": (("chain", "draw", "geo"), 100 + 20 * rng.standard_normal((1, n, 3))),
+            "beta": (("chain", "draw", "channel"), np.abs(rng.standard_normal((1, n, 2)))),
+            "sigma": (("chain", "draw"), np.abs(15 * rng.standard_normal((1, n)))),
+        },
+        coords={"chain": [0], "draw": np.arange(n), "geo": GEOS, "channel": CHANNELS},
     )
 
 
@@ -164,6 +200,244 @@ def response_curves() -> xr.Dataset:
             "spend_level": grid,
         },
     )
+
+
+MMM_CHANNELS = ["tv", "search", "social"]
+MMM_SAMPLES = 200
+
+
+def _mmm_sample(seed: int, shape: tuple[int, ...], sd: float) -> np.ndarray:
+    """Multiplicative draw noise ``exp(sd * z)`` of shape ``(MMM_SAMPLES, *shape)``."""
+    return np.exp(sd * _rng(seed).standard_normal((MMM_SAMPLES, *shape)))
+
+
+def mmm_tree() -> xr.DataTree:
+    """A fitted mmm.bayesian-like bundle with the v0.12 derived quantities, in the plugin's
+    layouts: ``response_curves`` (``contribution(sample, channel, multiplier, geo)``,
+    ``spend(channel, multiplier)``, ``current_spend``, ``baseline``), ``marginal_cost``,
+    ``contributions``, ``adstock``, ``effectiveness`` and ``lift_tests``.
+
+    search pays back most; social is below break-even; at current spend the next unit of
+    TV returns less than it costs."""
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-mmm"}),
+            "/derived/response_curves": response_grid(),
+            "/derived/marginal_cost": marginal_cost_dataset(),
+            "/derived/contributions": mmm_contributions(),
+            "/derived/adstock": adstock_dataset(),
+            "/derived/effectiveness": effectiveness_dataset(),
+            "/model/lift_tests": lift_tests_dataset(),
+        }
+    )
+
+
+_TOP = np.array([900.0, 600.0, 150.0])  # KPI at saturation over the window
+_SAT = np.array([300.0, 200.0, 150.0])  # spend scale of the saturation
+_SPEND = np.array([400.0, 150.0, 200.0])  # current spend over the window
+_GEO_SPLIT = np.array([0.6, 0.4])
+
+
+def response_grid() -> xr.Dataset:
+    """``response_curves`` as the MMM plugins derive it (two geos, multipliers 0 to 2)."""
+    mults = np.array([0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0])
+    noise = _mmm_sample(20, (3, 1), 0.15)
+    spend = _SPEND[:, None] * mults[None, :]  # (C, M)
+    curve = _TOP[:, None] * (1 - np.exp(-spend / _SAT[:, None]))
+    total = noise * curve[None]  # (S, C, M)
+    contrib = total[..., None] * _GEO_SPLIT[None, None, None, :]
+    geos = GEOS[:2]
+    return xr.Dataset(
+        {
+            "contribution": (("sample", "channel", "multiplier", "geo"), contrib),
+            "spend": (("channel", "multiplier"), spend),
+            "current_spend": (("channel",), _SPEND.copy()),
+            "spend_by_geo": (
+                ("geo", "channel", "multiplier"),
+                _GEO_SPLIT[:, None, None] * spend[None],
+            ),
+            "max_period_spend": (("channel",), _SPEND / 10),
+            "baseline_by_geo": (
+                ("sample", "geo"),
+                5000 * _GEO_SPLIT[None, :] * np.ones((MMM_SAMPLES, 1)),
+            ),
+            "baseline": (("sample",), 5000 + 50 * _rng(21).standard_normal(MMM_SAMPLES)),
+        },
+        coords={
+            "sample": np.arange(MMM_SAMPLES),
+            "channel": MMM_CHANNELS,
+            "multiplier": mults,
+            "geo": geos,
+        },
+        attrs={"periods": 52},
+    )
+
+
+def marginal_cost_dataset() -> xr.Dataset:
+    """``marginal_roi_total(sample, channel)``: the slope of each draw's curve at current
+    spend (TV about 0.8, search 1.4, social 0.26)."""
+    noise = _mmm_sample(20, (3,), 0.15)  # the same draws as response_grid
+    slope = _TOP / _SAT * np.exp(-_SPEND / _SAT)
+    roi = noise * slope[None]
+    return xr.Dataset(
+        {
+            "marginal_roi_total": (("sample", "channel"), roi),
+            "marginal_cost_total": (("sample", "channel"), 1 / roi),
+        },
+        coords={"sample": np.arange(MMM_SAMPLES), "channel": MMM_CHANNELS},
+    )
+
+
+def mmm_contributions(outcomes: list[str] | None = None) -> xr.Dataset:
+    """``contributions`` over 52 weeks: ``channel_contribution(sample, channel, time)`` plus
+    baseline, trend and seasonality. With ``outcomes``, every variable gets an ``outcome``
+    dim (the second outcome is half the first) and ``attrs["primary_outcome"]``."""
+    weeks = pd.date_range("2024-01-07", periods=52, freq="W-SUN")
+    rng = _rng(22)
+    share = np.abs(1 + 0.3 * rng.standard_normal((3, 52)))
+    share /= share.sum(axis=1, keepdims=True)
+    channel_total = _TOP * (1 - np.exp(-_SPEND / _SAT))  # (C,)
+    chan = _mmm_sample(20, (3, 1), 0.15) * (channel_total[:, None] * share)[None]
+    base = 90 + 3 * rng.standard_normal((MMM_SAMPLES, 52))
+    trend = np.broadcast_to(np.linspace(-5, 5, 52), (MMM_SAMPLES, 52)).copy()
+    season = np.broadcast_to(8 * np.sin(2 * np.pi * np.arange(52) / 52), (MMM_SAMPLES, 52))
+    data: dict[str, Any] = {
+        "channel_contribution": (("sample", "channel", "time"), chan),
+        "baseline": (("sample", "time"), base),
+        "trend": (("sample", "time"), trend),
+        "seasonality": (("sample", "time"), season.copy()),
+    }
+    coords: dict[str, Any] = {
+        "sample": np.arange(MMM_SAMPLES),
+        "channel": MMM_CHANNELS,
+        "time": weeks,
+    }
+    attrs: dict[str, Any] = {"description": "Additive contributions over the fit window"}
+    if outcomes:
+        scale = np.array([1.0 / (k + 1) for k in range(len(outcomes))])
+        for name, (dims, values) in list(data.items()):
+            moved = np.moveaxis(values[..., None] * scale, -1, 1)
+            data[name] = ((dims[0], "outcome", *dims[1:]), moved)
+        coords["outcome"] = outcomes
+        attrs["primary_outcome"] = outcomes[0]
+    return xr.Dataset(data, coords=coords, attrs=attrs)
+
+
+def adstock_dataset() -> xr.Dataset:
+    """``adstock``: normalised geometric lag weights (8 weeks) per draw; TV carries over
+    longest, search almost not at all."""
+    lags = np.arange(8)
+    rng = _rng(23)
+    decay = np.clip(
+        np.array([0.7, 0.15, 0.4])[None, :] + 0.05 * rng.standard_normal((MMM_SAMPLES, 3)),
+        0.01,
+        0.95,
+    )
+    w = decay[..., None] ** lags[None, None, :]
+    w /= w.sum(axis=-1, keepdims=True)
+    return xr.Dataset(
+        {
+            "weight": (("sample", "channel", "lag"), w),
+            "mean_lag": (("sample", "channel"), (w * lags).sum(-1)),
+        },
+        coords={"sample": np.arange(MMM_SAMPLES), "channel": MMM_CHANNELS, "lag": lags},
+        attrs={"frequency": "W", "description": "Share of a unit of spend's effect at each lag"},
+    )
+
+
+def effectiveness_dataset() -> xr.Dataset:
+    """``effectiveness(sample, channel, time)``: TV's effect per unit of spend falls from
+    about 2.0 to 1.4 over the year (a time-varying channel); the others are constant."""
+    weeks = pd.date_range("2024-01-07", periods=52, freq="W-SUN")
+    rng = _rng(24)
+    level = np.array([1.66, 2.1, 0.55])
+    path = np.linspace(1.2, 0.85, 52) * (1 + 0.03 * np.sin(np.arange(52) / 4))
+    eff = np.broadcast_to(level[None, :, None], (MMM_SAMPLES, 3, 52)).copy()
+    eff *= _mmm_sample(25, (3, 1), 0.1)
+    eff[:, 0] *= path[None] * np.exp(0.02 * np.cumsum(rng.standard_normal((MMM_SAMPLES, 52)), 1))
+    return xr.Dataset(
+        {
+            "effectiveness": (("sample", "channel", "time"), eff),
+            "time_varying": (("channel",), np.array([True, False, False])),
+        },
+        coords={"sample": np.arange(MMM_SAMPLES), "channel": MMM_CHANNELS, "time": weeks},
+    )
+
+
+def lift_tests_dataset() -> xr.Dataset:
+    """``lift_tests`` (chain/draw like the posterior): the model agrees with the TV and
+    social tests and gives search far more than its test measured."""
+    tests = ["lift_0", "lift_1", "lift_2", "lift_3"]
+    observed = np.array([120.0, 80.0, 0.3, 60.0])
+    sd = np.array([20.0, 10.0, 0.1, 15.0])
+    centre = np.array([130.0, 140.0, 0.25, 70.0])
+    spread = np.array([15.0, 15.0, 0.05, 12.0])
+    model = centre + spread * _rng(26).standard_normal((CHAINS, DRAWS, 4))
+    return xr.Dataset(
+        {
+            "observed": (("test",), observed),
+            "observed_sd": (("test",), sd),
+            "model": (("chain", "draw", "test"), model),
+        },
+        coords={
+            "chain": np.arange(CHAINS),
+            "draw": np.arange(DRAWS),
+            "test": tests,
+            "channel": ("test", ["tv", "search", "social", "tv"]),
+            "estimand": ("test", ["contribution", "contribution", "mroas", "contribution"]),
+            "start": ("test", ["2024-03-03", "2024-05-05", "2024-07-07", "2024-09-01"]),
+            "end": ("test", ["2024-03-31", "2024-06-02", "2024-08-04", "2024-09-29"]),
+            "geo": ("test", ["", "", "", "north"]),
+        },
+    )
+
+
+def mediation_dataset() -> xr.Dataset:
+    """``mediation`` of an mmm.nested fit: TV works mostly through awareness, search mostly
+    through visits, social directly."""
+    rng = _rng(27)
+    mediators = ["visits", "awareness"]
+    direct = np.array([120.0, 150.0, 60.0]) * _mmm_sample(28, (3,), 0.2)
+    via = np.array([[60.0, 300.0], [250.0, 10.0], [5.0, 4.0]])
+    indirect = via[None] * _mmm_sample(29, (3, 2), 0.25)
+    indirect[:, 2] += 6 * rng.standard_normal((MMM_SAMPLES, 2))  # social: unclear paths
+    total = direct + indirect.sum(axis=2)
+    return xr.Dataset(
+        {
+            "direct": (("sample", "channel"), direct),
+            "indirect": (("sample", "channel", "mediator"), indirect),
+            "total": (("sample", "channel"), total),
+            "share_mediated": (("sample", "channel"), indirect.sum(axis=2) / total),
+        },
+        coords={"sample": np.arange(MMM_SAMPLES), "channel": MMM_CHANNELS, "mediator": mediators},
+        attrs={"description": "Direct and mediated effects over the fit window"},
+    )
+
+
+def cross_effects_dataset() -> xr.Dataset:
+    """``cross_effects`` of an mmm.multivariate fit: premium sales lift basic sales (halo);
+    the cannibalisation of premium by basic is not clear."""
+    pairs = ["premium→basic", "basic→premium"]
+    rng = _rng(30)
+    psi = np.stack(
+        [
+            0.25 + 0.06 * rng.standard_normal(MMM_SAMPLES),
+            -0.03 + 0.05 * rng.standard_normal(MMM_SAMPLES),
+        ],
+        axis=1,
+    )
+    ds = xr.Dataset(
+        {"psi": (("sample", "pair"), psi)},
+        coords={
+            "sample": np.arange(MMM_SAMPLES),
+            "pair": pairs,
+            "source": ("pair", ["premium", "basic"]),
+            "target": ("pair", ["basic", "premium"]),
+            "kind": ("pair", ["halo", "cannibalization"]),
+        },
+    )
+    ds["psi"].attrs["units"] = "target units per unit of source"
+    return ds
 
 
 def score_tree(with_draws: bool = True) -> xr.DataTree:
@@ -815,6 +1089,7 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     """``{recipe id: (input data, render options)}`` for every bundled recipe."""
     bundle = bundle_tree()
     scored = score_tree()
+    mmm = mmm_tree()
     return {
         "core.data_overview": (panel_data(), {}),
         "core.prior_predictive": (bundle, {}),
@@ -833,6 +1108,16 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "mmm.budget_plans": ({"plans": plans_dataset()}, {}),
         "mmm.decomposition": (bundle, {}),
         "mmm.prior_beliefs": ({"prior_beliefs": prior_beliefs_dataset()}, {}),
+        "mmm.roi": (mmm, {}),
+        "mmm.adstock": (mmm, {}),
+        "mmm.waterfall": (mmm, {}),
+        "mmm.spend_effect": (mmm, {}),
+        "mmm.lift_tests": (mmm, {}),
+        "mmm.effectiveness": (mmm, {}),
+        "mmm.mediation": ({"mediation": mediation_dataset()}, {}),
+        "mmm.cross_effects": ({"cross_effects": cross_effects_dataset()}, {}),
+        "core.energy": (bundle, {}),
+        "core.prior_posterior": (bundle, {}),
         "ml.feature_importance": (feature_importance_tree(), {}),
         "sci.field_map": (field_tree(), {}),
         "sci.vector_field": (vector_tree(), {}),
