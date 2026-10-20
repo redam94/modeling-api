@@ -5,6 +5,8 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+## [0.13.0] — Causal models and Bayesian state space — 2026-10-20
+
 ### Causal inference and Bayesian state space
 
 The platform can now measure the effect of a campaign, a launch or a test. Three new causal

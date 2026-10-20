@@ -23,7 +23,7 @@ Or directly:
 
 ```bash
 PYTHONPATH=security/src:security/plugin/src \
-  uv run python -m mapi_security run --executor docker-gvisor --image mapi/worker:0.12.0 \
+  uv run python -m mapi_security run --executor docker-gvisor --image mapi/worker:0.13.0 \
                                      --json report.json --metrics metrics.prom
 ```
 

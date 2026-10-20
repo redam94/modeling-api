@@ -2168,7 +2168,7 @@ wheels = [
 
 [[package]]
 name = "mapi-cli"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/cli" }
 dependencies = [
     { name = "mapi-client", extra = ["xarray"] },
@@ -2195,7 +2195,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-client"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/client" }
 dependencies = [
     { name = "google-crc32c" },
@@ -2220,7 +2220,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-conformance"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "conformance" }
 dependencies = [
     { name = "mapi-client", extra = ["xarray"] },
@@ -2251,7 +2251,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-gcs-shim"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/gcs-shim" }
 dependencies = [
     { name = "anyio" },
@@ -2282,7 +2282,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plots"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/plots-core" }
 dependencies = [
     { name = "jsonschema" },
@@ -2344,7 +2344,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-mmm"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/mmm" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2367,7 +2367,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-science"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/science" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2392,7 +2392,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-statsmodels"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/statsmodels" }
 dependencies = [
     { name = "mapi-sdk" },
@@ -2415,7 +2415,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-tabular"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/tabular" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2440,7 +2440,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-ts"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/ts" }
 dependencies = [
     { name = "mapi-pymc" },
@@ -2465,7 +2465,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-pymc"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/sdk-pymc" }
 dependencies = [
     { name = "arviz" },
@@ -2490,7 +2490,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-runner"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/runner" }
 dependencies = [
     { name = "h5netcdf" },
@@ -2539,7 +2539,7 @@ test = [
 
 [[package]]
 name = "mapi-sdk"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/sdk" }
 dependencies = [
     { name = "google-crc32c" },
@@ -2578,7 +2578,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-server"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/server" }
 dependencies = [
     { name = "alembic" },
@@ -2655,7 +2655,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-sklearn"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/sdk-sklearn" }
 dependencies = [
     { name = "mapi-sdk" },
@@ -2680,7 +2680,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-spec"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/spec" }
 dependencies = [
     { name = "jsonschema" },
@@ -2697,7 +2697,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-steps"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/steps-core" }
 dependencies = [
     { name = "lark" },
@@ -2720,7 +2720,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-workflows"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "packages/workflows" }
 dependencies = [
     { name = "jsonschema" },
@@ -3191,7 +3191,7 @@ wheels = [
 
 [[package]]
 name = "modeling-api"
-version = "0.12.0"
+version = "0.13.0"
 source = { virtual = "." }
 dependencies = [
     { name = "mapi-cli" },

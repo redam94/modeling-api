@@ -40,7 +40,7 @@ from mapi_sklearn.settings import (
     TabularQuantileSettings,
 )
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 __all__ = [
     "ESTIMATORS",
