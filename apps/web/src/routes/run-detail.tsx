@@ -31,6 +31,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui
 import { LogsViewer } from "@/features/runs/logs-viewer";
 import { phaseLabel, ProgressPanel } from "@/features/runs/progress-panel";
 import { RunActions } from "@/features/runs/run-actions";
+import { RunPlotsCard } from "@/features/runs/run-plots";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { absoluteTime, elapsedSeconds, formatBytes, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
 import { runCostView } from "@/lib/cost";
@@ -222,6 +223,7 @@ export function RunDetailPage() {
               </CardContent>
             </Card>
           ) : null}
+          <RunPlotsCard run={r} />
           <Card>
             <CardHeader>
               <CardTitle>Logs</CardTitle>

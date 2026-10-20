@@ -36,7 +36,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Final, cast
 
 import numpy as np
 import xarray as xr
@@ -55,6 +55,7 @@ from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import BaseModel
 
 from mapi_plugin_statsmodels._common import (
+    NOT_A_PART,
     PARAM,
     QUANTILE,
     RESIDUAL_TESTS,
@@ -665,10 +666,13 @@ def _check_regular(t: np.ndarray) -> None:
     )
 
 
+_KEEP_ATTRS: Final = frozenset(NOT_A_PART)
+
+
 def _clean(ds: xr.Dataset) -> xr.Dataset:
     out = ds.copy()
     for v in out.variables:
-        out[v].attrs = {}
+        out[v].attrs = {k: a for k, a in out[v].attrs.items() if k in _KEEP_ATTRS}
     for c in out.coords:
         if out[c].dtype == object:
             out = out.assign_coords({c: out[c].values.astype(str)})

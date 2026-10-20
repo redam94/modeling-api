@@ -63,15 +63,19 @@ Each plot contains these items:
 | `core.ppc_fan` | A fan of the fit and the forecast, with the line between the training data and the forecast | draws or `summary`, `observed` |
 | `core.fit_vs_actual` | Predicted values against actual values, with R² and MAPE | predictions + observed |
 | `core.residuals_over_time` | Actual values minus predicted values over time | predictions + observed |
-| `core.decomposition` | Stacked contributions over time, and the total share of each component | `contributions` |
+| `core.decomposition` | Stacked contributions over time, and the total share of each component. A part that the model marks as not additive (a trend slope) is not in the stack. | `contributions`, `decomposition` or `components` |
 | `core.model_comparison` | The elpd of each model and the difference to the best model (PSIS-LOO table or WAIC) | `comparison`, or one child for each model with `log_likelihood` |
 | `core.counterfactual` | The scenario compared with the baseline over time, and the distribution of the total change | `draws`/`summary`, `baseline/…`, `delta/…` |
 | `core.decision_distribution` | The distribution of a decision objective for each option, and P(best) | `decision`/`objective` |
 | `core.pair` | A grid of the draws of each pair of parameters, a histogram of each parameter, divergent transitions in red | `posterior`, `sample_stats` |
 | `core.ridge` | One density curve for each level of a dim (such as each group), sorted by the mean, with HDI bars | draws in `posterior`, `predictions` or `posterior_predictive` |
 | `core.rank_matrix` | The probability of each rank for each item, and the probability that one item is above another | draws in `posterior`, `predictions` or `posterior_predictive` |
-| `core.calibration` | The PIT-ECDF difference with a simultaneous band, or a reliability diagram for 0/1 targets | `posterior_predictive`, `observed_data` |
-| `core.state_sequence` | The observed series above the stacked probability of each hidden state over time | state probabilities or state draws, `observed_data` |
+| `core.calibration` | The PIT-ECDF difference with a simultaneous band, or a reliability diagram for 0/1 targets. For 0/1 targets, one predicted probability for each row is sufficient. | draws or point probabilities, `observed_data` |
+| `core.state_sequence` | The observed series above the stacked probability of each hidden state over time | `hidden_states`, `regimes`, a score `summary`, state draws; `observed_data` |
+| `core.roc_pr` | The ROC curve and the precision-recall curve of a 0/1 target, with the AUC and the average precision | draws or point probabilities, `observed_data` |
+| `core.confusion` | The 2 × 2 table of actual and predicted classes at one threshold, with accuracy, precision, recall, specificity and F1 | draws or point probabilities, `observed_data` |
+| `core.loss_curve` | The loss of each step of a fit (for example ADVI), raw and smoothed | `fit_history` or `metrics_history` |
+| `core.loo_pit` | The LOO-PIT check of calibration and the Pareto k of each observation | `log_likelihood`, `posterior_predictive`, `observed_data` |
 
 The **marketing-mix pack** (`mmm.*`) adds these plots:
 
@@ -104,6 +108,23 @@ edge variable. The [plot reference](../reference/plots.md) lists the settings of
 ![Budget plans](../assets/plots/mmm_budget_plans.png)
 
 </div>
+
+### Plots for classifiers, training and states
+
+These plots read the outputs of more model types:
+
+- **0/1 targets.** `core.calibration`, `core.roc_pr` and `core.confusion` accept draws or one
+  probability for each row. Thus they apply to a Bayesian model and to a scikit-learn classifier.
+  The larger of the two target values is the positive class. To change it, set `positive`.
+- **Fits in steps.** An ADVI fit keeps its loss in the `fit_history` group. The fit run adds
+  `core.loss_curve` to the plots of that fit. If the loss still goes down at the end, the caption
+  tells you to use more steps.
+- **Hidden states.** `core.state_sequence` reads the `hidden_states` group of the HMM and the
+  `regimes` group of the Markov switching model. If the data has more than one series (for
+  example one series for each animal), the plot shows the first series. The caption names it.
+  To show a different series, set `select`.
+- **Pareto k.** `core.loo_pit` shows which observations make the LOO estimate unreliable. It is
+  not a default plot. Add it in the plot builder or in the `plots` list of a model.
 
 Recipes obey the **representation** of each output. If a dim must go, a recipe adds the joint
 draws. A recipe never adds quantiles or intervals. If a summary has an extra dim, the recipe

@@ -5,8 +5,10 @@
 ``core.ridge``                one density per level of a dim, ordered by mean, HDI ticks
 ``core.rank_matrix``          P(rank = k) per item and the pairwise P(i above j) matrix
 ``core.calibration``          PIT-ECDF difference with a simultaneous envelope, or a
-                              reliability diagram for 0/1 targets
-``core.state_sequence``       observed series over the stacked state probabilities
+                              reliability diagram for 0/1 targets (draws or point
+                              probabilities)
+``core.state_sequence``       observed series over the stacked state probabilities (HMM
+                              ``hidden_states``, Markov ``regimes``, draws, summaries)
 ============================  ==========================================================
 """
 
@@ -58,6 +60,7 @@ from mapi_plots.recipes._util import (
     stack_samples,
     time_dim,
 )
+from mapi_plots.recipes.classification import binary_scores
 from mapi_plots.recipes.diagnostics import _matched, _posterior
 
 __all__ = [
@@ -606,49 +609,41 @@ class CalibrationSettings(RecipeSettings):
     seed: int = 0
 
 
-def _ecdf_envelope(
-    n: int, z: np.ndarray, prob: float, n_sim: int, seed: int
-) -> tuple[np.ndarray, np.ndarray]:
-    """Simultaneous ``prob`` envelope of ``ECDF(z) - z`` for ``n`` uniform values.
-
-    Simulated: the ECDF counts at the grid ``z`` of ``n`` uniform values are cumulative
-    multinomial counts. The band is ``±c sqrt(z (1 - z) / n)`` where ``c`` is the ``prob``
-    quantile of the largest standardised deviation over the grid (so all points stay inside
-    together with probability ``prob``).
-    """
-    rng = np.random.default_rng(seed)
-    edges = np.r_[0.0, z, 1.0]
-    probs = np.diff(edges)
-    counts = rng.multinomial(n, probs, size=n_sim)[:, :-1].cumsum(axis=1)
-    sd = np.sqrt(z * (1 - z) / n)
-    dev = np.abs(counts / n - z[None, :]) / sd[None, :]
-    c = float(np.quantile(dev.max(axis=1), prob))
-    return -c * sd, c * sd
-
-
 @recipe(
     "core.calibration",
     title="Calibration",
     settings=CalibrationSettings,
     persona="expert",
-    requires_groups=["posterior_predictive", "observed_data"],
-    requires_representation=[Representation.DRAWS],
+    requires_groups=["observed_data"],
+    requires_representation=[Representation.DRAWS, Representation.POINT],
     summary="Checks if the predicted ranges and probabilities of the model agree with how "
     "often things happen in the data.",
     tags=["diagnostic"],
 )
 def calibration(inp: RecipeInput, s: CalibrationSettings) -> Figure:
-    """PIT-ECDF difference with a simultaneous envelope, or a reliability diagram (0/1)."""
-    pred = inp.require("posterior_predictive", "predictions")
+    """PIT-ECDF difference with a simultaneous envelope, or a reliability diagram (0/1).
+
+    Without draws (a point classifier's probabilities, or a score summary) only the
+    reliability diagram is possible: the PIT needs the predictive distribution.
+    """
+    pred = inp.find("posterior_predictive", "predictions")
     obs = inp.find("observed_data", "observed")
     var = s.var
-    if var is None:
+    if pred is not None and var is None:
         names = [str(v) for v in pred.data_vars if sample_dims(pred[v])]
-        if not names:
-            raise RecipeDataError("the predictions have no variable with draws")
-        var = names[0]
-    elif var not in pred.data_vars:
-        raise RecipeDataError(f"no predicted variable {var!r}")
+        var = names[0] if names else None
+    if pred is None or var is None or var not in pred.data_vars or not sample_dims(pred[var]):
+        if s.kind == "continuous":
+            raise RecipeDataError("kind=continuous (the PIT check) needs predictive draws")
+        sc = binary_scores(
+            inp,
+            s.var,
+            s.observed_var,
+            None,
+            not_binary="a point prediction needs a 0/1 target for the reliability diagram; "
+            "the PIT check needs draws",
+        )
+        return _reliability(sc.var, sc.p[None, :], sc.y, s)
     draws, y = _matched(pred, obs, var, s.observed_var)
     binary = bool(np.all((y == 0) | (y == 1)) and np.nanmin(draws) >= 0 and np.nanmax(draws) <= 1)
     kind = s.kind if s.kind != "auto" else ("binary" if binary else "continuous")
@@ -668,7 +663,7 @@ def _pit_ecdf(var: str, draws: np.ndarray, y: np.ndarray, s: CalibrationSettings
     z = np.arange(1, k + 1) / (k + 1)
     ecdf = np.searchsorted(pit, z, side="right") / n
     diff = ecdf - z
-    lo, hi = _ecdf_envelope(n, z, s.prob, s.n_sim, s.seed)
+    lo, hi = _stats.ecdf_envelope(n, z, s.prob, s.n_sim, s.seed)
     outside = (diff < lo) | (diff > hi)
     frame = pd.DataFrame(
         {
@@ -821,8 +816,17 @@ def _reliability(var: str, draws: np.ndarray, y: np.ndarray, s: CalibrationSetti
 
 class StateSequenceSettings(RecipeSettings):
     var: str | None = None
-    group: Literal["auto", "posterior", "predictions", "posterior_predictive", "root"] = "auto"
-    state_dim: str = "state"
+    group: Literal[
+        "auto",
+        "posterior",
+        "predictions",
+        "posterior_predictive",
+        "summary",
+        "hidden_states",
+        "regimes",
+        "root",
+    ] = "auto"
+    state_dim: str = Field("auto", description="The state dim (auto: state, regime, ...)")
     along: str | None = None
     observed_var: str | None = None
     select: dict[str, Any] | None = None
@@ -833,7 +837,35 @@ class StateSequenceSettings(RecipeSettings):
     height: int = Field(140, ge=60, le=2000)
 
 
-_STATE_GROUPS = ("posterior", "predictions", "posterior_predictive", "root")
+_STATE_GROUPS = (
+    "hidden_states",
+    "regimes",
+    "posterior",
+    "predictions",
+    "posterior_predictive",
+    "summary",
+    "root",
+)
+# probability variables the HMM and Markov-switching plugins write, best first
+_STATE_PROB_NAMES = ("smoothed_prob", "state_prob", "filtered_prob")
+_STATE_WORDS = ("state", "regime")
+# a sequence dim that is not a calendar time (time_dim does not know it)
+_SEQUENCE_NAMES = ("step",)
+_NOT_DATA = ("chain", "draw", SAMPLE, "stat")
+
+
+def _state_dim(da: xr.DataArray, s: StateSequenceSettings) -> str | None:
+    """``state_dim`` if set, else ``state``/``regime``, else a dim whose name has one of them."""
+    dims = [str(d) for d in da.dims if d not in _NOT_DATA]
+    if s.state_dim != "auto":
+        return s.state_dim if s.state_dim in dims else None
+    for name in _STATE_WORDS:
+        if name in dims:
+            return name
+    for d in dims:
+        if any(w in d for w in _STATE_WORDS):
+            return d
+    return None
 
 
 def _state_var(inp: RecipeInput, s: StateSequenceSettings) -> tuple[xr.DataArray, str]:
@@ -854,57 +886,112 @@ def _state_var(inp: RecipeInput, s: StateSequenceSettings) -> tuple[xr.DataArray
             found.append((da, g))
     if s.var is not None:
         raise RecipeDataError(f"no variable {s.var!r} in the groups {', '.join(groups)}")
-    for da, g in found:  # state probabilities first
-        if s.state_dim in da.dims:
+    for name in _STATE_PROB_NAMES:  # the known probability names first
+        for da, g in found:
+            if da.name == name and _state_dim(da, s) is not None:
+                return da, g
+    for da, g in found:  # then probabilities over a state dim and a sequence dim
+        sd = _state_dim(da, s)
+        if sd is None:
+            continue
+        # a transition matrix (regime, regime_to) or a duration per state is not a sequence
+        others = [
+            str(d)
+            for d in da.dims
+            if d not in (*_NOT_DATA, sd) and not any(w in str(d) for w in _STATE_WORDS)
+        ]
+        if others:
             return da, g
     for da, g in found:  # then discrete state draws
         if sample_dims(da) and np.issubdtype(da.dtype, np.integer):
             return da, g
+    want = "a state" if s.state_dim == "auto" else repr(s.state_dim)
     raise RecipeDataError(
-        f"no state variable: expected probabilities with a {s.state_dim!r} dim or integer "
+        f"no state variable: expected probabilities with {want} dim or integer "
         f"state draws in the groups {', '.join(groups)}"
     )
 
 
+def _summary_point(da: xr.DataArray) -> xr.DataArray:
+    """One statistic of a score summary (``stat`` dim): mean, else median, else point."""
+    if "stat" not in da.dims:
+        return da
+    labels = [str(v) for v in coord_values(da, "stat")]
+    for name in ("mean", "median", "point"):
+        if name in labels:
+            return da.isel(stat=labels.index(name), drop=True)
+    raise RecipeDataError(f"the summary of {da.name!r} has no mean, median or point statistic")
+
+
+def _sequence_dim(da: xr.DataArray, s: StateSequenceSettings, skip: Sequence[str]) -> str:
+    """The time (sequence) dim: ``along``, a time-like dim, ``step``, the only other dim or,
+    without ``select``, the longest one."""
+    rest = da.drop_vars([d for d in skip if d in da.coords], errors="ignore")
+    t = time_dim(rest, s.along)
+    if t is not None and t not in skip:
+        return t
+    others = [str(d) for d in da.dims if d not in (*_NOT_DATA, *skip)]
+    for name in _SEQUENCE_NAMES:
+        if name in others:
+            return name
+    if len(others) == 1:
+        return others[0]
+    if others and s.select is None:
+        return max(others, key=lambda d: da.sizes[d])
+    raise RecipeDataError("set `along` to the time dim of the states")
+
+
+def _auto_select(
+    da: xr.DataArray, s: StateSequenceSettings, keep: Sequence[str]
+) -> tuple[xr.DataArray, dict[str, Any]]:
+    """Without ``select``: the first level of every other dim longer than 1.
+
+    Returns the array and ``{dim: picked value}`` (the coord label, else position 0) so the
+    observed series can take the same level.
+    """
+    picked: dict[str, Any] = {}
+    if s.select is not None:
+        return da, picked
+    for d in [str(d) for d in da.dims if d not in (*_NOT_DATA, *keep)]:
+        if da.sizes[d] > 1:
+            picked[d] = coord_values(da, d)[0] if d in da.coords else 0
+            da = da.isel({d: 0})
+    return da, picked
+
+
 def _state_probs(
     da: xr.DataArray, s: StateSequenceSettings
-) -> tuple[np.ndarray, list[str], str, np.ndarray]:
-    """``(probs (state, time), state labels, time dim, time values)``."""
-    da = _select(da, s.select)
-    if s.state_dim in da.dims:
+) -> tuple[np.ndarray, list[str], str, np.ndarray, str, dict[str, Any]]:
+    """``(probs (state, time), state labels, time dim, time values, state dim, picked)``."""
+    da = _summary_point(_select(da, s.select))
+    sd = _state_dim(da, s)
+    if sd is not None:
         if sample_dims(da):
             st = stack_samples(da)
             st = st.isel({SAMPLE: _thin(st.sizes[SAMPLE], s.max_draws)})
             mean = st.mean(SAMPLE)
         else:
             mean = da
-        t = time_dim(mean.drop_vars(s.state_dim, errors="ignore"), s.along)
-        if t is None:
-            others = [str(d) for d in mean.dims if d != s.state_dim]
-            if len(others) != 1:
-                raise RecipeDataError("set `along` to the time dim of the state probabilities")
-            t = others[0]
-        mean = _squeeze_except(mean, (s.state_dim, t)).transpose(s.state_dim, t)
+        t = _sequence_dim(mean, s, (sd,))
+        mean, picked = _auto_select(mean, s, (sd, t))
+        mean = _squeeze_except(mean, (sd, t)).transpose(sd, t)
         probs = np.nan_to_num(np.asarray(mean.values, dtype=float), nan=0.0)
         probs = np.clip(probs, 0.0, None)
         total = probs.sum(axis=0, keepdims=True)
         probs = np.divide(probs, total, out=np.zeros_like(probs), where=total > 0)
-        labels = _labels(mean, s.state_dim)
+        labels = _labels(mean, sd)
         times = coord_values(mean, t)
     else:
         if not sample_dims(da):
+            want = "state" if s.state_dim == "auto" else s.state_dim
             raise RecipeDataError(
-                f"{da.name!r} has no {s.state_dim!r} dim and no draws: give state "
+                f"{da.name!r} has no {want!r} dim and no draws: give state "
                 "probabilities (…, state, time) or state draws (chain, draw, time)"
             )
         st = stack_samples(da)
         st = st.isel({SAMPLE: _thin(st.sizes[SAMPLE], s.max_draws)})
-        t = time_dim(st, s.along)
-        if t is None:
-            others = [str(d) for d in st.dims if d != SAMPLE]
-            if len(others) != 1:
-                raise RecipeDataError("set `along` to the time dim of the state draws")
-            t = others[0]
+        t = _sequence_dim(st, s, ())
+        st, picked = _auto_select(st, s, (t,))
         st = _squeeze_except(st, (SAMPLE, t)).transpose(SAMPLE, t)
         x = np.asarray(st.values, dtype=float)
         values = np.unique(x[np.isfinite(x)])
@@ -918,11 +1005,12 @@ def _state_probs(
         probs = np.stack([(x == v).mean(axis=0) for v in values])
         labels = [str(int(v)) for v in values]
         times = coord_values(st, t)
+        sd = "state"
     if len(labels) > s.max_states:
         raise RecipeDataError(
             f"{len(labels)} states; the plot shows at most {s.max_states} (raise `max_states`)"
         )
-    return probs, labels, t, times
+    return probs, labels, t, times, sd, picked
 
 
 @recipe(
@@ -934,9 +1022,13 @@ def _state_probs(
     "or a phase, at each time.",
 )
 def state_sequence(inp: RecipeInput, s: StateSequenceSettings) -> Figure:
-    """Observed series on top, stacked posterior state probabilities over time below."""
+    """Observed series on top, stacked posterior state probabilities over time below.
+
+    Reads HMM ``hidden_states``, Markov-switching ``regimes``, draws and score summaries.
+    Without ``select``, every extra dim (an HMM's ``animal``) shows its first level.
+    """
     da, group = _state_var(inp, s)
-    probs, labels, t, times = _state_probs(da, s)
+    probs, labels, t, times, state_title, picked = _state_probs(da, s)
     n_t = probs.shape[1]
     keep = _thin(n_t, s.max_times)
     is_time = np.issubdtype(np.asarray(times).dtype, np.datetime64)
@@ -952,7 +1044,6 @@ def state_sequence(inp: RecipeInput, s: StateSequenceSettings) -> Figure:
     colors = alt.Scale(
         domain=labels, range=[_CATEGORY[i % len(_CATEGORY)] for i in range(len(labels))]
     )
-    state_title = s.state_dim if s.state_dim in da.dims else "state"
     area = (
         alt.Chart(named("states"))
         .mark_area(interpolate="step-after" if n_t <= 200 else "linear", opacity=0.85)
@@ -988,7 +1079,8 @@ def state_sequence(inp: RecipeInput, s: StateSequenceSettings) -> Figure:
         o = obs_ds[obs_name]
         if t not in o.dims:
             raise RecipeDataError(f"observed {obs_name!r} has no dim {t!r}")
-        o = _select(o, {k: v for k, v in (s.select or {}).items() if k in o.dims})
+        chosen = s.select if s.select is not None else picked
+        o = _select(o, {k: v for k, v in (chosen or {}).items() if k in o.dims})
         other = [str(d) for d in o.dims if d != t]
         o = o.stack(_series=other) if other else o.expand_dims(_series=[0])
         o = o.transpose(t, "_series")
@@ -1019,6 +1111,8 @@ def state_sequence(inp: RecipeInput, s: StateSequenceSettings) -> Figure:
                 )
             )
         obs_frame = pd.concat(parts, ignore_index=True)
+        # padded sequences (an HMM's shorter series) hold NaN after their end
+        obs_frame = obs_frame[np.isfinite(obs_frame["value"])].reset_index(drop=True)
         datasets["observed"] = obs_frame
         obase = alt.Chart(named("observed"))
         charts.append(
@@ -1048,6 +1142,8 @@ def state_sequence(inp: RecipeInput, s: StateSequenceSettings) -> Figure:
         f"{da.name} ({group}) at each {t}. The most likely state changes {switches} times; "
         f"share of time as the most likely state: {share}."
     )
+    for dim, value in picked.items():
+        caption += f" The plot shows {dim} = {value}. Set `select` to show another {dim}."
     if unsure > 0:
         caption += (
             f" At {pct(unsure)} of the times no state has a probability of 80% or more, so the "

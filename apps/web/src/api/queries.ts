@@ -703,7 +703,11 @@ export function usePlots(modelId: string, version: number, enabled = true) {
   });
 }
 
-/** Sanitized plots a succeeded run rendered (score fans, counterfactual bands). */
+/**
+ * Sanitized plots a run rendered (score fans, counterfactual bands, area maps, classifier
+ * curves): v0.10 serves them for any run state whose newest attempt with plots wrote them
+ * (succeeded, partial, and failed or cancelled after a partial attempt); empty otherwise.
+ */
 export function useRunPlots(runId: string | undefined) {
   const s = useProjectScope();
   return useQuery({

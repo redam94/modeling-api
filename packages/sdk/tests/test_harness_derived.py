@@ -8,11 +8,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, ClassVar
 
+import numpy as np
 import pytest
 import xarray as xr
 from mapi_sdk.binding import BindingMap
 from mapi_sdk.bundle import Bundle
 from mapi_sdk.harness import fit_spec, score_bundle
+from mapi_sdk.metrics import mase_scale
 from mapi_sdk.models import Fitted, ScoreContext
 from mapi_sdk.registry import Registry
 from mapi_sdk.testing import toy
@@ -199,3 +201,37 @@ def test_derived_quantities_requested_in_output_vars(
         score_bundle(bundle, lazy, window, registry=reg)
     assert err.value.code is ErrorCode.CAPABILITY_UNSUPPORTED
     assert err.value.pointer == "/output/vars/0"
+
+
+@pytest.mark.parametrize("model", ["toy.linear@^1", "toy.owned_linear@^1"])
+def test_a_time_holdout_fit_computes_mase_in_the_output_space(
+    reg: Registry,
+    e33_spec: Callable[..., ModelSpec],
+    panel: tuple[xr.Dataset, xr.Dataset],
+    model: str,
+) -> None:
+    """MASE needs the naive error of the training targets in the units of the holdout error:
+    the weekly stage after the RESHAPE step (``toy.linear``), or the model stage (a model that
+    owns ``inverse_units``, like every MMM plugin). Neither is the raw space."""
+    data, fx = panel
+    bundle = fit_spec(e33_spec(model=model, metrics="mae, mase"), data, {"fx": fx}, reg)
+    m = bundle.metrics
+    assert "mase" not in m.skipped, m.skipped
+    ev = bundle.evaluation
+    assert ev is not None
+    pipe = ev.pipeline(reg)
+    raw = BindingMap(BIND).apply(data)
+    weekly = pipe.transform(
+        raw, ev.states, end="weekly", side_tables={"fx": fx}, replay=False
+    ).data.isel(time=slice(None, -4))  # the split holds out the last 4 weeks
+    train = weekly
+    if m.output_space == "model-owned":
+        train = pipe.transform(
+            weekly, ev.states, start="weekly", side_tables={"fx": fx}, replay=False
+        ).data
+    else:
+        assert m.output_space == "weekly"
+    y = train["y"].transpose("time", ...)
+    scale = mase_scale(np.asarray(y.values).reshape(y.sizes["time"], -1), 52)
+    assert scale is not None
+    assert m.values["mase"] == pytest.approx((m.values["mae"] or 0.0) / scale)

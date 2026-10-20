@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
-from mapi_server.services.runs import apply_transition, load_run
+from mapi_server.services.runs import apply_transition, load_run, now
 from mapi_server_testkit.builders import LEAKY_SPEC, TREND_SPEC, ready_dataset
+from mapi_server_testkit.fake_runner import SAFE_PLOT, UNSAFE_PLOT
 from mapi_spec.api import Run
-from mapi_spec.run import Actor, RunState, RunTrigger
+from mapi_spec.run import Actor, RunState, RunTrigger, new_hmac_key, new_nonce
 from sqlalchemy import select
 
 
@@ -248,3 +250,67 @@ async def test_run_endpoints_are_scoped_to_the_project(
     for path in ("", "/plots", "/logs", "/events"):
         r = await client.get(f"/v1/runs/{run['id']}{path}")
         assert r.status_code == 404, (path, r.status_code, r.text)
+
+
+# --------------------------------------------------------------------------- run plots
+
+
+async def _with_attempts(
+    ctx: ServerContext, run_id: str, state: RunState, plots_in: dict[int, list[Any]]
+) -> None:
+    """Put the run in ``state`` with ``max(plots_in)`` attempts; attempt ``a`` has a verified
+    ``plots.json`` holding ``plots_in[a]`` when the list is not empty."""
+    async with ctx.db.session() as s:
+        run = await s.get(m.Run, run_id)
+        assert run is not None
+        run.state, run.attempt = state.value, max(plots_in)
+        for a, docs in sorted(plots_in.items()):
+            outputs: dict[str, Any] = {}
+            if docs:
+                name = f"t/default/runs/{run_id}/a{a}/plots.json"
+                raw = json.dumps(docs).encode()
+                meta = await ctx.store.put(ctx.buckets.runs, name, raw)
+                outputs["plots.json"] = {
+                    "bucket": ctx.buckets.runs,
+                    "name": name,
+                    "generation": meta.generation,
+                    "size": len(raw),
+                }
+            s.add(
+                m.RunAttempt(
+                    run_id=run_id, attempt=a, tenant_id=run.tenant_id, project_id=run.project_id,
+                    nonce=new_nonce(), hmac_key=new_hmac_key(), executor="fake",
+                    status="finished", outputs=outputs, violations=0, last_seq=-1, log_bytes=0,
+                    deadline=now(),
+                )
+            )  # fmt: skip
+
+
+async def test_run_plots_come_from_the_newest_attempt_that_has_them(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    spec_id = await _spec(client, ctx)
+
+    async def run_with(state: RunState, plots_in: dict[int, list[Any]]) -> list[str]:
+        r = await client.post("/v1/runs", json={"kind": "fit", "spec_id": spec_id, "revision": 1})
+        run_id = r.json()["id"]
+        await _with_attempts(ctx, run_id, state, plots_in)
+        page = await client.get(f"/v1/runs/{run_id}/plots")
+        assert page.status_code == 200, page.text
+        return [p["id"] for p in page.json()["items"]]
+
+    second = {**SAFE_PLOT, "id": "core.fit_vs_actual"}
+    # succeeded: unchanged (the unsafe plot is dropped by the sanitizer)
+    assert await run_with(RunState.SUCCEEDED, {1: [SAFE_PLOT, UNSAFE_PLOT]}) == ["core.ppc_fan"]
+    # a partial run's verified plots
+    assert await run_with(RunState.PARTIAL, {1: [SAFE_PLOT]}) == ["core.ppc_fan"]
+    # a failed resume: attempt 2 wrote nothing, attempt 1 (partial) did
+    assert await run_with(RunState.FAILED, {1: [SAFE_PLOT], 2: []}) == ["core.ppc_fan"]
+    # the newest attempt with plots wins
+    assert await run_with(RunState.CANCELLED, {1: [SAFE_PLOT], 2: [second]}) == [
+        "core.fit_vs_actual"
+    ]
+    # a running run has no verified outputs yet
+    assert await run_with(RunState.RUNNING, {1: []}) == []
+    # a failed run whose only attempt wrote nothing
+    assert await run_with(RunState.FAILED, {1: []}) == []

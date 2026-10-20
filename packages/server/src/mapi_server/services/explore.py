@@ -25,6 +25,7 @@ from mapi_spec.jobs import (
     INPUT_DATASET,
     INPUT_EVALUATION,
     INPUT_EVALUATION_MANIFEST,
+    INPUT_METRICS_SUFFIX,
 )
 from mapi_spec.loader import spec_hash
 from mapi_spec.refs import ModelVersionRef
@@ -56,12 +57,15 @@ __all__ = [
 ]
 
 EXPLORE_TIMEOUT_S: Final = 1800
-EXPLORER_VERSION: Final = "0.10-science.2"
+EXPLORER_VERSION: Final = "0.10-charts.1"
 """The version of the explorer views, hashed with each request: an explore run from before
-a change of the views (v0.10: the sections for scientific data) is not reused. Change it
-when the runner changes what a view means."""
+a change of the views (v0.10: the sections for scientific data; the comparison with the
+fits' metrics and its elpd plot) is not reused. Change it when the runner changes what a
+view means."""
 INDEX_MAX_BYTES: Final = 256 * 1024
 MAX_VIEW_LINKS: Final = 200
+FIT_METRICS: Final = "metrics.json"
+"""The fit sidecar pinned next to each bundle input (``<input>.metrics``)."""
 
 
 def _explore_hash(payload: dict[str, Any]) -> str:
@@ -218,6 +222,10 @@ async def submit_model_explore(
                 ctx.store, ctx.signer, target, BUNDLE_MANIFEST_OUTPUT
             )
             inputs[manifest_name] = StoredRef(sdk.bucket, sdk.key, sdk.generation)
+        if FIT_METRICS in ((target.manifest or {}).get("objects") or {}):
+            # the holdout metrics and elpd estimates are a sidecar, not in the archive
+            mt = await verified_bundle_object(ctx.store, ctx.signer, target, FIT_METRICS)
+            inputs[f"{name}{INPUT_METRICS_SUFFIX}"] = StoredRef(mt.bucket, mt.key, mt.generation)
 
     await pin(mv, INPUT_BUNDLE, INPUT_BUNDLE_MANIFEST)
     if EVALUATION_BUNDLE in objects and EVALUATION_MANIFEST in objects:

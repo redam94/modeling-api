@@ -188,18 +188,38 @@ position in cm, as a key column and not as a value.
 A score run picks its default plots from the shape of the outputs, when the job does not
 give `plots`:
 
-| Output | Default plot |
+| Output (manifest declaration, result dims) | Default plot |
 |---|---|
-| A `grid` output with no `component` | `sci.field_map`, with `var`, `y`, `x` and the frame dim (when it is in the result) as options |
+| A `grid` output (y and x in the result) | `sci.field_map`, with `var`, `y`, `x` and the frame dim (when it is in the result) as options. The frame dim is the slider. |
 | A `grid` output with a `component` of size 2 | `sci.vector_field`, with the same options |
-| An output that is not a grid, with the time dim and at most one other dim of size more than 1 | `core.ppc_fan` (`var`) |
-| A model with grid outputs and no such time output | no fan: a fan would sum over the grid |
-| A model with no grid outputs, and all counterfactuals | the plots of before |
+| An output on the areas of `ring_x`/`ring_y` (v0.10) | `sci.area_map` (`var`). The polygons come from the bundle. |
+| Probabilities over a dim with the name `state` or `regime` (v0.10): each cell has a sum of 1 | `core.state_sequence` (`var`, `state_dim`) |
+| Evaluate: a binary output (observed values 0/1, predictions from 0 to 1) (v0.10) | `core.calibration`, `core.roc_pr`, `core.confusion` (`var`, `observed_var`) |
+| An output that is not a grid, over time, with at most one other dim of size more than 1 | `core.ppc_fan` (`var`), for predict and forecast |
 
-Evaluate keeps its plots and adds the grid plot. There is at most one plot for each recipe:
-the first grid output with a frame, else the first grid output. The map draws from
-`/predictions`, so the runner keeps the full predictions of a grid model until the plots are
-done. The output variables of a grid carry the attr `grid` (the `GridDecl` as JSON, with the
+Each mode except counterfactual starts from the plots of before (`DEFAULT_PLOTS`). A
+counterfactual keeps `core.counterfactual`. A model with grid outputs or area outputs gets the
+fan only when it also has an output over time. A fan of a map adds the values of all cells.
+Evaluate draws `core.fit_vs_actual`. It adds `core.residuals_over_time` only when an output is
+over time. A binary output replaces the two plots with the three classifier plots
+(`BINARY_EVALUATE_PLOTS`). There is at most one plot for each recipe, so each recipe draws one
+output. The map draws the first grid output with a frame, else the first grid output. The other
+recipes draw the first areal, state or binary output in the sequence of the manifest.
+
+A state output must have a dim with the name `state` or `regime` (not only a name that contains
+the word, such as `us_state`). Its values must also be probabilities over that dim. Thus a panel
+output such as `sales(time, state)` for the states of a country does not get the state plot.
+
+The map draws from `/predictions`, so the runner keeps the full predictions of a grid model until
+the plots are done. From v0.10, the runner also keeps them for a model with area outputs and for
+each evaluate run. Thus the evaluate plots get `/predictions` and `/observed`. `score.zarr.zip`
+does not keep the two groups. The `summary.json` table of an output gives `plots` (v0.10): the
+ids of the rendered plots that draw it.
+
+A fit run adds `core.loss_curve` to the plots of a fit that has a `fit_history` group (an ADVI
+fit, v0.10).
+
+The output variables of a grid carry the attr `grid` (the `GridDecl` as JSON, with the
 dims renamed to the names of the result). `summary.json` gives `dims` and `time_dim` for each
 table, and orders the tables by size.
 

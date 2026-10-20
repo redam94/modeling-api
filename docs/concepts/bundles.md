@@ -37,12 +37,40 @@ compares them with the manifest. If a bundle is damaged or changed without permi
 | `/preprocess/<step>` | For each step: the learned JSON state, labelled `arrays` and the `context` tail for each group |
 | `/model` | The manifest, settings, fit config and learned JSON |
 | `/model/<group>` | ArviZ-named groups: `posterior`, `sample_stats`, `log_likelihood`, `observed_data`, … |
+| `/model/fit_history` | Fits in steps (ADVI): `loss(step)`, the loss of each optimization step, at most 5,000 steps |
 | `/terminal_state` | Sequential models: the filtered state at the last fitted step |
 | `/native` | Safe native artifacts: skops files, xgboost JSON, … |
 | `/derived/<name>` | Derived quantities cached at fit (contributions, response curves) |
 | `/fit_coords/<stage>` | The fitted coordinates at each stage (CoordPlan checks against them) |
 | `/side_tables/<name>` | `pinned` side tables, frozen with the fit |
 | `/thin` | The thinning index for draws, for the full bundle |
+
+## The model groups of a fit in steps and of a state model
+
+Some plugins keep more groups under `/model`. The standard plots read them:
+
+| Group | Plugins | Holds | Plot |
+|---|---|---|---|
+| `fit_history` | PyMC models with `engine: advi` | `loss(step)`: the negative ELBO of each step. The var attrs give `objective` and `engine`. When the fit has more steps than 5,000, the dataset attr `thinned_from` gives the number of steps. | `core.loss_curve` |
+| `hidden_states` | `ts.gaussian_hmm` | `state_prob(chain, draw, animal, step, state)` | `core.state_sequence` |
+| `regimes` | statsmodels Markov switching | `smoothed_prob(time, regime)`, `filtered_prob`, the transition matrix | `core.state_sequence` |
+| `components` | unobserved components, ETS, `ts.hsgp_trend` | One variable for each part of the series. A variable with the attr `decomposition: exclude` (a trend slope) is not an additive part. | `core.decomposition` |
+
+Each data variable of `fit_history` is one curve over `step`. The other dims of a variable are
+labels: the plot draws one line for each level.
+
+## Pareto k in `metrics.json` <span class="mapi-badge">v0.10</span> { #pareto-k }
+
+When the fit calculates `elpd_loo`, `metrics.json` keeps the PSIS Pareto k of each observation
+in `elpd.elpd_loo.pareto_k`. The values are in the same sequence as `pointwise`. The fit keeps
+them only for data of up to 10,000 points. The fit keeps no `pareto_k` if one value is not
+finite. A k of more than 0.7 shows that the LOO estimate of that observation is not reliable.
+The plot `core.loo_pit` shows the k of each observation.
+
+```json
+{"elpd": {"elpd_loo": {"elpd": -412.3, "se": 11.8, "p": 6.1, "n": 120,
+                       "pointwise": [-3.1, -2.9, ...], "pareto_k": [0.12, 0.08, ...]}}}
+```
 
 ## No pickle, ever
 

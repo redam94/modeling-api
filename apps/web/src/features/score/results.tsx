@@ -5,22 +5,23 @@ import { useMemo, useState } from "react";
 
 import { errorMessage } from "@/api/client";
 import { useRunPlots } from "@/api/queries";
-import type { ArtifactLink, PlotSpec } from "@/api/types";
+import type { ArtifactLink } from "@/api/types";
 import { ErrorNotice, JsonBlock, LoadingRows, Mono } from "@/components/common";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect } from "@/components/ui/primitives";
 import { quickChart } from "@/features/plots/builtin-specs";
-import { resolvePlotDatasets } from "@/features/plots/plot-data";
 import { PlotFrame } from "@/features/plots/plot-frame";
-import type { JsonObject } from "@mapi/plot-sandbox/protocol";
+import { outputLinks, RunPlot } from "@/features/runs/run-plots";
 import { decodeArrow, type DecodedTable, type Row } from "@/lib/arrow";
 import { fetchArtifactBytes, fetchArtifactJson, MAX_ARTIFACT_BYTES } from "@/lib/artifacts";
 import { saveBytes } from "@/lib/download";
 import { formatBytes, formatNumber, formatTimestamp, relativeTime } from "@/lib/format";
-import { distinctOn, pivotStats } from "@/lib/summary";
+import { pivotStats } from "@/lib/summary";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
+
+import { categoricalColumns, cellLevels, facetsFor, MAX_CELLS, numericColumns, quickChartChoice, quickChartRows, timeColumn } from "./quick-chart";
 
 function isArrow(link: ArtifactLink): boolean {
   return /\.(arrow|feather|ipc)$/i.test(link.name) || (link.content_type ?? "").includes("arrow");
@@ -59,30 +60,26 @@ function ResultTable({ table, name }: { table: DecodedTable; name: string }) {
       }),
     [table.columns],
   );
-  const numeric = table.columns.filter((c) => /float|int|decimal/i.test(c.type)).map((c) => c.name);
+  const numeric = numericColumns(table);
   const all = table.columns.map((c) => c.name);
-  const timeLike = table.columns.find((c) => /timestamp|date/i.test(c.type))?.name;
-  const [x, setX] = useState(timeLike ?? all[0] ?? "");
-  const [y, setY] = useState(
-    numeric.find((n) => /^y_hat_mean$/i.test(n)) ?? numeric.find((n) => /mean|median|value|y_hat/i.test(n)) ?? numeric[0] ?? "",
-  );
-  const [band, setBand] = useState(() => {
-    // Prefer the interval of the chosen variable (y_hat_hdi_90_lower / _upper).
-    const stem = y.replace(/_(mean|median)$/i, "");
-    const pick = (re: RegExp) => numeric.find((n) => n.startsWith(stem) && re.test(n)) ?? numeric.find((n) => re.test(n));
-    const lo = pick(/(lower|lo|hdi.*low|q0?5)$/i);
-    const hi = pick(/(upper|hi|hdi.*high|q95)$/i);
-    return lo && hi ? `${lo}|${hi}` : "";
-  });
-  const categorical = table.columns.filter((c) => /utf8|string|dictionary|bool/i.test(c.type)).map((c) => c.name);
-  const [color, setColor] = useState(() => categorical.find((c) => c !== x) ?? "");
+  const timeLike = timeColumn(table);
+  const categorical = categoricalColumns(table);
+  const initial = useMemo(() => quickChartChoice(table), [table]);
+  const [x, setX] = useState(initial.x);
+  const [y, setY] = useState(initial.y);
+  const [band, setBand] = useState(initial.band);
+  const [color, setColor] = useState(initial.color);
+  // A table with more dims than x and the colour (a grid: quarter × row × col) is drawn one cell at a time.
+  const facets = useMemo(() => facetsFor(table, x, color), [table, x, color]);
+  const levels = useMemo(() => cellLevels(table.rows, facets, y), [table.rows, facets, y]);
+  const [pickedCell, setCell] = useState<string | null>(null);
+  const cell = pickedCell !== null && levels.cells.includes(pickedCell) ? pickedCell : levels.first;
   const [lower, upper] = band ? band.split("|") : [undefined, undefined];
   const plot = useMemo(() => {
     if (!x || !y) return null;
-    const c = { x, y, lower, upper, color: color || undefined };
-    const rows = distinctOn(table.rows, [x, c.color, y, lower, upper]);
-    return quickChart(rows, c, Boolean(timeLike && x === timeLike));
-  }, [table.rows, x, y, lower, upper, color, timeLike]);
+    const rows = quickChartRows(table.rows, { x, y, band, color, facets }, facets.length ? cell : null);
+    return quickChart(rows, { x, y, lower, upper, color: color || undefined }, Boolean(timeLike && x === timeLike));
+  }, [table.rows, x, y, band, lower, upper, color, facets, cell, timeLike]);
   return (
     <div className="grid gap-4">
       <p className="text-xs text-muted-foreground">
@@ -113,7 +110,20 @@ function ResultTable({ table, name }: { table: DecodedTable; name: string }) {
                 {categorical.map((c) => <option key={c}>{c}</option>)}
               </NativeSelect>
             </Field>
+            {facets.length ? (
+              <Field label={`Cell (${facets.join(" · ")})`} htmlFor="qc-cell">
+                <NativeSelect id="qc-cell" value={cell} onChange={(e) => setCell(e.target.value)} className="h-8 w-40">
+                  {levels.cells.map((c) => <option key={c}>{c}</option>)}
+                </NativeSelect>
+              </Field>
+            ) : null}
           </div>
+          {facets.length ? (
+            <p className="text-xs text-muted-foreground">
+              The table has one series for each {facets.join(" · ")} cell. The chart shows one cell.
+              {levels.total > MAX_CELLS ? ` The list shows the first ${MAX_CELLS} of ${levels.total.toLocaleString("en")} cells.` : ""}
+            </p>
+          ) : null}
           {plot ? <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title={`${name} chart`} exportName={name.replace(/\.[a-z]+$/i, "")} /> : null}
         </div>
       ) : null}
@@ -133,37 +143,6 @@ function JsonOutput({ link }: { link: ArtifactLink }) {
   return <JsonBlock value={q.data} />;
 }
 
-function RunPlot({ plot, outputs }: { plot: PlotSpec; outputs: ArtifactLink[] }) {
-  const data = useQuery({
-    queryKey: ["run-plot", plot.id, outputs.map((o) => o.url).join("|")],
-    staleTime: Infinity,
-    queryFn: ({ signal }) =>
-      resolvePlotDatasets(
-        plot,
-        (path) => {
-          const link = outputs.find((o) => o.name === path);
-          return link ? Promise.resolve(link) : Promise.reject(new Error(`the run has no output named ${path}`));
-        },
-        signal,
-      ),
-  });
-  return (
-    <figure className="grid gap-2">
-      <figcaption>
-        <span className="text-[13px] font-medium">{plot.title}</span>
-        {plot.caption_plain ? <span className="block text-xs text-muted-foreground">{plot.caption_plain}</span> : null}
-      </figcaption>
-      {data.isError ? (
-        <ErrorNotice error={data.error} title="Cannot load the plot data" />
-      ) : data.data ? (
-        <PlotFrame kind={plot.kind} spec={plot.spec as JsonObject} datasets={data.data} title={plot.title} exportName={plot.id} />
-      ) : (
-        <LoadingRows rows={3} />
-      )}
-    </figure>
-  );
-}
-
 /**
  * Plots the score run rendered, fetched sanitized from the API and drawn in the sandbox; the
  * ids in `hide` are left out (the page shows those outputs another way).
@@ -176,7 +155,7 @@ function RunPlots({ runId, outputs, hide }: { runId: string; outputs: ArtifactLi
   return (
     <section aria-label="Run plots" className="grid gap-4">
       {items.map((p) => (
-        <RunPlot key={p.id} plot={p} outputs={outputs} />
+        <RunPlot key={p.id} runId={runId} plot={p} resolveLink={outputLinks(outputs)} linksKey={outputs.map((o) => o.url).join("|")} />
       ))}
     </section>
   );

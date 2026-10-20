@@ -29,7 +29,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
-from typing import Any, Final, Generic, Literal, TypeVar
+from typing import Annotated, Any, Final, Generic, Literal, TypeVar
 
 from pydantic import (
     AwareDatetime,
@@ -1455,7 +1455,9 @@ class ScoreSummaryTable(_Response):
     one column per statistic (``mean``, ``hdi_90_lower``, ...). Dates are ISO text.
     ``period``: the variable is a circular output (``OutputDecl.circular``), summarised on the
     circle (see the field). ``dims`` and ``time_dim`` say which columns are coordinates and
-    which one is time; a server that predates them leaves both out."""
+    which one is time; a server that predates them leaves both out. ``plots``: the recipe ids
+    of the run's rendered plots (``plots.json``) that draw this variable, so a client can show
+    them next to the table."""
 
     variable: str = Field(..., max_length=256)
     columns: list[str] = Field(..., max_length=256)
@@ -1479,6 +1481,13 @@ class ScoreSummaryTable(_Response):
         "output's units): the statistics are on the circle. `mean` is the circular mean, the "
         "intervals are centred on it, and every value is in [0, period). An interval with "
         "lower > upper crosses the seam (from 350 to 10 degrees)",
+        exclude_if=lambda v: v is None,
+    )
+    plots: list[Annotated[str, Field(pattern=r"^[A-Za-z0-9_.\-]{1,128}$")]] | None = Field(
+        None,
+        max_length=16,
+        description="Recipe ids of the run's plots that draw this output (sci.area_map, "
+        "core.roc_pr, ...)",
         exclude_if=lambda v: v is None,
     )
 

@@ -131,6 +131,15 @@ def test_map_engine_gives_a_single_draw(registry: Registry, radon_data: xr.Datas
     assert np.isfinite(_pred(tree, "summary")["y"].values).all()
 
 
+def test_advi_fit_keeps_the_loss_history(registry: Registry, radon_data: xr.Dataset) -> None:
+    yaml = RADON_SPEC_YAML.replace("tune: 150", "tune: 200").replace("engine: pymc", "engine: advi")
+    spec = load_model_spec(yaml)
+    b = fit_spec(spec, radon_data, registry=registry, raw_schema=RADON_SCHEMA)
+    hist = b.model.groups["fit_history"]
+    assert hist["loss"].sizes["step"] == 200
+    assert hist["loss"].attrs["objective"] == "negative ELBO"
+
+
 # -------------------------------------------------------------------------------- scoring
 
 

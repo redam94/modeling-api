@@ -5,6 +5,91 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Chart wiring and metric correctness
+
+More models now get the plots that apply to them, and the metrics that a spec requests are
+calculated. A classifier gets classifier plots and metrics. A state model gets a state plot. An
+ADVI fit shows its loss. The run page shows the plots of a run.
+
+#### Added
+- New plot recipes in the core pack, each with an About card and example data:
+    - `core.roc_pr`: the ROC curve and the precision-recall curve of a 0/1 target, with the AUC
+      and the average precision.
+    - `core.confusion`: the 2 × 2 table of actual and predicted classes at a threshold (0.5,
+      or `auto`), with accuracy, precision, recall, specificity and F1.
+    - `core.loss_curve`: the loss of each step of a fit, raw and smoothed, with a note when
+      the loss still goes down at the end.
+    - `core.loo_pit`: the LOO-PIT check of calibration and the PSIS Pareto k of each
+      observation. It is not a default plot. Add it in the plot builder.
+- Metrics: `auc` (the Mann-Whitney AUC) and binary `brier`, `log_score` and `accuracy` for a
+  target with two values. `mase` for a fit with a time holdout: the holdout `mae` divided by
+  the in-sample error of a seasonal naive forecast.
+- `metrics.json` keeps the PSIS Pareto k of each observation of `elpd_loo`
+  (`ElpdDetail.pareto_k`).
+- An ADVI fit keeps the loss of each step in the bundle group `fit_history` (`loss(step)`, at
+  most 5,000 steps). The fit run adds `core.loss_curve` to its plots.
+- Standard plots for more models. The model declares them, and the **Insert** panel of the spec
+  editor shows them first. A fit draws only the plots in `outputs.plots`:
+    - sklearn regressors (and the quantile, bootstrap and conformal plugins):
+      `core.fit_vs_actual`, `core.residuals_over_time`, `ml.feature_importance`.
+    - `sklearn.tabular_classifier`: `core.calibration`, `core.roc_pr`, `core.confusion`,
+      `ml.feature_importance`.
+    - `ts.gaussian_hmm` and the statsmodels Markov switching model: `core.state_sequence`.
+    - The unobserved components model, ETS and `ts.hsgp_trend`: `core.decomposition`. ETS and
+      `ts.hsgp_trend` keep a new `components` group for it.
+- Default score plots: an areal output gets `sci.area_map`, an output of probabilities over a
+  `state` or `regime` dim gets `core.state_sequence`, and an evaluate run with a 0/1 target gets
+  `core.calibration`, `core.roc_pr` and `core.confusion`.
+- `ScoreSummaryTable.plots`: the ids of the rendered plots that draw the output.
+- **Score**, *Results by output*: a map of areas and a classification view, made from the plots
+  of the run.
+- **Run detail**: a **Plots** card with the plots of a finished run.
+- **Compare** in the Model Explorer: the card *Which version predicts new data best?* with the
+  `core.model_comparison` plot, when two or more versions have `elpd_loo` (or `elpd_waic`).
+- **Score**, quick chart: a **Cell** picker for a table with more dims than the axis and the
+  colour, for example a grid. The chart shows one cell at a time.
+
+#### Changed
+- `core.calibration` accepts one predicted probability for each row (no draws) for a 0/1
+  target. Validation now accepts it for a model with point predictions.
+- `core.state_sequence` reads the `hidden_states` group (HMM), the `regimes` group (Markov
+  switching) and a score summary. It finds the state dim (`state` or `regime`) itself. When the
+  data has more than one series, it shows the first one and names it in the caption.
+- `core.decomposition` reads the `components` group. It does not stack a variable with the
+  attr `decomposition: exclude` (the trend slope of the UC and ETS models).
+- `GET /v1/runs/{run_id}/plots` returns the plots of the newest attempt that has them. Thus
+  partial runs, and failed or cancelled runs with an earlier partial attempt, also show plots.
+- One implementation of the MASE scale (`mapi_sdk.metrics.mase_scale`) for the SDK, the
+  workflows, the explorer and governance.
+
+#### Fixed
+- The fit calculated no metric for a classifier: `metrics.json` was empty. The harness did not
+  pair a probability output with its target, because the output declares `units`. It now pairs
+  an output with `meaning: probability` with the target.
+- An evaluate run from the **Score** page did not draw its plots: the runner skipped
+  `core.fit_vs_actual` because the result had no observed values. The runner now gives the
+  plots the full predictions and the observed values.
+- `auc` and `mase` passed validation but the fit did not calculate them.
+- **Compare** in the Model Explorer showed no holdout metrics of the versions (only the number
+  of parameters). The explore run did not get the `metrics.json` of each version. The server
+  now gives it to the run with each bundle.
+- **Score**: the quick chart of a large grid table (for example 864 rows of the LGCP summary)
+  looked blank. The chart drew one line through all the rows, so all the cells of a period
+  were at the same x position: each period was a vertical stroke and the band had no width.
+  Empty cells (outside the study area) also broke the line between the periods. The chart now
+  draws one cell of the grid at a time.
+
+#### Known gaps
+- Validation refuses `log_score` in `evaluate.metrics` for a model with point predictions, so
+  a point classifier cannot request it. Use `brier`.
+- `mase` is calculated only in the evaluation of a fit. An evaluate run from the **Score** page
+  skips it, because it does not have the training data.
+- A regression target that has only the values 0 and 1 gets the classifier plots on evaluate.
+- The `sci.*` models that run the PyMC engine themselves do not keep the ADVI loss history.
+  `PyMCModel` plugins and `ts.gaussian_hmm` keep it.
+- `sci.area_map` on the Score page draws an output with only an area dim. An areal output with
+  more dims is skipped with a warning.
+
 ### Score results by output shape
 
 The plots of a score run now follow the shape of each output. A gridded output, for example

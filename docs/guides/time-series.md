@@ -65,6 +65,16 @@ the platform does these steps:
 
 The production bundle links the evaluation bundle and its metrics.
 
+**MASE.** Add `mase` to `evaluate.metrics` to compare the holdout error with a seasonal naive
+forecast. The fit divides the holdout `mae` by the mean absolute error of the naive forecast on the
+training data. The season length comes from the frequency of the time dim (for example 52 for
+weekly data). If the training data is shorter than one season, the naive forecast uses the value of
+the period before. The naive error has the same units as the holdout error. For a pipeline that
+aggregates the data, or for a model that sets its own output units (for example an MMM model),
+these are the units of the model outputs. The fit calculates `mase` only when it has the training
+data. Thus an evaluate run from the **Score** page skips `mase` and gives the reason in `skipped`.
+A value less than 1 shows that the model is better than the naive forecast.
+
 ## Sequential models keep a terminal state
 
 Hidden Markov models, Kalman filters and particle filters keep a summary of the past in a
@@ -87,6 +97,28 @@ data: dataset://ecology/tracks_live@v1
 
 The result has `predictions` (the one-step-ahead `y_hat` and the filtered `state_prob`). It also
 has a `terminal_state` group. Its `attrs.step` is the last filtered step.
+
+## Plots of hidden states <span class="mapi-badge">v0.10</span> { #plots-of-hidden-states }
+
+`ts.gaussian_hmm` and the statsmodels Markov switching model now include `core.state_sequence`
+in their standard plots. The plot shows the observed series above the probability of each state
+over time.
+
+- For the HMM, the plot reads `state_prob` in the `hidden_states` group. The data has one series
+  for each animal. The plot shows the first animal, and the caption names it. To show a
+  different animal, set `select` in the plot builder, for example `{"animal": "a2"}`.
+- For the Markov switching model, the plot reads `smoothed_prob` in the `regimes` group. The
+  state dim is `regime`.
+- A score run with a state output (for example `state_prob` of a `filter` score) also draws the
+  plot from the score summary. A state output has a dim with the name `state` or `regime`, and
+  its values are probabilities over that dim. A panel dim such as the `state` of a country is
+  not a state output.
+
+**Decomposition.** The unobserved components model, exponential smoothing (ETS) and
+`ts.hsgp_trend` now include `core.decomposition`. The plot stacks the level, the seasonal part
+and the other parts over time. The slope of a trend is a rate, not a part of the level. Thus the
+plot does not stack it. An ETS model has a components group only when its error, trend and
+season are additive.
 
 ## Missing values and sentinels
 

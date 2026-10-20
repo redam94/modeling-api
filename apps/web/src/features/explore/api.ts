@@ -227,6 +227,12 @@ export function mergeSections<T extends ExplorerSection>(order: readonly T[], ba
   });
 }
 
+/** The plots object of an explore run's section (`ui/explore/plots/<section>.json`), if it wrote one. */
+export function explorationPlotsName(exploration: Exploration | null | undefined, section: ExplorerSection): string | undefined {
+  const ref = exploration?.done ? exploration.index?.sections?.find((s) => s.section === section) : undefined;
+  return ref && (ref.status ?? "ok") === "ok" ? safeView((ref as Record<string, unknown>).plots) : undefined;
+}
+
 async function resolveLink(qc: QueryClient, s: ProjectScope, t: ExplorerTarget, origin: "base" | "run", runId: string | null, name: string): Promise<ArtifactLink> {
   if (origin === "run" && runId) {
     const link = (await explorationLinks(qc, s, runId)).find((l) => l.name === name);
@@ -261,9 +267,10 @@ export interface RecipePlot {
 const refuseLinkedData = (): Promise<never> => Promise.reject(new Error("an explorer plot must carry its data inline"));
 
 /**
- * The recipe plots of a plots document: Vega-Lite (data inline in `spec.datasets`) and, since
- * v0.10, Plotly (the runner's `sci.*`/`net.*` recipes; inline Arrow datasets only, a dataset at
- * a path is refused). Other kinds and plots whose data does not decode are left out.
+ * The recipe plots of a plots document: Vega-Lite and, since v0.10, Plotly (the runner's
+ * `sci.*`/`net.*` recipes). Data comes inline: in the spec, or as named `inline_arrow` datasets
+ * that the app decodes (a recipe PlotSpec such as `core.model_comparison`; a dataset at a path
+ * is refused). Other kinds and plots whose data does not decode are left out.
  */
 export async function recipePlots(raw: unknown): Promise<RecipePlot[]> {
   if (!Array.isArray(raw)) return [];
@@ -272,13 +279,16 @@ export async function recipePlots(raw: unknown): Promise<RecipePlot[]> {
     if (typeof p !== "object" || p === null || typeof (p as { spec?: unknown }).spec !== "object") continue;
     const plot = p as PlotSpec;
     const kind = (p as { kind?: unknown }).kind;
-    if (kind === "vega-lite") out.push({ plot, kind, datasets: {} });
-    else if (kind === "plotly") {
-      try {
-        out.push({ plot, kind, datasets: await resolvePlotDatasets(plot, refuseLinkedData) });
-      } catch {
-        // a plot whose data the app cannot decode is left out; the others still show
-      }
+    if (kind !== "vega-lite" && kind !== "plotly") continue;
+    // A Vega-Lite plot without named datasets carries its rows in the spec.
+    if (kind === "vega-lite" && !Object.keys(plot.datasets ?? {}).length) {
+      out.push({ plot, kind, datasets: {} });
+      continue;
+    }
+    try {
+      out.push({ plot, kind, datasets: await resolvePlotDatasets(plot, refuseLinkedData) });
+    } catch {
+      // a plot whose data the app cannot decode is left out; the others still show
     }
   }
   return out;
@@ -301,7 +311,7 @@ export function useSectionPlots(t: ExplorerTarget, state: SectionState | undefin
   });
 }
 
-/** The body of a recipe PlotSpec for the sandbox (its data is inline in `spec.datasets`). */
+/** The body of a recipe PlotSpec for the sandbox (named datasets travel next to it). */
 export function recipeBody(plot: PlotSpec): JsonObject {
   return plot.spec as JsonObject;
 }

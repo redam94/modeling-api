@@ -1,10 +1,11 @@
 /**
  * The shape of each score output, from the inline summary tables (`ScoreSummary.tables`) and
- * the runner's `ui/fields.json`: an output on a grid is a map (with a frame slider), one with
- * a time dim a line with its band, one with other dims an interval per cell, and one with no
- * dims a single value. The runner decides what is a grid (it has the manifest and the
- * binding); the tables give the rest, with `dims` / `time_dim` from newer servers and the
- * statistic names as the fallback.
+ * the runner's `ui/fields.json`: an output on a grid is a map (with a frame slider), an output
+ * the run drew as a map of areas or as a classifier (v0.10: the table's `plots`) shows those
+ * plots, one with a time dim a line with its band, one with other dims an interval per cell,
+ * and one with no dims a single value. The runner decides what is a grid and which plots draw
+ * an output (it has the manifest and the binding); the tables give the rest, with `dims` /
+ * `time_dim` from newer servers and the statistic names as the fallback.
  */
 import type { ScoreSummary } from "@/api/types";
 import type { FieldEntry, FieldsView } from "@/features/explore/views";
@@ -18,18 +19,28 @@ export const SCORE_FIELDS_VIEW = "ui/fields.json";
 /** The run's plots that the field viewer replaces when `ui/fields.json` is there. */
 export const FIELD_PLOT_IDS: readonly string[] = ["sci.field_map", "sci.vector_field"];
 
+/** The run plots that draw an output on areas (the "map of areas" view). */
+export const AREA_PLOT_IDS: readonly string[] = ["sci.area_map"];
+
+/** The run plots that judge a classifier, in the order the classification view shows them. */
+export const CLASSIFICATION_PLOT_IDS: readonly string[] = ["core.roc_pr", "core.confusion", "core.calibration"];
+
 // `dims` and `time_dim` are optional: older servers leave them out.
 export type Table = NonNullable<ScoreSummary["tables"]>[number];
 type Cell = Table["rows"][number][number];
 
 export type OutputShape =
   | { kind: "grid"; variable: string; fields: FieldEntry[] }
+  | { kind: "areal"; variable: string; plots: string[] }
+  | { kind: "classification"; variable: string; plots: string[] }
   | { kind: "time"; variable: string; time: string; series?: string }
   | { kind: "categorical"; variable: string; dims: string[] }
   | { kind: "scalar"; variable: string };
 
 export const SHAPE_LABEL: Record<OutputShape["kind"], string> = {
   grid: "map",
+  areal: "map of areas",
+  classification: "classification",
   time: "over time",
   categorical: "by category",
   scalar: "single value",
@@ -79,10 +90,18 @@ export function gridOutputsOf(view: FieldsView | null | undefined): Map<string, 
   return out;
 }
 
-/** The shape of one table: a grid output, else by its dims (no dims, a time dim, other dims). */
+/**
+ * The shape of one table: a grid output, else an output the run drew on areas or as a
+ * classifier (the plots the table names), else by its dims (no dims, a time dim, other dims).
+ */
 export function classify(t: Table, gridOutputs: Map<string, FieldEntry[]>): OutputShape {
   const fields = gridOutputs.get(t.variable);
   if (fields?.length) return { kind: "grid", variable: t.variable, fields };
+  const named = t.plots ?? [];
+  const areal = AREA_PLOT_IDS.filter((id) => named.includes(id));
+  if (areal.length) return { kind: "areal", variable: t.variable, plots: areal };
+  const classification = CLASSIFICATION_PLOT_IDS.filter((id) => named.includes(id));
+  if (classification.length) return { kind: "classification", variable: t.variable, plots: classification };
   const dims = tableDims(t);
   if (!dims.length) return { kind: "scalar", variable: t.variable };
   // A circular table (`period`) has an angle, not a time line: intervals for now.
@@ -108,6 +127,21 @@ export function shapesOf(summary: ScoreSummary | null | undefined, fields: Field
     if (!shapes.some((s) => s.variable === variable)) shapes.push({ kind: "grid", variable, fields: entries });
   }
   return shapes;
+}
+
+/** The run plots that the shape views show (the page leaves them out of the plot list below). */
+export function shapeViewPlotIds(shapes: readonly OutputShape[]): string[] {
+  const ids = shapes.flatMap((s) => (s.kind === "areal" || s.kind === "classification" ? s.plots : []));
+  return [...new Set(ids)];
+}
+
+/**
+ * The run plots the Score page leaves out of its plot list because "Results by output" shows
+ * them: the static maps the field viewer replaces (when the run wrote `ui/fields.json`) and the
+ * plots of the area and classification views.
+ */
+export function plotsShownAbove(summary: ScoreSummary | null | undefined, hasFields: boolean): string[] {
+  return [...new Set([...(hasFields ? FIELD_PLOT_IDS : []), ...shapeViewPlotIds(shapesOf(summary, null))])];
 }
 
 /** The central statistic and the widest band of a table (null when it has none). */

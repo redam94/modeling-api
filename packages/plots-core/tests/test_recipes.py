@@ -513,6 +513,22 @@ def test_decomposition_point_estimates_and_vars() -> None:
     )
 
 
+def test_decomposition_skips_excluded_components_unless_named() -> None:
+    weeks = pd.date_range("2024-01-07", periods=4, freq="W")
+    ds = xr.Dataset(
+        {
+            "level": ("week", np.full(4, 10.0)),
+            "trend": ("week", np.full(4, 0.5), {"decomposition": "exclude"}),
+            "seasonal": ("week", np.array([1.0, -1.0, 1.0, -1.0])),
+        },
+        coords={"week": weeks},
+    )
+    plot = get_recipe("core.decomposition").render({"components": ds})
+    assert frame(plot, "totals")["component"].tolist() == ["level", "seasonal"]
+    named_ = get_recipe("core.decomposition").render({"components": ds}, vars=["level", "trend"])
+    assert frame(named_, "totals")["component"].tolist() == ["level", "trend"]
+
+
 def _legend_title(plot: PlotSpec) -> str:
     area = plot.spec["vconcat"][0]
     return str(area["encoding"]["color"]["title"])

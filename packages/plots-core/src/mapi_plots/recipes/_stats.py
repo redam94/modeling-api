@@ -3,7 +3,10 @@
 * rank-normalised split R-hat and bulk/tail ESS (Vehtari, Gelman, Simpson, Carpenter and
   Bürkner 2021), matching ArviZ's ``rhat(method="rank")`` and ``ess(method="bulk"|"tail")``;
 * HDI / ETI intervals, a Gaussian KDE (Silverman bandwidth), PIT values, central-interval
-  coverage and WAIC (with pointwise values for paired standard errors).
+  coverage and WAIC (with pointwise values for paired standard errors);
+* Pareto smoothed importance sampling (PSIS, Vehtari, Simpson, Gelman, Yao and Gabry 2024)
+  with the Pareto k diagnostic, matching ArviZ's ``psislw`` with ``r_eff = 1``;
+* the simultaneous envelope of an ECDF difference plot (Säilynoja, Bürkner and Vehtari 2022).
 
 They exist so the recipes need only numpy (no scipy/ArviZ in the ``recipes`` extra).
 """
@@ -16,12 +19,14 @@ import numpy as np
 
 __all__ = [
     "coverage_curve",
+    "ecdf_envelope",
     "ess_bulk",
     "ess_tail",
     "eti",
     "hdi",
     "kde",
     "pit_values",
+    "psis",
     "rhat",
     "waic",
 ]
@@ -233,3 +238,102 @@ def waic(log_lik: np.ndarray) -> tuple[float, float, float, np.ndarray]:
     n = pointwise.size
     se = float(np.sqrt(n * np.var(pointwise))) if n > 1 else float("nan")
     return float(pointwise.sum()), se, float(p.sum()), pointwise
+
+
+def ecdf_envelope(
+    n: int, z: np.ndarray, prob: float, n_sim: int, seed: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Simultaneous ``prob`` envelope of ``ECDF(z) - z`` for ``n`` uniform values.
+
+    Simulated: the ECDF counts at the grid ``z`` of ``n`` uniform values are cumulative
+    multinomial counts. The band is ``±c sqrt(z (1 - z) / n)`` where ``c`` is the ``prob``
+    quantile of the largest standardised deviation over the grid (so all points stay inside
+    together with probability ``prob``).
+    """
+    rng = np.random.default_rng(seed)
+    edges = np.r_[0.0, z, 1.0]
+    probs = np.diff(edges)
+    counts = rng.multinomial(n, probs, size=n_sim)[:, :-1].cumsum(axis=1)
+    sd = np.sqrt(z * (1 - z) / n)
+    dev = np.abs(counts / n - z[None, :]) / sd[None, :]
+    c = float(np.quantile(dev.max(axis=1), prob))
+    return -c * sd, c * sd
+
+
+def _logsumexp(x: np.ndarray) -> float:
+    m = float(np.max(x))
+    return m + float(np.log(np.sum(np.exp(x - m))))
+
+
+def _gpdfit(x: np.ndarray) -> tuple[float, float]:
+    """``(k, sigma)`` of a generalized Pareto fit to sorted exceedances ``x`` (Zhang and
+    Stephens 2009, with the weakly informative prior on k of Vehtari et al. 2024)."""
+    prior_bs, prior_k = 3, 10
+    n = x.size
+    m_est = 30 + int(n**0.5)
+    xstar = x[int(n / 4 + 0.5) - 1]  # first quartile
+    if xstar <= x[0]:
+        return float("nan"), float("nan")
+    b = 1 - np.sqrt(m_est / (np.arange(1, m_est + 1, dtype=float) - 0.5))
+    b /= prior_bs * xstar
+    b += 1 / x[-1]
+    k_ary = np.mean(np.log1p(-b[:, None] * x[None, :]), axis=1)
+    len_scale = n * (np.log(-b / k_ary) - k_ary - 1)
+    w = np.exp(len_scale - _logsumexp(len_scale))
+    real = w >= 10 * np.finfo(float).eps
+    w, b = w[real], b[real]
+    w /= w.sum()
+    b_post = float(np.sum(b * w))
+    k = float(np.mean(np.log1p(-b_post * x)))
+    sigma = -k / b_post
+    k = (n * k + prior_k * 0.5) / (n + prior_k)
+    if np.isnan(k):
+        return float("inf"), float("nan")
+    return k, sigma
+
+
+def _gpinv(p: np.ndarray, k: float, sigma: float, mu: float) -> np.ndarray:
+    """Quantiles of a generalized Pareto distribution."""
+    if not sigma > 0:
+        return np.full_like(p, np.nan)
+    if k == 0:
+        q: np.ndarray = mu - sigma * np.log1p(-p)
+    else:
+        q = mu + sigma * np.expm1(-k * np.log1p(-p)) / k
+    return q
+
+
+def psis(log_ratios: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Pareto smoothed importance sampling of ``(S, N)`` log importance ratios.
+
+    For leave-one-out, ``log_ratios = -log_lik``. Returns ``(log_weights, k)``: the smoothed
+    log weights, normalised per column (``exp`` sums to 1), and the Pareto k of each column.
+    The largest ``M = floor(min(0.2 S, 3 sqrt(S)))`` ratios (the tail length of ArviZ and
+    loo) are replaced by the expected order statistics of a generalized Pareto fit, truncated
+    at the largest raw ratio. k is ``inf`` when the tail is too short to fit (fewer than 5
+    draws) or the fit fails.
+    """
+    lr = np.asarray(log_ratios, dtype=float)
+    if lr.ndim == 1:
+        lr = lr[:, None]
+    s, n = lr.shape
+    m = int(np.floor(min(0.2 * s, 3 * np.sqrt(s))))
+    lw = lr - lr.max(axis=0, keepdims=True)
+    k = np.full(n, np.inf)
+    for i in range(n):
+        col = lw[:, i]
+        if m >= 5 and s > m and np.all(np.isfinite(col)):
+            order = np.argsort(col, kind="mergesort")
+            tail_ids = order[s - m :]
+            tail = col[tail_ids]
+            cutoff = col[order[s - m - 1]]
+            if np.ptp(tail) > np.finfo(float).tiny:
+                ki, sigma = _gpdfit(np.exp(tail) - np.exp(cutoff))
+                if np.isfinite(ki):
+                    smoothed = _gpinv((np.arange(m) + 0.5) / m, ki, sigma, float(np.exp(cutoff)))
+                    if np.all(smoothed > 0):
+                        col[tail_ids] = np.minimum(np.log(smoothed), tail.max())
+                    k[i] = ki
+        if np.all(np.isfinite(col)):
+            col -= _logsumexp(col)
+    return lw, k

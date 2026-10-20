@@ -20,6 +20,7 @@ from mapi_spec.errors import ErrorCode, MapiError
 from pydantic import Field, model_validator
 
 from mapi_plugin_statsmodels._common import (
+    NOT_A_PART,
     TIME,
     Cell,
     CellFit,
@@ -405,6 +406,7 @@ class UnobservedComponentsModel(StateSpaceModel[UnobservedComponentsSettings]):
     )
     capabilities = quantile_capabilities("kalman")
     schema_template = schema_template(multivariate=False, exog=True, missing="allow")
+    plots = (*StatsmodelsModel.plots, "core.decomposition")
 
     def build(self, cell: Cell, s: UnobservedComponentsSettings) -> Any:
         from statsmodels.tsa.statespace.structural import UnobservedComponents
@@ -443,7 +445,8 @@ class UnobservedComponentsModel(StateSpaceModel[UnobservedComponentsSettings]):
                 continue
             arr = np.asarray(smoothed, dtype=float).reshape(-1)
             if arr.size == cell.n:
-                comps[name] = ((TIME,), arr)
+                # the ``trend`` state is the slope of the level, not a part of the series
+                comps[name] = ((TIME,), arr, dict(NOT_A_PART) if name == "trend" else {})
         if not comps:
             return {}
         return {"components": xr.Dataset(comps, coords={TIME: cell.t})}

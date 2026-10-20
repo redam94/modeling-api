@@ -15,12 +15,15 @@ from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 import numpy as np
+import xarray as xr
 from mapi_sdk.models import FitContext
 from mapi_spec.errors import ErrorCode, MapiError
 from pydantic import Field, model_validator
 from scipy import stats
 
 from mapi_plugin_statsmodels._common import (
+    NOT_A_PART,
+    TIME,
     Cell,
     CellFit,
     StatsmodelsSettings,
@@ -88,6 +91,7 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
     )
     capabilities = quantile_capabilities("custom")
     schema_template = schema_template(multivariate=False, exog=False)
+    plots = (*StatsmodelsModel.plots, "core.decomposition")
 
     def build(self, cell: Cell, s: EtsSettings) -> Any:
         from statsmodels.tsa.exponential_smoothing.ets import ETSModel
@@ -117,7 +121,12 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
         model = self.build(cell, s)
         with quiet():
             res = model.fit(disp=False, maxiter=s.maxiter)
-        return describe_statespace(model, res, cell)
+        fit = describe_statespace(model, res, cell)
+        if not s.multiplicative:
+            comps = _ets_components(res, cell)
+            if comps is not None:
+                fit.groups["components"] = comps
+        return fit
 
     def rebuild(
         self, cell: Cell, s: EtsSettings, params: Mapping[str, float], learned: Mapping[str, Any]
@@ -184,6 +193,23 @@ class EtsModel(StatsmodelsModel[EtsSettings]):
         res = self.rebuild(ext, s, params, learned)
         fixed_noise(res, fit_res())
         return self.predict_cell(res, ext, s, learned, insample, x_future, horizon, seed)
+
+
+def _ets_components(res: Any, cell: Cell) -> xr.Dataset | None:
+    """The smoothed states of an additive ETS fit: ``level`` and ``season`` add up to the
+    series (up to the noise); ``slope`` is the per-period change of the level, not a part.
+    ``ETSResults`` has ``slope``/``season`` only when the model has that component."""
+    parts: dict[str, Any] = {}
+    for name in ("level", "slope", "season"):
+        state = getattr(res, name, None)
+        if state is None:
+            continue
+        arr = np.asarray(state, dtype=float).reshape(-1)
+        if arr.size == cell.n:
+            parts[name] = ((TIME,), arr, dict(NOT_A_PART) if name == "slope" else {})
+    if "level" not in parts:
+        return None
+    return xr.Dataset(parts, coords={TIME: cell.t})
 
 
 def fixed_noise(res: Any, fitted: Any) -> None:
