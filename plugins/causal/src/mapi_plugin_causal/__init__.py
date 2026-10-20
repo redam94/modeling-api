@@ -22,7 +22,7 @@ from mapi_plugin_causal.synthetic import SyntheticControlModel
 try:
     __version__ = _metadata.version("mapi-plugin-causal")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.12.0"
+    __version__ = "0.13.0"
 
 PLUGINS: tuple = (CausalImpactModel, SyntheticControlModel, DiDModel)
 """Every ``causal.*`` model plugin (loaded by the ``mapi.models`` entry point)."""

@@ -2317,7 +2317,7 @@ requires-dist = [
 
 [[package]]
 name = "mapi-plugin-causal"
-version = "0.12.0"
+version = "0.13.0"
 source = { editable = "plugins/causal" }
 dependencies = [
     { name = "mapi-plugin-ts" },
