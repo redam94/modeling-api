@@ -363,6 +363,9 @@ deployer has its own ingress rule.
   `acme-prod`.
 - **KMS key rings are permanent.** If you make a destroyed environment again, you must do a
   `terraform import` of its key rings.
+- **The GPU Job is not verified** (v0.15). `gpu_jobs` is `false` in each `envs/` stack.
+  Before you set it to `true`, read [GPU jobs](cloud-run.md#gpu-jobs). The region must have
+  Cloud Run GPUs (L4), and the project needs the GPU quota.
 - **`--traffic-only` rollbacks** apply only to the HTTP services. To roll back the
   orchestrator and the Jobs, deploy a release again.
 

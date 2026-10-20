@@ -1,6 +1,6 @@
 # Container images <span class="mapi-badge">v0.2</span>
 
-The platform has six images (and a `worker` target). The build makes them from
+The platform has seven images (and a `worker` target). The build makes them from
 `images/<name>/Dockerfile`, with the repository root as the build context. The images have
 three purposes:
 
@@ -18,8 +18,9 @@ make docker-pin-check                  # every base image pinned by digest?
 
 | Image | Contents | Runs as | Entry point |
 |---|---|---|---|
-| `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc`, the `mmm.*`, `tabular.*` and `sci.*` plugins (`mapi-plugin-science`, which uses SciPy), a C++ compiler for PyTensor | `10001` | `mapi-runner` |
-| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` with the `gbm` extra (`sklearn.*` plugins, LightGBM and CatBoost from v0.14) and `libgomp1` (for LightGBM). **No PyMC.** | `10001` | `mapi-runner` |
+| `mapi/base-bayes` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc` with the `pathfinder` extra, the `mmm.*`, `tabular.*` and `sci.*` plugins (`mapi-plugin-science`, which uses SciPy), `mapi-jax` for the CPU (v0.15), a C++ compiler for PyTensor | `10001` | `mapi-runner` |
+| `mapi/base-ml` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-sklearn` with the `gbm` extra (`sklearn.*` plugins, LightGBM and CatBoost from v0.14) and `libgomp1` (for LightGBM), `mapi-jax` for the CPU (v0.15). **No PyMC.** | `10001` | `mapi-runner` |
+| `mapi/base-dl` (v0.15) | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-jax` with the `cuda12` extra (the `dl.*` models and the step `dl.embed` on JAX, Flax and Optax, with the NVIDIA CUDA 12 wheels). **No PyMC, no scikit-learn, no C++ compiler.** | `10001` | `mapi-runner` |
 | `mapi/base-forecast` | `mapi-runner`, SDK, steps, plot recipes, workflow nodes, `mapi-pymc` with the `pathfinder` extra, the `ts.*` plugins (`mapi-plugin-ts` and `mapi-plugin-statsmodels`), the `causal.*` plugins (`mapi-plugin-causal`) and pymc-extras | `10001` | `mapi-runner` |
 | `mapi/worker` | `base-bayes` with the `ts.*` and `causal.*` plugins and `mapi-server` (target `worker` of the base-bayes Dockerfile). Only for compose | `10001` | `mapi-server worker` |
 | `mapi/server` | The control plane: `mapi-server`, `mapi-spec`, the JSON-only `mapi-plots` core, the JSON-only `mapi-workflows` engine, docker-py. **No science dependencies.** | `10001` | `mapi-server api` (or `worker`, `migrate`) |
@@ -35,6 +36,31 @@ From v0.14, `mapi-runner` depends on Pillow (for the `image_folder` ingest). Thu
 images contain Pillow. Pillow decodes uploaded images only in the sandboxed ingest run, never
 in the control plane. LightGBM and CatBoost (about 150 MB) are only in `mapi/base-ml`.
 `tabular.image_logistic` runs in `mapi/base-bayes` and does not need Pillow.
+
+### The deep learning image <span class="mapi-badge">v0.15</span> { #the-deep-learning-image }
+
+`mapi/base-dl` runs the `dl.*` models of `mapi-jax`. JAX comes with its CUDA 12 wheels
+(`jax-cuda12-plugin` and the NVIDIA runtime wheels from pip) on the same `python:3.12-slim`
+base. There is no NVIDIA base image. The CUDA wheels make the image about 3 GB. Thus it is
+the largest image.
+
+- Without a GPU, JAX uses the CPU. Each `dl.*` model continues to train, but slowly. The
+  runner sends the warning `GPU_UNAVAILABLE` when a run of the class `GPU` sees no NVIDIA
+  device ([Troubleshooting](troubleshooting.md#warnings-on-a-run)).
+- The image sets `XLA_PYTHON_CLIENT_PREALLOCATE=false` (JAX gets GPU memory when it needs
+  it) and `XLA_FLAGS=--xla_gpu_deterministic_ops=true` (a fit with a seed gives the same
+  result again). The build arguments `MAPI_XLA_PREALLOCATE` and `MAPI_XLA_FLAGS` set them.
+  The other images leave them empty.
+- `mapi/base-bayes` and `mapi/base-ml` contain `mapi-jax` for the CPU. Thus the step
+  `dl.embed` can run in front of their models, for example `tabular.image_logistic` or
+  `sklearn.multiclass_classifier`.
+
+!!! warning "Not verified"
+    Nobody has built or run `mapi/base-dl` on a GPU. Do a test with a small run of the class
+    `GPU` before you use it. Make sure that the param `dl.backend` of the run is `gpu`. Refer
+    to [Docker Compose](docker.md) and [GPU jobs](cloud-run.md#gpu-jobs).
+
+The guide [Deep learning](../guides/deep-learning.md) tells how to use the models.
 
 `make docker-build IMAGES="server web"` builds a subset. `make docker-build` builds all
 images. It also builds `mapi/worker` when `base-bayes` is in the set. Each image has the OCI
@@ -77,7 +103,11 @@ If an image is not what it claims to be, the build fails:
   `lightgbm` and `catboost` (v0.14). `base-bayes` and `base-forecast` must contain `pillow`
   and must not contain `lightgbm` or `catboost`. `server` must not contain `numpy`, `xarray`,
   `pandas`, `scipy`, `pyarrow`, PyMC, `pillow`, `lightgbm`, `catboost`, `mapi_sdk`,
-  `mapi_runner` or a plugin.
+  `mapi_runner` or a plugin. From v0.15, `base-bayes` and `base-ml` must contain `mapi-jax`,
+  `flax` and `optax`, and `base-forecast` must not contain them. `base-dl` must contain
+  `jax`, `jaxlib`, `flax`, `optax` and `jax-cuda12-plugin`, and must not contain
+  `mapi-pymc`, `mapi-sklearn`, `mapi-plugin-mmm`, `mapi-plugin-tabular`, `mapi-plugin-ts`,
+  `mapi-plugin-causal`, `mapi-plugin-science`, `torch` or `tensorflow`.
 - **Import contracts in the control-plane image.** The `contracts` stage of
   `images/server/Dockerfile` installs import-linter (hash-pinned from `uv.lock`) into a
   temporary copy of the environment. It runs the contracts of the repository against the
@@ -106,7 +136,9 @@ them again.
 
 `HOME`, `PYTENSOR_FLAGS`, `NUMBA_CACHE_DIR` and `MPLCONFIGDIR` all point under `/tmp`. The
 first three are on the worker-environment allow-list of the runner
-(`mapi_spec.run.WORKER_ENV_ALLOWLIST`). Thus plugin code sees them after the supervisor
+(`mapi_spec.run.WORKER_ENV_ALLOWLIST`). The allow-list also has `XLA_FLAGS`. From v0.15, it also
+has `JAX_PLATFORMS`, `XLA_PYTHON_CLIENT_PREALLOCATE`, `XLA_PYTHON_CLIENT_MEM_FRACTION` and
+`CUDA_VISIBLE_DEVICES`, for the device and the GPU memory of JAX. Thus plugin code sees them after the supervisor
 removes the other variables from the environment. As a result, each image runs with
 `--read-only` and a tmpfs on `/tmp`.
 

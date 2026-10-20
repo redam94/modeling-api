@@ -122,7 +122,7 @@ above:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_PRICE_TABLE_PATH` | unset | A JSON `PriceTable`. If unset: list prices like Cloud Run prices (`mapi_spec.cost.DEFAULT_PRICE_TABLE`) |
+| `MAPI_PRICE_TABLE_PATH` | unset | A JSON `PriceTable`. If unset: list prices like Cloud Run prices (`mapi_spec.cost.DEFAULT_PRICE_TABLE`). From v0.15, the class `GPU` also has a price for each accelerator-second (`accelerator_second_nanos`, the default is the Cloud Run L4 list price, not verified) |
 | `MAPI_ESTIMATE_WALL_S` | fit 300, score 30, ingest 60, … | For each run kind, the wall time in seconds that the server charges against vCPU-second quotas until it meters the run (JSON). The maximum is the timeout of the run |
 | `MAPI_RATE_LIMITS_ENABLED` | `true` | Enforce `requests_per_minute` at token, tenant and global level |
 | `MAPI_LEASE_CANDIDATES` | `500` | The queued runs that the fair-share planner of the dispatcher looks at in each pass. This does not include runs that are held by a suspended tenant, the kill switches or the spend cap |
@@ -186,7 +186,7 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_LOST_EXECUTION_GRACE_S` | `60` | How long an execution can be missing from the executor before the attempt is lost |
 | `MAPI_DEADLINE_GRACE_S` | `60` | The extra time after the timeout of a run before the reconciler stops it |
 | `MAPI_MAX_INFRA_RETRIES` | `2` | The automatic retries after infrastructure failures |
-| `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | The sweep of expired upload intents (the server deletes their quarantine objects), expired browser sessions and abandoned sign-ins |
+| `MAPI_HOUSEKEEPING_INTERVAL_S` | `300` | The sweep of expired upload intents (the server deletes their quarantine objects), expired browser sessions and abandoned sign-ins. From v0.15, an upload whose file arrived becomes `uploaded` when its PUT URL expires, and a version can still use it. The sweep expires it 7 days after its PUT URL expired, if no version used it. The sweep also deletes old tracking points (`MAPI_TRACKING_RETENTION_DAYS`) |
 | `MAPI_TRACKING_RETENTION_DAYS` | unset | v0.11. The days after a run finishes that the server keeps its metric points and its `user` log lines (1 to 36500). The housekeeping sweep deletes older rows in batches. The server always keeps the metric summaries, the value of each metric without a step, the params, the tags, the name and the note, thus search and comparison continue to work. If you do not set it, the server keeps the points while it keeps the run. See [Track metrics, params and tags](../guides/tracking.md#retention). |
 | `MAPI_AUTO_RETRY_WINDOW_S` | `1800` | No automatic retry of a run that has continued for longer than this time |
 | `MAPI_AUTO_RETRY_COST_FACTOR` | `2` | No automatic retry when the cost of a run is this multiple of its estimate |

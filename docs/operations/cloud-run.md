@@ -76,10 +76,13 @@ To make the Job:
 
 1. Select a region that has Cloud Run GPUs (L4) and request the GPU quota for the project.
 2. Build and push the `base-dl` image. It is about 3 GB, because of the CUDA wheels.
-3. In Terraform, set `images["base-dl"]` and `gpu_jobs = true` in the `exec` module. The
-   default is `false`.
-4. Apply. Set `MAPI_CLOUDRUN_GPU_JOBS=true` on the orchestrator. Without it, the executor
-   does not offer the GPU class.
+3. In `infra/terraform/envs/<env>/main.tf`, set `gpu_jobs = true` (the default is
+   `false`). The `stack` module gives it to the `exec` module of each pool. The image
+   `images["base-dl"]` comes from `images.tfvars.json`, which `deploy/gcp/build-push.sh`
+   writes.
+4. Apply. The `exec` module then adds `GPU` to the classes of the inventory. Thus Terraform
+   sets `MAPI_CLOUDRUN_GPU_JOBS=true` on the orchestrator. Without this setting, the
+   executor does not offer the GPU class.
 5. Submit a small `dl.cnn_classifier` run of the class `GPU`.
 6. Open the run. Make sure that the param `dl.backend` is `gpu` and that the run has no
    `GPU_UNAVAILABLE` warning.

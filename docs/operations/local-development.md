@@ -193,6 +193,26 @@ cases `e18`, `e51`, `e21`, `e58`, `e23` and `e81b` to `scotland_lip.nc`, `heat_p
 Explorer, run `node scripts/docs_screenshots_science.mjs .local/screenshots-science explorer`.
 Refer to the header of `scripts/docs_screenshots_science.mjs` for the full procedure.
 
+## Deep learning and images on a laptop <span class="mapi-badge">v0.15</span> { #deep-learning-and-images-on-a-laptop }
+
+`make install` installs `mapi-jax` with the CPU build of JAX. It also installs
+`mapi-sklearn` with the `gbm` extra (LightGBM and CatBoost) and pymc-extras. Thus a
+`make dev` stack can fit the `dl.*`, `causal.*` and `ts.bsts` models, and the LightGBM and
+CatBoost classifiers.
+
+- The local-process executor of `make dev` runs each `dl.*` model on the CPU. A run of the
+  class `GPU` also uses the CPU, and it shows the warning `GPU_UNAVAILABLE`
+  ([Troubleshooting](troubleshooting.md#warnings-on-a-run)). The `cuda12` extra of
+  `mapi-jax` is only in the `mapi/base-dl` image ([Container images](images.md#the-deep-learning-image)).
+- Use small settings on a CPU, for example a few epochs and small images. The guide
+  [Deep learning](../guides/deep-learning.md) gives the settings.
+- `mapi datasets upload-images` uploads a folder of images as an image collection to the
+  local shim. The guide [Image data](../guides/image-data.md#large-image-sets-collections)
+  tells how.
+- Logged images and tables (v0.14) go to the bundles bucket of the shim, under
+  `.local/gcs`. The guide [Compare runs and use experiments](../guides/run-comparison.md)
+  shows them on the compare page.
+
 ## End-to-end tests
 
 `make e2e` does the M1 flow through the stack:

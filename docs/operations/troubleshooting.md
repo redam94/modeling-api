@@ -167,6 +167,71 @@ A run is `stalled`
     message tells which settings to change. For example, `sci.storm_localisation` refuses a
     render of more than 50 million values.
 
+## Warnings on a run <span class="mapi-badge">v0.11</span> { #warnings-on-a-run }
+
+A warning does not stop a run. The run page shows each warning in the event timeline.
+`mapi runs watch RUN` and `GET /v1/runs/{run_id}/events` also give it. These warnings come from
+the run tracking, the media, the GPU class and the image collections.
+
+`TRACKING_BUDGET`
+:   The run logged more than its tracking budget, for example more than 10 000 points in one
+    series or more than 1000 series. The platform did not keep the points after the budget.
+    The run gets one warning at the end. The message names the reasons and the series with
+    the most dropped points. To prevent it, log a curve each k-th step, or use fewer labels.
+    [Tracking budgets](../reference/run-protocol.md#tracking-budgets) gives all the limits.
+    More than 64 MiB of tracking messages is not a warning. The run then fails with
+    `SANDBOX_VIOLATION`.
+
+`MEDIA_BUDGET`
+:   The run logged more than 1000 media items or 256 MiB of media (v0.14). The platform did not
+    keep the items after the budget. Each attempt gets a maximum of one warning. Log the
+    images less frequently, for example at each tenth epoch, or log smaller images. Through
+    the API (`POST /v1/runs/{run_id}/media`), the same budget gives `429 QUOTA_EXCEEDED`.
+
+`MEDIA_IGNORED`, `MEDIA_INVALID`, `MEDIA_UPLOAD_FAILED` and `MEDIA_REJECTED`
+:   The platform did not keep one media item. `MEDIA_IGNORED`: the run has no media policy.
+    `MEDIA_INVALID`: the item is not a PNG, a JPEG or a valid table, or it is too large.
+    `MEDIA_UPLOAD_FAILED`: the upload of the supervisor failed. `MEDIA_REJECTED`: the checks
+    of the server failed. [Run protocol: Media](../reference/run-protocol.md#media) tells
+    each check.
+
+`GPU_UNAVAILABLE`
+:   The run has the resource class `GPU`, but the runner sees no NVIDIA device (v0.15). The
+    run continues on the CPU, more slowly. These are the usual causes:
+
+    - The worker uses the local-process executor. This executor always uses the CPU.
+    - The docker executor runs with `MAPI_DOCKER_GPUS=false` (the default).
+    - The host has no NVIDIA driver or no NVIDIA Container Toolkit.
+    - The Cloud Run GPU Job has no GPU. This path is not verified
+      ([GPU jobs](cloud-run.md#gpu-jobs)).
+
+    After the fix, make sure that the param `dl.backend` of the next run is `gpu`.
+
+`VIEW_SAMPLE_FAILED`
+:   A fit on an image collection could not decode its sample of images (v0.15). The views,
+    the scorecard and the Model Explorer use a sample of a maximum of 500 images. The fit
+    continues without the sample, and the views then show only the manifest. The text of the
+    warning gives the reason, for example an image that the runner cannot read.
+
+`CHECKPOINT_SKIPPED`
+:   A network did not save one checkpoint, because its `meta.json` was larger than 16 MiB
+    (v0.15). The file holds the epoch, the early-stopping state, the training history and the
+    confusion matrices of the epochs. Thus a fit with many epochs or many classes can make it
+    too large. The run continues. If the run stops, the next attempt continues from the last
+    checkpoint that the run saved.
+
+`CAPABILITY_UNSUPPORTED` at `/execution/resource_class`
+:   The spec selects the class `GPU` for a model that does not use a GPU. Only
+    `dl.cnn_classifier` and `dl.finetune_classifier` use the GPU class. Select `S`, `M` or
+    `L`. The same code with the severity `info` tells you that the model can use the GPU
+    class.
+
+An upload of an image collection stopped
+:   Run the same `mapi datasets upload-images` command again with the same `--state` file.
+    The client skips the parts that arrived and renews the upload links that expired. The
+    server keeps an upload whose file arrived until 7 days after its PUT URL expired. Refer to
+    [Image data: continue an upload](../guides/image-data.md#continue-an-upload).
+
 ## Workflows and science models <span class="mapi-badge">v0.9</span> { #workflows-and-science-models }
 
 `EXPRESSION_ERROR` in a branch node

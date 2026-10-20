@@ -16,6 +16,7 @@ Only the executor, the store and the identity provider change.
 | PostgreSQL | embedded (`pgserver`) or your `DATABASE_URL` | the official `postgres:16` image | Cloud SQL |
 | Object storage | the GCS shim, in `.local/gcs` | the GCS shim image, in a volume | Cloud Storage |
 | Runs execute as | `mapi-runner` subprocesses of the worker | subprocesses of the worker container, or one container for each run | Cloud Run Jobs, one new sandbox for each run |
+| A run of the class `GPU` (v0.15) | uses the CPU (warning `GPU_UNAVAILABLE`) | gets one NVIDIA GPU with the docker executor and `MAPI_DOCKER_GPUS=true`. If not, it uses the CPU | the GPU Job of `base-dl` (`MAPI_CLOUDRUN_GPU_JOBS=true`, not verified) |
 | Code | your working tree, with hot reload | the [container images](images.md) | the same images |
 | Sign-in | the development IdP | the development IdP | Google or another OpenID provider |
 | Use it for | development, demos, the end-to-end tests | a full check of the production images | a multi-tenant private beta: start with the [[verify M0] checklist](gcp-deployment.md#before-you-start-the-verify-m0-checklist) |
@@ -56,8 +57,8 @@ These items apply to the two local ways:
   how to work on one component, and the location of the state.
 - [Docker Compose](docker.md): the compose stack, its network layout and how to select the
   executor.
-- [Container images](images.md): the six images, how the build makes them, and the checks
-  that keep them correct.
+- [Container images](images.md): the seven images (with the deep learning image `base-dl`),
+  how the build makes them, and the checks that keep them correct.
 - [Deploying to Google Cloud](gcp-deployment.md): the [verify M0] checklist, then the Terraform and
   deploy scripts, step by step, until you have the first tenant.
 - [Security hardening on Google Cloud](security-hardening.md): what each control does, and the
