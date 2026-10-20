@@ -51,6 +51,7 @@ __all__ = [
     "first_error",
     "live_capabilities",
     "pin_document",
+    "refuse_retired_kind",
     "resolve_dataset",
     "resolve_model_version",
     "score_draw_cap",
@@ -60,6 +61,20 @@ __all__ = [
 ]
 
 DOCUMENT_KINDS = ("ModelSpec", "ScoreRequest", "Sweep", "Backtest", "SBC", "Campaign")
+RETIRED_KINDS: dict[str, str] = {"Sweep": "Use a workflow with a search.grid node"}
+"""v0.14: kinds stored documents may still have, which new specs and revisions may not."""
+
+
+def refuse_retired_kind(v: Validation) -> None:
+    """A new spec or revision of a retired kind (``Sweep``) is refused: 422 at ``/kind``.
+    Stored documents of that kind still read and list."""
+    action = RETIRED_KINDS.get(str(v.document.get("kind")))
+    if action is not None:
+        raise MapiError(
+            f"{v.document['kind']} documents are retired. {action}.",
+            code=ErrorCode.SCHEMA_INVALID,
+            pointer="/kind",
+        )
 
 
 @dataclass

@@ -162,6 +162,7 @@ def _fit_remote(
     tables: dict[str, Path],
     resource_class: ResourceClass | None,
     wait: bool,
+    experiment: str | None = None,
 ) -> None:
     out = st.output
     unknown = sorted(set(tables) - set(spec.data.side_tables))
@@ -190,7 +191,14 @@ def _fit_remote(
             out.issues(rev.issues, title=f"{rev.ref} is invalid")
             raise typer.Exit(EXIT_FAILURE)
         out.info(f"spec {rev.ref}")
-        run = api.runs.fit(rev.spec_id, rev.revision, resource_class=resource_class)
+        experiment_id = None
+        if experiment is not None:
+            from mapi_cli.commands.experiments import resolve_experiment
+
+            experiment_id = resolve_experiment(api, experiment).id
+        run = api.runs.fit(
+            rev.spec_id, rev.revision, resource_class=resource_class, experiment_id=experiment_id
+        )
         out.info(f"submitted run {run.id}")
         if wait:
             run = follow_run(api, out, run, title=f"fit {spec.metadata.name}")
@@ -287,6 +295,12 @@ def fit(
     timeout: Annotated[
         float | None, typer.Option("--timeout", help="(local) give up after N seconds")
     ] = None,
+    experiment: Annotated[
+        str | None,
+        typer.Option(
+            "--experiment", help="(remote) Put the run in this experiment (an id or a name)"
+        ),
+    ] = None,
 ) -> None:
     """Fit a spec locally (in-process) or on the API (--remote)."""
     from mapi_cli.local import parse_assignments
@@ -296,8 +310,15 @@ def fit(
     spec = load_model_spec(text)
     tables = parse_assignments(side_table or [])
     if remote is not None:
-        _fit_remote(st, remote, spec_file, text, spec, data, tables, resource_class, wait)
+        _fit_remote(
+            st, remote, spec_file, text, spec, data, tables, resource_class, wait, experiment
+        )
         return
+    if experiment is not None:
+        raise MapiError(
+            "--experiment needs --remote: a local fit does not make a run on the API",
+            code=ErrorCode.SCHEMA_INVALID,
+        )
     if data is None:
         raise MapiError("local fits need --data (a .zarr.zip)", code=ErrorCode.SCHEMA_INVALID)
     bundle_dir = out_dir or Path("bundles") / spec.metadata.name

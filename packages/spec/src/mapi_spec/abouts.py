@@ -22,6 +22,7 @@ from mapi_spec.about import About, AboutKind, AboutReference, Difficulty, Typica
 
 __all__ = [
     "CAUSAL_MODEL_IDS",
+    "CLASSIFICATION_MODEL_IDS",
     "MODEL_ABOUTS",
     "PLANNED_MODEL_IDS",
     "SCIENCE_MODEL_IDS",
@@ -641,8 +642,36 @@ SPLIT_ABOUTS: Final[dict[str, About]] = {
         related=["core.time_holdout"],
         fits={"goal": ["validate_model"]},
     ),
+    "core.column": _a(
+        "Split by a column",
+        "Uses a column of the data, such as split = test, to select the holdout rows.",
+        ["You already have a train and test assignment"],
+        ["You forecast a time series (hold out the latest periods instead)"],
+        ["A column along the rows with the assignment, such as train and test"],
+        ["The holdout rows are similar to the rows that you will predict"],
+        ["A training part and the holdout rows, and holdout error metrics"],
+        _B,
+        _NOW,
+        "An image upload has a split column with train and test. The test uses the 'test' images.",
+        related=["core.stratified", "core.leave_group_out"],
+        fits={"goal": ["classify", "predict_values", "validate_model"]},
+    ),
+    "core.stratified": _a(
+        "Stratified random holdout",
+        "Holds out the same share of rows from each class, selected at random.",
+        ["Classes have very different sizes"],
+        ["You forecast a time series (hold out the latest periods instead)"],
+        ["A class column along the rows"],
+        ["The rows are independent of each other"],
+        ["A training part and a holdout with the same class shares, and holdout metrics"],
+        _B,
+        _NOW,
+        "Hold out 25% of the images of each class. A class with 40 images gives 10 to the test.",
+        related=["core.column", "core.leave_group_out"],
+        fits={"goal": ["classify", "predict_values", "validate_model"]},
+    ),
 }
-"""Cards of the five built-in train/test splits (``mapi_steps.splits``)."""
+"""Cards of the built-in train/test splits (``mapi_steps.splits``)."""
 
 # ==================================================================================== models
 
@@ -704,7 +733,10 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
         related=["core.encode_levels"],
         expert="Bayesian hierarchical GLM (PyMC, NUTS). Partially pooled group intercepts and "
         "optional slopes. Group-level covariates in the mean. The model draws new levels from "
-        "the fitted hyperprior.",
+        "the fitted hyperprior. Families: normal, Student-t, Poisson, Bernoulli, negative "
+        "binomial, zero-inflated Poisson and negative binomial (counts with many zeros), beta "
+        "(shares between 0 and 1), gamma (positive amounts) and ordinal (ordered categories, "
+        "cumulative logit).",
         fits={
             "goal": ["explain_drivers", "predict_values"],
             "data_shape": ["table", "panel"],
@@ -1699,20 +1731,101 @@ MODEL_ABOUTS: Final[dict[str, About]] = {
             "The result is yes or no for each row",
             "You want a probability to put rows in order or to select rows",
         ],
-        ["The result is a number or has more than two outcomes"],
+        [
+            "The result is a number",
+            "The result has more than two classes (use the multiclass classifier)",
+        ],
         ["A table with a yes/no column and the columns that explain it"],
         ["The rows that you score are similar to the rows that the model learned from"],
         ["The probability of 'yes' for each row"],
         _B,
         _SEC,
         "The probability that each customer orders again next month, to decide who gets a voucher.",
-        related=["sklearn.tabular_regressor", "choice.multinomial_logit"],
-        expert="An allow-listed scikit-learn or xgboost binary classifier on stacked rows. "
-        "Point representation of the positive-class probability.",
+        related=[
+            "sklearn.multiclass_classifier",
+            "sklearn.tabular_regressor",
+            "choice.multinomial_logit",
+        ],
+        expert="An allow-listed scikit-learn, xgboost, LightGBM or CatBoost binary classifier "
+        "on stacked rows (LightGBM and CatBoost need the mapi-sklearn[gbm] extra, which the "
+        "base-ml image has). Point representation of the positive-class probability.",
         fits={
-            "goal": ["predict_values", "understand_choices"],
+            "goal": ["predict_values", "understand_choices", "classify"],
             "data_shape": ["table", "panel", "choices"],
             "drivers": ["yes"],
+        },
+    ),
+    "sklearn.multiclass_classifier": _a(
+        "Put rows into classes",
+        "Estimates the probability of each class for each row of a table. For example, the "
+        "product category of an order or the reason for a support call.",
+        [
+            "The result has three or more classes for each row",
+            "You want a probability for each class, not only the most probable class",
+        ],
+        [
+            "The result is a number",
+            "The result is yes or no (use the yes-or-no classifier)",
+            "Some classes have only a few rows",
+        ],
+        ["A table with a class column (text or whole numbers) and the columns that explain it"],
+        [
+            "The rows that you score are similar to the rows that the model learned from",
+            "The classes at scoring are the classes that the model learned",
+        ],
+        [
+            "The probability of each class for each row",
+            "ROC and precision-recall curves for each class, and a confusion matrix",
+        ],
+        _B,
+        _SEC,
+        "Put each support ticket into one of 6 topics, and send the tickets with a low "
+        "probability to a person.",
+        related=["sklearn.tabular_classifier", "tabular.image_logistic"],
+        expert="An allow-listed multiclass classifier (logistic regression, random forest, "
+        "histogram gradient boosting, xgboost, LightGBM or CatBoost; LightGBM and CatBoost "
+        "need mapi-sklearn[gbm]) on stacked rows. The output y_hat has a class dim and "
+        "holds the class probabilities (point representation). At most 200 classes.",
+        fits={
+            "goal": ["classify", "predict_values"],
+            "data_shape": ["table", "panel"],
+            "drivers": ["yes"],
+            "frequency": ["not_time"],
+        },
+    ),
+    "tabular.image_logistic": _a(
+        "Classify small images",
+        "Learns the class of small images, such as shapes or digits, from labelled examples. "
+        "It gives the probability of each class with a range.",
+        [
+            "You have a few hundred to a few thousand small images with a class label",
+            "You want a probability with a range for each class",
+        ],
+        [
+            "The images are large or very different (the model is linear)",
+            "You need high accuracy on photographs",
+        ],
+        [
+            "An image dataset from an image folder upload: pixels and a label for each image",
+            "Images of the same size (the upload can resize them)",
+        ],
+        ["The main patterns of the pixels (PCA) or the pixels separate the classes linearly"],
+        [
+            "The probability of each class for each image, with a range",
+            "Images of the main patterns and of the class means in the run",
+        ],
+        _I,
+        _MIN,
+        "Classify 16 x 16 pictures of circles, squares and crosses, and test on 25% of them.",
+        related=["sklearn.multiclass_classifier", "core.stratified", "core.column"],
+        expert="Bayesian multinomial logistic regression (PyMC, NUTS) on PCA scores of the "
+        "pixels (or the block-averaged pixels), with zero-sum normal priors over the classes. "
+        "Draws representation of y_hat(chain, draw, image, class).",
+        fits={
+            "goal": ["classify"],
+            "data_shape": ["images"],
+            "uncertainty": ["essential", "nice"],
+            "frequency": ["not_time"],
         },
     ),
     # ---------------------------------------------------------------- scientific models
@@ -2905,8 +3018,18 @@ CAUSAL_MODEL_IDS: Final[frozenset[str]] = frozenset(
 """The v0.13 models: the Bayesian structural time series of ``mapi-plugin-ts`` and the
 causal models of ``mapi-plugin-causal``."""
 
+CLASSIFICATION_MODEL_IDS: Final[frozenset[str]] = frozenset(
+    {"sklearn.multiclass_classifier", "tabular.image_logistic"}
+)
+"""The v0.14 classification models: the multiclass classifier of ``mapi-sklearn`` and the
+image classifier of ``mapi-plugin-tabular``."""
+
 PLANNED_MODEL_IDS: Final[frozenset[str]] = (
-    frozenset(MODEL_ABOUTS) - SURVIVING_MODEL_IDS - SCIENCE_MODEL_IDS - CAUSAL_MODEL_IDS
+    frozenset(MODEL_ABOUTS)
+    - SURVIVING_MODEL_IDS
+    - SCIENCE_MODEL_IDS
+    - CAUSAL_MODEL_IDS
+    - CLASSIFICATION_MODEL_IDS
 )
 """Model ids the v0.5 mmm-framework and statsmodels plugins implement (their cards are
 here so plugins, docs and the chooser use the same words)."""

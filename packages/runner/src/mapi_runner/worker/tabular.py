@@ -13,6 +13,8 @@ cap                         checked
 ``max_decompression_ratio`` gzip CSV (streamed), Parquet (declared uncompressed size), zip
                             archives (entry sizes) and netCDF (decoded array bytes)
 ``max_uncompressed_bytes``  the same, as an absolute size
+``max_image_*``             ``image_folder`` uploads: images, pixels (from the header) and
+                            bytes of one image file (:mod:`~mapi_runner.worker.image_ingest`)
 ==========================  ==================================================================
 
 Problems are reported as ``MapiError`` with one :class:`~mapi_spec.errors.Issue` whose
@@ -38,6 +40,7 @@ import pandas as pd
 from mapi_sdk.schema import infer_freq
 from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.guided import ColumnProfile
+from mapi_spec.ingest import MAX_IMAGE_FILE_BYTES, MAX_IMAGE_PIXELS, MAX_IMAGES
 
 from mapi_runner.jobs import IngestJob
 
@@ -95,6 +98,13 @@ class IngestLimits:
     """Dims of one array."""
     max_attr_bytes: int = 65_536
     """Bytes of one attribute value."""
+    # v0.14: image_folder uploads
+    max_images: int = MAX_IMAGES
+    """Images (manifest rows) of one upload; ``ImageFolderOptions.max_images`` is lower."""
+    max_image_pixels: int = MAX_IMAGE_PIXELS
+    """Pixels of one image, checked from its header before it is decoded."""
+    max_image_file_bytes: int = MAX_IMAGE_FILE_BYTES
+    """Bytes of one image file in the zip."""
 
     @classmethod
     def from_job(cls, job: IngestJob) -> IngestLimits:
@@ -202,8 +212,10 @@ def sniff(path: Path) -> str:
 # ================================================================================== archives
 
 
-def check_zip_archive(path: Path, limits: IngestLimits) -> None:
-    """Refuse zip bombs before any entry is decompressed (sizes are declared per entry)."""
+def check_zip_archive(path: Path, limits: IngestLimits, *, action: str | None = None) -> None:
+    """Refuse zip bombs before any entry is decompressed (sizes are declared per entry).
+    ``action`` replaces the suggested action for an unreadable archive (default: a zarr
+    zip)."""
     stored = path.stat().st_size
     try:
         with zipfile.ZipFile(path) as zf:
@@ -212,7 +224,8 @@ def check_zip_archive(path: Path, limits: IngestLimits) -> None:
         raise problem(
             ErrorCode.SCHEMA_INVALID,
             "the upload is not a readable zip archive",
-            action="Upload the .zarr.zip that mapi_sdk.wire.write_zarr_zip (or the xarray "
+            action=action
+            or "Upload the .zarr.zip that mapi_sdk.wire.write_zarr_zip (or the xarray "
             "to_zarr into a ZipStore) wrote. Do not change the file.",
             untrusted=str(exc),
         ) from None

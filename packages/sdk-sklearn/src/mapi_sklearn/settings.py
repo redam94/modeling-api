@@ -23,7 +23,7 @@ from mapi_sdk.models import ModelSettings
 from mapi_spec.schema import Role
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from mapi_sklearn.estimators import EstimatorChoice
+from mapi_sklearn.estimators import ESTIMATORS, EstimatorChoice
 
 __all__ = [
     "BootstrapSettings",
@@ -33,6 +33,7 @@ __all__ = [
     "ConformalSettings",
     "ConformalUncertainty",
     "CoordEncoding",
+    "MulticlassClassifierSettings",
     "NoUncertainty",
     "PointSettings",
     "QuantileSettings",
@@ -237,6 +238,38 @@ class ClassifierSettings(SklearnSettings):
     uncertainty: NoUncertainty = Field(default_factory=NoUncertainty)
     positive_class: float | None = None
     contributions: Literal["none", "zeroing"] = "none"
+
+
+class MulticlassClassifierSettings(SklearnSettings):
+    """``sklearn.multiclass_classifier``: one probability per class (``y_hat(*rows, class)``).
+
+    ``class_order`` fixes the classes and their order (it must name every training label);
+    without it the classes are the sorted training labels. ``target_dtype`` is the dtype the
+    input schema declares for the target: ``str`` labels or ``int64`` codes.
+    """
+
+    estimator: EstimatorChoice
+    uncertainty: NoUncertainty = Field(default_factory=NoUncertainty)
+    class_order: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = Field(
+        None, min_length=2, max_length=200
+    )
+    max_classes: int = Field(50, ge=2, le=200)
+    target_dtype: Literal["str", "int64"] = "str"
+
+    @model_validator(mode="after")
+    def _classification(self) -> MulticlassClassifierSettings:
+        entry = ESTIMATORS[self.estimator.kind]
+        if entry.task != "classification":
+            raise ValueError(
+                f"estimator {entry.kind!r} is a {entry.task} estimator; a classifier is needed"
+            )
+        order = self.class_order
+        if order is not None:
+            if len(set(order)) != len(order):
+                raise ValueError("class_order must not repeat a class")
+            if len(order) > self.max_classes:
+                raise ValueError("class_order has more classes than max_classes")
+        return self
 
 
 # The built-in ``sklearn.*`` plugins take the estimator from settings, so it is required there

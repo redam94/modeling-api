@@ -65,6 +65,11 @@ __all__ = [
     "MAX_FIELD_FRAMES",
     "MAX_FIELD_PIXELS",
     "MAX_FRAME_STATS",
+    "MAX_GALLERY_FACETS",
+    "MAX_GALLERY_ITEMS",
+    "MAX_GALLERY_LEVELS",
+    "MAX_GALLERY_PNG_CHARS",
+    "MAX_GALLERY_THUMB",
     "MAX_GRID_CELLS",
     "MAX_GRID_DRAWS",
     "MAX_GRID_GEOS",
@@ -123,6 +128,9 @@ __all__ = [
     "FitVsActualView",
     "ForecastView",
     "FrameStats",
+    "GalleryFacet",
+    "GalleryItem",
+    "GalleryView",
     "GroupComparison",
     "GroupComparisonView",
     "GroupStats",
@@ -176,6 +184,7 @@ __all__ = [
     "ResidualDiagnosticsView",
     "ResponseCurvesView",
     "ResponseGridView",
+    "RgbRaster",
     "SeriesView",
     "ShapeKind",
     "ShapeView",
@@ -574,15 +583,26 @@ MAX_CIRC_GROUPS: Final = 12
 MAX_POINTS: Final = 5000
 """Points of a ``points`` sample (above: an even sample plus a 64 x 64 density grid)."""
 MAX_POINT_DENSITY: Final = 64
+MAX_GALLERY_ITEMS: Final = 240
+"""Thumbnails of a ``gallery`` view (all images up to it, else a sample)."""
+MAX_GALLERY_THUMB: Final = 64
+"""Largest side of a gallery thumbnail in pixels."""
+MAX_GALLERY_FACETS: Final = 8
+MAX_GALLERY_LEVELS: Final = 64
+MAX_GALLERY_PNG_CHARS: Final = 24_000
+"""Base64 characters of one gallery thumbnail."""
+_PNG_SIGNATURE: Final = b"\x89PNG\r\n\x1a\n"
 
 DataSection = Literal[
     "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
     "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality",
-    "structure", "images", "profiles", "map", "network", "tree", "circular", "points",
+    "structure", "images", "gallery", "profiles", "map", "network", "tree", "circular",
+    "points",
 ]  # fmt: skip
 """Sections of the Data Explorer (``ui/explore/<section>.json``)."""
 SCIENCE_SECTIONS: Final[tuple[str, ...]] = (
-    "structure", "images", "profiles", "map", "network", "tree", "circular", "points",
+    "structure", "images", "gallery", "profiles", "map", "network", "tree", "circular",
+    "points",
 )  # fmt: skip
 """The Data Explorer sections for data that is not (only) a time series: the detected
 structure and one picture per data shape."""
@@ -606,7 +626,8 @@ ModelSection = Literal[
 DATA_SECTIONS: Final[tuple[str, ...]] = (
     "overview", "distributions", "timeseries", "missingness", "outliers", "correlation",
     "ccf", "acf_pacf", "stationarity", "stl", "vif", "groups", "quality",
-    "structure", "images", "profiles", "map", "network", "tree", "circular", "points",
+    "structure", "images", "gallery", "profiles", "map", "network", "tree", "circular",
+    "points",
 )  # fmt: skip
 MODEL_SECTIONS: Final[tuple[str, ...]] = (
     "params", "diagnostics", "fit", "residuals", "decomposition", "response_curves", "irf",
@@ -1143,6 +1164,16 @@ class FieldRaster(_View):
         return len(raw) // 2
 
 
+def _check_rgb(color: str, rgb: RgbRaster | None, cells: int, what: str) -> None:
+    if color == "rgb":
+        if rgb is None:
+            raise ValueError(f"an rgb field needs an rgb raster in every {what}")
+        if rgb.cells() != cells:
+            raise ValueError(f"every rgb raster needs {cells} cells (height x width)")
+    elif rgb is not None:
+        raise ValueError(f"only an rgb field has an rgb raster in a {what}")
+
+
 def decode_raster(
     r: FieldRaster, encoding: Literal["linear", "log10"] = "linear"
 ) -> list[float | None]:
@@ -1160,6 +1191,23 @@ def decode_raster(
         v = lo + (hi - lo) * min(q, FIELD_LEVELS) / FIELD_LEVELS
         out.append(10.0**v if encoding == "log10" else v)
     return out
+
+
+class RgbRaster(_View):
+    """``height`` x ``width`` RGB pixels, row-major: the base64 of 3 bytes per cell (r, g, b
+    in 0..255). Shown when the field's ``color`` is ``rgb`` (v0.14)."""
+
+    data: str = Field(..., max_length=4 * MAX_FIELD_PIXELS * MAX_FIELD_PIXELS + 4)
+
+    def cells(self) -> int:
+        """The number of cells ``data`` holds (it must be valid base64 of whole triplets)."""
+        try:
+            raw = base64.b64decode(self.data, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValueError("rgb raster data is not base64") from None
+        if len(raw) % 3:
+            raise ValueError("rgb raster data is not a whole number of (r, g, b) triplets")
+        return len(raw) // 3
 
 
 class FieldArrows(_View):
@@ -1198,6 +1246,7 @@ class FieldFrame(_View):
     q95: FieldRaster | None = None
     draws: list[FieldRaster] = Field(default_factory=list, max_length=MAX_FIELD_DRAWS)
     arrows: FieldArrows | None = None
+    rgb: RgbRaster | None = Field(None, description="v0.14: the colour picture (color 'rgb')")
 
     def rasters(self) -> list[FieldRaster]:
         return [r for r in (self.mean, self.sd, self.q05, self.q95, *self.draws) if r is not None]
@@ -1210,6 +1259,11 @@ class FieldEntry(_View):
     the coordinate at the middle of each block). Row 0 is drawn at the top unless ``origin``
     is ``lower``. ``facet`` names the level of each other dim of the output (one entry per
     level). ``kind`` is ``vector`` when the output has a ``component`` dim.
+
+    ``color`` ``rgb`` (v0.14): the ``channel_dim`` holds red, green and blue; every frame has
+    an :class:`RgbRaster` and ``mean`` is the luminance (0.299 r + 0.587 g + 0.114 b) for the
+    statistics and the histogram. ``rgb_scale`` ``uint8`` shows the values as they are;
+    ``stretch`` maps ``stats.min..max`` of float data to 0..255.
     """
 
     output: str = Field(..., max_length=128)
@@ -1237,6 +1291,11 @@ class FieldEntry(_View):
     n_draws: int = Field(0, ge=0, description="Posterior draws behind the statistics")
     frames: list[FieldFrame] = Field(..., min_length=1, max_length=MAX_FIELD_FRAMES)
     omitted_frames: int = Field(0, ge=0, description="Frames left out by even thinning")
+    color: Literal["single", "rgb"] = Field("single", description="v0.14: rgb pictures")
+    channel_dim: str | None = Field(
+        None, max_length=128, description="v0.14: the dim of the r, g, b channels"
+    )
+    rgb_scale: Literal["uint8", "stretch"] = "uint8"
 
     @model_validator(mode="after")
     def _shape(self) -> Self:
@@ -1251,10 +1310,13 @@ class FieldEntry(_View):
                     raise ValueError(f"every raster needs {cells} cells (height x width)")
             if self.kind == "scalar" and f.arrows is not None:
                 raise ValueError("only vector fields have arrows")
+            _check_rgb(self.color, f.rgb, cells, "frame")
         return self
 
     def cells(self) -> int:
-        return self.height * self.width * sum(len(f.rasters()) for f in self.frames)
+        """Raster cells of the entry; an rgb raster counts as two rasters."""
+        per_frame = sum(len(f.rasters()) + 2 * (f.rgb is not None) for f in self.frames)
+        return self.height * self.width * per_frame
 
 
 class FieldsView(_Explore):
@@ -1435,6 +1497,7 @@ class ImageGroupMean(_View):
     label: ViewScalar = None
     n: int = Field(..., ge=0)
     mean: FieldRaster
+    rgb: RgbRaster | None = Field(None, description="v0.14: the mean colour picture")
 
 
 class ImageComponent(_View):
@@ -1470,10 +1533,12 @@ class ImageEntry(FieldEntry):
         for r in (self.mask, *(g.mean for g in self.groups)):
             if r is not None and r.cells() != cells:
                 raise ValueError(f"every raster needs {cells} cells (height x width)")
+        for g in self.groups:
+            _check_rgb(self.color, g.rgb, cells, "group")
         return self
 
     def cells(self) -> int:
-        extra = (self.mask is not None) + len(self.groups)
+        extra = (self.mask is not None) + sum(1 + 2 * (g.rgb is not None) for g in self.groups)
         return super().cells() + self.height * self.width * extra
 
 
@@ -1494,6 +1559,72 @@ class ImagesView(_Explore):
         cells = sum(f.cells() for f in self.fields)
         if cells > MAX_FIELD_CELLS:
             raise ValueError(f"the view holds {cells} raster cells (max {MAX_FIELD_CELLS})")
+        return self
+
+
+class GalleryItem(_View):
+    """One thumbnail of a ``gallery`` view: a base64 PNG of at most
+    :data:`MAX_GALLERY_THUMB` pixels a side, and the facet values of its image (untrusted
+    text)."""
+
+    index: int = Field(..., ge=0, description="Position along the image dim")
+    label: ViewScalar = Field(None, description="The image dim label")
+    meta: dict[str, ViewScalar] = Field(default_factory=dict, max_length=16)
+    png: str = Field(..., max_length=MAX_GALLERY_PNG_CHARS)
+
+    @model_validator(mode="after")
+    def _png(self) -> Self:
+        try:
+            raw = base64.b64decode(self.png, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValueError("a gallery thumbnail is not base64") from None
+        if not raw.startswith(_PNG_SIGNATURE):
+            raise ValueError("a gallery thumbnail is not a PNG")
+        return self
+
+
+class GalleryFacet(_View):
+    """A variable or coord along the image dim and the number of images of each level
+    (levels past :data:`MAX_GALLERY_LEVELS` are counted in ``(other)``)."""
+
+    name: str = Field(..., max_length=128)
+    source: Literal["var", "coord"]
+    counts: dict[str, int] = Field(..., max_length=MAX_GALLERY_LEVELS + 1)
+
+
+class GalleryView(_Explore):
+    """``gallery``: thumbnails of the images of one variable (an even sample per facet level
+    when there are more than :data:`MAX_GALLERY_ITEMS`), with the image counts per facet
+    level (v0.14)."""
+
+    format: Literal["mapi.data-explorer.gallery/v1"] = "mapi.data-explorer.gallery/v1"
+
+    model_config = _examples("gallery")
+
+    var: str = Field(..., max_length=256)
+    frame_dim: str = Field(..., max_length=128)
+    y_dim: str = Field(..., max_length=128)
+    x_dim: str = Field(..., max_length=128)
+    channel_dim: str | None = Field(None, max_length=128)
+    color: Literal["gray", "rgb"]
+    source_height: int = Field(..., ge=1)
+    source_width: int = Field(..., ge=1)
+    thumb_height: int = Field(..., ge=1, le=MAX_GALLERY_THUMB)
+    thumb_width: int = Field(..., ge=1, le=MAX_GALLERY_THUMB)
+    n_images: int = Field(..., ge=0)
+    items: list[GalleryItem] = Field(default_factory=list, max_length=MAX_GALLERY_ITEMS)
+    facets: list[GalleryFacet] = Field(default_factory=list, max_length=MAX_GALLERY_FACETS)
+    selection: Literal["all", "stratified", "even"]
+    other_vars: list[str] = Field(default_factory=list, max_length=256)
+
+    @model_validator(mode="after")
+    def _items(self) -> Self:
+        if len(self.items) > self.n_images:
+            raise ValueError("a gallery has no more items than images")
+        if self.selection == "all" and len(self.items) != self.n_images:
+            raise ValueError("selection 'all' shows every image")
+        if len({i.index for i in self.items}) != len(self.items):
+            raise ValueError("gallery items need distinct indices")
         return self
 
 

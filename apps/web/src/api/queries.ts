@@ -21,7 +21,24 @@ import { useAuth } from "@/stores/auth";
 import { scopeKey, useScope } from "@/stores/scope";
 
 import { ApiError, api, newIdempotencyKey, PROJECT_HEADER, unwrap, unwrapVoid, unwrapWithStatus } from "./client";
+import {
+  createExperiment,
+  createRunView,
+  deleteExperiment,
+  deleteRunView,
+  fetchExperiment,
+  fetchExperiments,
+  fetchRunCompare,
+  fetchRunKeys,
+  fetchRunViews,
+  updateExperiment,
+  updateExperimentRuns,
+  updateRunView,
+  type CompareQuery,
+  type ExperimentFilters,
+} from "./experiments";
 import { advanceLogTail, EMPTY_LOG_TAIL, logPollDelay, type LogTail } from "./logs";
+import { fetchRunMedia, fetchRunMediaKeys, type MediaListQuery } from "./media";
 import { fetchSession } from "./session";
 import {
   fetchMetricHistory,
@@ -38,6 +55,9 @@ import type {
   AuditOutcome,
   DatasetCreate,
   DatasetVersionCreate,
+  ExperimentCreate,
+  ExperimentPatch,
+  ExperimentRunsWrite,
   ExecutorUpdate,
   KillSwitchUpdate,
   Me,
@@ -58,6 +78,8 @@ import type {
   RunKind,
   RunRetry,
   RunState,
+  RunViewCreate,
+  RunViewPatch,
   ScoreCall,
   ScoreCallResult,
   TenantAdminUpdate,
@@ -128,6 +150,18 @@ export const qk = {
   metricHistory: (p: string, id: string, key: string, q?: MetricHistoryQuery) =>
     q ? (["p", p, "runs", id, "metrics", "history", key, q] as const) : (["p", p, "runs", id, "metrics", "history", key] as const),
   runParams: (p: string, id: string) => ["p", p, "runs", id, "params"] as const,
+  // v0.14: media, experiments, saved views, tracked keys and run comparison.
+  /** Prefix of the media keys and every media list of a run. */
+  runMediaData: (p: string, id: string) => ["p", p, "runs", id, "media"] as const,
+  runMediaKeys: (p: string, id: string) => ["p", p, "runs", id, "media", "keys"] as const,
+  runMedia: (p: string, id: string, q: MediaListQuery) => ["p", p, "runs", id, "media", "list", q] as const,
+  runKeys: (p: string, experimentId: string | null) => ["p", p, "run-keys", experimentId] as const,
+  runCompare: (p: string, q: CompareQuery) => ["p", p, "run-compare", q] as const,
+  experiments: (p: string) => ["p", p, "experiments"] as const,
+  experimentList: (p: string, f: ExperimentFilters) => ["p", p, "experiments", "list", f] as const,
+  experiment: (p: string, id: string) => ["p", p, "experiments", id] as const,
+  runViews: (p: string) => ["p", p, "run-views"] as const,
+  runViewList: (p: string, experimentId: string | null) => ["p", p, "run-views", experimentId] as const,
   models: (p: string) => ["p", p, "models"] as const,
   model: (p: string, id: string) => ["p", p, "models", id] as const,
   modelVersions: (p: string, id: string) => ["p", p, "models", id, "versions"] as const,
@@ -159,6 +193,19 @@ export interface RunFilters {
   kind?: RunKind;
   spec_id?: string;
   limit?: number;
+  // v0.11 run search (v0.14 UI) and the v0.14 experiment filter
+  experiment_id?: string;
+  parent_run_id?: string;
+  /** Case-insensitive substring of the run name. */
+  name?: string;
+  /** `key` or `key:value`. */
+  tag?: string[];
+  /** Grammar strings (`metric.rmse < 3`); at most 8. */
+  filter?: string[];
+  order_by?: string;
+  /** Refs whose values `Run.columns` returns; at most 16. */
+  column?: string[];
+  cursor?: string;
 }
 
 export interface TokenFilters {
@@ -445,27 +492,53 @@ export function useDryRun() {
 
 // ------------------------------------------------------------------------- runs
 
+/** The `GET /v1/runs` query of `filters` (empty values left out). */
+export function runListQuery(filters: RunFilters) {
+  return {
+    limit: filters.limit ?? PAGE_LIMIT,
+    ...(filters.state ? { state: filters.state } : {}),
+    ...(filters.kind ? { kind: filters.kind } : {}),
+    ...(filters.spec_id ? { spec_id: filters.spec_id } : {}),
+    ...(filters.experiment_id ? { experiment_id: filters.experiment_id } : {}),
+    ...(filters.parent_run_id ? { parent_run_id: filters.parent_run_id } : {}),
+    ...(filters.name ? { name: filters.name } : {}),
+    ...(filters.tag?.length ? { tag: filters.tag } : {}),
+    ...(filters.filter?.length ? { filter: filters.filter } : {}),
+    ...(filters.order_by ? { order_by: filters.order_by } : {}),
+    ...(filters.column?.length ? { column: filters.column } : {}),
+    ...(filters.cursor ? { cursor: filters.cursor } : {}),
+  };
+}
+
+function fetchRunPage(filters: RunFilters, headers: Record<string, string>, signal: AbortSignal) {
+  return unwrap(api.GET("/v1/runs", { params: { query: runListQuery(filters) }, headers, signal }));
+}
+
 export function useRuns(filters: RunFilters, opts: { live?: boolean } = {}) {
   const s = useProjectScope();
   return useQuery({
     queryKey: qk.runs(s.key, filters),
-    queryFn: ({ signal }) =>
-      unwrap(
-        api.GET("/v1/runs", {
-          params: {
-            query: {
-              limit: filters.limit ?? PAGE_LIMIT,
-              ...(filters.state ? { state: filters.state } : {}),
-              ...(filters.kind ? { kind: filters.kind } : {}),
-              ...(filters.spec_id ? { spec_id: filters.spec_id } : {}),
-            },
-          },
-          headers: s.headers,
-          signal,
-        }),
-      ),
+    queryFn: ({ signal }) => fetchRunPage(filters, s.headers, signal),
     placeholderData: keepPreviousData,
     refetchInterval: opts.live === false ? false : 5000,
+  });
+}
+
+/**
+ * Pages of runs for the runs table: the server's order and keyset cursor ("Load more"). A
+ * live refresh refetches the pages that are loaded.
+ */
+export function useRunPages(filters: Omit<RunFilters, "cursor">, opts: { live?: boolean } = {}) {
+  const s = useProjectScope();
+  return useInfiniteQuery({
+    queryKey: [...qk.runs(s.key, filters), "pages"] as const,
+    queryFn: ({ signal, pageParam }) => fetchRunPage({ ...filters, ...(pageParam ? { cursor: pageParam } : {}) }, s.headers, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next_cursor ?? null,
+    placeholderData: keepPreviousData,
+    refetchInterval: opts.live === false ? false : 10_000,
+    // A refused filter (422) does not get better on retry.
+    retry: (n, err) => !(err instanceof ApiError && err.status === 422) && n < 2,
   });
 }
 
@@ -636,6 +709,7 @@ export function applyRunPatch(run: Run, patch: RunPatch): Run {
   const next: Run = { ...run };
   if ("name" in patch) next.name = patch.name ?? null;
   if ("note" in patch) next.note = patch.note ?? null;
+  if ("experiment_id" in patch) next.experiment_id = patch.experiment_id ?? null;
   if (patch.tags) {
     const tags = { ...(run.tags ?? {}) };
     for (const [k, v] of Object.entries(patch.tags)) {
@@ -663,7 +737,178 @@ export function useUpdateRun() {
     onError: (_err, { id }, ctx) => {
       if (ctx?.previous) qc.setQueryData(qk.run(s.key, id), ctx.previous);
     },
-    onSuccess: (run) => setRun(qc, s.key, run),
+    onSuccess: (run, { patch }) => {
+      setRun(qc, s.key, run);
+      // the run counts of the experiments changed
+      if ("experiment_id" in patch) void qc.invalidateQueries({ queryKey: qk.experiments(s.key) });
+    },
+  });
+}
+
+// ------------------------------------------------------------------------- media (v0.14)
+
+export const runMediaKeysQuery = (s: ProjectScope, runId: string) =>
+  queryOptions({
+    queryKey: qk.runMediaKeys(s.key, runId),
+    queryFn: ({ signal }) => fetchRunMediaKeys(runId, { headers: s.headers, signal }),
+    enabled: Boolean(runId),
+  });
+
+/** The media series (key + labels) of a run. A live run refetches them on `tracking` frames. */
+export function useRunMediaKeys(runId: string | undefined) {
+  const s = useProjectScope();
+  return useQuery(runMediaKeysQuery(s, runId ?? ""));
+}
+
+/** The media items of one key of a run (every label set), with signed links. */
+export function useRunMedia(runId: string | undefined, q: MediaListQuery) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runMedia(s.key, runId ?? "", q),
+    queryFn: ({ signal }) => fetchRunMedia(runId ?? "", q, { headers: s.headers, signal }),
+    enabled: Boolean(runId && q.key),
+    placeholderData: keepPreviousData,
+    // the links are signed for a limited time: get new ones before they expire
+    staleTime: 5 * 60_000,
+  });
+}
+
+// ------------------------------------------------------------------------- run keys and compare (v0.14)
+
+/** Metric series, param keys and tag keys of the project's runs (or of one experiment). */
+export function useRunKeys(experimentId: string | null, enabled = true) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runKeys(s.key, experimentId),
+    queryFn: ({ signal }) => fetchRunKeys({ experimentId }, { headers: s.headers, signal }),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** The comparison of 2..10 runs: summaries, histories of the chosen keys, params and media. */
+export function useRunCompare(q: CompareQuery, enabled = true) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runCompare(s.key, q),
+    queryFn: ({ signal }) => fetchRunCompare(q, { headers: s.headers, signal }),
+    enabled: enabled && q.runs.length >= 2,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60_000,
+    retry: (n, err) => !(err instanceof ApiError && (err.status === 404 || err.status === 422)) && n < 2,
+  });
+}
+
+// ------------------------------------------------------------------------- experiments (v0.14)
+
+export function useExperiments(f: ExperimentFilters = {}) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.experimentList(s.key, f),
+    queryFn: ({ signal }) => fetchExperiments(f, { headers: s.headers, signal }),
+  });
+}
+
+export function useExperiment(id: string | undefined) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.experiment(s.key, id ?? ""),
+    queryFn: ({ signal }) => fetchExperiment(id ?? "", { headers: s.headers, signal }),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateExperiment() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: (body: ExperimentCreate) => createExperiment(body, { headers: s.headers }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.experiments(s.key) }),
+  });
+}
+
+export function useUpdateExperiment() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: ExperimentPatch }) => updateExperiment(id, patch, { headers: s.headers }),
+    onSuccess: (exp) => {
+      qc.setQueryData(qk.experiment(s.key, exp.id), exp);
+      void qc.invalidateQueries({ queryKey: [...qk.experiments(s.key), "list"] });
+    },
+  });
+}
+
+export function useDeleteExperiment() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: (id: string) => deleteExperiment(id, { headers: s.headers }),
+    onSuccess: async (_res, id) => {
+      // dropped, not refetched: the open experiment page would turn into a 404 error and
+      // unmount the dialog before it navigates away
+      await qc.cancelQueries({ queryKey: qk.experiment(s.key, id), exact: true });
+      qc.removeQueries({ queryKey: qk.experiment(s.key, id), exact: true });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: qk.experiments(s.key) }),
+        qc.invalidateQueries({ queryKey: qk.runViews(s.key) }),
+        qc.invalidateQueries({ queryKey: qk.runLists(s.key) }),
+      ]);
+    },
+  });
+}
+
+/** Add runs to an experiment, or take them out (at most 200 ids per call). */
+export function useUpdateExperimentRuns() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ExperimentRunsWrite }) => updateExperimentRuns(id, body, { headers: s.headers }),
+    onSuccess: async (_res, { body }) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: qk.experiments(s.key) }),
+        qc.invalidateQueries({ queryKey: qk.runLists(s.key) }),
+        ...[...(body.add ?? []), ...(body.remove ?? [])].map((id) => qc.invalidateQueries({ queryKey: qk.run(s.key, id), exact: true })),
+      ]);
+    },
+  });
+}
+
+// ------------------------------------------------------------------------- saved run views (v0.14)
+
+/** Saved views: the project's (`experimentId` null) or one experiment's. */
+export function useRunViews(experimentId: string | null) {
+  const s = useProjectScope();
+  return useQuery({
+    queryKey: qk.runViewList(s.key, experimentId),
+    queryFn: ({ signal }) => fetchRunViews(experimentId, { headers: s.headers, signal }),
+  });
+}
+
+export function useCreateRunView() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: (body: RunViewCreate) => createRunView(body, { headers: s.headers }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.runViews(s.key) }),
+  });
+}
+
+export function useUpdateRunView() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: RunViewPatch }) => updateRunView(id, patch, { headers: s.headers }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.runViews(s.key) }),
+  });
+}
+
+export function useDeleteRunView() {
+  const qc = useQueryClient();
+  const s = useProjectScope();
+  return useMutation({
+    mutationFn: (id: string) => deleteRunView(id, { headers: s.headers }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.runViews(s.key) }),
   });
 }
 
@@ -797,14 +1042,13 @@ export function usePlots(modelId: string, version: number, enabled = true) {
  * curves): v0.10 serves them for any run state whose newest attempt with plots wrote them
  * (succeeded, partial, and failed or cancelled after a partial attempt); empty otherwise.
  */
-export function useRunPlots(runId: string | undefined) {
-  const s = useProjectScope();
-  return useQuery({
-    queryKey: qk.runPlots(s.key, runId ?? ""),
+export const runPlotsQuery = (s: ProjectScope, runId: string) =>
+  queryOptions({
+    queryKey: qk.runPlots(s.key, runId),
     queryFn: ({ signal }) =>
       unwrap(
         api.GET("/v1/runs/{run_id}/plots", {
-          params: { path: { run_id: runId ?? "" }, query: { limit: 200 } },
+          params: { path: { run_id: runId }, query: { limit: 200 } },
           headers: s.headers,
           signal,
         }),
@@ -812,6 +1056,10 @@ export function useRunPlots(runId: string | undefined) {
     enabled: Boolean(runId),
     staleTime: Infinity,
   });
+
+export function useRunPlots(runId: string | undefined) {
+  const s = useProjectScope();
+  return useQuery(runPlotsQuery(s, runId ?? ""));
 }
 
 export function usePlot(modelId: string, version: number, plotId: string | null) {

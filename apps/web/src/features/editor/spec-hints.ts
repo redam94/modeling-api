@@ -383,10 +383,14 @@ export function enrichSpecSchema(base: unknown, shape: SpecShape, sources: HintS
     }
   }
 
-  // split dims (raw stage names)
-  const rawDims = nameSnippets(namesBeforeStep(0, shape, sources).dims);
-  for (const def of ["TimeHoldoutSplit", "LastPerGroupSplit", "AsOfSplit", "LeaveGroupOutSplit", "MaskBlockSplit"]) {
+  // split dims (raw stage names); v0.14: the `column` and `stratified` splits also name a
+  // variable (or coordinate) along their dim. Sweep documents are retired (v0.14): no hints.
+  const raw = namesBeforeStep(0, shape, sources);
+  const rawDims = nameSnippets(raw.dims);
+  const rawColumns = nameSnippets([...raw.vars, ...raw.dims]);
+  for (const def of ["TimeHoldoutSplit", "LastPerGroupSplit", "AsOfSplit", "LeaveGroupOutSplit", "MaskBlockSplit", "ColumnSplit", "StratifiedSplit"]) {
     for (const p of ["dim", "dims", "within"]) addSnippets(prop(defs[def], p), rawDims);
+    for (const p of ["column", "by"]) addSnippets(prop(defs[def], p), rawColumns);
     addSnippets(prop(defs[def], "after_step"), shape.steps.map((s) => ({ label: s.id, body: s.id, description: s.use })));
   }
 

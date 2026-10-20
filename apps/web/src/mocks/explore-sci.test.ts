@@ -66,7 +66,8 @@ describe("science datasets in the mock API", () => {
         if (ref.plots) expect(Array.isArray(await artifact(id, ref.plots))).toBe(true);
       }
     }
-  });
+    // the lens tree reads every node's views: about 2.5 s alone, over 5 s in a busy full-suite run
+  }, 20_000);
 
   it("answers 404 for an artifact the ingest did not write", async () => {
     const res = await fetch(`${API}/v1/datasets/${sciDatasetId("e07")}/versions/1/artifacts/ui%2Fexplore%2Fnope.json`);

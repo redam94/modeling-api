@@ -5,7 +5,9 @@ promotion gate, endpoints, snippets, webhooks, plot sharing and the trust lifecy
 M3.5 contracts: About cards and the chooser, workflows with the safe condition language,
 split plans, statistical test results, governance policies and validation, the Data and
 Model Explorer views and budget optimisation; and the v0.11 run tracking contracts: metric,
-param and tag keys, tracking budgets and the run-search grammar).
+param and tag keys, tracking budgets and the run-search grammar; and the v0.14 contracts:
+run media, experiments, saved run views, run comparison, image-folder ingest and the
+column and stratified splits).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -127,6 +129,7 @@ from mapi_spec.ingest import (
     Hdf5Coord,
     Hdf5Mapping,
     Hdf5Var,
+    ImageFolderOptions,
     IngestAssembly,
     IngestMapping,
     IngestPreset,
@@ -148,6 +151,16 @@ from mapi_spec.loader import (
     register_upgrader,
     spec_hash,
     upgrade,
+)
+from mapi_spec.media import (
+    ImageInfo,
+    MediaContentType,
+    MediaKind,
+    MediaTable,
+    check_media,
+    check_media_key,
+    media_name,
+    sniff_image,
 )
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import (
@@ -217,6 +230,7 @@ from mapi_spec.spec import (
     Backtest,
     Binding,
     Campaign,
+    ColumnSplit,
     DataBlock,
     FitConfig,
     FutureCovariates,
@@ -228,11 +242,11 @@ from mapi_spec.spec import (
     ScoreRequest,
     SideTable,
     StepCall,
+    StratifiedSplit,
     Sweep,
 )
 from mapi_spec.splitplan import Fold, SplitPlan, plan_folds, plan_group_folds
 from mapi_spec.stattests import StatTestResult
-from mapi_spec.sweep import expand_sweep
 from mapi_spec.tenancy import (
     PERMISSIONS,
     Action,
@@ -315,7 +329,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.13.0"
+    __version__ = "0.14.0"
 
 __all__ = [
     "API_VERSION",
@@ -359,6 +373,7 @@ __all__ = [
     "ChooserAnswer",
     "ChooserResult",
     "ColumnProfile",
+    "ColumnSplit",
     "Condition",
     "ConformanceCase",
     "ContextNeed",
@@ -399,6 +414,8 @@ __all__ = [
     "Hdf5Mapping",
     "Hdf5Var",
     "Horizon",
+    "ImageFolderOptions",
+    "ImageInfo",
     "IngestAssembly",
     "IngestMapping",
     "IngestPreset",
@@ -411,6 +428,9 @@ __all__ = [
     "Limits",
     "LogLevel",
     "MapiError",
+    "MediaContentType",
+    "MediaKind",
+    "MediaTable",
     "Membership",
     "MeridianColumns",
     "MetricBatchPayload",
@@ -487,6 +507,7 @@ __all__ = [
     "StepCall",
     "StepCatalogEntry",
     "StepKind",
+    "StratifiedSplit",
     "Sweep",
     "TagItem",
     "TagsPayload",
@@ -530,6 +551,8 @@ __all__ = [
     "canonical_json",
     "catalog_about_issues",
     "check_labels",
+    "check_media",
+    "check_media_key",
     "check_metric_key",
     "check_param_key",
     "check_tag_key",
@@ -544,7 +567,6 @@ __all__ = [
     "evaluate_quota",
     "evaluate_scenario",
     "example_score_call",
-    "expand_sweep",
     "export_schemas",
     "generate_token",
     "http_status",
@@ -556,6 +578,7 @@ __all__ = [
     "load_model_spec",
     "load_score_request",
     "load_workflow",
+    "media_name",
     "node_ancestors",
     "node_depth",
     "node_join",
@@ -585,6 +608,7 @@ __all__ = [
     "schema_breaks",
     "scope_allows",
     "signature_header",
+    "sniff_image",
     "spec_hash",
     "split_for_events",
     "suggest_roles",

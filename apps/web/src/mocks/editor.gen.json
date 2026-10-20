@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:347189b1f675ff48b302c2e85e2eb3521aaf34b0e6f3afa55368ed6940991160",
+  "digest": "sha256:8f9f3b50984c3650965a041bcf297d5f2e408df329b6389fa77bb574bafb7c0d",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -9607,18 +9607,20 @@
     "manifest": {
      "about": {
       "assumptions": [
-       "The rows that you predict are similar to the rows that the model learned from",
-       "A resample of full groups shows how uncertain the model is"
+       "The rows that you score are similar to the rows that the model learned from",
+       "The classes at scoring are the classes that the model learned"
       ],
       "avoid_when": [
-       "You need results in seconds on a very large table (it fits many models)"
+       "The result is a number",
+       "The result is yes or no (use the yes-or-no classifier)",
+       "Some classes have only a few rows"
       ],
       "data_needs": [
-       "A table of the number to predict and the columns that explain it"
+       "A table with a class column (text or whole numbers) and the columns that explain it"
       ],
-      "difficulty": "intermediate",
-      "example": "A range for the total sales of next month across 300 stores.",
-      "expert_notes": "A bootstrap ensemble (with an optional resample of full groups with 'by'). Each replicate is a joint draw, so aggregation is valid (draws representation).",
+      "difficulty": "beginner",
+      "example": "Put each support ticket into one of 6 topics, and send the tickets with a low probability to a person.",
+      "expert_notes": "An allow-listed multiclass classifier (logistic regression, random forest, histogram gradient boosting, xgboost, LightGBM or CatBoost; LightGBM and CatBoost need mapi-sklearn[gbm]) on stacked rows. The output y_hat has a class dim and holds the class probabilities (point representation). At most 200 classes.",
       "fits": {
        "data_shape": [
         "table",
@@ -9627,29 +9629,29 @@
        "drivers": [
         "yes"
        ],
-       "goal": [
-        "predict_values",
-        "forecast"
+       "frequency": [
+        "not_time"
        ],
-       "uncertainty": [
-        "essential"
+       "goal": [
+        "classify",
+        "predict_values"
        ]
       },
       "outputs": [
-       "Many joint simulated predictions for each row",
-       "Ranges for all totals"
+       "The probability of each class for each row",
+       "ROC and precision-recall curves for each class, and a confusion matrix"
       ],
       "references": [],
       "related": [
-       "sklearn.tabular_quantiles",
-       "sklearn.tabular_regressor"
+       "sklearn.tabular_classifier",
+       "tabular.image_logistic"
       ],
-      "summary_plain": "Fits the same method many times on resampled data. This gives ranges that stay correct when you add predictions into totals.",
-      "title": "Predict a number with ranges you can add up",
-      "typical_runtime": "minutes",
+      "summary_plain": "Estimates the probability of each class for each row of a table. For example, the product category of an order or the reason for a support call.",
+      "title": "Put rows into classes",
+      "typical_runtime": "seconds",
       "use_when": [
-       "You need a range for totals (all stores, a full region)",
-       "The data has groups (stores) that the resample must keep together"
+       "The result has three or more classes for each row",
+       "You want a probability for each class, not only the most probable class"
       ]
      },
      "artifact_format": "zarr.zip/v1",
@@ -9661,45 +9663,34 @@
       "evidence": false,
       "fast_score": false,
       "identified_quantities": [],
-      "inference": "bootstrap",
+      "inference": "point",
       "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
       "loo_valid": false,
       "owns": [],
       "recommend": false,
-      "representation": "draws",
+      "representation": "point",
       "score_modes": [
-       "counterfactual",
        "evaluate",
-       "forecast",
        "predict"
       ]
      },
      "derived": [],
-     "description": "Tabular regression with a bootstrap ensemble: one joint draw per replicate, so any aggregation is valid.",
+     "description": "Multiclass classification with an allow-listed scikit-learn, xgboost, LightGBM or CatBoost classifier: the probability of each class of a text or integer target.",
      "fit_schema": {},
-     "id": "sklearn.tabular_bootstrap",
+     "id": "sklearn.multiclass_classifier",
      "outputs": {
-      "contributions": {
-       "description": "Per-replicate feature contributions, in model space",
-       "dims": [
-        "chain",
-        "draw",
-        "component"
-       ],
-       "dims_of": "y"
-      },
       "y_hat": {
-       "description": "Bootstrap draws of the prediction over the row dims",
+       "description": "Probability of each class (sums to 1 over class)",
        "dims": [
-        "chain",
-        "draw"
+        "class"
        ],
-       "dims_of": "y"
+       "dims_of": "y",
+       "units": "1"
       }
      },
      "plots": [
-      "core.fit_vs_actual",
-      "core.residuals_over_time",
+      "core.roc_pr",
+      "core.confusion",
       "ml.feature_importance"
      ],
      "resources": {
@@ -9772,6 +9763,15 @@
         "required": false,
         "type": "string"
        },
+       "target_dtype": {
+        "default": "str",
+        "enum": [
+         "str",
+         "int64"
+        ],
+        "required": false,
+        "type": "string"
+       },
        "time_dim": {
         "default": "time",
         "required": false,
@@ -9800,7 +9800,7 @@
        "vars": {
         "{target}": {
          "dims": "{rows}",
-         "dtype": "float64",
+         "dtype": "{target_dtype}",
          "missing": "allow",
          "role": "target"
         }
@@ -9809,14 +9809,45 @@
      },
      "settings_schema": {
       "$defs": {
-       "BootstrapUncertainty": {
+       "CatBoostClassifierChoice": {
         "additionalProperties": false,
-        "description": "Bootstrap ensemble (representation ``draws``, one draw per replicate).\n\n``by`` resamples whole levels of a row dim (cluster bootstrap) instead of rows.\n``expected`` outputs are the replicate predictions; ``predictive`` outputs add a\nresampled out-of-bag residual to each draw.",
         "properties": {
-         "by": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
           "anyOf": [
            {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
             "type": "string"
            },
            {
@@ -9824,23 +9855,71 @@
            }
           ],
           "default": null,
-          "title": "By"
+          "title": "Auto Class Weights"
          },
-         "kind": {
-          "const": "bootstrap",
-          "default": "bootstrap",
-          "title": "Kind",
-          "type": "string"
-         },
-         "n": {
-          "default": 50,
-          "maximum": 1000,
-          "minimum": 2,
-          "title": "N",
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
           "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
          }
         },
-        "title": "BootstrapUncertainty",
+        "title": "CatBoostClassifierParams",
         "type": "object"
        },
        "ColumnsSettings": {
@@ -10121,6 +10200,154 @@
         "title": "GradientBoostingRegressorParams",
         "type": "object"
        },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
        "HistGradientBoostingRegressorChoice": {
         "additionalProperties": false,
         "properties": {
@@ -10281,6 +10508,2541 @@
          }
         },
         "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
+        "type": "object"
+       },
+       "LassoChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.Lasso",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LassoParams",
+          "default": {
+           "alpha": 1.0,
+           "fit_intercept": true,
+           "max_iter": 1000,
+           "positive": false,
+           "selection": "cyclic",
+           "tol": 0.0001
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LassoChoice",
+        "type": "object"
+       },
+       "LassoParams": {
+        "additionalProperties": false,
+        "properties": {
+         "alpha": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000.0,
+          "title": "Alpha",
+          "type": "number"
+         },
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "max_iter": {
+          "default": 1000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "positive": {
+          "default": false,
+          "title": "Positive",
+          "type": "boolean"
+         },
+         "selection": {
+          "default": "cyclic",
+          "enum": [
+           "cyclic",
+           "random"
+          ],
+          "title": "Selection",
+          "type": "string"
+         },
+         "tol": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Tol",
+          "type": "number"
+         }
+        },
+        "title": "LassoParams",
+        "type": "object"
+       },
+       "LinearRegressionChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.LinearRegression",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LinearRegressionParams",
+          "default": {
+           "fit_intercept": true,
+           "positive": false
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LinearRegressionChoice",
+        "type": "object"
+       },
+       "LinearRegressionParams": {
+        "additionalProperties": false,
+        "properties": {
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "positive": {
+          "default": false,
+          "title": "Positive",
+          "type": "boolean"
+         }
+        },
+        "title": "LinearRegressionParams",
+        "type": "object"
+       },
+       "LogisticRegressionChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.LogisticRegression",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LogisticRegressionParams",
+          "default": {
+           "C": 1.0,
+           "class_weight": null,
+           "fit_intercept": true,
+           "l1_ratio": 0.0,
+           "max_iter": 100,
+           "solver": "lbfgs",
+           "tol": 0.0001
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LogisticRegressionChoice",
+        "type": "object"
+       },
+       "LogisticRegressionParams": {
+        "additionalProperties": false,
+        "properties": {
+         "C": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000.0,
+          "title": "C",
+          "type": "number"
+         },
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "l1_ratio": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "L1 Ratio",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "solver": {
+          "default": "lbfgs",
+          "enum": [
+           "lbfgs",
+           "liblinear",
+           "newton-cg",
+           "newton-cholesky",
+           "sag",
+           "saga"
+          ],
+          "title": "Solver",
+          "type": "string"
+         },
+         "tol": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Tol",
+          "type": "number"
+         }
+        },
+        "title": "LogisticRegressionParams",
+        "type": "object"
+       },
+       "NoUncertainty": {
+        "additionalProperties": false,
+        "description": "Point predictions (representation ``point``).",
+        "properties": {
+         "kind": {
+          "const": "none",
+          "default": "none",
+          "title": "Kind",
+          "type": "string"
+         }
+        },
+        "title": "NoUncertainty",
+        "type": "object"
+       },
+       "QuantileRegressorChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.QuantileRegressor",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/QuantileRegressorParams",
+          "default": {
+           "alpha": 1.0,
+           "fit_intercept": true,
+           "quantile": 0.5,
+           "solver": "highs"
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "QuantileRegressorChoice",
+        "type": "object"
+       },
+       "QuantileRegressorParams": {
+        "additionalProperties": false,
+        "properties": {
+         "alpha": {
+          "default": 1.0,
+          "maximum": 1000000000000.0,
+          "minimum": 0,
+          "title": "Alpha",
+          "type": "number"
+         },
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "quantile": {
+          "default": 0.5,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Quantile",
+          "type": "number"
+         },
+         "solver": {
+          "default": "highs",
+          "enum": [
+           "highs",
+           "highs-ds",
+           "highs-ipm"
+          ],
+          "title": "Solver",
+          "type": "string"
+         }
+        },
+        "title": "QuantileRegressorParams",
+        "type": "object"
+       },
+       "RandomForestClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.RandomForestClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/RandomForestClassifierParams",
+          "default": {
+           "bootstrap": true,
+           "ccp_alpha": 0.0,
+           "class_weight": null,
+           "criterion": "gini",
+           "max_depth": null,
+           "max_features": "sqrt",
+           "max_samples": null,
+           "min_impurity_decrease": 0.0,
+           "min_samples_leaf": 1,
+           "min_samples_split": 2,
+           "n_estimators": 100
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "RandomForestClassifierChoice",
+        "type": "object"
+       },
+       "RandomForestClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "bootstrap": {
+          "default": true,
+          "title": "Bootstrap",
+          "type": "boolean"
+         },
+         "ccp_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Ccp Alpha",
+          "type": "number"
+         },
+         "class_weight": {
+          "anyOf": [
+           {
+            "enum": [
+             "balanced",
+             "balanced_subsample"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "criterion": {
+          "default": "gini",
+          "enum": [
+           "gini",
+           "entropy",
+           "log_loss"
+          ],
+          "title": "Criterion",
+          "type": "string"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "anyOf": [
+           {
+            "enum": [
+             "sqrt",
+             "log2"
+            ],
+            "type": "string"
+           },
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": "sqrt",
+          "title": "Max Features"
+         },
+         "max_samples": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Samples"
+         },
+         "min_impurity_decrease": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Impurity Decrease",
+          "type": "number"
+         },
+         "min_samples_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "min_samples_split": {
+          "default": 2,
+          "maximum": 1000000,
+          "minimum": 2,
+          "title": "Min Samples Split",
+          "type": "integer"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         }
+        },
+        "title": "RandomForestClassifierParams",
+        "type": "object"
+       },
+       "RandomForestRegressorChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.RandomForestRegressor",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/RandomForestRegressorParams",
+          "default": {
+           "bootstrap": true,
+           "ccp_alpha": 0.0,
+           "criterion": "squared_error",
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_samples": null,
+           "min_impurity_decrease": 0.0,
+           "min_samples_leaf": 1,
+           "min_samples_split": 2,
+           "n_estimators": 100
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "RandomForestRegressorChoice",
+        "type": "object"
+       },
+       "RandomForestRegressorParams": {
+        "additionalProperties": false,
+        "properties": {
+         "bootstrap": {
+          "default": true,
+          "title": "Bootstrap",
+          "type": "boolean"
+         },
+         "ccp_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Ccp Alpha",
+          "type": "number"
+         },
+         "criterion": {
+          "default": "squared_error",
+          "enum": [
+           "squared_error",
+           "absolute_error",
+           "friedman_mse",
+           "poisson"
+          ],
+          "title": "Criterion",
+          "type": "string"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "anyOf": [
+           {
+            "enum": [
+             "sqrt",
+             "log2"
+            ],
+            "type": "string"
+           },
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 1.0,
+          "title": "Max Features"
+         },
+         "max_samples": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Samples"
+         },
+         "min_impurity_decrease": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Impurity Decrease",
+          "type": "number"
+         },
+         "min_samples_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "min_samples_split": {
+          "default": 2,
+          "maximum": 1000000,
+          "minimum": 2,
+          "title": "Min Samples Split",
+          "type": "integer"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         }
+        },
+        "title": "RandomForestRegressorParams",
+        "type": "object"
+       },
+       "RidgeChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.Ridge",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/RidgeParams",
+          "default": {
+           "alpha": 1.0,
+           "fit_intercept": true,
+           "max_iter": null,
+           "positive": false,
+           "solver": "auto",
+           "tol": 0.0001
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "RidgeChoice",
+        "type": "object"
+       },
+       "RidgeParams": {
+        "additionalProperties": false,
+        "properties": {
+         "alpha": {
+          "default": 1.0,
+          "maximum": 1000000000000.0,
+          "minimum": 0,
+          "title": "Alpha",
+          "type": "number"
+         },
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "max_iter": {
+          "anyOf": [
+           {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Iter"
+         },
+         "positive": {
+          "default": false,
+          "title": "Positive",
+          "type": "boolean"
+         },
+         "solver": {
+          "default": "auto",
+          "enum": [
+           "auto",
+           "svd",
+           "cholesky",
+           "lsqr",
+           "sparse_cg",
+           "sag",
+           "saga",
+           "lbfgs"
+          ],
+          "title": "Solver",
+          "type": "string"
+         },
+         "tol": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Tol",
+          "type": "number"
+         }
+        },
+        "title": "RidgeParams",
+        "type": "object"
+       },
+       "Role": {
+        "description": "What a variable means to a model.",
+        "enum": [
+         "target",
+         "covariate",
+         "media",
+         "spend",
+         "control",
+         "index",
+         "mask",
+         "constant",
+         "weight",
+         "exposure"
+        ],
+        "title": "Role",
+        "type": "string"
+       },
+       "XGBClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "xgboost.XGBClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/XGBClassifierParams",
+          "default": {
+           "colsample_bylevel": 1.0,
+           "colsample_bynode": 1.0,
+           "colsample_bytree": 1.0,
+           "gamma": 0.0,
+           "grow_policy": "depthwise",
+           "learning_rate": 0.3,
+           "max_bin": 256,
+           "max_cat_to_onehot": null,
+           "max_depth": 6,
+           "max_leaves": 0,
+           "min_child_weight": 1.0,
+           "n_estimators": 100,
+           "objective": "binary:logistic",
+           "reg_alpha": 0.0,
+           "reg_lambda": 1.0,
+           "scale_pos_weight": 1.0,
+           "subsample": 1.0,
+           "tree_method": "hist"
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "XGBClassifierChoice",
+        "type": "object"
+       },
+       "XGBClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "colsample_bylevel": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bylevel",
+          "type": "number"
+         },
+         "colsample_bynode": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bynode",
+          "type": "number"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "gamma": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Gamma",
+          "type": "number"
+         },
+         "grow_policy": {
+          "default": "depthwise",
+          "enum": [
+           "depthwise",
+           "lossguide"
+          ],
+          "title": "Grow Policy",
+          "type": "string"
+         },
+         "learning_rate": {
+          "default": 0.3,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 256,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_cat_to_onehot": {
+          "anyOf": [
+           {
+            "maximum": 1024,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Cat To Onehot"
+         },
+         "max_depth": {
+          "default": 6,
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "max_leaves": {
+          "default": 0,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Max Leaves",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "objective": {
+          "const": "binary:logistic",
+          "default": "binary:logistic",
+          "title": "Objective",
+          "type": "string"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "scale_pos_weight": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Scale Pos Weight",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "tree_method": {
+          "default": "hist",
+          "enum": [
+           "hist",
+           "approx",
+           "exact"
+          ],
+          "title": "Tree Method",
+          "type": "string"
+         }
+        },
+        "title": "XGBClassifierParams",
+        "type": "object"
+       },
+       "XGBRegressorChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "xgboost.XGBRegressor",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/XGBRegressorParams",
+          "default": {
+           "colsample_bylevel": 1.0,
+           "colsample_bynode": 1.0,
+           "colsample_bytree": 1.0,
+           "gamma": 0.0,
+           "grow_policy": "depthwise",
+           "huber_slope": null,
+           "learning_rate": 0.3,
+           "max_bin": 256,
+           "max_cat_to_onehot": null,
+           "max_depth": 6,
+           "max_leaves": 0,
+           "min_child_weight": 1.0,
+           "n_estimators": 100,
+           "objective": "reg:squarederror",
+           "quantile_alpha": null,
+           "reg_alpha": 0.0,
+           "reg_lambda": 1.0,
+           "subsample": 1.0,
+           "tree_method": "hist",
+           "tweedie_variance_power": null
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "XGBRegressorChoice",
+        "type": "object"
+       },
+       "XGBRegressorParams": {
+        "additionalProperties": false,
+        "properties": {
+         "colsample_bylevel": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bylevel",
+          "type": "number"
+         },
+         "colsample_bynode": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bynode",
+          "type": "number"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "gamma": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Gamma",
+          "type": "number"
+         },
+         "grow_policy": {
+          "default": "depthwise",
+          "enum": [
+           "depthwise",
+           "lossguide"
+          ],
+          "title": "Grow Policy",
+          "type": "string"
+         },
+         "huber_slope": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Huber Slope"
+         },
+         "learning_rate": {
+          "default": 0.3,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 256,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_cat_to_onehot": {
+          "anyOf": [
+           {
+            "maximum": 1024,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Cat To Onehot"
+         },
+         "max_depth": {
+          "default": 6,
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "max_leaves": {
+          "default": 0,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Max Leaves",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "objective": {
+          "default": "reg:squarederror",
+          "enum": [
+           "reg:squarederror",
+           "reg:squaredlogerror",
+           "reg:absoluteerror",
+           "reg:pseudohubererror",
+           "reg:quantileerror",
+           "count:poisson",
+           "reg:gamma",
+           "reg:tweedie"
+          ],
+          "title": "Objective",
+          "type": "string"
+         },
+         "quantile_alpha": {
+          "anyOf": [
+           {
+            "exclusiveMaximum": 1,
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Quantile Alpha"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "tree_method": {
+          "default": "hist",
+          "enum": [
+           "hist",
+           "approx",
+           "exact"
+          ],
+          "title": "Tree Method",
+          "type": "string"
+         },
+         "tweedie_variance_power": {
+          "anyOf": [
+           {
+            "exclusiveMaximum": 2,
+            "minimum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Tweedie Variance Power"
+         }
+        },
+        "title": "XGBRegressorParams",
+        "type": "object"
+       }
+      },
+      "additionalProperties": false,
+      "description": "``sklearn.multiclass_classifier``: one probability per class (``y_hat(*rows, class)``).\n\n``class_order`` fixes the classes and their order (it must name every training label);\nwithout it the classes are the sorted training labels. ``target_dtype`` is the dtype the\ninput schema declares for the target: ``str`` labels or ``int64`` codes.",
+      "properties": {
+       "class_order": {
+        "anyOf": [
+         {
+          "items": {
+           "maxLength": 200,
+           "minLength": 1,
+           "type": "string"
+          },
+          "maxItems": 200,
+          "minItems": 2,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Class Order"
+       },
+       "columns": {
+        "$ref": "#/$defs/ColumnsSettings"
+       },
+       "coord_features": {
+        "maxProperties": 8,
+        "patternProperties": {
+         "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
+          "enum": [
+           "category",
+           "onehot",
+           "ordinal",
+           "numeric"
+          ],
+          "type": "string"
+         }
+        },
+        "title": "Coord Features",
+        "type": "object"
+       },
+       "estimator": {
+        "discriminator": {
+         "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
+          "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
+          "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
+          "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
+          "sklearn.Lasso": "#/$defs/LassoChoice",
+          "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
+          "sklearn.LogisticRegression": "#/$defs/LogisticRegressionChoice",
+          "sklearn.QuantileRegressor": "#/$defs/QuantileRegressorChoice",
+          "sklearn.RandomForestClassifier": "#/$defs/RandomForestClassifierChoice",
+          "sklearn.RandomForestRegressor": "#/$defs/RandomForestRegressorChoice",
+          "sklearn.Ridge": "#/$defs/RidgeChoice",
+          "xgboost.XGBClassifier": "#/$defs/XGBClassifierChoice",
+          "xgboost.XGBRegressor": "#/$defs/XGBRegressorChoice"
+         },
+         "propertyName": "kind"
+        },
+        "oneOf": [
+         {
+          "$ref": "#/$defs/LinearRegressionChoice"
+         },
+         {
+          "$ref": "#/$defs/RidgeChoice"
+         },
+         {
+          "$ref": "#/$defs/LassoChoice"
+         },
+         {
+          "$ref": "#/$defs/ElasticNetChoice"
+         },
+         {
+          "$ref": "#/$defs/QuantileRegressorChoice"
+         },
+         {
+          "$ref": "#/$defs/LogisticRegressionChoice"
+         },
+         {
+          "$ref": "#/$defs/RandomForestRegressorChoice"
+         },
+         {
+          "$ref": "#/$defs/RandomForestClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/GradientBoostingRegressorChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingRegressorChoice"
+         },
+         {
+          "$ref": "#/$defs/XGBRegressorChoice"
+         },
+         {
+          "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
+         }
+        ],
+        "title": "Estimator"
+       },
+       "forecast_strategy": {
+        "default": "direct",
+        "enum": [
+         "direct",
+         "recursive"
+        ],
+        "title": "Forecast Strategy",
+        "type": "string"
+       },
+       "mask": {
+        "anyOf": [
+         {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Mask"
+       },
+       "max_classes": {
+        "default": 50,
+        "maximum": 200,
+        "minimum": 2,
+        "title": "Max Classes",
+        "type": "integer"
+       },
+       "n_jobs": {
+        "default": 1,
+        "maximum": 64,
+        "minimum": 1,
+        "title": "N Jobs",
+        "type": "integer"
+       },
+       "new_levels": {
+        "default": "pooled",
+        "enum": [
+         "pooled",
+         "zero",
+         "error"
+        ],
+        "title": "New Levels",
+        "type": "string"
+       },
+       "pooled_max_levels": {
+        "default": 256,
+        "maximum": 10000,
+        "minimum": 1,
+        "title": "Pooled Max Levels",
+        "type": "integer"
+       },
+       "retransform": {
+        "default": "median",
+        "enum": [
+         "median",
+         "smearing"
+        ],
+        "title": "Retransform",
+        "type": "string"
+       },
+       "rows": {
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+         "type": "string"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Rows",
+        "type": "array"
+       },
+       "target": {
+        "default": "y",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Target",
+        "type": "string"
+       },
+       "target_dtype": {
+        "default": "str",
+        "enum": [
+         "str",
+         "int64"
+        ],
+        "title": "Target Dtype",
+        "type": "string"
+       },
+       "time_dim": {
+        "default": "time",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Time Dim",
+        "type": "string"
+       },
+       "time_kind": {
+        "default": "time",
+        "enum": [
+         "time",
+         "integer",
+         "index",
+         "none"
+        ],
+        "title": "Time Kind",
+        "type": "string"
+       },
+       "uncertainty": {
+        "$ref": "#/$defs/NoUncertainty"
+       },
+       "weight": {
+        "anyOf": [
+         {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Weight"
+       }
+      },
+      "required": [
+       "estimator",
+       "rows"
+      ],
+      "title": "MulticlassClassifierSettings",
+      "type": "object"
+     },
+     "version": "1.0.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The rows that you predict are similar to the rows that the model learned from",
+       "A resample of full groups shows how uncertain the model is"
+      ],
+      "avoid_when": [
+       "You need results in seconds on a very large table (it fits many models)"
+      ],
+      "data_needs": [
+       "A table of the number to predict and the columns that explain it"
+      ],
+      "difficulty": "intermediate",
+      "example": "A range for the total sales of next month across 300 stores.",
+      "expert_notes": "A bootstrap ensemble (with an optional resample of full groups with 'by'). Each replicate is a joint draw, so aggregation is valid (draws representation).",
+      "fits": {
+       "data_shape": [
+        "table",
+        "panel"
+       ],
+       "drivers": [
+        "yes"
+       ],
+       "goal": [
+        "predict_values",
+        "forecast"
+       ],
+       "uncertainty": [
+        "essential"
+       ]
+      },
+      "outputs": [
+       "Many joint simulated predictions for each row",
+       "Ranges for all totals"
+      ],
+      "references": [],
+      "related": [
+       "sklearn.tabular_quantiles",
+       "sklearn.tabular_regressor"
+      ],
+      "summary_plain": "Fits the same method many times on resampled data. This gives ranges that stay correct when you add predictions into totals.",
+      "title": "Predict a number with ranges you can add up",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You need a range for totals (all stores, a full region)",
+       "The data has groups (stores) that the resample must keep together"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": false,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "bootstrap",
+      "loo_invalid_reason": "scikit-learn and xgboost estimators provide no pointwise log-likelihood",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "counterfactual",
+       "evaluate",
+       "forecast",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "Tabular regression with a bootstrap ensemble: one joint draw per replicate, so any aggregation is valid.",
+     "fit_schema": {},
+     "id": "sklearn.tabular_bootstrap",
+     "outputs": {
+      "contributions": {
+       "description": "Per-replicate feature contributions, in model space",
+       "dims": [
+        "chain",
+        "draw",
+        "component"
+       ],
+       "dims_of": "y"
+      },
+      "y_hat": {
+       "description": "Bootstrap draws of the prediction over the row dims",
+       "dims": [
+        "chain",
+        "draw"
+       ],
+       "dims_of": "y"
+      }
+     },
+     "plots": [
+      "core.fit_vs_actual",
+      "core.residuals_over_time",
+      "ml.feature_importance"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [
+       {
+        "merge": {
+         "dims": {
+          "{time_dim}": {
+           "kind": "time",
+           "new_level_strategy": "error",
+           "policy": "extend"
+          }
+         }
+        },
+        "when": {
+         "time_kind": "time"
+        }
+       },
+       {
+        "merge": {
+         "dims": {
+          "{time_dim}": {
+           "kind": "integer",
+           "new_level_strategy": "error",
+           "policy": "extend"
+          }
+         }
+        },
+        "when": {
+         "time_kind": "integer"
+        }
+       },
+       {
+        "merge": {
+         "dims": {
+          "{time_dim}": {
+           "kind": "index",
+           "new_level_strategy": "error",
+           "policy": "extend"
+          }
+         }
+        },
+        "when": {
+         "time_kind": "index"
+        }
+       }
+      ],
+      "params": {
+       "new_levels": {
+        "default": "pooled",
+        "enum": [
+         "pooled",
+         "zero",
+         "error"
+        ],
+        "required": false,
+        "type": "string"
+       },
+       "rows": {
+        "required": true,
+        "type": "string_list"
+       },
+       "target": {
+        "default": "y",
+        "required": false,
+        "type": "string"
+       },
+       "time_dim": {
+        "default": "time",
+        "required": false,
+        "type": "string"
+       },
+       "time_kind": {
+        "default": "time",
+        "enum": [
+         "time",
+         "integer",
+         "index",
+         "none"
+        ],
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "{*rows as d}": {
+         "kind": "categorical",
+         "new_level_strategy": "{new_levels}",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "{target}": {
+         "dims": "{rows}",
+         "dtype": "float64",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "$defs": {
+       "BootstrapUncertainty": {
+        "additionalProperties": false,
+        "description": "Bootstrap ensemble (representation ``draws``, one draw per replicate).\n\n``by`` resamples whole levels of a row dim (cluster bootstrap) instead of rows.\n``expected`` outputs are the replicate predictions; ``predictive`` outputs add a\nresampled out-of-bag residual to each draw.",
+        "properties": {
+         "by": {
+          "anyOf": [
+           {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "By"
+         },
+         "kind": {
+          "const": "bootstrap",
+          "default": "bootstrap",
+          "title": "Kind",
+          "type": "string"
+         },
+         "n": {
+          "default": 50,
+          "maximum": 1000,
+          "minimum": 2,
+          "title": "N",
+          "type": "integer"
+         }
+        },
+        "title": "BootstrapUncertainty",
+        "type": "object"
+       },
+       "CatBoostClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
+          "anyOf": [
+           {
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Auto Class Weights"
+         },
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
+          "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
+         }
+        },
+        "title": "CatBoostClassifierParams",
+        "type": "object"
+       },
+       "ColumnsSettings": {
+        "additionalProperties": false,
+        "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
+        "properties": {
+         "exclude": {
+          "items": {
+           "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+           "type": "string"
+          },
+          "maxItems": 1024,
+          "title": "Exclude",
+          "type": "array"
+         },
+         "roles": {
+          "items": {
+           "$ref": "#/$defs/Role"
+          },
+          "maxItems": 16,
+          "title": "Roles",
+          "type": "array"
+         },
+         "vars": {
+          "anyOf": [
+           {
+            "items": {
+             "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+             "type": "string"
+            },
+            "maxItems": 1024,
+            "type": "array"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Vars"
+         }
+        },
+        "title": "ColumnsSettings",
+        "type": "object"
+       },
+       "ElasticNetChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.ElasticNet",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/ElasticNetParams",
+          "default": {
+           "alpha": 1.0,
+           "fit_intercept": true,
+           "l1_ratio": 0.5,
+           "max_iter": 1000,
+           "positive": false,
+           "selection": "cyclic",
+           "tol": 0.0001
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "ElasticNetChoice",
+        "type": "object"
+       },
+       "ElasticNetParams": {
+        "additionalProperties": false,
+        "properties": {
+         "alpha": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000.0,
+          "title": "Alpha",
+          "type": "number"
+         },
+         "fit_intercept": {
+          "default": true,
+          "title": "Fit Intercept",
+          "type": "boolean"
+         },
+         "l1_ratio": {
+          "default": 0.5,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "L1 Ratio",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 1000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "positive": {
+          "default": false,
+          "title": "Positive",
+          "type": "boolean"
+         },
+         "selection": {
+          "default": "cyclic",
+          "enum": [
+           "cyclic",
+           "random"
+          ],
+          "title": "Selection",
+          "type": "string"
+         },
+         "tol": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Tol",
+          "type": "number"
+         }
+        },
+        "title": "ElasticNetParams",
+        "type": "object"
+       },
+       "GradientBoostingRegressorChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.GradientBoostingRegressor",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/GradientBoostingRegressorParams",
+          "default": {
+           "alpha": 0.9,
+           "learning_rate": 0.1,
+           "loss": "squared_error",
+           "max_depth": 3,
+           "max_features": null,
+           "min_samples_leaf": 1,
+           "min_samples_split": 2,
+           "n_estimators": 100,
+           "n_iter_no_change": null,
+           "subsample": 1.0,
+           "tol": 0.0001,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "GradientBoostingRegressorChoice",
+        "type": "object"
+       },
+       "GradientBoostingRegressorParams": {
+        "additionalProperties": false,
+        "properties": {
+         "alpha": {
+          "default": 0.9,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Alpha",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "loss": {
+          "default": "squared_error",
+          "enum": [
+           "squared_error",
+           "absolute_error",
+           "huber",
+           "quantile"
+          ],
+          "title": "Loss",
+          "type": "string"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 64,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 3,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "anyOf": [
+           {
+            "enum": [
+             "sqrt",
+             "log2"
+            ],
+            "type": "string"
+           },
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Features"
+         },
+         "min_samples_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "min_samples_split": {
+          "default": 2,
+          "maximum": 1000000,
+          "minimum": 2,
+          "title": "Min Samples Split",
+          "type": "integer"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "anyOf": [
+           {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "N Iter No Change"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "tol": {
+          "default": 0.0001,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "GradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
+       "HistGradientBoostingRegressorChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingRegressor",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingRegressorParams",
+          "default": {
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "loss": "squared_error",
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "quantile": null,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingRegressorChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingRegressorParams": {
+        "additionalProperties": false,
+        "properties": {
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "loss": {
+          "default": "squared_error",
+          "enum": [
+           "squared_error",
+           "absolute_error",
+           "gamma",
+           "poisson",
+           "quantile"
+          ],
+          "title": "Loss",
+          "type": "string"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "quantile": {
+          "anyOf": [
+           {
+            "exclusiveMaximum": 1,
+            "exclusiveMinimum": 0,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Quantile"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
         "type": "object"
        },
        "LassoChoice": {
@@ -11374,8 +14136,11 @@
        "estimator": {
         "discriminator": {
          "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
           "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
           "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
           "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
           "sklearn.Lasso": "#/$defs/LassoChoice",
           "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
@@ -11425,6 +14190,15 @@
          },
          {
           "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
          }
         ],
         "title": "Estimator"
@@ -11552,14 +14326,15 @@
        "The rows that you score are similar to the rows that the model learned from"
       ],
       "avoid_when": [
-       "The result is a number or has more than two outcomes"
+       "The result is a number",
+       "The result has more than two classes (use the multiclass classifier)"
       ],
       "data_needs": [
        "A table with a yes/no column and the columns that explain it"
       ],
       "difficulty": "beginner",
       "example": "The probability that each customer orders again next month, to decide who gets a voucher.",
-      "expert_notes": "An allow-listed scikit-learn or xgboost binary classifier on stacked rows. Point representation of the positive-class probability.",
+      "expert_notes": "An allow-listed scikit-learn, xgboost, LightGBM or CatBoost binary classifier on stacked rows (LightGBM and CatBoost need the mapi-sklearn[gbm] extra, which the base-ml image has). Point representation of the positive-class probability.",
       "fits": {
        "data_shape": [
         "table",
@@ -11571,7 +14346,8 @@
        ],
        "goal": [
         "predict_values",
-        "understand_choices"
+        "understand_choices",
+        "classify"
        ]
       },
       "outputs": [
@@ -11579,6 +14355,7 @@
       ],
       "references": [],
       "related": [
+       "sklearn.multiclass_classifier",
        "sklearn.tabular_regressor",
        "choice.multinomial_logit"
       ],
@@ -11613,7 +14390,7 @@
       ]
      },
      "derived": [],
-     "description": "Binary classification: the probability that the target is the positive class.",
+     "description": "Binary classification: the probability that the target is the positive class (scikit-learn, xgboost, LightGBM or CatBoost classifiers).",
      "fit_schema": {},
      "id": "sklearn.tabular_classifier",
      "outputs": {
@@ -11744,6 +14521,119 @@
      },
      "settings_schema": {
       "$defs": {
+       "CatBoostClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
+          "anyOf": [
+           {
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Auto Class Weights"
+         },
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
+          "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
+         }
+        },
+        "title": "CatBoostClassifierParams",
+        "type": "object"
+       },
        "ColumnsSettings": {
         "additionalProperties": false,
         "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
@@ -12022,6 +14912,154 @@
         "title": "GradientBoostingRegressorParams",
         "type": "object"
        },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
        "HistGradientBoostingRegressorChoice": {
         "additionalProperties": false,
         "properties": {
@@ -12182,6 +15220,147 @@
          }
         },
         "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
         "type": "object"
        },
        "LassoChoice": {
@@ -13287,8 +16466,11 @@
        "estimator": {
         "discriminator": {
          "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
           "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
           "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
           "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
           "sklearn.Lasso": "#/$defs/LassoChoice",
           "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
@@ -13338,6 +16520,15 @@
          },
          {
           "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
          }
         ],
         "title": "Estimator"
@@ -13665,6 +16856,119 @@
      },
      "settings_schema": {
       "$defs": {
+       "CatBoostClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
+          "anyOf": [
+           {
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Auto Class Weights"
+         },
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
+          "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
+         }
+        },
+        "title": "CatBoostClassifierParams",
+        "type": "object"
+       },
        "ColumnsSettings": {
         "additionalProperties": false,
         "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
@@ -13985,6 +17289,154 @@
         "title": "GradientBoostingRegressorParams",
         "type": "object"
        },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
        "HistGradientBoostingRegressorChoice": {
         "additionalProperties": false,
         "properties": {
@@ -14145,6 +17597,147 @@
          }
         },
         "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
         "type": "object"
        },
        "LassoChoice": {
@@ -15227,8 +18820,11 @@
        "estimator": {
         "discriminator": {
          "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
           "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
           "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
           "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
           "sklearn.Lasso": "#/$defs/LassoChoice",
           "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
@@ -15278,6 +18874,15 @@
          },
          {
           "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
          }
         ],
         "title": "Estimator"
@@ -15593,6 +19198,119 @@
      },
      "settings_schema": {
       "$defs": {
+       "CatBoostClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
+          "anyOf": [
+           {
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Auto Class Weights"
+         },
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
+          "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
+         }
+        },
+        "title": "CatBoostClassifierParams",
+        "type": "object"
+       },
        "ColumnsSettings": {
         "additionalProperties": false,
         "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
@@ -15871,6 +19589,154 @@
         "title": "GradientBoostingRegressorParams",
         "type": "object"
        },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
        "HistGradientBoostingRegressorChoice": {
         "additionalProperties": false,
         "properties": {
@@ -16031,6 +19897,147 @@
          }
         },
         "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
         "type": "object"
        },
        "LassoChoice": {
@@ -17141,8 +21148,11 @@
        "estimator": {
         "discriminator": {
          "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
           "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
           "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
           "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
           "sklearn.Lasso": "#/$defs/LassoChoice",
           "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
@@ -17192,6 +21202,15 @@
          },
          {
           "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
          }
         ],
         "title": "Estimator"
@@ -17515,6 +21534,119 @@
      },
      "settings_schema": {
       "$defs": {
+       "CatBoostClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "catboost.CatBoostClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/CatBoostClassifierParams",
+          "default": {
+           "auto_class_weights": null,
+           "border_count": 254,
+           "depth": 6,
+           "iterations": 500,
+           "l2_leaf_reg": 3.0,
+           "learning_rate": null,
+           "min_data_in_leaf": 1,
+           "random_strength": 1.0,
+           "rsm": 1.0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "CatBoostClassifierChoice",
+        "type": "object"
+       },
+       "CatBoostClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "auto_class_weights": {
+          "anyOf": [
+           {
+            "enum": [
+             "Balanced",
+             "SqrtBalanced"
+            ],
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Auto Class Weights"
+         },
+         "border_count": {
+          "default": 254,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Border Count",
+          "type": "integer"
+         },
+         "depth": {
+          "default": 6,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Depth",
+          "type": "integer"
+         },
+         "iterations": {
+          "default": 500,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer"
+         },
+         "l2_leaf_reg": {
+          "default": 3.0,
+          "minimum": 0,
+          "title": "L2 Leaf Reg",
+          "type": "number"
+         },
+         "learning_rate": {
+          "anyOf": [
+           {
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "type": "number"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Learning Rate"
+         },
+         "min_data_in_leaf": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Data In Leaf",
+          "type": "integer"
+         },
+         "random_strength": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Random Strength",
+          "type": "number"
+         },
+         "rsm": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Rsm",
+          "type": "number"
+         }
+        },
+        "title": "CatBoostClassifierParams",
+        "type": "object"
+       },
        "ColumnsSettings": {
         "additionalProperties": false,
         "description": "Which variables become feature columns.\n\n``vars`` (explicit list) wins over ``roles``; ``exclude`` removes names from either.\nVariables with dims beyond ``rows`` are flattened into one column per label\n(``spend[tv]``, ``promo_lag[1]``).",
@@ -17793,6 +21925,154 @@
         "title": "GradientBoostingRegressorParams",
         "type": "object"
        },
+       "HistGradientBoostingClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "sklearn.HistGradientBoostingClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/HistGradientBoostingClassifierParams",
+          "default": {
+           "class_weight": null,
+           "early_stopping": false,
+           "l2_regularization": 0.0,
+           "learning_rate": 0.1,
+           "max_bins": 255,
+           "max_depth": null,
+           "max_features": 1.0,
+           "max_iter": 100,
+           "max_leaf_nodes": 31,
+           "min_samples_leaf": 20,
+           "n_iter_no_change": 10,
+           "tol": 1e-07,
+           "validation_fraction": 0.1
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "HistGradientBoostingClassifierChoice",
+        "type": "object"
+       },
+       "HistGradientBoostingClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "early_stopping": {
+          "default": false,
+          "title": "Early Stopping",
+          "type": "boolean"
+         },
+         "l2_regularization": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "L2 Regularization",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bins": {
+          "default": 255,
+          "maximum": 255,
+          "minimum": 2,
+          "title": "Max Bins",
+          "type": "integer"
+         },
+         "max_depth": {
+          "anyOf": [
+           {
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Max Depth"
+         },
+         "max_features": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Max Features",
+          "type": "number"
+         },
+         "max_iter": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Iter",
+          "type": "integer"
+         },
+         "max_leaf_nodes": {
+          "anyOf": [
+           {
+            "maximum": 65536,
+            "minimum": 2,
+            "type": "integer"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": 31,
+          "title": "Max Leaf Nodes"
+         },
+         "min_samples_leaf": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Samples Leaf",
+          "type": "integer"
+         },
+         "n_iter_no_change": {
+          "default": 10,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Iter No Change",
+          "type": "integer"
+         },
+         "tol": {
+          "default": 1e-07,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Tol",
+          "type": "number"
+         },
+         "validation_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Validation Fraction",
+          "type": "number"
+         }
+        },
+        "title": "HistGradientBoostingClassifierParams",
+        "type": "object"
+       },
        "HistGradientBoostingRegressorChoice": {
         "additionalProperties": false,
         "properties": {
@@ -17953,6 +22233,147 @@
          }
         },
         "title": "HistGradientBoostingRegressorParams",
+        "type": "object"
+       },
+       "LGBMClassifierChoice": {
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "const": "lightgbm.LGBMClassifier",
+          "title": "Kind",
+          "type": "string"
+         },
+         "params": {
+          "$ref": "#/$defs/LGBMClassifierParams",
+          "default": {
+           "class_weight": null,
+           "colsample_bytree": 1.0,
+           "learning_rate": 0.1,
+           "max_bin": 255,
+           "max_depth": -1,
+           "min_child_samples": 20,
+           "min_child_weight": 0.001,
+           "min_split_gain": 0.0,
+           "n_estimators": 100,
+           "num_leaves": 31,
+           "reg_alpha": 0.0,
+           "reg_lambda": 0.0,
+           "subsample": 1.0,
+           "subsample_freq": 0
+          }
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "title": "LGBMClassifierChoice",
+        "type": "object"
+       },
+       "LGBMClassifierParams": {
+        "additionalProperties": false,
+        "properties": {
+         "class_weight": {
+          "anyOf": [
+           {
+            "const": "balanced",
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ],
+          "default": null,
+          "title": "Class Weight"
+         },
+         "colsample_bytree": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Colsample Bytree",
+          "type": "number"
+         },
+         "learning_rate": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Learning Rate",
+          "type": "number"
+         },
+         "max_bin": {
+          "default": 255,
+          "maximum": 4096,
+          "minimum": 2,
+          "title": "Max Bin",
+          "type": "integer"
+         },
+         "max_depth": {
+          "default": -1,
+          "maximum": 64,
+          "minimum": -1,
+          "title": "Max Depth",
+          "type": "integer"
+         },
+         "min_child_samples": {
+          "default": 20,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Min Child Samples",
+          "type": "integer"
+         },
+         "min_child_weight": {
+          "default": 0.001,
+          "minimum": 0,
+          "title": "Min Child Weight",
+          "type": "number"
+         },
+         "min_split_gain": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Split Gain",
+          "type": "number"
+         },
+         "n_estimators": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "N Estimators",
+          "type": "integer"
+         },
+         "num_leaves": {
+          "default": 31,
+          "maximum": 131072,
+          "minimum": 2,
+          "title": "Num Leaves",
+          "type": "integer"
+         },
+         "reg_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Alpha",
+          "type": "number"
+         },
+         "reg_lambda": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Reg Lambda",
+          "type": "number"
+         },
+         "subsample": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Subsample",
+          "type": "number"
+         },
+         "subsample_freq": {
+          "default": 0,
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Subsample Freq",
+          "type": "integer"
+         }
+        },
+        "title": "LGBMClassifierParams",
         "type": "object"
        },
        "LassoChoice": {
@@ -19060,8 +23481,11 @@
        "estimator": {
         "discriminator": {
          "mapping": {
+          "catboost.CatBoostClassifier": "#/$defs/CatBoostClassifierChoice",
+          "lightgbm.LGBMClassifier": "#/$defs/LGBMClassifierChoice",
           "sklearn.ElasticNet": "#/$defs/ElasticNetChoice",
           "sklearn.GradientBoostingRegressor": "#/$defs/GradientBoostingRegressorChoice",
+          "sklearn.HistGradientBoostingClassifier": "#/$defs/HistGradientBoostingClassifierChoice",
           "sklearn.HistGradientBoostingRegressor": "#/$defs/HistGradientBoostingRegressorChoice",
           "sklearn.Lasso": "#/$defs/LassoChoice",
           "sklearn.LinearRegression": "#/$defs/LinearRegressionChoice",
@@ -19111,6 +23535,15 @@
          },
          {
           "$ref": "#/$defs/XGBClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/HistGradientBoostingClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/LGBMClassifierChoice"
+         },
+         {
+          "$ref": "#/$defs/CatBoostClassifierChoice"
          }
         ],
         "title": "Estimator"
@@ -19246,7 +23679,7 @@
       ],
       "difficulty": "intermediate",
       "example": "Radon levels for each house. If a county has few houses, its baseline moves towards the state average.",
-      "expert_notes": "Bayesian hierarchical GLM (PyMC, NUTS). Partially pooled group intercepts and optional slopes. Group-level covariates in the mean. The model draws new levels from the fitted hyperprior.",
+      "expert_notes": "Bayesian hierarchical GLM (PyMC, NUTS). Partially pooled group intercepts and optional slopes. Group-level covariates in the mean. The model draws new levels from the fitted hyperprior. Families: normal, Student-t, Poisson, Bernoulli, negative binomial, zero-inflated Poisson and negative binomial (counts with many zeros), beta (shares between 0 and 1), gamma (positive amounts) and ordinal (ordered categories, cumulative logit).",
       "fits": {
        "data_shape": [
         "table",
@@ -19423,7 +23856,13 @@
          "normal",
          "student_t",
          "poisson",
-         "bernoulli"
+         "bernoulli",
+         "negative_binomial",
+         "zero_inflated_poisson",
+         "zero_inflated_negative_binomial",
+         "beta",
+         "gamma",
+         "ordinal"
         ],
         "title": "Family",
         "type": "string"
@@ -19460,6 +23899,21 @@
         "title": "Intercept Sigma",
         "type": "number"
        },
+       "n_categories": {
+        "anyOf": [
+         {
+          "maximum": 50,
+          "minimum": 2,
+          "type": "integer"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Number of ordered categories (ordinal family only)",
+        "title": "N Categories"
+       },
        "noise_sigma": {
         "default": 1.0,
         "description": "Half-normal scale of the noise sd",
@@ -19480,6 +23934,256 @@
        }
       },
       "title": "HierarchicalGLMSettings",
+      "type": "object"
+     },
+     "version": "1.1.0"
+    },
+    "yanked": false
+   },
+   {
+    "manifest": {
+     "about": {
+      "assumptions": [
+       "The main patterns of the pixels (PCA) or the pixels separate the classes linearly"
+      ],
+      "avoid_when": [
+       "The images are large or very different (the model is linear)",
+       "You need high accuracy on photographs"
+      ],
+      "data_needs": [
+       "An image dataset from an image folder upload: pixels and a label for each image",
+       "Images of the same size (the upload can resize them)"
+      ],
+      "difficulty": "intermediate",
+      "example": "Classify 16 x 16 pictures of circles, squares and crosses, and test on 25% of them.",
+      "expert_notes": "Bayesian multinomial logistic regression (PyMC, NUTS) on PCA scores of the pixels (or the block-averaged pixels), with zero-sum normal priors over the classes. Draws representation of y_hat(chain, draw, image, class).",
+      "fits": {
+       "data_shape": [
+        "images"
+       ],
+       "frequency": [
+        "not_time"
+       ],
+       "goal": [
+        "classify"
+       ],
+       "uncertainty": [
+        "essential",
+        "nice"
+       ]
+      },
+      "outputs": [
+       "The probability of each class for each image, with a range",
+       "Images of the main patterns and of the class means in the run"
+      ],
+      "references": [],
+      "related": [
+       "sklearn.multiclass_classifier",
+       "core.stratified",
+       "core.column"
+      ],
+      "summary_plain": "Learns the class of small images, such as shapes or digits, from labelled examples. It gives the probability of each class with a range.",
+      "title": "Classify small images",
+      "typical_runtime": "minutes",
+      "use_when": [
+       "You have a few hundred to a few thousand small images with a class label",
+       "You want a probability with a range for each class"
+      ]
+     },
+     "artifact_format": "zarr.zip/v1",
+     "capabilities": {
+      "checkpointable": false,
+      "contribution_scale": "none",
+      "decision": false,
+      "deterministic_given_seed": true,
+      "evidence": false,
+      "fast_score": false,
+      "identified_quantities": [],
+      "inference": "mcmc",
+      "loo_invalid_reason": "the model stores no pointwise log-likelihood",
+      "loo_valid": false,
+      "owns": [],
+      "recommend": false,
+      "representation": "draws",
+      "score_modes": [
+       "evaluate",
+       "predict"
+      ]
+     },
+     "derived": [],
+     "description": "A Bayesian multinomial logistic regression for small images of the same size: principal component scores (or block means) of the pixels predict the class, with zero-sum normal priors on the class weights.",
+     "fit_schema": {},
+     "id": "tabular.image_logistic",
+     "outputs": {
+      "y_hat": {
+       "description": "Probability of each class per image (sums to 1 over class)",
+       "dims": [
+        "class"
+       ],
+       "dims_of": "label",
+       "units": "1"
+      }
+     },
+     "plots": [
+      "core.roc_pr",
+      "core.confusion",
+      "core.convergence"
+     ],
+     "resources": {
+      "default_class": "S",
+      "gpu": false,
+      "min_class": "S"
+     },
+     "schema_template": {
+      "cases": [],
+      "params": {
+       "image_dim": {
+        "default": "image",
+        "required": false,
+        "type": "string"
+       },
+       "pixels": {
+        "default": "pixels",
+        "required": false,
+        "type": "string"
+       },
+       "target": {
+        "default": "label",
+        "required": false,
+        "type": "string"
+       }
+      },
+      "template": {
+       "dims": {
+        "channel": {
+         "kind": "categorical",
+         "policy": "fixed"
+        },
+        "x": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "y": {
+         "kind": "integer",
+         "policy": "fixed"
+        },
+        "{image_dim}": {
+         "kind": "categorical",
+         "new_level_strategy": "pooled",
+         "policy": "new_levels"
+        }
+       },
+       "vars": {
+        "{pixels}": {
+         "dims": [
+          "{image_dim}",
+          "y",
+          "x",
+          "channel"
+         ],
+         "dtype": "uint8",
+         "role": "covariate"
+        },
+        "{target}": {
+         "dims": [
+          "{image_dim}"
+         ],
+         "dtype": "str",
+         "missing": "allow",
+         "role": "target"
+        }
+       }
+      }
+     },
+     "settings_schema": {
+      "additionalProperties": false,
+      "description": "Settings of ``tabular.image_logistic``.",
+      "properties": {
+       "class_order": {
+        "anyOf": [
+         {
+          "items": {
+           "maxLength": 200,
+           "minLength": 1,
+           "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 2,
+          "type": "array"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "The classes in order (default: sorted)",
+        "title": "Class Order"
+       },
+       "downsample": {
+        "default": 1,
+        "description": "Block size of the mean over y and x",
+        "maximum": 16,
+        "minimum": 1,
+        "title": "Downsample",
+        "type": "integer"
+       },
+       "features": {
+        "default": "pca",
+        "description": "pca: principal component scores; pixels: the block means",
+        "enum": [
+         "pca",
+         "pixels"
+        ],
+        "title": "Features",
+        "type": "string"
+       },
+       "image_dim": {
+        "default": "image",
+        "description": "The dim that lists the images",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Image Dim",
+        "type": "string"
+       },
+       "max_features": {
+        "default": 256,
+        "description": "features: pixels: the most block means allowed",
+        "maximum": 1024,
+        "minimum": 4,
+        "title": "Max Features",
+        "type": "integer"
+       },
+       "n_components": {
+        "default": 16,
+        "description": "PCA components (features: pca)",
+        "maximum": 64,
+        "minimum": 2,
+        "title": "N Components",
+        "type": "integer"
+       },
+       "pixels": {
+        "default": "pixels",
+        "description": "The image variable (image, y, x, channel)",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Pixels",
+        "type": "string"
+       },
+       "prior_sigma": {
+        "default": 1.0,
+        "description": "Prior sd of the class weights",
+        "exclusiveMinimum": 0,
+        "maximum": 10,
+        "title": "Prior Sigma",
+        "type": "number"
+       },
+       "target": {
+        "default": "label",
+        "description": "The class label of each image",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$",
+        "title": "Target",
+        "type": "string"
+       }
+      },
+      "title": "ImageLogisticSettings",
       "type": "object"
      },
      "version": "1.0.0"
@@ -25179,8 +29883,7 @@
       "With draws, the chart uses the mean probability of each cell"
      ],
      "avoid_when": [
-      "You want to see all thresholds (use ROC and precision-recall curves)",
-      "The target has more than two values"
+      "You want to see all thresholds (use ROC and precision-recall curves)"
      ],
      "data_needs": [
       "Predicted probabilities of the positive class, with draws or one value for each cell (posterior_predictive, predictions or draws group, or a score summary)",
@@ -25188,10 +29891,11 @@
      ],
      "difficulty": "beginner",
      "example": "At the threshold 0.5, the model finds 62 of the 80 positive cases (recall 0.78). 25 of its 87 alarms are false (precision 0.71). With the threshold `auto`, the threshold goes down to 0.31. The recall goes up to 0.9 and the precision goes down to 0.6.",
-     "expert_notes": "`threshold` is a number (default 0.5) or 'auto': the threshold that maximises Youden's J = TPR \u2212 FPR over the distinct predicted probabilities. `normalize='true'` divides each row (actual class) by its count; 'none' shows counts. Precision = TP/(TP+FP), recall = TP/(TP+FN), specificity = TN/(TN+FP), F1 = 2PR/(P+R). `positive`, `var` and `observed_var` work as in ROC and precision-recall curves.",
+     "expert_notes": "`threshold` is a number (default 0.5) or 'auto': the threshold that maximises Youden's J = TPR \u2212 FPR over the distinct predicted probabilities. `normalize='true'` divides each row (actual class) by its count; 'none' shows counts. Precision = TP/(TP+FP), recall = TP/(TP+FN), specificity = TN/(TN+FP), F1 = 2PR/(P+R). `positive`, `var` and `observed_var` work as in ROC and precision-recall curves. Multiclass: the predicted class is the argmax of the class probabilities; `threshold` and `positive` are not used (the caption says so).",
      "fits": {},
      "outputs": [
       "A 2 \u00d7 2 matrix of the actual class against the predicted class, with counts or with the share of each actual class",
+      "For a multiclass target: a K \u00d7 K matrix of the most probable class (up to 30 classes; the other classes are put together), with the accuracy and the macro F1",
       "A caption with the accuracy, the precision, the recall (sensitivity), the specificity, the F1 score and the threshold"
      ],
      "references": [
@@ -25204,7 +29908,7 @@
       "core.roc_pr",
       "core.calibration"
      ],
-     "summary_plain": "Counts the cases that the model classifies correctly and incorrectly at one probability threshold. The four boxes are the true and false positives and the true and false negatives.",
+     "summary_plain": "Counts the cases that the model classifies correctly and incorrectly, for a binary or multiclass target. For yes/no, the four boxes are the true and false positives and the true and false negatives at one probability threshold.",
      "title": "Confusion matrix",
      "typical_runtime": "instant",
      "use_when": [
@@ -25220,7 +29924,7 @@
      "draws",
      "point"
     ],
-    "summary": "How many positive and negative cases the model classifies correctly and wrongly at a threshold on the predicted probability.",
+    "summary": "How many cases the model classifies correctly and wrongly: at a threshold on the predicted probability (binary), or by the most probable class (multiclass).",
     "title": "Confusion matrix",
     "version": "1.0.0",
     "yanked": false
@@ -26242,23 +30946,24 @@
       "Cells with no actual value or no prediction are left out"
      ],
      "avoid_when": [
-      "The target has more than two values",
       "You want to know if the probabilities are correct (use Calibration)",
       "You need the result at one threshold (use Confusion matrix)"
      ],
      "data_needs": [
       "Predicted probabilities of the positive class, with draws or one value for each cell (posterior_predictive, predictions or draws group, or a score summary)",
-      "The actual 0/1 values (observed_data or observed group)"
+      "The actual 0/1 values (observed_data or observed group)",
+      "For a multiclass target: the probability of each class along a class dim, and the actual class labels"
      ],
      "difficulty": "intermediate",
      "example": "The AUC is 0.86, so the model separates the classes well. Only 8% of the cases are positive. The precision falls below 0.5 when the recall is more than 0.6. At that point, half of the alarms are false.",
-     "expert_notes": "The thresholds are the distinct predicted probabilities, thinned to `max_points` (500, 20..5000). The AUC is the Mann-Whitney statistic with average ranks for ties. The average precision summarises the precision-recall curve. With draws, the AUC of each draw (up to 500 draws) gives the 90% interval in the caption. Verdict on the AUC: >= 0.9 very well, >= 0.8 well, >= 0.7 fairly well, else not well. `positive` picks the value of the positive class (default: the larger one); `var` and `observed_var` pick the pair. On imbalanced data, read the precision-recall panel: the ROC curve can look good while most alarms are false.",
+     "expert_notes": "The thresholds are the distinct predicted probabilities, thinned to `max_points` (500, 20..5000). The AUC is the Mann-Whitney statistic with average ranks for ties. The average precision summarises the precision-recall curve. With draws, the AUC of each draw (up to 500 draws) gives the 90% interval in the caption. Verdict on the AUC: >= 0.9 very well, >= 0.8 well, >= 0.7 fairly well, else not well. `positive` picks the value of the positive class (default: the larger one); `var` and `observed_var` pick the pair. On imbalanced data, read the precision-recall panel: the ROC curve can look good while most alarms are false. Multiclass (a class dim on the prediction, or more than two observed classes): one-vs-rest curves per class, the macro AUC is the mean over the classes, `classes` picks the classes to draw and `positive` is not used.",
      "fits": {},
      "outputs": [
       "The ROC curve: the true positive rate against the false positive rate, with a diagonal line for a random guess",
       "The precision-recall curve, with a line at the base rate (the share of positive cases)",
       "The AUC and the average precision in the titles of the panels",
-      "A caption with a verdict on the AUC and the base rate. With draws, the caption also gives a 90% range of the AUC"
+      "A caption with a verdict on the AUC and the base rate. With draws, the caption also gives a 90% range of the AUC",
+      "For a multiclass target: one curve for each class against all other classes (the 12 most frequent classes), and the macro AUC in the title"
      ],
      "references": [
       {
@@ -26275,13 +30980,14 @@
       "core.calibration",
       "ml.feature_importance"
      ],
-     "summary_plain": "Shows how well the predicted probabilities separate the yes cases from the no cases at all thresholds. A curve near the top-left corner (ROC) or the top-right corner (precision-recall) shows a good separation.",
+     "summary_plain": "Shows how well the predicted probabilities separate the yes cases from the no cases at all thresholds, for a binary or multiclass target. A curve near the top-left corner (ROC) or the top-right corner (precision-recall) shows a good separation.",
      "title": "ROC and precision-recall curves",
      "typical_runtime": "instant",
      "use_when": [
       "You predict a yes/no outcome and want one number for how well the model puts the cases in order",
       "You want to see the balance between the cases that the model finds and its false alarms at all thresholds",
-      "The yes cases are rare. The precision-recall curve shows this better than the ROC curve"
+      "The yes cases are rare. The precision-recall curve shows this better than the ROC curve",
+      "You classify into three or more classes and want a curve for each class"
      ]
     },
     "id": "core.roc_pr",
@@ -26291,7 +30997,7 @@
      "draws",
      "point"
     ],
-    "summary": "How well the predicted probabilities put the positive cases above the negative cases, at every threshold.",
+    "summary": "How well the predicted probabilities put the positive cases above the negative cases, at every threshold (binary or multiclass: one curve per class).",
     "title": "ROC and precision-recall curves",
     "version": "1.0.0",
     "yanked": false
@@ -32487,6 +37193,105 @@
     "title": "Checkpoint",
     "type": "object"
    },
+   "ColumnSplit": {
+    "additionalProperties": false,
+    "description": "Hold out the rows whose value in ``column`` is one of ``holdout`` (a fixed split read\nfrom the data, v0.14).\n\n``column`` is a coord or a 1-D data variable along ``dim``. Values compare as text, so\n``holdout: [1]`` matches a stored ``1`` or ``\"1\"``. With ``train`` set, rows in neither\nlist are dropped; else every other row trains.",
+    "properties": {
+     "after_step": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+      "title": "After Step"
+     },
+     "allow_leakage": {
+      "default": false,
+      "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+      "title": "Allow Leakage",
+      "type": "boolean"
+     },
+     "column": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Column",
+      "type": "string"
+     },
+     "dim": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dim",
+      "type": "string"
+     },
+     "holdout": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        },
+        {
+         "type": "number"
+        },
+        {
+         "type": "boolean"
+        }
+       ]
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Holdout",
+      "type": "array"
+     },
+     "kind": {
+      "const": "column",
+      "title": "Kind",
+      "type": "string"
+     },
+     "train": {
+      "anyOf": [
+       {
+        "items": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "integer"
+          },
+          {
+           "type": "number"
+          },
+          {
+           "type": "boolean"
+          }
+         ]
+        },
+        "maxItems": 64,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Train"
+     }
+    },
+    "required": [
+     "kind",
+     "dim",
+     "column"
+    ],
+    "title": "ColumnSplit",
+    "type": "object"
+   },
    "DataBlock": {
     "additionalProperties": false,
     "description": "The dataset, side tables, binding to canonical names and the split.\n\nFor a tree dataset (M4), ``nodes`` picks the nodes whose variables are merged into the\nONE flat dataset the pipeline sees (:meth:`mapi_spec.tree.TreeSchema.flat`), aligned per\n``join``. Without ``nodes`` a tree dataset's root node is read (when it has variables).\n``nodes`` on a plain dataset is an error. The binding applies to the merged names.",
@@ -32550,9 +37355,11 @@
         "discriminator": {
          "mapping": {
           "as_of": "#/$defs/AsOfSplit",
+          "column": "#/$defs/ColumnSplit",
           "last_per_group": "#/$defs/LastPerGroupSplit",
           "leave_group_out": "#/$defs/LeaveGroupOutSplit",
           "mask_block": "#/$defs/MaskBlockSplit",
+          "stratified": "#/$defs/StratifiedSplit",
           "time_holdout": "#/$defs/TimeHoldoutSplit"
          },
          "propertyName": "kind"
@@ -32572,6 +37379,12 @@
          },
          {
           "$ref": "#/$defs/MaskBlockSplit"
+         },
+         {
+          "$ref": "#/$defs/ColumnSplit"
+         },
+         {
+          "$ref": "#/$defs/StratifiedSplit"
          }
         ]
        },
@@ -33505,6 +38318,74 @@
      "use"
     ],
     "title": "StepCall",
+    "type": "object"
+   },
+   "StratifiedSplit": {
+    "additionalProperties": false,
+    "description": "Hold out a random ``fraction`` of the rows along ``dim`` in each level of ``by`` (the\nclass label; v0.14). A level with one row stays in training.",
+    "properties": {
+     "after_step": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix",
+      "title": "After Step"
+     },
+     "allow_leakage": {
+      "default": false,
+      "description": "Downgrade LEAKAGE_RISK to a warning (acknowledged)",
+      "title": "Allow Leakage",
+      "type": "boolean"
+     },
+     "by": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "By",
+      "type": "string"
+     },
+     "dim": {
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+      "title": "Dim",
+      "type": "string"
+     },
+     "fraction": {
+      "exclusiveMaximum": 1,
+      "exclusiveMinimum": 0,
+      "title": "Fraction",
+      "type": "number"
+     },
+     "kind": {
+      "const": "stratified",
+      "title": "Kind",
+      "type": "string"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "exclusiveMaximum": 4294967296,
+        "minimum": 0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Seed"
+     }
+    },
+    "required": [
+     "kind",
+     "dim",
+     "by",
+     "fraction"
+    ],
+    "title": "StratifiedSplit",
     "type": "object"
    },
    "TimeHoldoutSplit": {

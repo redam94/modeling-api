@@ -4,8 +4,10 @@ The RunSpec is the *only* channel through which an execution receives URLs and i
 key. Inputs are generation-pinned signed GETs, the manifest is a write-once signed PUT and
 every other output goes through a *create-only* V4 POST policy on the attempt prefix (it
 cannot replace the manifest or an output once written; only the checkpoint policy may
-overwrite, since each segment rewrites the same checkpoint names). All keys are built
-server-side from validated ids (:mod:`mapi_spec.storage` helpers).
+overwrite, since each segment rewrites the same checkpoint names). v0.14: every attempt also
+gets a create-only policy on its ``media/`` prefix (one logged image or table per object, at
+most ``TrackingLimits.media_item_bytes``). All keys are built server-side from validated ids
+(:mod:`mapi_spec.storage` helpers).
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from mapi_spec.run import (
     OUTPUT_ARTIFACTS,
     OUTPUT_CHECKPOINTS,
     OUTPUT_MANIFEST,
+    OUTPUT_MEDIA,
     RunLimits,
     RunSpec,
     catalog_digest,
@@ -35,6 +38,7 @@ from mapi_spec.storage import (
     SignedGet,
     SignedPut,
     run_checkpoint_prefix,
+    run_media_prefix,
     run_prefix,
 )
 
@@ -131,6 +135,15 @@ async def build_runspec(
             runs_bucket, checkpoint_prefix, expires_in=ttl, max_bytes=limits.max_output_bytes
         )
 
+    media_prefix = run_media_prefix(run.tenant_id, run.id, attempt.attempt)
+    outputs[OUTPUT_MEDIA] = await store.post_policy(
+        runs_bucket,
+        media_prefix,
+        expires_in=ttl,
+        max_bytes=limits.tracking.media_item_bytes,
+        create_only=True,
+    )
+
     resume: dict[str, SignedGet] = {}
     prev, found = "", []
     if run.checkpointable:
@@ -167,6 +180,7 @@ async def build_runspec(
         outputs=outputs,
         resume=resume,
         checkpoint_prefix=checkpoint_prefix,
+        media_prefix=media_prefix,
         hmac_key=attempt.hmac_key,
         limits=limits,
         resource_class=rc,

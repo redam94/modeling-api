@@ -10,6 +10,10 @@ loss/objective an uncertainty kind needs) are not part of the params models.
 In a spec::
 
     estimator: {kind: xgboost.XGBRegressor, params: {n_estimators: 600, max_depth: 6}}
+
+LightGBM and CatBoost (v0.14) are an optional extra (``mapi-sklearn[gbm]``) and are imported
+only when an estimator of theirs is built or loaded; without them those kinds raise
+``SETTINGS_INVALID``.
 """
 
 from __future__ import annotations
@@ -25,11 +29,15 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 __all__ = [
     "ESTIMATORS",
+    "GBM_MODULES",
+    "CatBoostClassifierChoice",
     "ElasticNetChoice",
     "EstimatorChoice",
     "EstimatorEntry",
     "GradientBoostingRegressorChoice",
+    "HistGradientBoostingClassifierChoice",
     "HistGradientBoostingRegressorChoice",
+    "LGBMClassifierChoice",
     "LassoChoice",
     "LinearRegressionChoice",
     "LogisticRegressionChoice",
@@ -166,6 +174,22 @@ class HistGradientBoostingRegressorParams(Params):
     tol: float = Field(1e-7, ge=0, le=1)
 
 
+class HistGradientBoostingClassifierParams(Params):
+    learning_rate: float = Field(0.1, gt=0, le=10)
+    max_iter: int = Field(100, ge=1, le=10_000)
+    max_leaf_nodes: int | None = Field(31, ge=2, le=65_536)
+    max_depth: int | None = Field(None, ge=1, le=256)
+    min_samples_leaf: int = Field(20, ge=1, le=1_000_000)
+    l2_regularization: float = Field(0.0, ge=0)
+    max_features: Fraction = 1.0
+    max_bins: int = Field(255, ge=2, le=255)
+    early_stopping: bool = False
+    validation_fraction: float = Field(0.1, gt=0, lt=1)
+    n_iter_no_change: int = Field(10, ge=1, le=10_000)
+    tol: float = Field(1e-7, ge=0, le=1)
+    class_weight: Literal["balanced"] | None = None
+
+
 class _XGBParams(Params):
     n_estimators: int = Field(100, ge=1, le=10_000)
     max_depth: int = Field(6, ge=0, le=64)
@@ -202,8 +226,38 @@ class XGBRegressorParams(_XGBParams):
 
 
 class XGBClassifierParams(_XGBParams):
+    # xgboost switches to ``multi:softprob`` itself when the target has more than two classes
     objective: Literal["binary:logistic"] = "binary:logistic"
     scale_pos_weight: float = Field(1.0, gt=0)
+
+
+class LGBMClassifierParams(Params):
+    n_estimators: int = Field(100, ge=1, le=10_000)
+    learning_rate: float = Field(0.1, gt=0, le=1)
+    num_leaves: int = Field(31, ge=2, le=131_072)
+    max_depth: int = Field(-1, ge=-1, le=64)  # -1: no limit
+    min_child_samples: int = Field(20, ge=1, le=1_000_000)
+    min_child_weight: float = Field(1e-3, ge=0)
+    min_split_gain: float = Field(0.0, ge=0)
+    subsample: Fraction = 1.0
+    subsample_freq: int = Field(0, ge=0, le=1000)  # 0: no bagging (subsample is then unused)
+    colsample_bytree: Fraction = 1.0
+    reg_alpha: float = Field(0.0, ge=0)
+    reg_lambda: float = Field(0.0, ge=0)
+    max_bin: int = Field(255, ge=2, le=4096)
+    class_weight: Literal["balanced"] | None = None
+
+
+class CatBoostClassifierParams(Params):
+    iterations: int = Field(500, ge=1, le=10_000)
+    learning_rate: float | None = Field(None, gt=0, le=1)  # None: CatBoost picks it
+    depth: int = Field(6, ge=1, le=16)
+    l2_leaf_reg: float = Field(3.0, ge=0)
+    min_data_in_leaf: int = Field(1, ge=1, le=1_000_000)
+    rsm: Fraction = 1.0
+    random_strength: float = Field(1.0, ge=0)
+    border_count: int = Field(254, ge=1, le=65_535)
+    auto_class_weights: Literal["Balanced", "SqrtBalanced"] | None = None
 
 
 # --------------------------------------------------------------------------------- choices
@@ -277,6 +331,21 @@ class XGBClassifierChoice(_Choice):
     params: XGBClassifierParams = XGBClassifierParams()
 
 
+class HistGradientBoostingClassifierChoice(_Choice):
+    kind: Literal["sklearn.HistGradientBoostingClassifier"]
+    params: HistGradientBoostingClassifierParams = HistGradientBoostingClassifierParams()
+
+
+class LGBMClassifierChoice(_Choice):
+    kind: Literal["lightgbm.LGBMClassifier"]
+    params: LGBMClassifierParams = LGBMClassifierParams()
+
+
+class CatBoostClassifierChoice(_Choice):
+    kind: Literal["catboost.CatBoostClassifier"]
+    params: CatBoostClassifierParams = CatBoostClassifierParams()
+
+
 EstimatorChoice = Annotated[
     LinearRegressionChoice
     | RidgeChoice
@@ -289,7 +358,10 @@ EstimatorChoice = Annotated[
     | GradientBoostingRegressorChoice
     | HistGradientBoostingRegressorChoice
     | XGBRegressorChoice
-    | XGBClassifierChoice,
+    | XGBClassifierChoice
+    | HistGradientBoostingClassifierChoice
+    | LGBMClassifierChoice
+    | CatBoostClassifierChoice,
     Field(discriminator="kind"),
 ]
 """An allow-listed estimator and its validated hyper-parameters."""
@@ -307,6 +379,9 @@ AnyChoice = (
     | HistGradientBoostingRegressorChoice
     | XGBRegressorChoice
     | XGBClassifierChoice
+    | HistGradientBoostingClassifierChoice
+    | LGBMClassifierChoice
+    | CatBoostClassifierChoice
 )
 
 
@@ -327,6 +402,10 @@ _HIST = frozenset(
 )
 
 
+GBM_MODULES = frozenset({"lightgbm", "catboost"})
+"""Modules of the optional ``gbm`` extra (imported lazily)."""
+
+
 def _set(field_name: str) -> Callable[[dict[str, Any], float], dict[str, Any]]:
     def apply(kw: dict[str, Any], q: float) -> dict[str, Any]:
         return {**kw, field_name: q}
@@ -345,6 +424,7 @@ class EstimatorEntry:
     quantile model is built: one native multi-quantile model, or one model per level with
     ``quantile_setter``. ``loss_param``/``loss_default``/``quantile_loss`` name the loss or
     objective the quantile mode manages. ``trusted`` lists the extra types skops may load.
+    ``fixed`` holds platform-owned constructor arguments (quiet logging, no files written).
     """
 
     kind: str
@@ -353,7 +433,7 @@ class EstimatorEntry:
     params: type[Params]
     choice: type[_Choice]
     task: Task
-    persistence: Literal["skops", "xgboost"] = "skops"
+    persistence: Literal["skops", "xgboost", "lightgbm", "catboost"] = "skops"
     linear: bool = False
     native_nan: bool = False
     native_categorical: Literal["xgboost", "sklearn_hist"] | None = None
@@ -364,10 +444,22 @@ class EstimatorEntry:
     seed_param: str | None = "random_state"
     n_jobs_param: str | None = None
     trusted: frozenset[str] = field(default_factory=frozenset)
+    fixed: Mapping[str, Any] = field(default_factory=dict)
     description: str = ""
 
     def load_class(self) -> type[Any]:
-        cls: type[Any] = getattr(importlib.import_module(self.module), self.name)
+        """The estimator class; ``SETTINGS_INVALID`` when its optional library is missing."""
+        try:
+            module = importlib.import_module(self.module)
+        except ImportError:
+            if self.module not in GBM_MODULES:
+                raise
+            raise _settings_error(
+                f"estimator {self.kind} needs mapi-sklearn[gbm] (lightgbm/catboost). The "
+                "base-ml image has it.",
+                pointer="/model/settings/estimator/kind",
+            ) from None
+        cls: type[Any] = getattr(module, self.name)
         return cls
 
 
@@ -518,7 +610,47 @@ ESTIMATORS: dict[str, EstimatorEntry] = {
             native_nan=True,
             native_categorical="xgboost",
             n_jobs_param="n_jobs",
-            description="XGBoost gradient-boosted trees for binary classification.",
+            description="XGBoost gradient-boosted trees for binary or multiclass classification.",
+        ),
+        EstimatorEntry(
+            "sklearn.HistGradientBoostingClassifier",
+            "sklearn.ensemble",
+            "HistGradientBoostingClassifier",
+            HistGradientBoostingClassifierParams,
+            HistGradientBoostingClassifierChoice,
+            "classification",
+            native_nan=True,
+            native_categorical="sklearn_hist",
+            trusted=_HIST,
+            description="Histogram gradient boosting for classification (native missing "
+            "values and categories).",
+        ),
+        EstimatorEntry(
+            "lightgbm.LGBMClassifier",
+            "lightgbm",
+            "LGBMClassifier",
+            LGBMClassifierParams,
+            LGBMClassifierChoice,
+            "classification",
+            persistence="lightgbm",
+            native_nan=True,
+            n_jobs_param="n_jobs",
+            fixed={"verbosity": -1},
+            description="LightGBM gradient-boosted trees (needs mapi-sklearn[gbm]).",
+        ),
+        EstimatorEntry(
+            "catboost.CatBoostClassifier",
+            "catboost",
+            "CatBoostClassifier",
+            CatBoostClassifierParams,
+            CatBoostClassifierChoice,
+            "classification",
+            persistence="catboost",
+            native_nan=True,
+            seed_param="random_seed",
+            n_jobs_param="thread_count",
+            fixed={"verbose": False, "allow_writing_files": False},
+            description="CatBoost oblivious gradient-boosted trees (needs mapi-sklearn[gbm]).",
         ),
     )
 }
@@ -570,7 +702,13 @@ def choice_from_instance(est: Any) -> AnyChoice:
     one the kind's params model declares and accepts.
     """
     entry = next(
-        (e for e in ESTIMATORS.values() if type(est) is e.load_class()),
+        (
+            e
+            for e in ESTIMATORS.values()
+            if type(est).__name__ == e.name
+            and type(est).__module__.split(".")[0] == e.module.split(".")[0]
+            and type(est) is e.load_class()
+        ),
         None,
     )
     if entry is None:
@@ -580,7 +718,7 @@ def choice_from_instance(est: Any) -> AnyChoice:
         )
     current = est.get_params(deep=False)
     defaults = entry.load_class()().get_params(deep=False)
-    owned = {entry.seed_param, entry.n_jobs_param, "verbosity", "verbose"}
+    owned = {entry.seed_param, entry.n_jobs_param, "verbosity", "verbose", *entry.fixed}
     changed = {
         k: v
         for k, v in current.items()
@@ -629,8 +767,8 @@ def build_estimator(
     """
     entry = get_entry(choice.kind)
     kwargs: dict[str, Any] = choice.params.model_dump()
-    if entry.persistence == "xgboost":
-        # optional objective-specific xgboost parameters are omitted when unset
+    if entry.persistence in ("xgboost", "catboost"):
+        # optional objective-specific parameters are omitted when unset (library default)
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
     kwargs.update(overrides or {})
     if entry.seed_param is not None:
@@ -639,6 +777,7 @@ def build_estimator(
         kwargs[entry.n_jobs_param] = n_jobs
     if entry.persistence == "xgboost":
         kwargs["verbosity"] = 0
+    kwargs.update(entry.fixed)
     if categorical:
         if entry.native_categorical == "xgboost":
             if n_features is None:

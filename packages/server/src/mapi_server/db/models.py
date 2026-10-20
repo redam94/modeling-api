@@ -45,6 +45,7 @@ __all__ = [
     "EndpointRevision",
     "EndpointRun",
     "ExecutorReport",
+    "Experiment",
     "GovernancePolicyRow",
     "IdempotencyKey",
     "LoginTransactionRow",
@@ -62,11 +63,13 @@ __all__ = [
     "RunAttempt",
     "RunEvent",
     "RunLog",
+    "RunMedia",
     "RunMetric",
     "RunMetricSummary",
     "RunParam",
     "RunProgress",
     "RunTag",
+    "RunView",
     "SavedPlot",
     "Signup",
     "Spec",
@@ -140,6 +143,10 @@ TENANT_TABLES: tuple[str, ...] = (
     "run_metric_summary",
     "run_params",
     "run_tags",
+    # v0.14 experiments, saved views and media (0016_experiments_media)
+    "experiments",
+    "run_views",
+    "run_media",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -533,6 +540,9 @@ class Run(_Scoped, Base):
     estimate: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # CostEstimate at submit
     name: Mapped[str | None] = mapped_column(String(200))  # v0.11: PATCH /v1/runs/{id}
     note: Mapped[str | None] = mapped_column(Text)
+    experiment_id: Mapped[str | None] = mapped_column(  # v0.14
+        ForeignKey("experiments.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     queued_at: Mapped[datetime | None] = mapped_column()
     started_at: Mapped[datetime | None] = mapped_column()
@@ -544,6 +554,7 @@ class Run(_Scoped, Base):
         Index("ix_runs_state", "state", "queued_at"),
         Index("ix_runs_spec", "spec_id"),
         Index("ix_runs_tenant_state", "tenant_id", "state"),
+        Index("ix_runs_experiment", "tenant_id", "project_id", "experiment_id", "id"),
         CheckConstraint("priority in ('interactive','batch')", name="priority"),
         CheckConstraint("task_count >= 1", name="task_count"),
     )
@@ -725,6 +736,95 @@ class RunTag(_Scoped, Base):
     __table_args__ = (
         Index("ix_run_tags_seq", "run_id", "seq"),
         Index("ix_run_tags_search", "tenant_id", "project_id", "key", "value"),
+    )
+
+
+# ============================================================ experiments, views, media
+
+
+class Experiment(_Scoped, Base):
+    """A named group of runs of a project (v0.14). ``name_key`` is ``lower(btrim(name))``
+    (names are unique per project case-insensitively); ``archived_at`` set = archived."""
+
+    __tablename__ = "experiments"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    archived_at: Mapped[datetime | None] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "project_id", "name_key"),
+        Index("ix_experiments_scope_id", "tenant_id", "project_id", "id"),
+    )
+
+
+class RunView(_Scoped, Base):
+    """A saved run-table query (``RunViewQuery`` JSON), optionally scoped to an experiment."""
+
+    __tablename__ = "run_views"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    experiment_id: Mapped[str | None] = mapped_column(
+        ForeignKey("experiments.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(200))
+    query: Mapped[dict[str, Any]] = mapped_column()
+    created_by: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        Index(
+            "uq_run_views_name",
+            "tenant_id",
+            "project_id",
+            text("coalesce(experiment_id, '')"),
+            "name_key",
+            unique=True,
+        ),
+    )
+
+
+class RunMedia(_Scoped, Base):
+    """An image or a table a run logged; the verified bytes are in the bundles bucket.
+    ``step`` is ``-1`` (``SCALAR_STEP``) for an item without a step."""
+
+    __tablename__ = "run_media"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    attempt: Mapped[int] = mapped_column(Integer)
+    key: Mapped[str] = mapped_column(String(64))
+    labels_key: Mapped[str] = mapped_column(String(1024), server_default="")
+    labels: Mapped[dict[str, Any]] = mapped_column(server_default=text("'{}'::jsonb"))
+    step: Mapped[int] = mapped_column(BigInteger)
+    kind: Mapped[str] = mapped_column(String(8))
+    content_type: Mapped[str] = mapped_column(String(32))
+    sha256: Mapped[str] = mapped_column(String(64))
+    size: Mapped[int] = mapped_column(BigInteger)
+    crc32c: Mapped[str] = mapped_column(String(16))
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    caption: Mapped[str | None] = mapped_column(String(500))
+    bucket: Mapped[str] = mapped_column(String(128))
+    object_name: Mapped[str] = mapped_column(String(1024))
+    generation: Mapped[int] = mapped_column(BigInteger)
+    source: Mapped[str] = mapped_column(String(8))
+    seq: Mapped[int] = mapped_column(BigInteger, server_default=_tracking_seq())
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint("kind in ('image','table')", name="kind"),
+        CheckConstraint("source in ('runner','api')", name="source"),
+        UniqueConstraint("run_id", "attempt", "key", "labels_key", "step"),
+        Index("ix_run_media_series", "run_id", "key", "labels_key", "step"),
+        Index("ix_run_media_seq", "run_id", "seq"),
     )
 
 

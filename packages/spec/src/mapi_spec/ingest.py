@@ -35,12 +35,18 @@ from pydantic import (
 
 from mapi_spec._dto import Id, RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Name, StrictModel, unique
+from mapi_spec.media import MAX_IMAGE_SIDE
 from mapi_spec.schema import DimSpec, Role
 from mapi_spec.tree import ROOT, NodePath, TreeJoin, is_ancestor
 
 __all__ = [
     "COMBINE_SEPARATOR",
+    "IMAGE_FOLDER_MAX_CELLS",
+    "IMAGE_SUFFIXES",
     "MAX_ASSEMBLY_SOURCES",
+    "MAX_IMAGES",
+    "MAX_IMAGE_FILE_BYTES",
+    "MAX_IMAGE_PIXELS",
     "MAX_INSPECTION_BYTES",
     "MAX_INSPECT_ARRAYS",
     "MAX_INSPECT_ATTRS",
@@ -49,6 +55,7 @@ __all__ = [
     "MFF_KEY_COLUMNS",
     "MFF_PANEL_KEY_COLUMNS",
     "MFF_TOTAL_LABELS",
+    "RESERVED_IMAGE_DIMS",
     "AssemblySource",
     "ColumnRef",
     "CombineRule",
@@ -56,6 +63,7 @@ __all__ = [
     "Hdf5Coord",
     "Hdf5Mapping",
     "Hdf5Var",
+    "ImageFolderOptions",
     "IngestAssembly",
     "IngestFormat",
     "IngestMapping",
@@ -69,14 +77,30 @@ __all__ = [
     "WideVarMapping",
 ]
 
-IngestFormat = Literal["csv", "parquet", "mff", "zarr_zip", "netcdf", "hdf5"]
+IngestFormat = Literal["csv", "parquet", "mff", "zarr_zip", "netcdf", "hdf5", "image_folder"]
 """Upload formats. ``mff`` is a CSV laid out as an MFF long table (implies ``preset=mff``);
 ``zarr_zip`` (a single-object zarr v3 zip) and ``netcdf`` are self-describing (``netcdf``:
 NetCDF-3/4 or an xarray/h5netcdf-written HDF5 file, read as a tree when it has groups).
 ``hdf5`` (M4) is a raw HDF5 file without dim metadata, described by
-:class:`Hdf5Mapping`."""
+:class:`Hdf5Mapping`. ``image_folder`` (v0.14) is a zip of PNG/JPEG/TIFF images and a
+manifest table, described by :class:`ImageFolderOptions`."""
 
 TABULAR_FORMATS: Final = frozenset({"csv", "parquet", "mff"})
+
+# --------------------------------------------------------------------- image folders (v0.14)
+
+IMAGE_SUFFIXES: Final = (".png", ".jpg", ".jpeg", ".tif", ".tiff")
+"""File suffixes (lowercase) an ``image_folder`` upload reads."""
+RESERVED_IMAGE_DIMS: Final = frozenset({"sample", "chain", "draw", "quantile", "bound", "moment"})
+"""Dim names the image dim may not take: plots and metrics read them as draws or summaries."""
+MAX_IMAGES: Final = 100_000
+MAX_IMAGE_PIXELS: Final = 4096 * 4096
+"""Pixels of one image (from its header, before it is decoded)."""
+MAX_IMAGE_FILE_BYTES: Final = 32 * 1024**2
+IMAGE_FOLDER_MAX_CELLS: Final = 256 * 1024**2
+"""Values of the ``pixels`` variable (images x height x width x channels); equals the wire
+limit ``WireLimits.max_store_elements`` of the SDK."""
+_MANIFEST_SUFFIXES: Final = (".csv", ".tsv", ".parquet")
 
 ColumnRef = Annotated[str, Field(min_length=1, max_length=256)]
 """A column name of a tabular upload (any text; it is never interpreted as code)."""
@@ -515,6 +539,100 @@ class Hdf5Mapping(RequestModel):
         return self
 
 
+# ============================================================================ image folders
+
+
+class ImageFolderOptions(RequestModel):
+    """How a zip of images and a manifest table becomes ``pixels(image, y, x, channel)``.
+
+    The manifest has one row per image: the image path in the zip and, optionally, an id, a
+    class label and a train/test split. The images must have 8 bits per channel and one
+    size, unless ``size`` resizes them. Every byte is decoded inside the sandboxed ingest run.
+    """
+
+    manifest: str = Field(
+        "manifest.csv", min_length=1, max_length=256, description="Path of the manifest in the zip"
+    )
+    path_column: ColumnRef = Field("path", description="Image paths relative to the zip root")
+    id_column: ColumnRef | None = Field(
+        None, description="Unique labels of the image dim (default: the row number)"
+    )
+    label_column: ColumnRef | None = Field(
+        None, description="Class labels: the text variable 'label(image)', role target"
+    )
+    split_column: ColumnRef | None = Field(
+        None, description="Train/test assignment: the text coord 'split(image)'"
+    )
+    columns: list[ColumnRef] | None = Field(
+        None, max_length=64, description="Other columns kept as coords (default: all others)"
+    )
+    var: Name = "pixels"
+    dim: Name = "image"
+    mode: Literal["auto", "gray", "rgb"] = Field(
+        "auto", description="auto: rgb when an image has colour, else gray"
+    )
+    size: tuple[int, int] | None = Field(
+        None, description="(height, width) to resize every image to; each 1..4096"
+    )
+    resize: Literal["stretch", "crop", "pad"] = Field(
+        "stretch", description="How images are resized (only with size)"
+    )
+    max_images: int = Field(20_000, ge=1, le=MAX_IMAGES)
+
+    model_config = dto_examples(
+        {"manifest": "manifest.csv", "path_column": "file", "label_column": "class",
+         "split_column": "split"},
+        {"manifest": "labels.parquet", "id_column": "id", "label_column": "label",
+         "mode": "rgb", "size": [32, 32], "resize": "crop", "max_images": 5000},
+    )  # fmt: skip
+
+    @field_validator("manifest")
+    @classmethod
+    def _manifest(cls, v: str) -> str:
+        parts = v.split("/")
+        if (
+            v.startswith("/")
+            or "\\" in v
+            or "\x00" in v
+            or any(p in ("", ".", "..") for p in parts)
+        ):
+            raise ValueError(f"manifest {v!r} must be a relative path in the zip, without '..'")
+        if not v.lower().endswith(_MANIFEST_SUFFIXES):
+            raise ValueError(f"manifest {v!r} must end with {', '.join(_MANIFEST_SUFFIXES)}")
+        return v
+
+    @field_validator("dim")
+    @classmethod
+    def _dim(cls, v: str) -> str:
+        if v in RESERVED_IMAGE_DIMS or v in ("y", "x", "channel"):
+            raise ValueError(
+                f"dim {v!r} is reserved; use another name for the image dim (such as 'image')"
+            )
+        return v
+
+    @field_validator("size")
+    @classmethod
+    def _size(cls, v: tuple[int, int] | None) -> tuple[int, int] | None:
+        if v is not None and not all(1 <= n <= MAX_IMAGE_SIDE for n in v):
+            raise ValueError(f"size (height, width) must be 1..{MAX_IMAGE_SIDE} each")
+        return v
+
+    @model_validator(mode="after")
+    def _columns_distinct(self) -> ImageFolderOptions:
+        named = [
+            c
+            for c in (self.path_column, self.id_column, self.label_column, self.split_column)
+            if c is not None
+        ]
+        if dups := unique(named):
+            raise ValueError(f"a manifest column has two roles: {dups}")
+        if self.var == self.dim:
+            raise ValueError("var and dim need different names")
+        if self.resize != "stretch" and self.size is None:
+            raise ValueError("resize is only used with size")
+        return self
+
+
 # ======================================================================= IngestMapping
 
 
@@ -563,6 +681,11 @@ class IngestMapping(RequestModel):
         description="M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5')",
         exclude_if=lambda v: v is None,
     )
+    images: ImageFolderOptions | None = Field(
+        None,
+        description="v0.14: options of an 'image_folder' upload (defaults when left out)",
+        exclude_if=lambda v: v is None,
+    )
 
     model_config = ConfigDict(
         **dto_examples(
@@ -604,6 +727,10 @@ class IngestMapping(RequestModel):
                 },
             },
             {"format": "hdf5", "hdf5": Hdf5Mapping.model_json_schema()["examples"][0]},
+            {
+                "format": "image_folder",
+                "images": ImageFolderOptions.model_json_schema()["examples"][0],
+            },
         ),
     )
 
@@ -624,6 +751,14 @@ class IngestMapping(RequestModel):
                 raise ValueError("a raw HDF5 upload is described by 'hdf5', not dims/vars/wide")
         elif self.hdf5 is not None:
             raise ValueError("'hdf5' is only used with format 'hdf5'")
+        if self.format == "image_folder":
+            if self.dims or self.vars or self.wide or self.preset is not IngestPreset.NONE:
+                raise ValueError(
+                    "an image_folder upload is described by 'images', not dims/vars/wide or a "
+                    "preset"
+                )
+        elif self.images is not None:
+            raise ValueError("'images' is only used with format 'image_folder'")
         if self.preset is IngestPreset.NONE:
             if self.format == "mff":
                 raise ValueError("format 'mff' needs the mff preset")
@@ -735,6 +870,8 @@ class IngestAssembly(RequestModel):
     def _combine(self) -> IngestAssembly:
         if dups := unique(s.upload_id for s in self.sources):
             raise ValueError(f"an upload may be used once: {dups}")
+        if len(self.sources) > 1 and any(s.mapping.format == "image_folder" for s in self.sources):
+            raise ValueError("an image_folder upload must be the only source of a dataset version")
         by_node: dict[str, list[AssemblySource]] = {}
         for s in self.sources:
             by_node.setdefault(s.node, []).append(s)

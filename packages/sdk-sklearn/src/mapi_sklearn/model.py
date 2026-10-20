@@ -21,6 +21,7 @@ SklearnQuantile    quantiles              ``y_hat(quantile, *rows)``
 SklearnBootstrap   draws                  ``y_hat(chain, draw, *rows)``
 SklearnConformal   interval               ``y_hat(bound=[lower, upper, point], *rows)``
 SklearnClassifier  point                  ``y_hat(*rows)`` = P(target == positive)
+SklearnMulticlass  point                  ``y_hat(*rows, class)`` = P(target == class)
 =================  =====================  ==========================================
 
 Forecasting is ``direct`` only: future features must be supplied (or produced by the
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import math
 import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -67,6 +69,7 @@ from mapi_sklearn.settings import (
     BootstrapSettings,
     ClassifierSettings,
     ConformalSettings,
+    MulticlassClassifierSettings,
     PointSettings,
     QuantileSettings,
     SklearnSettings,
@@ -85,8 +88,10 @@ __all__ = [
     "SklearnClassifier",
     "SklearnConformalModel",
     "SklearnModel",
+    "SklearnMulticlassClassifier",
     "SklearnQuantileModel",
     "capabilities_for",
+    "multiclass_schema_template",
     "sklearn_schema_template",
 ]
 
@@ -181,6 +186,20 @@ def sklearn_schema_template(target_dtype: str = "float64") -> dict[str, Any]:
     }
 
 
+def multiclass_schema_template() -> dict[str, Any]:
+    """:func:`sklearn_schema_template` with the target dtype from ``settings.target_dtype``.
+
+    The target holds class labels: text (``str``, the default) or integer codes (``int64``).
+    """
+    out = sklearn_schema_template("{target_dtype}")
+    out["params"]["target_dtype"] = {
+        "type": "string",
+        "enum": ["str", "int64"],
+        "default": "str",
+    }
+    return out
+
+
 class _Learned(BaseModel):
     """What ``fit`` stores in ``FitOutput.learned`` (validated again at score)."""
 
@@ -196,6 +215,8 @@ class _Learned(BaseModel):
     rearrange: bool = True
     conformal: dict[str, float | int | bool] | None = None
     classes: list[float] | None = None
+    class_labels: list[str] | None = None  # multiclass: every class, in y_hat order
+    class_codes: list[int] | None = None  # multiclass: the classes the estimator saw
     contributions: Literal["exact", "zeroing"] | None = None
     dropped: dict[str, int] = Field(default_factory=dict)
 
@@ -404,6 +425,7 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
                 pointer="/model/settings/estimator/kind",
             )
         contributions = self._contribution_method(s, entry)
+        ds, target_learned = self._prepare_target(ds, s, ctx)
         layout = plan_layout(ds, s, entry=entry, stage_schema=ctx.stage_schema, log=ctx.info)
         design = build_design(ds, layout, phase="fit", allow_nan=entry.native_nan)
         if design.n < 2:
@@ -413,10 +435,7 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
             )
         layout = _with_counts(layout, design)
         assert design.y is not None
-        y = design.y
-        classes: list[float] | None = None
-        if self.task == "classification":
-            y, classes = _binary(y, getattr(s, "positive_class", None))
+        y, target_learned = self._fit_target(design.y, s, target_learned)
         fitter = _Fitter(entry, choice, layout, seed, s.n_jobs)
         ctx.check_cancelled()
         result = self._fit_models(fitter, design, y, s, ctx)
@@ -435,9 +454,9 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
             task=self.task,
             uncertainty=self.uncertainty_kind,
             models=keys,
-            classes=classes,
             contributions=contributions,
             dropped=design.dropped,
+            **target_learned,
             **result.learned,
         )
         groups = dict(result.groups)
@@ -451,6 +470,21 @@ class SklearnModel[SettingsT: SklearnSettings](CustomModel[SettingsT]):
             native=native,
             diagnostics=diagnostics,
         )
+
+    def _prepare_target(
+        self, ds: xr.Dataset, s: SettingsT, ctx: FitContext
+    ) -> tuple[xr.Dataset, dict[str, Any]]:
+        """Hook: rewrite the target before the design is built (multiclass label codes)."""
+        return ds, {}
+
+    def _fit_target(
+        self, y: np.ndarray, s: SettingsT, learned: dict[str, Any]
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """Hook: the training target of the estimator and what ``_Learned`` keeps about it."""
+        if self.task == "classification":
+            y, classes = _binary(y, getattr(s, "positive_class", None))
+            return y, {**learned, "classes": classes}
+        return y, learned
 
     def _contribution_method(
         self, s: SettingsT, entry: EstimatorEntry
@@ -887,7 +921,141 @@ class SklearnClassifier[SettingsT: ClassifierSettings](SklearnModel[SettingsT]):
         return attrs
 
 
+class SklearnMulticlassClassifier[SettingsT: MulticlassClassifierSettings](SklearnModel[SettingsT]):
+    """Multiclass classification: ``y_hat(*rows, class)`` holds one probability per class.
+
+    The target holds labels (text, or integers when ``target_dtype: int64``). Labels become
+    text (integral numbers without a fraction: ``3``, not ``3.0``); missing and empty labels
+    do not train. The classes are the sorted training labels, or ``class_order`` (which must
+    name every training label). A class of ``class_order`` that the training rows lack gets
+    probability 0.
+    """
+
+    Settings: ClassVar[type[BaseModel]] = MulticlassClassifierSettings
+    task: ClassVar[Task] = "classification"
+    capabilities: ClassVar[Capabilities] = capabilities_for("none").model_copy(
+        update={"score_modes": frozenset({"predict", "evaluate"})}
+    )
+    schema_template: ClassVar[Mapping[str, Any]] = multiclass_schema_template()
+    outputs: ClassVar[Mapping[str, Mapping[str, Any]]] = {
+        "y_hat": {
+            "dims": ["class"],
+            "dims_of": "y",  # plus the row dims (settings.rows)
+            "units": "1",
+            "description": "Probability of each class (sums to 1 over class)",
+        },
+    }
+    plots: ClassVar[Sequence[str]] = ("core.roc_pr", "core.confusion", "ml.feature_importance")
+
+    def _prepare_target(
+        self, ds: xr.Dataset, s: SettingsT, ctx: FitContext
+    ) -> tuple[xr.Dataset, dict[str, Any]]:
+        if s.target not in ds:
+            return ds, {}  # plan_layout raises the typed error
+        da = ds[s.target]
+        texts = [_class_text(v) for v in np.asarray(da.values).reshape(-1).tolist()]
+        present = sorted({t for t in texts if t is not None}, key=_class_sort_key)
+        if s.class_order is not None:
+            missing = [t for t in present if t not in s.class_order]
+            if missing:
+                raise MapiError(
+                    f"class_order does not name the target labels {missing[:10]}",
+                    code=ErrorCode.SETTINGS_INVALID,
+                    pointer="/model/settings/class_order",
+                )
+            labels = list(s.class_order)
+        else:
+            labels = present
+        if len(labels) > s.max_classes:
+            raise MapiError(
+                f"the target has {len(labels)} classes; max_classes is {s.max_classes}",
+                code=ErrorCode.SETTINGS_INVALID,
+                pointer="/model/settings/max_classes",
+            )
+        index = {t: float(j) for j, t in enumerate(labels)}
+        codes = np.array([math.nan if t is None else index[t] for t in texts], dtype=float)
+        ds = ds.assign({s.target: (da.dims, codes.reshape(da.shape), da.attrs)})
+        return ds, {"class_labels": labels}
+
+    def _fit_target(
+        self, y: np.ndarray, s: SettingsT, learned: dict[str, Any]
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        codes = y.astype(np.int64)
+        seen = np.unique(codes)
+        if seen.size < 2:
+            raise MapiError(
+                "multiclass classification needs at least two classes in the training rows; "
+                f"found {seen.size}",
+                code=ErrorCode.SCHEMA_INVALID,
+            )
+        # the estimator sees contiguous codes 0..m-1 of the classes present in training
+        remap = np.full(int(seen.max()) + 1, -1, dtype=np.int64)
+        remap[seen] = np.arange(seen.size)
+        return remap[codes], {**learned, "class_codes": [int(c) for c in seen]}
+
+    def _outputs(
+        self,
+        models: Sequence[Any],
+        exp: Expansion,
+        info: _Learned,
+        fitted: Fitted,
+        req: ScoreRequest,
+        ctx: ScoreContext,
+    ) -> dict[str, tuple[Sequence[str], Mapping[str, Any], np.ndarray]]:
+        assert info.class_labels is not None
+        proba = self._proba(models[0], exp.X, info)
+        return {"y_hat": (("class",), {"class": list(info.class_labels)}, exp.reduce(proba.T))}
+
+    def _proba(self, est: Any, X: np.ndarray, info: _Learned) -> np.ndarray:
+        """``(n, K)`` probabilities over every class (0 for classes the fit did not see)."""
+        assert info.class_labels is not None and info.class_codes is not None
+        out = np.zeros((X.shape[0], len(info.class_labels)))
+        if X.shape[0] == 0:
+            return out
+        proba = np.asarray(est.predict_proba(X), dtype=float)
+        for col, c in enumerate(np.asarray(est.classes_).tolist()):
+            out[:, info.class_codes[int(c)]] = proba[:, col]
+        return out
+
+    def score(
+        self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        tree = super().score(fitted, ds, req, ctx)
+        pred = tree[PREDICTIONS].to_dataset()
+        if "y_hat" in pred:
+            y_hat = pred["y_hat"]
+            pred["y_hat"] = y_hat.transpose(*[d for d in y_hat.dims if d != "class"], "class")
+        return xr.DataTree.from_dict({PREDICTIONS: pred})
+
+    def _attrs(self, info: _Learned, exp: Expansion) -> dict[str, dict[str, Any]]:
+        attrs = super()._attrs(info, exp)
+        attrs["y_hat"]["meaning"] = "class_probability"
+        return attrs
+
+
 # ================================================================================= helpers
+
+
+def _class_text(value: Any) -> str | None:
+    """A target label as text: ``None`` for missing/empty, integral numbers without ``.0``."""
+    if value is None:
+        return None
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return None
+        return str(int(value)) if value.is_integer() else repr(value)
+    text = str(value)
+    return text if text.strip() else None
+
+
+def _class_sort_key(label: str) -> tuple[int, float, str]:
+    """Numeric labels in numeric order first, then text labels in text order."""
+    try:
+        return (0, float(label), label)
+    except ValueError:
+        return (1, 0.0, label)
 
 
 def _strategy(dim: str, s: SklearnSettings, ctx: ScoreContext) -> str:

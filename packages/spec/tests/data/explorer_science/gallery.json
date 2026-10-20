@@ -1,0 +1,74 @@
+{
+ "caption_plain": "Shows 4 of the 4 images. Use the chips to show one label or split.",
+ "warnings_plain": [],
+ "format": "mapi.data-explorer.gallery/v1",
+ "var": "pixels",
+ "frame_dim": "image",
+ "y_dim": "y",
+ "x_dim": "x",
+ "channel_dim": "channel",
+ "color": "gray",
+ "source_height": 4,
+ "source_width": 4,
+ "thumb_height": 4,
+ "thumb_width": 4,
+ "n_images": 4,
+ "items": [
+  {
+   "index": 0,
+   "label": "0",
+   "meta": {
+    "label": "circle",
+    "split": "train"
+   },
+   "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAE0lEQVR4nGNg+P+fAYiBJJgAcQF3nAv1WOTbDAAAAABJRU5ErkJggg=="
+  },
+  {
+   "index": 1,
+   "label": "1",
+   "meta": {
+    "label": "square",
+    "split": "train"
+   },
+   "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAEUlEQVR4nGNgAIP//2EEEAAAJ+wD/QDjYnMAAAAASUVORK5CYII="
+  },
+  {
+   "index": 2,
+   "label": "2",
+   "meta": {
+    "label": "circle",
+    "split": "test"
+   },
+   "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAE0lEQVR4nGNg+P+fAYiBJJgAcQF3nAv1WOTbDAAAAABJRU5ErkJggg=="
+  },
+  {
+   "index": 3,
+   "label": "3",
+   "meta": {
+    "label": "square",
+    "split": "test"
+   },
+   "png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAEUlEQVR4nGNgAIP//2EEEAAAJ+wD/QDjYnMAAAAASUVORK5CYII="
+  }
+ ],
+ "facets": [
+  {
+   "name": "label",
+   "source": "var",
+   "counts": {
+    "circle": 2,
+    "square": 2
+   }
+  },
+  {
+   "name": "split",
+   "source": "coord",
+   "counts": {
+    "test": 2,
+    "train": 2
+   }
+  }
+ ],
+ "selection": "all",
+ "other_vars": []
+}

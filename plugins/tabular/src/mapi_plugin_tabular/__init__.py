@@ -7,7 +7,10 @@
   (plan §6.2 store demand);
 * :class:`~mapi_plugin_tabular.choice.MultinomialLogit` (``choice.multinomial_logit``) - a
   conditional logit with household effects for the Guided "customer choice" template
-  (Bayesian-bootstrap draws).
+  (Bayesian-bootstrap draws);
+* :class:`~mapi_plugin_tabular.image_logistic.ImageLogistic` (``tabular.image_logistic``) - a
+  Bayesian multinomial logistic regression on PCA scores of small images (v0.14; example
+  data in :mod:`mapi_plugin_tabular.image_data`).
 
 All register through the ``mapi.models`` entry point (``tabular = mapi_plugin_tabular:PLUGINS``).
 """
@@ -16,20 +19,23 @@ from importlib import metadata as _metadata
 
 from mapi_plugin_tabular.choice import MultinomialLogit, MultinomialLogitSettings
 from mapi_plugin_tabular.glm import HierarchicalGLM, HierarchicalGLMSettings
+from mapi_plugin_tabular.image_logistic import ImageLogistic, ImageLogisticSettings
 from mapi_plugin_tabular.regressor import TabularRegressor, TabularRegressorSettings
 
 try:
     __version__ = _metadata.version("mapi-plugin-tabular")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.13.0"
+    __version__ = "0.14.0"
 
-PLUGINS = (HierarchicalGLM, TabularRegressor, MultinomialLogit)
+PLUGINS = (HierarchicalGLM, TabularRegressor, MultinomialLogit, ImageLogistic)
 """Every model plugin of this package (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
     "HierarchicalGLM",
     "HierarchicalGLMSettings",
+    "ImageLogistic",
+    "ImageLogisticSettings",
     "MultinomialLogit",
     "MultinomialLogitSettings",
     "TabularRegressor",

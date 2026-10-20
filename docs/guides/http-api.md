@@ -38,7 +38,7 @@ storage URLs, because these URLs have their own authorization. See
 ```
 
 ```text
-{"status":"ok","version":"0.13.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
+{"status":"ok","version":"0.14.0","checks":{"postgres":"ok","object_store":"ok","catalog":"ok"}}
 mmm.bayesian@1.0.0  draws
 mmm.frequentist@1.0.0  draws
 sklearn.tabular_bootstrap@1.0.0  draws
@@ -287,6 +287,55 @@ token needs the `runs:write` scope.
 In these examples, `api` is the helper function of `http_tour.sh`. For all the endpoints and
 the search grammar, see [Run tracking](../reference/http-api.md#run-tracking). For the logging
 API inside a model, see [Track metrics, params and tags](tracking.md).
+
+## Media, experiments and comparison <span class="mapi-badge">v0.14</span> { #v014 }
+
+1. Log an image to a run. `data` is the base64 of a PNG or a JPEG file (a maximum of
+   4 MiB):
+
+    ```bash
+    api -X POST "$API/v1/runs/$RUN/media" -H 'Content-Type: application/json' \
+      -d "{\"key\": \"holdout_map\", \"kind\": \"image\", \"content_type\": \"image/png\",
+           \"data\": \"$(base64 < map.png | tr -d '\n')\"}"
+    ```
+
+2. List the media of the run. Each item has a signed `url`:
+
+    ```bash
+    api "$API/v1/runs/$RUN/media-keys" | jq -c '.items[] | {key, labels, count, last_step}'
+    api "$API/v1/runs/$RUN/media?key=holdout_map" | jq -r '.items[0].url'
+    ```
+
+3. Make an experiment and move two runs into it:
+
+    ```bash
+    EXP=$(api -X POST "$API/v1/experiments" -H 'Content-Type: application/json' \
+      -d '{"name": "adstock length study"}' | jq -r .id)
+    api -X POST "$API/v1/experiments/$EXP/runs" -H 'Content-Type: application/json' \
+      -d "{\"add\": [\"$RUN\", \"$RUN2\"]}"
+    ```
+
+    ```json
+    {"added": 2, "removed": 0, "missing": []}
+    ```
+
+4. Compare the two runs:
+
+    ```bash
+    api -G "$API/v1/run-compare" --data-urlencode "run=$RUN" --data-urlencode "run=$RUN2" \
+      | jq -c '.params[] | select(.differs) | {key, values}'
+    ```
+
+5. Save a search of the runs table:
+
+    ```bash
+    api -X POST "$API/v1/run-views" -H 'Content-Type: application/json' \
+      -d "{\"name\": \"best fits\", \"experiment_id\": \"$EXP\",
+           \"query\": {\"filters\": [\"metric.rmse < 12\"], \"order_by\": \"metric.rmse\"}}"
+    ```
+
+For all the endpoints, see
+[Media, comparison, experiments and saved views](../reference/http-api.md#v014).
 
 ## Errors
 

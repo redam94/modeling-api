@@ -187,6 +187,7 @@ SCI_OUT: Final = WEB / "src" / "mocks" / "explorer-sci.gen.json"
 SCIENCE_SECTIONS: Final = (
     "structure",
     "images",
+    "gallery",
     "profiles",
     "map",
     "network",

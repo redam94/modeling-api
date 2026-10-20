@@ -12,12 +12,14 @@ import { env } from "@/env";
 
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
+import { createExperimentHandlers, createExperimentsState, listRuns } from "./experiments";
 import { createExploreHandlers, createExploreState, explorerValidations } from "./explore";
 import { createSciHandlers, createSciState, SCI_DATASETS } from "./explore-sci";
 import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
 import { createGuidedHandlers } from "./guided";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
+import { createMediaHandlers, createMediaState } from "./media";
 import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { advanceTracking, createTrackingHandlers, createTrackingState } from "./tracking";
@@ -51,6 +53,9 @@ interface MockState {
   sci: ReturnType<typeof createSciState>;
   /** v0.11: metric series and params of the runs (fixtures.trackingFixtures). */
   tracking: ReturnType<typeof createTrackingState>;
+  /** v0.14: experiments and saved views; media items of the runs (bytes in `artifacts`). */
+  experiments: ReturnType<typeof createExperimentsState>;
+  media: ReturnType<typeof createMediaState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -66,6 +71,13 @@ function seedGovernance(governance: ReturnType<typeof createGovernanceState>): R
 
 export function createState(): MockState {
   const json = (v: unknown) => enc.encode(JSON.stringify(v));
+  const artifacts: MockState["artifacts"] = new Map([
+    ["ui/plotdata/ppc_fan.arrow", { bytes: fx.fanArrow(), type: "application/vnd.apache.arrow.stream" }],
+    ["ui/tree_index.json", { bytes: json(fx.treeIndexView), type: "application/json" }],
+    ["ui/preprocess.json", { bytes: json(fx.preprocessView), type: "application/json" }],
+    ["profile.json", { bytes: json(fx.profileView), type: "application/json" }],
+    ["preview.json", { bytes: json(fx.previewView), type: "application/json" }],
+  ]);
   return {
     tenancy: createTenancyState(),
     integrations: createIntegrationsState(),
@@ -76,17 +88,13 @@ export function createState(): MockState {
     tree: createTreeState(),
     sci: createSciState(),
     tracking: createTrackingState(),
+    experiments: createExperimentsState(),
+    media: createMediaState(artifacts),
     runs: new Map([...fx.runs, ...SHAPE_RUNS].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
     uploads: new Map(),
-    artifacts: new Map([
-      ["ui/plotdata/ppc_fan.arrow", { bytes: fx.fanArrow(), type: "application/vnd.apache.arrow.stream" }],
-      ["ui/tree_index.json", { bytes: json(fx.treeIndexView), type: "application/json" }],
-      ["ui/preprocess.json", { bytes: json(fx.preprocessView), type: "application/json" }],
-      ["profile.json", { bytes: json(fx.profileView), type: "application/json" }],
-      ["preview.json", { bytes: json(fx.previewView), type: "application/json" }],
-    ]),
+    artifacts,
   };
 }
 
@@ -189,9 +197,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
     http.get(`${API}/readyz`, () =>
-      HttpResponse.json({ status: "ok", version: "0.13.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
+      HttpResponse.json({ status: "ok", version: "0.14.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
-    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.13.0-mock", contract_version: "0.2" })),
+    http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.14.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
     http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
@@ -315,14 +323,12 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     }),
     http.post(new RegExp(`^${API_RE}/v1/specs/[^/]+/revisions/\\d+:dry-run$`), () => HttpResponse.json({ ...fx.runRunning, kind: "validate" }, { status: 202 })),
 
-    // runs (v0.11: name, note and tags, metrics and params in mocks/tracking.ts)
-    ...createTrackingHandlers(state.tracking, { runs: state.runs }),
-    http.get(`${API}/v1/runs`, ({ request }) => {
-      const url = new URL(request.url);
-      const s = url.searchParams.get("state");
-      const k = url.searchParams.get("kind");
-      return page([...state.runs.values()].filter((r) => (!s || r.state === s) && (!k || r.kind === k)));
-    }),
+    // runs (v0.11: name, note and tags, metrics and params in mocks/tracking.ts; v0.14: the run
+    // search, experiments, saved views and comparison in mocks/experiments.ts, media in mocks/media.ts)
+    ...createTrackingHandlers(state.tracking, { runs: state.runs, experiments: state.experiments.experiments }),
+    ...createMediaHandlers(state.media, { runs: state.runs, artifacts: state.artifacts }),
+    ...createExperimentHandlers(state.experiments, { runs: state.runs, tracking: state.tracking, media: state.media }),
+    http.get(`${API}/v1/runs`, ({ request }) => listRuns({ runs: state.runs, tracking: state.tracking, media: state.media }, new URL(request.url))),
     http.post(`${API}/v1/runs`, async ({ request }) => {
       const body = (await request.json()) as { kind: Run["kind"] };
       const r: Run = { ...fx.runRunning, id: "run_01jaf3q2x8m9v7k5h4g3f2e1c3", kind: body.kind, state: "queued", progress: null };

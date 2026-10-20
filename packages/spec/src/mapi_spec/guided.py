@@ -1265,7 +1265,7 @@ _KIND_DTYPE: Final[dict[str, ColumnKind]] = {
 }  # fmt: skip
 _VAR_DTYPE: Final[dict[str, ColumnKind]] = {
     "float64": "number", "float32": "number", "int64": "integer", "int32": "integer",
-    "bool": "boolean", "str": "string", "datetime64[ns]": "date",
+    "uint8": "integer", "bool": "boolean", "str": "string", "datetime64[ns]": "date",
 }  # fmt: skip
 
 

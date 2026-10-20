@@ -1,10 +1,11 @@
 """Train/holdout splits applied at the split stage (plan §4.2).
 
-Ordered splits (``time_holdout``, ``as_of``) and group splits (``leave_group_out``, and
-``last_per_group`` on long data) cut the data along a dim, so train and holdout have
-disjoint coordinates. Cell-level splits (``mask_block``, and ``last_per_group`` on dense
-data) cannot be expressed by slicing: train keeps every coordinate with the *target*
-masked (NaN) in held-out cells, the holdout is the full input data, and
+Ordered splits (``time_holdout``, ``as_of``), group splits (``leave_group_out``, and
+``last_per_group`` on long data) and row splits (v0.14: ``column``, a fixed assignment read
+from the data, and ``stratified``, a random share of each class) cut the data along a dim,
+so train and holdout have disjoint coordinates. Cell-level splits (``mask_block``, and
+``last_per_group`` on dense data) cannot be expressed by slicing: train keeps every
+coordinate with the *target* masked (NaN) in held-out cells, the holdout is the full input data, and
 ``SplitResult.holdout_mask`` marks the cells that metrics are computed on. Models used
 with these splits must accept missing target values.
 """
@@ -22,11 +23,14 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema
 from mapi_spec.spec import (
     AsOfSplit,
+    ColumnSplit,
     LastPerGroupSplit,
     LeaveGroupOutSplit,
     MaskBlockSplit,
     Split,
+    StratifiedSplit,
     TimeHoldoutSplit,
+    split_value_key,
 )
 
 __all__ = ["SplitResult", "split_dataset"]
@@ -163,6 +167,10 @@ def split_dataset(
             result = _last_per_group(ds, split, schema)
         case MaskBlockSplit():
             result = _mask_block(ds, split, schema, seed)
+        case ColumnSplit():
+            result = _column_split(ds, split)
+        case StratifiedSplit():
+            result = _stratified(ds, split, seed)
         case _:  # pragma: no cover - exhaustive over the Split union
             raise _err(f"unsupported split kind {getattr(split, 'kind', '?')!r}")
     result.kind = split.kind
@@ -227,3 +235,42 @@ def _mask_block(
     coords = {d: ds[d] for d in split.dims if d in ds.coords}
     mask = xr.DataArray(cell_mask, dims=list(split.dims), coords=coords)
     return _masked(ds, mask, targets, split.kind)
+
+
+def _text_key(value: Any) -> str:
+    """A value compared as text (:func:`~mapi_spec.spec.split_value_key`, the rule the spec
+    check uses too)."""
+    if isinstance(value, np.generic):
+        value = value.item()
+    return split_value_key(value)
+
+
+def _row_keys(ds: xr.Dataset, dim: str, name: str) -> np.ndarray:
+    """The values of ``name`` (a coord or a 1-D data variable along ``dim``) as text keys."""
+    _require_dim(ds, dim)
+    if name not in ds.variables or ds[name].dims != (dim,):
+        raise _err(f"column {name!r} is not a coordinate or a 1-D variable along {dim!r}")
+    return np.array([_text_key(v) for v in np.asarray(ds[name].values).tolist()], dtype=object)
+
+
+def _column_split(ds: xr.Dataset, split: ColumnSplit) -> SplitResult:
+    keys = _row_keys(ds, split.dim, split.column)
+    hold = np.isin(keys, [_text_key(v) for v in split.holdout])
+    if split.train is not None:
+        train = np.isin(keys, [_text_key(v) for v in split.train]) & ~hold
+    else:
+        train = ~hold
+    return _cut(ds, split.dim, np.flatnonzero(train), np.flatnonzero(hold))
+
+
+def _stratified(ds: xr.Dataset, split: StratifiedSplit, seed: int) -> SplitResult:
+    keys = _row_keys(ds, split.dim, split.by)
+    rng = np.random.default_rng(split.seed if split.seed is not None else seed)
+    hold = np.zeros(keys.size, dtype=bool)
+    # rows without a label stay in training; a level with one row too (k <= n - 1)
+    for level in sorted({str(k) for k in keys} - {""}):
+        rows = np.flatnonzero(keys == level)
+        k = min(max(round(rows.size * split.fraction), 0), rows.size - 1)
+        if k:
+            hold[rng.choice(rows, size=k, replace=False)] = True
+    return _cut(ds, split.dim, np.flatnonzero(~hold), np.flatnonzero(hold))

@@ -10,6 +10,7 @@ import type {
   ChainProgress,
   Dataset,
   DatasetVersion,
+  Experiment,
   LogLine,
   Model,
   ModelVersion,
@@ -17,6 +18,7 @@ import type {
   PlotSpec,
   Run,
   RunEventView,
+  RunView,
   SpecDoc,
   SpecRevision,
   ValidateResponse,
@@ -35,6 +37,12 @@ export const RUN_DONE = "run_01jaf3q2x8m9v7k5h4g3f2e1a1";
 export const RUN_FAILED = "run_01jaf3q2x8m9v7k5h4g3f2e1b2";
 /** v0.11: a finished `search.grid` node run with trial params and rmse per grid point. */
 export const RUN_GRID = "run_01jaf3q2x8m9v7k5h4g3f2e1g5";
+// v0.14: two fits of one experiment, to compare (metrics with a split label, params, media).
+export const RUN_FIT_A = "run_01jaf3q2x8m9v7k5h4g3f2e1h6";
+export const RUN_FIT_B = "run_01jaf3q2x8m9v7k5h4g3f2e1j7";
+export const EXP_GEO = "exp_01jaf3x1geo2adstock3m4n5p6";
+export const EXP_PRIORS = "exp_01jaf3x1priors2q3r4s5t6v7w";
+export const EXP_OLD = "exp_01jaf3x1old2baseline3x4y5z";
 
 const base = { tenant_id: "default", project_id: "default" } as const;
 
@@ -305,9 +313,82 @@ export const runGrid: Run = {
   name: "Grid search: adstock and saturation",
   note: "12 grid points. Point 4 has the smallest RMSE.",
   tags: { "grid.best_point": "4", team: "growth", "mapi.workflow": "wf_mock" },
+  experiment_id: EXP_GEO,
 };
 
-export const runs: Run[] = [runRunning, runDone, runFailed, runGrid];
+function fitRun(id: string, name: string, started: string, finished: string, tags: Record<string, string>): Run {
+  return {
+    ...run(id, {
+      state: "succeeded",
+      created_at: started,
+      updated_at: finished,
+      started_at: started,
+      finished_at: finished,
+      cost: { estimated: false, amount_micros: 54_600, currency: "USD", price_version: PRICE_VERSION, vcpu_seconds: 2100, gib_seconds: 8400, usd: 0.0546, attempts_billed: 1 },
+    }),
+    name,
+    tags,
+    experiment_id: EXP_GEO,
+  };
+}
+
+export const runFitA = fitRun(RUN_FIT_A, "Adstock 8 weeks", "2026-10-14T14:00:00Z", "2026-10-14T14:09:10Z", { team: "growth", adstock: "8w" });
+export const runFitB = fitRun(RUN_FIT_B, "Adstock 4 weeks", "2026-10-14T15:00:00Z", "2026-10-14T15:08:20Z", { team: "growth", adstock: "4w" });
+
+export const runs: Run[] = [runRunning, { ...runDone, experiment_id: EXP_GEO }, runFailed, runGrid, runFitA, runFitB];
+
+// ------------------------------------------------------------------------- v0.14 experiments and views
+
+export const experiments: Experiment[] = [
+  {
+    id: EXP_GEO,
+    name: "Geo adstock study",
+    description: "Which adstock length fits the EU geo data best? Compare the holdout loss and the RMSE.",
+    archived: false,
+    created_by: "usr_ana",
+    created_at: "2026-10-14T13:00:00Z",
+    updated_at: "2026-10-14T13:00:00Z",
+  },
+  {
+    id: EXP_PRIORS,
+    name: "Prior sensitivity",
+    description: null,
+    archived: false,
+    created_by: "usr_ana",
+    created_at: "2026-10-13T10:00:00Z",
+    updated_at: "2026-10-13T10:00:00Z",
+  },
+  {
+    id: EXP_OLD,
+    name: "Baseline 2025 <b>old</b>",
+    description: "Archived: the 2025 baseline models.",
+    archived: true,
+    created_by: "usr_ana",
+    created_at: "2026-09-01T10:00:00Z",
+    updated_at: "2026-09-20T10:00:00Z",
+  },
+];
+
+export const runViews: RunView[] = [
+  {
+    id: "rv_01jaf3y1best2rmse3a4b5c6d7e",
+    name: "Best RMSE first",
+    experiment_id: null,
+    query: { filters: ["metric.rmse < 1000"], order_by: "metric.rmse", columns: ["metric.rmse", "param.settings.adstock.l_max"], tags: [] },
+    created_by: "usr_ana",
+    created_at: "2026-10-14T16:00:00Z",
+    updated_at: "2026-10-14T16:00:00Z",
+  },
+  {
+    id: "rv_01jaf3y1geo2loss3f4g5h6j7k",
+    name: "Holdout loss",
+    experiment_id: EXP_GEO,
+    query: { experiment_id: EXP_GEO, columns: ["metric.loss{split=val}.min", "metric.mape"], order_by: "metric.loss{split=val}.min", filters: [], tags: [] },
+    created_by: "usr_ana",
+    created_at: "2026-10-14T16:10:00Z",
+    updated_at: "2026-10-14T16:10:00Z",
+  },
+];
 
 export function events(runId: string): RunEventView[] {
   return [
@@ -425,6 +506,37 @@ function gridTracking(): MockTracking {
   };
 }
 
+/** A fit of the geo study: train and val loss over 50 steps, scalars, params. */
+function studyTracking(lMax: number, seed: number, t0: string): MockTracking {
+  const series: MockSeries[] = [];
+  const steps = Array.from({ length: 50 }, (_, i) => i);
+  const floor = lMax === 8 ? 0.21 : 0.26;
+  for (const split of ["train", "val"]) {
+    const gap = split === "val" ? 0.05 + (lMax === 8 ? 0 : 0.02) : 0;
+    series.push({
+      key: "loss",
+      labels: { split },
+      attempt: 1,
+      points: steps.map((st) => ({ step: st, value: Number((floor + gap + 1.2 * Math.exp(-st / 9) + 0.01 * Math.sin(st + seed)).toFixed(4)), ts: at(t0, 10 * st) })),
+    });
+  }
+  const scalar = (key: string, value: number): MockSeries => ({ key, labels: {}, attempt: 1, points: [{ step: null, value, ts: at(t0, 540) }] });
+  series.push(scalar("rmse", lMax === 8 ? 398.2 : 431.7), scalar("mape", lMax === 8 ? 12.4 : 13.9), scalar("elpd_loo", lMax === 8 ? -1228.1 : -1241.6));
+  const param = (key: string, value: string, value_num: number | null = null): RunParam => ({ key, value, value_num, source: "runner", logged_at: t0 });
+  return {
+    series,
+    params: [
+      param("model", "mmm.bayesian@1.0.0"),
+      param("fit.engine", "nutpie"),
+      param("fit.draws", "1000", 1000),
+      param("fit.seed", String(seed), seed),
+      param("settings.adstock.l_max", String(lMax), lMax),
+      param("settings.saturation.kind", "hill"),
+      ...(lMax === 4 ? [param("settings.note", "<b>short</b> adstock <img src=x onerror=alert(1)>")] : []),
+    ],
+  };
+}
+
 function doneTracking(): MockTracking {
   const scalar = (key: string, value: number): MockSeries => ({ key, labels: {}, attempt: 1, points: [{ step: null, value, ts: "2026-10-15T09:12:30Z" }] });
   return { series: [scalar("elpd_loo", -1234.5), scalar("rmse", 412.5), scalar("mape", 14)], params: [] };
@@ -436,6 +548,8 @@ export function trackingFixtures(): Map<string, MockTracking> {
     [RUN_RUNNING, fitTracking()],
     [RUN_GRID, gridTracking()],
     [RUN_DONE, doneTracking()],
+    [RUN_FIT_A, studyTracking(8, 11, "2026-10-14T14:00:10Z")],
+    [RUN_FIT_B, studyTracking(4, 12, "2026-10-14T15:00:10Z")],
   ]);
 }
 

@@ -135,7 +135,8 @@ Each task *i* does these actions:
 - It writes its outputs under `.../a{n}/tasks/{i}/`.
 
 The execution succeeds only when all tasks succeed. A cancel stops all of them. Fan-out
-parents (`Sweep`, `SBC`, `Backtest`) come in v0.5. The executor side is ready.
+parents (`SBC`, `Backtest`) can use tasks. The executor side is ready. v0.14 retired the
+`Sweep` document: a sweep is a workflow with a `search.grid` node.
 
 ## Events: authenticated Pub/Sub push
 

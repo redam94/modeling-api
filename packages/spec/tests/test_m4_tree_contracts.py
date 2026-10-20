@@ -584,7 +584,8 @@ def test_dataset_version_layout_fields() -> None:
 
 def test_m4_endpoints_and_access() -> None:
     assert ALL_ENDPOINTS == ENDPOINTS
-    m4_end = len(ENDPOINTS) - len(api.V011_ENDPOINTS)  # the v0.11 rows follow the M4 rows
+    # the v0.11 and v0.14 rows follow the M4 rows
+    m4_end = len(ENDPOINTS) - len(api.V011_ENDPOINTS) - len(api.V014_ENDPOINTS)
     assert ENDPOINTS[m4_end - len(M4_ENDPOINTS) : m4_end] == M4_ENDPOINTS
     by_op = {e.operation_id: e for e in M4_ENDPOINTS}
     post, get = by_op["inspect_upload"], by_op["get_upload_inspection"]

@@ -49,6 +49,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, ProblemWithHeaders
 from mapi_server.services.audit import write_audit
 from mapi_server.services.cost import run_costs
+from mapi_server.services.experiments import check_run_experiment
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import Scope, now
 from mapi_server.services.specs import resolve_dataset, resolve_model_version
@@ -196,6 +197,12 @@ async def start_workflow_run(
     ts = now()
     run_id = new_id("run")
     rc = body.resource_class or spec.execution.resource_class
+    # v0.14: the experiment named at start (its node runs join it too), else a sub-workflow
+    # run joins the experiment of the run that started it
+    if body.experiment_id is not None:
+        await check_run_experiment(session, scope, body.experiment_id)
+    parent = await session.get(m.Run, parent_run_id) if parent_run_id is not None else None
+    experiment_id = body.experiment_id or (parent.experiment_id if parent is not None else None)
     run = m.Run(
         id=run_id,
         tenant_id=scope.tenant_id,
@@ -219,6 +226,7 @@ async def start_workflow_run(
         task_count=1,
         token_id=token_id,
         created_by=created_by,
+        experiment_id=experiment_id,
         created_at=ts,
         updated_at=ts,
         queued_at=ts,

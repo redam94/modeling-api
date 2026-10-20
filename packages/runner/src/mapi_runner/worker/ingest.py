@@ -37,6 +37,10 @@ of several uploads (inputs ``upload.<i>``) becomes a **tree** version
 Every HDF5 file is checked by :func:`~mapi_runner.worker.hdf5_guard.check_hdf5` before
 anything else opens it.
 
+v0.14: an ``image_folder`` upload (a zip of images and a manifest table) becomes one plain
+dataset ``pixels(image, y, x, channel)`` uint8 (:mod:`~mapi_runner.worker.image_ingest`); it
+must be the only source of a version.
+
 Every byte of user data is parsed here, in the sandbox, under the caps of
 :class:`~mapi_runner.worker.tabular.IngestLimits`.
 """
@@ -67,6 +71,7 @@ from mapi_spec.ingest import (
     MFF_PANEL_KEY_COLUMNS,
     MFF_TOTAL_LABELS,
     DimMapping,
+    ImageFolderOptions,
     IngestMapping,
     IngestPreset,
     VarMapping,
@@ -91,6 +96,7 @@ from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import SCHEMA_ATTR
 from mapi_runner.worker.hdf5_guard import check_hdf5, walk_hdf5
 from mapi_runner.worker.hdf5_read import read_hdf5_mapped
+from mapi_runner.worker.image_ingest import IMAGE_ATTR, read_image_folder
 from mapi_runner.worker.tabular import (
     IngestLimits,
     check_zip_archive,
@@ -137,6 +143,7 @@ message}]``): reported as ``info`` issues, never stored with the data."""
 _OFFSET = r"(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:Z|UTC|[+-]\d{2}:?\d{2})$"
 """A time of day followed by a UTC offset (``...T00:00:00+01:00``, ``...Z``)."""
 Notes = list[dict[str, str]]
+_COUNT_CHUNK = 4_000_000
 _UNLIMITED = IngestLimits()
 
 
@@ -967,6 +974,35 @@ def _json_scalar(v: Any) -> Any:
     return v
 
 
+def _uint8_profile(values: np.ndarray) -> dict[str, Any]:
+    """The statistics of 8-bit pixels from a 256-bin count: exact, and without a float copy
+    of the whole array (an image stack can hold 256 Mi values)."""
+    flat = values.reshape(-1)
+    counts = np.zeros(256, dtype=np.float64)
+    for start in range(0, flat.size, _COUNT_CHUNK):  # bincount copies to int64: a part at a time
+        counts += np.bincount(flat[start : start + _COUNT_CHUNK], minlength=256)
+    n = int(counts.sum())
+    out: dict[str, Any] = {"missing": 0, "count": n}
+    if not n:
+        return out
+    levels = np.arange(256, dtype=np.float64)
+    mean = float((counts * levels).sum() / n)
+    cum = np.cumsum(counts)
+    q = [float(np.searchsorted(cum, p * (n - 1) + 1)) for p in (0.05, 0.5, 0.95)]
+    present = np.flatnonzero(counts)
+    out.update(
+        mean=mean,
+        std=float(np.sqrt((counts * (levels - mean) ** 2).sum() / n)),
+        min=float(present[0]),
+        max=float(present[-1]),
+        p05=q[0],
+        p50=q[1],
+        p95=q[2],
+        zeros=int(counts[0]),
+    )
+    return out
+
+
 def _var_profile(da: xr.DataArray) -> dict[str, Any]:
     values = np.asarray(da.values)
     out: dict[str, Any] = {
@@ -974,7 +1010,9 @@ def _var_profile(da: xr.DataArray) -> dict[str, Any]:
         "dtype": str(da.dtype),
         "size": int(values.size),
     }
-    if values.dtype.kind in "fiub":
+    if values.dtype == np.uint8:
+        out.update(_uint8_profile(values))
+    elif values.dtype.kind in "fiub":
         x = values.astype(float).reshape(-1)
         ok = x[np.isfinite(x)]
         out["missing"] = int(x.size - ok.size)
@@ -1046,8 +1084,20 @@ def profile(ds: xr.Dataset, schema: DataSchema, issues: list[Any], raw: bytes) -
     }
 
 
+def _preview_dataset(ds: xr.Dataset) -> xr.Dataset:
+    """``ds`` without its image stacks (``image_folder``: the pixels): one row per image with
+    its label and manifest columns, never one row per pixel."""
+    images = [v for v in ds.data_vars if ds[v].attrs.get(IMAGE_ATTR) == "1"]
+    if not images:
+        return ds
+    rows = ds[images[0]].dims[0]
+    other = {d for v in images for d in ds[v].dims if d != rows}
+    return ds.drop_vars(images).drop_dims(sorted(other, key=str), errors="ignore")
+
+
 def preview(ds: xr.Dataset, rows: int) -> dict[str, Any]:
     """``preview.json`` (:class:`~mapi_spec.views.PreviewView`): dim columns, then vars."""
+    ds = _preview_dataset(ds)
     df = ds.to_dataframe().reset_index() if ds.dims else pd.DataFrame()
     head = df.head(min(rows, MAX_PREVIEW_ROWS))
     dims = {str(d) for d in ds.dims}
@@ -1078,11 +1128,13 @@ def _check_format(path: Path, fmt: str) -> None:
     kind = sniff(path)
     if kind == fmt or (fmt in ("hdf5", "netcdf") and _is_hdf5(path)):
         return
+    if fmt == "image_folder" and kind == "zarr_zip":  # every zip has the same magic
+        return
     raise _schema_error(
-        f"the upload is not a {fmt} file",
+        f"the upload is not a {'zip' if fmt == 'image_folder' else fmt} file",
         "/mapping/format",
         action="Set the format of the mapping to the format of the file (csv, parquet, "
-        "mff, zarr_zip, netcdf or hdf5).",
+        "mff, zarr_zip, netcdf, hdf5 or image_folder).",
     )
 
 
@@ -1099,6 +1151,12 @@ def _tree_upload(
 def build_upload(path: Path, mapping: IngestMapping, limits: IngestLimits) -> Upload:
     """Parse one upload as ``mapping`` says: a plain dataset or (M4) a tree."""
     size = path.stat().st_size
+    if mapping.format == "image_folder":
+        _check_format(path, mapping.format)
+        images, image_schema, image_notes = read_image_folder(
+            path, mapping.images or ImageFolderOptions(), limits
+        )
+        return Upload(images, image_schema, None, [], image_notes, size)
     if mapping.format in ("zarr_zip", "netcdf", "hdf5"):
         _check_format(path, mapping.format)
         if mapping.format == "hdf5":
@@ -1200,6 +1258,14 @@ def _assembly_upload(ctx: WorkerContext, job: IngestJob, limits: IngestLimits) -
             f"the version combines {len(sources)} uploads (the maximum is {limits.max_sources})",
             pointer="/assembly/sources",
         )
+    for i, src in enumerate(sources):
+        if src.mapping.format == "image_folder" and len(sources) > 1:
+            raise problem(
+                ErrorCode.SCHEMA_INVALID,
+                "an image folder must be the only upload of a version",
+                pointer=f"/assembly/sources/{i}/mapping/format",
+                action="Upload the zip of images as a version of its own, without other files.",
+            )
     uploads: list[Upload] = []
     decoded = 0
     for i, src in enumerate(sources):

@@ -111,7 +111,8 @@ needs no Docker socket and works with all daemons. The two executors have these 
 | Use it for | Daily development, demos, CI | A full check of the production images, and self-hosted setups (gVisor `runsc` in v0.3) |
 
 **Docker executor settings.** `MAPI_DOCKER_IMAGES` maps a plugin namespace to its runner
-image. `mmm.*`, `sci.*` and `tabular.*` run in `mapi/base-bayes`, `sklearn.*` in `mapi/base-ml`, and
+image. `mmm.*`, `sci.*` and `tabular.*` (also `tabular.image_logistic`, v0.14) run in
+`mapi/base-bayes`, `sklearn.*` (with LightGBM and CatBoost from v0.14) in `mapi/base-ml`, and
 `ts.*` and `causal.*` in `mapi/base-forecast`. A workflow node run goes to the image of the model that it
 runs. This is its `model` parameter (for example a backtest or search of `ts.sarimax`). If
 there is no `model` parameter, it is the plugin of the model version that is bound to the

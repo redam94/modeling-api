@@ -147,6 +147,7 @@ from mapi_client._m35 import (
     Workflows,
 )
 from mapi_client._tracking import RunTracker
+from mapi_client._v014 import Experiments, RunsV014Mixin, RunViews
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -241,6 +242,8 @@ class Client:
         self.governance = Governance(self)
         self.validations = Validations(self)
         self.explorations = Explorations(self)
+        self.experiments = Experiments(self)
+        self.run_views = RunViews(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:
@@ -777,13 +780,20 @@ class Specs(_Resource):
         return self._c.send(calls.dry_run_spec(spec_id, revision, idempotency_key))
 
 
-class Runs(_Resource):
+class Runs(_Resource, RunsV014Mixin):
     def create(
-        self, run: RunCreate | Mapping[str, Any], *, idempotency_key: str | None = None
+        self,
+        run: RunCreate | Mapping[str, Any],
+        *,
+        idempotency_key: str | None = None,
+        experiment_id: str | None = None,
     ) -> Run:
         """Submit a run. A fresh ``Idempotency-Key`` is generated unless given; pass your
         own key to make retries across processes safe."""
-        return self._c.send(calls.create_run(as_run_create(run), idempotency_key))
+        body = as_run_create(run)
+        if experiment_id is not None:  # v0.14: the run's experiment (not an archived one)
+            body = body.model_copy(update={"experiment_id": experiment_id})
+        return self._c.send(calls.create_run(body, idempotency_key))
 
     def fit(
         self,
@@ -793,6 +803,7 @@ class Runs(_Resource):
         resource_class: ResourceClass | str | None = None,
         labels: Mapping[str, str] | None = None,
         idempotency_key: str | None = None,
+        experiment_id: str | None = None,
     ) -> Run:
         body = RunCreate(
             kind=RunKind.FIT,
@@ -800,6 +811,7 @@ class Runs(_Resource):
             revision=revision,
             resource_class=ResourceClass(resource_class) if resource_class else None,
             labels=dict(labels or {}),
+            experiment_id=experiment_id,
         )
         return self.create(body, idempotency_key=idempotency_key)
 
@@ -818,6 +830,7 @@ class Runs(_Resource):
         filters: Sequence[str] = (),
         order_by: str | None = None,
         columns: Sequence[str] = (),
+        experiment_id: str | None = None,
         limit: int | None = None,
     ) -> Paginator[Run]:
         """Runs, newest first unless ``order_by`` says otherwise.
@@ -827,7 +840,7 @@ class Runs(_Resource):
         ``"param.fit.draws >= 1000"``, ``"tag.stage = candidate"``, ``"name ~ weekly"``),
         ``order_by`` (``"-metric.rmse"``, ``"created_at"``) and ``columns`` (refs whose values
         come back in ``Run.columns``). Bad grammar raises :class:`ValueError` before the
-        request.
+        request. ``experiment_id`` (v0.14) keeps the runs of one experiment.
         """
         tcalls.run_search_params(
             tags=tags, filters=filters, order_by=order_by, columns=columns
@@ -845,6 +858,7 @@ class Runs(_Resource):
                 filters=filters,
                 order_by=order_by,
                 columns=columns,
+                experiment_id=experiment_id,
             )
         )
 
@@ -1022,10 +1036,12 @@ class Runs(_Resource):
         name: str | tcalls.Unset | None = tcalls.UNSET,
         note: str | tcalls.Unset | None = tcalls.UNSET,
         tags: Mapping[str, str | None] | None = None,
+        experiment_id: str | tcalls.Unset | None = tcalls.UNSET,
     ) -> Run:
-        """Set the run's name, note or tags (a field left ``UNSET`` is unchanged; ``None``
-        clears the name/note; a tag set to ``None`` is deleted)."""
-        body = tcalls.run_patch(name=name, note=note, tags=tags)
+        """Set the run's name, note, tags or experiment (a field left ``UNSET`` is unchanged;
+        ``None`` clears the name/note or takes the run out of its experiment; a tag set to
+        ``None`` is deleted)."""
+        body = tcalls.run_patch(name=name, note=note, tags=tags, experiment_id=experiment_id)
         return self._c.send(tcalls.update_run(run_id, body))
 
     def set_tags(self, run_id: str, tags: Mapping[str, str | None]) -> Run:

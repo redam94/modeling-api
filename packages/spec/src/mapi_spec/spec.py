@@ -7,6 +7,7 @@ unknown fields. See :mod:`mapi_spec.loader` for strict parsing and canonical has
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
@@ -45,6 +46,7 @@ __all__ = [
     "Binding",
     "Campaign",
     "Checkpoint",
+    "ColumnSplit",
     "DataBlock",
     "DocumentKind",
     "EvaluateBlock",
@@ -68,8 +70,10 @@ __all__ = [
     "SideTable",
     "Split",
     "StepCall",
+    "StratifiedSplit",
     "Sweep",
     "TimeHoldoutSplit",
+    "split_value_key",
 ]
 
 API_VERSION = "mapi/v1"
@@ -283,8 +287,71 @@ class MaskBlockSplit(_SplitBase):
         return list(self.dims)
 
 
+def split_value_key(value: object) -> str:
+    """A ``column`` / ``stratified`` split value compared as text: ``3`` for an integral
+    number (``3.0`` and ``"3"`` match), ``""`` for a missing one. The spec check and the split
+    itself (``mapi_sdk.split``) use this one rule."""
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return ""
+        if value.is_integer():
+            return str(int(value))
+    return str(value).strip()
+
+
+class ColumnSplit(_SplitBase):
+    """Hold out the rows whose value in ``column`` is one of ``holdout`` (a fixed split read
+    from the data, v0.14).
+
+    ``column`` is a coord or a 1-D data variable along ``dim``. Values compare as text, so
+    ``holdout: [1]`` matches a stored ``1`` or ``"1"``. With ``train`` set, rows in neither
+    list are dropped; else every other row trains.
+    """
+
+    kind: Literal["column"]
+    dim: Name
+    column: Name
+    holdout: list[Scalar] = Field(
+        default_factory=lambda: list[Scalar](["test"]), min_length=1, max_length=64
+    )
+    train: list[Scalar] | None = Field(None, min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def _disjoint(self) -> ColumnSplit:
+        hold = {split_value_key(v) for v in self.holdout}
+        both = sorted(hold & {split_value_key(v) for v in self.train or ()})
+        if both:
+            raise ValueError(f"values {both} are in holdout and in train")
+        return self
+
+    def split_dims(self) -> list[str]:
+        return [self.dim]
+
+
+class StratifiedSplit(_SplitBase):
+    """Hold out a random ``fraction`` of the rows along ``dim`` in each level of ``by`` (the
+    class label; v0.14). A level with one row stays in training."""
+
+    kind: Literal["stratified"]
+    dim: Name
+    by: Name
+    fraction: float = Field(..., gt=0, lt=1)
+    seed: int | None = Field(None, ge=0, lt=2**32)
+
+    def split_dims(self) -> list[str]:
+        return [self.dim]
+
+
 Split = Annotated[
-    TimeHoldoutSplit | LastPerGroupSplit | AsOfSplit | LeaveGroupOutSplit | MaskBlockSplit,
+    TimeHoldoutSplit
+    | LastPerGroupSplit
+    | AsOfSplit
+    | LeaveGroupOutSplit
+    | MaskBlockSplit
+    | ColumnSplit
+    | StratifiedSplit,
     Field(discriminator="kind"),
 ]
 
@@ -565,7 +632,11 @@ class ScoreRequest(_Document):
 
 
 class Sweep(_Document):
-    """A grid over spec paths (JSON pointers) of a base revision, compared by a metric."""
+    """A grid over spec paths (JSON pointers) of a base revision, compared by a metric.
+
+    Retired in v0.14: stored documents still load; use a workflow with a search.grid node.
+    The server refuses new Sweep documents.
+    """
 
     kind: Literal["Sweep"]
     metadata: Metadata

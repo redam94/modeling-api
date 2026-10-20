@@ -44,7 +44,7 @@ execution: {resource_class: M, timeout: 45m}
 | `data.nodes` | v0.8, tree datasets only. The nodes whose variables make the flat input of the pipeline: `{key: {path, vars?, prefix?}}`, a maximum of 64 entries. Refer to [Tree datasets in a spec](#tree-datasets-in-a-spec) |
 | `data.join` | v0.8, used only with `data.nodes` (a value other than `exact` without them is an error). How the labels of the selected nodes align: `exact` (the default), `inner` or `outer` |
 | `data.bind` | Maps **canonical** names (the names that plugins and steps use) to **dataset** names. By default, the outputs get the dataset names again. When a dim gets a new name, the `grid` attr of each variable gets the new name too (v0.9) |
-| `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out` or `mask_block`. The split occurs at `after_step` |
+| `data.split` | `time_holdout`, `last_per_group`, `as_of`, `leave_group_out`, `mask_block`, and from v0.14 `column` or `stratified` (see [Column and stratified splits](#column-and-stratified-splits)). The split occurs at `after_step` |
 | `pipeline` | Steps in sequence: `{id, use: <id>@<semver range>, with: {...}}` |
 | `model` | The plugin `use`, its `settings` and the `fit` block |
 | `outputs` | Derived quantities, plot recipes and the number of draws that the UI keeps |
@@ -133,6 +133,73 @@ merges their variables before the pipeline:
 Static validation uses the `tree_schema` of the dataset version. Thus it finds these problems
 before a run starts.
 
+## Column and stratified splits <span class="mapi-badge">v0.14</span> { #column-and-stratified-splits }
+
+These two split kinds are for data without a time order, for example images or customers.
+Both cut whole rows along `dim`. They do not mask cells.
+
+```yaml
+split: {kind: column, dim: image, column: split, holdout: [test]}
+split: {kind: column, dim: image, column: split, holdout: [test], train: [train]}
+split: {kind: stratified, dim: image, by: label, fraction: 0.25, seed: 7}
+```
+
+| Kind | Field | Meaning |
+|---|---|---|
+| `column` | `dim` | The dim of the rows |
+| | `column` | A coordinate or a 1-D variable along `dim` with the assignment of each row |
+| | `holdout` | The values of the holdout rows (default `[test]`, a maximum of 64). The values compare as text: `1` and `"1"` are the same. |
+| | `train` | The values of the training rows (a maximum of 64). Rows with a value in neither list are not used. The default (none) trains on all other rows. A value cannot be in `holdout` and in `train`. |
+| `stratified` | `dim` | The dim of the rows |
+| | `by` | A coordinate or a 1-D variable along `dim` with the class of each row |
+| | `fraction` | The share of each class to hold out (more than 0, less than 1) |
+| | `seed` | The random seed (default: the seed of the fit) |
+
+`stratified` holds out `round(n × fraction)` rows of each class, with a maximum of n − 1. A
+class with one row stays in training. Rows with an empty or missing class stay in training.
+The same seed gives the same split. If the split gives no holdout rows or no training rows,
+the fit stops with an error.
+
+Validation does a check of `column` and `by` when the schema of the split stage has the
+variable: it must be on `dim` only (`SPLIT_INVALID`). A coordinate that is not a dim is not
+in the schema. Then validation gives an information message, and the fit does the check.
+
+Do not use these splits for a time series forecast. Use `time_holdout` or `as_of`.
+
+## Image folders <span class="mapi-badge">v0.14</span> { #image-folders }
+
+An upload of the format `image_folder` is a zip of images and a manifest table. The mapping
+has only `format` and `images` (an `ImageFolderOptions`), not `dims`, `vars`, `wide` or a
+preset. `images` can be left out: then the defaults apply. An `image_folder` upload must be the
+only source of a dataset version.
+
+```yaml
+format: image_folder
+images:
+  manifest: manifest.csv        # .csv, .tsv or .parquet, a relative path in the zip
+  path_column: path
+  id_column: id                 # optional: unique labels of the image dim
+  label_column: label           # optional: the variable label(image), role target
+  split_column: split           # optional: the coordinate split(image)
+  columns: null                 # the other columns to keep (null: all)
+  var: pixels
+  dim: image                    # not sample, chain, draw, quantile, bound, moment, y, x or channel
+  mode: auto                    # auto, gray or rgb
+  size: [32, 32]                # optional (height, width), each 1 to 4096
+  resize: crop                  # stretch, crop or pad (only with size)
+  max_images: 20000             # 1 to 100 000
+```
+
+The ingest writes `pixels(image, y, x, channel)` with the dtype `uint8`. `uint8` is a numeric
+dtype of the schema (v0.14), for values from 0 to 255. For the full layout and the limits,
+see [Image data](../guides/image-data.md).
+
+## Retired documents
+
+The `Sweep` document is retired in v0.14. Stored `Sweep` documents still load, but the server
+does not accept new ones (`422 SCHEMA_INVALID` at `/kind`). Use a workflow with a
+`search.grid` node.
+
 ## Versions in `use:`
 
 `use:` takes a semver range in the npm style: `^1` (all 1.x), `~1.2` (1.2.x), `>=1.2 <2`,
@@ -168,7 +235,7 @@ Each problem has a stable `code` and a JSON pointer to the incorrect field:
 | `REF_UNRESOLVED` | The step, model, plot, side table or derived quantity is unknown, or no version matches |
 | `SETTINGS_INVALID` | The settings do not agree with the settings schema of the step or model |
 | `BINDING_INVALID` | `data.bind` gives a name that the dataset does not have |
-| `SPLIT_INVALID` | The split dim does not exist at the split stage |
+| `SPLIT_INVALID` | The split dim does not exist at the split stage, or the `column` or `by` variable of a split is not on the split dim |
 | `LEAKAGE_RISK` | A stateful step runs before the split |
 | `DIM_POLICY_LOOSENED` | `dim_policies` tries to make the dim policy of a plugin less strict |
 | `RECURSIVE_UNSUPPORTED` | A lag of the target is shorter than the holdout/horizon |

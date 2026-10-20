@@ -218,7 +218,8 @@ function b64(bytes: Uint8Array): string {
 
 describe("scientific data: views and index", () => {
   it("accepts the spec's example view of every new section and refuses it under another", () => {
-    expect(DATA_SECTIONS).toHaveLength(21);
+    // v0.14: + gallery
+    expect(DATA_SECTIONS).toHaveLength(22);
     for (const s of SCIENCE_SECTIONS) expect(() => scienceExample(s)).not.toThrow();
     expect(() => parseView("map", scienceExample("network"))).toThrow(ViewFormatError);
   });

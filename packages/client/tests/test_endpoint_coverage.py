@@ -15,6 +15,7 @@ from mapi_client import _calls_m3 as m3
 from mapi_client import _calls_m4 as m4
 from mapi_client import _calls_m35 as m35
 from mapi_client import _calls_tracking as tr
+from mapi_client import _calls_v014 as v14
 from mapi_client._http import Call
 from mapi_spec.api import (
     ALL_ENDPOINTS,
@@ -36,6 +37,9 @@ from mapi_spec.api import (
     EvidencePackRequest,
     ExecutorEvidenceUpdate,
     ExecutorUpdate,
+    ExperimentCreate,
+    ExperimentPatch,
+    ExperimentRunsWrite,
     GdprExportRequest,
     GovernancePolicyCreate,
     GovernancePolicyUpdate,
@@ -43,6 +47,7 @@ from mapi_spec.api import (
     GuidedCompile,
     IngestMapping,
     KillSwitchUpdate,
+    MediaWrite,
     MembershipCreate,
     MembershipUpdate,
     ModelCompareRequest,
@@ -58,6 +63,8 @@ from mapi_spec.api import (
     RouteScope,
     RunCreate,
     RunRetry,
+    RunViewCreate,
+    RunViewPatch,
     SavedPlotCreate,
     ScheduleCreate,
     ScheduleUpdate,
@@ -108,6 +115,7 @@ _PLT = "plt_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _WF = "wfl_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _POL = "pol_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _VAL = "val_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_EXP = "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
 
 NOT_FOR_PROGRAMS = frozenset(
     {
@@ -389,6 +397,27 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     ),
     "list_run_params": lambda: tr.list_run_params("run_1", None, None, prefix="fit."),
     "log_run_params": lambda: tr.log_run_params("run_1", tr.params_bodies({"a": 1})[0]),
+    # v0.14 media, comparison, experiments, saved views
+    "list_run_media": lambda: v14.list_run_media(
+        "run_1", 10, "c", key="samples", kind="image", attempt=1, links=True
+    ),
+    "get_run_media": lambda: v14.get_run_media("run_1", "rm_1"),
+    "log_run_media": lambda: v14.log_run_media("run_1", _ex(MediaWrite)),
+    "list_run_media_keys": lambda: v14.list_run_media_keys("run_1", None, None, attempt=1),
+    "compare_runs": lambda: v14.compare_runs(
+        ["run_1", "run_2"], keys=["loss"], media_keys=["samples"], max_points=100, params=False
+    ),
+    "list_run_keys": lambda: v14.list_run_keys(experiment_id=_EXP, prefix="lo"),
+    "list_experiments": lambda: v14.list_experiments(5, None, name="study", archived=False),
+    "create_experiment": lambda: v14.create_experiment(_ex(ExperimentCreate)),
+    "get_experiment": lambda: v14.get_experiment(_EXP),
+    "update_experiment": lambda: v14.update_experiment(_EXP, _ex(ExperimentPatch)),
+    "delete_experiment": lambda: v14.delete_experiment(_EXP),
+    "update_experiment_runs": lambda: v14.update_experiment_runs(_EXP, _ex(ExperimentRunsWrite)),
+    "list_run_views": lambda: v14.list_run_views(None, None, experiment_id=_EXP),
+    "create_run_view": lambda: v14.create_run_view(_ex(RunViewCreate)),
+    "update_run_view": lambda: v14.update_run_view("rv_1", _ex(RunViewPatch)),
+    "delete_run_view": lambda: v14.delete_run_view("rv_1"),
 }
 
 CLIENT_ENDPOINTS = ALL_ENDPOINTS
@@ -687,3 +716,42 @@ def test_tracking_writes_split_into_bodies() -> None:
     assert [len(b.params) for b in params] == [500, 500, 200]
     with pytest.raises(ValueError):
         tr.params_bodies({"bad key": 1})
+
+
+# ------------------------------------------------------------------------------ v0.14
+
+
+def test_v014_query_parameters() -> None:
+    call = v14.compare_runs(["run_1", "run_2"], keys=["loss", "rmse"], params=True)
+    assert call.params == {"run": ["run_1", "run_2"], "key": ["loss", "rmse"], "params": "true"}
+    for bad in (
+        {"run_ids": ["run_1"]},
+        {"run_ids": [f"run_{i}" for i in range(11)]},
+        {"run_ids": ["run_1", "run_1"]},
+        {"run_ids": "run_1"},
+        {"run_ids": ["a", "b"], "keys": ["train/loss"]},
+        {"run_ids": ["a", "b"], "keys": [f"k{i}" for i in range(13)]},
+        {"run_ids": ["a", "b"], "media_keys": ["m1", "m2", "m3", "m4", "m5"]},
+        {"run_ids": ["a", "b"], "max_points": 5},
+    ):
+        with pytest.raises(ValueError):
+            v14.compare_runs(**bad)  # type: ignore[arg-type]
+    assert v14.list_run_media("run_1", None, None, links=False).params == {"links": "false"}
+    with pytest.raises(ValueError):
+        v14.list_run_media("run_1", None, None, kind="video")
+    with pytest.raises(ValueError):
+        v14.list_run_media("run_1", None, None, key="bad/key")
+    assert v14.list_experiments(None, None).params == {}
+    assert c.list_runs(None, None, experiment_id=_EXP).params == {"experiment_id": _EXP}
+
+
+def test_v014_patches_are_merge_patches() -> None:
+    call = v14.update_experiment(_EXP, v14.experiment_patch(description=None))
+    assert call.json == {"description": None}
+    assert v14.update_experiment(_EXP, v14.experiment_patch(archived=True)).json == {
+        "archived": True
+    }
+    with pytest.raises(ValueError):
+        v14.experiment_patch()
+    assert tr.update_run("run_1", tr.run_patch(experiment_id=None)).json == {"experiment_id": None}
+    assert v14.update_run_view("rv_1", RunViewPatch(name="best")).json == {"name": "best"}

@@ -1115,6 +1115,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/experiments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Experiments
+         * @description Experiments of the project, newest first. ``name`` is a case-insensitive substring;
+         *     ``archived`` keeps the archived (true) or the active (false) ones.
+         */
+        get: operations["list_experiments"];
+        put?: never;
+        /** Create Experiment */
+        post: operations["create_experiment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/experiments/{experiment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Experiment */
+        get: operations["get_experiment"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Experiment
+         * @description Delete an experiment: its runs stay (they leave the experiment) and its saved views
+         *     are deleted.
+         */
+        delete: operations["delete_experiment"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Experiment
+         * @description Merge patch: rename (names stay unique per project), describe, archive or unarchive.
+         *     The description text is never written to the audit log.
+         */
+        patch: operations["update_experiment"];
+        trace?: never;
+    };
+    "/v1/experiments/{experiment_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Experiment Runs
+         * @description Move runs into the experiment (``add``; a run leaves its previous experiment) or out
+         *     of it (``remove``). Ids that are not runs of the project come back in ``missing``. An
+         *     archived experiment takes no new runs (409).
+         */
+        post: operations["update_experiment_runs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/explorations/{run_id}": {
         parameters: {
             query?: never;
@@ -1904,6 +1975,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/run-compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Runs
+         * @description Compare 2 to 10 runs (``run``, repeatable, in the order shown): every metric series
+         *     summary, the histories of up to 12 metric keys (``key``; default the keys most of the
+         *     runs have), the params with the ones that differ (``params=false`` leaves them out) and
+         *     up to 4 media keys (``media_key``) with signed links. A run of another project is 404.
+         */
+        get: operations["compare_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/run-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Keys
+         * @description Metric series, param keys and tag keys of the project's runs (or one experiment's),
+         *     with how many runs have each, most common first. ``prefix`` keeps keys that start with
+         *     it. Lists are capped (metrics and params 500, tags 200; ``truncated``).
+         */
+        get: operations["list_run_keys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/run-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Views
+         * @description Saved views of the project ordered by name; ``experiment_id`` keeps the views of
+         *     that experiment.
+         */
+        get: operations["list_run_views"];
+        put?: never;
+        /** Create Run View */
+        post: operations["create_run_view"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/run-views/{view_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Run View */
+        delete: operations["delete_run_view"];
+        options?: never;
+        head?: never;
+        /** Update Run View */
+        patch: operations["update_run_view"];
+        trace?: never;
+    };
     "/v1/runs": {
         parameters: {
             query?: never;
@@ -1915,7 +2071,8 @@ export interface paths {
          * List Runs
          * @description Runs of the project, newest first by default.
          *
-         *     ``name`` is a case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
+         *     ``experiment_id`` (v0.14) keeps the runs of one experiment. ``name`` is a
+         *     case-insensitive substring of the run name; ``tag`` (repeatable) is ``key``
          *     (the run has the tag) or ``key:value``; ``filter`` (repeatable, at most 8) compares a
          *     metric series summary, a param, a tag or the name (``metric.rmse < 0.5``); ``order_by``
          *     sorts on one ref (``-metric.rmse``; runs without the value sort last); ``column``
@@ -1948,7 +2105,9 @@ export interface paths {
         /**
          * Update Run
          * @description Merge patch: a field left out is unchanged, ``null`` clears the name or the note, and
-         *     a tag set to ``null`` is deleted. The note text is never written to the audit log.
+         *     a tag set to ``null`` is deleted. ``experiment_id`` (v0.14) moves the run to another
+         *     experiment (not an archived one; unknown: 422) and ``null`` takes it out of its
+         *     experiment. The note text is never written to the audit log.
          */
         patch: operations["update_run"];
         trace?: never;
@@ -1990,6 +2149,74 @@ export interface paths {
          *     older than v0.11 knows only the streams ``stdout``, ``stderr`` and ``system``.
          */
         get: operations["run_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Media
+         * @description The run's media, ordered by key, labels, step and id. ``links`` (default true) adds a
+         *     signed GET (``url``, ``expires_at``) of each item; ``caption`` is untrusted text.
+         */
+        get: operations["list_run_media"];
+        put?: never;
+        /**
+         * Log Run Media
+         * @description Log one image (PNG/JPEG) or table (JSON) into the run's current attempt (also after
+         *     the run finished). The same bytes at the same key, labels and step are stored once;
+         *     other bytes replace the item. Over the run's media budget: ``QUOTA_EXCEEDED``.
+         */
+        post: operations["log_run_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/media-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Media Keys
+         * @description The run's media series (key + labels) with their item counts and steps, ordered by
+         *     key and labels.
+         */
+        get: operations["list_run_media_keys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/runs/{run_id}/media/{media_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Media
+         * @description One media item with a signed GET of the stored copy (verify ``size`` and ``crc32c``).
+         */
+        get: operations["get_run_media"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3779,7 +4006,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -4769,6 +4996,286 @@ export interface components {
             sample?: (string | number | boolean | null)[];
         };
         /**
+         * ColumnSplit
+         * @description Hold out the rows whose value in ``column`` is one of ``holdout`` (a fixed split read
+         *     from the data, v0.14).
+         *
+         *     ``column`` is a coord or a 1-D data variable along ``dim``. Values compare as text, so
+         *     ``holdout: [1]`` matches a stored ``1`` or ``"1"``. With ``train`` set, rows in neither
+         *     list are dropped; else every other row trains.
+         */
+        ColumnSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** Column */
+            column: string;
+            /** Dim */
+            dim: string;
+            /** Holdout */
+            holdout?: (string | number | boolean)[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "column";
+            /** Train */
+            train?: (string | number | boolean)[] | null;
+        };
+        /**
+         * CompareMedia
+         * @description One media series (key + labels) of one compared run, thinned evenly (the last is kept).
+         * @example {
+         *       "items": [
+         *         {
+         *           "attempt": 1,
+         *           "caption": "Predicted classes, epoch 3",
+         *           "content_type": "image/png",
+         *           "crc32c": "4waSgw==",
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "expires_at": "2026-10-15T09:45:00Z",
+         *           "height": 64,
+         *           "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *           "key": "samples",
+         *           "kind": "image",
+         *           "labels": {
+         *             "split": "val"
+         *           },
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *           "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *           "size": 12034,
+         *           "source": "runner",
+         *           "step": 3,
+         *           "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f.png?alt=media",
+         *           "width": 64
+         *         }
+         *       ],
+         *       "key": "samples",
+         *       "kind": "image",
+         *       "labels": {
+         *         "split": "val"
+         *       },
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *     }
+         */
+        CompareMedia: {
+            /** Items */
+            items?: components["schemas"]["RunMedia"][];
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "table";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+        };
+        /**
+         * CompareMetric
+         * @description Every series of one metric key, over the compared runs.
+         * @example {
+         *       "key": "loss",
+         *       "series": [
+         *         {
+         *           "attempt": 1,
+         *           "count": 3,
+         *           "labels": {
+         *             "split": "val"
+         *           },
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *           "steps": [
+         *             1,
+         *             2,
+         *             3
+         *           ],
+         *           "values": [
+         *             0.9,
+         *             0.6,
+         *             0.45
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        CompareMetric: {
+            /** Key */
+            key: string;
+            /** Series */
+            series?: components["schemas"]["CompareSeries"][];
+        };
+        /**
+         * CompareParam
+         * @description One param key over the compared runs (run id -> text value; ``null``: not logged).
+         * @example {
+         *       "differs": true,
+         *       "key": "settings.adstock.l_max",
+         *       "values": {
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d0": "4",
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d1": "8"
+         *       }
+         *     }
+         * @example {
+         *       "differs": true,
+         *       "key": "fit.draws",
+         *       "values": {
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d0": "1000"
+         *       }
+         *     }
+         */
+        CompareParam: {
+            /**
+             * Differs
+             * @description Two runs have different values (or one has none)
+             */
+            differs: boolean;
+            /** Key */
+            key: string;
+            /** Values */
+            values: {
+                [key: string]: string | null;
+            };
+        };
+        /**
+         * CompareSeries
+         * @description The history of one series of one compared run (``steps`` and ``values`` have equal
+         *     lengths; downsampled to ``max_points``).
+         * @example {
+         *       "attempt": 1,
+         *       "count": 3,
+         *       "labels": {
+         *         "split": "val"
+         *       },
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "steps": [
+         *         1,
+         *         2,
+         *         3
+         *       ],
+         *       "values": [
+         *         0.9,
+         *         0.6,
+         *         0.45
+         *       ]
+         *     }
+         */
+        CompareSeries: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Count
+             * @description Stored points (before downsampling)
+             */
+            count: number;
+            /**
+             * Downsampled
+             * @default false
+             */
+            downsampled?: boolean;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Steps */
+            steps: (number | null)[];
+            /** Values */
+            values: number[];
+        };
+        /**
+         * CompareSummary
+         * @description The summary of one metric series of one compared run.
+         * @example {
+         *       "attempt": 1,
+         *       "count": 1,
+         *       "first_ts": "2026-10-15T09:30:00Z",
+         *       "key": "rmse",
+         *       "last": 12.7,
+         *       "last_ts": "2026-10-15T09:30:00Z",
+         *       "max": 12.7,
+         *       "min": 12.7,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *     }
+         * @example {
+         *       "attempt": 1,
+         *       "count": 1400,
+         *       "first_ts": "2026-10-15T09:30:00Z",
+         *       "key": "step_size",
+         *       "labels": {
+         *         "chain": "0"
+         *       },
+         *       "last": 0.31,
+         *       "last_step": 1400,
+         *       "last_ts": "2026-10-15T09:31:00Z",
+         *       "max": 1.2,
+         *       "min": 0.02,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d1"
+         *     }
+         */
+        CompareSummary: {
+            /** Attempt */
+            attempt: number;
+            /**
+             * Count
+             * @description Stored points
+             */
+            count: number;
+            /**
+             * First Ts
+             * Format: date-time
+             */
+            first_ts: string;
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Last
+             * @description Value of the newest point (by time, then step)
+             */
+            last: number;
+            /**
+             * Last Step
+             * @description Step of the newest point; null for a scalar
+             */
+            last_step?: number | null;
+            /**
+             * Last Ts
+             * Format: date-time
+             */
+            last_ts: string;
+            /** Max */
+            max: number;
+            /** Min */
+            min: number;
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+        };
+        /**
          * CompletePayload
          * @description ``complete``: outputs and the manifest are uploaded; the supervisor exits next.
          */
@@ -5094,7 +5601,7 @@ export interface components {
              */
             prewhiten?: boolean;
             /** Sections */
-            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality" | "structure" | "images" | "profiles" | "map" | "network" | "tree" | "circular" | "points")[];
+            sections?: ("overview" | "distributions" | "timeseries" | "missingness" | "outliers" | "correlation" | "ccf" | "acf_pacf" | "stationarity" | "stl" | "vif" | "groups" | "quality" | "structure" | "images" | "gallery" | "profiles" | "map" | "network" | "tree" | "circular" | "points")[];
             /**
              * Time Dim
              * @description Default: the dataset's time dim
@@ -7281,6 +7788,131 @@ export interface components {
             step?: number | null;
         };
         /**
+         * Experiment
+         * @description A named group of runs in a project (v0.14). A run is in at most one experiment.
+         * @example {
+         *       "archived": false,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "description": "Compare adstock lengths 2, 4 and 8 on weekly sales.",
+         *       "id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *       "last_run_at": "2026-10-15T10:30:00Z",
+         *       "name": "adstock length study",
+         *       "run_count": 6,
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        Experiment: {
+            /**
+             * Archived
+             * @description An archived experiment accepts no new runs
+             * @default false
+             */
+            archived?: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /**
+             * Description
+             * @description Untrusted text
+             */
+            description?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Run At */
+            last_run_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Run Count
+             * @default 0
+             */
+            run_count?: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ExperimentCreate
+         * @description ``POST /v1/experiments``: names are unique in a project (case is ignored).
+         * @example {
+         *       "description": "Compare adstock lengths 2, 4 and 8.",
+         *       "name": "adstock length study"
+         *     }
+         */
+        ExperimentCreate: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ExperimentPatch
+         * @description Merge patch of an experiment: a field left out is unchanged; ``description: null``
+         *     clears the description (``name: null`` and ``archived: null`` change nothing).
+         * @example {
+         *       "name": "adstock study (final)"
+         *     }
+         * @example {
+         *       "archived": true
+         *     }
+         */
+        ExperimentPatch: {
+            /** Archived */
+            archived?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * ExperimentRunsResult
+         * @description Runs moved, and the ids that are not runs of the project (nothing was done for them).
+         * @example {
+         *       "added": 2,
+         *       "removed": 0
+         *     }
+         */
+        ExperimentRunsResult: {
+            /** Added */
+            added: number;
+            /** Missing */
+            missing?: string[];
+            /** Removed */
+            removed: number;
+        };
+        /**
+         * ExperimentRunsWrite
+         * @description ``POST /v1/experiments/{experiment_id}/runs``: move runs into the experiment (``add``;
+         *     a run leaves its previous experiment) or out of it (``remove``).
+         * @example {
+         *       "add": [
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d1"
+         *       ]
+         *     }
+         * @example {
+         *       "remove": [
+         *         "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *       ]
+         *     }
+         */
+        ExperimentRunsWrite: {
+            /** Add */
+            add?: string[];
+            /** Remove */
+            remove?: string[];
+        };
+        /**
          * Exploration
          * @description ``POST …/explore`` (``202``) and ``GET /v1/explorations/{run_id}``: the ``explore``
          *     run and, once done, its index and signed links to every section view.
@@ -8840,7 +9472,7 @@ export interface components {
              */
             kind: "holdout";
             /** Split */
-            split: components["schemas"]["TimeHoldoutSplit"] | components["schemas"]["LastPerGroupSplit"] | components["schemas"]["AsOfSplit"] | components["schemas"]["LeaveGroupOutSplit"] | components["schemas"]["MaskBlockSplit"];
+            split: components["schemas"]["TimeHoldoutSplit"] | components["schemas"]["LastPerGroupSplit"] | components["schemas"]["AsOfSplit"] | components["schemas"]["LeaveGroupOutSplit"] | components["schemas"]["MaskBlockSplit"] | components["schemas"]["ColumnSplit"] | components["schemas"]["StratifiedSplit"];
         };
         /** Horizon */
         Horizon: {
@@ -8848,6 +9480,103 @@ export interface components {
             dim: string;
             /** Periods */
             periods: number;
+        };
+        /**
+         * ImageFolderOptions
+         * @description How a zip of images and a manifest table becomes ``pixels(image, y, x, channel)``.
+         *
+         *     The manifest has one row per image: the image path in the zip and, optionally, an id, a
+         *     class label and a train/test split. The images must have 8 bits per channel and one
+         *     size, unless ``size`` resizes them. Every byte is decoded inside the sandboxed ingest run.
+         * @example {
+         *       "label_column": "class",
+         *       "manifest": "manifest.csv",
+         *       "path_column": "file",
+         *       "split_column": "split"
+         *     }
+         * @example {
+         *       "id_column": "id",
+         *       "label_column": "label",
+         *       "manifest": "labels.parquet",
+         *       "max_images": 5000,
+         *       "mode": "rgb",
+         *       "resize": "crop",
+         *       "size": [
+         *         32,
+         *         32
+         *       ]
+         *     }
+         */
+        ImageFolderOptions: {
+            /**
+             * Columns
+             * @description Other columns kept as coords (default: all others)
+             */
+            columns?: string[] | null;
+            /**
+             * Dim
+             * @default image
+             */
+            dim?: string;
+            /**
+             * Id Column
+             * @description Unique labels of the image dim (default: the row number)
+             */
+            id_column?: string | null;
+            /**
+             * Label Column
+             * @description Class labels: the text variable 'label(image)', role target
+             */
+            label_column?: string | null;
+            /**
+             * Manifest
+             * @description Path of the manifest in the zip
+             * @default manifest.csv
+             */
+            manifest?: string;
+            /**
+             * Max Images
+             * @default 20000
+             */
+            max_images?: number;
+            /**
+             * Mode
+             * @description auto: rgb when an image has colour, else gray
+             * @default auto
+             * @enum {string}
+             */
+            mode?: "auto" | "gray" | "rgb";
+            /**
+             * Path Column
+             * @description Image paths relative to the zip root
+             * @default path
+             */
+            path_column?: string;
+            /**
+             * Resize
+             * @description How images are resized (only with size)
+             * @default stretch
+             * @enum {string}
+             */
+            resize?: "stretch" | "crop" | "pad";
+            /**
+             * Size
+             * @description (height, width) to resize every image to; each 1..4096
+             */
+            size?: [
+                number,
+                number
+            ] | null;
+            /**
+             * Split Column
+             * @description Train/test assignment: the text coord 'split(image)'
+             */
+            split_column?: string | null;
+            /**
+             * Var
+             * @default pixels
+             */
+            var?: string;
         };
         /**
          * IngestAssembly
@@ -9032,6 +9761,15 @@ export interface components {
          *         ]
          *       }
          *     }
+         * @example {
+         *       "format": "image_folder",
+         *       "images": {
+         *         "label_column": "class",
+         *         "manifest": "manifest.csv",
+         *         "path_column": "file",
+         *         "split_column": "split"
+         *       }
+         *     }
          */
         IngestMapping: {
             /** Dims */
@@ -9042,9 +9780,11 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder";
             /** @description M4: the arrays, dims and coords of a raw HDF5 upload (format 'hdf5') */
             hdf5?: components["schemas"]["Hdf5Mapping"] | null;
+            /** @description v0.14: options of an 'image_folder' upload (defaults when left out) */
+            images?: components["schemas"]["ImageFolderOptions"] | null;
             /**
              * Layout
              * @default dense
@@ -9839,6 +10579,96 @@ export interface components {
             projects?: components["schemas"]["MeProject"][];
             role?: components["schemas"]["ProjectRole"] | null;
             tenant: components["schemas"]["Tenant"];
+        };
+        /**
+         * MediaKeySummary
+         * @description One media series (key + labels) of a run: how many items and which steps.
+         * @example {
+         *       "count": 5,
+         *       "first_step": 0,
+         *       "key": "samples",
+         *       "kind": "image",
+         *       "labels": {
+         *         "split": "val"
+         *       },
+         *       "last_created_at": "2026-10-15T09:30:00Z",
+         *       "last_step": 4
+         *     }
+         */
+        MediaKeySummary: {
+            /** Count */
+            count: number;
+            /** First Step */
+            first_step?: number | null;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "table";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Last Created At
+             * Format: date-time
+             */
+            last_created_at: string;
+            /** Last Step */
+            last_step?: number | null;
+        };
+        /**
+         * MediaWrite
+         * @description ``POST /v1/runs/{run_id}/media``: log one image (PNG/JPEG) or table (JSON) to a run.
+         *
+         *     ``data`` is the standard base64 of the bytes (at most :data:`MAX_API_MEDIA_BYTES` decoded).
+         *     A table is UTF-8 JSON of a :class:`~mapi_spec.media.MediaTable`.
+         * @example {
+         *       "caption": "Holdout counts per class",
+         *       "content_type": "application/json",
+         *       "data": "eyJjb2x1bW5zIjpbImNsYXNzIiwibiJdLCJyb3dzIjpbWyJjYXQiLDNdXX0=",
+         *       "key": "confusion_counts",
+         *       "kind": "table"
+         *     }
+         * @example {
+         *       "content_type": "image/png",
+         *       "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==",
+         *       "key": "samples",
+         *       "kind": "image",
+         *       "step": 0
+         *     }
+         */
+        MediaWrite: {
+            /**
+             * Caption
+             * @default null
+             */
+            caption?: string | null;
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/png" | "image/jpeg" | "application/json";
+            /** Data */
+            data: string;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "table";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Step
+             * @default null
+             */
+            step?: number | null;
         };
         /**
          * Membership
@@ -11764,6 +12594,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[Experiment]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Experiment_: {
+            /** Items */
+            items: components["schemas"]["Experiment"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[GdprExport]
          * @example {
          *       "items": [],
@@ -11825,6 +12668,19 @@ export interface components {
         Page_LogLine_: {
             /** Items */
             items: components["schemas"]["LogLine"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[MediaKeySummary]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_MediaKeySummary_: {
+            /** Items */
+            items: components["schemas"]["MediaKeySummary"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -12024,6 +12880,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[RunMedia]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_RunMedia_: {
+            /** Items */
+            items: components["schemas"]["RunMedia"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[RunParam]
          * @example {
          *       "items": [],
@@ -12033,6 +12902,19 @@ export interface components {
         Page_RunParam_: {
             /** Items */
             items: components["schemas"]["RunParam"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[RunView]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_RunView_: {
+            /** Items */
+            items: components["schemas"]["RunView"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -13937,6 +14819,11 @@ export interface components {
             dataset_id?: string | null;
             /** Executor */
             executor?: string | null;
+            /**
+             * Experiment Id
+             * @description Experiment of the run (v0.14)
+             */
+            experiment_id?: string | null;
             failure_class?: components["schemas"]["FailureClass"] | null;
             /** Finished At */
             finished_at?: string | null;
@@ -14008,6 +14895,232 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * RunCompare
+         * @description ``GET /v1/run-compare``: runs side by side (summaries, histories, params, media).
+         * @example {
+         *       "media": [
+         *         {
+         *           "items": [
+         *             {
+         *               "attempt": 1,
+         *               "caption": "Predicted classes, epoch 3",
+         *               "content_type": "image/png",
+         *               "crc32c": "4waSgw==",
+         *               "created_at": "2026-10-15T09:30:00Z",
+         *               "expires_at": "2026-10-15T09:45:00Z",
+         *               "height": 64,
+         *               "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *               "key": "samples",
+         *               "kind": "image",
+         *               "labels": {
+         *                 "split": "val"
+         *               },
+         *               "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *               "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *               "size": 12034,
+         *               "source": "runner",
+         *               "step": 3,
+         *               "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f.png?alt=media",
+         *               "width": 64
+         *             }
+         *           ],
+         *           "key": "samples",
+         *           "kind": "image",
+         *           "labels": {
+         *             "split": "val"
+         *           },
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *         }
+         *       ],
+         *       "metrics": [
+         *         {
+         *           "key": "loss",
+         *           "series": [
+         *             {
+         *               "attempt": 1,
+         *               "count": 3,
+         *               "labels": {
+         *                 "split": "val"
+         *               },
+         *               "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *               "steps": [
+         *                 1,
+         *                 2,
+         *                 3
+         *               ],
+         *               "values": [
+         *                 0.9,
+         *                 0.6,
+         *                 0.45
+         *               ]
+         *             },
+         *             {
+         *               "attempt": 1,
+         *               "count": 3,
+         *               "labels": {
+         *                 "split": "val"
+         *               },
+         *               "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d1",
+         *               "steps": [
+         *                 1,
+         *                 2,
+         *                 3
+         *               ],
+         *               "values": [
+         *                 0.8,
+         *                 0.5,
+         *                 0.41
+         *               ]
+         *             }
+         *           ]
+         *         }
+         *       ],
+         *       "params": [
+         *         {
+         *           "differs": true,
+         *           "key": "settings.adstock.l_max",
+         *           "values": {
+         *             "run_01jaf3q2x8m9v7k5h4g3f2e1d0": "4",
+         *             "run_01jaf3q2x8m9v7k5h4g3f2e1d1": "8"
+         *           }
+         *         }
+         *       ],
+         *       "runs": [
+         *         {
+         *           "attempt": 1,
+         *           "cost": {
+         *             "estimated": true
+         *           },
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "executor": "local-process",
+         *           "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *           "kind": "fit",
+         *           "name": "weekly sales, adstock 4",
+         *           "progress": {
+         *             "chains": [
+         *               {
+         *                 "chain": 0,
+         *                 "divergences": 0,
+         *                 "draws_done": 400,
+         *                 "draws_total": 1000
+         *               },
+         *               {
+         *                 "chain": 1,
+         *                 "divergences": 1,
+         *                 "draws_done": 380,
+         *                 "draws_total": 1000
+         *               }
+         *             ],
+         *             "eta_seconds": 95,
+         *             "fraction": 0.4,
+         *             "message": "drawing samples",
+         *             "phase": "sample",
+         *             "seq": 42,
+         *             "updated_at": "2026-10-15T09:30:00Z"
+         *           },
+         *           "project_id": "default",
+         *           "queued_at": "2026-10-15T09:30:00Z",
+         *           "resource_class": "M",
+         *           "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *           "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *           "spec_revision": 2,
+         *           "started_at": "2026-10-15T09:30:05Z",
+         *           "state": "running",
+         *           "tags": {
+         *             "stage": "candidate",
+         *             "team": "growth"
+         *           },
+         *           "tenant_id": "default",
+         *           "timeout": "45m",
+         *           "updated_at": "2026-10-15T09:31:00Z"
+         *         },
+         *         {
+         *           "attempt": 1,
+         *           "cost": {
+         *             "estimated": true
+         *           },
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "executor": "local-process",
+         *           "id": "run_01jaf3q2x8m9v7k5h4g3f2e1d1",
+         *           "kind": "fit",
+         *           "name": "weekly sales, adstock 4",
+         *           "progress": {
+         *             "chains": [
+         *               {
+         *                 "chain": 0,
+         *                 "divergences": 0,
+         *                 "draws_done": 400,
+         *                 "draws_total": 1000
+         *               },
+         *               {
+         *                 "chain": 1,
+         *                 "divergences": 1,
+         *                 "draws_done": 380,
+         *                 "draws_total": 1000
+         *               }
+         *             ],
+         *             "eta_seconds": 95,
+         *             "fraction": 0.4,
+         *             "message": "drawing samples",
+         *             "phase": "sample",
+         *             "seq": 42,
+         *             "updated_at": "2026-10-15T09:30:00Z"
+         *           },
+         *           "project_id": "default",
+         *           "queued_at": "2026-10-15T09:30:00Z",
+         *           "resource_class": "M",
+         *           "spec_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *           "spec_id": "spc_01jaf3b1c2d3e4f5g6h7j8k9m0",
+         *           "spec_revision": 2,
+         *           "started_at": "2026-10-15T09:30:05Z",
+         *           "state": "succeeded",
+         *           "tags": {
+         *             "stage": "candidate",
+         *             "team": "growth"
+         *           },
+         *           "tenant_id": "default",
+         *           "timeout": "45m",
+         *           "updated_at": "2026-10-15T09:31:00Z"
+         *         }
+         *       ],
+         *       "summaries": [
+         *         {
+         *           "attempt": 1,
+         *           "count": 1,
+         *           "first_ts": "2026-10-15T09:30:00Z",
+         *           "key": "rmse",
+         *           "last": 12.7,
+         *           "last_ts": "2026-10-15T09:30:00Z",
+         *           "max": 12.7,
+         *           "min": 12.7,
+         *           "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *         }
+         *       ],
+         *       "truncated": {
+         *         "params": false
+         *       }
+         *     }
+         */
+        RunCompare: {
+            /** Media */
+            media?: components["schemas"]["CompareMedia"][];
+            /** Metrics */
+            metrics?: components["schemas"]["CompareMetric"][];
+            /** Params */
+            params?: components["schemas"]["CompareParam"][];
+            /** Runs */
+            runs: components["schemas"]["Run"][];
+            /** Summaries */
+            summaries?: components["schemas"]["CompareSummary"][];
+            /**
+             * Truncated
+             * @description True for a part that was capped
+             */
+            truncated?: {
+                [key: string]: boolean;
+            };
         };
         /**
          * RunCost
@@ -14088,6 +15201,11 @@ export interface components {
          *     }
          */
         RunCreate: {
+            /**
+             * Experiment Id
+             * @description Experiment of the new run (v0.14; not an archived one)
+             */
+            experiment_id?: string | null;
             kind: components["schemas"]["RunKind"];
             /** Labels */
             labels?: {
@@ -14112,11 +15230,11 @@ export interface components {
          * RunEventType
          * @description Event types written by the supervisor (see :mod:`mapi_spec.run` for payloads).
          *
-         *     ``metrics``, ``params`` and ``tags`` (v0.11) carry run tracking data: the control plane
-         *     writes them to the tracking tables, not to the stored event list.
+         *     ``metrics``, ``params`` and ``tags`` (v0.11) and ``media`` (v0.14) carry run tracking
+         *     data: the control plane writes them to the tracking tables, not to the stored event list.
          * @enum {string}
          */
-        RunEventType: "state" | "progress" | "log" | "diagnostic" | "warning" | "checkpoint" | "metric" | "complete" | "error" | "metrics" | "params" | "tags";
+        RunEventType: "state" | "progress" | "log" | "diagnostic" | "warning" | "checkpoint" | "metric" | "complete" | "error" | "metrics" | "params" | "tags" | "media";
         /**
          * RunEventView
          * @description A persisted run event (``id`` is the SSE event id, increasing per run).
@@ -14156,6 +15274,77 @@ export interface components {
             type: components["schemas"]["RunEventType"];
         };
         /**
+         * RunKeyCount
+         * @description A metric series, param key or tag key, and how many runs have it.
+         * @example {
+         *       "key": "loss",
+         *       "labels": {
+         *         "split": "val"
+         *       },
+         *       "runs": 8
+         *     }
+         * @example {
+         *       "key": "team",
+         *       "runs": 5
+         *     }
+         */
+        RunKeyCount: {
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Runs */
+            runs: number;
+        };
+        /**
+         * RunKeys
+         * @description ``GET /v1/run-keys``: the tracked keys of the runs of a project (or an experiment),
+         *     most common first; the column picker of the runs table reads it.
+         * @example {
+         *       "metrics": [
+         *         {
+         *           "key": "rmse",
+         *           "runs": 12
+         *         },
+         *         {
+         *           "key": "loss",
+         *           "labels": {
+         *             "split": "val"
+         *           },
+         *           "runs": 8
+         *         }
+         *       ],
+         *       "params": [
+         *         {
+         *           "key": "settings.adstock.l_max",
+         *           "runs": 12
+         *         }
+         *       ],
+         *       "tags": [
+         *         {
+         *           "key": "team",
+         *           "runs": 5
+         *         }
+         *       ]
+         *     }
+         */
+        RunKeys: {
+            /** Metrics */
+            metrics?: components["schemas"]["RunKeyCount"][];
+            /** Params */
+            params?: components["schemas"]["RunKeyCount"][];
+            /** Tags */
+            tags?: components["schemas"]["RunKeyCount"][];
+            /**
+             * Truncated
+             * @description A list was capped
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
          * RunKind
          * @description What a run does. ``validate`` is the explicit sandboxed dry-run of a spec.
          *
@@ -14164,6 +15353,108 @@ export interface components {
          * @enum {string}
          */
         RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect";
+        /**
+         * RunMedia
+         * @description An image or a table a run logged. ``caption`` is untrusted text; ``url`` is a signed GET
+         *     of the stored copy (verify ``size`` and ``crc32c`` after the download).
+         * @example {
+         *       "attempt": 1,
+         *       "caption": "Predicted classes, epoch 3",
+         *       "content_type": "image/png",
+         *       "crc32c": "4waSgw==",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "expires_at": "2026-10-15T09:45:00Z",
+         *       "height": 64,
+         *       "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "key": "samples",
+         *       "kind": "image",
+         *       "labels": {
+         *         "split": "val"
+         *       },
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *       "size": 12034,
+         *       "source": "runner",
+         *       "step": 3,
+         *       "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f.png?alt=media",
+         *       "width": 64
+         *     }
+         * @example {
+         *       "attempt": 1,
+         *       "content_type": "application/json",
+         *       "crc32c": "4waSgw==",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "id": "rm_01jaf3h1j2k3m4n5p6q7r8s9t0",
+         *       "key": "confusion_counts",
+         *       "kind": "table",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+         *       "size": 412,
+         *       "source": "api"
+         *     }
+         */
+        RunMedia: {
+            /** Attempt */
+            attempt: number;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Content Type
+             * @enum {string}
+             */
+            content_type: "image/png" | "image/jpeg" | "application/json";
+            /**
+             * Crc32C
+             * @description CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum
+             * @example 4waSgw==
+             */
+            crc32c: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Height */
+            height?: number | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "table";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Run Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            run_id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "runner" | "api";
+            /** Step */
+            step?: number | null;
+            /** Url */
+            url?: string | null;
+            /** Width */
+            width?: number | null;
+        };
         /**
          * RunParam
          * @description One run parameter. ``value`` is the text form; ``value_num`` is set for numbers.
@@ -14203,7 +15494,8 @@ export interface components {
         /**
          * RunPatch
          * @description Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to
-         *     ``null`` is deleted.
+         *     ``null`` is deleted. ``experiment_id`` (v0.14) moves the run to another experiment;
+         *     ``null`` takes it out of its experiment.
          * @example {
          *       "name": "weekly sales, adstock 4",
          *       "tags": {
@@ -14213,8 +15505,13 @@ export interface components {
          * @example {
          *       "note": "Holdout error is high in week 52 (holiday)."
          *     }
+         * @example {
+         *       "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
+         *     }
          */
         RunPatch: {
+            /** Experiment Id */
+            experiment_id?: string | null;
             /** Name */
             name?: string | null;
             /** Note */
@@ -14246,6 +15543,147 @@ export interface components {
          * @enum {string}
          */
         RunState: "created" | "rejected" | "queued" | "dispatching" | "provisioning" | "running" | "stalled" | "finalizing" | "succeeded" | "partial" | "failed" | "cancelling" | "cancelled";
+        /**
+         * RunView
+         * @description A saved runs-table view: a name and a ``list_runs`` query, shared in the project.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *       "id": "rv_01jaf3g1h2j3k4m5n6p7q8r9s0",
+         *       "name": "best adstock fits",
+         *       "query": {
+         *         "columns": [
+         *           "metric.rmse",
+         *           "metric.loss{split=val}.min",
+         *           "param.settings.adstock.l_max"
+         *         ],
+         *         "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *         "filters": [
+         *           "metric.rmse < 15",
+         *           "param.settings.adstock.l_max >= 4"
+         *         ],
+         *         "kind": "fit",
+         *         "order_by": "metric.rmse"
+         *       },
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        RunView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
+            /**
+             * Experiment Id
+             * @description The experiment the view belongs to
+             */
+            experiment_id?: string | null;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Name */
+            name: string;
+            query: components["schemas"]["RunViewQuery"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * RunViewCreate
+         * @description ``POST /v1/run-views``: names are unique per project and experiment (case is ignored).
+         * @example {
+         *       "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *       "name": "best adstock fits",
+         *       "query": {
+         *         "columns": [
+         *           "metric.rmse",
+         *           "metric.loss{split=val}.min",
+         *           "param.settings.adstock.l_max"
+         *         ],
+         *         "experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0",
+         *         "filters": [
+         *           "metric.rmse < 15",
+         *           "param.settings.adstock.l_max >= 4"
+         *         ],
+         *         "kind": "fit",
+         *         "order_by": "metric.rmse"
+         *       }
+         *     }
+         */
+        RunViewCreate: {
+            /** Experiment Id */
+            experiment_id?: string | null;
+            /** Name */
+            name: string;
+            query: components["schemas"]["RunViewQuery"];
+        };
+        /**
+         * RunViewPatch
+         * @description Change the name or the query of a saved view.
+         * @example {
+         *       "name": "best fits"
+         *     }
+         * @example {
+         *       "query": {
+         *         "order_by": "-metric.r2"
+         *       }
+         *     }
+         */
+        RunViewPatch: {
+            /** Name */
+            name?: string | null;
+            query?: components["schemas"]["RunViewQuery"] | null;
+        };
+        /**
+         * RunViewQuery
+         * @description The ``list_runs`` query of a saved view; every filter, order and column is parsed with
+         *     the run-search grammar of :mod:`mapi_spec.tracking` at validation.
+         * @example {
+         *       "columns": [
+         *         "metric.rmse"
+         *       ],
+         *       "filters": [
+         *         "metric.rmse < 15"
+         *       ],
+         *       "kind": "fit",
+         *       "order_by": "metric.rmse"
+         *     }
+         * @example {
+         *       "state": "succeeded",
+         *       "tags": [
+         *         "team:growth",
+         *         "candidate"
+         *       ]
+         *     }
+         */
+        RunViewQuery: {
+            /** Columns */
+            columns?: string[];
+            /** Experiment Id */
+            experiment_id?: string | null;
+            /** Filters */
+            filters?: string[];
+            kind?: components["schemas"]["RunKind"] | null;
+            /** Name */
+            name?: string | null;
+            /** Order By */
+            order_by?: string | null;
+            /** Parent Run Id */
+            parent_run_id?: string | null;
+            /** Spec Id */
+            spec_id?: string | null;
+            state?: components["schemas"]["RunState"] | null;
+            /** Tags */
+            tags?: string[];
+        };
         /**
          * RunnerPhase
          * @description Coarse phase reported by the runner (drives progress text in the UI).
@@ -15691,6 +17129,37 @@ export interface components {
             updated_at?: string | null;
         };
         /**
+         * StratifiedSplit
+         * @description Hold out a random ``fraction`` of the rows along ``dim`` in each level of ``by`` (the
+         *     class label; v0.14). A level with one row stays in training.
+         */
+        StratifiedSplit: {
+            /**
+             * After Step
+             * @description Stage the split happens at (a step id or 'raw'); default: end of the stateless prefix
+             */
+            after_step?: string | null;
+            /**
+             * Allow Leakage
+             * @description Downgrade LEAKAGE_RISK to a warning (acknowledged)
+             * @default false
+             */
+            allow_leakage?: boolean;
+            /** By */
+            by: string;
+            /** Dim */
+            dim: string;
+            /** Fraction */
+            fraction: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "stratified";
+            /** Seed */
+            seed?: number | null;
+        };
+        /**
          * StructureHints
          * @description Corrections to the structure the Data Explorer detects (each one overrides the rule
          *     for that dim or variable only): the dims of an image (``y_dim``, ``x_dim``,
@@ -16272,7 +17741,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5";
+            format: "csv" | "parquet" | "mff" | "zarr_zip" | "netcdf" | "hdf5" | "image_folder";
             /** Groups */
             groups?: string[];
             /** Size Bytes */
@@ -16664,7 +18133,7 @@ export interface components {
              * Dtype
              * @enum {string}
              */
-            dtype: "float64" | "float32" | "int64" | "int32" | "bool" | "str" | "datetime64[ns]";
+            dtype: "float64" | "float32" | "int64" | "int32" | "uint8" | "bool" | "str" | "datetime64[ns]";
             /**
              * Future Required
              * @description Must be supplied over a forecast horizon
@@ -17631,6 +19100,11 @@ export interface components {
          *     }
          */
         WorkflowRunCreate: {
+            /**
+             * Experiment Id
+             * @description Experiment of the workflow run and of every run it starts (v0.14; not an archived one). Default: the experiment of the parent run, if any
+             */
+            experiment_id?: string | null;
             /**
              * Inputs
              * @description input name -> reference
@@ -21096,6 +22570,203 @@ export interface operations {
             };
         };
     };
+    list_experiments: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                name?: string | null;
+                archived?: boolean | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Experiment_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_experiment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experiment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_experiment_runs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experiment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperimentRunsWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentRunsResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_exploration: {
         parameters: {
             query?: never;
@@ -23292,6 +24963,203 @@ export interface operations {
             };
         };
     };
+    compare_runs: {
+        parameters: {
+            query: {
+                run: string[];
+                key?: string[] | null;
+                media_key?: string[] | null;
+                max_points?: number;
+                params?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCompare"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_keys: {
+        parameters: {
+            query?: {
+                experiment_id?: string | null;
+                prefix?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunKeys"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_views: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                experiment_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RunView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunViewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_run_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                view_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_run_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                view_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunViewPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_runs: {
         parameters: {
             query?: {
@@ -23301,6 +25169,7 @@ export interface operations {
                 state?: components["schemas"]["RunState"] | null;
                 spec_id?: string | null;
                 parent_run_id?: string | null;
+                experiment_id?: string | null;
                 name?: string | null;
                 tag?: string[] | null;
                 filter?: string[] | null;
@@ -23506,6 +25375,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_LogLine_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_media: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                key?: string | null;
+                kind?: ("image" | "table") | null;
+                attempt?: number | null;
+                links?: boolean;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RunMedia_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_run_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMedia"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_media_keys: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                attempt?: number | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MediaKeySummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMedia"];
                 };
             };
             /** @description Validation Error */

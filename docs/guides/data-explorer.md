@@ -1,5 +1,5 @@
 ---
-description: Explore a dataset before modelling - distributions, time plots, missing data, outliers, correlations, lags, stationarity, seasonality, collinearity, data-quality warnings, and pictures of scientific data (images, profiles, maps, networks, trees, directions and points).
+description: Explore a dataset before modelling - distributions, time plots, missing data, outliers, correlations, lags, stationarity, seasonality, collinearity, data-quality warnings, and pictures of scientific data (images, image galleries, profiles, maps, networks, trees, directions and points).
 ---
 
 # Explore a dataset <span class="mapi-badge">v0.5</span>
@@ -27,13 +27,14 @@ all views. The other parts of this guide use the HTTP API, which the web app cal
 2. Click **Explore this version**. Alternatively, go to
    `/datasets/<dataset>/versions/<n>/explore`.
 
-The page starts with the [About](#dataset-about) of the dataset. It has 21 sections in four
+The page starts with the [About](#dataset-about) of the dataset. It has 22 sections in four
 groups:
 
 - *The basics*: overview, structure, data quality, distributions, over time, missing values
   and unusual values.
-- *Pictures of the data*: images and fields, profiles and spectra, map, network, tree,
-  directions and times of day, and points. Refer to [Scientific data](#scientific-data).
+- *Pictures of the data*: images and fields, gallery (v0.14), profiles and spectra, map,
+  network, tree, directions and times of day, and points. Refer to
+  [Scientific data](#scientific-data).
 - *Relationships*: correlations, leads and lags, overlapping drivers and group comparison.
 - *Time patterns*: memory (ACF/PACF), stable or wandering, and trend and season.
 
@@ -157,7 +158,7 @@ platform calculates the explorers one time, they are instant.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `sections` | all 21 | The sections to calculate |
+| `sections` | all 22 | The sections to calculate |
 | `vars` | each numeric variable | The variables to include |
 | `kpi` | the target variable | The result that the cross-correlations use |
 | `time_dim` | the time dim of the schema | The dimension that "over time" means |
@@ -241,6 +242,7 @@ use them in the statistics (distributions, unusual values, correlations and qual
 |---|---|---|
 | `structure` (Structure) | The shapes. A matrix of the variables and the dims, with the role of each dim (time, frame, y, x, area, node and other roles) and its size. How the explorer uses each variable: data, geometry, mask, weight, index or label. The section that shows each shape. | "2 images of 81 x 81 pixels and 1 of 31 x 31 pixels." If the explorer reads a dim incorrectly, [correct the structure](#correct-the-structure-hints). |
 | `images` (Images and fields) | Each image in the field viewer, with a colour bar, a frame slider and the value of the cell below the pointer. A vector field shows the magnitude and arrows. A mask shows as a layer. For each variable: the mean, the spread, the minimum and the maximum of each frame on a line, a histogram of all cells, and the fraction of missing and saturated cells. For a label coord on the frames (E31 `label`), the mean image of each class. When a few cells are much brighter than the others (E58), the colours cover 98% of the values. Select **Colours for the full range** to use the colours for all the values. | Look for frames that are not the same as the others, and for many cells at the maximum value (a saturated detector). A colour map with two colours (blue and red) shows values on the two sides of zero. |
+| `gallery` (Gallery, v0.14) | Thumbnails of the images of one variable (a maximum of 64 pixels on each side), with chips for each label and split, and the number of images for each value. See [Gallery](#gallery). | Look for images with the wrong label, empty images and classes with few images. |
 | `profiles` (Profiles and spectra) | One line for each frame along the axis (position, multipole, wavelength or frequency), with the peak of each line. A picker selects the frame. The axes are logarithmic when the values cover a large range. | A peak that moves from frame to frame shows a front or a wave (E50). |
 | `map` (Map) | Each variable in colour on the areas, and the lines between neighbours. When the data has a target and an exposure, the map also shows their ratio (E18: `cases` / `expected`), and the map starts with this ratio. The areas with no neighbour. Moran's I for each variable, with a p-value from 999 permutations. | A positive Moran's I with a small p-value shows that neighbour areas have similar values. Then a spatial model (ICAR or BYM2) is useful. For a variable with frames (one value for each area and year), Moran's I uses the mean of each area over the frames. |
 | `network` (Network) | The matrix of ties, with similar nodes next to each other (140 nodes or fewer). A node-link graph of the nodes and the edges. A histogram of the degree of the nodes. The density, the transitivity, the reciprocity (directed networks) and the components. For each attribute of the nodes, the fraction of ties in the same group. | Blocks on the diagonal of the matrix show groups. If the fraction of ties in the same group is much more than the expected fraction, the attribute explains the ties (homophily). |
@@ -265,6 +267,32 @@ use them in the statistics (distributions, unusual values, correlations and qual
 In Expert mode, *All series* also shows the export plots of the science plot recipes: the
 map (`sci.area_map`), the network (`net.graph`) and the roses (`sci.rose`). These plots are
 Plotly plots. The other export plots are Vega-Lite plots.
+
+### Gallery and colour images <span class="mapi-badge">v0.14</span> { #gallery }
+
+The **Gallery** section shows small pictures (thumbnails) of the images of a dataset, for
+example a dataset from an [image folder upload](image-data.md). It applies when a variable is
+an image with a frame dim of 2 or more levels, for example `pixels` on `image`, `y`, `x` and
+`channel`.
+
+- Each thumbnail is a maximum of 64 pixels on each side. The platform uses the mean of blocks
+  of pixels for larger images. For images with numbers that are not 0 to 255, the platform
+  uses the minimum and the maximum of each image.
+- The chips above the gallery are the *facets*: the variables and coordinates on the image
+  dim with 2 to 64 values, for example `label` and `split` (a maximum of 8). Each chip shows
+  the number of images. Click a chip to show only these images.
+- When the dataset has more than 240 images, the gallery shows a sample. The sample has the
+  same number of images from each label and split, where possible. A note tells you the
+  number of images that the gallery shows.
+- The gallery shows 48 thumbnails on each page. Click a thumbnail to see a larger picture and
+  its values. The values come from your data. The app shows them as text only.
+
+**Colour images.** When the channel dim of an image has 3 or 4 levels, or the levels `r`,
+`g` and `b` (`red`, `green` and `blue`), **Images and fields** shows the image in colour. A
+fourth channel (alpha) is not used. The statistics and the histogram use the brightness
+(0.299 r + 0.587 g + 0.114 b). The mean image of each class is also in colour. A label
+variable on the frames (for example `label` on `image`) gives the classes, as a label
+coordinate does.
 
 ### The time sections on scientific data
 
@@ -380,6 +408,7 @@ other (*About this dataset*). Editors change the description on the page with **
     | Tree | 5,000 nodes. The phylogenetic signal uses up to 1,000 tips. |
     | Directions and times of day | 72 bins, 12 groups |
     | Points | 5,000 points (an even sample). Above this number, the view also has a 64 × 64 grid of counts. |
+    | Gallery | 240 thumbnails of a maximum of 64 × 64 pixels, 8 facets with a maximum of 64 values each (the other values are counted as `(other)`) |
 - The statistical tests come from statsmodels and scipy. The test suite validates them
   against their reference outputs.
 - Strings in views come from your data. Render them only as text.

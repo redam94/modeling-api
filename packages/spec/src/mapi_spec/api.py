@@ -15,7 +15,8 @@ Conventions shared by every endpoint (see ``docs/reference/http-api.md``):
 :data:`M1_ENDPOINTS`, :data:`M2_ENDPOINTS` (v0.3), :data:`M3_ENDPOINTS` (guided mode and
 integrations, v0.4), :data:`M35_ENDPOINTS` (workflows, governance, explorers,
 optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
-:data:`V011_ENDPOINTS` (run tracking, v0.11) are the machine-readable endpoint tables;
+:data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
+comparison, experiments and saved views, v0.14) are the machine-readable endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -25,6 +26,8 @@ project-scoped: the project comes from the path or the ``X-Mapi-Project`` header
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import re
 from dataclasses import dataclass, field
@@ -35,6 +38,7 @@ from typing import Annotated, Any, Final, Generic, Literal, TypeVar
 from pydantic import (
     AwareDatetime,
     BaseModel,
+    ConfigDict,
     Field,
     JsonValue,
     field_validator,
@@ -48,7 +52,7 @@ from mapi_spec._dto import Sha256 as Sha256
 from mapi_spec._dto import TenantId as TenantId
 from mapi_spec._dto import dto_examples as _examples
 from mapi_spec._dto import new_id
-from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug
+from mapi_spec._types import Duration, LabelKey, LabelValue, MetricName, Slug, StrictModel
 from mapi_spec.about import (
     About,
     AboutKind,
@@ -126,6 +130,13 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
+from mapi_spec.media import (
+    MAX_API_MEDIA_BYTES,
+    MAX_MEDIA_CAPTION_CHARS,
+    MediaContentType,
+    MediaKind,
+    check_media,
+)
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
 from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
@@ -162,8 +173,19 @@ from mapi_spec.tenancy import (
 )
 from mapi_spec.tokens import ApiToken, TokenCreate, TokenCreated
 from mapi_spec.tracking import (
+    MAX_COMPARE_KEYS,
+    MAX_COMPARE_MEDIA_ITEMS,
+    MAX_COMPARE_MEDIA_KEYS,
+    MAX_COMPARE_PARAMS,
+    MAX_COMPARE_RUNS,
+    MAX_COMPARE_SERIES,
+    MAX_EXPERIMENT_DESCRIPTION_CHARS,
+    MAX_EXPERIMENT_NAME_CHARS,
+    MAX_EXPERIMENT_RUNS_WRITE,
     MAX_PARAMS_PER_WRITE,
     MAX_POINTS_PER_WRITE,
+    MAX_RUN_COLUMNS,
+    MAX_RUN_FILTERS,
     MAX_RUN_NAME_CHARS,
     MAX_RUN_NOTE_CHARS,
     MAX_SERIES_PER_HISTORY,
@@ -177,6 +199,10 @@ from mapi_spec.tracking import (
     ParamKey,
     ParamValue,
     TagKey,
+    check_tag_key,
+    parse_run_filter,
+    parse_run_order,
+    parse_run_ref,
 )
 from mapi_spec.tree import DataLayout, TreeSchema
 from mapi_spec.trust import (
@@ -257,6 +283,7 @@ __all__ = [
     "SSE_RETRY_MS",
     "TOKEN_TENANT_ROUTES",
     "V011_ENDPOINTS",
+    "V014_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -273,6 +300,11 @@ __all__ = [
     "ChooserQuestionnaire",
     "ChooserResult",
     "ColumnProfile",
+    "CompareMedia",
+    "CompareMetric",
+    "CompareParam",
+    "CompareSeries",
+    "CompareSummary",
     "CostTotals",
     "DataExploreRequest",
     "Dataset",
@@ -301,6 +333,11 @@ __all__ = [
     "ExecutorEvidenceUpdate",
     "ExecutorHealth",
     "ExecutorUpdate",
+    "Experiment",
+    "ExperimentCreate",
+    "ExperimentPatch",
+    "ExperimentRunsResult",
+    "ExperimentRunsWrite",
     "Exploration",
     "ExplorerIndex",
     "GdprExport",
@@ -329,6 +366,8 @@ __all__ = [
     "Me",
     "MeProject",
     "MeTenant",
+    "MediaKeySummary",
+    "MediaWrite",
     "Membership",
     "MembershipCreate",
     "MembershipUpdate",
@@ -376,12 +415,20 @@ __all__ = [
     "RouteAccess",
     "RouteScope",
     "Run",
+    "RunCompare",
     "RunCost",
     "RunCreate",
     "RunEventView",
+    "RunKeyCount",
+    "RunKeys",
+    "RunMedia",
     "RunParam",
     "RunPatch",
     "RunRetry",
+    "RunView",
+    "RunViewCreate",
+    "RunViewPatch",
+    "RunViewQuery",
     "SavedPlot",
     "SavedPlotCreate",
     "ScheduleCreate",
@@ -1001,6 +1048,9 @@ class RunCreate(_Request):
     resource_class: ResourceClass | None = None
     timeout: Duration | None = None
     labels: dict[LabelKey, LabelValue] = Field(default_factory=dict, max_length=64)
+    experiment_id: Id | None = Field(
+        None, description="Experiment of the new run (v0.14; not an archived one)"
+    )
 
     model_config = _examples(
         {"kind": "fit", "spec_id": _SPEC_ID, "revision": 2, "resource_class": "M"},
@@ -1110,6 +1160,7 @@ class Run(_Response):
     tags: dict[str, str] = Field(
         default_factory=dict, description="Mutable run tags (v0.11; labels stay create-only)"
     )
+    experiment_id: Id | None = Field(None, description="Experiment of the run (v0.14)")
     columns: dict[str, float | str | None] | None = Field(
         None,
         description="Values of the requested `column` refs (list_runs only), keyed by "
@@ -1877,10 +1928,11 @@ M1_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", "/v1/runs", "list_runs",
-        "List runs (filters: kind, state, spec, parent, name, tags, metric/param search)",
+        "List runs (filters: kind, state, spec, parent, experiment, name, tags, metric/param "
+        "search)",
         "Page[Run]", 200, errors=_BODY, paginated=True,
         query=(*_PAGE, "kind", "state", "spec_id", "parent_run_id", "name", "tag", "filter",
-               "order_by", "column"),
+               "order_by", "column", "experiment_id"),
     ),
     EndpointDecl("GET", "/v1/runs/{run_id}", "get_run", "Get a run", "Run", 200, errors=_NF),
     EndpointDecl(
@@ -3501,17 +3553,20 @@ class ParamsWriteResult(_Response):
 
 class RunPatch(_Request):
     """Merge patch: a field left out is unchanged; ``null`` clears name/note; a tag set to
-    ``null`` is deleted."""
+    ``null`` is deleted. ``experiment_id`` (v0.14) moves the run to another experiment;
+    ``null`` takes it out of its experiment."""
 
     name: str | None = Field(None, max_length=MAX_RUN_NAME_CHARS)
     note: str | None = Field(None, max_length=MAX_RUN_NOTE_CHARS)
     tags: dict[TagKey, Annotated[str, Field(max_length=MAX_TAG_VALUE_CHARS)] | None] | None = Field(
         None, max_length=MAX_TAGS_PER_RUN
     )
+    experiment_id: Id | None = None
 
     model_config = _examples(
         {"name": "weekly sales, adstock 4", "tags": {"stage": "candidate", "old": None}},
         {"note": "Holdout error is high in week 52 (holiday)."},
+        {"experiment_id": "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"},
     )
 
     @field_validator("name")
@@ -3530,18 +3585,19 @@ class RunPatch(_Request):
     @model_validator(mode="after")
     def _some_field(self) -> RunPatch:
         if not self.model_fields_set:
-            raise ValueError("set at least one of name, note or tags")
+            raise ValueError("set at least one of name, note, tags or experiment_id")
         return self
 
 
 class TrackingFrame(_Response):
     """Data of the SSE ``tracking`` frame: the series that changed since the last frame, and
-    whether params or tags changed (fetch them again)."""
+    whether params, tags or (v0.14) media changed (fetch them again)."""
 
     run_id: Id
     series: list[MetricSeries] = Field(default_factory=list, max_length=200)
     params: bool = False
     tags: bool = False
+    media: bool = Field(False, description="Media changed since the last frame (v0.14)")
 
     model_config = _examples(
         {
@@ -3590,13 +3646,645 @@ V011_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 )  # fmt: skip
 """The v0.11 endpoint table (run tracking; part of :data:`ENDPOINTS`)."""
 
+# =================================== v0.14: media, experiments, saved views, comparison
+#
+# Media a run logged (images and tables; names, limits and the byte checks live in
+# mapi_spec.media), experiments (named groups of runs), saved run views (a list_runs query
+# with a name) and the run comparison.
+
+_EXP_ID = "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
+_VIEW_ID = "rv_01jaf3g1h2j3k4m5n6p7q8r9s0"
+_MEDIA_ID = "rm_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_RUN_ID_2 = "run_01jaf3q2x8m9v7k5h4g3f2e1d1"
+_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+class RunMedia(_Response):
+    """An image or a table a run logged. ``caption`` is untrusted text; ``url`` is a signed GET
+    of the stored copy (verify ``size`` and ``crc32c`` after the download)."""
+
+    id: Id
+    run_id: Id
+    attempt: int = Field(..., ge=1)
+    key: MetricKey
+    labels: dict[str, str] = Field(default_factory=dict)
+    step: int | None = None
+    kind: MediaKind
+    content_type: MediaContentType
+    size: int = Field(..., ge=1)
+    sha256: Sha256
+    crc32c: Crc32c
+    width: int | None = None
+    height: int | None = None
+    caption: str | None = None
+    source: Literal["runner", "api"]
+    created_at: AwareDatetime
+    url: str | None = Field(None, exclude_if=lambda v: v is None)
+    expires_at: AwareDatetime | None = Field(None, exclude_if=lambda v: v is None)
+
+    model_config = _examples(
+        {
+            "id": _MEDIA_ID,
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "key": "samples",
+            "labels": {"split": "val"},
+            "step": 3,
+            "kind": "image",
+            "content_type": "image/png",
+            "size": 12034,
+            "sha256": _SHA,
+            "crc32c": "4waSgw==",
+            "width": 64,
+            "height": 64,
+            "caption": "Predicted classes, epoch 3",
+            "source": "runner",
+            "created_at": _TS,
+            "url": "http://127.0.0.1:4443/download/storage/v1/b/mapi-local-bundles/o/t%2Fdefault"
+            "%2Frun-media%2Frun_01jaf3q2x8m9v7k5h4g3f2e1d0%2F" + "3f" * 32 + ".png?alt=media",
+            "expires_at": "2026-10-15T09:45:00Z",
+        },
+        {
+            "id": _MEDIA_ID,
+            "run_id": _RUN_ID,
+            "attempt": 1,
+            "key": "confusion_counts",
+            "kind": "table",
+            "content_type": "application/json",
+            "size": 412,
+            "sha256": _SHA,
+            "crc32c": "4waSgw==",
+            "source": "api",
+            "created_at": _TS,
+        },
+    )
+
+
+class MediaKeySummary(_Response):
+    """One media series (key + labels) of a run: how many items and which steps."""
+
+    key: MetricKey
+    labels: dict[str, str] = Field(default_factory=dict)
+    kind: MediaKind
+    count: int = Field(..., ge=0)
+    first_step: int | None = None
+    last_step: int | None = None
+    last_created_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "key": "samples",
+            "labels": {"split": "val"},
+            "kind": "image",
+            "count": 5,
+            "first_step": 0,
+            "last_step": 4,
+            "last_created_at": _TS,
+        }
+    )
+
+
+class MediaWrite(_Request):
+    """``POST /v1/runs/{run_id}/media``: log one image (PNG/JPEG) or table (JSON) to a run.
+
+    ``data`` is the standard base64 of the bytes (at most :data:`MAX_API_MEDIA_BYTES` decoded).
+    A table is UTF-8 JSON of a :class:`~mapi_spec.media.MediaTable`.
+    """
+
+    key: MetricKey
+    kind: MediaKind
+    content_type: MediaContentType
+    data: str = Field(..., min_length=4, max_length=4 * ((MAX_API_MEDIA_BYTES + 2) // 3))
+    step: int | None = Field(None, ge=0)
+    labels: MetricLabels = Field(default_factory=dict)
+    caption: str | None = Field(None, max_length=MAX_MEDIA_CAPTION_CHARS)
+
+    model_config = _examples(
+        {
+            "key": "confusion_counts",
+            "kind": "table",
+            "content_type": "application/json",
+            "data": "eyJjb2x1bW5zIjpbImNsYXNzIiwibiJdLCJyb3dzIjpbWyJjYXQiLDNdXX0=",
+            "caption": "Holdout counts per class",
+        },
+        {
+            "key": "samples",
+            "kind": "image",
+            "content_type": "image/png",
+            "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgAB"
+            "4iG8MwAAAABJRU5ErkJggg==",
+            "step": 0,
+        },
+    )
+
+    @model_validator(mode="after")
+    def _bytes(self) -> MediaWrite:
+        data = self.decoded()
+        if len(data) > MAX_API_MEDIA_BYTES:
+            raise ValueError(
+                f"the media has {len(data):,} bytes; the API accepts at most "
+                f"{MAX_API_MEDIA_BYTES:,} (log larger images from the run)"
+            )
+        check_media(self.kind, self.content_type, data)
+        return self
+
+    def decoded(self) -> bytes:
+        """The bytes of ``data`` (strict standard base64; :class:`ValueError` otherwise)."""
+        try:
+            return base64.b64decode(self.data, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValueError("data is not standard base64") from None
+
+
+def _experiment_name(v: str | None) -> str | None:
+    if v is None:
+        return None
+    out = v.strip()
+    if not out:
+        raise ValueError("the name is empty")
+    if _CONTROL.search(out):
+        raise ValueError("the name contains a control character")
+    return out
+
+
+class Experiment(_Response):
+    """A named group of runs in a project (v0.14). A run is in at most one experiment."""
+
+    id: Id
+    name: str
+    description: str | None = Field(None, description="Untrusted text")
+    archived: bool = Field(False, description="An archived experiment accepts no new runs")
+    created_by: str | None = None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+    run_count: int = Field(0, ge=0)
+    last_run_at: AwareDatetime | None = None
+
+    model_config = _examples(
+        {
+            "id": _EXP_ID,
+            "name": "adstock length study",
+            "description": "Compare adstock lengths 2, 4 and 8 on weekly sales.",
+            "archived": False,
+            "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "created_at": _TS,
+            "updated_at": _TS,
+            "run_count": 6,
+            "last_run_at": "2026-10-15T10:30:00Z",
+        }
+    )
+
+
+class ExperimentCreate(_Request):
+    """``POST /v1/experiments``: names are unique in a project (case is ignored)."""
+
+    name: str = Field(..., min_length=1, max_length=MAX_EXPERIMENT_NAME_CHARS)
+    description: str | None = Field(None, max_length=MAX_EXPERIMENT_DESCRIPTION_CHARS)
+
+    model_config = _examples(
+        {"name": "adstock length study", "description": "Compare adstock lengths 2, 4 and 8."}
+    )
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        out = _experiment_name(v)
+        assert out is not None
+        return out
+
+
+class ExperimentPatch(_Request):
+    """Merge patch of an experiment: a field left out is unchanged; ``description: null``
+    clears the description (``name: null`` and ``archived: null`` change nothing)."""
+
+    name: str | None = Field(None, min_length=1, max_length=MAX_EXPERIMENT_NAME_CHARS)
+    description: str | None = Field(None, max_length=MAX_EXPERIMENT_DESCRIPTION_CHARS)
+    archived: bool | None = None
+
+    model_config = _examples({"name": "adstock study (final)"}, {"archived": True})
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        return _experiment_name(v)
+
+    @model_validator(mode="after")
+    def _some_field(self) -> ExperimentPatch:
+        if not self.model_fields_set:
+            raise ValueError("set at least one of name, description or archived")
+        return self
+
+
+class ExperimentRunsWrite(_Request):
+    """``POST /v1/experiments/{experiment_id}/runs``: move runs into the experiment (``add``;
+    a run leaves its previous experiment) or out of it (``remove``)."""
+
+    add: list[Id] = Field(default_factory=list, max_length=MAX_EXPERIMENT_RUNS_WRITE)
+    remove: list[Id] = Field(default_factory=list, max_length=MAX_EXPERIMENT_RUNS_WRITE)
+
+    model_config = _examples({"add": [_RUN_ID, _RUN_ID_2]}, {"remove": [_RUN_ID]})
+
+    @model_validator(mode="after")
+    def _ids(self) -> ExperimentRunsWrite:
+        if not self.add and not self.remove:
+            raise ValueError("give at least one run id in add or remove")
+        both = sorted(set(self.add) & set(self.remove))
+        if both:
+            raise ValueError(f"run ids {both} are in add and in remove")
+        return self
+
+
+class ExperimentRunsResult(_Response):
+    """Runs moved, and the ids that are not runs of the project (nothing was done for them)."""
+
+    added: int = Field(..., ge=0)
+    removed: int = Field(..., ge=0)
+    missing: list[Id] = Field(default_factory=list)
+
+    model_config = _examples({"added": 2, "removed": 0})
+
+
+class RunViewQuery(StrictModel):
+    """The ``list_runs`` query of a saved view; every filter, order and column is parsed with
+    the run-search grammar of :mod:`mapi_spec.tracking` at validation."""
+
+    kind: RunKind | None = None
+    state: RunState | None = None
+    name: str | None = Field(None, max_length=MAX_RUN_NAME_CHARS)
+    spec_id: Id | None = None
+    experiment_id: Id | None = None
+    parent_run_id: Id | None = None
+    tags: list[str] = Field(default_factory=list, max_length=16)
+    filters: list[str] = Field(default_factory=list, max_length=MAX_RUN_FILTERS)
+    order_by: str | None = Field(None, max_length=512)
+    columns: list[str] = Field(default_factory=list, max_length=MAX_RUN_COLUMNS)
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "kind": "fit",
+                    "filters": ["metric.rmse < 15"],
+                    "order_by": "metric.rmse",
+                    "columns": ["metric.rmse"],
+                },
+                {"tags": ["team:growth", "candidate"], "state": "succeeded"},
+            ]
+        },
+    )
+
+    @field_validator("tags")
+    @classmethod
+    def _tags(cls, v: list[str]) -> list[str]:
+        for item in v:
+            key, _, _ = item.partition(":")
+            check_tag_key(key, reserved=True)
+        return v
+
+    @field_validator("filters")
+    @classmethod
+    def _filters(cls, v: list[str]) -> list[str]:
+        for item in v:
+            parse_run_filter(item)
+        return v
+
+    @field_validator("order_by")
+    @classmethod
+    def _order(cls, v: str | None) -> str | None:
+        if v is not None:
+            parse_run_order(v)
+        return v
+
+    @field_validator("columns")
+    @classmethod
+    def _columns(cls, v: list[str]) -> list[str]:
+        for item in v:
+            parse_run_ref(item)
+        return v
+
+
+_VIEW_QUERY_EXAMPLE: dict[str, Any] = {
+    "kind": "fit",
+    "experiment_id": _EXP_ID,
+    "filters": ["metric.rmse < 15", "param.settings.adstock.l_max >= 4"],
+    "order_by": "metric.rmse",
+    "columns": ["metric.rmse", "metric.loss{split=val}.min", "param.settings.adstock.l_max"],
+}
+
+
+class RunView(_Response):
+    """A saved runs-table view: a name and a ``list_runs`` query, shared in the project."""
+
+    id: Id
+    name: str
+    experiment_id: Id | None = Field(None, description="The experiment the view belongs to")
+    query: RunViewQuery
+    created_by: str | None = None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    model_config = _examples(
+        {
+            "id": _VIEW_ID,
+            "name": "best adstock fits",
+            "experiment_id": _EXP_ID,
+            "query": _VIEW_QUERY_EXAMPLE,
+            "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "created_at": _TS,
+            "updated_at": _TS,
+        }
+    )
+
+
+class RunViewCreate(_Request):
+    """``POST /v1/run-views``: names are unique per project and experiment (case is ignored)."""
+
+    name: str = Field(..., min_length=1, max_length=MAX_EXPERIMENT_NAME_CHARS)
+    experiment_id: Id | None = None
+    query: RunViewQuery
+
+    model_config = _examples(
+        {"name": "best adstock fits", "experiment_id": _EXP_ID, "query": _VIEW_QUERY_EXAMPLE}
+    )
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        out = _experiment_name(v)
+        assert out is not None
+        return out
+
+
+class RunViewPatch(_Request):
+    """Change the name or the query of a saved view."""
+
+    name: str | None = Field(None, min_length=1, max_length=MAX_EXPERIMENT_NAME_CHARS)
+    query: RunViewQuery | None = None
+
+    model_config = _examples({"name": "best fits"}, {"query": {"order_by": "-metric.r2"}})
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        return _experiment_name(v)
+
+    @model_validator(mode="after")
+    def _some_field(self) -> RunViewPatch:
+        if self.name is None and self.query is None:
+            raise ValueError("set the name or the query")
+        return self
+
+
+class RunKeyCount(_Response):
+    """A metric series, param key or tag key, and how many runs have it."""
+
+    key: str
+    labels: dict[str, str] = Field(default_factory=dict)
+    runs: int = Field(..., ge=0)
+
+    model_config = _examples(
+        {"key": "loss", "labels": {"split": "val"}, "runs": 8}, {"key": "team", "runs": 5}
+    )
+
+
+class RunKeys(_Response):
+    """``GET /v1/run-keys``: the tracked keys of the runs of a project (or an experiment),
+    most common first; the column picker of the runs table reads it."""
+
+    metrics: list[RunKeyCount] = Field(default_factory=list, max_length=500)
+    params: list[RunKeyCount] = Field(default_factory=list, max_length=500)
+    tags: list[RunKeyCount] = Field(default_factory=list, max_length=200)
+    truncated: bool = Field(False, description="A list was capped")
+
+    model_config = _examples(
+        {
+            "metrics": [
+                {"key": "rmse", "runs": 12},
+                {"key": "loss", "labels": {"split": "val"}, "runs": 8},
+            ],
+            "params": [{"key": "settings.adstock.l_max", "runs": 12}],
+            "tags": [{"key": "team", "runs": 5}],
+        }
+    )
+
+
+class CompareSummary(MetricSeries):
+    """The summary of one metric series of one compared run."""
+
+    run_id: Id
+
+    model_config = _examples(
+        {**MetricSeries.model_json_schema()["examples"][1], "run_id": _RUN_ID},
+        {**MetricSeries.model_json_schema()["examples"][0], "run_id": _RUN_ID_2},
+    )
+
+
+class CompareSeries(_Response):
+    """The history of one series of one compared run (``steps`` and ``values`` have equal
+    lengths; downsampled to ``max_points``)."""
+
+    run_id: Id
+    labels: dict[str, str] = Field(default_factory=dict)
+    attempt: int = Field(..., ge=1)
+    count: int = Field(..., ge=0, description="Stored points (before downsampling)")
+    downsampled: bool = False
+    steps: list[int | None]
+    values: list[float]
+
+    model_config = _examples(
+        {"run_id": _RUN_ID, "labels": {"split": "val"}, "attempt": 1, "count": 3,
+         "steps": [1, 2, 3], "values": [0.9, 0.6, 0.45]}
+    )  # fmt: skip
+
+    @model_validator(mode="after")
+    def _columns(self) -> CompareSeries:
+        if len(self.steps) != len(self.values):
+            raise ValueError("steps and values must have the same length")
+        return self
+
+
+class CompareMetric(_Response):
+    """Every series of one metric key, over the compared runs."""
+
+    key: MetricKey
+    series: list[CompareSeries] = Field(
+        default_factory=list, max_length=MAX_COMPARE_RUNS * MAX_COMPARE_SERIES
+    )
+
+    model_config = _examples(
+        {"key": "loss", "series": [CompareSeries.model_json_schema()["examples"][0]]}
+    )
+
+
+class CompareParam(_Response):
+    """One param key over the compared runs (run id -> text value; ``null``: not logged)."""
+
+    key: str
+    values: dict[str, str | None]
+    differs: bool = Field(..., description="Two runs have different values (or one has none)")
+
+    model_config = _examples(
+        {"key": "settings.adstock.l_max", "values": {_RUN_ID: "4", _RUN_ID_2: "8"},
+         "differs": True},
+        {"key": "fit.draws", "values": {_RUN_ID: "1000", _RUN_ID_2: None}, "differs": True},
+    )  # fmt: skip
+
+
+class CompareMedia(_Response):
+    """One media series (key + labels) of one compared run, thinned evenly (the last is kept)."""
+
+    run_id: Id
+    key: MetricKey
+    labels: dict[str, str] = Field(default_factory=dict)
+    kind: MediaKind
+    items: list[RunMedia] = Field(default_factory=list, max_length=MAX_COMPARE_MEDIA_ITEMS)
+
+    model_config = _examples(
+        {
+            "run_id": _RUN_ID,
+            "key": "samples",
+            "labels": {"split": "val"},
+            "kind": "image",
+            "items": [RunMedia.model_json_schema()["examples"][0]],
+        }
+    )
+
+
+class RunCompare(_Response):
+    """``GET /v1/run-compare``: runs side by side (summaries, histories, params, media)."""
+
+    runs: list[Run] = Field(..., min_length=2, max_length=MAX_COMPARE_RUNS)
+    summaries: list[CompareSummary] = Field(default_factory=list, max_length=1000)
+    metrics: list[CompareMetric] = Field(default_factory=list, max_length=MAX_COMPARE_KEYS)
+    params: list[CompareParam] = Field(default_factory=list, max_length=MAX_COMPARE_PARAMS)
+    media: list[CompareMedia] = Field(
+        default_factory=list, max_length=MAX_COMPARE_RUNS * MAX_COMPARE_MEDIA_KEYS * 16
+    )
+    truncated: dict[Literal["summaries", "series", "params", "media"], bool] = Field(
+        default_factory=dict, description="True for a part that was capped"
+    )
+
+    model_config = _examples(
+        {
+            "runs": [
+                Run.model_json_schema()["examples"][0],
+                {**Run.model_json_schema()["examples"][0], "id": _RUN_ID_2, "state": "succeeded"},
+            ],
+            "summaries": [{**MetricSeries.model_json_schema()["examples"][1], "run_id": _RUN_ID}],
+            "metrics": [
+                {
+                    "key": "loss",
+                    "series": [
+                        {"run_id": _RUN_ID, "labels": {"split": "val"}, "attempt": 1,
+                         "count": 3, "steps": [1, 2, 3], "values": [0.9, 0.6, 0.45]},
+                        {"run_id": _RUN_ID_2, "labels": {"split": "val"}, "attempt": 1,
+                         "count": 3, "steps": [1, 2, 3], "values": [0.8, 0.5, 0.41]},
+                    ],
+                }
+            ],
+            "params": [CompareParam.model_json_schema()["examples"][0]],
+            "media": [CompareMedia.model_json_schema()["examples"][0]],
+            "truncated": {"params": False},
+        }
+    )  # fmt: skip
+
+
+_EXP = "/v1/experiments/{experiment_id}"
+
+V014_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    EndpointDecl(
+        "GET", _RUNS + "/media", "list_run_media",
+        "Media (images, tables) of a run (order: key, labels, step)", "Page[RunMedia]", 200,
+        errors=_NF, headers=_PH, paginated=True,
+        query=(*_PAGE, "key", "kind", "attempt", "links"),
+    ),
+    EndpointDecl(
+        "GET", _RUNS + "/media/{media_id}", "get_run_media",
+        "One media item of a run, with a signed download link", "RunMedia", 200, errors=_NF,
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _RUNS + "/media", "log_run_media",
+        "Log an image or a table to a run (also after it finished)", "RunMedia", 201,
+        request="MediaWrite",
+        errors=(*_NF, *_BODY, _E.QUOTA_EXCEEDED, _E.PAYLOAD_TOO_LARGE), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _RUNS + "/media-keys", "list_run_media_keys",
+        "Media series of a run with their counts and steps (order: key, labels)",
+        "Page[MediaKeySummary]", 200, errors=_NF, headers=_PH, paginated=True,
+        query=(*_PAGE, "attempt"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/run-compare", "compare_runs",
+        "Compare 2 to 10 runs: metric summaries and histories, params and media",
+        "RunCompare", 200, errors=(*_NF, *_BODY), headers=_PH,
+        query=("run", "key", "media_key", "max_points", "params"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/run-keys", "list_run_keys",
+        "Metric, param and tag keys of the runs of a project or an experiment", "RunKeys", 200,
+        errors=_BODY, headers=_PH, query=("experiment_id", "prefix"),
+    ),
+    EndpointDecl(
+        "GET", "/v1/experiments", "list_experiments", "List experiments (newest first)",
+        "Page[Experiment]", 200, headers=_PH, paginated=True,
+        query=(*_PAGE, "name", "archived"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/experiments", "create_experiment", "Create an experiment", "Experiment",
+        201, request="ExperimentCreate", errors=(*_BODY, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _EXP, "get_experiment", "Get an experiment", "Experiment", 200, errors=_NF,
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", _EXP, "update_experiment",
+        "Rename, describe, archive or unarchive an experiment", "Experiment", 200,
+        request="ExperimentPatch", errors=(*_NF, *_BODY, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _EXP, "delete_experiment",
+        "Delete an experiment (its runs stay; its saved views are deleted)", None, 204,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _EXP + "/runs", "update_experiment_runs",
+        "Add runs to an experiment or remove them", "ExperimentRunsResult", 200,
+        request="ExperimentRunsWrite", errors=(*_NF, *_BODY, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/run-views", "list_run_views", "List saved run views (order: name)",
+        "Page[RunView]", 200, headers=_PH, paginated=True, query=(*_PAGE, "experiment_id"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/run-views", "create_run_view", "Save a run view", "RunView", 201,
+        request="RunViewCreate", errors=(*_BODY, _E.CONFLICT, _E.QUOTA_EXCEEDED), headers=_PH,
+    ),
+    EndpointDecl(
+        "PATCH", "/v1/run-views/{view_id}", "update_run_view",
+        "Rename a saved run view or change its query", "RunView", 200,
+        request="RunViewPatch", errors=(*_NF, *_BODY, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", "/v1/run-views/{view_id}", "delete_run_view", "Delete a saved run view",
+        None, 204, errors=_NF, headers=_PH,
+    ),
+)  # fmt: skip
+"""The v0.14 endpoint table (media, comparison, experiments, saved views; part of
+:data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
 ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
-    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS
+    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS + V014_ENDPOINTS
 )
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11); the server serves every row."""
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14); the server serves
+every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -3717,6 +4405,27 @@ _V011_ACCESS: Final[dict[str, RouteAccess]] = {
 }
 """Access rules of :data:`V011_ENDPOINTS` (writes need ``update`` on ``run``: the runner role,
 or a token with the ``runs:write`` scope)."""
+
+_V014_ACCESS: Final[dict[str, RouteAccess]] = {
+    "list_run_media": _p(_RK.RUN, _AC.READ),
+    "get_run_media": _p(_RK.RUN, _AC.READ),
+    "log_run_media": _p(_RK.RUN, _AC.UPDATE),
+    "list_run_media_keys": _p(_RK.RUN, _AC.READ),
+    "compare_runs": _p(_RK.RUN, _AC.READ),
+    "list_run_keys": _p(_RK.RUN, _AC.READ),
+    "list_experiments": _p(_RK.RUN, _AC.READ),
+    "create_experiment": _p(_RK.RUN, _AC.UPDATE),
+    "get_experiment": _p(_RK.RUN, _AC.READ),
+    "update_experiment": _p(_RK.RUN, _AC.UPDATE),
+    "delete_experiment": _p(_RK.RUN, _AC.UPDATE),
+    "update_experiment_runs": _p(_RK.RUN, _AC.UPDATE),
+    "list_run_views": _p(_RK.RUN, _AC.READ),
+    "create_run_view": _p(_RK.RUN, _AC.UPDATE),
+    "update_run_view": _p(_RK.RUN, _AC.UPDATE),
+    "delete_run_view": _p(_RK.RUN, _AC.UPDATE),
+}
+"""Access rules of :data:`V014_ENDPOINTS`: experiments, saved views and media use the run
+permissions (reads: ``read`` on ``run``; writes: ``update`` on ``run``)."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
@@ -3872,6 +4581,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_M4_ACCESS,
     # v0.11 run tracking
     **_V011_ACCESS,
+    # v0.14 media, comparison, experiments, saved views
+    **_V014_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).

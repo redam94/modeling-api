@@ -219,7 +219,7 @@ def test_a_time_series_panel_is_plain_and_keeps_todays_order() -> None:
     assert s.recommended[:4] == ("overview", "quality", "distributions", "timeseries")
     assert s.recommended[-1] == "structure"
     assert set(s.not_applicable) == {
-        "images", "profiles", "map", "network", "tree", "circular", "points",
+        "images", "gallery", "profiles", "map", "network", "tree", "circular", "points",
     }  # fmt: skip
     assert s.categorical_dims == ("geo", "channel")
 
@@ -432,3 +432,44 @@ def test_a_dim_that_only_layers_a_network_has_no_groups() -> None:
     )
     s = detect_structure(ds, None)
     assert "groups" in s.not_applicable and "covariate" not in s.categorical_dims
+
+
+def _image_stack(n: int, channels: list[str], **coords: Any) -> xr.Dataset:
+    px = np.zeros((n, 9, 9, len(channels)), dtype=np.uint8)
+    return xr.Dataset(
+        {"pixels": (("image", "y", "x", "channel"), px)},
+        coords={
+            "image": [f"{i:03d}" for i in range(n)],
+            "y": np.arange(9),
+            "x": np.arange(9),
+            "channel": channels,
+            **coords,
+        },
+    )
+
+
+def test_an_image_folder_stack_has_a_channel_a_frame_and_a_gallery() -> None:
+    """v0.14: pixels(image, y, x, channel) of an image-folder ingest."""
+    n = 12
+    split = ("image", np.array(["train", "test"] * 6))
+    ds = _image_stack(n, ["gray"], split=split)
+    ds["label"] = ("image", np.array(["a", "b", "c"] * 4))
+    s = detect_structure(ds, None)
+    shape = s.first("image")
+    assert shape is not None and shape.vars == ("pixels",)
+    # one gray channel is the channel (not a facet); the image dim is the frame
+    assert dict(shape.dims) == {"y": "y", "x": "x", "frame": "image", "channel": "channel"}
+    assert shape.extra["facets"] == ()
+    # the class label (a 1-D variable) wins over the split coord for the class means
+    assert shape.extra["group_coord"] == "label"
+    assert "gallery" not in s.not_applicable and "gallery" in s.recommended
+    assert s.var_use["label"] == "label"
+    # without a label variable the coords are used; a 1-D integer variable also works
+    ds2 = _image_stack(n, ["r", "g", "b"], split=split)
+    assert detect_structure(ds2, None).first("image").extra["group_coord"] == "split"  # type: ignore[union-attr]
+    ds3 = _image_stack(n, ["r", "g", "b"]).assign(digit=("image", np.arange(n) % 3))
+    assert detect_structure(ds3, None).first("image").extra["group_coord"] == "digit"  # type: ignore[union-attr]
+    # one image is not a stack: no gallery
+    one = detect_structure(_image_stack(1, ["gray"]).isel(image=0), None)
+    assert one.not_applicable["gallery"] == "no variable holds a stack of images"
+    assert "gallery" not in one.recommended

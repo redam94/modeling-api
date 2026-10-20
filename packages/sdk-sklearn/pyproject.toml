@@ -1,6 +1,6 @@
 [project]
 name = "mapi-sklearn"
-version = "0.13.0"
+version = "0.14.0"
 description = "scikit-learn / xgboost model base classes for modeling-api"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,6 +15,10 @@ dependencies = [
   "skops>=0.11",
   "xgboost>=3.0",
 ]
+
+[project.optional-dependencies]
+# LightGBM and CatBoost estimators (v0.14), imported lazily. The base-ml image installs the extra.
+gbm = ["lightgbm>=4.5,<5", "catboost>=1.2.7,<2"]
 
 [project.entry-points."mapi.models"]
 sklearn = "mapi_sklearn.plugins:PLUGINS"

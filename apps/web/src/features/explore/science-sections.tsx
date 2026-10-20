@@ -1,9 +1,10 @@
 /**
- * The eight Data Explorer sections for scientific data (v0.10): the detected structure,
+ * The Data Explorer sections for scientific data (v0.10): the detected structure,
  * images and fields, profiles and spectra, maps of areas, networks, trees (a variable that
  * holds a tree; not a tree dataset), directions and times of day, and points. Each one shows
  * the plain reading first, then pickers, a plot (plot sandbox, or the canvas field viewer for
  * images) and the statistics (open in Expert mode). View strings are user data: text only.
+ * v0.14: colour (RGB) images; the gallery of an image stack is in `gallery-section.tsx`.
  */
 import { useMemo, useState } from "react";
 
@@ -188,7 +189,7 @@ const imageLabel = (e: ImageEntry) => seriesLabel(e.var, e.facet);
 /** The group means of an image (e.g. one mean picture per digit class) as frames of a field. */
 export function groupField(e: ImageEntry): FieldEntry | null {
   if (!e.groups?.length) return null;
-  return { ...e, frames: e.groups.map((g) => ({ label: g.label, mean: g.mean })), frame_dim: e.group_by ?? "group", omitted_frames: 0, kind: "scalar" };
+  return { ...e, frames: e.groups.map((g) => ({ label: g.label, mean: g.mean, rgb: g.rgb ?? null })), frame_dim: e.group_by ?? "group", omitted_frames: 0, kind: "scalar" };
 }
 
 export function ImagesSection({ view, expert }: P<ImagesView>) {

@@ -657,6 +657,7 @@ def _classifier(
         {"kind": "sklearn.LogisticRegression", "params": {"C": 0.5}},
         {"kind": "xgboost.XGBClassifier", "params": {"n_estimators": 20, "max_depth": 2}},
         {"kind": "sklearn.RandomForestClassifier", "params": {"n_estimators": 10, "max_depth": 3}},
+        {"kind": "sklearn.HistGradientBoostingClassifier", "params": {"max_iter": 20}},
     ],
     ids=lambda e: e["kind"],
 )
@@ -694,13 +695,20 @@ def test_classifier_passes_the_kit(reg: Registry) -> None:
 
 REGRESSION_PLOTS = ["core.fit_vs_actual", "core.residuals_over_time", "ml.feature_importance"]
 CLASSIFIER_PLOTS = ["core.calibration", "core.roc_pr", "core.confusion", "ml.feature_importance"]
+MULTICLASS_PLOTS = ["core.roc_pr", "core.confusion", "ml.feature_importance"]
 
 
 @pytest.mark.parametrize("plugin", PLUGINS, ids=lambda p: p.id)
 def test_manifests_list_default_plots(plugin: type[Any]) -> None:
-    from mapi_sklearn import SklearnClassifier
+    from mapi_sklearn import SklearnClassifier, SklearnMulticlassClassifier
 
-    expected = CLASSIFIER_PLOTS if issubclass(plugin, SklearnClassifier) else REGRESSION_PLOTS
+    expected = (
+        CLASSIFIER_PLOTS
+        if issubclass(plugin, SklearnClassifier)
+        else MULTICLASS_PLOTS
+        if issubclass(plugin, SklearnMulticlassClassifier)
+        else REGRESSION_PLOTS
+    )
     assert list(plugin.manifest().plots) == expected
 
 

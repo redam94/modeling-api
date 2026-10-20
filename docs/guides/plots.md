@@ -72,8 +72,8 @@ Each plot contains these items:
 | `core.rank_matrix` | The probability of each rank for each item, and the probability that one item is above another | draws in `posterior`, `predictions` or `posterior_predictive` |
 | `core.calibration` | The PIT-ECDF difference with a simultaneous band, or a reliability diagram for 0/1 targets. For 0/1 targets, one predicted probability for each row is sufficient. | draws or point probabilities, `observed_data` |
 | `core.state_sequence` | The observed series above the stacked probability of each hidden state over time | `hidden_states`, `regimes`, a score `summary`, state draws; `observed_data` |
-| `core.roc_pr` | The ROC curve and the precision-recall curve of a 0/1 target, with the AUC and the average precision | draws or point probabilities, `observed_data` |
-| `core.confusion` | The 2 × 2 table of actual and predicted classes at one threshold, with accuracy, precision, recall, specificity and F1 | draws or point probabilities, `observed_data` |
+| `core.roc_pr` | The ROC curve and the precision-recall curve of a binary or multiclass target, with the AUC and the average precision (multiclass: one curve for each class and the macro AUC) | draws or point probabilities, `observed_data` |
+| `core.confusion` | The table of actual and predicted classes, for a binary or multiclass target: 2 × 2 at one threshold, or K × K of the most probable class, with accuracy and F1 | draws or point probabilities, `observed_data` |
 | `core.loss_curve` | The loss of each step of a fit (for example ADVI), raw and smoothed | `fit_history` or `metrics_history` |
 | `core.loo_pit` | The LOO-PIT check of calibration and the Pareto k of each observation | `log_likelihood`, `posterior_predictive`, `observed_data` |
 | `core.energy` <span class="mapi-badge">v0.12</span> | The marginal energy and the energy transitions of the sampler, and the BFMI of each chain against a threshold | `sample_stats` with `energy` |
@@ -144,6 +144,14 @@ These plots read the outputs of more model types:
 - **0/1 targets.** `core.calibration`, `core.roc_pr` and `core.confusion` accept draws or one
   probability for each row. Thus they apply to a Bayesian model and to a scikit-learn classifier.
   The larger of the two target values is the positive class. To change it, set `positive`.
+- **Three or more classes** <span class="mapi-badge">v0.14</span>. `core.roc_pr` and
+  `core.confusion` also accept a prediction with a class dim (the probability of each class,
+  for example from `sklearn.multiclass_classifier` or `tabular.image_logistic`), or an actual
+  target with more than two values. `core.roc_pr` then draws one curve for each class against
+  all other classes (the 12 most frequent classes, or the classes in `classes`). Its title
+  gives the macro AUC. `core.confusion` shows a K × K matrix of the most probable class (a
+  maximum of 30 classes) with the accuracy and the macro F1. `threshold` and `positive` are
+  not used. The caption tells you this.
 - **Fits in steps.** An ADVI fit keeps its loss in the `fit_history` group. The fit run adds
   `core.loss_curve` to the plots of that fit. If the loss still goes down at the end, the caption
   tells you to use more steps.

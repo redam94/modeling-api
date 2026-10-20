@@ -63,13 +63,20 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
-CHAIN = (*M3_CHAIN, *M35_CHAIN, "0013_plot_examples", "0014_tree_datasets", "0015_run_tracking")
+CHAIN = (
+    *M3_CHAIN,
+    *M35_CHAIN,
+    "0013_plot_examples",
+    "0014_tree_datasets",
+    "0015_run_tracking",
+    "0016_experiments_media",
+)
 
 
 def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
     """The M3, M3.5 and later revisions chain off 0006 in order, and each steps down and up
     cleanly (0013 adds ``catalogs.plot_examples``, 0014 the tree-dataset columns, 0015 the
-    run tracking tables)."""
+    run tracking tables, 0016 experiments, saved views and run media)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
     assert script.get_heads() == [CHAIN[-1]]
     down = "0006_executor_disable"
@@ -218,6 +225,85 @@ def test_run_tracking_migration_secures_its_tables_and_steps_down_and_up(
     assert not {"level", "fields"} & _columns(scratch_db, "run_logs")
     upgrade(scratch_db)
     assert set(TRACKING_TABLES) <= _tables(scratch_db)
+    command.check(alembic_config(scratch_db))
+
+
+V014_TABLES = ("experiments", "run_views", "run_media")
+
+
+def test_experiments_media_migration_secures_its_tables_and_steps_down_and_up(
+    scratch_db: str,
+) -> None:
+    """0016 adds experiments, saved run views and run media with forced row-level security
+    (tenant + platform policies), least-privilege grants (media rows are never deleted by the
+    request path), nothing for the gateway, and ``runs.experiment_id`` (SET NULL when the
+    experiment goes; its views cascade); it steps down and up cleanly."""
+    upgrade(scratch_db)
+    assert "experiment_id" in _columns(scratch_db, "runs")
+    assert set(V014_TABLES) <= _tables(scratch_db)
+    with psycopg.connect(scratch_db) as conn:
+        for table in V014_TABLES:
+            rls = conn.execute(
+                "SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE relname = %s",
+                (table,),
+            ).fetchone()
+            assert rls == (True,), table
+            policies = {
+                r[0]
+                for r in conn.execute(
+                    "SELECT policyname FROM pg_policies WHERE tablename = %s", (table,)
+                ).fetchall()
+            }
+            assert policies == {"mapi_tenant_isolation", "mapi_platform_access"}, table
+            grants = {
+                (r[0], r[1])
+                for r in conn.execute(
+                    "SELECT grantee, privilege_type FROM information_schema.role_table_grants "
+                    "WHERE table_name = %s",
+                    (table,),
+                ).fetchall()
+            }
+            assert not {g for g in grants if g[0] == "mapi_gateway"}, table
+            app = {p for g, p in grants if g == "mapi_app"}
+            expected = {"SELECT", "INSERT", "UPDATE"} | (
+                set() if table == "run_media" else {"DELETE"}
+            )
+            assert app == expected, (table, app)
+    with psycopg.connect(scratch_db, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO tenants (id, name, trust_tier, status) VALUES ('t1', 't1', "
+            "'internal', 'active')"
+        )
+        conn.execute(
+            "INSERT INTO projects (tenant_id, id, project_id, name) VALUES ('t1', 'p1', 'p1', 'p1')"
+        )
+        conn.execute(
+            "INSERT INTO experiments (id, tenant_id, project_id, name, name_key) "
+            "VALUES ('exp_1', 't1', 'p1', 'A', 'a')"
+        )
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            conn.execute(
+                "INSERT INTO experiments (id, tenant_id, project_id, name, name_key) "
+                "VALUES ('exp_2', 't1', 'p1', 'a ', 'a')"
+            )
+        for view, exp in (("rv_1", "NULL"), ("rv_2", "'exp_1'")):
+            conn.execute(
+                "INSERT INTO run_views (id, tenant_id, project_id, experiment_id, name, "
+                f"name_key, query) VALUES ('{view}', 't1', 'p1', {exp}, 'v', 'v', '{{}}')"
+            )
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            conn.execute(
+                "INSERT INTO run_views (id, tenant_id, project_id, name, name_key, query) "
+                "VALUES ('rv_3', 't1', 'p1', 'V', 'v', '{}')"
+            )
+        conn.execute("DELETE FROM experiments WHERE id = 'exp_1'")
+        left = conn.execute("SELECT id FROM run_views ORDER BY id").fetchall()
+        assert left == [("rv_1",)]
+    downgrade(scratch_db, "0015_run_tracking")
+    assert not set(V014_TABLES) & _tables(scratch_db)
+    assert "experiment_id" not in _columns(scratch_db, "runs")
+    upgrade(scratch_db)
+    assert set(V014_TABLES) <= _tables(scratch_db)
     command.check(alembic_config(scratch_db))
 
 

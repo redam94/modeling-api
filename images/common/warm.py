@@ -59,6 +59,9 @@ _VERSIONED = (
     "arviz",
     "scikit-learn",
     "xgboost",
+    "lightgbm",
+    "catboost",
+    "pillow",
     "mmm-framework",
 )
 

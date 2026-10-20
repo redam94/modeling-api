@@ -51,6 +51,7 @@ from mapi_server.api.runs import RunId, run_view
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict
 from mapi_server.services.audit import write_audit
+from mapi_server.services.experiments import check_run_experiment
 from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import load_run, now
 from mapi_server.services.tracking import (
@@ -83,9 +84,15 @@ def _clean_text(value: str | None) -> str | None:
 @router.patch("/{run_id}", response_model=Run, operation_id="update_run")
 async def update_run(ctx: Ctx, auth: Auth, session: Session, run_id: RunId, body: RunPatch) -> Run:
     """Merge patch: a field left out is unchanged, ``null`` clears the name or the note, and
-    a tag set to ``null`` is deleted. The note text is never written to the audit log."""
+    a tag set to ``null`` is deleted. ``experiment_id`` (v0.14) moves the run to another
+    experiment (not an archived one; unknown: 422) and ``null`` takes it out of its
+    experiment. The note text is never written to the audit log."""
     run = await load_run(session, ctx.scope, run_id, for_update=True)
     fields = sorted(body.model_fields_set)
+    if "experiment_id" in body.model_fields_set and body.experiment_id != run.experiment_id:
+        if body.experiment_id is not None:
+            await check_run_experiment(session, ctx.scope, body.experiment_id)
+        run.experiment_id = body.experiment_id
     if "name" in body.model_fields_set:
         run.name = _clean_text(body.name)
     if "note" in body.model_fields_set:

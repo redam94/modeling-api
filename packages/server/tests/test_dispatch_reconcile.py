@@ -90,11 +90,18 @@ async def test_dispatch_writes_intent_row_and_bootstrap_before_submit(
         await ctx.store.get(ctx.buckets.bootstrap, bootstrap_key(nonce))
     )
     assert spec.run_id == run_id and spec.nonce == nonce and spec.hmac_key == att.hmac_key
-    assert set(spec.inputs) == {"dataset"} and set(spec.outputs) == {"manifest", "artifacts"}
+    assert set(spec.inputs) == {"dataset"}
+    assert set(spec.outputs) == {"manifest", "artifacts", "media"}
     assert spec.outputs["manifest"].name == f"t/default/runs/{run_id}/a1/manifest.json"  # type: ignore[union-attr]
     artifacts = spec.outputs["artifacts"]
     assert isinstance(artifacts, PostPolicy) and artifacts.create_only  # no overwrites
     assert artifacts.fields["x-goog-if-generation-match"] == "0"
+    # v0.14: logged media go through their own create-only policy, one item per object
+    media = spec.outputs["media"]
+    assert isinstance(media, PostPolicy) and media.create_only
+    assert media.prefix == spec.media_prefix == f"t/default/runs/{run_id}/a1/media/"
+    assert media.content_length_range[1] == spec.limits.tracking.media_item_bytes
+    assert media.fields["x-goog-if-generation-match"] == "0"
     assert spec.spec["model"]["use"] == "ts.hsgp_trend@1.0.0"  # type: ignore[index]
     assert await dispatcher.dispatch_once() == 0  # nothing left to lease
 

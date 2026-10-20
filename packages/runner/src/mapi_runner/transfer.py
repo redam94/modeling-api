@@ -268,25 +268,13 @@ class Transfers:
                 code=ErrorCode.SANDBOX_VIOLATION,
             )
         fd = source if isinstance(source, int) else source.fileno()
-        boundary = "mapi" + secrets.token_hex(16)
-        head = bytearray()
-        for name, value in [*policy.fields.items(), ("key", key)]:
-            head += (
-                f'--{boundary}\r\nContent-Disposition: form-data; name="{_q(name)}"\r\n\r\n'
-                f"{value}\r\n"
-            ).encode()
-        filename = _q(key.rsplit("/", 1)[-1])
-        head += (
-            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"'
-            f"\r\nContent-Type: {content_type}\r\n\r\n"
-        ).encode()
-        tail = f"\r\n--{boundary}--\r\n".encode()
+        boundary, head, tail = _multipart(policy, key, content_type)
         total = len(head) + size + len(tail)
         state: dict[str, Digest] = {}
 
         def body() -> Iterator[bytes]:
             h = _Hasher()
-            yield bytes(head)
+            yield head
             offset = 0
             while offset < size:
                 data = os.pread(fd, min(chunk, size - offset), offset)
@@ -314,6 +302,54 @@ class Transfers:
         if digest is None or digest.size != size:
             raise TransferError(f"upload of {key!r} did not send the whole file")
         return digest
+
+    def post_bytes(
+        self,
+        policy: PostPolicy,
+        key: str,
+        data: bytes,
+        *,
+        content_type: str,
+    ) -> Digest:
+        """Upload in-memory ``data`` to ``key`` via a POST policy (the body of :meth:`post_file`).
+
+        The digest covers exactly ``data``: the caller hashes and checks the same bytes.
+        """
+        if not policy.allows(key, len(data)):
+            raise MapiError(
+                f"upload of {len(data)} bytes to {key!r} is outside the POST policy",
+                code=ErrorCode.SANDBOX_VIOLATION,
+            )
+        boundary, head, tail = _multipart(policy, key, content_type)
+        body = head + data + tail
+        headers = {
+            "content-type": f"multipart/form-data; boundary={boundary}",
+            "content-length": str(len(body)),
+        }
+        resp = self._retry(
+            "upload",
+            policy.url,
+            lambda: self.client.post(policy.url, content=body, headers=headers),
+        )
+        self._check(resp, f"upload of {key!r}", (200, 201, 204))
+        return hashes_of(data)
+
+
+def _multipart(policy: PostPolicy, key: str, content_type: str) -> tuple[str, bytes, bytes]:
+    """``(boundary, head, tail)`` of a POST-policy upload: ``fields``, then ``key``, then the
+    file part (its bytes go between ``head`` and ``tail``)."""
+    boundary = "mapi" + secrets.token_hex(16)
+    head = bytearray()
+    for name, value in [*policy.fields.items(), ("key", key)]:
+        head += (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{_q(name)}"\r\n\r\n{value}\r\n'
+        ).encode()
+    filename = _q(key.rsplit("/", 1)[-1])
+    head += (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"'
+        f"\r\nContent-Type: {content_type}\r\n\r\n"
+    ).encode()
+    return boundary, bytes(head), f"\r\n--{boundary}--\r\n".encode()
 
 
 def _q(value: str) -> str:

@@ -45,6 +45,7 @@ __all__ = [
     "mediation_dataset",
     "mmm_contributions",
     "mmm_tree",
+    "multiclass_tree",
     "network_tree",
     "panel_data",
     "phylogeny_tree",
@@ -752,6 +753,39 @@ def classifier_tree() -> xr.DataTree:
             "/": xr.Dataset(attrs={"bundle_id": "bundle-classifier"}),
             "/predictions": xr.Dataset({"p": (("chain", "draw", "row"), p)}, coords),
             "/observed_data": xr.Dataset({"churn": (("row",), y)}, coords),
+        }
+    )
+
+
+def multiclass_tree(with_draws: bool = True, n_classes: int = 4, n: int = 240) -> xr.DataTree:
+    """``predictions.y_hat(chain, draw, row, class)``: class probabilities (``meaning =
+    class_probability``) for ``n`` items and ``observed_data.label(row)`` (text). The classes
+    are ``bird``, ``cat``, ``dog``, ``fish`` (then ``c4``, ...); the model confuses the first
+    two. Without ``with_draws`` the prediction is a point ``y_hat(row, class)``."""
+    rng = _rng(37)
+    names = ["bird", "cat", "dog", "fish"] + [f"c{j}" for j in range(4, n_classes)]
+    classes = names[:n_classes]
+    truth = rng.integers(0, n_classes, n)
+    logits = 2.0 * np.eye(n_classes)[truth] + rng.normal(0.0, 1.0, (n, n_classes))
+    if n_classes >= 2:
+        logits[:, :2] += 1.2 * (np.isin(truth, [0, 1]))[:, None]  # bird and cat look alike
+    noise = 0.4 * rng.standard_normal((CHAINS, 40, n, n_classes)) if with_draws else 0.0
+    z = logits[None, None] + noise
+    p = np.exp(z - z.max(axis=-1, keepdims=True))
+    p = p / p.sum(axis=-1, keepdims=True)
+    coords = {"row": np.arange(n), "class": classes}
+    attrs = {"meaning": "class_probability"}
+    pred = (
+        xr.Dataset({"y_hat": (("chain", "draw", "row", "class"), p, attrs)}, coords)
+        if with_draws
+        else xr.Dataset({"y_hat": (("row", "class"), p[0, 0], attrs)}, coords)
+    )
+    labels = np.array(classes, dtype=object)[truth].astype(str)
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-multiclass"}),
+            "/predictions": pred,
+            "/observed_data": xr.Dataset({"label": (("row",), labels)}, {"row": np.arange(n)}),
         }
     )
 

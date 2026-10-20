@@ -14,7 +14,7 @@ import { renderApp } from "@/test/render-app";
 import { useUi } from "@/stores/ui";
 
 import { FieldViewer } from "./field-viewer";
-import { encodeRaster } from "./fields";
+import { encodeRaster, encodeRgb } from "./fields";
 import { scienceExample } from "./science-examples.test-helper";
 
 const server = setupServer(...createHandlers());
@@ -135,6 +135,24 @@ describe("field viewer in data mode (images of the Data Explorer)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Std. dev." }));
     expect(screen.queryByLabelText("Colours for the full range")).toBeNull();
     expect(bar()).not.toHaveTextContent("98%");
+  });
+
+  it("shows the colours and the brightness of an rgb picture (v0.14), without a colour bar", async () => {
+    const img = scienceExample("images").fields[0]!;
+    const cells = Array.from({ length: 4 }, (_, i) => [i * 60, 255 - i * 60, 100] as const);
+    const luma = cells.map(([r, g, b]) => 0.299 * r + 0.587 * g + 0.114 * b);
+    const frame = { label: "img_000", mean: encodeRaster(luma), rgb: encodeRgb(cells) };
+    const field = { ...img, width: 2, height: 2, frames: [frame], color: "rgb" as const, channel_dim: "channel", rgb_scale: "uint8" as const, mask: null, origin: "upper" as const };
+    render(<FieldViewer field={field} mode="data" />);
+    const viewer = screen.getByTestId("field-viewer");
+    expect(within(viewer).queryByRole("figure", { name: /^Colour scale/ })).toBeNull();
+    expect(within(viewer).getByTestId("rgb-note")).toHaveTextContent("Red, green and blue from channel (0 to 255).");
+    const map = within(viewer).getByRole("img", { name: /^Colours of quakes/ });
+    map.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    // the keyboard cursor starts at the middle cell (row 1, column 1) and moves right (it stays at the edge)
+    expect(within(viewer).getByTestId("rgb-readout")).toHaveTextContent("180, 75, 100");
+    expect(within(viewer).getByTestId("field-readout")).toHaveTextContent("Brightness");
   });
 
   it("keeps the model mode unchanged when no mode is given", () => {

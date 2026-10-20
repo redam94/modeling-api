@@ -12,7 +12,10 @@ One supervisor runs per execution. It:
    tracking, scratch and output caps, and coalesces progress;
 4. handles SIGTERM and the run deadline (forward to the worker, wait for the checkpoint
    flush, upload a ``partial`` manifest);
-5. uploads outputs with the signed POST policy (streaming, hashing as it goes), writes the
+5. uploads the media the worker logs (v0.14: each file under ``{scratch}/media/`` is read
+   safely, hashed and checked by the supervisor, then sent through the run's ``media`` POST
+   policy) and emits one ``media`` event per item;
+6. uploads outputs with the signed POST policy (streaming, hashing as it goes), writes the
    signed :class:`~mapi_spec.run.OutputManifest` with the signed PUT and exits with a
    :class:`~mapi_spec.run.RunnerExit` code.
 
@@ -22,6 +25,7 @@ The supervisor never imports plugin code, the SDK, numpy or xarray.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
 import selectors
 import shutil
@@ -44,6 +48,7 @@ from typing import Final
 import httpx
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.errors import ERROR_INFO, ErrorCode, Issue, MapiError
+from mapi_spec.media import ImageInfo, check_media, media_name
 from mapi_spec.run import (
     ENV_REQUIRE_ISOLATION,
     MANIFEST_OBJECT_NAME,
@@ -51,12 +56,14 @@ from mapi_spec.run import (
     OUTPUT_ARTIFACTS,
     OUTPUT_CHECKPOINTS,
     OUTPUT_MANIFEST,
+    OUTPUT_MEDIA,
     CheckpointPayload,
     CompletePayload,
     ErrorPayload,
     FailureClass,
     InputDigest,
     ManifestObject,
+    MediaPayload,
     OutputManifest,
     RunnerEnv,
     RunnerExit,
@@ -80,6 +87,7 @@ from mapi_runner.channel import (
     DiagnosticMessage,
     ErrorMessage,
     FrameReader,
+    MediaMessage,
     MetricMessage,
     MetricsMessage,
     ParamsMessage,
@@ -106,7 +114,7 @@ from mapi_runner.events import clean_payload as _clean
 from mapi_runner.obslog import StderrLog, trace_id_from_env
 from mapi_runner.outputs import OutputViolation, collect_outputs, open_regular
 from mapi_runner.sandbox import WORKER_GID, WORKER_UID, IsolationPlan, plan_isolation
-from mapi_runner.transfer import TransferError, Transfers, new_client
+from mapi_runner.transfer import Digest, TransferError, Transfers, new_client
 
 __all__ = ["EXIT_FOR_CLASS", "Supervisor", "SupervisorConfig", "Termination"]
 
@@ -144,6 +152,9 @@ _LIB_DISTS: Final = (
     "xgboost",
 )
 _READ_BYTES: Final = 64 * 1024
+_MEDIA_DIR: Final = "media"
+_MAX_MEDIA_WARNINGS: Final = 10
+"""``MEDIA_INVALID`` / ``MEDIA_UPLOAD_FAILED`` warnings per attempt (later ones are dropped)."""
 
 
 class Termination(StrEnum):
@@ -185,6 +196,18 @@ class _Pending:
     checkpoints: dict[str, ManifestObject] = field(default_factory=dict)
     async_failure: _Failure | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+
+
+@dataclass(slots=True)
+class _Media:
+    """Media accounting of this attempt (the loop thread; ``uploaded`` under the pending lock)."""
+
+    items: int = 0
+    bytes: int = 0
+    names: set[str] = field(default_factory=set)
+    """Verified names submitted for upload (the same bytes are uploaded once)."""
+    uploaded: dict[str, tuple[Digest, ImageInfo | None]] = field(default_factory=dict)
+    warned: dict[str, int] = field(default_factory=dict)
 
 
 class _ConfigError(Exception):
@@ -246,6 +269,8 @@ class Supervisor:
         self.artifacts: PostPolicy | None = None
         self.manifest_put: SignedPut | None = None
         self.ckpt_policy: PostPolicy | None = None
+        self.media_policy: PostPolicy | None = None
+        self.media = _Media()
         self.terminating: Termination | None = None
         self.failure: _Failure | None = None
         self.worker_result: ResultMessage | None = None
@@ -369,12 +394,14 @@ class Supervisor:
         self.artifacts = artifacts
         ckpt = rs.outputs.get(OUTPUT_CHECKPOINTS)
         self.ckpt_policy = ckpt if isinstance(ckpt, PostPolicy) else None
+        media = rs.outputs.get(OUTPUT_MEDIA)
+        self.media_policy = media if isinstance(media, PostPolicy) else None
 
     # ===================================================================== worker
     def _prepare_scratch(self) -> None:
         root = tempfile.mkdtemp(prefix="mapi-run-", dir=self.config.scratch_root)
         self.scratch = root
-        for sub in ("inputs", "outputs", "checkpoints", "work"):
+        for sub in ("inputs", "outputs", "checkpoints", _MEDIA_DIR, "work"):
             os.mkdir(os.path.join(root, sub), 0o700)
         if self.isolation.drop_privileges:
             for path in (root, *(os.path.join(root, s) for s in os.listdir(root))):
@@ -442,6 +469,7 @@ class Supervisor:
             deadline=rs.deadline,
             labels=rs.labels,
             tracking=rs.limits.tracking,
+            media=self.media_policy is not None,
         )
 
         def send() -> None:
@@ -625,6 +653,8 @@ class Supervisor:
             self._emit(_clean(msg.payload))
         elif isinstance(msg, CheckpointMessage):
             self._checkpoint(msg)
+        elif isinstance(msg, MediaMessage):
+            self._media(_clean(msg))
         elif isinstance(msg, ResultMessage):
             self.worker_result = msg
         elif isinstance(msg, ErrorMessage):
@@ -654,10 +684,8 @@ class Supervisor:
             raise
         finally:
             os.close(dir_fd)
-        if self._uploads is None:
-            self._uploads = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ckpt-upload")
         self._futures.append(
-            self._uploads.submit(
+            self._uploads_pool().submit(
                 self._upload_checkpoint, policy, opened, msg.segment, msg.draws_done
             )
         )
@@ -710,6 +738,182 @@ class Supervisor:
             for _, fd, _ in files:
                 with contextlib.suppress(OSError):
                     os.close(fd)
+
+    # ==================================================================== media
+    def _media_warning(
+        self, code: str, message: str, untrusted_text: str | None = None, *, limit: int = 1
+    ) -> None:
+        """Emit warning ``code`` at most ``limit`` times per attempt."""
+        n = self.media.warned.get(code, 0)
+        if n >= limit:
+            return
+        self.media.warned[code] = n + 1
+        self._emit(
+            WarningPayload(
+                code=code,
+                message=message,
+                untrusted_text=None
+                if untrusted_text is None
+                else clean_text(untrusted_text, multiline=True)[:8000],
+            )
+        )
+
+    def _uploads_pool(self) -> ThreadPoolExecutor:
+        # one thread, shared with checkpoints: uploads and their events keep the worker's order
+        if self._uploads is None:
+            self._uploads = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ckpt-upload")
+        return self._uploads
+
+    def _media(self, msg: MediaMessage) -> None:
+        """Verify one media file the worker wrote and queue its upload (never fails the run)."""
+        policy, rs, st = self.media_policy, self.rs, self.media
+        if policy is None or rs is None or self.scratch is None:
+            self._drop_media_file(msg.file)
+            self._media_warning(
+                "MEDIA_IGNORED",
+                "the run logged images or tables, but it has no media prefix. "
+                "The platform does not keep them",
+            )
+            return
+        lim = rs.limits.tracking
+        if st.items >= lim.media_items:
+            self._drop_media_file(msg.file)
+            self._media_budget(lim.media_items, lim.media_bytes)
+            return
+        if msg.file in st.names:
+            # the same bytes again (another key, step or label set): no second upload
+            st.items += 1
+            self._drop_media_file(msg.file)
+            self._futures.append(self._uploads_pool().submit(self._media_again, msg))
+            return
+        data = self._read_media_file(msg.file, lim.media_item_bytes)
+        if data is None:
+            return
+        sha = hashlib.sha256(data).hexdigest()
+        try:
+            info = check_media(msg.kind, msg.content_type, data)
+            name = media_name(sha, msg.content_type)
+        except ValueError as exc:
+            self._media_invalid(f"the media item {msg.key!r} is not valid", str(exc))
+            return
+        if name != msg.file:
+            self._media_invalid(
+                f"the media item {msg.key!r} does not have the sha256 its file name gives"
+            )
+            return
+        if st.bytes + len(data) > lim.media_bytes:
+            self._media_budget(lim.media_items, lim.media_bytes)
+            return
+        st.items += 1
+        st.bytes += len(data)
+        st.names.add(name)
+        self._futures.append(
+            self._uploads_pool().submit(self._upload_media, policy, msg, name, data, info)
+        )
+
+    def _media_budget(self, items: int, nbytes: int) -> None:
+        self._media_warning(
+            "MEDIA_BUDGET",
+            f"the run logged more media than its budget ({items} items, {nbytes} bytes). "
+            "The platform does not keep the media after the budget",
+        )
+
+    def _media_invalid(self, message: str, untrusted_text: str | None = None) -> None:
+        self._media_warning(
+            "MEDIA_INVALID",
+            f"{message}. The platform does not keep it",
+            untrusted_text,
+            limit=_MAX_MEDIA_WARNINGS,
+        )
+
+    def _read_media_file(self, name: str, max_bytes: int) -> bytes | None:
+        """The bytes of ``media/<name>`` (no links, regular files only), then the file is
+        deleted; ``None`` (with a ``MEDIA_INVALID`` warning) when it cannot be used."""
+        assert self.scratch is not None
+        try:
+            dir_fd = os.open(os.path.join(self.scratch, _MEDIA_DIR), os.O_RDONLY | os.O_NOFOLLOW)
+        except OSError as exc:
+            self._media_invalid("the media directory cannot be opened", exc.strerror)
+            return None
+        try:
+            try:
+                fd, size = open_regular(dir_fd, name)
+            except OutputViolation as exc:
+                self._media_invalid("a media file cannot be opened safely", exc.detail)
+                return None
+            try:
+                if size > max_bytes:
+                    self._media_invalid(
+                        f"a media file has {size} bytes, more than the {max_bytes}-byte limit"
+                    )
+                    return None
+                data = _read_fd(fd, max_bytes + 1)
+            finally:
+                os.close(fd)
+            if len(data) > max_bytes:
+                self._media_invalid(f"a media file has more than {max_bytes} bytes")
+                return None
+            return data
+        finally:
+            with contextlib.suppress(OSError):
+                os.unlink(name, dir_fd=dir_fd)
+            os.close(dir_fd)
+
+    def _drop_media_file(self, name: str) -> None:
+        if self.scratch is None:
+            return
+        with contextlib.suppress(OSError):
+            os.unlink(os.path.join(self.scratch, _MEDIA_DIR, name))
+
+    def _upload_media(
+        self,
+        policy: PostPolicy,
+        msg: MediaMessage,
+        name: str,
+        data: bytes,
+        info: ImageInfo | None,
+    ) -> None:
+        try:
+            digest = self.transfers.post_bytes(
+                policy, policy.prefix + name, data, content_type=msg.content_type
+            )
+        except MapiError as exc:  # TransferError too; the run continues without this item
+            self._media_warning(
+                "MEDIA_UPLOAD_FAILED",
+                f"the server could not upload the media item {msg.key!r}. The run continues",
+                exc.untrusted_text if isinstance(exc, TransferError) else exc.detail,
+                limit=_MAX_MEDIA_WARNINGS,
+            )
+            return
+        with self.pending.lock:
+            self.media.uploaded[name] = (digest, info)
+        self._emit_media(msg, name, digest, info)
+
+    def _media_again(self, msg: MediaMessage) -> None:
+        with self.pending.lock:
+            done = self.media.uploaded.get(msg.file)
+        if done is not None:  # else the first upload failed (already reported)
+            self._emit_media(msg, msg.file, *done)
+
+    def _emit_media(
+        self, msg: MediaMessage, name: str, digest: Digest, info: ImageInfo | None
+    ) -> None:
+        self._emit(
+            MediaPayload(
+                key=msg.key,
+                kind=msg.kind,
+                content_type=msg.content_type,
+                name=name,
+                sha256=name.split(".", 1)[0],
+                size=digest.size,
+                crc32c=digest.crc32c,
+                step=msg.step,
+                labels=msg.labels,
+                width=None if info is None else info.width,
+                height=None if info is None else info.height,
+                caption=msg.caption,
+            )
+        )
 
     # ================================================================= finalize
     def _finalize(self) -> RunnerExit:
@@ -941,6 +1145,19 @@ class Supervisor:
 
 def _ckpt_type(name: str) -> str:
     return "application/json" if name.endswith(".json") else "application/zip"
+
+
+def _read_fd(fd: int, limit: int) -> bytes:
+    """Up to ``limit`` bytes of ``fd`` from its start."""
+    parts: list[bytes] = []
+    n = 0
+    while n < limit:
+        chunk = os.pread(fd, min(_READ_BYTES * 16, limit - n), n)
+        if not chunk:
+            break
+        parts.append(chunk)
+        n += len(chunk)
+    return b"".join(parts)
 
 
 def _short(exc: Exception) -> str:

@@ -7,7 +7,7 @@ import json
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import ANY
 
 import numpy as np
@@ -258,6 +258,101 @@ def test_with_labels_prefixes_param_keys() -> None:
     assert with_labels(rec, {}) is rec
 
 
+# -------------------------------------------------------------------------- media (v0.14)
+
+
+class _CountingTracker:
+    """A plain Tracker (no log_media): media calls must not encode anything for it."""
+
+    def log_metrics(self, values: Any, *, step: Any = None, labels: Any = None) -> None: ...
+    def log_params(self, params: Any) -> None: ...
+    def set_tags(self, tags: Any) -> None: ...
+    def log_line(self, message: Any, *, level: Any = "info", fields: Any = None) -> None: ...
+    def chains(self, chains: Any) -> None: ...
+    def flush(self) -> None: ...
+
+
+class _CountingFigure:
+    def __init__(self) -> None:
+        self.saved = 0
+
+    def savefig(self, buf: Any, **_kw: Any) -> None:
+        from mapi_sdk.media import encode_png
+
+        self.saved += 1
+        buf.write(encode_png(np.zeros((2, 2), np.uint8))[0])
+
+
+def test_media_calls_validate_without_a_media_tracker() -> None:
+    for tracker in (None, _CountingTracker(), TeeTracker(_CountingTracker())):
+        ctx = FitContext(tracker=tracker)  # type: ignore[arg-type]
+        assert not ctx.tracking_media
+        fig = _CountingFigure()
+        ctx.log_figure("residuals", fig)
+        ctx.log_image("samples", np.zeros((2, 2)), step=1)
+        ctx.log_table("scores", {"a": [1]})
+        ctx.log_image("samples", "not an image")  # never encoded: no error
+        assert fig.saved == 0
+        with pytest.raises(ValueError, match="media key"):
+            ctx.log_image("bad/key", np.zeros((2, 2)))
+        with pytest.raises(ValueError, match="step must be >= 0"):
+            ctx.log_figure("residuals", fig, step=-1)
+        with pytest.raises(ValueError, match="label"):
+            ctx.log_table("scores", {"a": [1]}, labels={"Bad": "x"})
+        with pytest.raises(ValueError, match="caption"):
+            ctx.log_image("samples", np.zeros((2, 2)), caption="x" * 501)
+
+
+def test_media_reach_a_recorder_through_tee_and_labels() -> None:
+    a, b = MetricRecorder(), MetricRecorder()
+    plain = _CountingTracker()
+    tee = TeeTracker(with_labels(a, {"fit": "evaluation", "split": "train"}), plain, b)
+    ctx = FitContext(tracker=tee)
+    assert ctx.tracking_media
+    fig = _CountingFigure()
+    ctx.log_figure("residuals", fig, step=0, labels={"split": "val"}, caption="c")
+    ctx.log_image("samples", np.ones((3, 3)), step=1)
+    ctx.log_table("scores", [{"a": 1}])
+    assert fig.saved == 1
+    assert [(m.key, m.kind, m.step) for m in b.media] == [
+        ("residuals", "image", 0),
+        ("samples", "image", 1),
+        ("scores", "table", None),
+    ]
+    assert b.media[0].labels == {"split": "val"} and b.media[0].caption == "c"
+    assert a.media[0].labels == {"fit": "evaluation", "split": "val"}  # call labels win
+    assert a.media[1].labels == {"fit": "evaluation", "split": "train"}
+    assert a.media[0].data == b.media[0].data
+    with pytest.raises(ValueError, match="log_figure takes"):
+        ctx.log_figure("residuals", np.zeros((2, 2)))
+
+
+def test_recorder_media_budgets() -> None:
+    from mapi_sdk.media import image_item
+
+    one, two = image_item("s", np.zeros((2, 2), np.uint8)), image_item("s", np.ones((2, 2)))
+    rec = MetricRecorder(TrackingLimits(media_items=3, media_bytes=one.size + 1))
+    rec.log_media(one)
+    rec.log_media(one)  # the same bytes count once against media_bytes
+    rec.log_media(two)  # new bytes over the byte budget
+    rec.log_media(one)
+    rec.log_media(one)  # over the item budget
+    assert [m.data for m in rec.media] == [one.data] * 3
+    assert rec.dropped == {"media_limit": 2}
+    assert rec.history() is None  # media never go into the bundle
+
+
+def test_recorder_without_a_media_budget_takes_no_media() -> None:
+    none = MetricRecorder(TrackingLimits(media_items=0, media_bytes=0))
+    assert not FitContext(tracker=none).tracking_media
+    assert not FitContext(tracker=TeeTracker(none, _CountingTracker())).tracking_media
+    other = MetricRecorder()
+    ctx = FitContext(tracker=TeeTracker(none, other))
+    assert ctx.tracking_media
+    ctx.log_image("samples", np.zeros((2, 2), np.uint8))
+    assert none.media == [] and none.dropped == {} and len(other.media) == 1
+
+
 # ------------------------------------------------------------------------------- harness
 
 REQ_PARAMS = {"model", "fit.mode", "fit.seed", "fit.draws", "fit.chains", "data.split"}
@@ -321,6 +416,31 @@ def test_fit_records_metrics_history_and_reports_to_the_hook_tracker(
     back = again.model.groups[METRICS_HISTORY]
     assert list(back["step"].values) == list(range(1, 21))
     assert back.attrs["mapi_params"] == hist.attrs["mapi_params"]
+
+
+class _MediaProbe(toy.LinearModel):
+    id = "test.media_probe"
+    seen: ClassVar[list[bool]] = []
+
+    def fit(self, ds: xr.Dataset, s: Any, cfg: FitConfig, ctx: FitContext) -> FitOutput:
+        _MediaProbe.seen.append(ctx.tracking_media)
+        ctx.log_metric("loss", 1.0, step=1)
+        return super().fit(ds, s, cfg, ctx)
+
+
+def test_the_fits_own_recorder_takes_no_media(
+    registry: Registry, e33_spec: Callable[..., ModelSpec], panel: tuple[xr.Dataset, xr.Dataset]
+) -> None:
+    data, fx = panel
+    reg = registry.copy()
+    reg.register_model(_MediaProbe)
+    spec = e33_spec(model="test.media_probe@^1", mode="train_only", metrics="rmse")
+    _MediaProbe.seen.clear()
+    bundle = fit_spec(spec, data, {"fx": fx}, reg)
+    assert METRICS_HISTORY in bundle.model.groups
+    assert _MediaProbe.seen == [False]  # no tracker takes media: nothing is rendered
+    fit_spec(spec, data, {"fx": fx}, reg, hooks=FitHooks(tracker=MetricRecorder()))
+    assert _MediaProbe.seen == [False, True]
 
 
 def test_record_metrics_false_writes_no_group(

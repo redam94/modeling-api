@@ -144,13 +144,16 @@ def detect_format(filename: str) -> tuple[UploadFormat, str]:
 
 def mapping_reads(mapping_format: str, file_format: UploadFormat) -> bool:
     """Whether an ingest mapping of ``mapping_format`` can read a file of ``file_format``:
-    the same format, an ``mff`` long table (a CSV file), or - since NetCDF-4 is HDF5 - a
-    ``netcdf`` mapping for a self-describing ``.h5`` file and an ``hdf5`` mapping for a
-    NetCDF-4 file read as raw HDF5."""
+    the same format, an ``mff`` long table (a CSV file), an ``image_folder`` zip (v0.14; a
+    ``.zip`` file is ``zarr_zip`` by its name), or - since NetCDF-4 is HDF5 - a ``netcdf``
+    mapping for a self-describing ``.h5`` file and an ``hdf5`` mapping for a NetCDF-4 file
+    read as raw HDF5."""
     if mapping_format == file_format:
         return True
     if mapping_format == "mff":
         return file_format == "csv"
+    if mapping_format == "image_folder":
+        return file_format == "zarr_zip"
     return {mapping_format, file_format} == {"netcdf", "hdf5"}
 
 

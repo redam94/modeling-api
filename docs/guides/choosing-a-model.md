@@ -18,8 +18,8 @@ There are eight questions. All are optional. The goal has the most weight:
 
 | Question | Answers |
 |---|---|
-| What do you want to do? | measure what marketing adds · plan a budget · measure the effect of a campaign, a launch or a test · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements |
-| What does your data look like? | one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid |
+| What do you want to do? | measure what marketing adds · plan a budget · measure the effect of a campaign, a launch or a test · forecast · understand drivers · predict per item · understand choices · find regimes · see series move together · check data · validate a model · make a map or an image from measurements · fit a physical model to measurements · put items or images into classes (v0.14) |
+| What does your data look like? | one number over time · a few related numbers · the same numbers for many markets, stores or products · purchases or choices · a table without time · a map, an image or values on a regular grid · images, pictures of the same size (v0.14) |
 | How often do you record the data? | daily · weekly · monthly or less often · not over time |
 | How much history? | under a year · one to three years · more |
 | Other columns that could explain it? | yes (prices, promotions, weather, spend) · no |
@@ -172,6 +172,10 @@ can select explains itself. This also applies to your own plugins
 | Find regimes (normal or caused by promotions) | `ts.markov_switching` | Probability of each regime for each period | `ts.gaussian_hmm` for a Bayesian hidden-state model |
 | Predict a value for each store, product or customer | `sklearn.tabular_regressor` | Gradient boosting or forests. Quantiles and conformal intervals. | `tabular.hierarchical_glm` when groups must borrow strength |
 | Understand which product people select | `choice.multinomial_logit` | Price and promotion effects, household effects | |
+| Predict yes or no for each row <span class="mapi-badge">v0.14</span> | `sklearn.tabular_classifier` | The probability of yes. Logistic regression, forests, xgboost, histogram boosting, LightGBM or CatBoost. | `sklearn.multiclass_classifier` for three or more classes |
+| Put each row into one of three or more classes <span class="mapi-badge">v0.14</span> | `sklearn.multiclass_classifier` | The probability of each class. ROC and precision-recall curves for each class, and a confusion matrix. | `tabular.hierarchical_glm` with `family: ordinal` when the classes have an order |
+| Classify small images <span class="mapi-badge">v0.14</span> | `tabular.image_logistic` | A Bayesian model on the main patterns of the pixels. A range for the probability of each class. | `sklearn.multiclass_classifier` on features that you calculate first, for larger images. See [Image data](image-data.md). |
+| Model counts with many zeros, shares or positive amounts <span class="mapi-badge">v0.14</span> | `tabular.hierarchical_glm` with `family: zero_inflated_poisson`, `negative_binomial`, `beta` or `gamma` | Group effects with sharing, and a likelihood that fits the data | |
 | Check data before you model it | the [Data Explorer](data-explorer.md) | Stationarity, cross-correlation with the KPI, STL, VIF, quality warnings | |
 | Make sure that you can trust a model | a [governance policy](null-tests.md) | Null tests, benchmarks, residuals, stability, signs | |
 
