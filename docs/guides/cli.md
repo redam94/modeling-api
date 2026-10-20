@@ -305,6 +305,28 @@ different (`--all-params` shows all params). `mapi runs ls --view` uses the sear
 view. The other options add to the search or replace a part of it. `mapi runs watch` shows a
 line for each image that the run logs (a maximum of one line each 5 seconds).
 
+### Image collections and weights <span class="mapi-badge">v0.15</span> { #v015 }
+
+```bash
+mapi datasets missing-images product_photos ./photos            # new and present images
+mapi datasets upload-images product_photos ./photos --label-from-folder --size 64x64 --wait
+mapi datasets upload-images product_photos ./photos --manifest labels.csv \
+  --label-column label --split-column split --state photos.upload.json
+mapi datasets upload-images product_photos ./photos --no-base   # upload all images again
+mapi datasets upload-weights tiny-resnet resnet.safetensors --arch arch.json
+```
+
+`upload-images` uploads only the images that the base version does not have (by default the
+latest ready collection version). If the upload stops, type the same command again. With
+`--state`, the command skips the parts that arrived and signs the expired URLs again. The
+options are in [Image data: collections](image-data.md#large-image-sets-collections).
+
+`upload-weights` uploads a safetensors file as a weights dataset (the mapping
+`{format: safetensors}`). `--arch` gives the architecture when the file has no `mapi_arch`
+metadata. Read [Deep learning](deep-learning.md#pretrained-weights).
+
+`--resource-class` accepts `GPU` wherever the CLI offers the option.
+
 ### Score
 
 ```bash

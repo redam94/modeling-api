@@ -20,7 +20,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING, Any
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
 
 __all__ = [
     "PLUGINS",

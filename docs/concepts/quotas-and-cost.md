@@ -27,7 +27,7 @@ at this level.
 | `vcpu_seconds_per_day`, `vcpu_seconds_per_month` | Cumulative, UTC day and month | The platform compares the limit with the estimate of the run at submit. |
 | `concurrent_runs` | Live count | Runs between `queued` and a terminal state |
 | `max_fanout_tasks` | Per submission | The maximum for one sweep, backtest or SBC (`taskCount`) |
-| `max_resource_class` | Per submission | For example, the free tier runs on class S only. |
+| `max_resource_class` | Per submission | For example, the free tier runs on class S only. The classes are in the sequence S < M < L < XL < GPU (v0.15), so a maximum below `GPU` refuses the GPU class. By default, only the internal and the self-hosted tiers allow it. |
 | `storage_bytes` | Cumulative | Dataset versions, uploads in progress and model bundles (the stored objects of all model versions) |
 | `egress_bytes_per_month` | Cumulative, UTC month | Downloads. This is the size of each object that the API gives a signed link for: dataset and model artifacts, `ui/` views, and score and render outputs. It also includes public embed views. The platform charges the bytes when it mints the link. The platform never charges GDPR exports. |
 | `requests_per_minute` | Rate | API calls |
@@ -104,10 +104,13 @@ The platform calculates the cost of each run from its resource class and its wal
 - vCPU-seconds = vCPUs of the class × billed seconds × tasks
 - GiB-seconds = memory of the class × billed seconds × tasks
 - billed seconds = wall time, rounded up to 100 ms
+- accelerator-seconds (v0.15, class `GPU` only) = accelerators of the class × billed seconds
+  × tasks
 
 The prices come from a versioned **price table**. The default uses the list prices of Cloud
-Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. A deployment can
-set its own prices. Unit prices are integer nanos. Amounts are integer **micros**
+Run: 0.000018 USD for each vCPU-second and 0.000002 USD for each GiB-second. From v0.15 the
+class `GPU` also costs 0.0001867 USD for each accelerator-second (the Cloud Run L4 list price;
+not verified against a GCP bill). A deployment can set its own prices. Unit prices are integer nanos. Amounts are integer **micros**
 (1 USD = 1,000,000 micros). Thus, each amount is exact, and you can calculate it again from
 its ledger row.
 

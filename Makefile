@@ -14,7 +14,7 @@ CORPUS_SIZE ?= tiny
 VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n 1)
 VCS_REF := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-IMAGES ?= base-bayes base-ml base-forecast server gcs-shim web
+IMAGES ?= base-bayes base-ml base-forecast base-dl server gcs-shim web
 DOCKER_BUILD_ARGS := --build-arg VERSION=$(VERSION) --build-arg VCS_REF=$(VCS_REF) \
 	--build-arg BUILD_DATE=$(BUILD_DATE)
 
@@ -87,7 +87,7 @@ typecheck: ## mypy over every type-checked package, the dev scripts and the imag
 	$(UV) run mypy packages/spec/src packages/sdk/src packages/steps-core/src packages/sdk-pymc/src \
 		packages/sdk-sklearn/src packages/plots-core/src plugins/mmm/src plugins/ts/src \
 		plugins/tabular/src plugins/statsmodels/src plugins/science/src plugins/causal/src \
-		conformance/src
+		packages/sdk-jax/src conformance/src
 	@set -e; for pkg in $(STRICT_PY); do echo "mypy --strict $$pkg"; $(UV) run mypy --strict $$pkg; done
 	$(UV) run mypy $(DEVOPS_PY)
 	$(UV) run mypy images/common

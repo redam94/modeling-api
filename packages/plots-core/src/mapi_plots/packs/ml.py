@@ -1,4 +1,7 @@
-"""Tabular machine-learning domain pack: feature importance.
+"""Machine-learning domain pack: feature importance and (v0.15) deep-learning training.
+
+The training recipes (``ml.training_curves``, ``ml.confusion_epochs``, ``ml.misclassified``)
+live in :mod:`mapi_plots.packs.ml_training`; :func:`ml_recipes` exposes them with this one.
 
 Plugins opt in by listing ``ml.feature_importance`` in their manifest's or spec's ``plots``.
 Inputs follow the groups the tabular plugins (``mapi_sklearn``) store in the bundle:
@@ -148,5 +151,7 @@ def feature_importance(inp: RecipeInput, s: FeatureImportanceSettings) -> Figure
 
 
 def ml_recipes() -> list[Recipe[Any]]:
-    """The tabular-ML domain pack (entry point ``mapi.plots: ml``)."""
-    return [feature_importance]
+    """The ML domain pack (entry point ``mapi.plots: ml``)."""
+    from mapi_plots.packs.ml_training import confusion_epochs, misclassified, training_curves
+
+    return [feature_importance, training_curves, confusion_epochs, misclassified]

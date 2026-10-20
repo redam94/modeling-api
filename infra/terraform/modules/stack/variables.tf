@@ -49,13 +49,13 @@ variable "exec_pools" {
 }
 
 variable "images" {
-  description = "Digest-pinned images from deploy/gcp/build-push.sh: server, web, base-bayes, base-ml, base-forecast. Empty for a foundation apply."
+  description = "Digest-pinned images from deploy/gcp/build-push.sh: server, web, base-bayes, base-ml, base-forecast and (optional, v0.15) base-dl. Empty for a foundation apply."
   type        = map(string)
   default     = {}
 
   validation {
-    condition     = alltrue([for k in keys(var.images) : contains(["server", "web", "base-bayes", "base-ml", "base-forecast"], k)])
-    error_message = "images keys must be among server, web, base-bayes, base-ml, base-forecast."
+    condition     = alltrue([for k in keys(var.images) : contains(["server", "web", "base-bayes", "base-ml", "base-forecast", "base-dl"], k)])
+    error_message = "images keys must be among server, web, base-bayes, base-ml, base-forecast, base-dl."
   }
 
   validation {
@@ -133,6 +133,12 @@ variable "deletion_protection" {
   description = "Protect the database, services and Jobs against destroy."
   type        = bool
   default     = true
+}
+
+variable "gpu_jobs" {
+  description = "Create the GPU Job (base-dl, one NVIDIA L4) in every exec pool (v0.15). Needs the base-dl image and Cloud Run GPU quota in the region. [unverified: Cloud Run Jobs GPU (L4) needs a region with GPU quota; not applied or tested against GCP]"
+  type        = bool
+  default     = false
 }
 
 variable "binary_authorization" {

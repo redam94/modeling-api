@@ -7,8 +7,11 @@
  *
  * v0.14: an image folder (a zip of images and a manifest table, `image_folder`) has its own
  * options form and must be the only file of the version.
+ *
+ * v0.15: "Choose a folder of images" opens the step "Folder of images" (`collection-upload-step.tsx`):
+ * a folder becomes an image collection version, uploaded in resumable zip parts.
  */
-import { FileUp, Layers, Plus, Search, Trash2, UploadCloud } from "lucide-react";
+import { FileUp, FolderUp, Layers, Plus, Search, Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 
 import { errorMessage, newIdempotencyKey } from "@/api/client";
@@ -24,6 +27,7 @@ import { parseCsv, type CsvPreview } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
 import { useStartInspect, useUploadInspection } from "./api";
+import { CollectionUpload } from "./collection-upload-step";
 import { ImageFolderForm } from "./image-folder-form";
 import { ArrayBrowser, Hdf5Mapper } from "./inspection";
 import {
@@ -133,6 +137,8 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
   const startInspect = useStartInspect(datasetId);
   const keyRef = useRef(newIdempotencyKey());
   const expert = useEffectivePersona() === "expert";
+  /** v0.15: files (one version from files) or a folder of images (an image collection). */
+  const [mode, setMode] = useState<"files" | "collection">("files");
 
   const add = async (files: File[], replace: boolean) => {
     setError(null);
@@ -255,6 +261,8 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
   const busy = phase === "uploading" || phase === "ingesting" || phase === "done";
   const single = sources.length === 1;
 
+  if (mode === "collection") return <CollectionUpload datasetId={datasetId} onDone={onDone} onCancel={() => setMode("files")} />;
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       {phase === "pick" || !sources.length ? (
@@ -271,9 +279,15 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
           <p className="max-w-[52ch] text-muted-foreground">
             Drop a CSV, Parquet, zarr zip, netCDF or HDF5 file, or a zip of images with a manifest table, here. For a CSV file, this page shows a preview in your browser before the upload. You can select several files: they become one version.
           </p>
-          <Button variant="outline" onClick={() => inputRef.current?.click()}>
-            <FileUp /> Choose files
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" onClick={() => inputRef.current?.click()}>
+              <FileUp /> Choose files
+            </Button>
+            <Button variant="outline" onClick={() => setMode("collection")}>
+              <FolderUp /> Choose a folder of images
+            </Button>
+          </div>
+          <p className="max-w-[52ch] text-xs text-muted-foreground">A folder of images becomes an image collection: the browser uploads only the new images, and a stopped upload can continue.</p>
         </div>
       ) : null}
       <input

@@ -1187,6 +1187,94 @@
         "title": "Binding",
         "type": "object"
       },
+      "BlobMissing": {
+        "description": "The answer to :class:`BlobQuery` (v0.15). Upload only the ``missing`` images.",
+        "examples": [
+          {
+            "base_version": 4,
+            "missing": [
+              "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+            ],
+            "present": 1
+          }
+        ],
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version compared with (none: no base, every image is missing)",
+            "title": "Base Version"
+          },
+          "missing": {
+            "description": "Missing digests, in query order",
+            "items": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "present": {
+            "minimum": 0.0,
+            "title": "Present",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_version",
+          "missing",
+          "present"
+        ],
+        "title": "BlobMissing",
+        "type": "object"
+      },
+      "BlobQuery": {
+        "additionalProperties": false,
+        "description": "Which images (by sha256) a collection version of the dataset does not hold (v0.15).\n\n``base_version``: ``None`` compares with the latest READY collection version; ``0``\ncompares with nothing (every image is missing).",
+        "examples": [
+          {
+            "sha256": [
+              "abababababababababababababababababababababababababababababababab",
+              "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+            ]
+          }
+        ],
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Version"
+          },
+          "sha256": {
+            "items": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "minItems": 1,
+            "title": "Sha256",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sha256"
+        ],
+        "title": "BlobQuery",
+        "type": "object"
+      },
       "BlockedKFoldPlan": {
         "additionalProperties": false,
         "description": "``k`` contiguous blocks; ``gap`` periods on each side of the test block are dropped.",
@@ -1776,10 +1864,11 @@
           },
           "input": {
             "default": "dataset",
-            "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one",
+            "description": "M4: 'tree' models also receive the whole tree dataset (the bound xr.DataTree) next to the flat pipeline output; 'dataset' models only the flat one. v0.15: 'collection' models implement fit_batches/score_batches and train on every image of an image collection through a lazy loader; they also read plain datasets",
             "enum": [
               "dataset",
-              "tree"
+              "tree",
+              "collection"
             ],
             "title": "Input",
             "type": "string"
@@ -2740,6 +2829,422 @@
           }
         },
         "title": "ChooserResult",
+        "type": "object"
+      },
+      "ClassCount": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "maxLength": 256,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "count"
+        ],
+        "title": "ClassCount",
+        "type": "object"
+      },
+      "CollectionInfo": {
+        "additionalProperties": false,
+        "description": "``collection.json``: what a collection version holds.",
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Version"
+          },
+          "classes": {
+            "description": "Image count per class, by count (descending) then label",
+            "items": {
+              "$ref": "#/components/schemas/ClassCount"
+            },
+            "maxItems": 1000,
+            "title": "Classes",
+            "type": "array"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Columns",
+            "type": "array"
+          },
+          "dim": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "format": {
+            "const": "mapi.collection/v1",
+            "default": "mapi.collection/v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "formats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "maxProperties": 8,
+            "title": "Formats",
+            "type": "object"
+          },
+          "label": {
+            "description": "The version has label(image)",
+            "title": "Label",
+            "type": "boolean"
+          },
+          "manifest_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "max_size": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Max Size",
+            "type": "array"
+          },
+          "min_size": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Min Size",
+            "type": "array"
+          },
+          "mode": {
+            "description": "Channels the images decode to",
+            "enum": [
+              "gray",
+              "rgb"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "n_images": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "N Images",
+            "type": "integer"
+          },
+          "new_images": {
+            "minimum": 0.0,
+            "title": "New Images",
+            "type": "integer"
+          },
+          "other_classes": {
+            "default": 0,
+            "description": "Classes not listed in classes",
+            "minimum": 0.0,
+            "title": "Other Classes",
+            "type": "integer"
+          },
+          "packs": {
+            "items": {
+              "$ref": "#/components/schemas/PackInfo"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "title": "Packs",
+            "type": "array"
+          },
+          "reused_images": {
+            "minimum": 0.0,
+            "title": "Reused Images",
+            "type": "integer"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "options.size, else the common size of all images, else none",
+            "title": "Size"
+          },
+          "split": {
+            "description": "The version has split(image)",
+            "title": "Split",
+            "type": "boolean"
+          },
+          "splits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "maxProperties": 64,
+            "title": "Splits",
+            "type": "object"
+          },
+          "total_bytes": {
+            "description": "Stored bytes of the distinct images",
+            "minimum": 0.0,
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "var": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Var",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n_images",
+          "dim",
+          "var",
+          "label",
+          "split",
+          "mode",
+          "size",
+          "min_size",
+          "max_size",
+          "total_bytes",
+          "packs",
+          "new_images",
+          "reused_images",
+          "manifest_sha256"
+        ],
+        "title": "CollectionInfo",
+        "type": "object"
+      },
+      "CollectionOptions": {
+        "additionalProperties": false,
+        "description": "How a client manifest and image parts become a collection version.\n\nThe manifest is a CSV, TSV or Parquet table with one row per image and at least the\nsha256 of each image's bytes. Its other columns become the id, label, split and path of\neach image, or are kept as coords.",
+        "properties": {
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Other columns kept as coords (default: all others)",
+            "title": "Columns"
+          },
+          "dim": {
+            "default": "image",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dim",
+            "type": "string"
+          },
+          "id_column": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unique ids of the image dim (default: the path, else the sha256)",
+            "title": "Id Column"
+          },
+          "label_column": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Class labels: the text variable 'label(image)', role target",
+            "title": "Label Column"
+          },
+          "max_images": {
+            "default": 100000,
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Max Images",
+            "type": "integer"
+          },
+          "mode": {
+            "default": "auto",
+            "description": "auto: rgb when an image has colour, else gray",
+            "enum": [
+              "auto",
+              "gray",
+              "rgb"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "path_column": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "path",
+            "description": "Kept as the coord 'path' (ignored when the default is missing)",
+            "title": "Path Column"
+          },
+          "resize": {
+            "default": "stretch",
+            "enum": [
+              "stretch",
+              "crop",
+              "pad"
+            ],
+            "title": "Resize",
+            "type": "string"
+          },
+          "sha256_column": {
+            "default": "sha256",
+            "description": "Lowercase hex sha256 of each image",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Sha256 Column",
+            "type": "string"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Canonical (height, width) for samples and model defaults; each 1..4096",
+            "title": "Size"
+          },
+          "split_column": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Train/test assignment: the text coord 'split(image)'",
+            "title": "Split Column"
+          },
+          "var": {
+            "default": "pixels",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Var",
+            "type": "string"
+          }
+        },
+        "title": "CollectionOptions",
+        "type": "object"
+      },
+      "CollectionSource": {
+        "additionalProperties": false,
+        "description": "``DatasetVersionCreate.collection``: a manifest upload plus the parts it needs.\n\n``base_version``: ``None`` uses the latest READY collection version of the dataset\n(when there is one) as the source of images the parts do not hold; ``0`` uses no base.",
+        "properties": {
+          "base_version": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Version"
+          },
+          "manifest_upload_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Manifest Upload Id",
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/CollectionOptions"
+          },
+          "part_upload_ids": {
+            "items": {
+              "examples": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Part Upload Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "manifest_upload_id"
+        ],
+        "title": "CollectionSource",
         "type": "object"
       },
       "ColumnProfile": {
@@ -4669,9 +5174,93 @@
               }
             },
             "version": 4
+          },
+          {
+            "collection": {
+              "classes": [
+                {
+                  "count": 700,
+                  "label": "bottle"
+                },
+                {
+                  "count": 500,
+                  "label": "can"
+                }
+              ],
+              "dim": "image",
+              "formats": {
+                "jpeg": 1150,
+                "png": 50
+              },
+              "label": true,
+              "manifest_sha256": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+              "max_size": [
+                512,
+                512
+              ],
+              "min_size": [
+                48,
+                48
+              ],
+              "mode": "rgb",
+              "n_images": 1200,
+              "new_images": 1200,
+              "packs": [
+                {
+                  "crc32c": "4waSgw==",
+                  "digest": "5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+                  "entries": 1200,
+                  "images": 1200,
+                  "input": "part.0000",
+                  "md5": "XrY7u+Ae7tCTyyK7j1rNww==",
+                  "size": 52430000,
+                  "source": "upload"
+                }
+              ],
+              "reused_images": 0,
+              "size": [
+                64,
+                64
+              ],
+              "split": true,
+              "splits": {
+                "test": 240,
+                "train": 960
+              },
+              "total_bytes": 52428800,
+              "var": "pixels"
+            },
+            "created_at": "2026-10-15T09:30:00Z",
+            "dataset_id": "ds_01jaf3a1b2c3d4e5f6g7h8j9k0",
+            "ingest_run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "issues": [],
+            "layout": "collection",
+            "project_id": "default",
+            "ready_at": "2026-10-15T09:40:10Z",
+            "ref": "dataset://default/product_photos@v5",
+            "sha256": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+            "size_bytes": 52428800,
+            "sources": [
+              "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+              "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+            ],
+            "status": "ready",
+            "tenant_id": "default",
+            "version": 5
           }
         ],
         "properties": {
+          "collection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectionInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.15: what an image collection version holds (layout 'collection')"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4719,10 +5308,11 @@
           },
           "layout": {
             "default": "dataset",
-            "description": "M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema)",
+            "description": "M4: 'tree' versions hold an xr.DataTree (tree_schema; data_schema is then the root node's schema). v0.15: 'collection' versions are image collections (collection; data_schema has the virtual pixels variable)",
             "enum": [
               "dataset",
-              "tree"
+              "tree",
+              "collection"
             ],
             "title": "Layout",
             "type": "string"
@@ -4865,7 +5455,7 @@
       },
       "DatasetVersionCreate": {
         "additionalProperties": false,
-        "description": "Turn finished uploads into a new version via a sandboxed ingest run (202).\n\nExactly one of: ``upload_id`` + ``mapping`` (one file), or ``assembly`` (M4: several\nfiles combined per node into one version, see :class:`IngestAssembly`).",
+        "description": "Turn finished uploads into a new version via a sandboxed ingest run (202).\n\nExactly one of: ``upload_id`` + ``mapping`` (one file), ``assembly`` (M4: several\nfiles combined per node into one version, see :class:`IngestAssembly`), or\n``collection`` (v0.15: an image collection from a manifest and image parts, see\n:class:`~mapi_spec.collection.CollectionSource`).",
         "examples": [
           {
             "mapping": {
@@ -4934,6 +5524,23 @@
               ]
             },
             "message": "2024 and 2025 cubes plus the instrument"
+          },
+          {
+            "collection": {
+              "manifest_upload_id": "upl_01jaf3d1e2f3g4h5j6k7m8n9p0",
+              "options": {
+                "label_column": "label",
+                "size": [
+                  64,
+                  64
+                ],
+                "split_column": "split"
+              },
+              "part_upload_ids": [
+                "upl_01jaf3d1e2f3g4h5j6k7m8n9p1"
+              ]
+            },
+            "message": "Product photos, October"
           }
         ],
         "properties": {
@@ -4947,6 +5554,17 @@
               }
             ],
             "description": "M4: several uploads combined into one (tree) version"
+          },
+          "collection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectionSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.15: an image collection (a manifest upload and image part uploads)"
           },
           "mapping": {
             "anyOf": [
@@ -11562,6 +12180,12 @@
               "path_column": "file",
               "split_column": "split"
             }
+          },
+          {
+            "format": "safetensors",
+            "weights": {
+              "max_parameters": 50000000
+            }
           }
         ],
         "properties": {
@@ -11581,7 +12205,8 @@
               "zarr_zip",
               "netcdf",
               "hdf5",
-              "image_folder"
+              "image_folder",
+              "safetensors"
             ],
             "title": "Format",
             "type": "string"
@@ -11651,6 +12276,17 @@
             "maxProperties": 1024,
             "title": "Vars",
             "type": "object"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightsOptions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.15: options of a 'safetensors' upload (defaults when left out)"
           },
           "wide": {
             "additionalProperties": {
@@ -15150,6 +15786,15 @@
             "title": "Settings Schema",
             "type": "object"
           },
+          "side_table_params": {
+            "description": "v0.15: settings keys whose value names a data.side_tables entry the model reads (pretrained weights, for example), like a step's side_table_params",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Side Table Params",
+            "type": "array"
+          },
           "version": {
             "title": "Version",
             "type": "string"
@@ -16979,6 +17624,81 @@
           }
         },
         "title": "OutputSelector",
+        "type": "object"
+      },
+      "PackInfo": {
+        "additionalProperties": false,
+        "description": "One pack a collection version reads.",
+        "properties": {
+          "crc32c": {
+            "description": "CRC32C as GCS reports it: base64 of the big-endian 4-byte checksum",
+            "examples": [
+              "4waSgw=="
+            ],
+            "pattern": "^[A-Za-z0-9+/]{6}==$",
+            "title": "Crc32C",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "entries": {
+            "description": "Zip entries in the pack",
+            "minimum": 0.0,
+            "title": "Entries",
+            "type": "integer"
+          },
+          "images": {
+            "description": "Distinct images of this version stored in it",
+            "minimum": 0.0,
+            "title": "Images",
+            "type": "integer"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Uploads: the ingest input it came from ('part.0003'); base: none",
+            "title": "Input"
+          },
+          "md5": {
+            "description": "MD5 as GCS reports it: base64 of the 16-byte digest",
+            "pattern": "^[A-Za-z0-9+/]{22}==$",
+            "title": "Md5",
+            "type": "string"
+          },
+          "size": {
+            "minimum": 22.0,
+            "title": "Size",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "upload",
+              "base"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "digest",
+          "size",
+          "crc32c",
+          "md5",
+          "entries",
+          "images",
+          "source"
+        ],
+        "title": "PackInfo",
         "type": "object"
       },
       "Page_ApiToken_": {
@@ -21437,6 +22157,14 @@
             "title": "Resolved",
             "type": "string"
           },
+          "side_tables": {
+            "description": "v0.15: the data.side_tables entries the model reads (fit time only)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Side Tables",
+            "type": "array"
+          },
           "use": {
             "title": "Use",
             "type": "string"
@@ -21589,12 +22317,13 @@
         "type": "object"
       },
       "ResourceClass": {
-        "description": "Executor resource class. Ordered: ``S < M < L < XL``.",
+        "description": "Executor resource class. Ordered: ``S < M < L < XL < GPU``.\n\n``GPU`` is the last (highest-rank) member on purpose: a quota whose\n``max_resource_class`` is below it refuses it, and :meth:`next_up` never offers it.",
         "enum": [
           "S",
           "M",
           "L",
-          "XL"
+          "XL",
+          "GPU"
         ],
         "title": "ResourceClass",
         "type": "string"
@@ -28083,7 +28812,8 @@
               "zarr_zip",
               "netcdf",
               "hdf5",
-              "image_folder"
+              "image_folder",
+              "safetensors"
             ],
             "title": "Format",
             "type": "string"
@@ -28191,6 +28921,18 @@
             "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
             "title": "Project Id",
             "type": "string"
+          },
+          "received": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.15 (get_upload, renew_upload): the file arrived in the quarantine bucket",
+            "title": "Received"
           },
           "size_bytes": {
             "title": "Size Bytes",
@@ -29680,6 +30422,57 @@
           }
         },
         "title": "WebhookUpdate",
+        "type": "object"
+      },
+      "WeightsOptions": {
+        "additionalProperties": false,
+        "description": "A safetensors file of pretrained network weights (read in the sandboxed ingest run).\n\nThe file becomes a weights dataset: ``weights(param)`` float32 plus the tensor table in\nthe ``mapi_weights`` attr. Models and steps read it as a side table.",
+        "examples": [
+          {
+            "max_parameters": 50000000
+          },
+          {
+            "arch": {
+              "blocks": [
+                1,
+                1,
+                1
+              ],
+              "channels": 3,
+              "kind": "resnet",
+              "widths": [
+                16,
+                32,
+                64
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "arch": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Architecture JSON, when the file's __metadata__ has no 'mapi_arch'",
+            "title": "Arch"
+          },
+          "max_parameters": {
+            "default": 200000000,
+            "maximum": 500000000.0,
+            "minimum": 1.0,
+            "title": "Max Parameters",
+            "type": "integer"
+          }
+        },
+        "title": "WeightsOptions",
         "type": "object"
       },
       "WhatIfCompile": {
@@ -31554,7 +32347,7 @@
     "description": "Contract version 0.2. Errors are RFC 7807 problem documents (`application/problem+json`) with stable `code`s. Programs authenticate with `Authorization: Bearer mapi_…` API tokens, browsers with the BFF session (`/auth/login`); project-scoped routes act in the project named by the `X-Mapi-Project: <tenant>/<project>` header (or the token's project). The single-tenant profile accepts credential-less requests on loopback as the local administrator.",
     "summary": "Typed xarray modelling runtime: control plane API (v1)",
     "title": "modeling-api",
-    "version": "0.14.0"
+    "version": "0.15.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -34739,6 +35532,188 @@
         ]
       }
     },
+    "/v1/datasets/{dataset_id}/blobs/missing": {
+      "post": {
+        "description": "The digests of ``body.sha256`` that the base collection version does not hold, in\nquery order (v0.15). Upload only those: a new version takes the others from the base.\nOnly versions of this dataset are compared (no lookup across datasets or projects).",
+        "operationId": "find_missing_images",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlobQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlobMissing"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Which images (by sha256) a collection version does not hold",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
     "/v1/datasets/{dataset_id}/uploads": {
       "post": {
         "operationId": "create_upload",
@@ -34787,6 +35762,152 @@
           }
         },
         "summary": "Create Upload",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}": {
+      "get": {
+        "description": "An upload with ``received``: whether its file arrived. A client that resumes an\nupload skips the files that arrived and renews the URL of the others when it expired\n(v0.15).",
+        "operationId": "get_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "An upload and whether its file arrived (resume an upload)",
         "tags": [
           "datasets"
         ]
@@ -35153,6 +36274,175 @@
           }
         },
         "summary": "The groups and arrays an inspect run found",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/v1/datasets/{dataset_id}/uploads/{upload_id}/renew": {
+      "post": {
+        "description": "A fresh signed PUT (valid 1 h) for the same object of an upload whose file has not\narrived; an expired upload becomes ``pending`` again. ``409`` when the upload was turned\ninto a dataset version or its file already arrived (v0.15). Quota usage stops counting an\nupload once it is ``expired``, so renewing one admits its size again (a ``pending`` upload\nis counted already, also after its PUT expired).",
+        "operationId": "renew_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Sign a fresh PUT URL for an upload whose file did not arrive",
         "tags": [
           "datasets"
         ]

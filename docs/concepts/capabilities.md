@@ -26,7 +26,7 @@ its forms from manifests. Neither of them imports the plugin.
 | `deterministic_given_seed` | Tells if the same seed gives the same fit (nutpie: no). If a model claims this, the contract kit checks it. |
 | `checkpointable` | Long fits can write checkpoints and resume. |
 | `calibration` | The calibration data that the model uses from the `calibration` block of a spec: `business_priors`, `lift_tests` or both. |
-| `input` | `dataset` (the default) or `tree`. A `tree` model also gets the full tree dataset, next to the flat output of the pipeline ([Tree datasets](../guides/tree-data.md#models-that-read-the-whole-tree)). |
+| `input` | `dataset` (the default), `tree` or `collection` (v0.15). A `tree` model also gets the full tree dataset, next to the flat output of the pipeline ([Tree datasets](../guides/tree-data.md#models-that-read-the-whole-tree)). A `collection` model trains on batches of all images of an image collection (`fit_batches`, [Train on batches](../guides/plugins.md#fit-batches)). It also reads plain datasets. |
 | `conditions_on_actuals` | Forecasts can have actuals. The model updates its state with them through its fitted parameters. Then it forecasts from the last actual ([Forecasts with actuals](forecasting-with-actuals.md)). Without this capability, a forecast payload with target values gives `ACTUALS_NOT_SUPPORTED`. |
 
 ## The manifest
@@ -39,7 +39,8 @@ its forms from manifests. Neither of them imports the plugin.
 | `outputs` | Output variables with dims and units. `units_of: y` means "in the units of the target". Two optional fields tell how to show and summarise an output: `grid` and `circular` (see [Outputs on a grid or a circle](#outputs-on-a-grid-or-a-circle)). |
 | `derived` | Derived quantities. It also tells if the fit caches them (`cache: fit`), or if the platform calculates them when necessary. |
 | `plots` | The plot recipes that the report of this model shows by default |
-| `resources` | Minimum and default resource class, estimated fit time, GPU |
+| `resources` | Minimum and default resource class, estimated fit time, and `gpu` (the model can use the `GPU` class, v0.15) |
+| `side_table_params` | v0.15: the settings whose values name side tables that the model reads, for example pretrained weights ([Read a side table in a model](../guides/plugins.md#model-side-tables)) |
 | `about`, `family` | The [About card](about-and-choosing.md) in plain language, and the model family that governance policies match (`mmm`, `forecast`, `ts_multivariate`, `tabular`, `choice`, `regime`). If `family` is not set, it is the namespace of the id. |
 
 This example is a schema template with parameters. It is from a model that has the group dim

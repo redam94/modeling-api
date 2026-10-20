@@ -17,6 +17,7 @@ from datetime import timedelta
 from typing import Any
 
 from mapi_spec.catalog import Catalog
+from mapi_spec.collection import COLLECTION_MANIFEST
 from mapi_spec.executor import RunKind
 from mapi_spec.jobs import DATATREE_OUTPUT
 from mapi_spec.loader import spec_hash
@@ -68,12 +69,19 @@ def StoredRef(bucket: str, name: str, generation: int) -> dict[str, Any]:
 
 def input_layouts(inputs: dict[str, Any]) -> dict[str, Any]:
     """M4: ``{input name: "tree"}`` for every input that is a tree version's
-    ``data.tree.zip`` (the runner reads those as an ``xr.DataTree``)."""
-    return {
-        name: "tree"
-        for name, ref in sorted(inputs.items())
-        if isinstance(ref, dict) and str(ref.get("name", "")).endswith("/" + DATATREE_OUTPUT)
-    }
+    ``data.tree.zip`` (the runner reads those as an ``xr.DataTree``); v0.15:
+    ``"collection"`` for every input that is a collection version's ``manifest.parquet``
+    (its ``<name>.info`` and ``<name>.pack.<i>`` inputs come with it)."""
+    out: dict[str, Any] = {}
+    for name, ref in sorted(inputs.items()):
+        if not isinstance(ref, dict):
+            continue
+        obj = str(ref.get("name", ""))
+        if obj.endswith("/" + DATATREE_OUTPUT):
+            out[name] = "tree"
+        elif obj.endswith("/" + COLLECTION_MANIFEST):
+            out[name] = "collection"
+    return out
 
 
 def _ttl(timeout_s: int) -> timedelta:

@@ -20,7 +20,7 @@ from mapi_plugin_ts.trend import HSGPTrendModel, HSGPTrendSettings
 try:
     __version__ = _metadata.version("mapi-plugin-ts")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.14.0"
+    __version__ = "0.15.0"
 
 PLUGINS = (HSGPTrendModel, GaussianHMMModel, BSTSModel)
 """Every ``ts.*`` model plugin (loaded by the ``mapi.models`` entry point)."""

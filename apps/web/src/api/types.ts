@@ -15,6 +15,14 @@ type S = { [K in keyof components["schemas"]]: Arrayify<components["schemas"][K]
 
 export type ArtifactLink = S["ArtifactLink"];
 export type AssemblySource = S["AssemblySource"];
+// v0.15 image collections (I-1, I-4)
+export type BlobMissing = S["BlobMissing"];
+export type BlobQuery = S["BlobQuery"];
+export type ClassCount = S["ClassCount"];
+export type CollectionInfo = S["CollectionInfo"];
+export type CollectionOptions = S["CollectionOptions"];
+export type CollectionSource = S["CollectionSource"];
+export type PackInfo = S["PackInfo"];
 export type BundleManifest = S["BundleManifest"];
 export type Capabilities = S["Capabilities"];
 export type CatalogResponse = S["CatalogResponse"];

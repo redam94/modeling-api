@@ -77,7 +77,12 @@ MAX_START_FRAME: Final = 16 * 1024 * 1024
 """Largest start frame the worker accepts from the supervisor."""
 
 _HEADER = struct.Struct(">I")
-_CKPT_NAME = r"^ckpt-[0-9a-f]{16,64}\.(?:meta\.json|draws\.zarr\.zip)$"
+_CKPT_NAME = (
+    r"^ckpt-[0-9a-f]{16,64}\."
+    r"(?:meta\.json|draws\.zarr\.zip|weights\.safetensors|opt\.safetensors)$"
+)
+"""Checkpoint file names: PyMC draws (``draws.zarr.zip``) or, v0.15, network weights and
+optimizer state (``*.safetensors``), each with its ``meta.json``."""
 
 
 class ProtocolError(Exception):

@@ -21,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, runtime_checkable
 
 import numpy as np
 import xarray as xr
@@ -50,6 +50,9 @@ from mapi_sdk.errors import BundleError
 from mapi_sdk.steps import CancelToken
 from mapi_sdk.tracking import Tracker, TrackingMixin
 
+if TYPE_CHECKING:
+    from mapi_sdk.collection import ImageLoader
+
 __all__ = [
     "DIFFERENCE_ATTR",
     "PREDICTIONS",
@@ -64,6 +67,7 @@ __all__ = [
     "ScoreContext",
     "build_manifest",
     "new_level_mask",
+    "requested_positions",
 ]
 
 PREDICTIONS = "predictions"
@@ -112,6 +116,12 @@ class FitContext(TrackingMixin):
     :class:`~mapi_sdk.tracking.TrackingMixin` methods (``log_metric``, ``log_params``,
     ``set_tag``, ``log_line``, ``chains``); the harness attaches one that records the
     bundle's ``metrics_history`` group and forwards to the runner. ``None``: validate only.
+
+    ``side_tables`` (v0.15) holds the model's side tables (the settings named by
+    ``ModelManifest.side_table_params``), by ``data.side_tables`` name, raw as given.
+    ``fit_key`` (v0.15) is 32 hex characters, stable for (spec hash, data hash, role): the
+    base of checkpoint keys, so a restarted fit finds its own checkpoints. ``None`` outside
+    the harness.
     """
 
     seed: int = 0
@@ -128,6 +138,8 @@ class FitContext(TrackingMixin):
     to_original: Callable[[xr.DataArray, str], xr.DataArray] | None = None
     tree: xr.DataTree | None = None
     tracker: Tracker | None = None
+    side_tables: Mapping[str, xr.Dataset] = field(default_factory=dict)
+    fit_key: str | None = None
     rng: np.random.Generator = field(init=False)
     _logged_params: dict[str, Any] = field(init=False, default_factory=dict, repr=False)
 
@@ -285,6 +297,19 @@ def new_level_mask(ds: xr.Dataset, dim: str) -> xr.DataArray:
     return xr.zeros_like(ds[dim], dtype=bool)
 
 
+def requested_positions(ds: xr.Dataset, dim: str) -> np.ndarray:
+    """Positions along ``dim`` of the requested (non-padding) labels: where
+    ``<dim>__requested`` is True, or every position when the flag is absent.
+
+    Scoring pads ``new_levels`` dims to the fit labels (plus unseen ones); a model that
+    scores in batches scores only these rows and leaves the others NaN.
+    """
+    flag = f"{dim}__requested"
+    if flag in ds.coords:
+        return np.flatnonzero(np.asarray(ds[flag].values, dtype=bool)).astype(np.int64)
+    return np.arange(ds.sizes[dim], dtype=np.int64)
+
+
 @runtime_checkable
 class ModelPlugin(Protocol):
     """Structural protocol every model plugin satisfies."""
@@ -320,6 +345,7 @@ def build_manifest(
     description: str | None = None,
     about: About | None = None,
     family: str | None = None,
+    side_table_params: Sequence[str] = (),
 ) -> ModelManifest:
     """Assemble and validate a :class:`~mapi_spec.capabilities.ModelManifest`."""
     if isinstance(schema_template, DataSchema):
@@ -346,6 +372,7 @@ def build_manifest(
         description=description,
         about=about,
         family=family,
+        side_table_params=list(side_table_params),
     )
 
 
@@ -354,7 +381,8 @@ class CustomModel[SettingsT: BaseModel]:
 
     Optional hooks: :meth:`diagnostics`, :meth:`postprocess`, :meth:`derive`,
     :meth:`objective`, :meth:`recommend`, :meth:`translate_priors`, :meth:`optimize`,
-    :meth:`forecast_with_actuals` (with ``capabilities.conditions_on_actuals``). Set
+    :meth:`forecast_with_actuals` (with ``capabilities.conditions_on_actuals``),
+    :meth:`fit_batches`/:meth:`score_batches` (with ``capabilities.input="collection"``). Set
     ``pad_extend = False`` if the model does not index time positionally (scoring then skips
     padding ``extend`` dims to the fit range). List in ``structural_missing`` the canonical
     variables whose NaN are part of the design of the data (not gaps), so that the scorecard
@@ -381,6 +409,9 @@ class CustomModel[SettingsT: BaseModel]:
     :data:`mapi_spec.abouts.MODEL_ABOUTS` when this is unset."""
     family: ClassVar[str | None] = None
     """M3.5: the family governance policies match (default: the id's namespace)."""
+    side_table_params: ClassVar[tuple[str, ...]] = ()
+    """v0.15: settings keys whose value names a ``data.side_tables`` entry the model reads
+    (from ``FitContext.side_tables``), such as pretrained weights."""
 
     @classmethod
     def manifest(cls) -> ModelManifest:
@@ -398,6 +429,7 @@ class CustomModel[SettingsT: BaseModel]:
             description=cls.description,
             about=cls.about if cls.about is not None else MODEL_ABOUTS.get(cls.id),
             family=cls.family,
+            side_table_params=cls.side_table_params,
         )
 
     @classmethod
@@ -430,6 +462,26 @@ class CustomModel[SettingsT: BaseModel]:
         self, fitted: Fitted, ds: xr.Dataset, req: ScoreRequest, ctx: ScoreContext
     ) -> xr.DataTree:
         raise NotImplementedError(f"model {self.id!r} does not implement score")
+
+    def fit_batches(
+        self, loader: ImageLoader, s: SettingsT, cfg: FitConfig, ctx: FitContext
+    ) -> FitOutput:
+        """Fit from a lazy image loader (v0.15; ``capabilities.input="collection"``).
+
+        The harness calls it instead of :meth:`fit` when the data is an image collection:
+        ``loader`` holds the images of the rows that reached the model (the training rows of
+        the split), in the order of the model-stage manifest dataset. The output is the same
+        :class:`FitOutput` :meth:`fit` returns.
+        """
+        raise NotImplementedError(f"model {self.id!r} does not implement fit_batches")
+
+    def score_batches(
+        self, fitted: Fitted, loader: ImageLoader, req: ScoreRequest, ctx: ScoreContext
+    ) -> xr.DataTree:
+        """Score a lazy image loader (v0.15): ``predictions`` along the loader's dim in the
+        loader's order (the requested images only). The harness puts them back in the
+        canonical order (NaN for padded rows) before its usual post-processing."""
+        raise NotImplementedError(f"model {self.id!r} does not implement score_batches")
 
     # optional hooks ---------------------------------------------------------------
     def diagnostics(self, fitted: Fitted, ds: xr.Dataset) -> list[Diagnostic]:

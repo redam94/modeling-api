@@ -1,10 +1,11 @@
 """The cost ledger: meter finished attempts, fold them into ``Run.cost``, report usage.
 
 An attempt is metered once its execution is over (``submitted_at`` and ``finished_at`` are
-both set by the dispatcher/reconciler): wall time × the class's vCPU and memory × the price
-table (:func:`mapi_spec.cost.ledger_entry`). :func:`bill_attempts` runs inside every state
-transition that ends an attempt (a new attempt, ``FINALIZING`` or a terminal state); the
-partial unique index on ``(run_id, attempt) WHERE kind = 'actual'`` makes it idempotent.
+both set by the dispatcher/reconciler): wall time × the class's vCPU, memory and (``GPU``)
+accelerators × the price table (:func:`mapi_spec.cost.ledger_entry`). :func:`bill_attempts`
+runs inside every state transition that ends an attempt (a new attempt, ``FINALIZING`` or a
+terminal state); the partial unique index on ``(run_id, attempt) WHERE kind = 'actual'``
+makes it idempotent.
 """
 
 from __future__ import annotations
@@ -48,6 +49,8 @@ __all__ = [
 ]
 
 log = logging.getLogger(__name__)
+
+_LEDGER_COLUMNS = frozenset(m.CostLedgerEntry.__table__.columns.keys())
 
 PRICE_TABLE_INFO_KEY = "price_table"
 """``Session.info`` key under which :class:`~mapi_server.db.Database` carries the table."""
@@ -203,11 +206,14 @@ async def bill_attempts(
         except ValueError as exc:
             log.warning("run %s/%s cannot be priced: %s", run.id, att.attempt, exc)
             continue
+        # a GPU attempt's accelerator-seconds are priced into amount_micros (class_usage);
+        # the row keeps the columns the ledger table has
+        row = entry.model_dump(mode="python", exclude={"kind", "resource_class"})
         inserted = (
             await session.execute(
                 insert(m.CostLedgerEntry)
                 .values(
-                    **entry.model_dump(mode="python", exclude={"kind", "resource_class"}),
+                    **{k: v for k, v in row.items() if k in _LEDGER_COLUMNS},
                     kind=entry.kind.value,
                     resource_class=entry.resource_class.value,
                 )

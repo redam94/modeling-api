@@ -234,6 +234,78 @@ The tests make sure that each suggested spec validates against the schema of its
 file. A slow test fits each spec on the simulated data. Then
 `python -m mapi_plugin_science.export --list` shows the case.
 
+### Train on batches: `fit_batches` <span class="mapi-badge">v0.15</span> { #fit-batches }
+
+A model that trains on many images can read them in batches from an image collection. It
+does not need all images in memory. Declare `input="collection"` in the capabilities, and add
+two methods to the model:
+
+```python
+from mapi_sdk import CustomModel, ImageLoader
+
+
+class NearestMean(CustomModel[Settings]):
+    id = "demo.nearest_mean"
+    capabilities = Capabilities(..., input="collection")
+
+    def fit(self, ds, s, cfg, ctx):
+        # plain image datasets (image folders, inline payloads)
+        return self.fit_batches(ArrayImageLoader(ds, target=s.target), s, cfg, ctx)
+
+    def fit_batches(self, loader: ImageLoader, s, cfg, ctx):
+        sums = {}
+        for epoch in range(s.epochs):
+            ctx.check_cancelled()
+            for batch in loader.batches(64, epoch=epoch, shuffle=True, seed=cfg.seed or 0):
+                ...  # one training step
+        return FitOutput(...)
+
+    def score_batches(self, fitted, loader: ImageLoader, req, ctx):
+        ...  # predictions for loader.ids, in loader order
+```
+
+Follow these rules:
+
+- `fit_batches(loader, s, cfg, ctx)` gets a loader of the training rows of the split.
+  `score_batches(fitted, loader, req, ctx)` gets a loader of the requested images. The
+  harness puts the predictions in the order of the request.
+- Implement `fit` and `score` too. Image folder versions and inline payloads come as plain
+  datasets. `ArrayImageLoader(ds)` gives the same loader interface for them.
+- A spec on a collection takes no pipeline steps. Put random changes in the settings
+  (`mapi_sdk.Augment`) and apply them in `batches(augment=...)`.
+- Use `ctx.fit_key` (32 hex characters, stable for the spec, the data and the role) as the
+  base of checkpoint keys.
+- For checkpoints, use `ctx.checkpoint_sink` when it is a `FileCheckpointSink`. Save files
+  with `save_files(key, {"weights": ..., "opt": ...}, meta, progress=epochs_done)`, and load
+  them with `load_files(key)` at the start.
+- In `score`, use `requested_positions(ds, dim)` to score only the rows that the request
+  asked for.
+
+The contract kit runs the batch path one time when you give it a collection:
+`check_model(MyModel, collection=local_collection(tmp_path))`.
+
+### Read a side table in a model <span class="mapi-badge">v0.15</span> { #model-side-tables }
+
+A model can read a side table, for example pretrained weights. Name the settings that hold
+side table names in `side_table_params`:
+
+```python
+class Finetune(CustomModel[Settings]):
+    id = "demo.finetune"
+    side_table_params = ("pretrained",)
+
+    def fit(self, ds, s, cfg, ctx):
+        weights = ctx.side_tables[s.pretrained]          # an xr.Dataset
+        tensors, doc = tensors_from_dataset(weights)
+        ...
+```
+
+`build_manifest` writes `side_table_params` into the manifest. Static validation makes sure
+that each named table is in `data.side_tables` (`REF_UNRESOLVED` at
+`/model/settings/<param>`). The model gets the tables in `FitContext.side_tables`, by their
+names in the spec. A score request never needs a table that only the model reads: keep what
+the model learned from it in the fitted state.
+
 ## Run the contract kit
 
 `mapi-sdk` installs a pytest plugin. Thus the fixtures are available in all test suites:

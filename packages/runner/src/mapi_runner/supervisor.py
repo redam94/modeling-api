@@ -154,6 +154,8 @@ _LIB_DISTS: Final = (
 _READ_BYTES: Final = 64 * 1024
 _MEDIA_DIR: Final = "media"
 _MAX_MEDIA_WARNINGS: Final = 10
+_NVIDIA_DEVICES: Final = ("/dev/nvidia0", "/dev/nvidiactl")
+"""Device nodes the NVIDIA container runtime exposes when a GPU is attached."""
 """``MEDIA_INVALID`` / ``MEDIA_UPLOAD_FAILED`` warnings per attempt (later ones are dropped)."""
 
 
@@ -340,6 +342,7 @@ class Supervisor:
                 )
             )
             self._stderr(f"WARNING: dev mode: {self.isolation.reason}")
+        self._warn_gpu(rs)
         try:
             self._resolve_outputs(rs)
         except _ConfigError as exc:
@@ -357,6 +360,21 @@ class Supervisor:
         self._spawn_worker(rs)
         self._loop(remaining)
         return self._finalize()
+
+    def _warn_gpu(self, rs: RunSpec) -> None:
+        """v0.15: one ``GPU_UNAVAILABLE`` warning when a GPU-class run sees no NVIDIA device
+        (an executor without GPUs runs it on the CPU)."""
+        if not rs.resource_class.is_gpu:
+            return
+        if any(os.path.exists(dev) for dev in _NVIDIA_DEVICES):
+            return
+        self._emit(
+            WarningPayload(
+                code="GPU_UNAVAILABLE",
+                message="The run asked for the GPU class, but no GPU is visible. "
+                "It runs on the CPU.",
+            )
+        )
 
     # ================================================================== bootstrap
     def _bootstrap(self) -> RunSpec:
@@ -1144,7 +1162,11 @@ class Supervisor:
 
 
 def _ckpt_type(name: str) -> str:
-    return "application/json" if name.endswith(".json") else "application/zip"
+    if name.endswith(".json"):
+        return "application/json"
+    if name.endswith(".safetensors"):  # v0.15: network weights and optimizer state
+        return "application/octet-stream"
+    return "application/zip"
 
 
 def _read_fd(fd: int, limit: int) -> bytes:

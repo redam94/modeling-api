@@ -56,6 +56,7 @@ DEFAULT_CLOUDRUN_BASES: dict[str, str] = {
     "sklearn": "base-ml",
     "ts": "base-forecast",
     "causal": "base-forecast",
+    "dl": "base-dl",
 }
 """Plugin namespace → the base whose Cloud Run Jobs ship it (mirrors the docker images)."""
 
@@ -66,6 +67,7 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "sklearn": f"mapi/base-ml:{__version__}",
     "ts": f"mapi/base-forecast:{__version__}",
     "causal": f"mapi/base-forecast:{__version__}",
+    "dl": f"mapi/base-dl:{__version__}",
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
 
@@ -312,6 +314,11 @@ class Settings(BaseSettings):
         "DNS. Shared tiers still need a passing security-suite run recorded for these caps",
     )
     docker_runtime_gvisor: str = "runsc"
+    docker_gpus: bool = Field(
+        False,
+        description="Give GPU-class run containers one NVIDIA GPU (a docker device request; "
+        "needs the NVIDIA container toolkit on the host). Off: GPU-class runs use the CPU",
+    )
     executor_workdir: Path | None = None
     cancel_grace_s: float = Field(10.0, ge=0)
 
@@ -329,8 +336,9 @@ class Settings(BaseSettings):
     )
     cloudrun_job_template: str = Field(
         "mapi-{env}-{base}-{class}",
-        description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast) and "
-        "{class} (s|m|l) are substituted. Must match the Jobs Terraform creates",
+        description="Job id convention; {env}, {base} (base-bayes|base-ml|base-forecast|"
+        "base-dl) and {class} (s|m|l|gpu) are substituted. Must match the Jobs Terraform "
+        "creates",
     )
     cloudrun_plugin_bases: dict[str, str] = Field(
         default_factory=lambda: dict(DEFAULT_CLOUDRUN_BASES),
@@ -338,6 +346,11 @@ class Settings(BaseSettings):
     )
     cloudrun_default_base: str = Field(
         "base-bayes", description="Base for runs without a mapped plugin (ingest, describe)"
+    )
+    cloudrun_gpu_jobs: bool = Field(
+        False,
+        description="The inventory has the GPU Job of base-dl (Terraform exec gpu_jobs), so "
+        "GPU-class runs of dl models are placed on it. Off: the GPU class is not offered",
     )
     cloudrun_submits_per_minute: float = Field(
         150.0,

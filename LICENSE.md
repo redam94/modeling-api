@@ -5,7 +5,7 @@ into copyleft, while the hosted platform itself is protected.
 
 | Component | Paths | Licence |
 |---|---|---|
-| **SDK, contracts, built-in steps/plots/plugins, workflow runtime, CLI, Python client, GCS shim, conformance corpus** | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/steps-core`, `packages/plots-core`, `packages/workflows`, `packages/cli`, `packages/client`, `packages/gcs-shim`, `plugins/*`, `conformance/` | **Apache License 2.0** — see [LICENSE-APACHE.txt](LICENSE-APACHE.txt) |
+| **SDK, contracts, built-in steps/plots/plugins, workflow runtime, CLI, Python client, GCS shim, conformance corpus** | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/sdk-jax`, `packages/steps-core`, `packages/plots-core`, `packages/workflows`, `packages/cli`, `packages/client`, `packages/gcs-shim`, `plugins/*`, `conformance/` | **Apache License 2.0** — see [LICENSE-APACHE.txt](LICENSE-APACHE.txt) |
 | **Platform** (control plane, run harness, web apps, images, infrastructure, ops) | `packages/server`, `packages/runner`, `apps/*`, `images/`, `infra/`, `ops/`, `security/` | **Dual licence**: GNU AGPLv3 ([LICENSE-AGPL.txt](LICENSE-AGPL.txt)) **or** a commercial licence ([COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)) |
 | **Documentation** | `docs/` | CC BY 4.0 |
 

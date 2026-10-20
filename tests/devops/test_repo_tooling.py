@@ -389,5 +389,6 @@ class TestMakefile:
         version = re.search(r'^version = "(.+)"', (ROOT / "pyproject.toml").read_text(), re.M)
         assert version is not None
         assert f"mapi/$img:{version.group(1)}" in out and f"mapi/worker:{version.group(1)}" in out
-        for image in ("base-bayes", "base-ml", "base-forecast", "server", "gcs-shim", "web"):
+        images = ("base-bayes", "base-ml", "base-forecast", "base-dl", "server", "gcs-shim", "web")
+        for image in images:
             assert image in out

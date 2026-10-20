@@ -51,6 +51,7 @@ from mapi_spec.spec import (
 
 from mapi_sdk._util import dtype_family, normalise_dataset
 from mapi_sdk.bundle import Bundle, assert_no_pickle
+from mapi_sdk.collection import Collection
 from mapi_sdk.context import drop_context, extract_context, prepend_context
 from mapi_sdk.coords import canonicalise_coords
 from mapi_sdk.harness import _var_sources, fit_spec, score_bundle
@@ -572,6 +573,12 @@ def _request(
     return ScoreRequest.model_validate(doc)
 
 
+def _predictions_of(tree: xr.DataTree) -> xr.Dataset:
+    node = tree["predictions"]
+    assert isinstance(node, xr.DataTree)
+    return node.to_dataset()
+
+
 def _summary(tree: xr.DataTree) -> xr.Dataset:
     node = tree["summary"]
     assert isinstance(node, xr.DataTree)
@@ -585,6 +592,7 @@ def check_model(
     raise_on_failure: bool = True,
     checks: Sequence[str] | None = None,
     require_about: bool = False,
+    collection: Collection | None = None,
 ) -> ContractReport:
     """Run the model contract checks: fit, bundle round trip, coordinate handling, typed
     errors for every dim policy (unseen levels; gaps and out-of-range coords on datetime and
@@ -594,7 +602,12 @@ def check_model(
     forecast and a new actual moves it), unsupported modes, context-window
     equivalence, evaluate path == score path, output space, aggregation legality, additive
     contributions, no pickle, seed determinism, fast scoring == exact scoring within MCSE
-    (via the plugin's ``check_fast_score`` hook) and that the manifest's plots sanitize."""
+    (via the plugin's ``check_fast_score`` hook) and that the manifest's plots sanitize.
+
+    ``collection`` (v0.15): for a model that declares ``input="collection"``, the batch path
+    runs once - ``fit_batches`` on the collection with the fixture spec, then
+    ``score_batches`` on a few images - and must give the outputs the dataset path gives
+    (same variables and dims), only for the requested images."""
     reg = (fixture.registry or default_registry()).copy()
     reg.register_model(plugin, replace=True)
     spec = fixture.model_spec()
@@ -1276,6 +1289,46 @@ def check_model(
         xr.testing.assert_identical(s1, s2)
         return "same seed, same fit and scores"
 
+    def c_collection() -> str:
+        if collection is None:
+            raise _Skip("no collection given")
+        if caps.input != "collection":
+            raise _Skip("the model does not declare input='collection'")
+        bundle = fit_spec(spec, collection, tables, reg, keep_evaluation_bundle=False)
+        assert_no_pickle(bundle.model.native)
+        dim = collection.info.dim
+        ids = collection.manifest_dataset()[dim].values[: min(3, collection.info.n_images)]
+        payload = collection.manifest_dataset().sel({dim: ids})
+        kind = "predictive" if REPRESENTATION_RULES[rep].predictive else "expected"
+        tree = score_bundle(
+            bundle,
+            _request(kind=kind),
+            payload,
+            registry=reg,
+            collection=collection,
+            return_full=True,
+        )
+        pred = tree["predictions"].to_dataset()
+        unknown = sorted(set(map(str, pred.data_vars)) - set(manifest.outputs))
+        if unknown:
+            raise AssertionError(f"score_batches wrote undeclared outputs {unknown}")
+        for name, da in pred.data_vars.items():
+            if dim not in da.dims:
+                continue
+            got = [str(v) for v in da[dim].values]
+            if got != [str(v) for v in ids]:
+                raise AssertionError(f"{name!r} is not scored for exactly the requested images")
+        reference = _predictions_of(
+            score_on(fit_once(), _request(kind=kind), window(), return_full=True)
+        )
+        for name in pred.data_vars:
+            if name in reference and set(reference[name].dims) != set(pred[name].dims):
+                raise AssertionError(
+                    f"{name!r} has dims {sorted(map(str, pred[name].dims))} on the batch path "
+                    f"but {sorted(map(str, reference[name].dims))} on the dataset path"
+                )
+        return f"fit_batches and score_batches on {len(ids)} of {collection.info.n_images} images"
+
     all_checks: list[tuple[str, Callable[[], str | None]]] = [
         ("manifest", c_manifest),
         ("about", _about_check(manifest.about, require_about)),
@@ -1299,6 +1352,7 @@ def check_model(
         ("seed_determinism", c_seed),
         ("fast_score_matches_exact", c_fast_score),
         ("plots_sanitize", c_plots),
+        ("collection_batch_path", c_collection),
     ]
     for name, fn in all_checks:
         if checks is not None and name not in checks:

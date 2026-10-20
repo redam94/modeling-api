@@ -147,7 +147,8 @@ values for each execution are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `media_prefix` | v0.14: `{attempt prefix}media/`, or absent. When `outputs` has `media`, its prefix must be `media_prefix`. |
 | `hmac_key` | The event HMAC key of the run (`new_hmac_key()`), in base64. It has a minimum of 32 random bytes. The logs never show it: `RunSpec.redacted()` removes it and all URLs. |
 | `limits` | `RunLimits`: `log_line_bytes` (4096), `log_total_bytes` (20 MiB), `max_event_bytes` (64 KiB), `progress_interval_s` (2 s), `max_output_bytes` and `scratch_bytes` (from the resource class), `max_output_objects` (10 000), and from v0.11 `tracking` (a `TrackingLimits`, see [Tracking budgets](#tracking-budgets)) |
-| `resource_class`, `deadline`, `created_at`, `labels` | The class (S/M/L/XL), a hard UTC deadline, and metadata |
+| `resource_class`, `deadline`, `created_at`, `labels` | The class (S/M/L/XL, and from v0.15 GPU), a hard UTC deadline, and metadata |
+| `input_layouts` | v0.8: `name → layout` for dataset inputs that are not a plain dataset: `tree` (a `data.tree.zip`) or, from v0.15, `collection` (an image collection, see [Image collections](#image-collections)). An input that is not in the map is a `dataset`. |
 
 ### Environment
 
@@ -157,6 +158,10 @@ values for each execution are `MAPI_RUN_ID` and `MAPI_NONCE`.
 | `MAPI_NONCE` | executor, for each execution | 64 hex characters |
 | `MAPI_BOOTSTRAP_URL` | executor, static for each Job or backend | A template with exactly one `{nonce}`. Cloud: `gs://mapi-prod-bootstrap/{nonce}`. The execution service account reads it. This account can get and delete, but it cannot list. Local: `http://127.0.0.1:4443/storage/v1/b/mapi-local-bootstrap/o/{nonce}`. |
 | `MAPI_EXEC_TOKEN` | local executor only | The bearer token of the *exec* principal of the GCS shim. This principal can get and delete in the bootstrap bucket. **Never set in the cloud.** |
+
+The worker gets only the variables of `WORKER_ENV_ALLOWLIST`. From v0.15 the list also has
+`JAX_PLATFORMS`, `XLA_PYTHON_CLIENT_PREALLOCATE`, `XLA_PYTHON_CLIENT_MEM_FRACTION` and
+`CUDA_VISIBLE_DEVICES`, for the networks of `mapi-jax`.
 
 `RunnerEnv.from_environ()` parses these variables and gives the name of each missing variable.
 `RunnerEnv.resolved_bootstrap_url()` puts the nonce into the template.
@@ -219,7 +224,7 @@ from one domain is never valid in a different domain.
 | `progress` | `ProgressPayload{phase, fraction?, message?, eta_seconds?, chains[]}` | Maximum one in each `limits.progress_interval_s`. The platform writes it into one `run_progress` row (upsert). From v0.11, samplers fill `chains` (`ChainProgress{chain, draws_done, draws_total, tuning, divergences, step_size?, num_steps?}`). |
 | `log` | `LogPayload{stream, line, truncated, level?, fields?}` | One line, maximum `log_line_bytes`. After `log_total_bytes`, the run fails with `SANDBOX_VIOLATION` (log flood). The streams are `stdout`, `stderr`, `system` and, from v0.11, `user`. Only `user` lines have `level` and `fields`. |
 | `diagnostic` | `Diagnostic` (`mapi_spec`) | Goes into the scorecard |
-| `warning` | `WarningPayload{code, message, untrusted_text?}` | |
+| `warning` | `WarningPayload{code, message, untrusted_text?}` | v0.15: `GPU_UNAVAILABLE` when a run of the GPU class sees no NVIDIA device. The run continues on the CPU. |
 | `checkpoint` | `CheckpointPayload{name, size, crc32c, segment, draws_done?}` | `name` is relative to `checkpoint_prefix` |
 | `metric` | `MetricPayload{name, value, step?, labels}` | One scalar, for example a holdout metric at the end of a fit. From v0.11, the platform also keeps it as a point of the metric series `name`. |
 | `metrics` | `MetricBatchPayload{t0, series[]}` | v0.11. Points of metric series. See [Tracking events](#tracking-events). |
@@ -381,6 +386,58 @@ The worker messages and the warnings for media:
 | `MEDIA_UPLOAD_FAILED` (warning) | The upload failed. The run continues. |
 | `MEDIA_REJECTED` (warning, server) | The server checks failed: the object is missing, or its SHA-256, size or format does not agree with the event. The server writes no row. |
 
+## Image collections <span class="mapi-badge">v0.15</span> { #image-collections }
+
+A run that reads an image collection gets more than one input for the dataset. For the
+dataset input `dataset`:
+
+| Input | Object |
+|---|---|
+| `dataset` | `manifest.parquet` of the version |
+| `dataset.info` | `collection.json` (`CollectionInfo`) |
+| `dataset.pack.0000`, `dataset.pack.0001` … | The packs, in the order of `CollectionInfo.packs` (`pack_input(i)`) |
+| `schema` | `schema.json`, when present |
+
+`RunSpec.input_layouts["dataset"]` is `collection`. The server sets it for each input whose
+object name ends with `/manifest.parquet`. `mapi_spec.collection` has the names:
+`info_input(prefix)`, `pack_input(i, prefix)` and `part_input(i)`.
+
+A pack is a zip file. Each entry is named `<sha256>.<ext>`. Its address is
+`pack_digest(size, crc32c, md5)`: the SHA-256 of the canonical JSON of the store's own
+size, CRC32C and MD5 of the object. This is the same basis as the address of a dataset
+version. The runner calculates the digest of each signed pack URL again before it reads
+the pack. A pack without an MD5 or with a different digest stops the run with
+`INTEGRITY_FAILURE`. The runner reads the packs in ranges (HTTP `Range`), and it makes sure
+that each image has the SHA-256 of its name.
+
+The finalizer of a collection ingest:
+
+1. reads and validates `collection.json` and `schema.json`;
+2. for each pack with `source: upload`, gets the stored size, CRC32C and MD5 of the pinned
+   generation of its `part.<i>` input, calculates `pack_digest` again and compares it with
+   the digest of the pack;
+3. copies the part to `t/{tenant}/blobs/packs/{digest}.zip` (create-only, the generation
+   pinned);
+4. for each pack with `source: base`, makes sure that the base version has it.
+
+The sandbox never writes to the shared pack path.
+
+### Checkpoints of networks
+
+From v0.15, a model that trains in epochs saves checkpoints as files (`FileCheckpointSink`).
+The names in `checkpoint_prefix` are:
+
+| Name | Contents |
+|---|---|
+| `ckpt-<key>.weights.safetensors` | The weights of the network |
+| `ckpt-<key>.opt.safetensors` | The state of the optimizer |
+| `ckpt-<key>.meta.json` | The epoch, the step, the early-stopping state and the history |
+
+`<key>` has 16 to 64 lowercase hex characters (the fit key). The `checkpoint` event has
+`segment` = the epochs done and no `draws_done`. The samplers keep the names
+`ckpt-<key>.draws.zarr.zip` and `ckpt-<key>.meta.json`. The supervisor uploads
+`.safetensors` files with the content type `application/octet-stream`.
+
 ## Exit codes
 
 The supervisor exits with `0` only after it uploads the manifest and sends the `complete`
@@ -484,6 +541,7 @@ change a payload, the type checks and the tests fail on the two sides.
 | Kind | `RunSpec.spec` | Inputs | Outputs that the control plane reads |
 |---|---|---|---|
 | `ingest` | `IngestJob` (a mapping or the MFF preset. `dataset` and `source` are only for information.) | `upload` | `data.zarr.zip`, `schema.json` (`DataSchema`), `summary.json` (`DataSummary`), `profile.json`, `preview.json` |
+| `ingest` of a collection (v0.15) | `IngestJob` with `collection` (`CollectionIngest`) | `manifest`, `part.0000` …, and with a base version `base.manifest`, `base.info`, `base.pack.0000` … | `manifest.parquet`, `collection.json` (`CollectionInfo`), `members.bin`, `schema.json`, `summary.json`, `profile.json`, `preview.json`, `columns.json` (optional), `ui/explore/…`. No `data.zarr.zip`. |
 | `describe` | `DescribeJob` (`image_digest`) | none | `catalog.json` (`Catalog`) |
 | `validate` | the resolved `ModelSpec` | `dataset`, `side.<name>` | `validation.json` |
 | `fit` | the resolved `ModelSpec` (with pinned `use:` and dataset references) | `dataset`, `side.<name>` | `bundle.zarr.zip`, `diagnostics.json`, `metrics.json` (`MetricsSidecar`), `plots.json`, `coords.json` (`ScoreMetadata.fit_coords`), `ui/…` |
@@ -534,7 +592,7 @@ input never becomes a path.
 | `mapi-{env}-bootstrap` | `{nonce}` | The execution identity can get and delete, but it cannot list. 1-day lifecycle. |
 | `mapi-{env}-runs` | `t/{tenant}/runs/{run}/a{n}/[tasks/{i}/]`, with `checkpoints/` and (v0.14) `media/` in it | Written only through signed URLs |
 | `mapi-{env}-bundles` | `t/{tenant}/models/{model}/{version}/`: `bundle.zarr.zip`, `manifest.json`, `manifest.sig`, `diagnostics.json`, `plots.json`, `metrics.json`, `ui/…`. From v0.14 also `t/{tenant}/run-media/{run}/<sha256>.<ext>` (the verified media of the runs). | Control plane only. Write-once. |
-| `mapi-{env}-data` | `t/{tenant}/datasets/{sha256}/`: `data.zarr.zip`, `schema.json`, `summary.json`, `profile.json`, `preview.json` | Content-addressed |
+| `mapi-{env}-data` | `t/{tenant}/datasets/{sha256}/`: `data.zarr.zip`, `schema.json`, `summary.json`, `profile.json`, `preview.json`. A collection version (v0.15) has `manifest.parquet`, `collection.json` and `members.bin` in place of `data.zarr.zip`. From v0.15 also `t/{tenant}/blobs/packs/{digest}.zip` (the packs of image collections, shared by the versions of the tenant) | Content-addressed |
 
 The control plane gets access to storage only through the async `ObjectStore` protocol:
 

@@ -155,6 +155,8 @@ locals {
       MAPI_EXECUTOR         = "cloudrun-jobs"
       MAPI_CLOUDRUN_PROJECT = var.exec_pools[local.dispatch_pool].project
       MAPI_CLOUDRUN_REGION  = var.exec_pools[local.dispatch_pool].region
+      # v0.15: the pool has the base-dl GPU Job (exec gpu_jobs)
+      MAPI_CLOUDRUN_GPU_JOBS = contains(var.exec_pools[local.dispatch_pool].classes, "GPU") ? "true" : "false"
       # the dispatcher, reconciler and finalizer series live in this process: serve them on
       # loopback for the collector sidecar (local.metrics_ports.orchestrator)
       MAPI_WORKER_METRICS_PORT = "9464"

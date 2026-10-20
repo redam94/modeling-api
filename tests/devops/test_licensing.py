@@ -17,7 +17,7 @@ PLATFORM = "AGPL-3.0-only OR LicenseRef-mapi-commercial"
 LICENCE_DOCS = ("LICENSE.md", "docs/project/licensing.md")
 NOTICES = "THIRD-PARTY-NOTICES.md"
 DOC_DIR = "/usr/share/doc/mapi"
-IMAGES = ("base-bayes", "base-forecast", "base-ml", "gcs-shim", "server", "web")
+IMAGES = ("base-bayes", "base-dl", "base-forecast", "base-ml", "gcs-shim", "server", "web")
 
 
 @pytest.fixture(scope="module")

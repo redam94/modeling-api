@@ -28,6 +28,7 @@ import pandas as pd
 import xarray as xr
 from mapi_sdk._util import normalise_dataset
 from mapi_sdk.bundle import Bundle, MetricsReport
+from mapi_sdk.collection import Collection as ImageCollection
 from mapi_sdk.context import drop_context
 from mapi_sdk.errors import PayloadLimitError
 from mapi_sdk.harness import _to_original, score_bundle
@@ -47,8 +48,11 @@ from mapi_spec.views import COUNTERFACTUAL_VIEW, FORECAST_VIEW, SCORE_FIELDS_VIE
 from mapi_runner.jobs import INPUT_HISTORY, INPUT_SCENARIO, DeriveJob, EvaluateJob, ScoreJob
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
+    collection_cache,
     flatten,
+    is_collection,
     load_bundle,
+    load_collection,
     load_dataset,
     load_inline,
     load_side_tables,
@@ -392,7 +396,11 @@ def _write_tree(
 def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the payload")
     bundle = load_bundle(ctx)
-    data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle)
+    data: xr.Dataset | xr.DataTree | ImageCollection | None
+    if is_collection(ctx):  # v0.15: an image collection, read lazily by the harness
+        data = collection_cache(ctx, load_collection(ctx))
+    else:
+        data = _payload(ctx, INPUT_DATASET, INPUT_INLINE_DATA, bundle)
     scenario = _payload(ctx, INPUT_SCENARIO, INPUT_INLINE_SCENARIO, bundle)
     history = _optional_dataset(ctx, INPUT_HISTORY)
     tables = load_side_tables(ctx, bundle.spec)
@@ -435,7 +443,9 @@ def run_score(ctx: WorkerContext, job: ScoreJob) -> xr.DataTree:
         tree = _without_full(tree, observed=mode == "evaluate")
     try:
         flat = (
-            None if data is None else flatten(data, bundle.spec.data, load_tree_schema(ctx, data))
+            None
+            if data is None or isinstance(data, ImageCollection)
+            else flatten(data, bundle.spec.data, load_tree_schema(ctx, data))
         )
         actuals = actuals_tables(bundle, job.request, flat, tree)
     except (ValueError, KeyError) as exc:  # the comparison is a convenience; the score stands
@@ -471,7 +481,9 @@ def _default_request(bundle: Bundle, tables: dict[str, xr.Dataset]) -> ScoreRequ
 def run_evaluate(ctx: WorkerContext, job: EvaluateJob) -> MetricsReport:
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the bundle and the evaluation data")
     bundle = load_bundle(ctx)
-    data = load_dataset(ctx)
+    data: xr.Dataset | xr.DataTree | ImageCollection = (
+        collection_cache(ctx, load_collection(ctx)) if is_collection(ctx) else load_dataset(ctx)
+    )
     tables = load_side_tables(ctx, bundle.spec)
     request = job.request or _default_request(bundle, tables)
     names = job.metrics

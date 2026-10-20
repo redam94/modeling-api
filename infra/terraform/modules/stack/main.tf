@@ -8,8 +8,9 @@
 locals {
   labels = merge(var.labels, { mapi-env = var.env, managed-by = "terraform" })
 
-  runner_bases  = ["base-bayes", "base-ml", "base-forecast"]
-  runner_images = { for k, v in var.images : k => v if contains(local.runner_bases, k) }
+  runner_bases = ["base-bayes", "base-ml", "base-forecast"]
+  # v0.15: base-dl (dl.* models, the GPU Job) is optional until build-push.sh builds it
+  runner_images = { for k, v in var.images : k => v if contains(concat(local.runner_bases, ["base-dl"]), k) }
 }
 
 data "google_project" "this" {
@@ -112,6 +113,7 @@ module "exec" {
   orchestrator_sa_email  = module.control.service_accounts["orchestrator"]
   deletion_protection    = var.deletion_protection
   binary_authorization   = var.binary_authorization
+  gpu_jobs               = var.gpu_jobs
 
   class_specs  = lookup(var.exec, "class_specs", null) == null ? null : var.exec.class_specs
   dns_sinkhole = lookup(var.exec, "dns_sinkhole", null) == null ? null : var.exec.dns_sinkhole
@@ -198,7 +200,7 @@ check "perimeter_enabled" {
 
 check "runner_images_complete" {
   assert {
-    condition     = length(local.runner_images) == 0 || length(local.runner_images) == length(local.runner_bases)
+    condition     = length(local.runner_images) == 0 || length(setintersection(keys(local.runner_images), local.runner_bases)) == length(local.runner_bases)
     error_message = "Only some runner bases have images: the Job inventory is incomplete."
   }
 }

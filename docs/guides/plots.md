@@ -116,7 +116,8 @@ The **causal pack** (`causal.*`, v0.13) draws the results of the
 
 The **tabular pack** (`ml.*`) adds `ml.feature_importance`. This plot shows ranked tree
 importances, or signed coefficients for linear estimators. It reads them from the groups that
-the scikit-learn plugin and the xgboost plugin keep in their bundles.
+the scikit-learn plugin and the xgboost plugin keep in their bundles. From v0.15, the pack also has
+three plots for neural networks (see [Deep learning](#deep-learning)).
 
 The **science pack** (`sci.*`) draws gridded fields and images (`sci.field_map`,
 `sci.image_residuals`, `sci.ppc_image_grid`, `sci.power_spectrum`), areas on a map
@@ -161,6 +162,21 @@ These plots read the outputs of more model types:
   To show a different series, set `select`.
 - **Pareto k.** `core.loo_pit` shows which observations make the LOO estimate unreliable. It is
   not a default plot. Add it in the plot builder or in the `plots` list of a model.
+
+### Deep learning <span class="mapi-badge">v0.15</span> { #deep-learning }
+
+The `dl` models of `mapi-jax` keep their training history in the bundle. The fit adds these
+plots to the run:
+
+| Recipe | What it shows | Reads | Settings |
+|---|---|---|---|
+| `ml.training_curves` | One panel for each metric (loss, accuracy or error, up to 4), one line for each split (train and val, val with points). The caption gives the best validation value. It also tells you when the validation loss goes up while the training loss goes down: "The validation loss goes up while the training loss goes down: the model starts to overfit." | `metrics_history` with the label `split`, else `training` | `keys`, `label` (`split`), `x` (`step` or `epoch`), `smooth`, `log_y`, `max_points` (2000) |
+| `ml.confusion_epochs` | The confusion matrix of the validation data at up to 6 epochs: the first, some epochs between, the best and the last. The caption gives the validation accuracy at the first, the best and the last epoch. | `training.confusion` | `epochs`, `normalize` (`true` or `none`), `max_classes` (20; the others are "(other)") |
+| `ml.misclassified` | A grid of the validation images that the network classifies incorrectly, with "true → predicted (p=0.83)" above each image. The caption: "{n} of {N} validation images are wrong at epoch {e}." | `misclassified` | `max_items` (24), `columns` (6) |
+
+The fit adds a recipe only when the bundle has the group that the recipe reads. The labels
+of the images are untrusted text: the plots show them as text only. `ml.misclassified`
+draws the pixels as Plotly image traces, with no image URLs.
 
 Recipes obey the **representation** of each output. If a dim must go, a recipe adds the joint
 draws. A recipe never adds quantiles or intervals. If a summary has an extra dim, the recipe

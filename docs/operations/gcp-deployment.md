@@ -213,7 +213,7 @@ Use the console, or `google_identity_platform_*_idp_config` resources outside th
 deploy/gcp/build-push.sh --env staging
 ```
 
-The script builds `server`, `web`, `base-bayes`, `base-ml` and `base-forecast` for
+The script builds `server`, `web`, `base-bayes`, `base-ml`, `base-forecast` and `base-dl` for
 `linux/amd64`. It pushes them as `<version>-<git sha>`. Tags are immutable in the registry.
 Thus, if you run the script again for the same commit, it uses the images that are there. The
 script writes the **digests** of the images to `deploy/gcp/.out/staging/images.tfvars.json`.

@@ -5,7 +5,7 @@ write models and integrations. The copyleft licence protects the hosted platform
 
 | Component | Where | Licence |
 |---|---|---|
-| **SDK and contracts**: `mapi-spec`, `mapi-sdk`, `mapi-pymc`, `mapi-sklearn` | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn` | Apache-2.0 |
+| **SDK and contracts**: `mapi-spec`, `mapi-sdk`, `mapi-pymc`, `mapi-sklearn`, `mapi-jax` | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/sdk-jax` | Apache-2.0 |
 | **Built-ins**: steps, plots, model plugins, workflow runtime, conformance corpus | `packages/steps-core`, `packages/plots-core`, `plugins/*`, `packages/workflows`, `conformance/` | Apache-2.0 |
 | **Tools**: CLI, Python client, GCS emulator | `packages/cli`, `packages/client`, `packages/gcs-shim` | Apache-2.0 |
 | **Platform**: API server, run harness, web apps, images, infrastructure | `packages/server`, `packages/runner`, `apps/*`, `images/`, `infra/`, `ops/`, `security/` | AGPLv3 **or** a commercial licence |
@@ -39,7 +39,10 @@ The SDK uses xarray, numpy, pandas, zarr and Pydantic. The model packages use Py
 scikit-learn, xgboost and skops. The marketing-mix models run on mmm-framework (Apache-2.0).
 mmm-framework adds NumPyro and JAX (Apache-2.0) and nutpie (MIT). The time-series models
 (`ts.sarimax`, `ts.var`, `ts.ets` and the other time-series models) run on statsmodels
-(BSD-3-Clause). The plot recipes use Altair and Plotly.
+(BSD-3-Clause). The plot recipes use Altair and Plotly. From v0.15, the deep learning models
+(`mapi-jax`) use JAX, Flax and Optax (Apache-2.0). The `base-dl` image also has the NVIDIA
+CUDA runtime wheels from pip, which have the NVIDIA licence (NVIDIA Software License
+Agreement). `THIRD-PARTY-NOTICES.md` lists them.
 
 The visual workflow builder in the web app uses @xyflow/react (MIT). The API server connects
 to PostgreSQL through psycopg (LGPL-3.0). The server uses psycopg without modification, as a

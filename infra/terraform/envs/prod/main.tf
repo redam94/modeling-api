@@ -39,6 +39,7 @@ module "stack" {
 
   deletion_protection  = true
   binary_authorization = false # M5: switch on once every base digest is attested
+  gpu_jobs             = false # v0.15: the base-dl GPU Job [unverified: no GCP GPU quota tested]
 
   vpc_sc = {
     access_policy_id = var.access_policy_id

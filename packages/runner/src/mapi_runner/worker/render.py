@@ -62,7 +62,6 @@ _PLOTLY_DEFAULT_SIZE: Final = (700, 500)
 _FETCH_KEYS = frozenset({"url", "href", "src", "images", "mapbox", "map"})
 _PLOTLY_TILE_TRACES = frozenset(
     {
-        "image",
         "scattermapbox",
         "choroplethmapbox",
         "densitymapbox",
@@ -93,8 +92,9 @@ def _unsafe(detail: str, pointer: str) -> MapiError:
 
 def find_fetching_constructs(kind: str, spec: Any) -> list[str]:
     """JSON pointers of anything that could make a renderer fetch a resource: ``url`` or
-    ``href`` keys, Vega-Lite ``image`` marks, Plotly layout images and tile maps. The plot
-    sanitizer refuses all of these already; this is the renderer's own last check."""
+    ``href`` keys, Vega-Lite ``image`` marks, Plotly ``source`` keys, layout images and tile
+    maps. A Plotly ``image`` trace with inline ``z`` pixels fetches nothing and is kept. The
+    plot sanitizer refuses all of these already; this is the renderer's own last check."""
     found: list[str] = []
 
     def walk(node: Any, path: str) -> None:
@@ -104,8 +104,13 @@ def find_fetching_constructs(kind: str, spec: Any) -> list[str]:
                 if key in _FETCH_KEYS:
                     found.append(here)
                     continue
-                if key in ("mark", "type") and (
-                    value == "image" or (isinstance(value, dict) and value.get("type") == "image")
+                if (
+                    kind != "plotly"
+                    and key in ("mark", "type")
+                    and (
+                        value == "image"
+                        or (isinstance(value, dict) and value.get("type") == "image")
+                    )
                 ):
                     found.append(here)
                 if kind == "plotly" and (

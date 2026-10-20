@@ -45,15 +45,19 @@ See `docs/reference/sdk.md` and `docs/guides/plugins.md` for the full tour.
 | `split` | `time_holdout`, `as_of`, `leave_group_out`, `last_per_group`, `mask_block` |
 | `pipeline` | `Pipeline`: stages, fit, replay, inverse chain with output-space attrs and retransformation |
 | `coords` | `CoordPlan` typed errors, `canonicalise_coords`, horizon coordinates |
-| `models` | `ModelPlugin` protocol, `CustomModel` (`structural_missing`: variables whose gaps the scorecard check `data.missing` does not count), `FitOutput`, `Fitted`, `FitContext`, `ScoreContext` (`ctx.tree` for tree-input models) |
+| `models` | `ModelPlugin` protocol, `CustomModel` (`structural_missing`: variables whose gaps the scorecard check `data.missing` does not count; v0.15 `side_table_params`, `fit_batches`/`score_batches`), `FitOutput`, `Fitted`, `FitContext` (`side_tables`, `fit_key`), `ScoreContext` (`ctx.tree` for tree-input models), `requested_positions` |
 | `tree` | v0.8 tree datasets: `select_nodes` (the `data.nodes` merge), `infer_tree_schema`, `validate_tree`, `read_tree_zip`/`write_tree_zip` |
 | `summarise` | summaries per representation (circular mean, intervals and `sd` for a circular output), aggregation legality, bundle-wide draw thinning |
 | `metrics` | holdout metrics (circular metrics for an `OutputDecl.circular` output), `elpd_loo` from ArviZ with the pointwise values |
 | `bundle` | `Bundle` write/read with content hashes, pickle rejection, `MetricsReport` (`elpd`: the estimates with up to 10 000 pointwise values) |
-| `harness` | `fit_spec` (evaluate-then-refit; the model settings are parsed before the data is transformed or split) and `score_bundle` (`MODE_NOT_SUPPORTED` before any mode-specific work) |
+| `harness` | `fit_spec` (evaluate-then-refit; the model settings are parsed before the data is transformed or split) and `score_bundle` (`MODE_NOT_SUPPORTED` before any mode-specific work); both take an image `Collection` (v0.15) |
+| `collection` | v0.15 image collections: `Collection` (manifest + packs), `CollectionLoader`/`ArrayImageLoader` (`ImageLoader`: seeded block shuffle, shards, prefetch, verified reads, disk cache, `to_xarray` samples), `Augment`, `index_part`, `read_blob`, `collection_read` |
+| `images` | `image_header`, `decode_image`, `resize_array` with the `image_folder` rules (Pillow, the `images` extra) |
+| `safetensors` | numpy safetensors codec with strict caps; `weights_dataset`/`tensors_from_dataset` (the `weights(param)` layout) |
+| `checkpoints` | `FileCheckpointSink` protocol, `checkpoint_names`, `MemoryFileCheckpointSink` (epoch checkpoints of trained networks) |
 | `registry` | entry-point discovery (`mapi.steps`, `mapi.models`, `mapi.plots`) and catalog export |
 | `executors.inproc` | `InprocExecutor` (the `mapi_spec.executor.Executor` protocol, isolation NONE) |
-| `testing` | `check_step`, `check_model`, toy reference steps/models, Hypothesis strategies, pytest plugin |
+| `testing` | `check_step`, `check_model` (`collection=` runs the batch path), toy reference steps/models, `testing.images` (`shape_images`, `build_parts`, `local_collection`, `image_dataset`), Hypothesis strategies, pytest plugin |
 
 ## Tests
 

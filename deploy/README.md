@@ -24,6 +24,7 @@ context, and are tagged `mapi/<name>:<version>` by `make docker-build`.
 | `mapi/base-bayes` | Runner: PyMC models (`mmm.*`, `tabular.*`, `sci.*`) | Entry point `mapi-runner`; target `worker` = `mapi/worker` |
 | `mapi/base-ml` | Runner: scikit-learn / xgboost models (`sklearn.*`) | No PyMC (enforced) |
 | `mapi/base-forecast` | Runner: time-series and causal models (`ts.*`, `causal.*`) | Includes pymc-extras |
+| `mapi/base-dl` | Runner: deep-learning models (`dl.*`), CUDA 12 wheels for the GPU class | GPU path not tested on a GPU; runs on the CPU without one |
 | `mapi/gcs-shim` | Local Cloud Storage emulator | Development and tests only |
 | `mapi/web` | nginx: the web app (`:8080`) and the plot sandbox (`:8081`) | The two must be served from different origins |
 

@@ -129,7 +129,9 @@ async def _until_terminal(ex: CloudRunJobsExecutor, h: Any, timeout: float = 5.0
 
 def test_inventory_is_bases_times_classes_named_by_convention() -> None:
     jobs = INV.jobs()
-    assert len(jobs) == 9 and len(set(jobs)) == 9
+    # 4 bases x S/M/L + the one GPU job of base-dl (v0.15)
+    assert len(jobs) == 13 and len(set(jobs)) == 13
+    assert jobs[-1].endswith("/mapi-prod-base-dl-gpu")
     assert INV.job_name(Base.BAYES, ResourceClass.M) == (
         "projects/mapi-test/locations/europe-west1/jobs/mapi-prod-base-bayes-m"
     )
@@ -149,12 +151,36 @@ def test_inventory_is_bases_times_classes_named_by_convention() -> None:
         JobInventory(project="mapi-test", region="europe-west1", template="Mapi_{base}_{class}")
 
 
+def test_gpu_class_runs_only_on_gpu_bases() -> None:
+    """v0.15: dl models (base-dl) have a GPU job; other bases refuse the GPU class, and an
+    inventory without GPU bases does not offer it."""
+    assert INV.select(_rs(plugin="dl", rc=ResourceClass.GPU)).endswith("/mapi-prod-base-dl-gpu")
+    assert INV.select(_rs(plugin="dl", rc=ResourceClass.M)).endswith("/mapi-prod-base-dl-m")
+    assert INV.select(_rs(plugin="sci", rc=ResourceClass.S)).endswith("/mapi-prod-base-bayes-s")
+    for plugin in ("sklearn", None):
+        with pytest.raises(ValueError, match="only dl models run on the GPU class"):
+            INV.select(_rs(plugin=plugin, rc=ResourceClass.GPU))
+    cpu_only = JobInventory(project="mapi-test", region="europe-west1", gpu_bases=())
+    assert ResourceClass.GPU not in cpu_only.offered_classes
+    assert len(cpu_only.jobs()) == 12
+    with pytest.raises(ValueError, match="only dl models"):
+        cpu_only.select(_rs(plugin="dl", rc=ResourceClass.GPU))
+    with pytest.raises(ValueError, match="gpu_bases"):
+        JobInventory(
+            project="mapi-test",
+            region="europe-west1",
+            classes=(ResourceClass.S, ResourceClass.GPU),
+        )
+    caps = CloudRunJobsExecutor(FakeCloudRun.for_inventory(cpu_only), cpu_only).caps()
+    assert ResourceClass.GPU not in caps.classes
+
+
 def test_caps_and_placement() -> None:
     ex = _executor(FakeCloudRun.for_inventory(INV))
     caps = ex.caps()
     assert caps.isolation is Isolation.MICROVM and caps.max_tasks == 10_000
     assert caps.checkpoint_storage and caps.regions == ("europe-west1",)
-    assert caps.classes == [ResourceClass.S, ResourceClass.M, ResourceClass.L]
+    assert caps.classes == [ResourceClass.S, ResourceClass.M, ResourceClass.L, ResourceClass.GPU]
     assert caps.max_runtime.seconds == 24 * 3600
     # DNS enforcement is [verify M0]: shared tiers (verified, public) are refused until it
     # is asserted (mapi_spec.tenancy.TIER_PLACEMENT); the internal tier runs anywhere
@@ -357,9 +383,9 @@ async def test_restarted_executor_adopts_by_nonce_and_cancels_duplicates() -> No
     assert adopted is not None and adopted.external_id == h.external_id
     assert adopted.attempt == 1  # unknown to the backend; the reconciler restores it
     assert restarted.duplicates_cancelled == 1
-    assert fake.api_calls["list_executions"] == 9  # one listing per inventory Job
+    assert fake.api_calls["list_executions"] == len(INV.jobs())  # one listing per Job
     assert await restarted.adopt("c" * 64) is None
-    assert fake.api_calls["list_executions"] == 9  # the index is cached for a moment
+    assert fake.api_calls["list_executions"] == len(INV.jobs())  # cached for a moment
     dup = fake.executions()[1]
     await asyncio.sleep(0.2)
     assert (await restarted.status(adopted.model_copy(update={"external_id": dup.name}))).state in (

@@ -375,7 +375,8 @@ def run(
     revision: Annotated[int | None, typer.Option("--revision", "-r", min=1)] = None,
     no_cache: Annotated[bool, typer.Option("--no-cache", help="Recompute every node")] = False,
     resource_class: Annotated[
-        ResourceClass | None, typer.Option("--resource-class", help="S, M, L or XL")
+        ResourceClass | None,
+        typer.Option("--resource-class", help="S, M, L, XL or GPU (one NVIDIA L4 GPU)"),
     ] = None,
     experiment: Annotated[
         str | None,

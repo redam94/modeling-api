@@ -289,7 +289,7 @@ def fit(
         typer.Option("--remote", help="Fit on the API at this URL ('@' = configured URL)"),
     ] = None,
     resource_class: Annotated[
-        ResourceClass | None, typer.Option("--resource-class", help="(remote) S, M, L or XL")
+        ResourceClass | None, typer.Option("--resource-class", help="(remote) S, M, L, XL or GPU")
     ] = None,
     wait: Annotated[bool, typer.Option("--wait/--no-wait", help="(remote) follow the run")] = True,
     timeout: Annotated[

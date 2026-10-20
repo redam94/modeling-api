@@ -52,7 +52,7 @@ from mapi_plugin_statsmodels.statespace import (
 try:
     __version__ = _metadata.version("mapi-plugin-statsmodels")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.14.0"
+    __version__ = "0.15.0"
 
 PLUGINS: tuple[type[StatsmodelsModel[Any]], ...] = (
     SarimaxModel,

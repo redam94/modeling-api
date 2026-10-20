@@ -1,6 +1,6 @@
 [project]
 name = "mapi-sdk"
-version = "0.14.0"
+version = "0.15.0"
 description = "xarray modelling runtime: steps, pipelines, coord plans, bundles, contract kit"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,6 +20,8 @@ dependencies = [
 [project.optional-dependencies]
 testing = ["pytest>=8.3", "hypothesis>=6.112"]
 loo = ["arviz>=1.0"]
+# Image decoding (mapi_sdk.images: collections, loaders); Pillow is imported lazily.
+images = ["pillow>=11.0"]
 
 [project.entry-points.pytest11]
 mapi_sdk = "mapi_sdk.testing.plugin"

@@ -41,7 +41,7 @@ variable "subnet_cidr" {
 }
 
 variable "images" {
-  description = "Runner image per base, pinned by digest: {base-bayes = \"...@sha256:...\", base-ml = ..., base-forecast = ...}. Tags are refused."
+  description = "Runner image per base, pinned by digest: {base-bayes = \"...@sha256:...\", base-ml = ..., base-forecast = ..., base-dl = ...}. Tags are refused."
   type        = map(string)
 
   validation {
@@ -50,8 +50,38 @@ variable "images" {
   }
 
   validation {
-    condition     = length(setsubtract(keys(var.images), ["base-bayes", "base-ml", "base-forecast"])) == 0
-    error_message = "images keys must be among base-bayes, base-ml and base-forecast."
+    condition     = length(setsubtract(keys(var.images), ["base-bayes", "base-ml", "base-forecast", "base-dl"])) == 0
+    error_message = "images keys must be among base-bayes, base-ml, base-forecast and base-dl."
+  }
+}
+
+variable "gpu_jobs" {
+  description = "Create the GPU Job of base-dl (one NVIDIA L4, resource class GPU; v0.15). Needs images[\"base-dl\"] and Cloud Run GPU quota in the region (L4 GPUs are offered in some regions only). [unverified: Cloud Run Jobs GPU (L4) needs a region with GPU quota; not applied or tested against GCP]"
+  type        = bool
+  default     = false
+}
+
+variable "gpu_class_spec" {
+  nullable    = false
+  description = "CPU, memory, task timeout and GPU of the GPU class (mapi_spec.resources.RESOURCE_CLASSES[GPU]: 8 vCPU, 32 GiB, one nvidia-l4). Cloud Run needs at least 4 vCPU and 16 GiB per GPU."
+  type = object({
+    cpu         = string
+    memory      = string
+    timeout     = string
+    accelerator = string
+    gpus        = number
+  })
+  default = {
+    cpu         = "8"
+    memory      = "32Gi"
+    timeout     = "3600s"
+    accelerator = "nvidia-l4"
+    gpus        = 1
+  }
+
+  validation {
+    condition     = var.gpu_class_spec.gpus == 1
+    error_message = "A Cloud Run Job task gets one GPU."
   }
 }
 

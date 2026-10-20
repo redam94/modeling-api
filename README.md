@@ -25,7 +25,11 @@ them. Each ported case has a tutorial in `docs/tutorials/pymc-challenges/`, and
 `python -m mapi_plugin_science.export` writes the data of a case to a file that you can upload.
 The documentation (`make docs-serve`) starts at `docs/index.md`.
 
-> Status: under active development. The latest release is v0.14.0 (Run comparison, media and image data). See [CHANGELOG.md](CHANGELOG.md).
+v0.15 adds **deep learning**: `mapi-jax` networks for tables and images (training curves, early
+stopping, checkpoints and draws), image collections of up to a million images with resumable
+uploads, pretrained weights as datasets, and a GPU resource class.
+
+> Status: under active development. The latest release is v0.15.0 (Deep learning and image collections). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 
@@ -41,7 +45,7 @@ make help         # everything else
 |---|---|
 | `packages/spec` | Pure-Pydantic contracts (specs, schemas, manifests, plot envelopes) |
 | `packages/sdk` | xarray runtime: steps, pipelines, coord plans, bundles, contract kit |
-| `packages/sdk-pymc`, `packages/sdk-sklearn` | Model base classes for PyMC and scikit-learn/xgboost |
+| `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/sdk-jax` | Model base classes for PyMC and scikit-learn/xgboost, and the JAX/Flax deep learning models (`mapi-jax`) |
 | `packages/steps-core`, `packages/plots-core` | Built-in preprocessing steps and plot recipes |
 | `packages/runner` | Sandboxed run harness (supervisor + worker) |
 | `packages/server` | FastAPI control plane, job orchestration, executors |

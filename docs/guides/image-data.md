@@ -1,5 +1,5 @@
 ---
-description: Upload a zip of small images with a manifest table, get a uint8 pixels dataset, look at the images in the Data Explorer gallery, split them for a test, and classify them with a Bayesian model.
+description: Upload a zip of small images with a manifest table, get a uint8 pixels dataset, look at the images in the Data Explorer gallery, split them for a test, and classify them with a Bayesian model. Upload large image sets as collections that keep each image as a file.
 ---
 
 # Image data <span class="mapi-badge">v0.14</span>
@@ -9,9 +9,9 @@ dataset. The platform reads the images into one array of 8-bit pixels. Then you 
 the images in the Data Explorer, hold out a part of the images for a test, and classify the
 images with a model.
 
-This release is stage 1 of image support. It is for small images of the same size, for
-example a few thousand images of 64 × 64 pixels or smaller. Refer to
-[Limits](#limits) and [What comes next](#what-comes-next).
+An image folder is for small images of the same size, for example a few thousand images of
+64 × 64 pixels or smaller. Refer to [Limits](#limits). For large image sets and images with
+different sizes, use a [collection](#large-image-sets-collections) (v0.15).
 
 | See also | |
 |---|---|
@@ -240,7 +240,9 @@ plots are the ROC and precision-recall curves for each class, the confusion matr
 convergence of the chains.
 
 For larger images or more classes, use `sklearn.multiclass_classifier` on features that you
-calculate first. See [scikit-learn models](sklearn.md#multiclass).
+calculate first. See [scikit-learn models](sklearn.md#multiclass). From v0.15, the step
+`dl.embed` calculates the features with a pretrained network, and the `dl` models train
+neural networks. See [Deep learning](deep-learning.md).
 
 ## Limits
 
@@ -269,7 +271,224 @@ The ingest also stops with an error when:
 An `image_folder` upload must be the only file of a dataset version. You cannot combine it
 with other files in one version.
 
+## Large image sets: collections <span class="mapi-badge">v0.15</span> { #large-image-sets-collections }
+
+An image collection keeps each image as a file. The platform does not read all images into
+one array. Use a collection when:
+
+- you have more images than an image folder can hold (more than 100 000 images, or more
+  than 268 435 456 pixel values);
+- the images have different sizes;
+- you add images to the dataset again and again, and you do not want to upload all images
+  each time;
+- you train a neural network on all images (see [Deep learning](deep-learning.md)).
+
+A collection can hold up to 1 000 000 images. Each image is identified by the SHA-256 of
+its bytes.
+
+### Prepare the folder
+
+Put the images in a folder. Give the classes in one of two ways:
+
+- **Labels from the folders**: put the images of each class in a folder with the name of
+  the class.
+
+    ```text
+    photos/
+    ├── bottle/
+    │   ├── 0001.jpg
+    │   └── ...
+    └── can/
+        └── ...
+    ```
+
+- **A manifest table**: a CSV, TSV or Parquet file with one row for each image. The `path`
+  column gives the path of the image in the folder. The client adds the `sha256` column.
+
+    ```text
+    path,label,split
+    bottle/0001.jpg,bottle,train
+    can/0007.jpg,can,test
+    ```
+
+The images can be PNG, JPEG or TIFF files with 8 bits for each channel. The same rules as
+for an image folder apply (see [Prepare the zip](#prepare-the-zip)).
+
+### Upload the collection
+
+The client calculates the SHA-256 of each image. Then it asks the server which images the
+dataset does not have. It uploads only these images, in parts of 256 MB (zip files with no
+compression). Then it creates the version.
+
+From the command line:
+
+```bash
+mapi datasets upload-images product_photos ./photos --label-from-folder --size 64x64 --wait
+```
+
+| Option | Meaning |
+|---|---|
+| `--manifest FILE` | A manifest table. Without it, the client uses all images in the folder. |
+| `--label-from-folder` | The label of each image is the name of its first folder |
+| `--id-column`, `--label-column`, `--split-column`, `--path-column` | The columns of the manifest |
+| `--size HxW`, `--resize` | The size that samples and models use by default (`stretch`, `crop` or `pad`) |
+| `--mode` | `auto`, `gray` or `rgb` |
+| `--base-version N`, `--no-base` | The version to compare with (default: the latest ready collection version) |
+| `--part-size` | The size of each part (default 256MB) |
+| `--state FILE` | The file that records the uploaded parts (to continue later) |
+| `--wait` | Wait until the version is ready |
+
+To see the number of new images before you upload, use
+`mapi datasets missing-images product_photos ./photos`.
+
+From Python:
+
+```python
+from pathlib import Path
+
+from mapi_client import Client
+from mapi_spec import CollectionOptions
+
+api = Client()
+version = api.datasets.upload_collection(
+    "product_photos",
+    Path("photos"),
+    label_from_folder=True,
+    options=CollectionOptions(size=(64, 64)),
+    wait=True,
+)
+```
+
+In the web app:
+
+1. Open the dataset and click **Upload**.
+2. Select **Folder of images**.
+3. Select the folder. If you have a manifest, select it too.
+4. Select how to get the labels: from the folders or from a column.
+5. If necessary, set the size, the mode and the base version.
+6. Click **Upload**. The app shows the progress of each stage. It calculates the SHA-256
+   values, finds the missing images, uploads the parts and creates the version.
+
+### Continue an upload
+
+The upload of a large collection can stop, for example when the network fails. Start the
+same command again with the same folder:
+
+- The command line and the Python client read the state file. They skip the parts that the
+  server has. They sign the upload URL again for a part whose URL is expired.
+- In the web app, select the same folder again. The app skips the parts that the server
+  has.
+
+The parts are the same bytes each time that the client builds them. Thus a part that
+arrived does not need an upload again.
+
+### Add images to a collection
+
+A new version compares its images with a base version of the same dataset. By default, this
+is the latest ready collection version. The client uploads only the images that the base
+version does not have. The new version uses the stored images of the base version for the
+other images.
+
+- `--base-version 3` compares with version 3.
+- `--no-base` uploads all images.
+
+The comparison is only with the versions of the same dataset. Images that are in another
+dataset are uploaded again.
+
+### What a version holds
+
+A collection version has the layout `collection`. The version page shows the number of
+images (new and reused), the classes (the first 10), the splits, the packs, the total size,
+the range of image sizes and the base version.
+
+| Object | Contents |
+|---|---|
+| `manifest.parquet` | One row for each image: the id, the SHA-256, where the bytes are, the size, the format, the label, the split, the path and the other columns |
+| `collection.json` | A summary (`CollectionInfo`): counts, classes, splits, sizes, formats and the packs |
+| `members.bin` | The SHA-256 of each image (the server uses it to find missing images) |
+| `schema.json` | The schema: `pixels(image, y, x, channel)` (a virtual variable) and `label(image)` |
+| Packs | Zip files with the images. The tenant keeps each pack one time. All versions that use it share it. |
+
+The size of a collection version is the size of all the packs that it uses, or the size of
+its images if that is larger. The storage quota uses this size. A part keeps all its images,
+also the images that the manifest does not use. Thus put only the images of the manifest in
+the parts.
+
+The ingest run makes sure that each image in a part has the SHA-256 of its name. It also
+reads the header of each image and checks the size. Each time a run reads an image, it
+makes sure that the SHA-256 is correct.
+
+### Explore a collection
+
+The Data Explorer shows a sample of up to 2000 images (a stratified sample of the labels).
+The gallery and the field viewer work as for an image folder. The sample has the size of the
+collection, or the most frequent size with a maximum of 64 × 64.
+
+Other runs that read a collection as a dataset (Data Explorer sections, priors, checks and
+workflows) read a sample of 5000 images. The sample has the size of the collection, or
+64 × 64 if the images do not have one size. The views of a fit read 500 images in the same
+way. If a sample needs more than 268,435,456 values, the run makes the images smaller and
+keeps their aspect.
+
+### Use a collection in a spec
+
+There are two kinds of models:
+
+- Models that train on batches (`dl.cnn_classifier` and `dl.finetune_classifier`) read all
+  images. The loader reads the images from the packs while the model trains.
+- All other models read a sample of the collection as `pixels(image, y, x, channel)`. Set the
+  sample in `data.collection`:
+
+    ```yaml
+    data:
+      dataset: dataset://default/product_photos@v5
+      collection:
+        max_samples: 5000     # 1 to 100 000
+        size: [32, 32]        # default: the size of the collection
+        resize: stretch       # stretch, crop or pad
+        mode: auto            # auto, gray or rgb
+        stratify: label       # keep the share of each label (null: a uniform sample)
+        seed: 7               # default: the fit seed
+      split: {kind: column, dim: image, column: split, holdout: [test]}
+    model:
+      use: tabular.image_logistic@1
+    ```
+
+Validation shows a note with the sample size. A collection has these rules:
+
+- A collection takes row splits only: `column`, `stratified` or `leave_group_out`.
+- With a model that trains on batches, the spec takes no pipeline steps. Put augmentation
+  in the model settings.
+- Side tables and the inputs of workflows must be datasets, not collections.
+
+### Limits of collections
+
+| Limit | Value |
+|---|---|
+| Images in one version | 1 000 000 (`max_images`: 100 000 by default) |
+| Parts in one version | 64 new parts |
+| Bytes of one part | 2 GB − 64 MB (256 MB by default) |
+| Images in one part | 60 000 |
+| Packs that one version reads | 128 (new parts and packs of the base version) |
+| Size of the manifest upload | 256 MB |
+| SHA-256 values in one missing-images request | 5000 (the client sends more in groups) |
+| Classes in `collection.json` | 1000 are listed. The count of the others is `other_classes`. |
+| Sample of `data.collection` | 100 000 images |
+
+If a version needs more than 128 packs, upload all images again without a base version
+(`--no-base`). The new version then has new, larger packs.
+
+!!! note
+    The tenant keeps the packs until the tenant is deleted. A deleted dataset version does
+    not delete its packs, because other versions can use them.
+
 ## What comes next
 
-The next release (v0.15) adds a layout for collections of images that are too large for one
-array, and images with different sizes. It will use the same manifest columns.
+The known gaps of image collections in v0.15:
+
+- The client compares images only with a base version of the same dataset.
+- The platform keeps packs until the tenant is deleted.
+- There are no thumbnails for each image. The gallery shows the sample of the ingest.
+- A collection takes no pipeline steps with a model that trains on batches, and no time
+  splits.
+- Workflows and side tables do not take collections.

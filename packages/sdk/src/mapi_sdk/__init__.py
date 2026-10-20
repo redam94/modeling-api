@@ -15,6 +15,10 @@ entry points:
   :class:`MediaItem` and :func:`encode_png` (:mod:`mapi_sdk.media`);
 * :mod:`mapi_sdk.tree` - tree datasets (M4): :func:`select_nodes`, :func:`infer_tree_schema`,
   :func:`validate_tree`;
+* :mod:`mapi_sdk.collection` - image collections and loaders (v0.15): :class:`Collection`,
+  :class:`ImageLoader`, :class:`CollectionLoader`, :class:`ArrayImageLoader`,
+  :class:`Augment`; :mod:`mapi_sdk.safetensors` and :mod:`mapi_sdk.checkpoints` - network
+  weights and file checkpoints;
 * :mod:`mapi_sdk.testing` - the contract kit for plugin authors.
 
 Attributes are imported lazily (PEP 562), so ``import mapi_sdk`` is cheap and the pytest
@@ -31,6 +35,17 @@ if TYPE_CHECKING:
     from mapi_sdk.actuals import ForecastActuals
     from mapi_sdk.binding import BindingMap
     from mapi_sdk.bundle import Bundle, BundleManifest, MetricsReport
+    from mapi_sdk.checkpoints import FileCheckpoint, FileCheckpointSink
+    from mapi_sdk.collection import (
+        ArrayImageLoader,
+        Augment,
+        Batch,
+        BlobSource,
+        Collection,
+        CollectionLoader,
+        ImageLoader,
+        LocalPackSource,
+    )
     from mapi_sdk.context import ContextMark, drop_context, extract_context, prepend_context
     from mapi_sdk.coords import CanonicalPlan, CoordPlan, canonicalise_coords, horizon_coords
     from mapi_sdk.errors import (
@@ -55,9 +70,16 @@ if TYPE_CHECKING:
         ScoreContext,
         build_manifest,
         new_level_mask,
+        requested_positions,
     )
     from mapi_sdk.pipeline import Pipeline, PipelineStep
     from mapi_sdk.registry import Registry, default_registry
+    from mapi_sdk.safetensors import (
+        read_safetensors,
+        tensors_from_dataset,
+        weights_dataset,
+        write_safetensors,
+    )
     from mapi_sdk.schema import (
         SchemaIssue,
         check_dataset,
@@ -89,21 +111,31 @@ if TYPE_CHECKING:
     )
 
 _LAZY: dict[str, str] = {
+    "ArrayImageLoader": "mapi_sdk.collection",
+    "Augment": "mapi_sdk.collection",
+    "Batch": "mapi_sdk.collection",
     "BindingMap": "mapi_sdk.binding",
+    "BlobSource": "mapi_sdk.collection",
     "Bundle": "mapi_sdk.bundle",
     "BundleError": "mapi_sdk.errors",
     "BundleManifest": "mapi_sdk.bundle",
     "CancelToken": "mapi_sdk.steps",
     "CanonicalPlan": "mapi_sdk.coords",
+    "Collection": "mapi_sdk.collection",
+    "CollectionLoader": "mapi_sdk.collection",
     "ContextMark": "mapi_sdk.context",
     "CoordPlan": "mapi_sdk.coords",
     "CustomModel": "mapi_sdk.models",
+    "FileCheckpoint": "mapi_sdk.checkpoints",
+    "FileCheckpointSink": "mapi_sdk.checkpoints",
     "FitContext": "mapi_sdk.models",
     "FitHooks": "mapi_sdk.harness",
-    "ForecastActuals": "mapi_sdk.actuals",
     "FitOutput": "mapi_sdk.models",
     "Fitted": "mapi_sdk.models",
+    "ForecastActuals": "mapi_sdk.actuals",
+    "ImageLoader": "mapi_sdk.collection",
     "InprocExecutor": "mapi_sdk.executors",
+    "LocalPackSource": "mapi_sdk.collection",
     "METRICS_HISTORY": "mapi_sdk.tracking",
     "MediaItem": "mapi_sdk.media",
     "MediaTracker": "mapi_sdk.tracking",
@@ -147,26 +179,31 @@ _LAZY: dict[str, str] = {
     "new_level_mask": "mapi_sdk.models",
     "prepend_context": "mapi_sdk.context",
     "read_datatree_zip": "mapi_sdk.wire",
+    "read_safetensors": "mapi_sdk.safetensors",
     "read_zarr_zip": "mapi_sdk.wire",
+    "requested_positions": "mapi_sdk.models",
     "score_bundle": "mapi_sdk.harness",
     "select_nodes": "mapi_sdk.tree",
     "split_dataset": "mapi_sdk.split",
     "stack_rows": "mapi_sdk.wire",
     "states_equal": "mapi_sdk.steps",
     "summarize_coords": "mapi_sdk.schema",
+    "tensors_from_dataset": "mapi_sdk.safetensors",
     "thin_index": "mapi_sdk.summarise",
     "unstack_rows": "mapi_sdk.wire",
     "validate_dataset": "mapi_sdk.schema",
     "validate_tree": "mapi_sdk.tree",
+    "weights_dataset": "mapi_sdk.safetensors",
     "with_labels": "mapi_sdk.tracking",
     "write_datatree_zip": "mapi_sdk.wire",
+    "write_safetensors": "mapi_sdk.safetensors",
     "write_zarr_zip": "mapi_sdk.wire",
 }
 
 try:
     __version__ = _metadata.version("mapi-sdk")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.14.0"
+    __version__ = "0.15.0"
 
 
 def __getattr__(name: str) -> Any:
@@ -185,21 +222,31 @@ def __dir__() -> list[str]:
 __all__ = [
     "METRICS_HISTORY",
     "PREDICTIONS",
+    "ArrayImageLoader",
+    "Augment",
+    "Batch",
     "BindingMap",
+    "BlobSource",
     "Bundle",
     "BundleError",
     "BundleManifest",
     "CancelToken",
     "CanonicalPlan",
+    "Collection",
+    "CollectionLoader",
     "ContextMark",
     "CoordPlan",
     "CustomModel",
+    "FileCheckpoint",
+    "FileCheckpointSink",
     "FitContext",
     "FitHooks",
     "FitOutput",
     "Fitted",
     "ForecastActuals",
+    "ImageLoader",
     "InprocExecutor",
+    "LocalPackSource",
     "MediaItem",
     "MediaTracker",
     "MetricRecorder",
@@ -242,18 +289,23 @@ __all__ = [
     "new_level_mask",
     "prepend_context",
     "read_datatree_zip",
+    "read_safetensors",
     "read_zarr_zip",
+    "requested_positions",
     "score_bundle",
     "select_nodes",
     "split_dataset",
     "stack_rows",
     "states_equal",
     "summarize_coords",
+    "tensors_from_dataset",
     "thin_index",
     "unstack_rows",
     "validate_dataset",
     "validate_tree",
+    "weights_dataset",
     "with_labels",
     "write_datatree_zip",
+    "write_safetensors",
     "write_zarr_zip",
 ]

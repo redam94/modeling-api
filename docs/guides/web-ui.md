@@ -115,6 +115,26 @@ A version page has five tabs:
 | **Preview** | The first rows, as the ingest run wrote them (`preview.json`) |
 | **About** | The content hash, the size, the ingest run, the date of creation and the version message |
 
+**Folder of images** <span class="mapi-badge">v0.15</span>. Upload a folder of images as an
+[image collection](image-data.md#large-image-sets-collections):
+
+1. Select **Folder of images**, then select the folder.
+2. If you have a manifest table, select it too.
+3. Select how to get the labels: **Label from folder** or a label column. If necessary,
+   select the split column and the id column.
+4. If necessary, set the size (height × width), the resize, the mode and the base version
+   (**latest** or **none**).
+5. Click **Upload**.
+
+The app shows the progress: the images that it hashed, the check for missing images, each
+part with its bytes, and the version. A part that fails is sent again up to three times. If
+you reload the page, select the same folder again. The app skips the parts that the server
+has.
+
+The version page of a collection shows the badge **Image collection** and the counts: the
+images (new and reused), the first 10 classes, the splits, the packs, the total size, the
+range of image sizes and the base version.
+
 `dataset://default/eu_media_daily@v1` (the copy button next to the title) is the reference
 that specs and score requests use. When you submit a run, `@latest` resolves to the newest
 ready version. The run records the version that it got.
@@ -239,6 +259,11 @@ The **Metrics** tab shows the metrics that the run logged (see
 
 If the run did not log metrics, the tab tells you so.
 
+A network of `mapi-jax` (v0.15) logs `loss` and `accuracy` with the label `split`. Select
+**Colour by: split** to compare the training and the validation curves. The **Media** tab
+shows `val_predictions` and `confusion` at each evaluation. See
+[Deep learning](deep-learning.md#read-the-training).
+
 #### Media tab <span class="mapi-badge">v0.14</span> { #media-tab }
 
 The **Media** tab shows the images and the tables that the run logged (see
@@ -264,7 +289,8 @@ the run to an experiment.
 - **Cancel**: stops an active run. Fits with checkpoints stop as `partial`.
 - **Resume**: a `partial` run continues from its checkpoints as a new attempt.
 - **Retry**: makes a new run from a failed run. After `RESOURCE_EXHAUSTED`, the dialog
-  recommends the next resource class.
+  recommends the next resource class. From v0.15 the class select also has **GPU** ("One
+  NVIDIA L4 GPU. Only for models that use a GPU."). The dialog never recommends it.
 
 A fit that succeeded links to its model version: **Inspect model://default/eu-geo-mmm@v1**.
 
@@ -492,7 +518,8 @@ The screens link to each other:
 The catalog shows the contents of the runner image. Its sandboxed *describe* run exports
 these contents, and its digest identifies them:
 
-- **Models**: inference, representation, score modes and base image.
+- **Models**: inference, representation, score modes and base image. From v0.15, a model
+  that can use a GPU (`resources.gpu`) has the badge **GPU**.
 - **Steps**: kind, if it learns state, invertibility and summary.
 - **Plots**: a card for each plot recipe, with an example plot made from synthetic data, its
   pack, its title, a summary and the bundle groups that it needs. The buttons above the cards

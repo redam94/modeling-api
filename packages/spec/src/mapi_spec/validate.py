@@ -13,7 +13,10 @@
 7. the model's schema template is resolved and compared with the final stage; spec dim
    policies may only *tighten* the plugin's;
 8. recursive forecasting (a target-dependent lag feeding a longer holdout) is rejected
-   unless the model owns recursion; outputs, plots, metrics and resource class are checked.
+   unless the model owns recursion; outputs, plots, metrics and resource class are checked;
+9. (v0.15) the model's side tables exist; an image collection dataset takes no pipeline
+   steps for a model that trains on batches and only row splits; GPU class and epoch
+   checkpoints match the model.
 
 :func:`validate_score_request` runs the static CoordPlan checks for a ScoreRequest from
 metadata only (resolved spec + fit coordinate summaries + dim policies).
@@ -41,6 +44,7 @@ from mapi_spec.capabilities import (
     summary_allowed,
 )
 from mapi_spec.catalog import Catalog, StepCatalogEntry
+from mapi_spec.collection import CollectionRead
 from mapi_spec.coords import CoordSummary, DataSummary, parse_freq
 from mapi_spec.effects import ContextNeed, Stage, StepKind, propagate
 from mapi_spec.errors import (
@@ -53,6 +57,7 @@ from mapi_spec.errors import (
     json_pointer,
 )
 from mapi_spec.loader import spec_hash
+from mapi_spec.resources import ResourceClass
 from mapi_spec.schema import (
     NUMERIC_DTYPES,
     DataSchema,
@@ -72,7 +77,7 @@ from mapi_spec.spec import (
     StratifiedSplit,
 )
 from mapi_spec.template import TemplateError
-from mapi_spec.tree import NodeSelectionError, TreeSchema
+from mapi_spec.tree import DataLayout, NodeSelectionError, TreeSchema
 
 __all__ = [
     "KNOWN_METRICS",
@@ -130,6 +135,11 @@ class ResolvedModel(StrictModel):
     effective_policies: dict[str, DimPolicy] = Field(default_factory=dict)
     outputs: list[str] = Field(default_factory=list)
     derived: list[str] = Field(default_factory=list)
+    side_tables: list[str] = Field(
+        default_factory=list,
+        description="v0.15: the data.side_tables entries the model reads (fit time only)",
+        exclude_if=lambda v: not v,
+    )
 
 
 class ResolvedSpec(StrictModel):
@@ -522,12 +532,17 @@ def validate_spec(
     raw_schema: DataSchema,
     *,
     tree_schema: TreeSchema | None = None,
+    dataset_layout: DataLayout = "dataset",
+    side_table_layouts: Mapping[str, DataLayout] | None = None,
 ) -> SpecValidation:
     """Statically validate ``spec`` against ``catalog`` and the dataset's ``raw_schema``.
 
     For a tree dataset (M4) pass its ``tree_schema`` too (``raw_schema`` is then its root
     node's schema and is not used): the pipeline input is resolved from ``data.nodes`` by
-    :func:`resolve_input_schema`.
+    :func:`resolve_input_schema`. For an image collection (v0.15) pass
+    ``dataset_layout="collection"`` (``raw_schema`` is the collection's schema, with the
+    virtual pixels variable); ``side_table_layouts`` (name → layout) lets the check refuse
+    side tables that are collections.
     """
     # 0. tree datasets: the flat schema data.nodes selects ------------------------------
     flat, issues = resolve_input_schema(spec, raw_schema, tree_schema)
@@ -642,6 +657,15 @@ def validate_spec(
         _check_owned(resolved_model.capabilities, owned_candidates, issues)
         _check_calibration(spec, resolved_model.capabilities, issues)
 
+    # 9. image collections and side table layouts (v0.15) --------------------------------
+    _check_layouts(
+        spec,
+        resolved_model.capabilities if resolved_model is not None else None,
+        dataset_layout,
+        side_table_layouts or {},
+        issues,
+    )
+
     resolved: ResolvedSpec | None = None
     if not has_errors(issues) and resolved_model is not None and all(resolved_steps):
         resolved = ResolvedSpec(
@@ -654,6 +678,80 @@ def validate_spec(
             model=resolved_model,
         )
     return SpecValidation(issues=issues, stages=stages, resolved=resolved)
+
+
+_ROW_SPLITS = ("column", "stratified", "leave_group_out")
+_COLLECTION_STEPS_ACTION = (
+    "Remove the steps. Put augmentation in the model settings, or set data.collection to "
+    "read a sample as a dataset."
+)
+
+
+def _check_layouts(
+    spec: ModelSpec,
+    caps: Capabilities | None,
+    layout: DataLayout,
+    side_table_layouts: Mapping[str, DataLayout],
+    issues: list[Issue],
+) -> None:
+    """v0.15 rules for image collections (I-3 rule 2)."""
+    for name in sorted(spec.data.side_tables):
+        if side_table_layouts.get(name) == "collection":
+            issues.append(
+                _issue(
+                    ErrorCode.SCHEMA_INVALID,
+                    json_pointer("data", "side_tables", name),
+                    f"side table {name!r} is an image collection. Side tables must be datasets",
+                    suggested_action="Use a dataset version (for example a weights dataset) "
+                    "as the side table.",
+                )
+            )
+    if layout != "collection":
+        if spec.data.collection is not None:
+            issues.append(
+                _issue(
+                    ErrorCode.SCHEMA_INVALID,
+                    "/data/collection",
+                    "the dataset is not an image collection. The run ignores data.collection",
+                    severity=Severity.WARNING,
+                    suggested_action="Remove data.collection, or use an image collection version.",
+                )
+            )
+        return
+    split = spec.data.split
+    if split is not None and split.kind not in _ROW_SPLITS:
+        issues.append(
+            _issue(
+                ErrorCode.SPLIT_INVALID,
+                "/data/split/kind",
+                "a collection takes row splits: column, stratified or leave_group_out",
+                suggested_action="Use a column split on the split column, or a stratified "
+                "split on the label.",
+            )
+        )
+    if caps is None:
+        return
+    if caps.input == "collection":
+        if spec.pipeline:
+            issues.append(
+                _issue(
+                    ErrorCode.SCHEMA_INVALID,
+                    "/pipeline",
+                    "a collection dataset takes no pipeline steps",
+                    suggested_action=_COLLECTION_STEPS_ACTION,
+                )
+            )
+    else:
+        read = spec.data.collection or CollectionRead()
+        issues.append(
+            _issue(
+                ErrorCode.SCHEMA_INVALID,
+                "/data/collection",
+                f"the run reads a sample of at most {read.max_samples} images as "
+                "pixels(image, y, x, channel)",
+                severity=Severity.INFO,
+            )
+        )
 
 
 def _check_calibration(spec: ModelSpec, caps: Capabilities, issues: list[Issue]) -> None:
@@ -840,6 +938,23 @@ def _check_model(
             )
         )
 
+    # v0.15: side tables the model reads (pretrained weights), like a step's
+    tables: list[str] = []
+    for param in man.side_table_params:
+        for key, name in _names(settings.get(param)):
+            if name not in tables:
+                tables.append(name)
+            if name not in spec.data.side_tables:
+                issues.append(
+                    Issue(
+                        code=ErrorCode.REF_UNRESOLVED,
+                        pointer=join_pointer(
+                            "/model/settings", param, *(() if key is None else (key,))
+                        ),
+                        message=f"side table {name!r} is not declared in data.side_tables",
+                    )
+                )
+
     effective: dict[str, DimPolicy] = {}
     input_schema: DataSchema | None = None
     if model_schema is not None:
@@ -956,6 +1071,40 @@ def _check_model(
                 f"{man.resources.min_class.value}",
             )
         )
+    # v0.15: the GPU class (one accelerator) is only placed for models that use it (the GPU
+    # Job of the Cloud Run inventory is base-dl only), so another model is refused here
+    # rather than at every dispatch attempt
+    gpu_class = spec.execution.resource_class is ResourceClass.GPU
+    if gpu_class and not man.resources.gpu:
+        issues.append(
+            Issue(
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                pointer="/execution/resource_class",
+                message=f"model {man.id!r} does not use a GPU. Only models that use a GPU "
+                "run on the GPU class",
+                suggested_action="Use a CPU class (S, M, L).",
+            )
+        )
+    elif man.resources.gpu and not gpu_class:
+        issues.append(
+            Issue(
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                severity=Severity.INFO,
+                pointer="/execution/resource_class",
+                message="the model can use the GPU class. It also runs on the CPU, more slowly",
+            )
+        )
+    checkpoint = mb.fit.checkpoint
+    if checkpoint is not None and checkpoint.every_epochs is not None and not caps.checkpointable:
+        issues.append(
+            Issue(
+                code=ErrorCode.CAPABILITY_UNSUPPORTED,
+                severity=Severity.WARNING,
+                pointer="/model/fit/checkpoint/every_epochs",
+                message=f"model {man.id!r} cannot save checkpoints. The run ignores "
+                "checkpoint.every_epochs",
+            )
+        )
 
     return ResolvedModel(
         use=str(mb.use),
@@ -965,6 +1114,7 @@ def _check_model(
         effective_policies=effective,
         outputs=sorted(man.outputs),
         derived=sorted(derived),
+        side_tables=tables,
     )
 
 
@@ -1195,6 +1345,9 @@ def validate_score_request(
         return to_canon.get(name, name)
 
     # side tables ----------------------------------------------------------------------
+    # Only the steps that run on the payload need their tables. A table that only the model
+    # reads (v0.15: pretrained weights, rs.model.side_tables) is used at fit time; the fitted
+    # model holds what it learned from it, so a score request never needs it.
     needed: set[str] = set()
     for step in executed:
         needed.update(step.side_tables)

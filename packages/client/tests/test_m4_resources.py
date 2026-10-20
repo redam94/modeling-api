@@ -59,7 +59,7 @@ def test_create_version_from_an_assembly(api: respx.MockRouter, scoped: Client) 
     body = json.loads(route.calls.last.request.content)
     assert set(body) == {"assembly", "message"}
     assert body["assembly"]["sources"][0]["upload_id"] == UPL
-    with pytest.raises(ValidationError, match="not both"):
+    with pytest.raises(ValidationError, match="not several"):
         scoped.datasets.create_version(
             DS, upload_id=UPL, mapping=IngestMapping(format="netcdf"), assembly=_assembly()
         )

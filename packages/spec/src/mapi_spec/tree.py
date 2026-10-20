@@ -61,9 +61,10 @@ NodePath = Annotated[str, StringConstraints(pattern=NODE_PATH_RE)]
 
 ROOT: Final = "/"
 
-DataLayout = Literal["dataset", "tree"]
-"""How a dataset version is stored: one ``xr.Dataset`` (``data.zarr.zip``) or an
-``xr.DataTree`` (``data.tree.zip`` with a ``tree_schema.json``)."""
+DataLayout = Literal["dataset", "tree", "collection"]
+"""How a dataset version is stored: one ``xr.Dataset`` (``data.zarr.zip``), an
+``xr.DataTree`` (``data.tree.zip`` with a ``tree_schema.json``) or, from v0.15, an image
+collection (``manifest.parquet`` + ``collection.json`` + packs; :mod:`mapi_spec.collection`)."""
 
 TreeJoin = Literal["exact", "inner", "outer"]
 """How the coords of merged nodes (or sources) align (``xr.merge``'s ``join``)."""

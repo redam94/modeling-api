@@ -61,6 +61,7 @@ __all__ = [
     "score_tree",
     "spectrum_tree",
     "swatch_tree",
+    "training_tree",
     "vector_tree",
 ]
 
@@ -807,6 +808,139 @@ def loss_history_tree() -> xr.DataTree:
     )
 
 
+TRAIN_CLASSES = ["circle", "square", "cross"]
+
+
+def _shape_thumb(label: str, side: int, rng: np.random.Generator, rgb: bool) -> np.ndarray:
+    """A noisy ``side x side`` uint8 drawing of a circle, a square or a cross."""
+    yy, xx = np.meshgrid(np.linspace(-1, 1, side), np.linspace(-1, 1, side), indexing="ij")
+    if label == "circle":
+        mask = np.abs(np.hypot(xx, yy) - 0.6) < 0.18
+    elif label == "square":
+        mask = (np.maximum(np.abs(xx), np.abs(yy)) < 0.7) & (
+            np.maximum(np.abs(xx), np.abs(yy)) > 0.45
+        )
+    else:
+        mask = (np.abs(xx) < 0.15) | (np.abs(yy) < 0.15)
+    img = np.where(mask, 0.85, 0.1) + rng.normal(0, 0.12, size=mask.shape)
+    channels = [img * k for k in (1.0, 0.7, 0.4)] if rgb else [img]
+    return (np.clip(np.stack(channels, axis=-1), 0, 1) * 255).round().astype(np.uint8)
+
+
+def training_tree(
+    *, overfit: bool = True, epochs: int = 10, steps_per_epoch: int = 40, rgb: bool = True
+) -> xr.DataTree:
+    """A ``dl.cnn_classifier``-like bundle on 3 classes (``circle``, ``square``, ``cross``):
+
+    * ``model/metrics_history``: ``loss(step, split)`` and ``accuracy(step, split)`` (batch
+      values for ``train`` at every step, ``val`` at each epoch end), ``lr(step)`` and
+      ``epoch(step)``, as the v0.11 tracker writes them;
+    * ``model/training``: the per-epoch ``train_*``/``val_*`` pairs, ``lr`` and the validation
+      ``confusion(epoch, true_class, pred_class)``; best epoch 7 when ``overfit`` (the
+      validation loss goes up over the last epochs), else the last;
+    * ``model/misclassified``: 12 wrong 16 x 16 validation thumbnails (RGB or gray).
+    """
+    rng = _rng(41)
+    n_steps = epochs * steps_per_epoch
+    step = np.arange(1, n_steps + 1)
+    t = step / steps_per_epoch  # epochs done (fractional)
+    train_loss = 1.1 * np.exp(-t / 2.5) + 0.05 + 0.08 * rng.standard_normal(n_steps)
+    train_acc = np.clip(1 - 0.67 * np.exp(-t / 2.0) + 0.04 * rng.standard_normal(n_steps), 0, 1)
+    ends = np.arange(1, epochs + 1) * steps_per_epoch
+    e = np.arange(1, epochs + 1, dtype=float)
+    val_loss = 1.15 * np.exp(-e / 2.2) + 0.18
+    if overfit:
+        val_loss = val_loss + 0.06 * np.maximum(e - 7, 0.0) ** 1.3
+    val_acc = np.clip(
+        1 - 0.66 * np.exp(-e / 2.0) - (0.02 * np.maximum(0, e - 7) if overfit else 0), 0, 1
+    )
+    loss = np.full((n_steps, 2), np.nan)
+    acc = np.full((n_steps, 2), np.nan)
+    loss[:, 0], acc[:, 0] = train_loss, train_acc
+    loss[ends - 1, 1], acc[ends - 1, 1] = val_loss, val_acc
+    epoch_metric = np.full(n_steps, np.nan)
+    epoch_metric[ends - 1] = e
+    lr = 1e-3 * 0.5 * (1 + np.cos(np.pi * (step - 1) / n_steps))
+    history = xr.Dataset(
+        {
+            "loss": (("step", "split"), loss),
+            "accuracy": (("step", "split"), acc),
+            "lr": (("step",), lr),
+            "epoch": (("step",), epoch_metric),
+        },
+        coords={"step": step, "split": ["train", "val"]},
+        attrs={"mapi_scalars": "{}", "mapi_params": "{}", "mapi_tags": "{}"},
+    )
+    best = int(np.argmin(val_loss)) + 1
+    per_epoch = {
+        "train_loss": train_loss.reshape(epochs, steps_per_epoch).mean(axis=1),
+        "val_loss": val_loss,
+        "train_accuracy": train_acc.reshape(epochs, steps_per_epoch).mean(axis=1),
+        "val_accuracy": val_acc,
+        "lr": lr[ends - 1],
+    }
+    k = len(TRAIN_CLASSES)
+    n_per_class = 20
+    confusion = np.zeros((epochs, k, k), dtype=np.int64)
+    for i, acc_e in enumerate(val_acc):
+        for c in range(k):
+            right = round(float(n_per_class * acc_e))
+            wrong = n_per_class - right
+            confusion[i, c, c] = right
+            confusion[i, c, (c + 1) % k] += wrong - wrong // 3
+            confusion[i, c, (c + 2) % k] += wrong // 3
+    training = xr.Dataset(
+        {name: (("epoch",), values) for name, values in per_epoch.items()}
+        | {"confusion": (("epoch", "true_class", "pred_class"), confusion)},
+        coords={
+            "epoch": np.arange(1, epochs + 1),
+            "true_class": TRAIN_CLASSES,
+            "pred_class": TRAIN_CLASSES,
+        },
+        attrs={
+            "task": "classification",
+            "monitor": "val_loss",
+            "best_epoch": best,
+            "stopped_early": 0,
+            "epochs_run": epochs,
+            "steps": n_steps,
+            "mapi_training": "1",
+        },
+    )
+    n_wrong = 12
+    true_idx = rng.integers(0, k, n_wrong)
+    pred_idx = (true_idx + rng.integers(1, k, n_wrong)) % k
+    thumbs = np.stack([_shape_thumb(TRAIN_CLASSES[c], 16, rng, rgb) for c in true_idx])
+    prob = np.sort(rng.uniform(0.4, 0.95, n_wrong))[::-1]
+    wrong_group = xr.Dataset(
+        {
+            "thumb": (("example", "ty", "tx", "channel"), thumbs),
+            "prob": (("example",), prob),
+            "true_prob": (("example",), (1 - prob) * rng.uniform(0.3, 0.9, n_wrong)),
+        },
+        coords={
+            "example": np.arange(n_wrong),
+            "image_id": ("example", [f"img_{i:03d}.png" for i in range(n_wrong)]),
+            "true_label": ("example", [TRAIN_CLASSES[c] for c in true_idx]),
+            "pred_label": ("example", [TRAIN_CLASSES[c] for c in pred_idx]),
+        },
+        attrs={
+            "epoch": best,
+            "n_wrong": n_wrong + 5,
+            "n_val": n_per_class * k,
+            "color": "rgb" if rgb else "gray",
+        },
+    )
+    return xr.DataTree.from_dict(
+        {
+            "/": xr.Dataset(attrs={"bundle_id": "bundle-cnn"}),
+            "/model/metrics_history": history,
+            "/model/training": training,
+            "/model/misclassified": wrong_group,
+        }
+    )
+
+
 def loo_tree() -> xr.DataTree:
     """A normal model of 40 measurements with one gross error (observation 7):
     ``log_likelihood``, ``posterior_predictive`` and ``observed_data`` of ``y(obs)``. The
@@ -1226,6 +1360,7 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
     bundle = bundle_tree()
     scored = score_tree()
     mmm = mmm_tree()
+    training = training_tree()
     return {
         "core.data_overview": (panel_data(), {}),
         "core.prior_predictive": (bundle, {}),
@@ -1267,6 +1402,9 @@ def example_inputs() -> dict[str, tuple[Any, dict[str, Any]]]:
         "core.roc_pr": (classifier_tree(), {}),
         "core.confusion": (classifier_tree(), {"threshold": "auto"}),
         "core.loss_curve": (loss_history_tree(), {}),
+        "ml.training_curves": (training, {}),
+        "ml.confusion_epochs": (training, {}),
+        "ml.misclassified": (training, {}),
         "core.loo_pit": (loo_tree(), {}),
         "sci.area_map": (area_map_tree(), {"observed": "smr", "show_edges": True}),
         "sci.phylogeny": (phylogeny_tree(), {}),

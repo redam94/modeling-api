@@ -7,7 +7,8 @@ split plans, statistical test results, governance policies and validation, the D
 Model Explorer views and budget optimisation; and the v0.11 run tracking contracts: metric,
 param and tag keys, tracking budgets and the run-search grammar; and the v0.14 contracts:
 run media, experiments, saved run views, run comparison, image-folder ingest and the
-column and stratified splits).
+column and stratified splits; and the v0.15 contracts: image collections, safetensors
+weights, the GPU resource class and model side tables).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -64,6 +65,41 @@ from mapi_spec.catalog import (
     PlotCatalogEntry,
     StepCatalogEntry,
     catalog_about_issues,
+)
+from mapi_spec.collection import (
+    BASE_INFO_INPUT,
+    BASE_MANIFEST_INPUT,
+    COLLECTION_FORMAT,
+    COLLECTION_INFO,
+    COLLECTION_MANIFEST,
+    COLLECTION_MEMBERS,
+    DEFAULT_PART_BYTES,
+    IMAGE_FORMATS,
+    INGEST_MANIFEST_INPUT,
+    MANIFEST_FIXED,
+    MANIFEST_RESERVED,
+    MAX_BLOB_QUERY,
+    MAX_COLLECTION_CLASSES,
+    MAX_COLLECTION_IMAGES,
+    MAX_COLLECTION_PARTS,
+    MAX_MANIFEST_BYTES,
+    MAX_PART_BYTES,
+    MAX_PART_ENTRIES,
+    MAX_VERSION_PACKS,
+    PACK_OBJECT_PREFIX,
+    PART_ENTRY_RE,
+    ClassCount,
+    CollectionInfo,
+    CollectionIngest,
+    CollectionOptions,
+    CollectionRead,
+    CollectionSource,
+    PackInfo,
+    info_input,
+    pack_digest,
+    pack_input,
+    pack_object_name,
+    part_input,
 )
 from mapi_spec.conformance_executor import EXECUTOR_CONFORMANCE, ConformanceCase
 from mapi_spec.coords import CoordSummary, DataSummary, parse_freq
@@ -125,6 +161,9 @@ from mapi_spec.guided import (
     suggest_roles,
 )
 from mapi_spec.ingest import (
+    WEIGHTS_ATTR,
+    WEIGHTS_DIM,
+    WEIGHTS_VAR,
     AssemblySource,
     Hdf5Coord,
     Hdf5Mapping,
@@ -137,6 +176,7 @@ from mapi_spec.ingest import (
     MeridianColumns,
     MffOptions,
     UploadInspection,
+    WeightsOptions,
     WideVarMapping,
 )
 from mapi_spec.jsonschema_export import export_schemas
@@ -191,7 +231,7 @@ from mapi_spec.refs import (
     WorkflowRef,
     resolve_version,
 )
-from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
+from mapi_spec.resources import CPU_CLASSES, RESOURCE_CLASSES, ResourceClass
 from mapi_spec.run import (
     MetricBatchPayload,
     MetricSeriesBatch,
@@ -329,24 +369,49 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.14.0"
+    __version__ = "0.15.0"
 
 __all__ = [
     "API_VERSION",
+    "BASE_INFO_INPUT",
+    "BASE_MANIFEST_INPUT",
+    "COLLECTION_FORMAT",
+    "COLLECTION_INFO",
+    "COLLECTION_MANIFEST",
+    "COLLECTION_MEMBERS",
     "CONTRACT_VERSION",
+    "CPU_CLASSES",
+    "DEFAULT_PART_BYTES",
     "DEFAULT_PRICE_TABLE",
     "ERROR_INFO",
     "EXECUTOR_CONFORMANCE",
     "GOVERNANCE_CHECKS",
     "GUIDED_TEMPLATES",
+    "IMAGE_FORMATS",
+    "INGEST_MANIFEST_INPUT",
+    "MANIFEST_FIXED",
+    "MANIFEST_RESERVED",
+    "MAX_BLOB_QUERY",
+    "MAX_COLLECTION_CLASSES",
+    "MAX_COLLECTION_IMAGES",
+    "MAX_COLLECTION_PARTS",
+    "MAX_MANIFEST_BYTES",
+    "MAX_PART_BYTES",
+    "MAX_PART_ENTRIES",
     "MAX_TREE_DEPTH",
     "MAX_TREE_NODES",
+    "MAX_VERSION_PACKS",
     "NODE_IMPLEMENTATIONS",
+    "PACK_OBJECT_PREFIX",
+    "PART_ENTRY_RE",
     "PERMISSIONS",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
     "SCORECARD_CHECKS",
+    "WEIGHTS_ATTR",
+    "WEIGHTS_DIM",
+    "WEIGHTS_VAR",
     "WORKFLOW_TEMPLATES",
     "About",
     "AboutKind",
@@ -372,6 +437,12 @@ __all__ = [
     "CheckResult",
     "ChooserAnswer",
     "ChooserResult",
+    "ClassCount",
+    "CollectionInfo",
+    "CollectionIngest",
+    "CollectionOptions",
+    "CollectionRead",
+    "CollectionSource",
     "ColumnProfile",
     "ColumnSplit",
     "Condition",
@@ -452,6 +523,7 @@ __all__ = [
     "OptimizeResult",
     "OutputDecl",
     "OutputSelector",
+    "PackInfo",
     "ParamItem",
     "ParamsPayload",
     "PlotBindings",
@@ -531,6 +603,7 @@ __all__ = [
     "VersionRange",
     "WebhookEnvelope",
     "WebhookEventType",
+    "WeightsOptions",
     "WhatIfScenario",
     "WideVarMapping",
     "WorkflowRef",
@@ -570,6 +643,7 @@ __all__ = [
     "export_schemas",
     "generate_token",
     "http_status",
+    "info_input",
     "is_ancestor",
     "json_pointer",
     "kill_switch_decision",
@@ -584,6 +658,9 @@ __all__ = [
     "node_join",
     "node_name",
     "node_parent",
+    "pack_digest",
+    "pack_input",
+    "pack_object_name",
     "param_text",
     "parse_document",
     "parse_expression",
@@ -594,6 +671,7 @@ __all__ = [
     "parse_run_ref",
     "parse_summary",
     "parse_token",
+    "part_input",
     "plan_folds",
     "plan_group_folds",
     "plan_leases",

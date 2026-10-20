@@ -8,10 +8,18 @@ M4: a version may combine several uploads (``assembly``: one ingest run with inp
 ``upload.<i>``) and be a tree (``layout: tree``, ``data.tree.zip`` + ``tree_schema``). An
 upload can be *inspected* first (an ``inspect`` run listing its groups and arrays from
 metadata only), which a raw HDF5 mapping needs.
+
+v0.15: a version may be an image collection (``layout: collection``, ``collection``: a
+manifest upload plus zip parts of images, deduplicated against a base version). Uploads are
+resumable: ``get_upload`` says whether the file arrived and ``renew_upload`` signs a fresh
+PUT; ``find_missing_images`` answers which images a base version lacks from its
+``members.bin`` (sorted raw digests, read once and searched in pure Python).
 """
 
 from __future__ import annotations
 
+import contextlib
+from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -19,6 +27,8 @@ from fastapi import APIRouter, Path, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from mapi_spec.api import (
     ArtifactLink,
+    BlobMissing,
+    BlobQuery,
     Dataset,
     DatasetCreate,
     DatasetVersion,
@@ -32,6 +42,14 @@ from mapi_spec.api import (
     new_id,
 )
 from mapi_spec.audit import AuditAction
+from mapi_spec.collection import (
+    COLLECTION_INFO,
+    COLLECTION_MANIFEST,
+    COLLECTION_MEMBERS,
+    MAX_MANIFEST_BYTES,
+    MAX_PART_BYTES,
+    CollectionInfo,
+)
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.ingest import UploadInspection
@@ -64,7 +82,12 @@ from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link
 from mapi_server.services.quotas import admit_storage, charge_egress
 from mapi_server.services.runs import load_run, now
-from mapi_server.services.submit import submit_ingest, submit_inspect
+from mapi_server.services.specs import layout_of
+from mapi_server.services.submit import (
+    submit_collection_ingest,
+    submit_ingest,
+    submit_inspect,
+)
 
 __all__ = ["router"]
 
@@ -78,7 +101,15 @@ ARTIFACT_NAMES = (
     INGEST_COLUMNS,
     DATATREE_OUTPUT,  # M4 tree versions
     TREE_SCHEMA_OUTPUT,
+    COLLECTION_MANIFEST,  # v0.15 collection versions
+    COLLECTION_INFO,
 )
+MAX_MEMBERS_BYTES = 32 * 1024**2
+"""``members.bin`` holds 32 bytes per distinct image (at most 1 000 000 images)."""
+_MEMBERS_CACHE_SIZE = 4
+_members_cache: OrderedDict[tuple[str, str, int], bytes] = OrderedDict()
+"""``members.bin`` bytes by (bucket, name, generation): a generation never changes, so the
+entries never go stale; a small LRU keeps repeated ``blobs/missing`` chunks cheap."""
 DatasetId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
 UploadId = Annotated[str, Path(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")]
 
@@ -122,8 +153,9 @@ def version_dto(ds: m.Dataset, dv: m.DatasetVersion) -> DatasetVersion:
         message=dv.message,
         created_at=dv.created_at,
         ready_at=dv.ready_at,
-        layout="tree" if dv.layout == "tree" else "dataset",
+        layout=layout_of(dv),
         tree_schema=TreeSchema.model_validate(dv.tree_schema) if dv.tree_schema else None,
+        collection=CollectionInfo.model_validate(dv.collection) if dv.collection else None,
     )
 
 
@@ -200,17 +232,7 @@ async def create_upload(
             code=ErrorCode.PAYLOAD_TOO_LARGE,
             pointer="/body/size_bytes",
         )
-    async with ctx.db.session() as system:
-        decision = await admit_storage(
-            session, system, tenant_id=ds.tenant_id, nbytes=body.size_bytes, now=now()
-        )
-    if not decision.allowed:
-        assert decision.code is not None
-        raise ProblemWithHeaders(
-            decision.message or "storage quota exceeded",
-            code=decision.code,
-            headers=decision.headers(),
-        )
+    await _admit_upload(ctx, session, ds.tenant_id, body.size_bytes)
     upload_id = new_id("upl")
     name = quarantine_key(ds.tenant_id, upload_id)
     signed: SignedPut = await ctx.store.sign_put(
@@ -241,7 +263,22 @@ async def create_upload(
     return _upload_dto(row)
 
 
-def _upload_dto(u: m.Upload) -> UploadSession:
+async def _admit_upload(ctx: Ctx, session: Session, tenant_id: str, nbytes: int) -> None:
+    """Admit ``nbytes`` of upload against the tenant's storage quota (429/403 otherwise)."""
+    async with ctx.db.session() as system:
+        decision = await admit_storage(
+            session, system, tenant_id=tenant_id, nbytes=nbytes, now=now()
+        )
+    if not decision.allowed:
+        assert decision.code is not None
+        raise ProblemWithHeaders(
+            decision.message or "storage quota exceeded",
+            code=decision.code,
+            headers=decision.headers(),
+        )
+
+
+def _upload_dto(u: m.Upload, *, received: bool | None = None) -> UploadSession:
     return UploadSession(
         id=u.id,
         tenant_id=u.tenant_id,
@@ -254,7 +291,85 @@ def _upload_dto(u: m.Upload) -> UploadSession:
         upload=SignedPut.model_validate(u.upload),
         expires_at=u.expires_at,
         created_at=u.created_at,
+        received=received,
     )
+
+
+async def _received(ctx: Ctx, upload: m.Upload) -> bool:
+    """Whether the upload's file arrived (a consumed upload's did; an expired upload's did
+    not, and its object is deleted). An arrived ``pending`` upload becomes ``uploaded``, so it
+    stays usable after its PUT URL expired."""
+    if upload.status in ("consumed", "uploaded"):
+        return True
+    if upload.status == "expired":
+        return False
+    try:
+        meta = await ctx.store.stat(upload.bucket, upload.object_name)
+    except NotFound:
+        return False
+    if meta.size > upload.size_bytes:
+        return False
+    upload.status = "uploaded"
+    return True
+
+
+@router.get(
+    "/{dataset_id}/uploads/{upload_id}",
+    response_model=UploadSession,
+    operation_id="get_upload",
+    summary="An upload and whether its file arrived (resume an upload)",
+    responses=responses_for("get_upload"),
+)
+async def get_upload(
+    ctx: Ctx, session: Session, dataset_id: DatasetId, upload_id: UploadId
+) -> UploadSession:
+    """An upload with ``received``: whether its file arrived. A client that resumes an
+    upload skips the files that arrived and renews the URL of the others when it expired
+    (v0.15)."""
+    ds = await _dataset(ctx, session, dataset_id)
+    upload = await _upload(session, ds, upload_id)
+    return _upload_dto(upload, received=await _received(ctx, upload))
+
+
+@router.post(
+    "/{dataset_id}/uploads/{upload_id}/renew",
+    response_model=UploadSession,
+    operation_id="renew_upload",
+    summary="Sign a fresh PUT URL for an upload whose file did not arrive",
+    responses=responses_for("renew_upload"),
+)
+async def renew_upload(
+    ctx: Ctx, session: Session, dataset_id: DatasetId, upload_id: UploadId
+) -> UploadSession:
+    """A fresh signed PUT (valid 1 h) for the same object of an upload whose file has not
+    arrived; an expired upload becomes ``pending`` again. ``409`` when the upload was turned
+    into a dataset version or its file already arrived (v0.15). Quota usage stops counting an
+    upload once it is ``expired``, so renewing one admits its size again (a ``pending`` upload
+    is counted already, also after its PUT expired)."""
+    ds = await _dataset(ctx, session, dataset_id)
+    upload = await _upload(session, ds, upload_id)
+    if upload.status == "consumed":
+        raise Conflict(f"upload {upload.id} was already turned into a dataset version")
+    if await _received(ctx, upload):
+        raise Conflict(f"the file of upload {upload.id} already arrived; nothing to renew")
+    if upload.status == "expired":
+        await _admit_upload(ctx, session, ds.tenant_id, upload.size_bytes)
+        # the PUT is create-only: a file left behind by the expiry would refuse it
+        with contextlib.suppress(NotFound):
+            await ctx.store.delete(upload.bucket, upload.object_name)
+    signed: SignedPut = await ctx.store.sign_put(
+        upload.bucket,
+        upload.object_name,
+        expires_in=UPLOAD_TTL,
+        content_type=upload.content_type,
+        max_bytes=upload.size_bytes,
+        if_generation_match=0,
+    )
+    upload.upload = signed.model_dump(mode="json")
+    upload.expires_at = signed.expires_at
+    upload.status = "pending"
+    await session.flush()
+    return _upload_dto(upload, received=False)
 
 
 @router.post(
@@ -278,6 +393,8 @@ async def create_dataset_version(
         dv = await session.get(m.DatasetVersion, (ds.id, int(replay.resource_id)))
         assert dv is not None
         return JSONResponse(version_dto(ds, dv).model_dump(mode="json"), status_code=200)
+    if body.collection is not None:
+        return await _create_collection_version(ctx, session, ds, body, idem)
     if body.assembly is not None:
         wanted = [
             (src.upload_id, f"/body/assembly/sources/{i}/upload_id")
@@ -339,6 +456,174 @@ async def create_dataset_version(
     return JSONResponse(version_dto(ds, dv).model_dump(mode="json"), status_code=202)
 
 
+async def _create_collection_version(
+    ctx: Ctx, session: Session, ds: m.Dataset, body: DatasetVersionCreate, idem: Idempotency
+) -> JSONResponse:
+    """``create_dataset_version`` of an image collection (v0.15): the manifest upload and
+    the part uploads are checked like any version's uploads (all or nothing), plus the
+    collection caps: the manifest is at most ``MAX_MANIFEST_BYTES``, each part at most
+    ``MAX_PART_BYTES`` and has a server-computed MD5 (its pack address needs it). The base
+    version (images the parts do not hold) is resolved now and pinned in the ingest run."""
+    src = body.collection
+    assert src is not None
+    ptr = "/body/collection"
+    wanted = [(src.manifest_upload_id, f"{ptr}/manifest_upload_id")] + [
+        (upload_id, f"{ptr}/part_upload_ids/{i}") for i, upload_id in enumerate(src.part_upload_ids)
+    ]
+    ready = await _ready_uploads(ctx, session, ds, wanted)
+    (manifest, manifest_meta), parts = ready[0], ready[1:]
+    if manifest_meta.size > MAX_MANIFEST_BYTES:
+        raise MapiError(
+            f"the image manifest is limited to {MAX_MANIFEST_BYTES} bytes",
+            code=ErrorCode.PAYLOAD_TOO_LARGE,
+            pointer=f"{ptr}/manifest_upload_id",
+        )
+    for i, (upload, meta) in enumerate(parts):
+        pointer = f"{ptr}/part_upload_ids/{i}"
+        if meta.size > MAX_PART_BYTES:
+            raise MapiError(
+                f"an image part is limited to {MAX_PART_BYTES} bytes (part {upload.id} has "
+                f"{meta.size})",
+                code=ErrorCode.PAYLOAD_TOO_LARGE,
+                pointer=pointer,
+            )
+        if meta.md5_hash is None:
+            raise Conflict(
+                f"the file of part {upload.id} has no MD5 checksum (a composed object). "
+                "Upload the part again as one file",
+                pointer=pointer,
+            )
+    base = await _collection_base(session, ds, src.base_version, f"{ptr}/base_version")
+    version = ds.next_version
+    ds.next_version += 1
+    ds.updated_at = now()
+    for upload, _ in ready:
+        upload.status = "consumed"
+        upload.consumed_by_version = version
+    dv = m.DatasetVersion(
+        dataset_id=ds.id,
+        version=version,
+        tenant_id=ds.tenant_id,
+        project_id=ds.project_id,
+        status="ingesting",
+        upload_id=manifest.id,
+        sources=[upload.id for upload, _ in ready],
+        mapping={"collection": src.model_dump(mode="json", exclude_none=True)},
+        message=body.message,
+        objects={},
+        issues=[],
+        created_at=now(),
+    )
+    session.add(dv)
+    await session.flush()
+    run = await submit_collection_ingest(
+        session,
+        ctx,
+        dataset=ds,
+        version=version,
+        manifest=(manifest, manifest_meta.generation),
+        parts=[(upload, meta.generation) for upload, meta in parts],
+        base=base,
+        options=src.options,
+    )
+    dv.ingest_run_id = run.id
+    await session.flush()
+    await idem.complete("dataset_version", str(version), 202)
+    return JSONResponse(version_dto(ds, dv).model_dump(mode="json"), status_code=202)
+
+
+async def _collection_base(
+    session: Session, ds: m.Dataset, base_version: int | None, pointer: str
+) -> m.DatasetVersion | None:
+    """The base collection version of ``ds``: ``0`` none; a number must name a READY
+    collection version (``404``/``409`` otherwise); ``None`` the latest READY collection
+    version, when there is one."""
+    if base_version == 0:
+        return None
+    if base_version is None:
+        stmt = (
+            select(m.DatasetVersion)
+            .where(
+                m.DatasetVersion.dataset_id == ds.id,
+                m.DatasetVersion.status == "ready",
+                m.DatasetVersion.layout == "collection",
+            )
+            .order_by(m.DatasetVersion.version.desc())
+            .limit(1)
+        )
+        return (await session.execute(stmt)).scalar_one_or_none()
+    dv = await session.get(m.DatasetVersion, (ds.id, base_version))
+    if dv is None:
+        raise NotFoundError("dataset version", f"{ds.id}@v{base_version}")
+    if dv.status != "ready" or dv.layout != "collection":
+        what = "is not ready" if dv.status != "ready" else "is not an image collection"
+        raise Conflict(
+            f"base version v{base_version} {what}. Give a ready image collection version, or "
+            "0 for no base",
+            pointer=pointer,
+        )
+    return dv
+
+
+async def _members(ctx: Ctx, dv: m.DatasetVersion) -> bytes:
+    """The ``members.bin`` of a collection version (cached by generation)."""
+    obj = dv.objects.get(COLLECTION_MEMBERS)
+    if obj is None:
+        raise MapiError(
+            f"collection version v{dv.version} has no {COLLECTION_MEMBERS}",
+            code=ErrorCode.REF_UNRESOLVED,
+        )
+    key = (str(obj["bucket"]), str(obj["name"]), int(obj["generation"]))
+    data = _members_cache.get(key)
+    if data is not None:
+        _members_cache.move_to_end(key)
+        return data
+    data = await ctx.store.get(key[0], key[1], generation=key[2], max_bytes=MAX_MEMBERS_BYTES)
+    _members_cache[key] = data
+    while len(_members_cache) > _MEMBERS_CACHE_SIZE:
+        _members_cache.popitem(last=False)
+    return data
+
+
+def _has_member(members: bytes, digest: bytes) -> bool:
+    """Binary search for a 32-byte ``digest`` in sorted 32-byte records."""
+    lo, hi = 0, len(members) // 32
+    while lo < hi:
+        mid = (lo + hi) // 2
+        record = members[mid * 32 : mid * 32 + 32]
+        if record == digest:
+            return True
+        if record < digest:
+            lo = mid + 1
+        else:
+            hi = mid
+    return False
+
+
+@router.post(
+    "/{dataset_id}/blobs/missing",
+    response_model=BlobMissing,
+    operation_id="find_missing_images",
+    summary="Which images (by sha256) a collection version does not hold",
+    responses=responses_for("find_missing_images"),
+)
+async def find_missing_images(
+    ctx: Ctx, session: Session, dataset_id: DatasetId, body: BlobQuery
+) -> BlobMissing:
+    """The digests of ``body.sha256`` that the base collection version does not hold, in
+    query order (v0.15). Upload only those: a new version takes the others from the base.
+    Only versions of this dataset are compared (no lookup across datasets or projects)."""
+    ds = await _dataset(ctx, session, dataset_id)
+    base = await _collection_base(session, ds, body.base_version, "/body/base_version")
+    if base is None:
+        return BlobMissing(base_version=None, missing=list(body.sha256), present=0)
+    members = await _members(ctx, base)
+    missing = [sha for sha in body.sha256 if not _has_member(members, bytes.fromhex(sha))]
+    return BlobMissing(
+        base_version=base.version, missing=missing, present=len(body.sha256) - len(missing)
+    )
+
+
 async def _upload(
     session: Session, ds: m.Dataset, upload_id: str, *, pointer: str | None = None
 ) -> m.Upload:
@@ -350,14 +635,20 @@ async def _upload(
 
 
 async def _arrived(ctx: Ctx, upload: m.Upload, *, pointer: str = "") -> ObjectMeta:
-    """The uploaded object of an upload whose file arrived in time (409 otherwise)."""
-    if upload.expires_at < datetime.now(UTC) and upload.status == "pending":
-        upload.status = "expired"
+    """The uploaded object of an upload whose file arrived (409 otherwise). A signed PUT
+    cannot start after it expires, so an object that exists arrived in time, however old the
+    upload is: it becomes ``uploaded`` (a resumed collection upload uses parts that arrived
+    hours before)."""
     if upload.status == "expired":
         raise Conflict(f"upload {upload.id} expired before the file arrived", pointer=pointer)
     try:
         meta = await ctx.store.stat(upload.bucket, upload.object_name)
     except NotFound:
+        if upload.status == "pending" and upload.expires_at < datetime.now(UTC):
+            upload.status = "expired"
+            raise Conflict(
+                f"upload {upload.id} expired before the file arrived", pointer=pointer
+            ) from None
         raise Conflict(
             f"upload {upload.id} has not finished: no object exists yet", pointer=pointer
         ) from None
@@ -365,6 +656,8 @@ async def _arrived(ctx: Ctx, upload: m.Upload, *, pointer: str = "") -> ObjectMe
         raise Conflict(
             f"the object of upload {upload.id} is larger than the declared size", pointer=pointer
         )
+    if upload.status == "pending":
+        upload.status = "uploaded"
     return meta
 
 

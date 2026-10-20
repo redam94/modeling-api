@@ -156,16 +156,18 @@ def _yes(flag: bool) -> str:
 
 
 def steps_page() -> str:
-    from mapi_steps.catalog import catalog
+    from mapi_sdk import default_registry
     from mapi_steps.splits import split_catalog
 
-    steps = sorted(catalog().steps, key=lambda e: (e.kind.value, e.id))
+    # The registry catalog: the mapi-steps steps plus plugin steps (``dl.embed``, v0.15).
+    steps = sorted(default_registry().catalog().steps, key=lambda e: (e.kind.value, e.id))
     lines = [
         HEADER,
         "# Built-in steps catalog\n",
-        "Generated from the `mapi-steps` catalog export (`python -m mapi_steps.catalog`): the same",
-        "static JSON the control plane uses to validate specs without importing step code. For",
-        "how the steps behave together, read [Built-in steps](../steps.md).\n",
+        "Generated from the step catalog export (`python -m mapi_steps.catalog` and the steps of",
+        "the installed plugins): the same static JSON the control plane uses to validate specs",
+        "without importing step code. For how the steps behave together, read",
+        "[Built-in steps](../steps.md).\n",
         "| Step | Kind | Learns state | Invertible | Looks back | Summary |",
         "|---|---|---|---|---|---|",
     ]

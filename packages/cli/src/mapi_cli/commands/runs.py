@@ -316,7 +316,8 @@ def retry(
     ctx: typer.Context,
     run_id: Annotated[str, typer.Argument(help="Run id of a failed run")],
     resource_class: Annotated[
-        ResourceClass | None, typer.Option("--resource-class", help="S, M, L or XL")
+        ResourceClass | None,
+        typer.Option("--resource-class", help="S, M, L, XL or GPU (one NVIDIA L4 GPU)"),
     ] = None,
     seed: Annotated[int | None, typer.Option("--seed", min=0)] = None,
     reason: Annotated[str | None, typer.Option("--reason")] = None,

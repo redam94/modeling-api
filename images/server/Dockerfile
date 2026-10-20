@@ -12,7 +12,7 @@
 # The `docker` extra (docker-py) is included so `mapi-server worker` can drive the docker
 # executor through a mounted socket. Build from the repository root:
 #
-#   docker build -f images/server/Dockerfile -t mapi/server:0.14.0 .
+#   docker build -f images/server/Dockerfile -t mapi/server:0.15.0 .
 #
 # See docs/operations/docker.md.
 
@@ -22,7 +22,7 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.5.13@sha256:ea61e006cfec0e8d81fae901ad703e09
 
 ARG MAPI_PACKAGES="mapi-server[docker]"
 ARG MAPI_ASSERT_PRESENT="mapi-server mapi-spec mapi-plots mapi-workflows jsonschema fastapi uvicorn sqlalchemy alembic psycopg procrastinate docker"
-ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-statsmodels mapi-plugin-science mapi-plugin-causal pymc-extras statsmodels mapi-conformance pillow lightgbm catboost"
+ARG MAPI_ASSERT_ABSENT="numpy xarray pandas scipy pyarrow zarr pymc pytensor nutpie numba scikit-learn xgboost altair plotly mapi-sdk mapi-runner mapi-steps mapi-pymc mapi-sklearn mapi-plugin-mmm mapi-plugin-ts mapi-plugin-tabular mapi-plugin-statsmodels mapi-plugin-science mapi-plugin-causal pymc-extras statsmodels mapi-conformance pillow lightgbm catboost mapi-jax jax flax optax"
 ARG VERSION=0.0.0-dev
 ARG VCS_REF=unknown
 ARG BUILD_DATE=1970-01-01T00:00:00Z
