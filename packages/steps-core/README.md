@@ -11,8 +11,10 @@ control plane validates specs against.
   * feature: `fourier`, `trend`, `calendar`, `holidays`, `lag`, `lag_tensor`, `one_hot`,
     `encode_levels`, `missing_indicator`, `formula`;
   * precompute: `adstock`, `saturation`.
-* **Split catalog** (`mapi_steps.splits`) for the five `data.split` kinds: `time_holdout`,
-  `as_of`, `leave_group_out`, `last_per_group` and `mask_block`.
+* **Split catalog** (`mapi_steps.splits`) for the seven `data.split` kinds: `time_holdout`,
+  `as_of`, `leave_group_out`, `last_per_group`, `mask_block` and, from v0.14, `column` (hold
+  out the rows with a value of a column) and `stratified` (the same share of each class, at
+  random).
 * **Static catalog**: `python -m mapi_steps.catalog [--splits]` prints a `mapi_spec.Catalog`
   JSON with every step's settings JSON Schema, templated `SchemaEffect` and context need. It
   also ships as `mapi_steps/catalog.json`, and a test fails if that file drifts from the code.
@@ -32,6 +34,9 @@ pipe = Pipeline.build(
 trace = pipe.fit(daily)  # states + per-step context tails
 replay = pipe.transform(next_weeks, trace.states)  # never refits; prepends context
 ```
+
+Plugin packages can register more steps under the same `mapi.steps` entry point, for example
+`dl.embed` of `mapi-jax` (v0.15: image features from a frozen pretrained network).
 
 Every step passes the SDK contract kit (`mapi_sdk.testing.check_step`). Run the tests with
 `uv run pytest packages/steps-core`. The user guide is at `docs/reference/steps.md`.

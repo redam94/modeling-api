@@ -15,12 +15,17 @@ forecasting, and unstacks predictions back to labelled arrays.
 | `sklearn.tabular_bootstrap` | draws (one joint draw per bootstrap replicate) |
 | `sklearn.tabular_conformal` | interval (split conformal; never draws) |
 | `sklearn.tabular_classifier` | point (binary class probability) |
-| `sklearn.multiclass_classifier` | point (`y_hat(*rows, class)`: one probability per class) |
+| `sklearn.multiclass_classifier` | point (`y_hat(*rows, class)`: one probability per class; v0.14) |
 
 LightGBM (`lightgbm.LGBMClassifier`) and CatBoost (`catboost.CatBoostClassifier`) are an
 optional extra: `pip install "mapi-sklearn[gbm]"`. They are imported only when a spec uses
 them; without the extra those kinds fail with `SETTINGS_INVALID`. The base-ml runner image
-installs the extra.
+installs the extra. `sklearn.HistGradientBoostingClassifier` needs no extra.
+
+The regressors declare the standard plots `core.fit_vs_actual`, `core.residuals_over_time`
+and `ml.feature_importance`; the classifiers `core.calibration`, `core.roc_pr`,
+`core.confusion` and `ml.feature_importance` (v0.10). A fit with run tracking also logs the
+estimator's hyperparameters as `estimator.*` params (v0.11).
 
 ```python
 from mapi_sdk.harness import fit_spec, score_bundle

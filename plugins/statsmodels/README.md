@@ -31,6 +31,10 @@ as modeling-api plugins (`ts.*`, entry point `mapi.models: statsmodels`).
   smoothed components, factors or regime probabilities; `explorer_views()` returns Model
   Explorer sections.
 
+* Standard plots (v0.10): `ts.unobserved_components` and `ts.ets` keep a `components` group
+  for `core.decomposition` (the trend slope has the attr `decomposition: exclude`), and
+  `ts.markov_switching` declares `core.state_sequence` (it reads the `regimes` group).
+
 `mapi_plugin_statsmodels.datasets` holds example data (synthetic sales with drivers,
 statsmodels' public-domain US `macrodata`, regimes, an error-correction series) and
 `mapi_plugin_statsmodels.examples` a small worked spec per plugin.

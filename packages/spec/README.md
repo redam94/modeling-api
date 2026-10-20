@@ -1,7 +1,8 @@
 # mapi-spec
 
 Pure-Pydantic contracts for modeling-api: the declarative documents users write
-(`ModelSpec`, `ScoreRequest`, `Sweep`, `Backtest`, `SBC`, `Campaign`), the data contract
+(`ModelSpec`, `ScoreRequest`, `Backtest`, `SBC`, `Campaign`; stored `Sweep` documents still
+load, but v0.14 retired the kind), the data contract
 (`DataSchema`, dim policies, roles), step `SchemaEffect`s, model manifests and capabilities,
 the `PlotSpec` envelope, stable error codes, and the **static validation** the control plane
 runs on every submit.
@@ -81,6 +82,9 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `executor` | the `Executor` protocol, `RunSubmit`, `Handle`, `ExecStatus`, `ExecutorCaps`, `Isolation`, `RunKind`, `RunEvent` |
 | `run` | run protocol (M1): `RunState` + `transition()`, `RunSpec` bootstrap, event payloads and HMAC signing, stdout wire format, `OutputManifest`/`BundleManifest`, `RunnerEnv`, `RunnerExit` |
 | `storage` | `ObjectMeta`, the async `ObjectStore` protocol, signed URL shapes, CRC32C/MD5 helpers, bucket and key naming (`run_media_prefix`, `run_media_store_key`) |
+| `tracking` | v0.11 run tracking: metric key and label rules, `TrackingLimits` (the per-run budgets, also the media budgets of v0.14), `labels_key`, `param_text` and the run search grammar (`parse_run_filter`, `parse_run_order`, `parse_run_ref`) |
+| `collection` | v0.15 image collections: `CollectionSource`, `CollectionOptions`, `CollectionInfo`, `PackInfo`, `CollectionRead`, `pack_digest` and the input names (`pack_input`, `info_input`, `part_input`) |
+| `resources` | `ResourceClass` (`S`, `M`, `L`, `XL` and, from v0.15, `GPU`: one NVIDIA L4) and `RESOURCE_CLASSES` (vCPU, memory, scratch, dataset and bundle limits, accelerators) |
 | `media` | v0.14 run media: `MediaKind`, content types, `media_name`, `sniff_image` (PNG/JPEG headers), `MediaTable`, `check_media` and the limits |
 | `api` | REST DTOs for `/v1` (`Page[T]`, `Run`, `RunCreate`, `ModelVersion`, `Me`, `UsageReport`, `ScoreSummaryTable` with `period` for a circular output, ...), SSE/`Prefer`/idempotency helpers, `M1_ENDPOINTS` + `M2_ENDPOINTS` (= `ENDPOINTS`), `ROUTE_ACCESS` (scope and permission of every operation) |
 | `tenancy` | `Tenant`, `Project`, `TrustTier` and placement, data residency, `ProjectRole`, the `PERMISSIONS` matrix and `can()`, `Membership`, principals, `AuthContext`, `X-Mapi-Project` resolution |
@@ -93,7 +97,7 @@ python -m mapi_spec export-schemas ./schemas    # modelspec.json, scorerequest.j
 | `conformance_executor` | the executor conformance suite as data (`EXECUTOR_CONFORMANCE`), `check_expectation()`, `ConformanceReport` |
 | `workflow` | `WorkflowSpec` (`kind: Workflow`), `load_workflow`, `workflow_hash`, `validate_workflow` (the `recipe` of `plot.render` resolves against the plot catalog), `check_run_params`, node cache keys |
 | `workflow_nodes` | `NODE_IMPLEMENTATIONS`: the ports, parameters, result fields, `runs_in` and About card of each built-in node (for example `model.summary`, `evaluate.ppc`, `compare.stacking`, `model.score`, `plot.render`) |
-| `workflow_templates` | `WORKFLOW_TEMPLATES` (the ten gallery recipes, for example `sci_spatial_ladder` and `bayes_workflow_audit`) and `instantiate_template` |
+| `workflow_templates` | `WORKFLOW_TEMPLATES` (the eleven gallery recipes, for example `sci_spatial_ladder`, `bayes_workflow_audit` and, from v0.13, `geo_lift_mmm`) and `instantiate_template` |
 | `expr` | the safe condition language of `branch.if` (no `eval`, bounded inputs) |
 | `abouts`, `plot_abouts` | the About cards of the steps, splits, models and templates, and of the plot recipes (core, MMM, ML, science and network packs) |
 | `localdev` | local ports, origins and environment variable names (`LocalDev`) |

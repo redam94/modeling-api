@@ -22,6 +22,14 @@ Image models implement both `fit` (an image dataset: `pixels(image, y, x, channe
 dataset version made by a `safetensors` ingest, named in `data.side_tables` (sandboxes
 have no network access).
 
+The fit draws `ml.training_curves`, `ml.confusion_epochs` and `ml.misclassified` (from the
+bundle's training history) and logs `loss` and `accuracy` (or `rmse`) with the label `split`,
+plus `lr`, `grad_norm` and `epoch` (`docs/guides/tracking.md`). The image models declare
+`resources.gpu`, so a spec can select the resource class `GPU` (one NVIDIA L4); `dl.mlp`
+runs on the CPU classes only. Without a GPU every model trains on the CPU, and a GPU-class
+run shows the warning `GPU_UNAVAILABLE`. The param `dl.backend` tells which backend a fit
+used.
+
 ## Trainer API
 
 ```python
@@ -49,4 +57,10 @@ The workspace installs the CPU build of jax. The `cuda12` extra adds the CUDA 12
 pip install "mapi-jax[cuda12]"
 ```
 
-See `docs/guides/deep-learning.md`.
+The runner image `mapi/base-dl` has `mapi-jax[cuda12]` and runs the `dl.*` models; the
+`base-bayes` and `base-ml` images have the CPU build so that `dl.embed` works in front of their
+models (`docs/operations/images.md`). The control plane and the runner's supervisor never
+import `mapi_jax`, `jax`, `flax` or `optax` (import-linter).
+
+See `docs/guides/deep-learning.md` and the *Deep learning* section of
+`docs/reference/models.md`.

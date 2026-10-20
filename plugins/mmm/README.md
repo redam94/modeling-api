@@ -24,11 +24,17 @@ through the `mapi.models` entry point (`mapi_plugin_mmm.plugins:PLUGINS`):
     model takes no business priors or lift tests.
 - **`mmm.frequentist`**: mmm-framework's ridge estimator with block-bootstrap draws (the
   fast alternative for exploration and governance null tests).
-- **`mmm.nested`**: mmm-framework's `NestedMMM`. Channels move the KPI directly and through
-  mediator series (for example awareness or site visits). National data only.
-- **`mmm.multivariate`**: mmm-framework's `MultivariateMMM`. One model for several
-  outcomes, with correlated noise and cross-effects between the outcomes. National data
-  only.
+- **`mmm.nested`** (v0.12): mmm-framework's `NestedMMM`. Channels move the KPI directly and
+  through mediator series (`mediator` dim, for example awareness or site visits; a mediator
+  can be observed in some periods only, or `latent: true`). Lift tests calibrate the total
+  effect of a channel. The derived quantity `mediation` gives the direct, indirect and total
+  effect of each channel; the output `mediator_hat` gives the fitted mediators. National data
+  only, no control variables.
+- **`mmm.multivariate`** (v0.12): mmm-framework's `MultivariateMMM`. One model for several
+  outcomes (`outcome` dim), with correlated noise and cross-effects between the outcomes
+  (`halo`, `cannibalization` or `unconstrained`). The derived quantity `cross_effects` gives
+  each cross-effect; `outcomes[].weight` values the outcomes in a budget plan. National data
+  only, no control variables, no lift tests.
 
 The models own scaling, carry-over and the inverse to original units, return `y_hat` and
 `contributions` (channels, baseline, trend, seasonality, controls), and plan budgets with
@@ -48,6 +54,12 @@ A fit with a tracker logs the params `mmm.framework_version`, `mmm.n_channels`,
 metrics `roi`, `roi_p05`, `roi_p95`, `mroi` and `contribution_share`, plus
 `baseline_share` (`mapi_plugin_mmm.tracking`). A fit calibrated with lift tests keeps them
 in the bundle group `lift_tests`: the measured value next to the model's estimate.
+
+The MMM plot recipes of `mapi-plots` (v0.12) draw these quantities: `mmm.roi`,
+`mmm.adstock`, `mmm.waterfall`, `mmm.spend_effect`, `mmm.lift_tests`, `mmm.effectiveness`,
+`mmm.mediation` and `mmm.cross_effects`, next to the response curves, marginal cost, budget
+plans and decomposition. The Guided templates `mediated_mmm` and `multi_kpi_mmm` use the two
+national models.
 
 `mapi_plugin_mmm.examples` simulates E33-style daily local-currency data with known
 parameters and holds ready-to-run specs (`E33_SPEC_YAML`, `NATIONAL_SPEC_YAML`).

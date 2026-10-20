@@ -72,9 +72,21 @@ built-in steps. `science_registry()` adds the `sci.*` models (`--registry
 mapi_workflows.testing:science_registry` for a worker).
 
 The gallery templates are in `mapi_spec.workflow_templates.WORKFLOW_TEMPLATES`:
-`ts_readiness_arimax`, `var_vecm_cointegration`, `mmm_governed`, `forecast_bakeoff`,
-`sci_spatial_ladder`, `sci_network_ladder`, `sci_phylo_signal`, `sci_calibrate_then_design`,
-`bayes_workflow_audit` and `sci_image_model_check`.
+`ts_readiness_arimax`, `var_vecm_cointegration`, `mmm_governed`, `geo_lift_mmm` (v0.13),
+`forecast_bakeoff`, `sci_spatial_ladder`, `sci_network_ladder`, `sci_phylo_signal`,
+`sci_calibrate_then_design`, `bayes_workflow_audit` and `sci_image_model_check`.
+
+## Run tracking in nodes
+
+Sandboxed nodes get the same logging API as model code (`NodeContext.log_metric`,
+`log_params`, `set_tag`, `log_line`, and from v0.14 `log_image`, `log_figure` and
+`log_table`; v0.11). `search.grid` logs each grid point in its search run (the params
+`trial.<i>.<pointer>` and `grid.*`, the scores with the point number as the step,
+`best_<metric>` and the tag `grid.best_point`), and `model.backtest` logs the metrics of each
+fold with the label `fold`. A workflow run started with an experiment
+(`WorkflowRunCreate.experiment_id`, v0.14) puts every node run in it. v0.14 retired the
+`Sweep` document: a sweep is a workflow with a `search.grid` node
+(`docs/guides/tracking.md`, `docs/guides/run-comparison.md`).
 
 See `docs/guides/workflows.md`, `docs/guides/workflow-cookbook.md` and
 `docs/reference/workflow-nodes.md`.
