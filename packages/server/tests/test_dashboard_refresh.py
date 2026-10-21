@@ -11,7 +11,8 @@ refit workflow starts as the approver once that version is ready.
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+import json
+from typing import Any, Final
 
 import httpx
 import pytest
@@ -29,7 +30,7 @@ from mapi_spec.api import new_id
 from mapi_spec.dashboards import SHARE_SESSION_HEADER
 from mapi_spec.xrjson import XrJsonDataset
 from sqlalchemy import func, select, update
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -171,19 +172,32 @@ async def _endpoint_dashboard(kit: dict[str, Any], follow: bool) -> str:
     )
 
 
+_GRID_OBJECT: Final = {
+    "ui/grids/response_curves.json": (json.dumps(GRID).encode(), "application/json")
+}
+
+
+async def _promote(kit: dict[str, Any], version: int) -> None:
+    r = await kit["ana"].put(
+        "/v1/endpoints/trend-prod", json={"model": f"model://default/trend@v{version}"}
+    )
+    assert r.status_code == 200, r.text
+
+
+async def _version(ctx: ServerContext, mv_id: str) -> m.ModelVersion:
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, mv_id)
+        assert mv is not None
+        return mv
+
+
 @pytest.mark.parametrize("follow", [True, False])
 async def test_an_endpoint_promotion_follows_or_flags(
     kit: dict[str, Any], ctx: ServerContext, follow: bool
 ) -> None:
     dash_id = await _endpoint_dashboard(kit, follow)
-    async with ctx.db.session() as s:
-        mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
-        assert mv is not None
-    v2 = await refit_version(ctx, mv)
-    r = await kit["ana"].put(
-        "/v1/endpoints/trend-prod", json={"model": f"model://default/trend@v{v2.version}"}
-    )
-    assert r.status_code == 200, r.text
+    v2 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]), add=_GRID_OBJECT)
+    await _promote(kit, v2.version)
     body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
     revs = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/revisions")).json()["items"]
     if follow:
@@ -197,6 +211,139 @@ async def test_an_endpoint_promotion_follows_or_flags(
         assert body["published_revision"]["model_version_id"] == kit["model"]["mv_id"]
         assert len(revs) == 1 and body["problem"] == "new_version_available"
         assert body["latest_readout"]["kind"] == "baseline"
+
+
+async def _refreshes(ctx: ServerContext, dash_id: str) -> list[m.DashboardReadout]:
+    async with ctx.db.session() as s:
+        return list(
+            (
+                await s.execute(
+                    select(m.DashboardReadout)
+                    .where(
+                        m.DashboardReadout.dashboard_id == dash_id,
+                        m.DashboardReadout.kind == "refresh",
+                    )
+                    .order_by(m.DashboardReadout.seq)
+                )
+            ).scalars()
+        )
+
+
+async def test_a_version_the_spec_does_not_fit_is_not_followed(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """Publishing checks the grid, the KPI and the input contract; following does too."""
+    dash_id = await _endpoint_dashboard(kit, True)
+    v2 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]))  # no grid
+    await _promote(kit, v2.version)
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert body["published_revision"]["model_version_id"] == kit["model"]["mv_id"]
+    assert body["problem"] == "new_version_incompatible"
+    assert await _refreshes(ctx, dash_id) == []
+
+
+async def test_a_quick_rollback_retargets_the_queued_refresh(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await _endpoint_dashboard(kit, True)
+    v1 = await _version(ctx, kit["model"]["mv_id"])
+    v2 = await refit_version(ctx, v1, add=_GRID_OBJECT)
+    await _promote(kit, v2.version)
+    (queued,) = await _refreshes(ctx, dash_id)
+    assert queued.model_version_id == v2.id and queued.status == "queued"
+    await _promote(kit, v1.version)  # rolled back within the debounce window
+    (row,) = await _refreshes(ctx, dash_id)  # coalesced: still one refresh
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert row.seq == queued.seq and row.model_version_id == v1.id
+    assert row.revision_id == body["published_revision"]["id"]
+    # a refresh that already runs for v2 is not reused for the next promotion back to v2
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == dash_id, m.DashboardReadout.seq == row.seq)
+            .values(status="running")
+        )
+    await _promote(kit, v2.version)
+    rows = await _refreshes(ctx, dash_id)
+    assert [r.model_version_id for r in rows] == [v1.id, v2.id]
+    # a failed refresh never suppresses the next one
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == dash_id)
+            .values(status="failed")
+        )
+    await _promote(kit, v1.version)
+    assert [r.model_version_id for r in await _refreshes(ctx, dash_id)] == [v1.id, v2.id, v1.id]
+
+
+async def _linked_run(kit: dict[str, Any], ctx: ServerContext, mv_id: str) -> str:
+    """A run of the linked workflow whose score node scored ``mv_id``."""
+    r = await kit["ana"].post(
+        f"/v1/workflows/{kit['wf_id']}/runs",
+        json={"inputs": {"data": "dataset://default/co2@latest"}},
+    )
+    assert r.status_code == 202, r.text
+    wr_id = str(r.json()["run_id"])
+    async with ctx.db.session() as s:
+        score = m.Run(
+            id=new_id("run"), tenant_id="default", project_id="default", kind="score",
+            state="succeeded", attempt=1, resource_class="S", timeout_s=60,
+            model_version_id=mv_id, labels={}, payload={}, inputs={},
+            created_at=now(), updated_at=now(),
+        )  # fmt: skip
+        s.add(score)
+        await s.flush()
+        s.add(
+            m.WorkflowNodeRunRow(
+                run_id=wr_id, tenant_id="default", project_id="default", node_id="score",
+                position=1, use="model.score@1", kind="model", status="succeeded",
+                child_run_id=score.id,
+            )
+        )  # fmt: skip
+    return wr_id
+
+
+async def test_a_linked_workflow_never_publishes_a_version_that_ran_uploaded_code(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit, refresh={"workflow_id": kit["wf_id"]})
+    v2 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]))
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, v2.id)
+        assert mv is not None
+        mv.lineage = {**(mv.lineage or {}), "overlay_hash": "sha256:" + "1" * 64}
+    wr_id = await _linked_run(kit, ctx, v2.id)
+    async with ctx.db.session() as s:
+        wr = await s.get(m.WorkflowRunRow, wr_id)
+        assert wr is not None
+        assert await on_workflow_succeeded(s, wr) == 0
+    assert await _refreshes(ctx, dash_id) == []
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert body["problem"] == "workflow_version_refused"
+    # another model's version is refused the same way
+    other = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]))
+    async with ctx.db.session() as s:
+        s.add(m.Model(id=new_id("mdl"), tenant_id="default", project_id="default",
+                      name="other", latest_version=1, next_version=2))  # fmt: skip
+        await s.flush()
+        await s.execute(
+            update(m.ModelVersion)
+            .where(m.ModelVersion.id == other.id)
+            .values(model_id=select(m.Model.id).where(m.Model.name == "other").scalar_subquery())
+        )
+    wr_id = await _linked_run(kit, ctx, other.id)
+    async with ctx.db.session() as s:
+        wr = await s.get(m.WorkflowRunRow, wr_id)
+        assert wr is not None
+        assert await on_workflow_succeeded(s, wr) == 0
+    # a plain new version of the dashboard's model is published
+    v3 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]))
+    wr_id = await _linked_run(kit, ctx, v3.id)
+    async with ctx.db.session() as s:
+        wr = await s.get(m.WorkflowRunRow, wr_id)
+        assert wr is not None
+        assert await on_workflow_succeeded(s, wr) == 1
 
 
 # ============================================================================ refit requests

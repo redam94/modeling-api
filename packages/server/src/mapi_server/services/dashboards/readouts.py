@@ -427,6 +427,30 @@ async def _published_with_revision(
     return [(d, r) for d, r in rows.all()]
 
 
+WORKFLOW_VERSION_REFUSED: Final = "workflow_version_refused"
+"""``dashboards.problem`` when a linked workflow scored a version the dashboard may not
+show (it ran uploaded code, or it is not a version of the dashboard's model)."""
+
+
+async def _refused_workflow_version(
+    session: AsyncSession, rev: m.DashboardRevision, mv: m.ModelVersion
+) -> str | None:
+    """Why a linked workflow's score of ``mv`` (not the pinned version) may not reach the
+    clients: the checks publishing and endpoint-follow make (no uploaded code), and ``mv``
+    must be a version of the pinned version's model (a runner may point the workflow's model
+    input at any ready version, e.g. one fitted on another client's data)."""
+    from mapi_server.services.sharing import ran_uploaded_code
+
+    if ran_uploaded_code(mv):
+        return "it ran uploaded plugin code"
+    if mv.status != "ready":
+        return "it is not ready"
+    pinned = await session.get(m.ModelVersion, rev.model_version_id)
+    if pinned is None or pinned.model_id != mv.model_id:
+        return "it is not a version of the dashboard's model"
+    return None
+
+
 async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> int:
     """A workflow run succeeded (beside its ``workflow.run.succeeded`` event): every
     published dashboard that links the workflow (``refresh.workflow_id``), or whose approved
@@ -485,6 +509,16 @@ async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> 
         mv = await session.get(m.ModelVersion, mv_id)
         ref = rev.model_ref
         if mv is not None and mv.id != rev.model_version_id:
+            why = await _refused_workflow_version(session, rev, mv)
+            if why is not None:
+                log.warning(
+                    "workflow run %s scored model version %s: not published to dashboard %s "
+                    "(%s)", wr.run_id, mv.id, dash.id, why,
+                )  # fmt: skip
+                locked = await _lock_dashboard(session, dash.id)
+                locked.problem = WORKFLOW_VERSION_REFUSED
+                locked.updated_at = now()
+                continue
             from mapi_server.services.endpoints import model_ref_of
 
             ref = await model_ref_of(session, mv)
@@ -508,19 +542,40 @@ async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> 
     return made
 
 
-async def _recent_refresh(session: AsyncSession, dashboard_id: str, debounce_s: int) -> bool:
+async def _recent_refresh(
+    session: AsyncSession, dashboard_id: str, debounce_s: int
+) -> m.DashboardReadout | None:
+    """The newest manual or endpoint refresh of the debounce window that did not fail."""
     since = now() - timedelta(seconds=max(0, debounce_s))
-    found = (
+    return (
         await session.execute(
-            select(m.DashboardReadout.seq).where(
+            select(m.DashboardReadout)
+            .where(
                 m.DashboardReadout.dashboard_id == dashboard_id,
                 m.DashboardReadout.kind == "refresh",
                 m.DashboardReadout.trigger.in_(("manual", "endpoint")),
                 m.DashboardReadout.created_at >= since,
+                m.DashboardReadout.status != "failed",
             )
+            .order_by(m.DashboardReadout.seq.desc())
+            .limit(1)
         )
-    ).first()
-    return found is not None
+    ).scalar_one_or_none()
+
+
+def _retarget(row: m.DashboardReadout, rev: m.DashboardRevision, title: str) -> None:
+    """A refresh still ``queued`` (no run yet) now scores ``rev``'s version instead."""
+    row.revision_id = rev.id
+    row.model_version_id = rev.model_version_id
+    row.model_ref = rev.model_ref
+    row.endpoint_revision = rev.endpoint_revision
+    row.spec_hash = rev.spec_hash
+    row.title = title[:200]
+
+
+NEW_VERSION_INCOMPATIBLE: Final = "new_version_incompatible"
+"""``dashboards.problem`` when the endpoint now serves a version the dashboard's spec does
+not fit (channels missing from its grid, no KPI variable, no input contract, not ready)."""
 
 
 async def on_endpoint_promoted(
@@ -529,12 +584,20 @@ async def on_endpoint_promoted(
     version: m.ModelVersion,
     *,
     debounce_s: int = 60,
+    ctx: ServerContext | None = None,
 ) -> int:
     """An endpoint now serves ``version`` (beside its ``endpoint.promoted`` event). Each
     published dashboard bound to the alias either follows it (``refresh.follow_endpoint``:
-    a new revision pinned to the version and a queued ``refresh`` readout, debounced) or
-    gets ``problem = "new_version_available"`` for the analyst. A version that ran uploaded
-    code is never followed. Returns how many dashboards changed."""
+    a new revision pinned to the version and a ``refresh`` readout) or gets ``problem =
+    "new_version_available"`` for the analyst. A version that ran uploaded code is never
+    followed, and (with ``ctx``) neither is one the spec does not fit: the dashboard gets
+    ``new_version_incompatible`` and keeps its pin. Returns how many dashboards changed.
+
+    Debounced by coalescing: a refresh of the window still ``queued`` is retargeted to the
+    new revision (so a quick rollback never publishes the rolled-back version's numbers as
+    the latest), one that already runs for this very version answers for it, and otherwise
+    a new refresh is queued."""
+    from mapi_server.services.dashboards.crud import _check_version
     from mapi_server.services.endpoints import model_ref_of
     from mapi_server.services.sharing import ran_uploaded_code
 
@@ -552,6 +615,18 @@ async def on_endpoint_promoted(
             locked.updated_at = ts
             changed += 1
             continue
+        if ctx is not None:
+            issues: list[Any] = []
+            await _check_version(ctx, spec, version, issues)
+            if issues:
+                log.info(
+                    "dashboard %s does not follow %s to %s: %s",
+                    dash.id, endpoint.alias, version.id, issues[0].message,
+                )  # fmt: skip
+                locked.problem = NEW_VERSION_INCOMPATIBLE
+                locked.updated_at = ts
+                changed += 1
+                continue
         top = await session.execute(
             select(func.coalesce(func.max(m.DashboardRevision.seq), 0)).where(
                 m.DashboardRevision.dashboard_id == dash.id
@@ -577,7 +652,11 @@ async def on_endpoint_promoted(
         locked.published_revision_id = new_rev.id
         locked.problem = None
         locked.updated_at = ts
-        if not await _recent_refresh(session, dash.id, debounce_s):
+        title = _period_title(spec, "Model updated")
+        recent = await _recent_refresh(session, dash.id, debounce_s)
+        if recent is not None and recent.status == "queued":
+            _retarget(recent, new_rev, title)
+        elif recent is None or recent.model_version_id != version.id:
             await new_readout(
                 session,
                 locked,
@@ -586,7 +665,7 @@ async def on_endpoint_promoted(
                 trigger="endpoint",
                 visibility="published",
                 actor=SYSTEM,
-                title=_period_title(spec, "Model updated"),
+                title=title,
             )
         changed += 1
     await session.flush()

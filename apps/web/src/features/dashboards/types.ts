@@ -132,6 +132,23 @@ export function readoutPollMs(polls: number): number {
   return Math.min(READOUT_POLL_MAX_MS, Math.round(READOUT_POLL_MS * 1.5 ** Math.max(0, polls)));
 }
 
+/**
+ * What the analyst reads for `dashboards.problem` (a short machine word the server sets),
+ * besides the paused live inputs, which have their own message.
+ */
+export function dashboardProblemText(problem: string): string {
+  switch (problem) {
+    case "new_version_available":
+      return "The endpoint serves a newer model version. Clients still see the pinned one: publish again to move to it.";
+    case "new_version_incompatible":
+      return "The endpoint serves a model version this dashboard does not fit (a channel, the KPI or the actuals contract is missing). Clients still see the pinned one: check the draft against the new version.";
+    case "workflow_version_refused":
+      return "The linked workflow scored a model version this dashboard may not show (it ran uploaded code, or it is another model's version). Nothing was published to clients.";
+    default:
+      return `The dashboard needs attention: ${problem}.`;
+  }
+}
+
 /** The redacted form of a share token shown in lists (`share_display`). */
 export function shareDisplay(token: string): string {
   return `mpd_…${token.slice(-4)}`;

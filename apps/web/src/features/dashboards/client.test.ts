@@ -7,7 +7,7 @@ import { MOCK_SESSION_KEY, mockCsrfToken, PERSONAS } from "@/mocks/tenancy";
 import { useAuth } from "@/stores/auth";
 
 import { effectiveInputs, memberClient, openShareSession, problemOf, refreshShareSession, shareClient, ShareApiError, toClientDashboard, visibleTabs } from "./client";
-import { isFullReadout, READOUT_POLL_MAX_MS, READOUT_POLL_MS, readoutPollMs, SHARE_SESSION_RE, type Dashboard, type DashboardSpec, type Readout, type ShareSessionHandle } from "./types";
+import { dashboardProblemText, isFullReadout, READOUT_POLL_MAX_MS, READOUT_POLL_MS, readoutPollMs, SHARE_SESSION_RE, type Dashboard, type DashboardSpec, type Readout, type ShareSessionHandle } from "./types";
 
 const server = setupServer(...createHandlers());
 const seen: Request[] = [];
@@ -256,5 +256,13 @@ describe("readoutPollMs", () => {
     let polls = 0;
     while (t < 60_000) t += readoutPollMs(polls++);
     expect(polls).toBeLessThanOrEqual(10);
+  });
+});
+
+describe("dashboardProblemText", () => {
+  it("explains the problems the server sets when it refuses to follow or publish a version", () => {
+    expect(dashboardProblemText("new_version_incompatible")).toMatch(/does not fit/);
+    expect(dashboardProblemText("workflow_version_refused")).toMatch(/Nothing was published/);
+    expect(dashboardProblemText("something_new")).toContain("something_new");
   });
 });

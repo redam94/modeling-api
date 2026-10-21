@@ -27,7 +27,7 @@ import { useSourceGrid } from "@/features/dashboards/builder/source";
 import { publishPermission, specIssues, tabOfIssue } from "@/features/dashboards/builder/spec-form";
 import { useDraft } from "@/features/dashboards/builder/use-draft";
 import { STATUS_WORD } from "@/features/dashboards/readout/readout-model";
-import type { Dashboard, DashboardStatus, DashboardSummary } from "@/features/dashboards/types";
+import { dashboardProblemText, type Dashboard, type DashboardStatus, type DashboardSummary } from "@/features/dashboards/types";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { DASHBOARD_TABS, type DashboardTab } from "@/router";
 import { toast } from "@/stores/toast";
@@ -239,6 +239,11 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
         {dashboard.live_inputs === "paused" ? (
           <InlineMessage tone="warning" role="none">
             Live inputs are paused{dashboard.problem ? `: ${dashboard.problem}` : "."} Clients see the last readout. Publish again as a member with the runner role to start them again.
+          </InlineMessage>
+        ) : null}
+        {dashboard.problem && dashboard.live_inputs !== "paused" ? (
+          <InlineMessage tone="warning" role="none">
+            {dashboardProblemText(dashboard.problem)}
           </InlineMessage>
         ) : null}
         {draft.stale ? (
