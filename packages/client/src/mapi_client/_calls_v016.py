@@ -117,6 +117,14 @@ def _share(session: str) -> dict[str, str]:
     return {SHARE_SESSION_HEADER: session}
 
 
+def _with_passcode(body: DashboardShareCreate | ShareSessionCreate) -> dict[str, object]:
+    """The JSON body with the passcode revealed (a plain dump masks a ``SecretStr``)."""
+    data: dict[str, object] = dump(body)
+    if body.passcode is not None:
+        data["passcode"] = body.passcode.get_secret_value()
+    return data
+
+
 def _wait(headers: dict[str, str], wait: int | None) -> float | None:
     if wait is None:
         return None
@@ -254,7 +262,7 @@ def create_dashboard_share(
         f"{_dash(dashboard_id)}/shares",
         parse_model(DashboardShareCreated),
         _CREATED,
-        json=dump(body),
+        json=_with_passcode(body),
     )
 
 
@@ -426,7 +434,7 @@ def create_share_session(body: ShareSessionCreate) -> Call[ShareSession]:
         "POST",
         f"{V1}/share-sessions",
         parse_model(ShareSession),
-        json=dump(body),
+        json=_with_passcode(body),
         scoped=False,
         public=True,
     )
