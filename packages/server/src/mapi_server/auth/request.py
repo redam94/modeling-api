@@ -560,7 +560,8 @@ async def _resolve(
         member = any(mm.tenant_id == tenant_id for mm in memberships)
         if tenant is None or not (member or who.operator):
             raise NotFoundError("tenant", tenant_id)
-        if client_only(memberships, tenant_id):
+        # an operator's tenant rights come from the platform, not from their memberships
+        if client_only(memberships, tenant_id) and not who.operator:
             _client_gate(auth, ProjectRole.CLIENT, "tenant", tenant_id)
         auth.tenant_id = tenant.id
         auth.context = AuthContext(
@@ -607,7 +608,9 @@ async def _resolve(
             trust_tier=TrustTier(tenant.trust_tier),
         )
     else:  # AUTHENTICATED, PLATFORM
-        if client_only(memberships):
+        # an operator who also holds a client membership keeps the platform routes (the
+        # kill switches must stay reachable); every project route still gates on the role
+        if client_only(memberships) and not who.operator:
             _client_gate(auth, ProjectRole.CLIENT, "route", auth.operation_id)
         auth.context = AuthContext(**common)
     if access.resource is not None and access.action is not None:
