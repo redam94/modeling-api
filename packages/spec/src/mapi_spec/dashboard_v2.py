@@ -103,6 +103,7 @@ __all__ = [
     "AnyDashboardSpec",
     "BarRow",
     "BarsBlock",
+    "BatchClassCount",
     "BatchColumn",
     "BatchDef",
     "BatchDownload",
@@ -120,7 +121,6 @@ __all__ = [
     "ChartIntent",
     "ChartPanel",
     "ClassAccuracy",
-    "ClassCount",
     "ConfusionBlock",
     "ConfusionMatrix",
     "DashboardLimitsV2",
@@ -1187,7 +1187,7 @@ class BatchStats(ResponseModel):
     max: float | None = None
 
 
-class ClassCount(ResponseModel):
+class BatchClassCount(ResponseModel):
     label: str = Field(..., max_length=64)
     count: int = Field(..., ge=0)
 
@@ -1212,7 +1212,7 @@ class BatchSummary(ResponseModel):
     outputs: list[Name] = Field(default_factory=list, max_length=4)
     stats: dict[Name, BatchStats] = Field(default_factory=dict, max_length=4)
     share_positive: float | None = Field(None, ge=0, le=1)
-    class_counts: list[ClassCount] = Field(default_factory=list, max_length=20)
+    class_counts: list[BatchClassCount] = Field(default_factory=list, max_length=20)
     histogram: list[HistogramBin] = Field(default_factory=list, max_length=20)
     preview: list[dict[str, ScalarValue | None]] = Field(default_factory=list, max_length=20)
     download: BatchDownload = Field(default_factory=BatchDownload)
