@@ -19,7 +19,10 @@ import { adviseProblem, humanWait, parseQuotaDetail } from "./problems";
 const grants = (patch: Partial<Grants>): Grants => ({ projectRole: null, tenantRole: null, operator: false, ...patch });
 
 describe("permissions (generated from mapi_spec.tenancy.PERMISSIONS)", () => {
-  it("orders roles viewer < editor < runner < admin", () => {
+  it("orders roles client < viewer < editor < runner < admin", () => {
+    expect(atLeast("viewer", "client")).toBe(true);
+    expect(atLeast("client", "viewer")).toBe(false);
+    expect(maxRole("client", "viewer")).toBe("viewer");
     expect(atLeast("runner", "editor")).toBe(true);
     expect(atLeast("editor", "runner")).toBe(false);
     expect(maxRole("viewer", "admin")).toBe("admin");
@@ -33,6 +36,17 @@ describe("permissions (generated from mapi_spec.tenancy.PERMISSIONS)", () => {
     expect(can(grants({ projectRole: "editor" }), "create", "run")).toBe(false);
     expect(can(grants({ projectRole: "viewer" }), "read", "run")).toBe(true);
     expect(can(grants({ projectRole: "admin" }), "create", "member")).toBe(true);
+  });
+
+  it("lets a client read and use dashboards only (v0.16)", () => {
+    const client = grants({ projectRole: "client" });
+    expect(can(client, "read", "dashboard")).toBe(true);
+    expect(can(client, "run", "dashboard")).toBe(true);
+    expect(can(client, "update", "dashboard")).toBe(false);
+    expect(can(client, "read", "run")).toBe(false);
+    expect(can(client, "read", "dataset")).toBe(false);
+    expect(can(grants({ projectRole: "editor" }), "create", "dashboard_share")).toBe(true);
+    expect(can(grants({ projectRole: "viewer" }), "create", "dashboard_grant")).toBe(false);
   });
 
   it("checks tenant rules against the tenant-wide role only", () => {
@@ -60,7 +74,23 @@ describe("API client helpers", () => {
     for (const p of ["/v1/runs", "/v1/runs/run_x:cancel", "/v1/datasets/ds_1/versions", "/v1/specs:validate", "/v1/tokens", "/v1/usage", "/v1/plots:validate"]) {
       expect(isProjectScoped(p), p).toBe(true);
     }
-    for (const p of ["/v1/me", "/v1/tenants/acme/members", "/v1/admin/audit", "/v1/projects", "/v1/catalog/models", "/v1/schemas/modelspec.json", "/readyz", "/auth/session"]) {
+    for (const p of ["/v1/dashboards", "/v1/dashboards/dsh_1:publish", "/v1/dashboards/dsh_1/readouts/3"]) {
+      expect(isProjectScoped(p), p).toBe(true);
+    }
+    for (const p of [
+      "/v1/me",
+      "/v1/tenants/acme/members",
+      "/v1/admin/audit",
+      "/v1/projects",
+      "/v1/catalog/models",
+      "/v1/schemas/modelspec.json",
+      "/readyz",
+      "/auth/session",
+      "/v1/shared/dashboard",
+      "/v1/shared/whatif:evaluate",
+      "/v1/share-sessions",
+      "/v1/share-sessions:refresh",
+    ]) {
       expect(isProjectScoped(p), p).toBe(false);
     }
   });

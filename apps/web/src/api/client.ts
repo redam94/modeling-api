@@ -24,11 +24,13 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /**
  * Routes that act in the selected project (every v0.2 resource plus tokens and usage).
  * Tenant, operator, identity and catalog routes name their scope in the path or have none;
- * sending the header there could only conflict with the path (422).
+ * sending the header there could only conflict with the path (422). The v0.16 share-link
+ * routes (`/v1/shared/…`, `/v1/share-sessions`) carry their scope in the share session; the
+ * `/v1/dashboards` routes stay project-scoped.
  */
 export function isProjectScoped(pathname: string): boolean {
   if (!pathname.startsWith("/v1/")) return false;
-  return !/^\/v1\/(?:me|tenants|admin|projects|catalog|schemas)(?:[/:]|$)/.test(pathname);
+  return !/^\/v1\/(?:me|tenants|admin|projects|catalog|schemas|shared|share-sessions)(?:[/:]|$)/.test(pathname);
 }
 
 /** Headers naming the project for `scope` (none outside a v0.3 session). */
