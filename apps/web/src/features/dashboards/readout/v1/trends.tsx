@@ -11,10 +11,10 @@ import { fixed, MISSING } from "@/components/ods/format";
 import { IndexLine, Sparkline } from "@/components/readout-charts";
 import { SegmentedControl } from "@/components/ui/overlays";
 
-import { dk } from "../keys";
-import { MAX_READOUT_PAGE, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../types";
-import { Section, Working } from "./parts";
-import { breakevenOf, isHistoryReadout, periodOf, plural, seriesColor, trendIndex, trendRoi, type TrendPoint } from "./readout-model";
+import { dk } from "../../keys";
+import { MAX_READOUT_PAGE, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../../types";
+import { Section, Working } from "../parts";
+import { breakevenOf, isHistoryReadout, periodOf, plural, seriesColor, trendIndex, trendRoi, type TrendPoint } from "../readout-model";
 
 const WINDOWS = ["13", "26", "52"] as const;
 type Window = (typeof WINDOWS)[number];

@@ -9,7 +9,7 @@ import { minus } from "@/components/ods/format";
 import { Switch } from "@/components/ui/overlays";
 import { Label } from "@/components/ui/primitives";
 
-import type { Readout } from "../types";
+import type { Readout } from "../../types";
 
 function valueText(v: string | number): string {
   return typeof v === "number" ? (Number.isInteger(v) ? String(v) : minus(v.toPrecision(4))) : v;

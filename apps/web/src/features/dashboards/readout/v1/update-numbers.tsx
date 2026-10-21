@@ -18,10 +18,10 @@ import { Input, Label, Textarea } from "@/components/ui/primitives";
 import { cellText, parseCell, parsePasted, tableToXr, type Cell } from "@/lib/actuals";
 import { cn } from "@/lib/utils";
 
-import { dashboardErrorMessage, problemOf, useActualsTemplate, useReadout, useSubmitActuals } from "../client";
-import { MAX_ACTUALS_ROWS, type ActualsSubmit, type ActualsTemplate, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../types";
-import { ReadoutState, Section, saveText, Tags, Working } from "./parts";
-import { actualsChecks, checksPass, filledRows, historyRow, periodOf, plural } from "./readout-model";
+import { dashboardErrorMessage, problemOf, useActualsTemplate, useReadout, useSubmitActuals } from "../../client";
+import { MAX_ACTUALS_ROWS, type ActualsSubmit, type ActualsTemplate, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../../types";
+import { ReadoutState, Section, saveText, Tags, Working } from "../parts";
+import { actualsChecks, checksPass, filledRows, historyRow, periodOf, plural } from "../readout-model";
 
 const MODE_NOTE: Record<ActualsTemplate["mode"], string> = {
   compared: "We compare your numbers with what the model expected. The model does not change.",

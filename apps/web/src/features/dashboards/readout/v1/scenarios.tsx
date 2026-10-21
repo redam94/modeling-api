@@ -15,10 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
 import { parseResponseGrid, WhatIfError, type ResponseGrid } from "@/features/guided/whatif";
 
-import { dashboardErrorMessage, useDashboardGrid, useReadout, useSaveScenario } from "../client";
-import { isFullReadout, type ChannelDef, type ClientDashboard, type DashboardClient, type DashboardGrid } from "../types";
-import { ReadoutState, ReadoutTiles, Section, Working } from "./parts";
-import { clampMultiplier, formatValue, kpiWord, multiplierWords, periodOf, plural, scenarioModel, signedGrouped, sliderBounds, type ScenarioChannel } from "./readout-model";
+import { dashboardErrorMessage, useDashboardGrid, useReadout, useSaveScenario } from "../../client";
+import { isFullReadout, type ChannelDef, type ClientDashboard, type DashboardClient, type DashboardGrid } from "../../types";
+import { ReadoutState, ReadoutTiles, Section, Working } from "../parts";
+import { clampMultiplier, formatValue, kpiWord, multiplierWords, periodOf, plural, scenarioModel, signedGrouped, sliderBounds, type ScenarioChannel } from "../readout-model";
 
 function toGrid(raw: DashboardGrid): ResponseGrid | WhatIfError {
   try {

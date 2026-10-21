@@ -10,8 +10,8 @@ import { ZONE_FILL, ZONE_TINT } from "@/components/ods/tag-word";
 import { DivergingBars, RangeBar } from "@/components/readout-charts";
 import { cn } from "@/lib/utils";
 
-import type { ClientDashboard, Readout, ReadoutHeader, Zone } from "../types";
-import { KpiChart, ReadoutState, ReadoutTiles, Section } from "./parts";
+import type { ClientDashboard, Readout, ReadoutHeader, Zone } from "../../types";
+import { KpiChart, ReadoutState, ReadoutTiles, Section } from "../parts";
 import {
   accuracyLines,
   accuracyOf,
@@ -26,7 +26,7 @@ import {
   zonesIn,
   zoneWord,
   type ChannelRow,
-} from "./readout-model";
+} from "../readout-model";
 import { TechnicalToggle } from "./technical-toggle";
 
 const ZONE_ORDER: readonly Zone[] = ["headroom", "optimal", "over", "no_payback"];

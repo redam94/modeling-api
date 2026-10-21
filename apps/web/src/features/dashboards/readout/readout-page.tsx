@@ -4,27 +4,21 @@
  * knows who is looking, and it imports nothing of the signed-in app (no `api/queries.ts`, no
  * router), so the share app can load it on its own.
  *
- * MEI planner composition: the title, a meta line ("Updated 20/10/2026 09.40 with results to the
- * week ending 18/10/2026") and one action ("Download summary (.csv)"), then the tabs the
- * dashboard has and the viewer may use.
+ * Layout 1 (v0.16, MEI planner composition: the title, a meta line and "Download summary
+ * (.csv)", then the tabs the dashboard has and the viewer may use) renders the v1 tree in
+ * `v1/`. Layout 2 (v0.17: a `schema_version` 2 snapshot or a layout 2 dashboard, plan §3.7)
+ * renders {@link PanelReadout}. History mixes both after the upgrade; each readout there is
+ * drawn by its own shape.
  */
-import { Download } from "lucide-react";
 import { useState } from "react";
 
-import { Eyebrow, InlineMessage } from "@/components/ods";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
+import { InlineMessage } from "@/components/ods";
 import { Skeleton } from "@/components/ui/primitives";
 
-import { dashboardErrorMessage, problemOf, useDashboardView, useReadout, useReadoutList } from "../client";
-import type { ClientDashboard, DashboardClient, Readout, ReadoutHeader, TabKey } from "../types";
-import { History } from "./history";
-import { saveText } from "./parts";
-import { isHistoryReadout, metaLine, pageTabs, periodOf, summaryCsv, summaryFileName, tabLabel } from "./readout-model";
-import { Scenarios } from "./scenarios";
-import { ThisPeriod } from "./this-period";
-import { Trends } from "./trends";
-import { UpdateNumbers } from "./update-numbers";
+import { dashboardErrorMessage, problemOf, useDashboardView } from "../client";
+import { readoutLayout, type DashboardClient, type SectionKey, type TabKey } from "../types";
+import { PanelReadout } from "./panel-readout";
+import { PlannerBody } from "./v1/planner-body";
 
 export interface ReadoutPageProps {
   client: DashboardClient;
@@ -33,6 +27,9 @@ export interface ReadoutPageProps {
   /** The open tab (controlled, e.g. from `?tab=`); uncontrolled when left out. */
   tab?: TabKey | undefined;
   onTabChange?: ((tab: TabKey) => void) | undefined;
+  /** The open layout 2 section (controlled); a layout 1 `tab` is mapped when left out. */
+  section?: SectionKey | undefined;
+  onSectionChange?: ((section: SectionKey) => void) | undefined;
 }
 
 function PageSkeleton() {
@@ -50,78 +47,7 @@ function PageSkeleton() {
   );
 }
 
-/** The readout before the latest (for "What changed") and the uploads waiting for review. */
-function useReadoutContext(client: DashboardClient, latest: Readout | null) {
-  const list = useReadoutList(client, { limit: 20 });
-  const items: ReadoutHeader[] = list.data?.items ?? [];
-  const prev = latest ? (items.filter((h) => isHistoryReadout(h) && h.seq < latest.seq).sort((a, b) => b.seq - a.seq)[0] ?? null) : null;
-  const previous = useReadout(client, prev?.seq ?? null);
-  const pending = items.filter((h) => h.visibility === "pending_review" && h.status !== "failed");
-  return { previous: previous.data ?? null, pending };
-}
-
-function Body({ client, dashboard, preview, tab, onTab }: { client: DashboardClient; dashboard: ClientDashboard; preview: boolean; tab: TabKey; onTab: (t: TabKey) => void }) {
-  const latest = dashboard.latest_readout ?? null;
-  const { previous, pending } = useReadoutContext(client, latest);
-  const tabs = pageTabs(dashboard);
-  const period = periodOf(dashboard);
-  const open = tabs.includes(tab) ? tab : "this_period";
-  return (
-    // minmax(0, 1fr): an implicit `auto` track grows to its widest child's max-content (the
-    // header's nowrap button, a tab's wide table), so the page would scroll sideways at 390 px
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid min-w-0 gap-2">
-          {dashboard.client_name ? <Eyebrow>{dashboard.client_name}</Eyebrow> : null}
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{dashboard.title}</h1>
-          {dashboard.summary ? <p className="max-w-[72ch] text-base text-muted-foreground">{dashboard.summary}</p> : null}
-          <p className="text-sm text-hint" data-readout="meta">
-            {metaLine(latest, period)}
-          </p>
-        </div>
-        <Button variant="secondary" disabled={!latest?.snapshot} onClick={() => saveText(summaryFileName(dashboard.title, latest), summaryCsv(dashboard, latest))}>
-          <Download /> Download summary (.csv)
-        </Button>
-      </header>
-      <Tabs value={open} onValueChange={(v) => onTab(v as TabKey)}>
-        {tabs.length > 1 ? (
-          <TabsList aria-label="Dashboard sections" className="w-full">
-            {tabs.map((t) => (
-              <TabsTrigger key={t} value={t}>
-                {tabLabel(t, period)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        ) : null}
-        <TabsContent value="this_period">
-          <ThisPeriod dashboard={dashboard} readout={latest} previous={previous} pending={pending} preview={preview} />
-        </TabsContent>
-        {tabs.includes("trends") ? (
-          <TabsContent value="trends">
-            <Trends client={client} dashboard={dashboard} />
-          </TabsContent>
-        ) : null}
-        {tabs.includes("scenarios") ? (
-          <TabsContent value="scenarios">
-            <Scenarios client={client} dashboard={dashboard} preview={preview} />
-          </TabsContent>
-        ) : null}
-        {tabs.includes("update") ? (
-          <TabsContent value="update">
-            <UpdateNumbers client={client} dashboard={dashboard} preview={preview} />
-          </TabsContent>
-        ) : null}
-        {tabs.includes("history") ? (
-          <TabsContent value="history">
-            <History client={client} dashboard={dashboard} />
-          </TabsContent>
-        ) : null}
-      </Tabs>
-    </div>
-  );
-}
-
-export function ReadoutPage({ client, preview = false, tab, onTabChange }: ReadoutPageProps) {
+export function ReadoutPage({ client, preview = false, tab, onTabChange, section, onSectionChange }: ReadoutPageProps) {
   const q = useDashboardView(client);
   const [own, setOwn] = useState<TabKey>("this_period");
   const current = tab ?? own;
@@ -138,5 +64,8 @@ export function ReadoutPage({ client, preview = false, tab, onTabChange }: Reado
       </InlineMessage>
     );
   }
-  return <Body client={client} dashboard={q.data} preview={preview} tab={current} onTab={onTab} />;
+  if (readoutLayout(q.data, q.data.latest_readout ?? null) === 2 || q.data.layout_version === 2) {
+    return <PanelReadout client={client} dashboard={q.data} preview={preview} tab={current} onTabChange={onTab} section={section} onSectionChange={onSectionChange} />;
+  }
+  return <PlannerBody client={client} dashboard={q.data} preview={preview} tab={current} onTab={onTab} />;
 }
