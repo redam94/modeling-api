@@ -1,0 +1,31 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "75ba8ef22a56257d26b21c9bd948b512",
+ "groups": [
+  "/summary"
+ ],
+ "issues": [
+  {
+   "code": "UNSEEN_LEVELS",
+   "context": {},
+   "message": "1 new level(s) of 'store' will use strategy 'pooled'",
+   "pointer": "/data",
+   "severity": "info",
+   "suggested_action": null,
+   "untrusted_text": "s_new"
+  }
+ ],
+ "kind": "expected",
+ "mode": "predict",
+ "names": "dataset",
+ "output_space": {
+  "contributions": "raw",
+  "y_hat": "raw"
+ },
+ "representation": "point",
+ "retransform": {
+  "contributions": "none",
+  "y_hat": "none"
+ },
+ "units": "original"
+}

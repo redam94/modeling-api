@@ -1,0 +1,25 @@
+{
+ "aggregation_flagged": true,
+ "bundle_id": "4215b5f43745df53ded559f7a1661aaa",
+ "groups": [
+  "/summary"
+ ],
+ "issues": [
+  {
+   "code": "CAPABILITY_UNSUPPORTED",
+   "context": {},
+   "message": "point predictions aggregated linearly; no uncertainty attached",
+   "pointer": "/output/aggregate",
+   "severity": "warning",
+   "suggested_action": null,
+   "untrusted_text": null
+  }
+ ],
+ "kind": "expected",
+ "mode": "predict",
+ "names": "dataset",
+ "output_space": {},
+ "representation": "point",
+ "retransform": {},
+ "units": "original"
+}

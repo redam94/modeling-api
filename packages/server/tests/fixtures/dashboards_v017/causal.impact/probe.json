@@ -1,0 +1,759 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/fit.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/fit.json",
+  "ui/explore/plots/params.json",
+  "ui/explore/plots/residuals.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/thin.zarr.zip",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": false,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "mcmc",
+  "loo_invalid_reason": "the Kalman likelihood is a sum over the whole series; steps depend on each other, so pointwise leave-one-out is not defined",
+  "loo_valid": false,
+  "owns": [
+   "scaling"
+  ],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "forecast",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 1.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 1.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_average",
+   "labels": {},
+   "last": 9.118309146715042,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 9.118309146715042,
+   "min": 9.118309146715042
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_relative",
+   "labels": {},
+   "last": 0.08939822510333449,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 0.08939822510333449,
+   "min": 0.08939822510333449
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total",
+   "labels": {},
+   "last": 109.4197097605805,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 109.4197097605805,
+   "min": 109.4197097605805
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_p05",
+   "labels": {},
+   "last": 92.20257482417854,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 92.20257482417854,
+   "min": 92.20257482417854
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_p95",
+   "labels": {},
+   "last": 133.24811809201748,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 133.24811809201748,
+   "min": 133.24811809201748
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "effect_total_sd",
+   "labels": {},
+   "last": 12.689612291078562,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 12.689612291078562,
+   "min": 12.689612291078562
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 15.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 3.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 7.0,
+   "min": 3.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "one_step_coverage_90",
+   "labels": {},
+   "last": 0.9423076923076923,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 0.9423076923076923,
+   "min": 0.9423076923076923
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "one_step_rmse",
+   "labels": {},
+   "last": 1.2833629005733678,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 1.2833629005733678,
+   "min": 1.2833629005733678
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "p_effect_positive",
+   "labels": {},
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "pre_mape",
+   "labels": {},
+   "last": 0.011160321501603232,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 0.011160321501603232,
+   "min": 0.011160321501603232
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.847172-04:00",
+   "key": "pre_rmse",
+   "labels": {},
+   "last": 1.3007388572555187,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.847172-04:00",
+   "max": 1.3007388572555187,
+   "min": 1.3007388572555187
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "sigma_level",
+   "labels": {},
+   "last": 0.24699402477346996,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 0.24699402477346996,
+   "min": 0.24699402477346996
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.850172-04:00",
+   "key": "sigma_obs",
+   "labels": {},
+   "last": 1.2384294467905517,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.850172-04:00",
+   "max": 1.2384294467905517,
+   "min": 1.2384294467905517
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.5275989818912205,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.5768362768960499,
+   "min": 0.3718582626088438
+  },
+  {
+   "attempt": 1,
+   "count": 3,
+   "first_ts": "2026-10-21T09:47:46.502172-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.5394781568357188,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.784172-04:00",
+   "max": 0.6843562793185254,
+   "min": 0.5394781568357188
+  }
+ ],
+ "fit_run": "run_01m5fbf7fp7rq9wp4b1jbxhv02",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-MON",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "control_a",
+     "role": "input"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "time"
+     ],
+     "freq": null,
+     "name": "control_b",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "time",
+   "rows": [
+    [
+     "2024-03-25",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-04-01",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-causal-impact-eb77fe-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "time": {
+     "contiguous": true,
+     "end": "2024-03-18T00:00:00",
+     "freq": "W-MON",
+     "kind": "time",
+     "size": 64,
+     "start": "2023-01-02T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "time",
+   "input_schema": {
+    "dims": {
+     "time": {
+      "description": null,
+      "freq": "W-MON",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "control_a": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "control_b": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:1739db5a8d8d5d5337ddbd01a3d9e9fa0776936b9a34527c9a2517ef63fd49f2",
+   "score_modes": [
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-causal-impact-eb77fe-model@v1",
+ "plugin": "causal.impact@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.041 for 'initial_trend' (threshold 1.01)",
+    "message_plain": "The chains agree, but not fully (R-hat 1.04).",
+    "metric": "r_hat_max",
+    "status": "warn",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.01,
+    "title": "Chains agree",
+    "value": 1.0412246704582349
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 67 for 'sigma_trend' (threshold 200)",
+    "message_plain": "There are only 67 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 66.70224251242786
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "1 divergent transitions in 200 draws",
+    "message_plain": "The sampler had problems in a small part of the draws (0.5%).",
+    "metric": "divergence_rate",
+    "status": "warn",
+    "suggested_action": "Increase target_accept, or use priors that give more information.",
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.005
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 192 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "64 periods at W-MON (52 per year) along 'time' at the model stage",
+    "message_plain": "There are only 1.2 years of history. The seasonal effects are not certain.",
+    "metric": "history_years",
+    "status": "warn",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 1.2307692307692308
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "forecast_4__canonical": {
+   "captured": [
+    "forecast_4__canonical.summary.json",
+    "forecast_4__canonical.result.json",
+    "forecast_4__canonical.forecast.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhwmch2t35z9a5dmzeat4",
+   "state": "succeeded"
+  },
+  "forecast_4__predictive": {
+   "captured": [
+    "forecast_4__predictive.summary.json",
+    "forecast_4__predictive.result.json",
+    "forecast_4__predictive.forecast.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhjvhpgnyhhtn5prthx0x",
+   "state": "succeeded"
+  },
+  "forecast_4__readout": {
+   "captured": [
+    "forecast_4__readout.summary.json",
+    "forecast_4__readout.result.json",
+    "forecast_4__readout.forecast.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-future@v1",
+    "horizon": {
+     "dim": "time",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhc6cvgb3g53k3r9pjcvq",
+   "state": "succeeded"
+  },
+  "predict_over_data__canonical": {
+   "captured": [
+    "predict_over_data__canonical.summary.json",
+    "predict_over_data__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-fit-data-t@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgncbjz4gfzj3ja7wft6p",
+   "state": "succeeded"
+  },
+  "predict_over_data__predictive": {
+   "captured": [
+    "predict_over_data__predictive.summary.json",
+    "predict_over_data__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-fit-data-t@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgbjw5kkr0a4wcsqxvgms",
+   "state": "succeeded"
+  },
+  "predict_over_data__readout": {
+   "captured": [
+    "predict_over_data__readout.summary.json",
+    "predict_over_data__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-causal-impact-eb77fe-fit-data-t@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-causal-impact-eb77fe-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbg4jgf8xgvb43d3fn67kt",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "conformance fixture causal_impact",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "time": "week"
+    },
+    "vars": {
+     "y": "sales"
+    }
+   },
+   "dataset": "dataset://default/v017-causal-impact-eb77fe-data@v1"
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "labels": {
+    "corpus": "causal_impact"
+   },
+   "name": "v017-causal-impact-eb77fe-model",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "chains": 2,
+    "draws": 100,
+    "engine": "nutpie",
+    "mode": "train_only",
+    "seed": 7,
+    "tune": 150
+   },
+   "settings": {
+    "controls": [
+     "control_a",
+     "control_b"
+    ],
+    "intervention_start": "2024-01-01",
+    "trend": "level"
+   },
+   "use": "causal.impact@^1"
+  },
+  "outputs": {
+   "plots": [
+    "causal.impact",
+    "causal.pre_fit",
+    "core.convergence"
+   ]
+  }
+ },
+ "version_metrics": {}
+}

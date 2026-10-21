@@ -1,0 +1,427 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "ca672b1926817470defeec8fc59f4991",
+ "conditioning": {
+  "conditioned": false,
+  "dim": "period",
+  "fit_end": "2012-10-01",
+  "horizon_source": "horizon",
+  "message": "Forecast from the end of the fitted history (2012-10-01); no actuals were supplied. 4 periods forecast from 2013-01-01 to 2013-10-01.",
+  "n_actuals": 0,
+  "n_series": 30,
+  "parameters": "fitted",
+  "periods": 4,
+  "revised": 0,
+  "series": [
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 0
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 0
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 0
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 0
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 0
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 1
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 1
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 1
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 1
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 1
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 2
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 2
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 2
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 2
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 2
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 3
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 3
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 3
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 3
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 3
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 4
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 4
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 4
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 4
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 4
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 0,
+     "row": 5
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 1,
+     "row": 5
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 2,
+     "row": 5
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 3,
+     "row": 5
+    }
+   },
+   {
+    "forecast_from": "2013-01-01",
+    "forecast_to": "2013-10-01",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2012-10-01",
+    "revised": 0,
+    "series": {
+     "col": 4,
+     "row": 5
+    }
+   }
+  ],
+  "series_conditioned": 0,
+  "truncated": false
+ },
+ "groups": [
+  "/summary"
+ ],
+ "issues": [],
+ "kind": "expected",
+ "mode": "forecast",
+ "names": "dataset",
+ "output_space": {
+  "rate": "raw",
+  "total": "raw"
+ },
+ "representation": "draws",
+ "retransform": {
+  "rate": "none",
+  "total": "none"
+ },
+ "units": "original"
+}

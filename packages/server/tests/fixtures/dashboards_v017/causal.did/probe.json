@@ -1,0 +1,1199 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/fit.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/fit.json",
+  "ui/explore/plots/params.json",
+  "ui/explore/plots/residuals.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/thin.zarr.zip",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": false,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "event_coef",
+   "sigma"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": null,
+  "loo_valid": true,
+  "owns": [
+   "scaling"
+  ],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "counterfactual",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att",
+   "labels": {},
+   "last": 3.981211065630888,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.981211065630888,
+   "min": 3.981211065630888
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att_p05",
+   "labels": {},
+   "last": 2.5248116739501767,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.5248116739501767,
+   "min": 2.5248116739501767
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att_p95",
+   "labels": {},
+   "last": 5.189165748901062,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 5.189165748901062,
+   "min": 5.189165748901062
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_average",
+   "labels": {},
+   "last": 3.988746752314039,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.988746752314039,
+   "min": 3.988746752314039
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {},
+   "last": 0.03884188857180862,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03884188857180862,
+   "min": 0.03884188857180862
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 0.04652773290077091,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04652773290077091,
+   "min": 0.04652773290077091
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 0.03589027520869145,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03589027520869145,
+   "min": 0.03589027520869145
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 0.03202914599152221,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03202914599152221,
+   "min": 0.03202914599152221
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 0.05003989848418419,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.05003989848418419,
+   "min": 0.05003989848418419
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 0.03232963577928985,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03232963577928985,
+   "min": 0.03232963577928985
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 0.04081181877145659,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04081181877145659,
+   "min": 0.04081181877145659
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 0.03446296258453081,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03446296258453081,
+   "min": 0.03446296258453081
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 0.04089628765923447,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04089628765923447,
+   "min": 0.04089628765923447
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {},
+   "last": 319.0997401851231,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 319.0997401851231,
+   "min": 319.0997401851231
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 48.726787554748064,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 48.726787554748064,
+   "min": 48.726787554748064
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 40.827499669241995,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 40.827499669241995,
+   "min": 40.827499669241995
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 30.997600272232884,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 30.997600272232884,
+   "min": 30.997600272232884
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 43.7849495572052,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 43.7849495572052,
+   "min": 43.7849495572052
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 34.79533436077574,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 34.79533436077574,
+   "min": 34.79533436077574
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 40.021611772773994,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 40.021611772773994,
+   "min": 40.021611772773994
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 36.33663548666128,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 36.33663548666128,
+   "min": 36.33663548666128
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 43.60932151148398,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 43.60932151148398,
+   "min": 43.60932151148398
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_p05",
+   "labels": {},
+   "last": 198.3893557294206,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 198.3893557294206,
+   "min": 198.3893557294206
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_p95",
+   "labels": {},
+   "last": 416.00508906917855,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 416.00508906917855,
+   "min": 416.00508906917855
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_sd",
+   "labels": {},
+   "last": 63.53874425231597,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 63.53874425231597,
+   "min": 63.53874425231597
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-1"
+   },
+   "last": 0.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-2"
+   },
+   "last": -1.1965063209206317,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -1.1965063209206317,
+   "min": -1.1965063209206317
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-3"
+   },
+   "last": -0.05286364233762768,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -0.05286364233762768,
+   "min": -0.05286364233762768
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-4"
+   },
+   "last": -1.095491098185296,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -1.095491098185296,
+   "min": -1.095491098185296
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "0"
+   },
+   "last": 4.822768494477988,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.822768494477988,
+   "min": 4.822768494477988
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "1"
+   },
+   "last": 4.751351276254712,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.751351276254712,
+   "min": 4.751351276254712
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "2"
+   },
+   "last": 3.095761365935358,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.095761365935358,
+   "min": 3.095761365935358
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "3"
+   },
+   "last": 4.399687815902568,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.399687815902568,
+   "min": 4.399687815902568
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "4"
+   },
+   "last": 2.127356650309009,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.127356650309009,
+   "min": 2.127356650309009
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "5"
+   },
+   "last": 3.5154883298746773,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.5154883298746773,
+   "min": 3.5154883298746773
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "6"
+   },
+   "last": 4.2749241808886405,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.2749241808886405,
+   "min": 4.2749241808886405
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {},
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "pre_mape",
+   "labels": {},
+   "last": 0.018713106781957162,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.018713106781957162,
+   "min": 0.018713106781957162
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "pre_rmse",
+   "labels": {},
+   "last": 2.120577050423824,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.120577050423824,
+   "min": 2.120577050423824
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.3297089404588118,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.3297089404588118,
+   "min": 0.3297089404588118
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.402393080511828,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.402393080511828,
+   "min": 0.402393080511828
+  }
+ ],
+ "fit_run": "run_01m5fbf7fsd67fecqn74vfd25x",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "A date (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "MS",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of unit",
+     "dims": [],
+     "freq": null,
+     "name": "unit",
+     "role": "coord"
+    },
+    {
+     "description": "The value of the target",
+     "dims": [
+      "unit",
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "unit",
+      "time"
+     ],
+     "freq": null,
+     "name": "treatment",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": null,
+   "rows": []
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-did-event-study-2699f9-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "time": {
+     "contiguous": true,
+     "end": "2024-12-01T00:00:00",
+     "freq": "MS",
+     "kind": "time",
+     "size": 24,
+     "start": "2023-01-01T00:00:00",
+     "step": null,
+     "values": null
+    },
+    "unit": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 20,
+     "start": null,
+     "step": null,
+     "values": [
+      "store_00",
+      "store_01",
+      "store_02",
+      "store_03",
+      "store_04",
+      "store_05",
+      "store_06",
+      "store_07",
+      "store_08",
+      "store_09",
+      "store_10",
+      "store_11",
+      "store_12",
+      "store_13",
+      "store_14",
+      "store_15",
+      "store_16",
+      "store_17",
+      "store_18",
+      "store_19"
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": null,
+   "input_schema": {
+    "dims": {
+     "time": {
+      "description": null,
+      "freq": "MS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "unit": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "treatment": {
+      "bounds": [
+       0.0,
+       1.0
+      ],
+      "description": null,
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:63623a03aaade39f921f05d7aaf48bf6b29847a4530bbf8ce0e7e46844eaff31",
+   "score_modes": [
+    "counterfactual",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-did-event-study-2699f9-model@v1",
+ "plugin": "causal.did@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.398 for 'intercept' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.4). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.3983221850906615
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 5 for 'event_effect' (threshold 200)",
+    "message_plain": "There are only 5 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 4.937522282021873
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "plausibility",
+    "check": "plausibility.prior_overlap",
+    "code": "PRIOR_OVERLAP",
+    "docs_anchor": "check-plausibility-prior-overlap",
+    "message_expert": "prior/posterior overlap 0.30 for 'event_effect[6]'",
+    "message_plain": "The data moved each parameter away from its prior.",
+    "metric": "prior_overlap_max",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.9,
+    "title": "The data changed the model",
+    "value": 0.30000000000000004
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 960 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "24 periods at MS (12 per year) along 'time' at the model stage",
+    "message_plain": "There are 2.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 2.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "no_treatment": {
+   "captured": [
+    "no_treatment.summary.json",
+    "no_treatment.result.json",
+    "no_treatment.counterfactual.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/guided/counterfactual.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-did-event-study-2699f9-fit-data@v1",
+    "interventions": [
+     {
+      "set": 0,
+      "var": "treatment"
+     }
+    ],
+    "kind": "ScoreRequest",
+    "mode": "counterfactual",
+    "model": "model://default/v017-did-event-study-2699f9-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgz65xpvhwx7k911035dz",
+   "state": "succeeded"
+  },
+  "predict_in_sample__canonical": {
+   "captured": [
+    "predict_in_sample__canonical.summary.json",
+    "predict_in_sample__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-did-event-study-2699f9-fit-data@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-did-event-study-2699f9-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgnbmx618gap6nbzsf6xk",
+   "state": "succeeded"
+  },
+  "predict_in_sample__predictive": {
+   "captured": [
+    "predict_in_sample__predictive.summary.json",
+    "predict_in_sample__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-did-event-study-2699f9-fit-data@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-did-event-study-2699f9-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgbj4tdt7wtf9ten43a4a",
+   "state": "succeeded"
+  },
+  "predict_in_sample__readout": {
+   "captured": [
+    "predict_in_sample__readout.summary.json",
+    "predict_in_sample__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-did-event-study-2699f9-fit-data@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-did-event-study-2699f9-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbg4jbknkpdxm966215hxr",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "conformance fixture did_event_study",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "time": "month",
+     "unit": "store"
+    },
+    "vars": {
+     "y": "sales"
+    }
+   },
+   "dataset": "dataset://default/v017-did-event-study-2699f9-data@v1"
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "labels": {
+    "corpus": "did-event-study"
+   },
+   "name": "v017-did-event-study-2699f9-model",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "chains": 2,
+    "draws": 100,
+    "mode": "train_only",
+    "seed": 7,
+    "tune": 100
+   },
+   "settings": {
+    "design": "event_study",
+    "lags": 6,
+    "leads": 4
+   },
+   "use": "causal.did@^1"
+  },
+  "outputs": {
+   "plots": [
+    "causal.event_study",
+    "causal.impact",
+    "causal.pre_fit",
+    "core.convergence"
+   ]
+  }
+ },
+ "version_metrics": {}
+}

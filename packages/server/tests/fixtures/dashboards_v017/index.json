@@ -1,0 +1,141 @@
+{
+ "causal.did": {
+  "representation": "draws",
+  "scores": {
+   "no_treatment": "succeeded",
+   "predict_in_sample__canonical": "succeeded",
+   "predict_in_sample__predictive": "succeeded",
+   "predict_in_sample__readout": "succeeded"
+  },
+  "source": "conformance fixture did_event_study"
+ },
+ "causal.impact": {
+  "representation": "draws",
+  "scores": {
+   "forecast_4__canonical": "succeeded",
+   "forecast_4__predictive": "succeeded",
+   "forecast_4__readout": "succeeded",
+   "predict_over_data__canonical": "succeeded",
+   "predict_over_data__predictive": "succeeded",
+   "predict_over_data__readout": "succeeded"
+  },
+  "source": "conformance fixture causal_impact"
+ },
+ "sci.areal_bym2": {
+  "representation": "draws",
+  "scores": {
+   "predict_map__canonical": "succeeded",
+   "predict_map__predictive": "succeeded",
+   "predict_map__readout": "succeeded",
+   "simulate": "succeeded"
+  },
+  "source": "conformance fixture e18_areal"
+ },
+ "sci.lgcp_grid": {
+  "representation": "draws",
+  "scores": {
+   "forecast_4__canonical": "succeeded",
+   "forecast_4__predictive": "succeeded",
+   "forecast_4__readout": "succeeded",
+   "forecast_sum": "succeeded",
+   "predict_tail__canonical": "succeeded",
+   "predict_tail__predictive": "succeeded",
+   "predict_tail__readout": "succeeded"
+  },
+  "source": "conformance fixture e07_lgcp"
+ },
+ "sklearn.multiclass_classifier": {
+  "representation": "point",
+  "scores": {
+   "inline_gap_week": "NON_CONTIGUOUS_EXTENSION",
+   "inline_new_store": "succeeded",
+   "inline_next_week": "succeeded",
+   "inline_two_rows": "succeeded",
+   "inline_two_rows__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_sum_store": "succeeded",
+   "predict_tail__canonical": "succeeded",
+   "predict_tail__mean_only": "succeeded",
+   "predict_tail__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_tail__readout": "succeeded"
+  },
+  "source": "probe case multiclass"
+ },
+ "sklearn.tabular_classifier": {
+  "representation": "point",
+  "scores": {
+   "inline_gap_week": "NON_CONTIGUOUS_EXTENSION",
+   "inline_new_store": "succeeded",
+   "inline_next_week": "succeeded",
+   "inline_two_rows": "succeeded",
+   "inline_two_rows__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_sum_store": "succeeded",
+   "predict_tail__canonical": "succeeded",
+   "predict_tail__mean_only": "succeeded",
+   "predict_tail__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_tail__readout": "succeeded"
+  },
+  "source": "probe case classifier"
+ },
+ "sklearn.tabular_conformal": {
+  "representation": "interval",
+  "scores": {
+   "forecast_4__canonical": "succeeded",
+   "forecast_4__predictive": "succeeded",
+   "forecast_4__readout": "succeeded",
+   "forecast_inline": "succeeded",
+   "predict_new_sku__canonical": "UNSEEN_LEVELS",
+   "predict_new_sku__predictive": "UNSEEN_LEVELS",
+   "predict_new_sku__readout": "UNSEEN_LEVELS",
+   "predict_new_sku_inline": "UNSEEN_LEVELS"
+  },
+  "source": "conformance fixture sklearn_store_demand"
+ },
+ "sklearn.tabular_regressor": {
+  "representation": "point",
+  "scores": {
+   "inline_gap_week": "NON_CONTIGUOUS_EXTENSION",
+   "inline_new_store": "succeeded",
+   "inline_next_week": "succeeded",
+   "inline_two_rows": "succeeded",
+   "inline_two_rows__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_sum_store": "succeeded",
+   "predict_tail__canonical": "succeeded",
+   "predict_tail__mean_only": "succeeded",
+   "predict_tail__predictive": "CAPABILITY_UNSUPPORTED",
+   "predict_tail__readout": "succeeded"
+  },
+  "source": "probe case regressor"
+ },
+ "tabular.image_logistic": {
+  "representation": "draws",
+  "scores": {
+   "predict_few__canonical": "succeeded",
+   "predict_few__predictive": "succeeded",
+   "predict_few__readout": "succeeded"
+  },
+  "source": "probe case image"
+ },
+ "ts.bsts": {
+  "representation": "draws",
+  "scores": {
+   "forecast_12__canonical": "succeeded",
+   "forecast_12__predictive": "succeeded",
+   "forecast_12__readout": "succeeded",
+   "forecast_sum": "succeeded"
+  },
+  "source": "conformance fixture e13_bsts"
+ },
+ "ts.sarimax": {
+  "representation": "quantiles",
+  "scores": {
+   "forecast_8__canonical": "succeeded",
+   "forecast_8__predictive": "succeeded",
+   "forecast_8__readout": "succeeded",
+   "forecast_sum_geo": "CAPABILITY_UNSUPPORTED",
+   "predict_tail__canonical": "succeeded",
+   "predict_tail__predictive": "succeeded",
+   "predict_tail__readout": "succeeded"
+  },
+  "source": "conformance fixture sm_arimax"
+ }
+}

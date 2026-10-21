@@ -1,0 +1,946 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/fields.json",
+  "ui/explore/fit.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/fit.json",
+  "ui/explore/plots/params.json",
+  "ui/explore/plots/residuals.json",
+  "ui/explore/residuals.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/thin.zarr.zip",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "alpha",
+   "sigma_g",
+   "ell",
+   "eta0",
+   "eta_d",
+   "inv_phi"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": null,
+  "loo_valid": true,
+  "owns": [],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262793-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.9833333333333333,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262793-04:00",
+   "max": 0.9833333333333333,
+   "min": 0.9833333333333333
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 5.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 2.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 2.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 7.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 5.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262828-04:00",
+   "key": "mae",
+   "labels": {},
+   "last": 0.9157916666666667,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262828-04:00",
+   "max": 0.9157916666666667,
+   "min": 0.9157916666666667
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 31.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 63.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 255.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:25.262857-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 1.342089710737202,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:25.262857-04:00",
+   "max": 1.342089710737202,
+   "min": 1.342089710737202
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.1469965306000813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 0.9004215793867443,
+   "min": 0.006249619821255505
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.17211684790779813,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 0.6510824166349309,
+   "min": 0.0054106821368162345
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.05941803917255802,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 0.22037270761460623,
+   "min": 0.005917765689602408
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.15987287051955054,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 0.2844424484947313,
+   "min": 0.007710453462335977
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:19.799674-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:22.531439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:16.416706-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 5.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.178027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:20.858083-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:23.026439-04:00",
+   "max": 8.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 250,
+   "first_ts": "2026-10-21T09:39:17.182004-04:00",
+   "key": "tree_depth",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 6.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:39:18.450027-04:00",
+   "max": 8.0,
+   "min": 1.0
+  }
+ ],
+ "fit_run": "run_01m5fazv1sx368drbsg9r47dxg",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "QS",
+     "name": "period",
+     "role": "coord"
+    },
+    {
+     "description": "A level of col",
+     "dims": [],
+     "freq": null,
+     "name": "col",
+     "role": "coord"
+    },
+    {
+     "description": "A level of row",
+     "dims": [],
+     "freq": null,
+     "name": "row",
+     "role": "coord"
+    },
+    {
+     "description": "Leave empty. This model forecasts from the end of its fitted history",
+     "dims": [
+      "period",
+      "row",
+      "col"
+     ],
+     "freq": null,
+     "name": "count",
+     "role": "target"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": "period",
+   "rows": [
+    [
+     "2013-01-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-01-01",
+     1,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     0,
+     1,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     0,
+     null
+    ],
+    [
+     "2013-04-01",
+     1,
+     1,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-e07-lgcp-055cc4-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "col": {
+     "contiguous": true,
+     "end": 4,
+     "freq": null,
+     "kind": "integer",
+     "size": 5,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    "period": {
+     "contiguous": true,
+     "end": "2012-10-01T00:00:00",
+     "freq": "QS",
+     "kind": "time",
+     "size": 16,
+     "start": "2009-01-01T00:00:00",
+     "step": null,
+     "values": null
+    },
+    "row": {
+     "contiguous": true,
+     "end": 5,
+     "freq": null,
+     "kind": "integer",
+     "size": 6,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": "period",
+   "input_schema": {
+    "dims": {
+     "col": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "period": {
+      "description": null,
+      "freq": "QS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     },
+     "row": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "count": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "period",
+       "row",
+       "col"
+      ],
+      "dtype": "int64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "events"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:963b2317842f6879363656490a1858a2823fa6b6b58b46163fb9ab3f135d0f0f",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-e07-lgcp-055cc4-model@v1",
+ "plugin": "sci.lgcp_grid@1.0.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.082 for 'z' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.08). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.081850649035234
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 33 for 'sigma_g' (threshold 200)",
+    "message_plain": "There are only 33 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 33.00148269484455
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.9833 over 120 held-out values",
+    "message_plain": "98% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.9833333333333333
+   },
+   {
+    "category": "plausibility",
+    "check": "plausibility.prior_overlap",
+    "code": "PRIOR_OVERLAP",
+    "docs_anchor": "check-plausibility-prior-overlap",
+    "message_expert": "prior/posterior overlap 0.56 for 'sigma_g'",
+    "message_plain": "The data moved each parameter away from its prior.",
+    "metric": "prior_overlap_max",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.9,
+    "title": "The data changed the model",
+    "value": 0.565
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 480 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "16 periods at QS (4 per year) along 'period' at the model stage",
+    "message_plain": "There are 4.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 4.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "forecast_4__canonical": {
+   "captured": [
+    "forecast_4__canonical.summary.json",
+    "forecast_4__canonical.result.json",
+    "forecast_4__canonical.forecast.json",
+    "forecast_4__canonical.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "horizon": {
+     "dim": "period",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb11ck26cbv4pa3r1bjs0b",
+   "state": "succeeded"
+  },
+  "forecast_4__predictive": {
+   "captured": [
+    "forecast_4__predictive.summary.json",
+    "forecast_4__predictive.result.json",
+    "forecast_4__predictive.forecast.json",
+    "forecast_4__predictive.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "horizon": {
+     "dim": "period",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb0qk1mebyvsb4vgb2w2he",
+   "state": "succeeded"
+  },
+  "forecast_4__readout": {
+   "captured": [
+    "forecast_4__readout.summary.json",
+    "forecast_4__readout.result.json",
+    "forecast_4__readout.forecast.json",
+    "forecast_4__readout.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/guided/forecast.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "horizon": {
+     "dim": "period",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb0fvvg8fqx01zbbqpkvrz",
+   "state": "succeeded"
+  },
+  "forecast_sum": {
+   "captured": [
+    "forecast_sum.summary.json",
+    "forecast_sum.result.json",
+    "forecast_sum.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "horizon": {
+     "dim": "period",
+     "periods": 4
+    },
+    "kind": "ScoreRequest",
+    "mode": "forecast",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "aggregate": {
+      "over": [
+       "quarter"
+      ]
+     },
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb2jedngvsbmghpwyg30he",
+   "state": "succeeded"
+  },
+  "predict_tail__canonical": {
+   "captured": [
+    "predict_tail__canonical.summary.json",
+    "predict_tail__canonical.result.json",
+    "predict_tail__canonical.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-e07-lgcp-055cc4-tail-4@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb28ncx5ryjx2reh397kwc",
+   "state": "succeeded"
+  },
+  "predict_tail__predictive": {
+   "captured": [
+    "predict_tail__predictive.summary.json",
+    "predict_tail__predictive.result.json",
+    "predict_tail__predictive.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-e07-lgcp-055cc4-tail-4@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb1yvqjyr5sg6r0ezhe39n",
+   "state": "succeeded"
+  },
+  "predict_tail__readout": {
+   "captured": [
+    "predict_tail__readout.summary.json",
+    "predict_tail__readout.result.json",
+    "predict_tail__readout.fields.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/fields.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-e07-lgcp-055cc4-tail-4@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-e07-lgcp-055cc4-model@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fb1r7m9g9zq9b5ts6hf5a2",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "conformance fixture e07_lgcp",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "bind": {
+    "dims": {
+     "period": "quarter"
+    },
+    "vars": {
+     "count": "quakes"
+    }
+   },
+   "dataset": "dataset://default/v017-e07-lgcp-055cc4-data@v1",
+   "split": {
+    "dim": "period",
+    "kind": "time_holdout",
+    "last": 4
+   }
+  },
+  "evaluate": {
+   "metrics": [
+    "rmse",
+    "mae",
+    "coverage_90"
+   ]
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "labels": {
+    "corpus": "e07"
+   },
+   "name": "v017-e07-lgcp-055cc4-model",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "chains": 2,
+    "draws": 100,
+    "engine": "pymc",
+    "mode": "evaluate_then_refit",
+    "seed": 7,
+    "tune": 150
+   },
+   "settings": {
+    "cell_km": 25.0,
+    "era_periods": 4,
+    "m_col": 5,
+    "m_row": 5,
+    "max_extension": 8
+   },
+   "use": "sci.lgcp_grid@^1"
+  },
+  "outputs": {
+   "plots": [
+    "core.convergence",
+    "core.posterior_forest",
+    "core.ppc_fan",
+    "sci.field_map",
+    "sci.ensemble"
+   ]
+  }
+ },
+ "version_metrics": {
+  "coverage_90": 0.9833333333333333,
+  "mae": 0.9157916666666667,
+  "rmse": 1.342089710737202
+ }
+}
