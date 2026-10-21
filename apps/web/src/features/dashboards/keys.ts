@@ -1,5 +1,5 @@
 /**
- * Query keys of the v0.16 dashboards.
+ * Query keys of the client dashboards (v0.16 layout 1 and v0.17 layout 2).
  *
  * Analyst keys live under `qk.dashboards(p)` (`["p", "<tenant>/<project>", "dashboards"]`) so a
  * project switch never mixes caches; `keys.test.ts` checks the prefixes equal `qk`'s. The
@@ -12,6 +12,9 @@ import type { ReadoutKind, ReadoutQuery, ReadoutVisibility } from "./types";
 export interface DashboardListFilters {
   status?: "draft" | "published" | "archived" | undefined;
 }
+
+/** What `:presets` suggests for: a model version (`model_id` + `version`) or an endpoint `alias`. */
+export type PresetRef = { model_id: string; version: number } | { alias: string };
 
 export interface ReadoutFilters {
   kind?: ReadoutKind | undefined;
@@ -31,6 +34,10 @@ export const dk = {
   readouts: (p: string, id: string) => ["p", p, "dashboards", id, "readouts"] as const,
   readoutList: (p: string, id: string, f: ReadoutFilters) => ["p", p, "dashboards", id, "readouts", "list", f] as const,
   refitRequests: (p: string, id: string) => ["p", p, "dashboards", id, "refit-requests"] as const,
+  /** The source catalog of a draft's binding (`…/sources`; v0.17 builder). */
+  sources: (p: string, id: string) => ["p", p, "dashboards", id, "sources"] as const,
+  /** The suggested presets of a model version or an endpoint (`/v1/dashboards:presets`). */
+  presets: (p: string, ref: PresetRef) => ["p", p, "dashboards", "presets", ref] as const,
 
   // ---------------------------------------------------------------- the readout page (any client)
   /** Everything one {@link DashboardClient} read. */
@@ -41,6 +48,8 @@ export const dk = {
   viewGrid: (cacheKey: readonly string[]) => [...cacheKey, "view", "grid"] as const,
   viewTemplate: (cacheKey: readonly string[]) => [...cacheKey, "view", "actuals-template"] as const,
   viewWhatIf: (cacheKey: readonly string[], multipliers: Record<string, number>) => [...cacheKey, "view", "whatif", multipliers] as const,
+  viewBatchTemplate: (cacheKey: readonly string[]) => [...cacheKey, "view", "batch-template"] as const,
+  viewAsset: (cacheKey: readonly string[], assetId: string) => [...cacheKey, "view", "asset", assetId] as const,
 };
 
 /** The cache key of a signed-in caller's client (under the project's dashboard keys). */

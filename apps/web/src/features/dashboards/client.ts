@@ -11,6 +11,11 @@
  *   (`credentials: "omit"`), no CSRF header, no project header, no referrer. The share session
  *   rides in `X-Mapi-Share` only; an expired session is refreshed once and the request retried.
  *
+ * Both are {@link DashboardClientV2}s: layout 2 (v0.17) adds scenario rows ("Try a case"),
+ * batch scoring ("Score a file"), the predictions download and the pictures, both read as a
+ * Blob (the share client sends the session header, never a cookie), and keeping a tried case
+ * (members and client users only: a share link has no keep route).
+ *
  * The hooks at the end key their queries by the client's `cacheKey` (see `keys.ts`).
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,31 +27,45 @@ import { dk, memberCacheKey, shareCacheKey } from "./keys";
 import {
   isAnalystDashboard,
   isFullReadout,
+  isLayout2,
   layout1Spec,
+  panelMeta,
   readoutPollMs,
   SHARE_SESSION_HEADER,
   TERMINAL_READOUT,
   type ActualsSubmit,
   type ActualsTemplate,
+  type AnyDashboardSpec,
+  type BatchForm,
+  type BatchSubmit,
+  type BatchTemplate,
   type ClientDashboard,
   type Dashboard,
   type DashboardClient,
+  type DashboardClientV2,
   type DashboardGrid,
   type DashboardProblem,
-  type DashboardSpec,
+  type DashboardSpecV2,
   type EffectiveInputs,
+  type KpiDef,
   type Readout,
   type ReadoutHeader,
   type ReadoutList,
   type ReadoutQuery,
+  type ScenarioForm,
+  type ScenarioRowsRequest,
   type ScenarioSave,
+  type SectionKey,
   type ShareSession,
   type ShareSessionHandle,
+  type SubjectDef,
   type TabKey,
+  type TileKey,
+  type WaitOptions,
   type WhatIfResult,
 } from "./types";
 
-export type { DashboardClient, ShareSessionHandle } from "./types";
+export type { DashboardClient, DashboardClientV2, ShareSessionHandle } from "./types";
 
 // ------------------------------------------------------------------------------ errors
 
@@ -102,17 +121,55 @@ function retryAfterOf(value: string | null): number | null {
 
 // ------------------------------------------------------------------------------ pure helpers
 
-/** `access.effective_inputs`: the spec's inputs, narrowed by a share link's allowed inputs. */
-export function effectiveInputs(spec: DashboardSpec, mode: EffectiveInputs["actuals_mode"] = null, allowed: readonly string[] | null = null): EffectiveInputs {
+export interface EffectiveInputsOptions {
+  /** A client user (not a member): batch scoring of an image model is for members only. */
+  client?: boolean;
+}
+
+/** `access._ACCURACY_KIND`: what an actuals upload measures, by preset (default `error`). */
+const ACCURACY_KIND: Partial<Record<DashboardSpecV2["preset"], NonNullable<EffectiveInputs["accuracy_kind"]>>> = {
+  classifier: "classification",
+  causal_impact: "effect",
+};
+
+/**
+ * `access.effective_inputs`: the spec's inputs, narrowed by a share link's allowed inputs
+ * (`allowed`; `null`: a signed-in caller). Layout 2 adds scenario rows, batch scoring (an
+ * image model's only for members) and the accuracy kind of an upload.
+ */
+export function effectiveInputs(
+  spec: AnyDashboardSpec,
+  mode: EffectiveInputs["actuals_mode"] = null,
+  allowed: readonly string[] | null = null,
+  opts: EffectiveInputsOptions = {},
+): EffectiveInputs {
   const narrow = allowed === null ? null : new Set(allowed);
-  const whatif = (spec.whatif?.enabled ?? true) && (narrow === null || narrow.has("whatif"));
-  const actuals = (spec.actuals?.enabled ?? false) && (narrow === null || narrow.has("actuals"));
+  const on = (key: string, enabled: boolean) => enabled && (narrow === null || narrow.has(key));
+  if (!isLayout2(spec)) {
+    const whatif = on("whatif", spec.whatif?.enabled ?? true);
+    const actuals = on("actuals", spec.actuals?.enabled ?? false);
+    return {
+      whatif,
+      exact: whatif && (spec.whatif?.exact ?? false),
+      actuals,
+      actuals_mode: actuals ? (mode ?? "compared") : null,
+      refit_requests: actuals && (spec.actuals?.allow_refit_requests ?? false),
+    };
+  }
+  const planner = spec.preset === "mmm_planner" ? (spec.mmm ?? null) : null;
+  const whatif = planner !== null && on("whatif", planner.whatif?.enabled ?? true);
+  const actuals = on("actuals", spec.actuals?.enabled ?? false);
+  const member = narrow === null && !(opts.client ?? false);
+  const batch = !!spec.batch && on("batch", spec.batch.enabled ?? false) && (spec.preset !== "image" || member);
   return {
     whatif,
-    exact: whatif && (spec.whatif?.exact ?? false),
+    exact: whatif && (planner?.whatif?.exact ?? false),
     actuals,
     actuals_mode: actuals ? (mode ?? "compared") : null,
     refit_requests: actuals && (spec.actuals?.allow_refit_requests ?? false),
+    scenario_rows: on("scenario_rows", spec.scenario_rows?.enabled ?? false),
+    batch,
+    accuracy_kind: actuals ? (ACCURACY_KIND[spec.preset] ?? "error") : null,
   };
 }
 
@@ -121,12 +178,51 @@ export function visibleTabs(tabs: readonly TabKey[], inputs: EffectiveInputs): T
   return tabs.filter((t) => !(t === "scenarios" && !inputs.whatif) && !(t === "update" && !inputs.actuals));
 }
 
+/** `access._sections`: the layout 2 readout sections the viewer can use (each input only when allowed). */
+export function visibleSections(inputs: EffectiveInputs): SectionKey[] {
+  const out: SectionKey[] = ["overview"];
+  if (inputs.scenario_rows) out.push("try");
+  if (inputs.actuals) out.push("accuracy");
+  if (inputs.batch) out.push("batch");
+  out.push("history");
+  return out;
+}
+
+const SUBJECT_UNIT: Record<SubjectDef["unit"], KpiDef["unit"]> = {
+  count: "count",
+  currency: "currency",
+  ratio: "ratio",
+  percent: "percent",
+  probability: "percent",
+  rate: "ratio",
+  number: "count",
+  label: "count",
+  index: "count",
+};
+
+/** `dashboard_v2.kpi_of_subject`: the layout 1 KPI of a subject (`ClientDashboard.kpi` stays required). */
+export function kpiOfSubject(subject: SubjectDef): KpiDef {
+  return {
+    variable: subject.variable,
+    label: subject.label,
+    unit: SUBJECT_UNIT[subject.unit],
+    currency: subject.currency ?? null,
+    decimals: Math.min(subject.decimals ?? 0, 4),
+    value_per_unit: subject.value_per_unit ?? null,
+  };
+}
+
+const PLANNER_TABS: readonly TabKey[] = ["this_period", "trends", "scenarios", "update", "history"];
+const DEFAULT_PLANNER_TILES: readonly TileKey[] = ["expected", "vs_expected", "return_on_media", "in_range_spend"];
+
 /**
  * What a client would see of the analyst's `Dashboard` (the preview): the draft spec (or the
  * published one) with `latest` as its latest readout.
  */
 export function toClientDashboard(d: Dashboard, latest: Readout | null, use: "draft" | "published" = "draft"): ClientDashboard {
-  const spec = layout1Spec(use === "published" && d.published_revision ? d.published_revision.spec : d.draft_spec);
+  const stored = use === "published" && d.published_revision ? d.published_revision.spec : d.draft_spec;
+  if (isLayout2(stored)) return toClientDashboardV2(d, stored, latest);
+  const spec = layout1Spec(stored);
   const inputs = effectiveInputs(spec);
   return {
     id: d.id,
@@ -144,6 +240,46 @@ export function toClientDashboard(d: Dashboard, latest: Readout | null, use: "dr
     show_technical: spec.show_technical ?? false,
     latest_readout: latest,
     ends_at: null,
+  };
+}
+
+/** The layout 2 half of {@link toClientDashboard} (`access.client_dashboard`; no upgrade note in a preview). */
+function toClientDashboardV2(d: Dashboard, spec: DashboardSpecV2, latest: Readout | null): ClientDashboard {
+  const inputs = effectiveInputs(spec);
+  const planner = spec.preset === "mmm_planner" ? (spec.mmm ?? null) : null;
+  const rows = spec.scenario_rows;
+  const scenarioForm: ScenarioForm | null =
+    inputs.scenario_rows && rows ? { max_rows: rows.max_rows ?? 5, outputs: rows.outputs ?? [], inputs: rows.inputs ?? [], horizon: rows.horizon ?? null } : null;
+  let batchForm: BatchForm | null = null;
+  if (inputs.batch && spec.batch) {
+    const id = spec.batch.id_column;
+    const drivers = (rows?.inputs ?? []).map((i) => i.name).filter((n) => n !== id);
+    batchForm = { max_rows: spec.batch.max_rows ?? 2000, id_column: id, columns: [id, ...drivers].slice(0, 64), outputs: spec.batch.outputs };
+  }
+  return {
+    id: d.id,
+    title: spec.title,
+    client_name: spec.client_name ?? null,
+    summary: spec.summary ?? null,
+    note: spec.note ?? null,
+    period_label: spec.period_label ?? "period",
+    kpi: kpiOfSubject(spec.subject),
+    channels: planner?.channels ?? [],
+    tiles: planner ? (planner.tiles ?? DEFAULT_PLANNER_TILES).filter((t) => t !== "panel") : [],
+    tabs: planner ? visibleTabs(PLANNER_TABS, inputs) : [],
+    inputs,
+    live_inputs: d.live_inputs ?? "ok",
+    show_technical: spec.show_technical ?? false,
+    latest_readout: latest,
+    ends_at: null,
+    layout_version: 2,
+    preset: spec.preset,
+    subject: spec.subject,
+    panels_meta: spec.panels.map(panelMeta),
+    scenario_form: scenarioForm,
+    batch_form: batchForm,
+    sections: visibleSections(inputs),
+    upgrade_note: null,
   };
 }
 
@@ -169,7 +305,7 @@ export interface MemberClientOptions {
 }
 
 /** The signed-in client of dashboard `dashboardId` in project `scopeKey` (`tenant/project`). */
-export function memberClient(scopeKey: string, dashboardId: string, opts: MemberClientOptions = {}): DashboardClient {
+export function memberClient(scopeKey: string, dashboardId: string, opts: MemberClientOptions = {}): DashboardClientV2 {
   const kind = opts.kind ?? "member";
   const load = () => import("@/api/client");
   const path = { dashboard_id: dashboardId };
@@ -241,6 +377,54 @@ export function memberClient(scopeKey: string, dashboardId: string, opts: Member
         api.POST("/v1/dashboards/{dashboard_id}/actuals", { params: { path }, headers: { ...projectHeaders(scopeKey), "Idempotency-Key": idemKey }, body }),
       );
     },
+    async predict(body: ScenarioRowsRequest, idemKey: string, o: WaitOptions = {}) {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(
+        api.POST("/v1/dashboards/{dashboard_id}/predictions", {
+          params: { path },
+          headers: { ...projectHeaders(scopeKey), "Idempotency-Key": idemKey, ...waitHeader(o.waitSeconds) },
+          body,
+        }),
+      );
+    },
+    async batchTemplate() {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(api.GET("/v1/dashboards/{dashboard_id}/batch/template", { params: { path }, headers: projectHeaders(scopeKey) }));
+    },
+    async submitBatch(body: BatchSubmit, idemKey: string, o: WaitOptions = {}) {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(
+        api.POST("/v1/dashboards/{dashboard_id}/batch", {
+          params: { path },
+          headers: { ...projectHeaders(scopeKey), "Idempotency-Key": idemKey, ...waitHeader(o.waitSeconds) },
+          body,
+        }),
+      );
+    },
+    async downloadPredictions(seq: number) {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(
+        api.GET("/v1/dashboards/{dashboard_id}/readouts/{seq}/predictions.csv", {
+          params: { path: { ...path, seq } },
+          headers: { ...projectHeaders(scopeKey), Accept: "text/csv, application/problem+json" },
+          parseAs: "blob",
+        }),
+      );
+    },
+    async asset(assetId: string) {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(
+        api.GET("/v1/dashboards/{dashboard_id}/assets/{asset_id}", {
+          params: { path: { ...path, asset_id: assetId } },
+          headers: { ...projectHeaders(scopeKey), Accept: "image/png, application/problem+json" },
+          parseAs: "blob",
+        }),
+      );
+    },
+    async keep(seq: number) {
+      const { api, projectHeaders, unwrap } = await load();
+      return unwrap(api.POST("/v1/dashboards/{dashboard_id}/readouts/{seq}:keep", { params: { path: { ...path, seq } }, headers: projectHeaders(scopeKey) }));
+    },
   };
 }
 
@@ -305,21 +489,31 @@ export async function refreshShareSession(session: string, opts: ShareFetchOptio
 }
 
 /** The client of a share link's dashboard (`dashboardId` only keys the cache). */
-export function shareClient(session: ShareSessionHandle, dashboardId = "dashboard", opts: ShareFetchOptions = {}): DashboardClient {
+export function shareClient(session: ShareSessionHandle, dashboardId = "dashboard", opts: ShareFetchOptions = {}): DashboardClientV2 {
   const base = opts.baseUrl ?? env.apiBase;
 
-  async function call<T>(path: string, req: ShareRequest = {}): Promise<{ data: T; status: number }> {
+  /** The response of one request with the session header (refreshed once on a 401 `UNAUTHENTICATED`). */
+  async function send(path: string, req: ShareRequest): Promise<Response> {
     if (session.expired()) await session.refresh();
-    const send = () => publicFetch(base, path, { ...req, headers: { ...(req.headers ?? {}), [SHARE_SESSION_HEADER]: session.current() } });
-    let res = await send();
+    const once = () => publicFetch(base, path, { ...req, headers: { ...(req.headers ?? {}), [SHARE_SESSION_HEADER]: session.current() } });
+    let res = await once();
     if (res.status === 401) {
       // A session that ended between two requests: refresh once (a revoked link answers 410).
-      const first = await shareResponse<T>(res).catch((e: unknown) => e);
+      const first = await shareResponse<unknown>(res).catch((e: unknown) => e);
       if (problemOf(first)?.code !== "UNAUTHENTICATED") throw first;
       await session.refresh();
-      res = await send();
+      res = await once();
     }
-    return shareResponse<T>(res);
+    return res;
+  }
+  async function call<T>(path: string, req: ShareRequest = {}): Promise<{ data: T; status: number }> {
+    return shareResponse<T>(await send(path, req));
+  }
+  /** A file (CSV, PNG) as a Blob: the session header only, never a cookie or a link with the session in it. */
+  async function blob(path: string, accept: string): Promise<Blob> {
+    const res = await send(path, { headers: { Accept: `${accept}, application/problem+json` } });
+    if (!res.ok) await shareResponse<never>(res);
+    return res.blob();
   }
   const get = async <T,>(path: string, query?: ShareRequest["query"]) => (await call<T>(path, { query })).data;
   const readoutPage = (q?: ReadoutQuery) => get<ReadoutList>("/v1/shared/readouts", readoutQuery(q));
@@ -353,6 +547,15 @@ export function shareClient(session: ShareSessionHandle, dashboardId = "dashboar
     actualsTemplate: () => get<ActualsTemplate>("/v1/shared/actuals/template"),
     submitActuals: async (body: ActualsSubmit, idemKey: string) =>
       (await call<ReadoutHeader>("/v1/shared/actuals", { method: "POST", body, headers: { "Idempotency-Key": idemKey } })).data,
+    predict: async (body: ScenarioRowsRequest, idemKey: string, o: WaitOptions = {}) =>
+      (await call<Readout>("/v1/shared/predictions", { method: "POST", body, headers: { "Idempotency-Key": idemKey, ...waitHeader(o.waitSeconds) } })).data,
+    batchTemplate: () => get<BatchTemplate>("/v1/shared/batch/template"),
+    submitBatch: async (body: BatchSubmit, idemKey: string, o: WaitOptions = {}) =>
+      (await call<Readout>("/v1/shared/batch", { method: "POST", body, headers: { "Idempotency-Key": idemKey, ...waitHeader(o.waitSeconds) } })).data,
+    downloadPredictions: (seq: number) => blob(`/v1/shared/readouts/${encodeURIComponent(String(seq))}/predictions.csv`, "text/csv"),
+    asset: (assetId: string) => blob(`/v1/shared/assets/${encodeURIComponent(assetId)}`, "image/png"),
+    // A share link has no keep route: a tried case stays private to the link and expires.
+    keep: null,
   };
 }
 
@@ -419,5 +622,66 @@ export function useSubmitActuals(client: DashboardClient) {
   return useMutation({
     mutationFn: ({ body, idemKey }: { body: ActualsSubmit; idemKey?: string }) => client.submitActuals(body, idemKey ?? newKey()),
     onSuccess: invalidate,
+  });
+}
+
+// ------------------------------------------------------------------------------ hooks of layout 2 (v0.17)
+
+/** The columns, example CSV and row cap of a batch file (stable: kept for 10 minutes). */
+export function useBatchTemplate(client: DashboardClientV2, opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: dk.viewBatchTemplate(client.cacheKey), queryFn: () => client.batchTemplate(), enabled: opts.enabled ?? true, staleTime: 10 * 60_000 });
+}
+
+/** "Try a case" (a private prediction readout; poll it with {@link useReadout}). One key per intent. */
+export function usePredict(client: DashboardClientV2) {
+  const invalidate = useInvalidateReadouts(client);
+  return useMutation({
+    mutationFn: ({ body, idemKey, waitSeconds }: { body: ScenarioRowsRequest; idemKey?: string; waitSeconds?: number }) =>
+      client.predict(body, idemKey ?? newKey(), waitSeconds ? { waitSeconds } : {}),
+    onSuccess: invalidate,
+  });
+}
+
+/** "Score a file" (a private batch readout; poll it with {@link useReadout}). One key per intent. */
+export function useSubmitBatch(client: DashboardClientV2) {
+  const invalidate = useInvalidateReadouts(client);
+  return useMutation({
+    mutationFn: ({ body, idemKey, waitSeconds }: { body: BatchSubmit; idemKey?: string; waitSeconds?: number }) =>
+      client.submitBatch(body, idemKey ?? newKey(), waitSeconds ? { waitSeconds } : {}),
+    onSuccess: invalidate,
+  });
+}
+
+/** The predictions CSV of a batch readout (a Blob for `lib/download`; never cached: each download is audited). */
+export function useDownloadPredictions(client: DashboardClientV2) {
+  return useMutation({ mutationFn: (seq: number) => client.downloadPredictions(seq) });
+}
+
+/**
+ * A picture of the dashboard as a Blob (make an object URL of it; revoke it on unmount). Assets
+ * never change under one id, so the Blob is kept for as long as the page is open.
+ */
+export function useDashboardAsset(client: DashboardClientV2, assetId: string | null) {
+  return useQuery({
+    queryKey: dk.viewAsset(client.cacheKey, assetId ?? ""),
+    queryFn: () => client.asset(assetId ?? ""),
+    enabled: assetId !== null,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+  });
+}
+
+/** Keep a tried case for an editor's review (`null` client method: a share link cannot keep). */
+export function useKeepReadout(client: DashboardClientV2) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (seq: number) => {
+      if (!client.keep) return Promise.reject(new Error("a share link cannot keep a tried case"));
+      return client.keep(seq);
+    },
+    onSuccess: (h) => {
+      qc.setQueryData<Readout>(dk.viewReadout(client.cacheKey, h.seq), (r) => (r ? { ...r, ...h } : r));
+      return qc.invalidateQueries({ queryKey: [...dk.view(client.cacheKey), "readouts"] });
+    },
   });
 }
