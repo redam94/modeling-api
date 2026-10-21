@@ -22,6 +22,7 @@ from mapi_plots.palette import (
     OK,
     REFERENCE,
     SURFACE,
+    band_opacity,
 )
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
@@ -213,9 +214,10 @@ def _fan_chart(
 ) -> Any:
     base = alt.Chart(named(name))
     layers: list[Any] = []
-    for i, (_, lo_c, hi_c) in enumerate(interval_columns(levels)):
+    bands = interval_columns(levels)
+    for i, (_, lo_c, hi_c) in enumerate(bands):
         layers.append(
-            base.mark_area(opacity=0.18 + 0.12 * i, color=BAND).encode(
+            base.mark_area(opacity=band_opacity(i, len(bands)), color=BAND).encode(
                 x=alt.X("x:T", title=t), y=alt.Y(f"{lo_c}:Q", title=var), y2=f"{hi_c}:Q"
             )
         )

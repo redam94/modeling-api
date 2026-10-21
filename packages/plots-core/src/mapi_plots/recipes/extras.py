@@ -28,6 +28,7 @@ from pydantic import Field
 from mapi_plots.palette import (
     ALERT,
     BAND,
+    BAND_OPACITY,
     BASELINE,
     EMPTY,
     ESTIMATE,
@@ -237,7 +238,7 @@ def pair(inp: RecipeInput, s: PairSettings) -> Figure:
                 ch = (
                     alt.Chart(named("hist"))
                     .transform_filter(alt.FieldEqualPredicate(field="param", equal=f"p{c}"))
-                    .mark_rect(color=BAND, opacity=0.7, stroke=SURFACE, strokeWidth=0.5)
+                    .mark_rect(color=ESTIMATE, opacity=0.7, stroke=SURFACE, strokeWidth=0.5)
                     .encode(
                         x=alt.X(
                             "bin_start:Q",
@@ -406,7 +407,7 @@ def ridge(inp: RecipeInput, s: RidgeSettings) -> Figure:
             .encode(x=alt.datum(0.0))
         )
     layers += [
-        rbase.mark_area(color=BAND, opacity=0.45).encode(
+        rbase.mark_area(color=BAND, opacity=BAND_OPACITY).encode(
             x=alt.X("x:Q", title=str(raw.name), scale=xs),
             y=alt.Y("top:Q", axis=None, scale=y_scale),
             y2="base:Q",
@@ -677,7 +678,7 @@ def _pit_ecdf(var: str, draws: np.ndarray, y: np.ndarray, s: CalibrationSettings
     base = alt.Chart(named("ecdf"))
     xs = alt.X("z:Q", title="PIT value", scale=alt.Scale(domain=[0, 1], nice=False))
     chart = alt.layer(
-        base.mark_area(color=BAND, opacity=0.18).encode(
+        base.mark_area(color=BAND, opacity=BAND_OPACITY).encode(
             x=xs, y=alt.Y("lo:Q", title="ECDF − uniform"), y2="hi:Q"
         ),
         base.mark_rule(color=REFERENCE, strokeDash=[4, 4]).encode(y=alt.datum(0.0)),
@@ -781,7 +782,7 @@ def _reliability(var: str, draws: np.ndarray, y: np.ndarray, s: CalibrationSetti
         ),
     ).properties(width=s.width // 2, height=max(s.height, 220), title="Reliability diagram")
     hist = (
-        base.mark_rect(color=BAND, opacity=0.7, stroke=SURFACE, strokeWidth=0.5)
+        base.mark_rect(color=ESTIMATE, opacity=0.7, stroke=SURFACE, strokeWidth=0.5)
         .encode(
             x=alt.X("bin_start:Q", title="predicted probability", scale=unit),
             x2="bin_end:Q",

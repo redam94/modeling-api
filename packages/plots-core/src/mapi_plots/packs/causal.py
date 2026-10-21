@@ -31,7 +31,16 @@ import pandas as pd
 import xarray as xr
 from pydantic import Field, field_validator
 
-from mapi_plots.palette import ALERT, BAND, ESTIMATE, MUTED, OBSERVED, REFERENCE, STRONG
+from mapi_plots.palette import (
+    ALERT,
+    BAND,
+    BAND_OPACITY,
+    ESTIMATE,
+    MUTED,
+    OBSERVED,
+    REFERENCE,
+    STRONG,
+)
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -384,7 +393,7 @@ def impact(inp: RecipeInput, s: ImpactSettings) -> Figure:
         layers: list[Any] = []
         if p == "series":
             layers += [
-                base.mark_area(opacity=0.2, color=BAND).encode(
+                base.mark_area(opacity=BAND_OPACITY, color=BAND).encode(
                     x=x,
                     y=alt.Y("cf_lo:Q", title=imp.units or "value", scale=alt.Scale(zero=False)),
                     y2="cf_hi:Q",
@@ -404,7 +413,7 @@ def impact(inp: RecipeInput, s: ImpactSettings) -> Figure:
             col = "effect" if p == "pointwise" else "cumulative"
             layers += [
                 zero,
-                base.mark_area(opacity=0.2, color=BAND).encode(
+                base.mark_area(opacity=BAND_OPACITY, color=BAND).encode(
                     x=x, y=alt.Y(f"{col}_lo:Q", title=imp.units or "effect"), y2=f"{col}_hi:Q"
                 ),
                 base.mark_line(color=ESTIMATE).encode(
@@ -491,7 +500,7 @@ def pre_fit(inp: RecipeInput, s: PreFitSettings) -> Figure:
     x = alt.X("x", type=xtype, title=imp.time)
     base = alt.Chart()
     chart = alt.layer(
-        base.mark_area(opacity=0.2, color=BAND).encode(
+        base.mark_area(opacity=BAND_OPACITY, color=BAND).encode(
             x=x, y=alt.Y("cf_lo:Q", title="value", scale=alt.Scale(zero=False)), y2="cf_hi:Q"
         ),
         base.mark_line(color=ESTIMATE).encode(x=x, y="cf:Q"),
@@ -613,7 +622,7 @@ def donor_weights(inp: RecipeInput, s: DonorWeightSettings) -> Figure:
     base = alt.Chart()
     y = alt.Y("donor:N", sort=alt.EncodingSortField(field="order", op="min"), title=None)
     layer = alt.layer(
-        base.mark_bar(color=BAND, opacity=0.6).encode(
+        base.mark_bar(color=ESTIMATE, opacity=0.6).encode(
             x=alt.X("weight:Q", title="weight"),
             y=y,
             tooltip=[

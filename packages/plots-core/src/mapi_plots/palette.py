@@ -7,7 +7,8 @@ for its dark variant when it renders in dark mode. Static renders keep the light
 
 Swatches marked ``legible`` are strokes, dots or text: they keep at least 3:1 contrast (WCAG
 non-text) against the light card (``#ffffff``) and the dark card (``#1b212d``). The others
-are fills (bands at low opacity, empty cells, separators).
+are fills (bands at :func:`band_opacity`, empty cells, separators), never a data mark: a bar,
+histogram, density or marker that carries data uses ``ESTIMATE`` or a series colour.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from typing import Final
 __all__ = [
     "ALERT",
     "BAND",
+    "BAND_OPACITY",
     "BASELINE",
     "EMPTY",
     "ESTIMATE",
@@ -32,6 +34,7 @@ __all__ = [
     "STRONG",
     "SURFACE",
     "Swatch",
+    "band_opacity",
     "dark_variants",
 ]
 
@@ -75,6 +78,20 @@ SCENARIO: Final = PALETTE["scenario"].light
 POSITIVE: Final = PALETTE["positive"].light
 EMPTY: Final = PALETTE["empty"].light
 SURFACE: Final = PALETTE["surface"].light
+
+
+BAND_OPACITY: Final = 0.75
+"""The opacity of a single uncertainty band (MEI draws ``--chart-band`` at .75). ``BAND`` is
+a pale fill: at the old .15-.2 it blended to about 1.07:1 on the white card (invisible)."""
+
+
+def band_opacity(i: int = 0, n: int = 1) -> float:
+    """The opacity of band ``i`` of ``n`` nested bands, ``0`` the widest: a single band gets
+    :data:`BAND_OPACITY`; nested ones climb a .45-.75 ladder (where they overlap the inner
+    band is darker still), so every band stays visible in light mode and static exports."""
+    if n <= 1:
+        return BAND_OPACITY
+    return round(0.45 + 0.3 * min(i, n - 1) / (n - 1), 3)
 
 
 def dark_variants() -> dict[str, str]:

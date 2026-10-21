@@ -63,7 +63,7 @@ from mapi_plots.packs.sci import (
     block_factor,
     block_mean,
 )
-from mapi_plots.palette import BAND, EMPTY, ESTIMATE, MUTED, OBSERVED, REFERENCE
+from mapi_plots.palette import BAND, EMPTY, ESTIMATE, MUTED, OBSERVED, REFERENCE, band_opacity
 from mapi_plots.recipes._base import (
     Figure,
     Recipe,
@@ -334,7 +334,7 @@ def image_residuals(inp: RecipeInput, s: ImageResidualsSettings) -> Figure:
                 "y": {"$ref": "hist.density__0"},
                 "xaxis": f"x{aid}",
                 "yaxis": f"y{aid}",
-                "marker": {"color": BAND},
+                "marker": {"color": ESTIMATE},
                 "opacity": 0.6,
                 "name": "normalised residuals",
                 "hovertemplate": "%{x:.2f}: %{y:.3f}<extra></extra>",
@@ -961,10 +961,12 @@ def power_spectrum(inp: RecipeInput, s: PowerSpectrumSettings) -> Figure:
         theory_ok = True
 
     traces: list[dict[str, Any]] = []
-    for j, (_lv, lo_c, hi_c) in enumerate(interval_columns(s.levels)):
+    bands = interval_columns(s.levels)
+    for j, (_lv, lo_c, hi_c) in enumerate(bands):
+        opacity = band_opacity(j, len(bands))
         for col, extra in (
             (lo_c, {}),
-            (hi_c, {"fill": "tonexty", "fillcolor": BAND, "opacity": round(0.16 + 0.12 * j, 3)}),
+            (hi_c, {"fill": "tonexty", "fillcolor": BAND, "opacity": opacity}),
         ):
             traces.append(
                 {
