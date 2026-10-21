@@ -10,6 +10,7 @@ import {
   Gauge,
   Home,
   KeyRound,
+  LayoutDashboard,
   Library,
   Plug,
   Settings,
@@ -102,6 +103,8 @@ export const EXPERT_NAV: NavItem[] = [
   WORKFLOWS_NAV,
   { to: "/governance", label: "Governance", icon: BadgeCheck, chord: "v", description: "Policies, validations and approvals" },
   INTEGRATIONS_NAV,
+  // v0.16: client dashboards.
+  { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard, chord: "k", description: "Readouts for clients, with access and share links" },
   { to: "/catalog", label: "Catalog", icon: Library, chord: "c", description: "About cards for all models, steps, checks and templates" },
   CHOOSE_NAV,
 ];
