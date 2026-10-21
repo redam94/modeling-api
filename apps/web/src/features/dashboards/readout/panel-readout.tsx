@@ -12,8 +12,8 @@
  * link only while the page is open, plan §10.1).
  *
  * Like the layout 1 page, it reads only through its {@link DashboardClient} and imports nothing
- * of the signed-in app. The heavy renderers and the three input sections load lazily
- * (`panels/readout-extra`). WP13's builder preview renders this component with `preview`.
+ * of the signed-in app. The heavy renderers (`panels/readout-extra`) and the three input
+ * sections load lazily. WP13's builder preview renders this component with `preview`.
  */
 import { Download, X } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
@@ -32,9 +32,9 @@ import { metaLine, periodOf, summaryFileName } from "./readout-model";
 import { PlannerBody } from "./v1/planner-body";
 import { TechnicalToggle } from "./v1/technical-toggle";
 
-const TryACase = lazy(() => import("./panels/readout-extra").then((m) => ({ default: m.TryACase })));
-const CheckAccuracy = lazy(() => import("./panels/readout-extra").then((m) => ({ default: m.CheckAccuracy })));
-const ScoreFile = lazy(() => import("./panels/readout-extra").then((m) => ({ default: m.ScoreFile })));
+const TryACase = lazy(() => import("./try-a-case").then((m) => ({ default: m.TryACase })));
+const CheckAccuracy = lazy(() => import("./check-accuracy").then((m) => ({ default: m.CheckAccuracy })));
+const ScoreFile = lazy(() => import("./score-file").then((m) => ({ default: m.ScoreFile })));
 
 export interface PanelReadoutProps {
   client: DashboardClient;

@@ -14,19 +14,8 @@ import { saveBytes } from "@/lib/download";
 
 import { dashboardErrorMessage, problemOf, useDownloadPredictions } from "../../client";
 import type { AccuracyDetail, AccuracyPoint, BatchSummary, ClientDashboard, DashboardClient, PredictionResult, Readout } from "../../types";
-import {
-  accuracyDetailLines,
-  accuracyMeasures,
-  asClientV2,
-  bandNote,
-  batchLines,
-  HISTORY_METRIC_LABEL,
-  historyMetric,
-  plainNumber,
-  predictionLines,
-  predictionsFileName,
-  unitText,
-} from "../panel-model";
+import { asClientV2, plainNumber, unitText } from "../panel-model";
+import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, HISTORY_METRIC_LABEL, historyMetric, predictionLines, predictionsFileName } from "./results-model";
 import { Section } from "../parts";
 
 function outputLabel(dashboard: ClientDashboard, name: string): string {

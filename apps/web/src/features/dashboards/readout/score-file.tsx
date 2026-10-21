@@ -6,7 +6,7 @@
  * again and makes a private readout. "Download predictions" fetches the CSV through the
  * viewer's dashboard client (the share session header, never a cookie) and saves it from a Blob.
  */
-import { Check, Download, X } from "lucide-react";
+import { Download } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { FileDrop, InlineMessage } from "@/components/ods";
@@ -17,10 +17,11 @@ import { parseCsv } from "@/lib/csv";
 
 import { dashboardErrorMessage, problemOf, useBatchTemplate, useReadout, useSubmitBatch } from "../client";
 import { MAX_BATCH_ROWS, type BatchTemplate, type ClientDashboard, type DashboardClientV2 } from "../types";
-import { batchChecks, batchRows, batchToXr } from "./panel-model";
+import { batchChecks, batchRows, batchToXr } from "./panels/inputs-model";
+import { ChecksList } from "./panels/checks-list";
 import { BatchView } from "./panels/results";
 import { ReadoutState, Section, saveText, Working } from "./parts";
-import { checksPass, plural, type Check as CheckLine } from "./readout-model";
+import { checksPass, plural } from "./readout-model";
 
 /** `MAX_XRJSON_BYTES`: the largest inline dataset the server takes. */
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -33,22 +34,6 @@ interface FileState {
   raw: string[][];
   /** All data rows in the file (an estimate when the file is larger than the cap). */
   total: number;
-}
-
-export function ChecksList({ checks }: { checks: readonly CheckLine[] }) {
-  return (
-    <ul aria-label="Checks" className="grid gap-2 text-sm">
-      {checks.map((c) => (
-        <li key={c.text} className="flex items-start gap-2" data-ok={c.ok}>
-          {c.ok ? <Check aria-hidden className="mt-0.5 size-4 flex-none text-success" /> : <X aria-hidden className="mt-0.5 size-4 flex-none text-destructive" />}
-          <span>
-            <span className="sr-only">{c.ok ? "Passed: " : "Fix: "}</span>
-            {c.text}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function Scored({ client, dashboard, seq }: { client: DashboardClientV2; dashboard: ClientDashboard; seq: number }) {

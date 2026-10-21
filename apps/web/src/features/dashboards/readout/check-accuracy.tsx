@@ -20,11 +20,11 @@ import { parsePasted, tableToXr, type Cell } from "@/lib/actuals";
 
 import { dashboardErrorMessage, problemOf, useActualsTemplate, useReadout, useSubmitActuals } from "../client";
 import { MAX_ROW_ACTUALS, type ActualsSubmit, type ActualsTemplate, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../types";
-import { rowActualsChecks } from "./panel-model";
+import { rowActualsChecks } from "./panels/inputs-model";
+import { ChecksList } from "./panels/checks-list";
 import { AccuracyDetailView, AccuracySection } from "./panels/results";
 import { ReadoutState, Section, saveText, Tags, Working } from "./parts";
 import { checksPass, historyRow, plural } from "./readout-model";
-import { ChecksList } from "./score-file";
 import { UpdateNumbers } from "./v1/update-numbers";
 
 const MODE_NOTE: Record<ActualsTemplate["mode"], string> = {

@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 import { dashboardErrorMessage, problemOf, useKeepReadout, usePredict, useReadout } from "../client";
 import type { ClientDashboard, DashboardClientV2, Readout, ScenarioForm, ScenarioInputDef, ScenarioRow } from "../types";
-import { checkRows, defaultRow, fieldValue, g, horizonKey, issuesByPointer } from "./panel-model";
+import { checkRows, defaultRow, fieldValue, g, horizonKey, issuesByPointer } from "./panels/inputs-model";
 import { PredictionView } from "./panels/results";
 import { ReadoutState, Section, Working } from "./parts";
 
