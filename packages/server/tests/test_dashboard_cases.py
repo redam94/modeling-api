@@ -140,9 +140,7 @@ def cases_contract(monkeypatch: pytest.MonkeyPatch) -> list[Submitted]:
     return seen
 
 
-async def publish_v2(
-    ctx: ServerContext, kit: dict[str, Any], name: str = "v2", **over: Any
-) -> str:
+async def publish_v2(ctx: ServerContext, kit: dict[str, Any], name: str = "v2", **over: Any) -> str:
     """A layout 2 dashboard from the trend model's preset, published by ``ana`` and granted
     to ``cleo`` and ``carl``. ``over`` replaces top-level fields of the published spec (in
     the revision row: the inputs need no fitted model of their own)."""
@@ -194,7 +192,9 @@ async def finish(ctx: ServerContext, dash_id: str, seq: int, snapshot: dict[str,
         )
 
 
-def batch_file(ids: list[Any], prices: list[Any], promos: list[Any] | None = None) -> dict[str, Any]:
+def batch_file(
+    ids: list[Any], prices: list[Any], promos: list[Any] | None = None
+) -> dict[str, Any]:
     data_vars: dict[str, Any] = {"price": {"dims": ["store"], "data": prices}}
     data_vars["promo"] = {"dims": ["store"], "data": promos or [False] * len(ids)}
     return {"inputs": {"coords": {"store": {"dims": ["store"], "data": ids}},
@@ -215,9 +215,7 @@ def test_rows_of_cases_take_new_levels_and_the_defaults() -> None:
 
 
 def test_outcome_ranges_are_predictive_for_draws_only() -> None:
-    spec = DashboardSpecV2.model_validate(
-        {**_spec_example(), "preset": "generic"}
-    )
+    spec = DashboardSpecV2.model_validate({**_spec_example(), "preset": "generic"})
     assert score_output(spec, "draws").kind == "predictive"
     for rep in ("point", "quantiles", "interval"):
         assert score_output(spec, rep).kind == "expected", rep
@@ -238,9 +236,7 @@ def test_a_table_becomes_rows_and_the_model_layout() -> None:
         {"store": "a", "price": 11.0, "promo": False},
         {"store": "b", "price": 12.0, "promo": False},
     ]
-    spec = DashboardSpecV2.model_validate(
-        {**_spec_example(), "preset": "generic", "batch": BATCH}
-    )
+    spec = DashboardSpecV2.model_validate({**_spec_example(), "preset": "generic", "batch": BATCH})
     shape = cases.batch_columns(spec, CASES_SNAPSHOT, {})
     assert set(shape.variables) == {"price", "promo"} and shape.dim_columns == []
     payload = table_payload(rows, shape, CASES_SNAPSHOT)
@@ -451,9 +447,7 @@ async def test_the_batch_template_names_the_id_and_the_drivers(
     ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cases_contract(monkeypatch)
-    dash_id = await publish_v2(
-        ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH
-    )
+    dash_id = await publish_v2(ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH)
     r = await kit["cleo"].get(f"/v1/dashboards/{dash_id}/batch/template")
     assert r.status_code == 200, r.text
     body = r.json()
@@ -470,9 +464,7 @@ async def test_a_batch_is_checked_then_scored_as_the_publisher(
     ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     seen = cases_contract(monkeypatch)
-    dash_id = await publish_v2(
-        ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH
-    )
+    dash_id = await publish_v2(ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH)
     url = f"/v1/dashboards/{dash_id}/batch"
     cleo: Caller = kit["cleo"]
     # ranges are enforced cell by cell, with pointers
@@ -515,9 +507,7 @@ async def test_a_batch_whose_summary_would_not_fit_is_refused(
     )  # fmt: skip
     monkeypatch.setattr(cases, "BATCH_CELL_BUDGET", 100)
     ids = [f"c{k}" for k in range(20)]
-    r = await kit["cleo"].post(
-        f"/v1/dashboards/{dash_id}/batch", json=batch_file(ids, [12.0] * 20)
-    )
+    r = await kit["cleo"].post(f"/v1/dashboards/{dash_id}/batch", json=batch_file(ids, [12.0] * 20))
     assert r.status_code == 409 and r.json()["code"] == "DASHBOARD_BATCH_TOO_LARGE", r.text
     assert "fewer rows" in r.json()["detail"]
 
@@ -579,9 +569,7 @@ async def test_images_are_never_batch_scored_by_clients(
     dash_id = await publish_v2(ctx, kit, preset="image", panels=note, batch=BATCH)
     r = await kit["cleo"].get(f"/v1/dashboards/{dash_id}")
     assert r.json()["inputs"]["batch"] is False
-    r = await kit["cleo"].post(
-        f"/v1/dashboards/{dash_id}/batch", json=batch_file(["a"], [12.0])
-    )
+    r = await kit["cleo"].post(f"/v1/dashboards/{dash_id}/batch", json=batch_file(["a"], [12.0]))
     assert r.status_code == 409 and r.json()["code"] == "DASHBOARD_INPUT_DISABLED", r.text
 
 
@@ -616,9 +604,7 @@ async def test_a_reference_row_is_the_regression_baseline(
 
     seen = cases_contract(monkeypatch)
     note = [{"id": "n", "title": "Note", "kind": "note", "text": "Cases."}]
-    dash_id = await publish_v2(
-        ctx, kit, preset="regression", panels=note, scenario_rows=CASE_ROWS
-    )
+    dash_id = await publish_v2(ctx, kit, preset="regression", panels=note, scenario_rows=CASE_ROWS)
     assert await DashboardLoop(ctx).submit_queued() == 1
     (run,) = seen
     assert run.request["mode"] == "predict" and "inline.data" in run.inputs
@@ -647,3 +633,38 @@ def test_no_interval_is_built_here() -> None:
     src = inspect.getsource(cases)
     assert "low +" not in src and "high +" not in src
     assert math.isfinite(BATCH_CELL_BUDGET)
+
+
+# =================================================================== start-up (plan §10.1)
+
+
+async def test_the_worker_upgrades_layout_1_dashboards_once_at_start_up(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards import loop
+    from mapi_server.services.dashboards.upgrade import UpgradeReport
+
+    calls: list[ServerContext] = []
+
+    async def upgrade(c: ServerContext) -> UpgradeReport:
+        calls.append(c)
+        return UpgradeReport(ran=True)
+
+    monkeypatch.setattr(loop, "run_auto_upgrade", upgrade)
+    worker = loop.DashboardLoop(ctx)
+    stop = asyncio.Event()
+    stop.set()  # one start, no pass
+    await worker.run_forever(stop)
+    await worker.start_up()
+    assert calls == [ctx] and worker.upgraded is not None and worker.upgraded.ran
+
+
+async def test_the_start_up_upgrade_can_be_turned_off(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards.loop import DashboardLoop
+
+    assert ctx.settings.dashboard_auto_upgrade is True  # MAPI_DASHBOARD_AUTO_UPGRADE
+    monkeypatch.setattr(ctx.settings, "dashboard_auto_upgrade", False)
+    report = await DashboardLoop(ctx).start_up()
+    assert report.ran is False

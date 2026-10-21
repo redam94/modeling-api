@@ -252,13 +252,14 @@ async def submit_batch_as(
 CSV_HEADERS: Final = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"}
 
 
-def csv_response(found: downloads.PredictionsCsv) -> Response:
-    """The predictions file as an attachment (never cached, never sniffed)."""
+def csv_response(found: downloads.PredictionsCsv, *, share: bool = False) -> Response:
+    """The predictions file as an attachment (never cached, never sniffed; on a share route
+    :class:`~mapi_server.api.share_cors.ShareCorsMiddleware` sets those headers)."""
     return Response(
         content=found.data,
         media_type="text/csv; charset=utf-8",
         headers={
-            **CSV_HEADERS,
+            **({} if share else CSV_HEADERS),
             "Content-Disposition": f'attachment; filename="{found.filename}"',
         },
     )

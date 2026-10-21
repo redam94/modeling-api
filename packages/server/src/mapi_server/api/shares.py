@@ -352,7 +352,7 @@ async def download_shared_predictions(
     dctx = await _view(ctx, auth, x_mapi_share)
     async with ctx.db.tenant_session(dctx.tenant_id) as session:
         found = await downloads.predictions_csv(ctx, session, dctx, seq)
-    return csv_response(found)
+    return csv_response(found, share=True)
 
 
 @router.get(
@@ -365,12 +365,8 @@ async def get_shared_asset(
     ctx: Ctx, auth: Auth, asset_id: AssetId, x_mapi_share: ShareHeader = None
 ) -> Response:
     """Public: a picture of the shared dashboard's published revision (PNG, at most
-    512 KiB)."""
+    512 KiB; ``nosniff`` and ``private, no-store`` like every share response)."""
     dctx = await _view(ctx, auth, x_mapi_share)
     async with ctx.db.tenant_session(dctx.tenant_id) as session:
         asset = await downloads.asset_bytes(ctx, session, dctx, asset_id)
-    return Response(
-        content=asset.data,
-        media_type=asset.content_type,
-        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=300"},
-    )
+    return Response(content=asset.data, media_type=asset.content_type)
