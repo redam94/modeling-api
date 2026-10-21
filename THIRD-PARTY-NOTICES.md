@@ -200,7 +200,7 @@ Bundled into the web image (`apps/web`, `apps/plot-sandbox`; `pnpm-lock.yaml`).
 | `@floating-ui/dom` | 1.8.0 | MIT |
 | `@floating-ui/react-dom` | 2.1.9 | MIT |
 | `@floating-ui/utils` | 0.2.12 | MIT |
-| `@fontsource-variable/hanken-grotesk` | 5.2.8 | OFL-1.1 |
+| `@fontsource-variable/inter` | 5.2.8 | OFL-1.1 |
 | `@fontsource-variable/jetbrains-mono` | 5.2.8 | OFL-1.1 |
 | `@radix-ui/number` | 1.1.3 | MIT |
 | `@radix-ui/primitive` | 1.1.7 | MIT |
@@ -1068,13 +1068,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ~~~
 
-### @fontsource-variable/hanken-grotesk 5.2.8
+### @fontsource-variable/inter 5.2.8
 
-Used by `@fontsource-variable/hanken-grotesk` 5.2.8.
+Used by `@fontsource-variable/inter` 5.2.8.
 
-<!-- licence: js:@fontsource-variable/hanken-grotesk@5.2.8 -->
+<!-- licence: js:@fontsource-variable/inter@5.2.8 -->
 ~~~text
-Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk) HankenGrotesk-Italic[wght].ttf: Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk)
+Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

@@ -29,13 +29,24 @@ compare runs side by side.</p>
 
 [Your first MMM in Guided mode](guides/guided-tutorial.md){ .md-button .md-button--primary }
 [Quickstart for data scientists](getting-started/quickstart.md){ .md-button }
-[What's new in 0.15](whats-new-0.15.md){ .md-button }
+[What's new in 0.16](whats-new-0.16.md){ .md-button }
 
 </div>
 ![The modeling-api logo: a cube of labelled data](assets/logo.svg)
 </div>
 
-!!! success "v0.15: deep learning and image collections"
+!!! success "v0.16: client dashboards and a new look"
+    Analysts publish **client dashboards** from a model or an endpoint. Client users sign in
+    and see only the dashboards that you give them. Other persons open a **share link** with
+    an expiry and an optional passcode. Clients try other spend, upload new numbers and ask
+    for a refit. The model changes only when an analyst approves. The web app has a **new
+    look** in light and dark.
+
+    [What's new in 0.16](whats-new-0.16.md) ·
+    [Build a client dashboard](guides/client-dashboards.md) ·
+    [For clients](guides/for-clients.md)
+
+!!! note "v0.15: deep learning and image collections"
     The new package `mapi-jax` trains **neural networks** for tables and images on JAX and
     Flax: `dl.mlp`, `dl.cnn_classifier` and `dl.finetune_classifier`. The training shows its
     curves while it runs, logs images of the predictions, stops early, saves checkpoints and

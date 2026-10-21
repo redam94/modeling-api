@@ -34,7 +34,6 @@ from pydantic import Field
 
 from mapi_plots.palette import (
     ALERT,
-    BAND,
     BASELINE,
     ESTIMATE,
     NEGATIVE,
@@ -1049,7 +1048,7 @@ def spend_effect(inp: RecipeInput, s: SpendEffectSettings) -> Figure:
         "measure:N",
         title=None,
         sort=measures,
-        scale=alt.Scale(domain=measures, range=[BASELINE, BAND]),
+        scale=alt.Scale(domain=measures, range=[BASELINE, ESTIMATE]),
     )
     base = alt.Chart()
     x = alt.X("channel:N", sort=order, title=None, axis=alt.Axis(labelAngle=0))

@@ -12,6 +12,25 @@
     retired the `Sweep` document). Public code upload for all users comes after these
     items, with its own controls (see the [roadmap](index.md#after-v06)).
 
+## Planned for v0.17 { #planned-for-v017 }
+
+v0.16 shipped client dashboards with a read-only tool surface
+(`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`: `get_dashboard`, `get_latest_readout`,
+`list_readouts`, `get_readout`, `compare_readouts`, `get_channel`, `explain_metric` and
+`evaluate_whatif`). The member, client and share routes already call these tools. v0.17 adds:
+
+- **A chat explainer on a dashboard.** A Gemini flash-class model answers questions about a
+  dashboard in plain words. The control plane is the proxy. The API keys stay on the server,
+  and the CSP `connect-src` of the web app does not change.
+- **Answers as React elements.** The chat renders its answers as React elements, never as
+  HTML. The Trusted Types policy of the app forbids `createHTML`.
+- **An MCP server on the same tools.** Each MCP tool maps 1:1 onto a `DASHBOARD_TOOLS` entry.
+  The tools stay read-only.
+- **Spend caps for each dashboard.** The chat has its own limits, as the exact results of
+  v0.16 have.
+
+See [Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
+
 ## Plugin upload for allow-listed experts
 
 Now, a data scientist can run their own `PyMCModel` or `SklearnModel` only on a deployment

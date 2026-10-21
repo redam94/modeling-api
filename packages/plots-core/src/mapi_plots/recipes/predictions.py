@@ -28,6 +28,7 @@ from mapi_plots.palette import (
     SCENARIO,
     STRONG,
     SURFACE,
+    band_opacity,
 )
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
@@ -287,7 +288,7 @@ def ppc_fan(inp: RecipeInput, s: FanSettings) -> Figure:
     ]
     for i, (_, lo_c, hi_c) in enumerate(pairs):
         layers.append(
-            base.mark_area(opacity=0.15 + 0.15 * i, color=BAND).encode(
+            base.mark_area(opacity=band_opacity(i, len(pairs)), color=BAND).encode(
                 x=_xenc(b, title=b.x_dim),
                 y=alt.Y(f"{lo_c}:Q", title=b.label, scale=alt.Scale(zero=False)),
                 y2=f"{hi_c}:Q",

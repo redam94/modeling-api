@@ -11,7 +11,7 @@ import { atLeast } from "@/api/access";
 import { api, unwrap } from "@/api/client";
 import { qk } from "@/api/queries";
 import type { TrustTier } from "@/api/types";
-import { useWorkspace } from "@/features/auth/workspace";
+import { trustTierOf, useWorkspace } from "@/features/auth/workspace";
 import { personaOf, useUi, type Persona } from "@/stores/ui";
 
 /**
@@ -56,7 +56,7 @@ export function defaultPersona(trustTier: TrustTier | null | undefined, operator
 /** The persona the shell shows: the user's choice, or Guided when the lock applies. */
 export function useEffectivePersona(): Persona {
   const ws = useWorkspace();
-  const fallback = defaultPersona(ws.current?.tenant.trust_tier, ws.operator);
+  const fallback = defaultPersona(trustTierOf(ws.current?.tenant), ws.operator);
   const persona = useUi((s) => personaOf(s, ws.user.id, fallback));
   const lock = useGuidedLock();
   return lock.locked ? "guided" : persona;

@@ -20,7 +20,7 @@ export function SecretField({ id, label, value, copyLabel, onCopied }: { id: str
           readOnly
           value={value}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
+          className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none"
           spellCheck={false}
           autoComplete="off"
         />
@@ -67,7 +67,7 @@ export function ShownOnceDialog({
         <DialogDescription>{description}</DialogDescription>
         <SecretField id="shown-once-value" label={label} value={value} copyLabel={copyLabel} onCopied={() => setAcknowledged(true)} />
         {children}
-        <label className="flex items-center gap-2 text-[13px]">
+        <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={acknowledged} onCheckedChange={(v) => setAcknowledged(v === true)} />
           {acknowledge}
         </label>

@@ -188,16 +188,16 @@ export function TemplateWizard({ templateId, initialData }: { templateId: string
       ) : step === 1 ? (
         <Card>
           <CardContent className="grid gap-3 pt-4">
-            <p className="text-[13px] text-muted-foreground">These values become the defaults of the workflow. Each run can change them.</p>
+            <p className="text-sm text-muted-foreground">These values become the defaults of the workflow. Each run can change them.</p>
             <ParamsForm doc={doc} value={params} onChange={setParams} />
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardContent className="grid gap-4 pt-4">
-            <p className="text-[13px] text-muted-foreground">Select the default data for the workflow. Schedules use this data. Runs that start with no data also use it.</p>
+            <p className="text-sm text-muted-foreground">Select the default data for the workflow. Schedules use this data. Runs that start with no data also use it.</p>
             <InputsForm inputs={doc.inputs ?? {}} value={inputs} onChange={setInputs} />
-            <label className="flex items-center gap-2 text-[13px]">
+            <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={runNow} onCheckedChange={(c) => setRunNow(c === true)} />
               Open the Runs tab to start a run immediately
             </label>
@@ -315,7 +315,7 @@ export function RecipeRunner({ templateId, initialData }: { templateId: string; 
             </p>
           ) : null}
           {submitted && missing.length ? (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               Still needed: {missing.join(", ")}. Give a value for each item.
             </p>
           ) : null}

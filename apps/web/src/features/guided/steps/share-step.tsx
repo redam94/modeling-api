@@ -38,7 +38,7 @@ function GateReasons({ reasons }: { reasons: { message_plain: string; outcome: s
   return (
     <ul className="grid gap-2">
       {reasons.map((r, i) => (
-        <li key={i} className="flex items-start gap-2 text-[13px]">
+        <li key={i} className="flex items-start gap-2 text-sm">
           <StatusBadge status={r.outcome === "blocked" ? "fail" : "warn"} className="mt-0.5" />
           <span>{r.message_plain}</span>
         </li>
@@ -102,7 +102,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
             <p className="flex items-center gap-2 font-medium">
               <CheckCircle2 aria-hidden className="size-4 text-success" /> Live at <Mono>{live.ref}</Mono>
             </p>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               The endpoint serves {live.model_ref} (revision {live.revision}).{live.overridden ? " An admin approved it, but some checks need examination." : ""} The Integrations hub has ready-made code for spreadsheets, notebooks and scripts.
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -123,12 +123,12 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
             <div className={`flex items-start gap-3 rounded-lg border p-4 ${gate.outcome === "allowed" ? "border-success/30" : gate.outcome === "blocked" ? "border-destructive/30 bg-destructive/6" : "border-warning/35 bg-warning/8"}`}>
               {gate.outcome === "allowed" ? <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /> : <ShieldAlert aria-hidden className={`mt-0.5 size-4 shrink-0 ${gate.outcome === "blocked" ? "text-destructive" : "text-warning"}`} />}
               <div className="grid gap-2">
-                <p className="text-[13px] font-medium" data-testid="gate-sentence">
+                <p className="text-sm font-medium" data-testid="gate-sentence">
                   {gateSentence(gate.outcome, isAdmin)}
                 </p>
                 <GateReasons reasons={gate.reasons ?? []} />
                 {gate.outcome === "blocked" ? (
-                  <Link to="/guided/$specId/$step" params={{ specId: session.spec.id, step: "report" }} className="text-[13px] font-medium underline underline-offset-2">
+                  <Link to="/guided/$specId/$step" params={{ specId: session.spec.id, step: "report" }} className="text-sm font-medium underline underline-offset-2">
                     See what to do on the Results step
                   </Link>
                 ) : null}
@@ -143,7 +143,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
               </Field>
             ) : null}
             {error ? (
-              <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-[13px]">
+              <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-sm">
                 <p className="font-medium">{error instanceof ApiError && error.code === "OVERRIDE_REQUIRED" ? "A project admin must approve this model" : error instanceof ApiError && error.code === "PROMOTION_BLOCKED" ? "This model cannot go live" : "The model did not go live"}</p>
                 {problemReasons.length ? <GateReasons reasons={problemReasons} /> : <p className="text-muted-foreground">{errorMessage(error)}</p>}
               </div>
@@ -155,7 +155,7 @@ function Promote({ session, mv }: { session: GuidedSession; mv: ModelVersion }) 
                     {promote.isPending ? <Spinner /> : <Rocket />} Approve and go live
                   </Button>
                 ) : (
-                  <p className="text-[13px] text-muted-foreground">Send this page to a project admin. A project admin can approve the model here.</p>
+                  <p className="text-sm text-muted-foreground">Send this page to a project admin. A project admin can approve the model here.</p>
                 )
               ) : (
                 <Button onClick={() => void submit(false)} disabled={!aliasOk || gate.outcome === "blocked" || promote.isPending || !mayPromote}>
@@ -220,7 +220,7 @@ function Embed({ mv }: { mv: ModelVersion }) {
       <CardContent className="grid gap-4">
         {made ? (
           <div className="grid gap-2 rounded-lg border bg-muted/30 p-4" data-testid="embed-link">
-            <p className="text-[13px] font-medium">Your link. Copy it now. The app shows it only one time.</p>
+            <p className="text-sm font-medium">Your link. Copy it now. The app shows it only one time.</p>
             <div className="flex min-w-0 items-center gap-2">
               <Mono className="min-w-0 flex-1 truncate rounded border bg-card px-2 py-1.5">{made.url}</Mono>
               <CopyButton value={made.url} label="Copy the link" />
@@ -267,10 +267,10 @@ function Embed({ mv }: { mv: ModelVersion }) {
             </Button>
           </div>
         ) : (
-          <p className="text-[13px] text-muted-foreground">This model has no charts that you can share as a link.</p>
+          <p className="text-sm text-muted-foreground">This model has no charts that you can share as a link.</p>
         )}
         {create.isError ? (
-          <p role="alert" className="text-[13px] text-destructive">
+          <p role="alert" className="text-sm text-destructive">
             {errorMessage(create.error)}
           </p>
         ) : null}
@@ -281,7 +281,7 @@ function Embed({ mv }: { mv: ModelVersion }) {
 
 export function ShareStep({ session }: { session: GuidedSession }) {
   const mv = session.modelVersion;
-  if (!mv) return <p className="text-[13px] text-muted-foreground">This analysis has no fitted model. Fit the model to share it.</p>;
+  if (!mv) return <p className="text-sm text-muted-foreground">This analysis has no fitted model. Fit the model to share it.</p>;
   return (
     <div className="grid gap-6">
       <Promote session={session} mv={mv} />

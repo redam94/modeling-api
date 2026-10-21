@@ -91,10 +91,10 @@ function Step({ n, title, children, hint }: { n: number; title: string; hint?: s
   return (
     <section className="grid gap-3" aria-label={title}>
       <div className="flex items-baseline gap-2">
-        <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground" aria-hidden>
+        <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground" aria-hidden>
           {n}
         </span>
-        <h3 className="text-[13px] font-semibold">{title}</h3>
+        <h3 className="text-sm font-semibold">{title}</h3>
       </div>
       {hint ? <p className="-mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       <div className="grid gap-3 pl-7">{children}</div>
@@ -290,7 +290,7 @@ export function ScoreFormView({
                 onClick={() => set("mode", m)}
                 className={cn("grid gap-0.5 rounded-lg border p-3 text-left transition-colors hover:bg-accent/50", on && "border-primary bg-primary/6 ring-1 ring-primary/40")}
               >
-                <span className="text-[13px] font-semibold">{text.title}</span>
+                <span className="text-sm font-semibold">{text.title}</span>
                 <span className="text-xs text-muted-foreground">{text.detail}</span>
               </button>
             );
@@ -425,7 +425,7 @@ export function ScoreFormView({
       </Step>
 
       <details className="rounded-lg border p-3" open={problems.some((p) => ADVANCED_FIELDS.test(p.field)) || undefined}>
-        <summary className="cursor-pointer text-[13px] font-medium">Advanced</summary>
+        <summary className="cursor-pointer text-sm font-medium">Advanced</summary>
         <div className="mt-4 grid gap-5">
           <Field label="Inputs enter at stage" htmlFor="inputs-stage" error={problemFor(problems, "inputsStage")} hint="Send data in the units of this stage. Typed values always use the raw stage.">
             <NativeSelect id="inputs-stage" value={form.inputsStage} onChange={(e) => set("inputsStage", e.target.value)} className="w-48 font-mono">
@@ -441,7 +441,7 @@ export function ScoreFormView({
           </Field>
           {sideTables.length ? (
             <fieldset className="grid gap-3 rounded-lg border p-4">
-              <legend className="px-1 text-[13px] font-medium">Side tables</legend>
+              <legend className="px-1 text-sm font-medium">Side tables</legend>
               {sideTables.map((t) =>
                 t.policy === "pinned" ? (
                   <p key={t.name} className="text-xs text-muted-foreground">
@@ -466,7 +466,7 @@ export function ScoreFormView({
       </details>
 
       <div className="grid gap-3 rounded-lg border bg-muted/30 p-3" aria-label="Ready to score">
-        <ul className="grid gap-1 text-[13px]">
+        <ul className="grid gap-1 text-sm">
           {readiness.map((n) => (
             <li key={n.text} className={cn("flex items-start gap-2", !n.ok && "text-warning")}>
               {n.ok ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" /> : <TriangleAlert className="mt-0.5 size-4 shrink-0" />}
@@ -579,10 +579,10 @@ function OutputSettings({
   const summaryProblem = problemFor(problems, "summary");
   return (
     <fieldset className="grid gap-4 rounded-lg border p-4">
-      <legend className="px-1 text-[13px] font-medium">Output</legend>
+      <legend className="px-1 text-sm font-medium">Output</legend>
       <div className="flex flex-wrap gap-4">
         <div className="grid gap-1.5">
-          <span className="text-[13px] font-medium">Quantity</span>
+          <span className="text-sm font-medium">Quantity</span>
           <SegmentedControl
             label="Output kind"
             value={form.output.kind}
@@ -594,16 +594,16 @@ function OutputSettings({
           />
         </div>
         <div className="grid gap-1.5">
-          <span className="text-[13px] font-medium">Units</span>
+          <span className="text-sm font-medium">Units</span>
           <SegmentedControl label="Units" value={form.output.units} onValueChange={(v) => setOut("units", v)} options={[{ value: "original", label: "Original" }, { value: "model", label: "Model space" }]} />
         </div>
         <div className="grid gap-1.5">
-          <span className="text-[13px] font-medium">Names</span>
+          <span className="text-sm font-medium">Names</span>
           <SegmentedControl label="Names" value={form.output.names} onValueChange={(v) => setOut("names", v)} options={[{ value: "dataset", label: "Dataset" }, { value: "canonical", label: "Canonical" }]} />
         </div>
       </div>
       <div className="grid gap-1.5">
-        <span className="text-[13px] font-medium">Summaries</span>
+        <span className="text-sm font-medium">Summaries</span>
         {representation ? <p className="text-xs text-muted-foreground">This model returns {representation}. It can give only these summaries.</p> : null}
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Summaries" aria-invalid={summaryProblem ? true : undefined}>
           {options.map((s) => {

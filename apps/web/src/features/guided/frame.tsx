@@ -48,7 +48,7 @@ function Stepper({ steps, current }: { steps: StepLink[]; current: GuidedStepId 
               <span
                 aria-hidden
                 className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tabular",
+                  "flex size-5 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular",
                   isCurrent && "border-primary bg-primary text-primary-foreground",
                   !isCurrent && s.done && "border-success/40 bg-success/12 text-success",
                 )}
@@ -60,7 +60,7 @@ function Stepper({ steps, current }: { steps: StepLink[]; current: GuidedStepId 
             </>
           );
           const cls = cn(
-            "flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium",
+            "flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium",
             isCurrent ? "text-foreground" : "text-muted-foreground",
           );
           return (

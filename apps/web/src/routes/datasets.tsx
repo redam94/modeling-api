@@ -145,7 +145,7 @@ function VersionDetail({ version }: { version: DatasetVersion }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Mono className="min-w-0 text-[15px] font-semibold break-all">{version.ref}</Mono>
+        <Mono className="min-w-0 text-base font-semibold break-all">{version.ref}</Mono>
         <CopyButton value={version.ref} label="Copy reference" />
         <Badge variant={VERSION_STATUS[version.status]}>{version.status}</Badge>
         {version.layout === "tree" ? <Badge variant="outline">tree</Badge> : null}
@@ -281,7 +281,7 @@ export function DatasetDetailPage() {
               type="button"
               aria-current={v.version === selected ? "true" : undefined}
               onClick={() => void navigate({ search: (s) => ({ ...s, version: v.version }) })}
-              className={cn("flex items-center justify-between rounded-md px-2 py-1.5 text-[13px] hover:bg-accent", v.version === selected && "bg-accent font-medium")}
+              className={cn("flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent", v.version === selected && "bg-accent font-medium")}
             >
               <Mono>v{v.version}</Mono>
               <span className="text-xs text-muted-foreground">{v.status === "ready" ? relativeTime(v.created_at) : v.status}</span>

@@ -899,3 +899,58 @@ def test_the_plot_sandbox_mirrors_the_dark_variants() -> None:
         pytest.skip("the plot sandbox sources are not in this checkout")
     pairs = dict(re.findall(r'"(#[0-9a-f]{6})":\s*"(#[0-9a-f]{6})"', ts.read_text()))
     assert pairs == dark_variants()
+
+
+def _blend(fg: str, alpha: float, bg: str) -> str:
+    f = [int(fg[i : i + 2], 16) for i in (1, 3, 5)]
+    b = [int(bg[i : i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(b[k] + alpha * (f[k] - b[k])):02x}" for k in range(3))
+
+
+def _band_uses(node: Any, band: str, out: list[tuple[str, Any]]) -> None:
+    """Every place a rendered spec draws with ``band``: ``(what, opacity or detail)``."""
+    if isinstance(node, dict):
+        mark = node.get("mark")
+        if isinstance(mark, dict) and mark.get("color") == band:
+            out.append((str(mark.get("type")), mark.get("opacity")))
+        scale = node.get("scale")
+        if isinstance(scale, dict) and band in (scale.get("range") or []):
+            out.append(("scale-range", scale.get("range")))
+        if node.get("fillcolor") == band:
+            out.append(("fill", node.get("opacity")))
+        marker = node.get("marker")
+        if isinstance(marker, dict) and marker.get("color") == band:
+            out.append(("marker", None))
+        line = node.get("line")
+        if isinstance(line, dict) and line.get("color") == band and line.get("width", 2) > 0:
+            out.append(("line", line.get("width")))
+        for v in node.values():
+            _band_uses(v, band, out)
+    elif isinstance(node, list):
+        for v in node:
+            _band_uses(v, band, out)
+
+
+def test_bands_stay_visible_and_no_data_mark_is_drawn_in_the_pale_band_colour() -> None:
+    """``BAND`` is the pale MEI fill: only interval areas use it, at ``band_opacity`` (at the
+    old .15-.2 a band blended to 1.07:1 on the white card); bars, histograms, densities,
+    markers and lines that carry data use ``ESTIMATE`` or a series colour."""
+    from mapi_plots.palette import BAND, BAND_OPACITY, band_opacity
+
+    assert _contrast(_blend(BAND, BAND_OPACITY, _LIGHT_CARD), _LIGHT_CARD) >= 1.25
+    assert _contrast(_blend(BAND, band_opacity(0, 3), _LIGHT_CARD), _LIGHT_CARD) >= 1.15
+    inner = 1.0
+    for i in range(2):  # where two nested bands overlap
+        inner *= 1 - band_opacity(i, 2)
+    assert _contrast(_blend(BAND, 1 - inner, _LIGHT_CARD), _LIGHT_CARD) >= 1.3
+    found: dict[str, list[tuple[str, Any]]] = {}
+    for recipe_id, (data, options) in EXAMPLES.items():
+        uses: list[tuple[str, Any]] = []
+        _band_uses(get_recipe(recipe_id).render(data, **options).spec, BAND, uses)
+        if uses:
+            found[recipe_id] = uses
+    assert found, "no recipe draws a band?"
+    for recipe_id, uses in found.items():
+        for what, detail in uses:
+            assert what in ("area", "fill"), (recipe_id, what, detail)
+            assert isinstance(detail, int | float) and detail >= 0.45, (recipe_id, what, detail)

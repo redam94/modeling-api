@@ -30,17 +30,17 @@ export function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & { wide?: boolean }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed top-[12vh] left-1/2 z-50 grid max-h-[80vh] w-[calc(100%-2rem)] -translate-x-1/2 gap-4 overflow-y-auto rounded-xl border bg-popover p-6 text-popover-foreground shadow-2xl",
+          "fixed top-[12vh] left-1/2 z-50 grid max-h-[80vh] w-[calc(100%-2rem)] -translate-x-1/2 gap-4 overflow-y-auto rounded-xl border bg-popover p-6 text-popover-foreground shadow-lg max-sm:p-4",
           wide ? "max-w-3xl" : "max-w-lg",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
+        <DialogPrimitive.Close className="focus-ring absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
           <X className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -50,11 +50,11 @@ export function DialogContent({
 }
 
 export function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("text-base font-semibold tracking-tight", className)} {...props} />;
+  return <DialogPrimitive.Title className={cn("text-lg font-semibold", className)} {...props} />;
 }
 
 export function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn("text-muted-foreground text-[13px]", className)} {...props} />;
+  return <DialogPrimitive.Description className={cn("text-sm text-muted-foreground", className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -71,7 +71,7 @@ export function DropdownMenuContent({ className, sideOffset = 6, ...props }: Rea
     <MenuPrimitive.Portal>
       <MenuPrimitive.Content
         sideOffset={sideOffset}
-        className={cn("z-50 min-w-40 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg", className)}
+        className={cn("z-50 min-w-40 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md", className)}
         {...props}
       />
     </MenuPrimitive.Portal>
@@ -82,7 +82,7 @@ export function DropdownMenuItem({ className, ...props }: React.ComponentProps<t
   return (
     <MenuPrimitive.Item
       className={cn(
-        "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:size-4",
+        "flex min-h-9 cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:shadow-[inset_3px_0_0_var(--ring)] [&_svg]:size-4",
         className,
       )}
       {...props}
@@ -91,7 +91,7 @@ export function DropdownMenuItem({ className, ...props }: React.ComponentProps<t
 }
 
 export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof MenuPrimitive.Label>) {
-  return <MenuPrimitive.Label className={cn("px-2 py-1.5 text-xs text-muted-foreground", className)} {...props} />;
+  return <MenuPrimitive.Label className={cn("px-2 py-1.5 text-xs text-hint", className)} {...props} />;
 }
 
 export function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof MenuPrimitive.Separator>) {
@@ -104,7 +104,7 @@ export function DropdownMenuRadioItem({ className, children, ...props }: React.C
   return (
     <MenuPrimitive.RadioItem
       className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-[13px] outline-none select-none data-[highlighted]:bg-accent",
+        "relative flex min-h-9 cursor-default items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-sm outline-none select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:shadow-[inset_3px_0_0_var(--ring)]",
         className,
       )}
       {...props}
@@ -131,7 +131,7 @@ export function Tooltip({ content, children, side = "top" }: { content: React.Re
         <TooltipPrimitive.Content
           side={side}
           sideOffset={6}
-          className="z-50 max-w-xs rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md"
+          className="z-50 max-w-xs rounded-md bg-tooltip px-2 py-1.5 text-xs text-tooltip-foreground shadow-sm"
         >
           {content}
         </TooltipPrimitive.Content>
@@ -150,7 +150,7 @@ export function TabsList({ className, ...props }: React.ComponentProps<typeof Ta
       // Scrolls sideways instead of widening the page on narrow screens. The baseline is an inset
       // shadow (not a border) so the active tab's underline is not clipped by the overflow box.
       className={cn(
-        "inline-flex max-w-full items-center gap-1 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin]",
+        "inline-flex h-10 max-w-full items-center gap-8 overflow-x-auto overflow-y-hidden text-muted-foreground shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:thin]",
         className,
       )}
       {...props}
@@ -162,7 +162,8 @@ export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground [&_svg]:size-4",
+        // An inset ring: the list scrolls (overflow), which would clip an outer focus ring.
+        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-t-sm border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-transparent text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-primary-hover data-[state=active]:border-primary data-[state=active]:text-primary [&_svg]:size-4",
         className,
       )}
       {...props}
@@ -180,12 +181,12 @@ export function Switch({ className, ...props }: React.ComponentProps<typeof Swit
   return (
     <SwitchPrimitive.Root
       className={cn(
-        "peer inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-transparent bg-input transition-colors data-[state=checked]:bg-primary",
+        "focus-ring peer inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-transparent bg-input transition-colors disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary",
         className,
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb className="pointer-events-none block size-4 translate-x-0.5 rounded-full bg-card shadow-sm transition-transform data-[state=checked]:translate-x-4" />
+      <SwitchPrimitive.Thumb className="pointer-events-none block size-5 translate-x-0.5 rounded-full bg-card shadow-xs transition-transform data-[state=checked]:translate-x-[18px]" />
     </SwitchPrimitive.Root>
   );
 }
@@ -196,7 +197,7 @@ export function Checkbox({ className, ...props }: React.ComponentProps<typeof Ch
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "peer grid size-4 shrink-0 place-items-center rounded-[4px] border border-input bg-card shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+        "peer grid size-4 shrink-0 place-items-center rounded-sm border border-input bg-card transition-colors focus-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
         className,
       )}
       {...props}
@@ -232,14 +233,14 @@ export function SegmentedControl<T extends string>({
         if (v) onValueChange(v as T);
       }}
       // Too many options for a narrow screen scroll inside the strip, never the page.
-      className={cn("inline-flex h-8 max-w-full items-center overflow-x-auto rounded-md border bg-muted p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
+      className={cn("inline-flex h-8 max-w-full items-center gap-0.5 overflow-x-auto rounded-lg bg-border p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
     >
       {options.map((o) => (
         <ToggleGroupPrimitive.Item
           key={o.value}
           value={o.value}
           title={o.title}
-          className="inline-flex h-full shrink-0 items-center gap-1.5 rounded-[5px] px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
+          className="focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs [&_svg]:size-3.5"
         >
           {o.label}
         </ToggleGroupPrimitive.Item>

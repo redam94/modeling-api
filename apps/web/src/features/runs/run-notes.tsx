@@ -38,7 +38,7 @@ function ReadOnlyNotes({ run }: { run: Run }) {
       <CardHeader>
         <CardTitle>Notes</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 text-[13px]">
+      <CardContent className="grid gap-4 text-sm">
         <p className="text-muted-foreground">
           {grants.projectRole ? `You need the runner role to change the name, tags and note. Your role is ${grants.projectRole}.` : "You cannot change the name, tags and note of this run."}
         </p>
@@ -63,7 +63,7 @@ function TagEditor({ rows, onChange }: { rows: TagRow[]; onChange: (rows: TagRow
   const set = (id: string, patch: Partial<TagRow>) => onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   return (
     <div className="grid gap-2" role="group" aria-label="Tags">
-      {rows.length ? null : <p className="text-[13px] text-muted-foreground">The run has no tags.</p>}
+      {rows.length ? null : <p className="text-sm text-muted-foreground">The run has no tags.</p>}
       {rows.map((r, i) => {
         // a blank row ("Add a tag", not filled) is ignored, so it shows no error
         const error = isBlankTagRow(r) ? "" : tagRowError(r, rows);
@@ -143,7 +143,7 @@ export function RunNotes({ run, edit: held, onEdit }: { run: Run; edit?: NotesEd
             <Input id="run-name" value={draft.name} maxLength={MAX_RUN_NAME_CHARS} onChange={(e) => edit({ ...draft, name: e.target.value })} placeholder="No name" />
           </Field>
           <div className="grid gap-1.5">
-            <span className="text-[13px] font-medium">Tags</span>
+            <span className="text-sm font-medium">Tags</span>
             <TagEditor rows={draft.tags} onChange={(tags) => edit({ ...draft, tags })} />
             {Object.keys(platformTags).length ? (
               <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

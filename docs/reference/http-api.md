@@ -1262,6 +1262,172 @@ curl -X POST "$MAPI/v1/datasets/$DATASET/blobs/missing" -H "Authorization: Beare
   -d '{"sha256": ["'"$(sha256sum photo.jpg | cut -c1-64)"'"]}'
 ```
 
+## Client dashboards and share links <span class="mapi-badge">v0.16</span> { #v016 }
+
+v0.16 adds client dashboards: an analyst publishes a dashboard on a model version or an
+endpoint, gives it to client users (the project role `client`) and makes share links for
+persons without an account. Each dashboard keeps an append-only history of readouts.
+[Client dashboards](../concepts/client-dashboards.md) tells how the parts work. The guides
+are [Build a client dashboard](../guides/client-dashboards.md) and
+[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+
+The contracts are in `mapi_spec.dashboards` (DTOs) and `mapi_spec.dashboard_tools` (the
+read-only tool surface). `mapi_spec.api.V016_ENDPOINTS` lists the routes below.
+
+### Project routes { #v016-endpoints }
+
+All of them need the `X-Mapi-Project` header (or a project in the token). The access column
+of each route is in the [permissions reference](generated/permissions.md):
+
+- `dashboard` `read`: lists, `get_dashboard`, revisions and readouts. A client sees only the
+  published dashboards that a grant gives them. Other dashboards answer `404`.
+- `dashboard` `run`: the grid, what-ifs, scenarios, the actuals template and uploads (client
+  and higher).
+- `dashboard` `update` (editor): the draft, validate, publish, refresh, readout review and
+  refit requests. `publish_dashboard` also needs the `runner` role (`403 FORBIDDEN`), and the
+  caller becomes the run-as owner. `approve_dashboard_refit_request` also needs `run` on
+  `workflow` and `create` on `run`.
+- `dashboard` `delete` (editor): archive. It revokes all share links.
+- `dashboard_grant` and `dashboard_share` (editor): grants and share links. A share link that
+  allows inputs needs the `runner` role.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `GET /v1/dashboards` | Dashboards of the project (a client sees only the published ones granted to them) | — | `Page[DashboardSummary]` | 200 | — |
+| `POST /v1/dashboards` | Create a dashboard draft | `DashboardCreate` | `Dashboard` | 201 | `SCHEMA_INVALID`, `CONFLICT` |
+| `GET /v1/dashboards/{dashboard_id}` | A dashboard (viewers and up: Dashboard; a client: ClientDashboard) | — | `Dashboard` | 200 | `NOT_FOUND` |
+| `PUT /v1/dashboards/{dashboard_id}/draft` | Replace the draft spec (If-Match: the draft_etag) | `DashboardDraftUpdate` | `Dashboard` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_SPEC_STALE`, `PRECONDITION_FAILED` |
+| `POST /v1/dashboards/{dashboard_id}:validate` | Check whether the draft can be published | — | `DashboardValidation` | 200 | `NOT_FOUND` |
+| `POST /v1/dashboards/{dashboard_id}:publish` | Publish the draft as a new revision (needs runner; queues a baseline readout). Optional `If-Match`: the `draft_etag` you checked | — | `Dashboard` | 200 | `NOT_FOUND`, `FORBIDDEN`, `SCHEMA_INVALID`, `NOT_READY`, `CONFLICT`, `DASHBOARD_SPEC_STALE` |
+| `POST /v1/dashboards/{dashboard_id}:archive` | Archive a dashboard (revokes its share links) | — | `Dashboard` | 200 | `NOT_FOUND` |
+| `GET /v1/dashboards/{dashboard_id}/revisions` | Published revisions (newest first) | — | `Page[DashboardRevision]` | 200 | `NOT_FOUND` |
+| `GET /v1/dashboards/{dashboard_id}/grants` | Client users who see the dashboard | — | `Page[DashboardGrant]` | 200 | `NOT_FOUND` |
+| `PUT /v1/dashboards/{dashboard_id}/grants/{user_id}` | Grant the dashboard to a member of the project (idempotent) | — | `DashboardGrant` | 200 | `NOT_FOUND`, `CONFLICT` |
+| `DELETE /v1/dashboards/{dashboard_id}/grants/{user_id}` | Take the dashboard away from a user (idempotent) | — | — | 204 | `NOT_FOUND` |
+| `GET /v1/dashboards/{dashboard_id}/shares` | Share links (never their tokens) | — | `Page[DashboardShare]` | 200 | `NOT_FOUND` |
+| `POST /v1/dashboards/{dashboard_id}/shares` | Create a share link (its token is shown once) | `DashboardShareCreate` | `DashboardShareCreated` | 201 | `SCHEMA_INVALID`, `NOT_FOUND`, `FORBIDDEN`, `DASHBOARD_NOT_PUBLISHED` |
+| `POST /v1/dashboards/{dashboard_id}/shares/{share_id}:revoke` | Revoke a share link (idempotent; the next request with it fails) | — | `DashboardShare` | 200 | `NOT_FOUND` |
+| `GET /v1/dashboards/{dashboard_id}/grid` | The response grid of the pinned version, clipped to the dashboard's channels | — | `DashboardGrid` | 200 | `NOT_FOUND`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/dashboards/{dashboard_id}/whatif:evaluate` | Evaluate a spend plan on the grid (no run, nothing saved) | `WhatIfRequest` | `WhatIfResult` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCENARIO_OUT_OF_RANGE`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/dashboards/{dashboard_id}/scenarios` | Save a scenario as a private readout (exact: a score run; Prefer: wait=N -> 200 with the readout if done, else 202 with its header) | `ScenarioSave` | `Readout` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `SCENARIO_OUT_OF_RANGE`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `GET /v1/dashboards/{dashboard_id}/actuals/template` | The table an actuals upload fills in, and what happens to the numbers | — | `ActualsTemplate` | 200 | `NOT_FOUND`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/dashboards/{dashboard_id}/actuals` | Send new actuals: a readout compares (or conditions) the model on them; optionally ask the analyst for a refit | `ActualsSubmit` | `ReadoutHeader` | 202 | `SCHEMA_INVALID`, `NOT_FOUND`, `ACTUALS_INVALID`, `ACTUALS_NOT_SUPPORTED`, `PAYLOAD_TOO_LARGE`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `GET /v1/dashboards/{dashboard_id}/readouts` | Readouts newest first (published, plus the caller's private ones; analysts: all) | — | `ReadoutList` | 200 | `NOT_FOUND` |
+| `GET /v1/dashboards/{dashboard_id}/readouts/{seq}` | One readout with its snapshot (poll it while it is being built) | — | `Readout` | 200 | `NOT_FOUND` |
+| `POST /v1/dashboards/{dashboard_id}/readouts/{seq}:publish` | Publish a readout that waits for review into the history | — | `ReadoutHeader` | 200 | `NOT_FOUND`, `CONFLICT` |
+| `POST /v1/dashboards/{dashboard_id}/readouts/{seq}:hide` | Hide a readout from clients (kept for audit) | — | `ReadoutHeader` | 200 | `NOT_FOUND`, `CONFLICT` |
+| `POST /v1/dashboards/{dashboard_id}:refresh` | Queue a refresh readout of the published revision | — | `ReadoutHeader` | 202 | `NOT_FOUND`, `DASHBOARD_NOT_PUBLISHED`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `GET /v1/dashboards/{dashboard_id}/refit-requests` | Refit requests (newest first) | — | `Page[DashboardRefitRequest]` | 200 | `NOT_FOUND` |
+| `POST /v1/dashboards/{dashboard_id}/refit-requests/{request_id}:approve` | Approve a refit request: publish its readout, ingest the numbers as a dataset version and start the refit workflow as you | `RefitRequestDecision` | `DashboardRefitRequest` | 200 | `NOT_FOUND`, `FORBIDDEN`, `CONFLICT`, `WORKFLOW_NOT_RUNNABLE`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `POST /v1/dashboards/{dashboard_id}/refit-requests/{request_id}:reject` | Reject a refit request (nothing runs) | `RefitRequestDecision` | `DashboardRefitRequest` | 200 | `NOT_FOUND`, `CONFLICT` |
+
+`get_dashboard` gives a `Dashboard` to viewers and higher roles, and a `ClientDashboard` to a
+client user. `update_dashboard_draft` needs `If-Match: <draft_etag>` (`412
+PRECONDITION_FAILED` if a different edit came first). `save_dashboard_scenario` takes
+`Prefer: wait=N` (a maximum of 30): `200` with the `Readout` if it is ready, else `202` with
+its `ReadoutHeader`. Poll `GET …/readouts/{seq}` until `status` is `ready` or `failed`.
+`submit_dashboard_actuals`, `refresh_dashboard` and `approve_dashboard_refit_request` accept
+`Idempotency-Key`. `list_dashboard_readouts` takes `kind`, `visibility`, `before_seq` and
+`limit` (a maximum of 50) and pages back with `next_before_seq`.
+
+`CLIENT_OPERATIONS` is the set of operations that a `client` can call: `list_dashboards`,
+`get_dashboard`, `get_dashboard_grid`, `evaluate_dashboard_whatif`,
+`save_dashboard_scenario`, `get_dashboard_actuals_template`, `submit_dashboard_actuals`,
+`list_dashboard_readouts`, `get_dashboard_readout`, `get_me` and the `/auth/*` session routes.
+All other operations answer `404` to a client
+([Tenancy and authentication](../concepts/tenancy-and-auth.md#the-client-role)).
+
+### Public share routes { #v016-share }
+
+These routes are public. They take no project, no cookie and no `Authorization` header: the
+server removes `Cookie` and `Authorization`, and allows only the origin of the web app, with
+no credentials. `create_share_session` exchanges the token (and the passcode) for a session
+`mps_…`. All other share routes need the session in `X-Mapi-Share`. Each request looks up the
+link again, so a revoked or expired link answers `410 LINK_EXPIRED` on the next request.
+Answers set `Cache-Control: private, no-store` and `Referrer-Policy: no-referrer`.
+
+| Endpoint | Purpose | Request | Response | Success | Errors |
+|---|---|---|---|---|---|
+| `POST /v1/share-sessions` | Public: exchange a share token (and its passcode) for a short-lived session | `ShareSessionCreate` | `ShareSession` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `LINK_EXPIRED`, `SHARE_PASSCODE_REQUIRED`, `SHARE_PASSCODE_INVALID`, `SHARE_LOCKED`, `RATE_LIMITED` |
+| `POST /v1/share-sessions:refresh` | Public: a fresh session while the link is valid | — | `ShareSession` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/shared/dashboard` | Public: the shared dashboard (published revision) | — | `ClientDashboard` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/shared/readouts` | Public: published readouts and this link's private ones | — | `ReadoutList` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/shared/readouts/{seq}` | Public: one readout | — | `Readout` | 200 | `NOT_FOUND`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED` |
+| `GET /v1/shared/grid` | Public: the response grid (the link must allow what-ifs) | — | `DashboardGrid` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/shared/whatif:evaluate` | Public: evaluate a spend plan on the grid (no run) | `WhatIfRequest` | `WhatIfResult` | 200 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `SCENARIO_OUT_OF_RANGE`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/shared/scenarios` | Public: save a scenario as this link's private readout (Prefer: wait=N) | `ScenarioSave` | `Readout` | 200 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `SCENARIO_OUT_OF_RANGE`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+| `GET /v1/shared/actuals/template` | Public: the actuals template (the link must allow uploads) | — | `ActualsTemplate` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED` |
+| `POST /v1/shared/actuals` | Public: send new actuals (the readout waits for the analyst's review) | `ActualsSubmit` | `ReadoutHeader` | 202 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `ACTUALS_INVALID`, `ACTUALS_NOT_SUPPORTED`, `PAYLOAD_TOO_LARGE`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
+
+Rate limits: 120 requests each minute from one client address, valid or not, counted before
+the token check (`MAPI_SHARE_IP_RATE_PER_MINUTE`), and 300 each minute for each link
+(`MAPI_SHARE_RATE_PER_MINUTE`). After 5 wrong passcodes, the link answers `429 SHARE_LOCKED`
+with `Retry-After` for 15 minutes. The grid, what-if and scenario routes need a link that
+allows `whatif`. The actuals routes need `actuals`. Else the answer is
+`409 DASHBOARD_INPUT_DISABLED`. A share link sees the published readouts and the private
+readouts that it made itself.
+
+### The DTOs { #v016-dtos }
+
+All of these are in `mapi_spec.dashboards`, except the tool DTOs.
+
+- `DashboardSpec`: `layout_version` (1), `title`, `client_name`, `summary`, `period_label`
+  (`week`, `month` or `period`), `source` (`DashboardSource`: `model_version` with `model_id`
+  and `version`, or `endpoint` with `alias`), `kpi` (`KpiDef`: `variable`, `label`, `unit`,
+  `currency`, `decimals`, `value_per_unit`), `channels` (`ChannelDef`: `name`, `label`,
+  `min_mult`, `max_mult`, `step`; a maximum of 40), `tiles` (a maximum of 4), `tabs`, `whatif`
+  (`WhatIfInputs`: `enabled`, `exact`), `actuals` (`ActualsInputs`: `enabled`, `publish`
+  (`review` or `auto`), `refit_workflow_id`, `allow_refit_requests`), `refresh`
+  (`RefreshPolicy`: `workflow_id`, `follow_endpoint`), `limits` (`DashboardLimits`:
+  `exact_runs_per_day`, default 20), `show_technical` and `note`. Plain text only; a maximum
+  of 64 KiB.
+- `DashboardCreate` (`name`, `spec`), `DashboardDraftUpdate` (`spec`) and
+  `DashboardValidation` (`ok`, `issues`).
+- `Dashboard`: `id` (`dsh_…`), `name`, `status` (`draft`, `published`, `archived`),
+  `draft_spec`, `draft_etag`, `published_revision` (a `DashboardRevision`: `id` `dsr_…`,
+  `seq`, `spec`, `spec_hash`, `model_version_id`, `model_ref`, `endpoint_alias`,
+  `endpoint_revision`), `run_as`, `live_inputs` (`ok` or `paused`), `problem` and
+  `latest_readout`. `DashboardSummary` is the list item.
+- `ClientDashboard`: what a client or a share link sees: `title`, `client_name`, `summary`,
+  `note`, `period_label`, `kpi`, `channels`, `tiles`, `tabs`, `inputs` (`EffectiveInputs`:
+  `whatif`, `exact`, `actuals`, `actuals_mode` (`compared` or `conditioned`),
+  `refit_requests`), `live_inputs`, `show_technical`, `latest_readout` and `ends_at` (the
+  expiry of a share link).
+- `ReadoutHeader`: `seq`, `kind` (`baseline`, `refresh`, `scenario`, `actuals`), `trigger`,
+  `visibility` (`published`, `private`, `pending_review`, `hidden`), `status` (`queued`,
+  `running`, `materialising`, `ready`, `failed`), `title`, `period`, `model_version_id`,
+  `model_ref`, `endpoint_revision`, `created_at`, `ready_at` and `refit_status`. `Readout`
+  adds `snapshot` and `problem`. `ReadoutList` has `items` and `next_before_seq`.
+- `ReadoutSnapshot` (a maximum of 256 KiB): `lead`, `tiles` (`KpiValue`), `channels`
+  (`ChannelReadout`: `spend`, `contribution`, `share`, `roi`, `roi_low`, `roi_high`, `mroi`,
+  `zone`), `series` (`Series` of `SeriesPoint`: `t`, `mean`, `low`, `high`, `actual`; a
+  maximum of 520 points), `accuracy` (`ActualsAccuracy`: `mape`, `bias`, `band_hit_rate`, `n`),
+  `conditioning`, `scenario`, `source_run_ids`, `input_fingerprint`, `notes_plain` and
+  `technical`.
+- `DashboardGrid` (a `ResponseGridView` clipped to the channels of the dashboard),
+  `WhatIfRequest` (`multipliers`: channel to multiplier, 1 is the current plan),
+  `WhatIfResult` (`tiles`, `channels`, `delta_kpi`, `lead`) and `ScenarioSave` (`multipliers`,
+  `exact`, `label`).
+- `ActualsTemplate` (`mode`, `input_table`, `kpi_column`, `example_csv`, `max_rows` (520)) and
+  `ActualsSubmit` (`inputs` as XrJSON, `label`, `request_refit`).
+- `DashboardGrant` (`user_id`, `email`, `display_name`, `granted_by`, `created_at`).
+- `DashboardShareCreate` (`label`, `expires_in_days` 1 to 365, default 30, `passcode` 8 to 128
+  characters, `allowed_inputs`: `whatif`, `actuals`), `DashboardShare` (`id` `dss_…`, `label`,
+  `display` `mpd_…x7k2`, `status`, `has_passcode`, `allowed_inputs`, `views`,
+  `last_viewed_at`, `locked_until`, `expires_at`, `revoked_at`) and `DashboardShareCreated`
+  (adds `token` and `url_fragment`, one time only).
+- `ShareSessionCreate` (`token`, `passcode`) and `ShareSession` (`session`, `expires_at`,
+  `dashboard`).
+- `DashboardRefitRequest` (`id` `drr_…`, `dashboard_id`, `readout_seq`, `status` (`open`,
+  `approved`, `rejected`, `superseded`, `failed`), `requested_by_kind` (`member`, `client`,
+  `share`), `requested_by`, `decided_by`, `decided_at`, `note`, `workflow_run_id`,
+  `dataset_version_id`, `problem`) and `RefitRequestDecision` (`note`).
+
+```bash
+curl -s "$MAPI/v1/dashboards/$DASHBOARD/readouts?kind=actuals&limit=10" \
+  -H "Authorization: Bearer $MAPI_TOKEN" -H "X-Mapi-Project: growth"
+```
+
 ## DTO index
 
 All of these models are in `mapi_spec.api`, unless the table gives a different module. Each
@@ -1294,4 +1460,5 @@ model has a schema in the OpenAPI document and in `export_schemas()` as `api-<Na
 | Governance (v0.5) | `GovernanceCheckDef`, `GovernancePolicy`, `GovernancePolicyCreate`, `GovernancePolicyUpdate`, `ValidationRequest`, `ValidationNote`, `ModelValidation`, `CheckResult`, `ApprovalCreate`, `EvidencePackRequest`, `EvidencePack` (`mapi_spec.governance`) |
 | Tree datasets (v0.8) | `TreeSchema`, `NodeSelect` (`mapi_spec.tree`), `IngestAssembly`, `AssemblySource`, `Hdf5Mapping`, `Hdf5Var`, `Hdf5Coord`, `UploadInspection`, `InspectedArray` (`mapi_spec.ingest`) |
 | Image collections (v0.15) | `BlobQuery`, `BlobMissing`, `CollectionSource`, `CollectionOptions`, `CollectionInfo`, `PackInfo`, `ClassCount`, `CollectionRead` (`mapi_spec.collection`), `WeightsOptions` (`mapi_spec.ingest`) |
+| Client dashboards (v0.16) | `DashboardSpec`, `DashboardSource`, `KpiDef`, `ChannelDef`, `WhatIfInputs`, `ActualsInputs`, `RefreshPolicy`, `DashboardLimits`, `DashboardCreate`, `DashboardDraftUpdate`, `DashboardValidation`, `Dashboard`, `DashboardSummary`, `DashboardRevision`, `ClientDashboard`, `EffectiveInputs`, `ReadoutHeader`, `Readout`, `ReadoutList`, `ReadoutSnapshot`, `KpiValue`, `ChannelReadout`, `Series`, `SeriesPoint`, `ActualsAccuracy`, `DashboardGrid`, `WhatIfRequest`, `WhatIfResult`, `ScenarioSave`, `ActualsTemplate`, `ActualsSubmit`, `DashboardGrant`, `DashboardShareCreate`, `DashboardShare`, `DashboardShareCreated`, `ShareSessionCreate`, `ShareSession`, `DashboardRefitRequest`, `RefitRequestDecision` (`mapi_spec.dashboards`), `ToolDecl` and the tool DTOs (`mapi_spec.dashboard_tools`) |
 | Explorers and optimisation (v0.5) | `DataExploreRequest`, `ModelExploreRequest`, `ModelCompareRequest` (`mapi_spec.explore`), `Exploration`, `ExplorerIndex` (`mapi_spec.views`), `OptimizeRequest`, `OptimizeResult` (`mapi_spec.optimize`), `Optimization` |

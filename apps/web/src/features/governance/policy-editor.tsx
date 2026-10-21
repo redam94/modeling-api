@@ -116,7 +116,7 @@ function CheckRow({ check, def, onChange, onRemove, readOnly, error }: { check: 
         <div className="min-w-0">
           <p className="font-medium">{def?.title ?? check.check}</p>
           <Mono className="text-muted-foreground">{check.check}</Mono>
-          {def ? <p className="mt-1 text-[13px] text-muted-foreground">{def.about.summary_plain}</p> : null}
+          {def ? <p className="mt-1 text-sm text-muted-foreground">{def.about.summary_plain}</p> : null}
         </div>
         {readOnly ? null : (
           <Button variant="ghost" size="icon-sm" aria-label={`Remove ${def?.title ?? check.check}`} onClick={onRemove}>
@@ -135,8 +135,8 @@ function CheckRow({ check, def, onChange, onRemove, readOnly, error }: { check: 
           </NativeSelect>
         </Field>
         <div className="grid gap-1.5">
-          <span className="text-[13px] font-medium">Limits</span>
-          <label className="flex items-center gap-2 text-[13px]">
+          <span className="text-sm font-medium">Limits</span>
+          <label className="flex items-center gap-2 text-sm">
             <Switch
               checked={custom}
               disabled={readOnly}
@@ -164,7 +164,7 @@ function CheckRow({ check, def, onChange, onRemove, readOnly, error }: { check: 
       ) : null}
       {def && Object.keys((def.params_schema as SchemaNode).properties ?? {}).length ? (
         <details>
-          <summary className="cursor-pointer text-[13px] font-medium">Settings</summary>
+          <summary className="cursor-pointer text-sm font-medium">Settings</summary>
           <div className="mt-3">
             <SchemaForm schema={def.params_schema as SchemaNode} value={(check.params ?? {}) as JsonObject} onChange={(params) => onChange({ ...check, params })} disabled={readOnly} />
           </div>
@@ -275,7 +275,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
             ))}
           </ul>
           {submitted && checksError ? (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               {checksError}
             </p>
           ) : null}
@@ -321,7 +321,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
           <CardTitle>Sign-off and promotion</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <label className="flex items-start gap-3 text-[13px]">
+          <label className="flex items-start gap-3 text-sm">
             <Switch checked={Boolean(form.require_approval)} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, require_approval: v })} aria-label="Require approval by a reviewer" />
             <span>
               <span className="font-medium">Require approval by a reviewer</span>
@@ -339,14 +339,14 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
               </NativeSelect>
             </Field>
           ) : null}
-          <label className="flex items-start gap-3 text-[13px]">
+          <label className="flex items-start gap-3 text-sm">
             <Switch checked={Boolean(form.require_validated_for_promotion)} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, require_validated_for_promotion: v })} aria-label="Only validated models can be promoted" />
             <span>
               <span className="font-medium">Only validated models can be promoted to an endpoint</span>
               <span className="block text-muted-foreground">The promotion gate stops all other versions with the code NOT_VALIDATED. An administrator cannot override the gate.</span>
             </span>
           </label>
-          <label className="flex items-start gap-3 text-[13px]">
+          <label className="flex items-start gap-3 text-sm">
             <Switch checked={form.active !== false} disabled={readOnly} onCheckedChange={(v) => setForm({ ...form, active: v })} aria-label="Policy active" />
             <span>
               <span className="font-medium">Active</span>
@@ -358,7 +358,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
 
       {saveError ? (
         saveError instanceof ApiError && saveError.code === "CONFLICT" ? (
-          <p role="alert" className="text-[13px] text-warning">
+          <p role="alert" className="text-sm text-warning">
             Another person saved a newer version of this policy. Reload the page to see it. Then make your change again.
           </p>
         ) : (
@@ -366,7 +366,7 @@ export function PolicyEditor({ scope, policy, readOnly }: { scope: PolicyScope; 
         )
       ) : null}
       {readOnly ? (
-        <p className="text-[13px] text-muted-foreground">{scope === "tenant" ? "Only tenant admins can change tenant-wide policies." : "Only project admins can change policies."}</p>
+        <p className="text-sm text-muted-foreground">{scope === "tenant" ? "Only tenant admins can change tenant-wide policies." : "Only project admins can change policies."}</p>
       ) : (
         <div className="flex flex-wrap justify-between gap-2">
           {policy ? (
@@ -417,7 +417,7 @@ export function PolicyVersions({ scope, policyId }: { scope: PolicyScope; policy
       <CardContent className="grid gap-3">
         <ol className="grid gap-1">
           {items.map((v, i) => (
-            <li key={v.version} className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+            <li key={v.version} className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span>
                 <span className="font-mono">v{v.version}</span> · {v.checks.length} checks{v.require_approval ? " · approval" : ""}
                 {v.active === false ? " · retired" : ""} · <span title={v.created_at}>{relativeTime(v.created_at)}</span>

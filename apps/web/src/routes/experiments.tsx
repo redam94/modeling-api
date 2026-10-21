@@ -214,7 +214,7 @@ export function ExperimentPage() {
         }
       />
       {e.archived ? (
-        <p role="status" className="mb-4 rounded-md border border-dashed px-3 py-2 text-[13px] text-muted-foreground">
+        <p role="status" className="mb-4 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
           The experiment is archived. It accepts no new runs. Restore it to add runs.
         </p>
       ) : null}

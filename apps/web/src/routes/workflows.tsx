@@ -297,7 +297,7 @@ export function WorkflowPage() {
         }
       />
       {latestRev.data && !latestRev.data.validation.valid ? (
-        <p role="status" className="mb-4 rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-[13px]">
+        <p role="status" className="mb-4 rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-sm">
           The latest revision has problems and cannot run. Open the editor to see each problem next to its node.
         </p>
       ) : null}
@@ -316,7 +316,7 @@ export function WorkflowPage() {
         </TabsList>
         <TabsContent value="editor">
           {search.rev && latest && search.rev !== latest ? (
-            <p className="mb-3 text-[13px] text-muted-foreground">
+            <p className="mb-3 text-sm text-muted-foreground">
               You see revision {search.rev}. When you save, the app makes revision {latest + 1} from it.{" "}
               <Link to="/workflows/$workflowId" params={{ workflowId }} search={{ tab: "editor" }} className="text-primary hover:underline">
                 Open the latest

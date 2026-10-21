@@ -91,11 +91,11 @@ export function DataTable<T>({
           />
         </div>
       ) : null}
-      <div ref={scrollRef} className="overflow-auto rounded-lg border bg-card" style={{ maxHeight }}>
-        <table className="w-full text-[13px]" aria-label={label} aria-rowcount={rows.length}>
+      <div ref={scrollRef} className="overflow-auto rounded-xl border bg-card" style={{ maxHeight }}>
+        <table className="w-full text-sm" aria-label={label} aria-rowcount={rows.length}>
           <thead className="sticky top-0 z-[1] bg-card">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b">
+              <tr key={hg.id} className="border-b border-border-strong">
                 {hg.headers.map((h) => {
                   const sorted = h.column.getIsSorted();
                   const canSort = h.column.getCanSort();
@@ -104,12 +104,12 @@ export function DataTable<T>({
                       key={h.id}
                       scope="col"
                       aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
-                      className="h-9 px-3 text-left text-xs font-medium whitespace-nowrap text-muted-foreground"
+                      className="h-10 px-3 text-left text-sm font-semibold whitespace-nowrap text-foreground"
                     >
                       {h.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 hover:text-foreground"
+                          className="focus-ring inline-flex items-center gap-1 rounded-sm hover:text-primary-hover"
                           onClick={h.column.getToggleSortingHandler()}
                         >
                           {flexRender(h.column.columnDef.header, h.getContext())}
@@ -133,7 +133,7 @@ export function DataTable<T>({
             {visible.map((row) => (
               <tr
                 key={row.id}
-                className={cn("border-b last:border-0", onRowClick && "cursor-pointer hover:bg-accent/60 focus-visible:bg-accent")}
+                className={cn("border-b last:border-0", onRowClick && "cursor-pointer hover:bg-surface-hover focus-visible:bg-accent")}
                 style={{ height: rowHeight }}
                 {...(onRowClick
                   ? {

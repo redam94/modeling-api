@@ -81,12 +81,12 @@ export function PlotGallery({ modelId, version }: { modelId: string; version: nu
                   onClick={() => setSelected(p.id)}
                   aria-current={current?.id === p.id ? "true" : undefined}
                   className={cn(
-                    "rounded-md px-3 py-2 text-left text-[13px] hover:bg-accent",
+                    "rounded-md px-3 py-2 text-left text-sm hover:bg-accent",
                     current?.id === p.id && "bg-accent font-medium text-accent-foreground",
                   )}
                 >
                   {p.title}
-                  <span className="block font-mono text-[11px] text-muted-foreground">{p.id}</span>
+                  <span className="block font-mono text-xs text-muted-foreground">{p.id}</span>
                 </button>
               ))}
             </nav>

@@ -155,6 +155,8 @@ def test_event_types_are_the_documented_set() -> None:
         "model.deprecated",
         "dataset.version.created",
         "optimize.completed",
+        # v0.16
+        "dashboard.readout.published",
     }
 
 

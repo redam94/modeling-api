@@ -79,7 +79,7 @@ function QuotaRow({ q }: { q: QuotaLimitStatus }) {
   const resetIn = q.resets_at ? (Date.parse(q.resets_at) - Date.now()) / 1000 : null;
   return (
     <li className="grid gap-1.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-[13px]">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
         <span className="flex items-center gap-1.5 font-medium">
           {tone !== "ok" ? <AlertTriangle className={cn("size-3.5", tone === "critical" ? "text-destructive" : "text-warning")} aria-hidden /> : null}
           {label}
@@ -228,7 +228,7 @@ export function UsagePage() {
               <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => go({ start: shiftPeriod(period, key, -1) })}>
                 <ChevronLeft />
               </Button>
-              <span className="min-w-28 text-center text-[13px] font-medium tabular" aria-live="polite">
+              <span className="min-w-28 text-center text-sm font-medium tabular" aria-live="polite">
                 {periodLabel(period, key)}
               </span>
               <Button variant="outline" size="icon-sm" aria-label="Next period" disabled={isCurrent} onClick={() => go({ start: shiftPeriod(period, key, 1) })}>

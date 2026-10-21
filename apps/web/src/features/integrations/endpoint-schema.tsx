@@ -211,7 +211,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
               {score.data.result.done ? <CheckCircle2 className="size-4 text-success" /> : <Clock className="size-4 text-info" />}
               <span className="font-medium">{score.data.result.done ? "Scored" : "Still running"}</span>
               <StateBadge state={score.data.result.run.state} />
-              <Link to="/runs/$runId" params={{ runId: score.data.result.run.id }} className="text-[13px] text-primary hover:underline">
+              <Link to="/runs/$runId" params={{ runId: score.data.result.run.id }} className="text-sm text-primary hover:underline">
                 Open run <Mono>{score.data.result.run.id}</Mono>
               </Link>
             </div>
@@ -239,7 +239,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
               </Table>
             ))}
             {score.data.result.outputs?.length ? (
-              <ul className="grid gap-1 text-[13px]">
+              <ul className="grid gap-1 text-sm">
                 {score.data.result.outputs.map((o) => (
                   <li key={o.name} className="flex flex-wrap gap-2">
                     <Mono>{o.name}</Mono>
@@ -248,7 +248,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
                 ))}
               </ul>
             ) : (
-              <p className="text-[13px] text-muted-foreground">The run page shows the progress of the run. It shows the outputs when the run finishes.</p>
+              <p className="text-sm text-muted-foreground">The run page shows the progress of the run. It shows the outputs when the run finishes.</p>
             )}
           </div>
         ) : null}
@@ -262,7 +262,7 @@ function TryIt({ endpoint, schema }: { endpoint: Endpoint; schema: EndpointSchem
 export function SnippetView({ snippet }: { snippet: Snippet }) {
   return (
     <div className="grid gap-2">
-      <p className="flex flex-wrap items-center gap-2 text-[13px]">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium">{snippet.title}</span>
         {snippet.requires ? (
           <span className="text-muted-foreground">
@@ -303,7 +303,7 @@ export function SnippetTabs({ endpoint }: { endpoint: Endpoint }) {
               return (
                 <TabsContent key={l.id} value={l.id}>
                   <div className="grid gap-2">
-                    {note ? <p className="text-[13px] text-muted-foreground">{note}</p> : null}
+                    {note ? <p className="text-sm text-muted-foreground">{note}</p> : null}
                     <SnippetView snippet={s} />
                   </div>
                 </TabsContent>

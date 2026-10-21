@@ -209,7 +209,7 @@ export function CollectionUpload({ datasetId, onDone, onCancel }: CollectionUplo
           <FolderUp /> {files.length ? "Choose another folder" : "Choose a folder"}
         </Button>
         {files.length ? (
-          <span className="text-[13px]" data-testid="collection-folder-summary">
+          <span className="text-sm" data-testid="collection-folder-summary">
             {folderName ? <Mono>{folderName}</Mono> : null} {images.length.toLocaleString("en-US")} images
             {files.length > images.length ? `, ${files.length - images.length} other files (not uploaded)` : ""}
           </span>
@@ -334,7 +334,7 @@ export function CollectionUpload({ datasetId, onDone, onCancel }: CollectionUplo
 
       {busy ? (
         <div className="grid gap-2" data-testid="collection-progress">
-          <p role="status" className="text-[13px]">{statusText(status, plan)}</p>
+          <p role="status" className="text-sm">{statusText(status, plan)}</p>
           <Progress label="Upload progress of the images" value={progressValue(status)} />
           {plan && status.step !== "hashing" ? (
             <p className="text-xs text-muted-foreground">
@@ -345,7 +345,7 @@ export function CollectionUpload({ datasetId, onDone, onCancel }: CollectionUplo
         </div>
       ) : null}
       {error && status.step === "error" ? (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error} Click Try again. The parts that arrived are not uploaded again.
         </p>
       ) : null}

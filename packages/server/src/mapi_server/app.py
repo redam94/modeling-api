@@ -14,6 +14,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER, MediaWrite
 from mapi_spec.capabilities import Diagnostic
+from mapi_spec.dashboards import ShareSessionCreate
 from mapi_spec.errors import MapiError, Problem
 from mapi_spec.run import (
     CheckpointPayload,
@@ -36,6 +37,8 @@ import mapi_server
 from mapi_server.api import (
     admin,
     compare,
+    dashboard_readouts,
+    dashboards,
     datasets,
     endpoints,
     experiments,
@@ -51,6 +54,7 @@ from mapi_server.api import (
     prior_translations,
     run_views,
     runs,
+    shares,
     specs,
     tenancy,
     tokens,
@@ -62,6 +66,7 @@ from mapi_server.api import (
 )
 from mapi_server.api import auth as auth_routes
 from mapi_server.api.problems import JsonBodyLimit
+from mapi_server.api.share_cors import ShareCorsMiddleware
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
 from mapi_server.auth.request import CSRF_HEADER, access_for, authenticate
 from mapi_server.clientaddr import ClientAddressMiddleware, parse_trusted_proxies
@@ -118,7 +123,7 @@ PROBLEM_MODELS: tuple[type[BaseModel], ...] = (Problem,)
 """The RFC 7807 problem document, referenced by the routes' documented error responses
 (:func:`mapi_server.api.problems.problem_responses`)."""
 
-RAW_BODY_MODELS: tuple[type[BaseModel], ...] = (MediaWrite,)
+RAW_BODY_MODELS: tuple[type[BaseModel], ...] = (MediaWrite, ShareSessionCreate)
 """Request bodies a route reads itself (size-capped before parsing); their routes reference
 these components in ``openapi_extra``."""
 
@@ -356,6 +361,7 @@ def create_app(
                 "webhooks",
                 "workflows",
                 "plots",
+                "dashboards",
                 "internal",
             )
         ],
@@ -394,9 +400,20 @@ def create_app(
         paths=endpoints.SCORE_BODY_PATHS,
         max_bytes=endpoints.SCORE_BODY_MAX_BYTES,
     )
+    # dashboard inputs (v0.16): the share routes are public, so their bodies are capped and
+    # depth-checked before FastAPI parses them (and before the session check)
+    app.add_middleware(
+        JsonBodyLimit, paths=shares.INPUT_BODY_PATHS, max_bytes=shares.INPUT_BODY_MAX_BYTES
+    )
+    app.add_middleware(
+        JsonBodyLimit, paths=shares.ACTUALS_BODY_PATHS, max_bytes=shares.ACTUALS_BODY_MAX_BYTES
+    )
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
+    # Public share-link routes (v0.16): no credentials, readable by the web origin only, never
+    # cached (a revoked link must stop working on the next request).
+    app.add_middleware(ShareCorsMiddleware, allowed_origin=settings.web_origin)
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
@@ -440,6 +457,10 @@ def create_app(
         workflows.runs_router,
         workflows.templates_router,
         workflows.catalog_router,
+        # v0.16 client dashboards: management (WP7), inputs and readouts, public share routes
+        dashboards.router,
+        dashboard_readouts.router,
+        shares.router,
         internal.router,
         *trust.ROUTERS,
     ):

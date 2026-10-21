@@ -34,6 +34,8 @@ const page = {
   specEditor: () => import("@/routes/spec-editor"),
   tokens: () => import("@/routes/tokens"),
   usage: () => import("@/routes/usage"),
+  // v0.16: client dashboards (the analyst's builder).
+  dashboards: () => import("@/routes/dashboards"),
   // M3.5: workflows (the canvas loads with the editor) and governance.
   workflows: () => import("@/routes/workflows"),
   governance: () => import("@/routes/governance"),
@@ -453,6 +455,25 @@ const modelValidationsRoute = createRoute({
   component: lazyRouteComponent(page.governance, "ModelValidationsPage"),
 });
 
+// ----------------------------------------------------------------------------- v0.16
+
+export const DASHBOARD_TABS = ["setup", "inputs", "access", "history", "preview"] as const;
+export type DashboardTab = (typeof DASHBOARD_TABS)[number];
+
+const dashboardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboards",
+  component: lazyRouteComponent(page.dashboards, "DashboardsPage"),
+  validateSearch: (s: Record<string, unknown>): { status?: "draft" | "published" | "archived" | undefined } => ({ status: oneOf(s.status, ["draft", "published", "archived"] as const) }),
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dashboards/$dashboardId",
+  component: lazyRouteComponent(page.dashboards, "DashboardPage"),
+  validateSearch: (s: Record<string, unknown>): { tab?: DashboardTab | undefined } => ({ tab: oneOf(s.tab, DASHBOARD_TABS) }),
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   datasetsRoute,
@@ -498,6 +519,8 @@ export const routeTree = rootRoute.addChildren([
   validationsRoute,
   validationRoute,
   modelValidationsRoute,
+  dashboardsRoute,
+  dashboardRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

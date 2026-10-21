@@ -43,7 +43,7 @@ export function missingParams(params: Record<string, WorkflowParamDecl>, values:
 
 export function ParamsForm({ doc, value, onChange, errors }: { doc: Pick<WorkflowDoc, "params">; value: JsonObject; onChange: (v: JsonObject) => void; errors?: Record<string, string> }) {
   const params = doc.params ?? {};
-  if (!Object.keys(params).length) return <p className="text-[13px] text-muted-foreground">This workflow has no parameters.</p>;
+  if (!Object.keys(params).length) return <p className="text-sm text-muted-foreground">This workflow has no parameters.</p>;
   return <SchemaForm schema={paramsSchema(params)} value={value} onChange={onChange} {...(errors ? { errors } : {})} />;
 }
 
@@ -103,7 +103,7 @@ export function InputsForm({ inputs, value, onChange }: { inputs: Record<string,
     else delete next[name];
     onChange(next);
   };
-  if (!Object.keys(inputs).length) return <p className="text-[13px] text-muted-foreground">This workflow has no inputs.</p>;
+  if (!Object.keys(inputs).length) return <p className="text-sm text-muted-foreground">This workflow has no inputs.</p>;
   return (
     <div className="grid gap-4">
       {Object.entries(inputs).map(([name, decl]) =>

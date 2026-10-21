@@ -14,6 +14,8 @@ export interface ChunkInfo {
   isEntry: boolean;
   /** File names of chunks this chunk imports statically. */
   imports: string[];
+  /** File names of chunks this chunk loads with `import()` (not part of its static closure). */
+  dynamicImports?: string[];
   /** Module ids bundled into this chunk. */
   moduleIds: string[];
   /** Size of the chunk code in bytes. */
@@ -25,6 +27,80 @@ export interface BudgetOptions {
   maxEntryBytes: number;
   /** Module ids that must never be in the entry's static import closure. */
   forbidden: RegExp[];
+  /**
+   * Budgets for lazily loaded app chunks (the share link app, the client portal). For the first
+   * chunk whose file name matches `match`:
+   * - `forbidden` is checked over the chunk and its whole static import closure (the entry
+   *   included when the chunk imports from it), so nothing the closure pulls in can hide a module;
+   * - `maxBytes` bounds what loading the chunk adds: its static closure minus what is already
+   *   loaded when it can be requested (the entries' closure, which `maxEntryBytes` bounds, and
+   *   the closure every chunk that loads it with `import()` has in common).
+   * A budget whose chunk is missing is a problem too, so a renamed chunk cannot skip its check.
+   */
+  chunkBudgets?: ChunkBudget[];
+}
+
+export interface ChunkBudget {
+  match: RegExp;
+  maxBytes: number;
+  forbidden: RegExp[];
+}
+
+/** The chunk and every chunk it reaches through static imports. */
+export function staticClosure(chunks: ChunkInfo[], fileName: string): Set<string> {
+  const byName = new Map(chunks.map((c) => [c.fileName, c]));
+  const seen = new Set<string>();
+  const stack = [fileName];
+  while (stack.length) {
+    const name = stack.pop()!;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    for (const dep of byName.get(name)?.imports ?? []) stack.push(dep);
+  }
+  return seen;
+}
+
+/** What is loaded before `fileName` can be requested: the entries' closure and its dynamic importers' common closure. */
+export function loadedBefore(chunks: ChunkInfo[], fileName: string): Set<string> {
+  const loaded = new Set<string>();
+  for (const entry of chunks.filter((c) => c.isEntry)) for (const name of staticClosure(chunks, entry.fileName)) loaded.add(name);
+  const closures = chunks.filter((c) => c.dynamicImports?.includes(fileName)).map((c) => staticClosure(chunks, c.fileName));
+  const [first, ...rest] = closures;
+  for (const name of first ?? []) if (rest.every((closure) => closure.has(name))) loaded.add(name);
+  return loaded;
+}
+
+/** Problems with the {@link BudgetOptions.chunkBudgets}; an empty list means every chunk is within budget. */
+export function checkChunkBudgets(chunks: ChunkInfo[], budgets: ChunkBudget[]): string[] {
+  const byName = new Map(chunks.map((c) => [c.fileName, c]));
+  const problems: string[] = [];
+  for (const budget of budgets) {
+    const root = chunks.find((c) => budget.match.test(c.fileName));
+    if (!root) {
+      problems.push(`no chunk matches ${budget.match}; rename the budget with the chunk`);
+      continue;
+    }
+    const before = loadedBefore(chunks, root.fileName);
+    let added = 0;
+    for (const name of staticClosure(chunks, root.fileName)) {
+      const c = byName.get(name);
+      if (!c) continue;
+      if (!before.has(name) || name === root.fileName) added += c.size;
+      for (const pattern of budget.forbidden) {
+        const hit = c.moduleIds.find((id) => pattern.test(id));
+        if (hit) {
+          problems.push(
+            `${c.fileName} is loaded statically by ${root.fileName} but bundles ${hit}; ` +
+              "keep it out of that chunk's imports (or load it with import())",
+          );
+        }
+      }
+    }
+    if (added > budget.maxBytes) {
+      problems.push(`${root.fileName} and the static imports it adds are ${added} bytes, over the ${budget.maxBytes}-byte budget`);
+    }
+  }
+  return problems;
 }
 
 /** Returns human-readable problems; an empty list means the build is within budget. */
@@ -34,14 +110,7 @@ export function checkEntryBudget(chunks: ChunkInfo[], opts: BudgetOptions): stri
   if (entries.length === 0) return ["no entry chunk was produced"];
   const problems: string[] = [];
   for (const entry of entries) {
-    const seen = new Set<string>();
-    const stack = [entry.fileName];
-    while (stack.length) {
-      const name = stack.pop()!;
-      if (seen.has(name)) continue;
-      seen.add(name);
-      for (const dep of byName.get(name)?.imports ?? []) stack.push(dep);
-    }
+    const seen = staticClosure(chunks, entry.fileName);
     let total = 0;
     for (const name of seen) {
       const c = byName.get(name);
@@ -63,10 +132,10 @@ export function checkEntryBudget(chunks: ChunkInfo[], opts: BudgetOptions): stri
       );
     }
   }
-  return problems;
+  return [...problems, ...checkChunkBudgets(chunks, opts.chunkBudgets ?? [])];
 }
 
-/** Vite plugin: fails `vite build` when {@link checkEntryBudget} reports problems. */
+/** Vite plugin: fails `vite build` when {@link checkEntryBudget} (entry and chunk budgets) reports problems. */
 export function bundleBudget(opts: BudgetOptions): Plugin {
   return {
     name: "mapi-bundle-budget",
@@ -81,6 +150,7 @@ export function bundleBudget(opts: BudgetOptions): Plugin {
           fileName: out.fileName,
           isEntry: out.isEntry,
           imports: out.imports,
+          dynamicImports: out.dynamicImports,
           moduleIds: Object.keys(out.modules),
           size: Buffer.byteLength(out.code, "utf8"),
         });

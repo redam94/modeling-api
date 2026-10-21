@@ -24,8 +24,8 @@ export const CHART_POINTS = 1000;
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="text-[13px] font-medium tabular">{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium tabular">{value}</span>
     </div>
   );
 }
@@ -82,7 +82,7 @@ function MetricCard({ runId, group }: { runId: string; group: MetricGroup }) {
     <Card data-metric={group.key}>
       <CardHeader className="flex-wrap gap-y-2">
         <CardTitle>
-          <Mono className="text-[13px]">{group.key}</Mono>
+          <Mono className="text-sm">{group.key}</Mono>
         </CardTitle>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {group.labelKeys.length ? (
@@ -122,7 +122,7 @@ function MetricCard({ runId, group }: { runId: string; group: MetricGroup }) {
         ) : plot ? (
           <PlotFrame kind="vega-lite" spec={plot.spec} datasets={plot.datasets} title={group.key} height={260} exportName={`metric-${group.key}`} />
         ) : (
-          <p className="text-[13px] text-muted-foreground">The filters hide all the series. Show more values.</p>
+          <p className="text-sm text-muted-foreground">The filters hide all the series. Show more values.</p>
         )}
         {downsampled || history.data?.truncated ? (
           <p className="text-xs text-muted-foreground">

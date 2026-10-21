@@ -445,7 +445,7 @@ function EditTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () => 
           ) : null}
           {dangerous ? (
             <div className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-3">
-              <p className="text-[13px]">
+              <p className="text-sm">
                 {changes.status === "deleting"
                   ? "Deletion stops all access to this tenant. It also schedules the removal of its data."
                   : "Suspension makes the tenant read-only. The tenant cannot run, upload or change items."}{" "}
@@ -542,7 +542,7 @@ function QuotasTab() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[13px]">
+                      <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
                         {[...LIMIT_FIELDS.map((f) => f.key), "max_resource_class" as const]
                           .filter((k) => p.limits[k] != null)
                           .map((k) => (
@@ -856,7 +856,7 @@ function SpendMeter({ spend }: { spend: GlobalSpend }) {
   const spent = formatMicros(spend.spent_micros, spend.currency);
   if (spend.cap_micros == null) {
     return (
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Spent {when}: <span className="font-medium text-foreground tabular">{spent}</span>. No cap is set.
       </p>
     );
@@ -867,7 +867,7 @@ function SpendMeter({ spend }: { spend: GlobalSpend }) {
   const pct = Math.round(fraction * 100);
   return (
     <div className="grid gap-1.5">
-      <div className="flex items-baseline justify-between gap-3 text-[13px]">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
         <span>
           <span className="font-medium tabular">{spent}</span> of {cap} spent {when}
         </span>
@@ -994,7 +994,7 @@ function CostTab() {
           <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => setKey(shiftPeriod(period, key, -1))}>
             <ChevronLeft />
           </Button>
-          <span className="min-w-28 text-center text-[13px] font-medium tabular" aria-live="polite">
+          <span className="min-w-28 text-center text-sm font-medium tabular" aria-live="polite">
             {periodLabel(period, key)}
           </span>
           <Button variant="outline" size="icon-sm" aria-label="Next period" disabled={isCurrent} onClick={() => setKey(shiftPeriod(period, key, 1))}>
@@ -1009,7 +1009,7 @@ function CostTab() {
           return (
             <div className="grid items-start gap-5 lg:grid-cols-[1fr_20rem]">
               <div className="grid min-w-0 gap-3">
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {totals.length
                     ? totals
                         .map((t) => `${formatMicros(t.amount_micros ?? 0, t.currency ?? currency)} over ${(t.runs ?? 0).toLocaleString("en")} run${t.runs === 1 ? "" : "s"}`)
@@ -1073,7 +1073,7 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
         <div className="min-w-0">
           <CardTitle className="flex items-center gap-2">
             <span aria-hidden className={cn("size-2 rounded-full", st.dot)} />
-            <Mono className="text-[14px]">{e.name}</Mono>
+            <Mono className="text-sm">{e.name}</Mono>
             <Badge variant={st.variant}>{e.status}</Badge>
           </CardTitle>
           <CardDescription>
@@ -1110,7 +1110,7 @@ function ExecutorCard({ e }: { e: ExecutorHealth }) {
             ["Failures 1 h", e.failures_last_hour ?? 0],
           ].map(([k, v]) => (
             <div key={String(k)} className="rounded-md bg-muted/60 p-2">
-              <dt className="text-[11px] text-muted-foreground">{k}</dt>
+              <dt className="text-xs text-muted-foreground">{k}</dt>
               <dd className="text-lg font-semibold tabular">{Number(v).toLocaleString("en")}</dd>
             </div>
           ))}
@@ -1337,7 +1337,7 @@ function AuditTab() {
         <EmptyState icon={<ScrollText />} title="No audit events match" />
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card [contain:inline-size]">
-          <table className="w-full text-[13px]" aria-label="Audit log">
+          <table className="w-full text-sm" aria-label="Audit log">
             <thead className="sticky top-0 z-[1] bg-card">
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th scope="col" className="h-9 px-3 font-medium">Time (UTC)</th>
@@ -1413,7 +1413,7 @@ function PromotionsTab() {
   const more = overrides.hasNextPage || refusals.hasNextPage;
   return (
     <div className="grid gap-4">
-      <p className="max-w-[80ch] text-[13px] text-muted-foreground">
+      <p className="max-w-[80ch] text-sm text-muted-foreground">
         The sanity-scorecard gate makes the decision for each endpoint promotion immediately. Thus no promotions wait here. If a version passes, it goes live. If a
         version has a warning, a project admin must give an audited override with a reason. If a version fails, the gate blocks it. This table shows the overrides
         and refusals for all tenants, with the newest first.
@@ -1428,7 +1428,7 @@ function PromotionsTab() {
         </EmptyState>
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-lg border bg-card [contain:inline-size]">
-          <table className="w-full text-[13px]" aria-label="Promotion decisions">
+          <table className="w-full text-sm" aria-label="Promotion decisions">
             <thead className="sticky top-0 z-[1] bg-card">
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th scope="col" className="h-9 px-3 font-medium">Time (UTC)</th>

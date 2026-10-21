@@ -46,7 +46,7 @@ function MediaKeyBlock({ data, labels, mediaKey }: { data: RunCompare; labels: r
     <Card data-compare-media={mediaKey}>
       <CardHeader className="flex-wrap gap-y-2">
         <CardTitle>
-          <Mono className="text-[13px]">{mediaKey}</Mono>
+          <Mono className="text-sm">{mediaKey}</Mono>
         </CardTitle>
         {labelSets.length > 1 ? (
           <NativeSelect aria-label={`Labels of ${mediaKey}`} value={active} onChange={(e) => setLabelsId(e.target.value)} className="ml-auto h-8 w-auto max-w-72 text-xs">
@@ -62,7 +62,7 @@ function MediaKeyBlock({ data, labels, mediaKey }: { data: RunCompare; labels: r
         {steps.length ? (
           <StepSlider label={`Step of ${mediaKey}`} steps={steps} index={index} onChange={(i) => setPos(i === steps.length - 1 ? null : i)} />
         ) : (
-          <p className="text-[13px] text-muted-foreground">The runs did not log items for this key.</p>
+          <p className="text-sm text-muted-foreground">The runs did not log items for this key.</p>
         )}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
           {data.runs.map((r, i) => {
@@ -101,7 +101,7 @@ export function MediaSection({
   loading: boolean;
 }) {
   if (!loading && !options.length) {
-    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-[13px] text-muted-foreground">The runs did not log images or tables.</p>;
+    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">The runs did not log images or tables.</p>;
   }
   const full = selected.length >= MAX_COMPARE_MEDIA_KEYS;
   return (
@@ -120,7 +120,7 @@ export function MediaSection({
               onClick={() => onSelect(on ? selected.filter((k) => k !== o.key) : [...selected, o.key])}
             >
               <span className="font-mono">{o.key}</span>
-              <span className="text-[11px] opacity-70">
+              <span className="text-xs opacity-70">
                 {o.kind === "image" ? "images" : "tables"} · {o.runs} {o.runs === 1 ? "run" : "runs"}
               </span>
             </Button>

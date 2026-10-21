@@ -141,9 +141,9 @@ function Suggestions({ names, onPick, label }: { names: string[]; onPick: (name:
   if (!names.length) return null;
   return (
     <div className="flex flex-wrap items-center gap-1" role="group" aria-label={`Add to ${label}`}>
-      <span className="text-[11px] text-muted-foreground">Add:</span>
+      <span className="text-xs text-muted-foreground">Add:</span>
       {names.slice(0, 24).map((n) => (
-        <button key={n} type="button" onClick={() => onPick(n)} className="rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] hover:bg-accent">
+        <button key={n} type="button" onClick={() => onPick(n)} className="rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-xs hover:bg-accent">
           {n}
         </button>
       ))}
@@ -264,9 +264,9 @@ function SchemaField({
     // Collapsed until it holds a value (or a problem), so long settings stay scannable.
     return (
       <details className="rounded-md border" data-field={field.key} open={Object.keys(current).length > 0 || Boolean(error)}>
-        <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium">
+        <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
           {label}
-          {Object.keys(current).length ? <span className="ml-2 font-mono text-[11px] font-normal text-muted-foreground">{Object.keys(current).join(", ")}</span> : null}
+          {Object.keys(current).length ? <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">{Object.keys(current).join(", ")}</span> : null}
         </summary>
         <div className="grid gap-3 px-3 pb-3">
           {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
@@ -411,7 +411,7 @@ export function SchemaForm({
   const idPrefix = useId().replace(/:/g, "");
   const fields = fieldsOf(schema, nested).filter((f) => !skip.includes(f.key));
   const unknown = Object.keys(value).filter((k) => !fields.some((f) => f.key === k) && !skip.includes(k));
-  if (!fields.length && !unknown.length) return empty ? <p className="text-[13px] text-muted-foreground">{empty}</p> : null;
+  if (!fields.length && !unknown.length) return empty ? <p className="text-sm text-muted-foreground">{empty}</p> : null;
   const set = (key: string, v: Json | undefined) => {
     const next = { ...value };
     if (v === undefined) delete next[key];

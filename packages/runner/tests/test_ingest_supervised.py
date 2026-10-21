@@ -120,3 +120,57 @@ def test_a_refused_upload_explains_itself(gcs: ShimGcs) -> None:
         d.payload for d in result.of("diagnostic") if d.payload["code"] == "PAYLOAD_TOO_LARGE"
     ]
     assert "expands to more than" in diag["message_plain"] and diag["suggested_action"]
+
+
+def _csv_job(**over: object) -> IngestJob:
+    from mapi_spec.ingest import DimMapping, IngestMapping, VarMapping
+    from mapi_spec.schema import DimSpec, Role
+
+    mapping = IngestMapping(
+        format="csv",
+        dims={"t": DimMapping(column="t", spec=DimSpec(kind="time"))},
+        vars={
+            "y": VarMapping(column="y", role=Role.TARGET),
+            "spend": VarMapping(column="spend", role=Role.SPEND, missing="allow"),
+        },
+    )
+    return IngestJob(mapping=mapping, **over)  # type: ignore[arg-type]
+
+
+def test_an_extend_ingest_adds_the_uploaded_periods_to_the_base_version(gcs: ShimGcs) -> None:
+    """v0.16 refits: the new version is the fitted version's data plus the client's
+    periods (an uploaded period replaces the base's), validated with the base's schema."""
+    weeks = ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22"]
+    history = "t,y,spend\n" + "".join(f"{w},{100 + k},{10 + k}\n" for k, w in enumerate(weeks))
+    gcs.put(gcs.buckets.quarantine, UPLOAD, history.encode(), "text/csv")
+    first = run_supervisor(
+        make_run(gcs, RunKind.INGEST, _csv_job().model_dump(mode="json"),
+                 inputs={"upload": (gcs.buckets.quarantine, UPLOAD)})
+    )  # fmt: skip
+    assert first.code == RunnerExit.OK, [e.payload for e in first.of("error")]
+    base_name = "t/default/datasets/base/data.zarr.zip"
+    gcs.put(gcs.buckets.runs, base_name, first.output("data.zarr.zip"), "application/zip")
+    gcs.put(
+        gcs.buckets.quarantine, UPLOAD + "-2",
+        b"t,y,spend\n2024-01-22,500,50\n2024-01-29,600,\n", "text/csv",
+    )  # fmt: skip
+    job = _csv_job(extend_dim="t")
+    assert job.model_dump(mode="json")["extend_dim"] == "t"
+    second = run_supervisor(
+        make_run(gcs, RunKind.INGEST, job.model_dump(mode="json"),
+                 inputs={"upload": (gcs.buckets.quarantine, UPLOAD + "-2"),
+                         "base": (gcs.buckets.runs, base_name)})
+    )  # fmt: skip
+    assert second.code == RunnerExit.OK, [e.payload for e in second.of("error")]
+    ds = read_zarr_zip(second.output("data.zarr.zip"))
+    assert ds.sizes["t"] == 5
+    assert ds["y"].values.tolist() == [100.0, 101.0, 102.0, 500.0, 600.0]
+    assert ds["spend"].values[:4].tolist() == [10.0, 11.0, 12.0, 50.0]
+    # the target may not be missing (the base schema's policy): an upload without it fails
+    gcs.put(gcs.buckets.quarantine, UPLOAD + "-3", b"t,y,spend\n2024-02-05,,5\n", "text/csv")
+    third = run_supervisor(
+        make_run(gcs, RunKind.INGEST, job.model_dump(mode="json"),
+                 inputs={"upload": (gcs.buckets.quarantine, UPLOAD + "-3"),
+                         "base": (gcs.buckets.runs, base_name)})
+    )  # fmt: skip
+    assert third.code != RunnerExit.OK

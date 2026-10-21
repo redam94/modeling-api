@@ -16,6 +16,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
 from mapi_spec.api import (
+    ClientTenant,
     Me,
     MembershipCreate,
     MembershipUpdate,
@@ -52,7 +53,7 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.auth.identity import local_principal, membership_dto
-from mapi_server.auth.request import Credential, RequestAuth
+from mapi_server.auth.request import Credential, RequestAuth, client_only
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.audit import audit_dto, audit_query, write_audit
@@ -153,7 +154,11 @@ async def get_me(ctx: Ctx, auth: Auth, system: SystemSession) -> Me:
             projects.append(MeProject(tenant_id=tenant_id, project_id=p.id, name=p.name, role=role))
         tenants.append(
             MeTenant(
-                tenant=tenant_dto(tenant),
+                tenant=(
+                    ClientTenant(id=tenant.id, name=tenant.name, status=TenantStatus(tenant.status))
+                    if client_only(auth.memberships, tenant_id) and not auth.operator
+                    else tenant_dto(tenant)
+                ),
                 role=_role_at(auth.memberships, tenant_id, None),
                 projects=projects,
             )
@@ -451,7 +456,7 @@ async def update_tenant_member(
     principal_id: PrincipalId,
     body: MembershipUpdate,
 ) -> Membership:
-    row = await change_role(
+    row, dropped = await change_role(
         session,
         tenant_id=tenant_id,
         project_id=None,
@@ -460,7 +465,7 @@ async def update_tenant_member(
         capabilities=body.capabilities,
     )
     await _audit_member(
-        ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.TENANT_MEMBER
+        ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.TENANT_MEMBER, dropped
     )
     return membership_dto(row)
 
@@ -473,11 +478,11 @@ async def update_tenant_member(
 async def remove_tenant_member(
     ctx: Ctx, auth: Auth, session: Session, tenant_id: Slug, principal_id: PrincipalId
 ) -> Response:
-    row = await remove_member(
+    row, dropped = await remove_member(
         session, tenant_id=tenant_id, project_id=None, principal_id=principal_id
     )
     await _audit_member(
-        ctx, auth, session, AuditAction.MEMBER_REMOVE, row, ResourceKind.TENANT_MEMBER
+        ctx, auth, session, AuditAction.MEMBER_REMOVE, row, ResourceKind.TENANT_MEMBER, dropped
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -537,7 +542,7 @@ async def update_project_member(
     principal_id: PrincipalId,
     body: MembershipUpdate,
 ) -> Membership:
-    row = await change_role(
+    row, dropped = await change_role(
         session,
         tenant_id=tenant_id,
         project_id=project_id,
@@ -545,7 +550,9 @@ async def update_project_member(
         role=body.role,
         capabilities=body.capabilities,
     )
-    await _audit_member(ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.MEMBER)
+    await _audit_member(
+        ctx, auth, session, AuditAction.MEMBER_UPDATE, row, ResourceKind.MEMBER, dropped
+    )
     return membership_dto(row)
 
 
@@ -562,10 +569,12 @@ async def remove_project_member(
     project_id: Slug,
     principal_id: PrincipalId,
 ) -> Response:
-    row = await remove_member(
+    row, dropped = await remove_member(
         session, tenant_id=tenant_id, project_id=project_id, principal_id=principal_id
     )
-    await _audit_member(ctx, auth, session, AuditAction.MEMBER_REMOVE, row, ResourceKind.MEMBER)
+    await _audit_member(
+        ctx, auth, session, AuditAction.MEMBER_REMOVE, row, ResourceKind.MEMBER, dropped
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -576,21 +585,33 @@ async def _audit_member(
     action: AuditAction,
     row: m.Membership,
     kind: ResourceKind,
+    dropped_grants: list[str] | None = None,
 ) -> None:
-    await write_audit(
-        ctx.db,
-        [
+    """The member change, then one ``dashboard.ungrant`` row per dashboard grant the change
+    removed (a client's grants end with their client membership)."""
+    events = [
+        auth.audit(
+            ctx,
+            action,
+            kind,
+            resource_id=row.principal_id,
+            project_id=row.project_id,
+            details={"role": row.role, "project_id": row.project_id},
+        )
+    ]
+    reason = "member_removed" if action is AuditAction.MEMBER_REMOVE else "role_changed"
+    for dashboard_id in dropped_grants or ():
+        events.append(
             auth.audit(
                 ctx,
-                action,
-                kind,
-                resource_id=row.principal_id,
+                AuditAction.DASHBOARD_UNGRANT,
+                ResourceKind.DASHBOARD,
+                resource_id=dashboard_id,
                 project_id=row.project_id,
-                details={"role": row.role, "project_id": row.project_id},
+                details={"user_id": row.principal_id, "reason": reason},
             )
-        ],
-        session=session,
-    )
+        )
+    await write_audit(ctx.db, events, session=session)
 
 
 # ================================================================================== audit

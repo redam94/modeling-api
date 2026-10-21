@@ -55,7 +55,7 @@ export function PlainSummary({ children, tone = "neutral" }: { children: ReactNo
   return (
     <div
       className={cn(
-        "grid gap-1.5 rounded-lg border-l-[3px] bg-muted/30 px-4 py-3 text-[14px] leading-relaxed",
+        "grid gap-1.5 rounded-lg border-l-[3px] bg-muted/30 px-4 py-3 text-sm leading-relaxed",
         tone === "neutral" && "border-l-primary/60",
         tone === "good" && "border-l-success",
         tone === "warn" && "border-l-warning",
@@ -76,7 +76,7 @@ export function Statistics({ expert, children, label = "Show the statistics" }: 
   if (expert) return <div className="grid gap-4">{children}</div>;
   return (
     <details className="group rounded-lg border">
-      <summary className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-[13px] font-medium select-none hover:bg-accent/40">
+      <summary className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-medium select-none hover:bg-accent/40">
         <ChevronDown aria-hidden className="size-4 text-muted-foreground transition-transform group-open:rotate-180" /> {label}
       </summary>
       <div className="grid gap-4 border-t p-4">{children}</div>
@@ -88,7 +88,7 @@ export function Statistics({ expert, children, label = "Show the statistics" }: 
 export function ViewNotes({ caption, warnings }: { caption?: string | null | undefined; warnings?: readonly string[] | undefined }) {
   if (!caption && !warnings?.length) return null;
   return (
-    <div className="grid gap-1.5 text-[13px]">
+    <div className="grid gap-1.5 text-sm">
       {caption ? (
         <p className="flex items-start gap-1.5 text-muted-foreground">
           <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" /> {caption}
@@ -148,10 +148,10 @@ export interface Column<T> {
 
 /** A compact, scrollable statistic table (plain HTML table; text only). */
 export function StatTable<T>({ rows, columns, label, rowKey, maxHeight = "28rem", empty = "There is no data to show." }: { rows: readonly T[]; columns: readonly Column<T>[]; label: string; rowKey: (row: T, i: number) => string; maxHeight?: string; empty?: string }) {
-  if (!rows.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
+  if (!rows.length) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
     <div className="relative overflow-auto rounded-lg border [contain:inline-size]" style={{ maxHeight }}>
-      <table className="w-full text-[13px]" aria-label={label}>
+      <table className="w-full text-sm" aria-label={label}>
         <thead className="sticky top-0 z-[1] bg-card">
           <tr className="border-b">
             {columns.map((c) => (
@@ -187,7 +187,7 @@ export function Picker({ label, value, options, onChange, className }: { label: 
       <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
         {label}
       </label>
-      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)} className="h-8 min-w-40 text-[13px]">
+      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)} className="h-8 min-w-40 text-sm">
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -211,7 +211,7 @@ export function TestDecision({ test }: { test: Pick<StatTestResult, "reject" | "
     return <span className="text-xs text-muted-foreground" title={test.message_plain ?? undefined}>{test.status}</span>;
   }
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px]", test.reject ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground")}>
+    <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-xs", test.reject ? "border-warning/40 bg-warning/10 text-warning" : "border-border text-muted-foreground")}>
       {test.decision.replaceAll("_", " ")}
     </span>
   );

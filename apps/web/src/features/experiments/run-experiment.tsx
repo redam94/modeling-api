@@ -34,7 +34,7 @@ export function RunExperiment({ run }: { run: Run }) {
           <FlaskConical className="size-4 text-muted-foreground" /> Experiment
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid max-w-3xl gap-3 text-[13px]">
+      <CardContent className="grid max-w-3xl gap-3 text-sm">
         {allowed ? (
           <Field label="Experiment of the run" htmlFor="run-experiment" hint="A run is in one experiment only. Compare the runs of an experiment on its page.">
             <NativeSelect

@@ -41,7 +41,7 @@ export function ModelExplorerPage() {
         title={
           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             Explore {model.data?.name ?? "the model"}
-            <Mono className="text-[15px] text-muted-foreground">v{v}</Mono>
+            <Mono className="text-base text-muted-foreground">v{v}</Mono>
           </span>
         }
         description={expert ? "The parameters, diagnostics, fit, residuals, contributions, forecasts and backtests of this version. The page also shows the governance evidence and the lineage." : "This page tells you, in plain words, what the model learned, if you can trust it and what it forecasts."}

@@ -122,6 +122,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.16": whats-new-0.16.md
       - "What's new in 0.10 to 0.15": whats-new-0.15.md
       - "What's new in 0.9": whats-new-0.9.md
       - "What's new in 0.5": whats-new-0.5.md
@@ -169,6 +170,7 @@ nav:
       - Forecasts with actuals: concepts/forecasting-with-actuals.md
       - Capabilities and manifests: concepts/capabilities.md
       - Tenancy and authentication: concepts/tenancy-and-auth.md
+      - Client dashboards: concepts/client-dashboards.md
       - Quotas and cost: concepts/quotas-and-cost.md
       - Guided mode: concepts/guided-mode.md
       - Integrations: concepts/integrations.md
@@ -193,6 +195,9 @@ nav:
           - Deep learning: guides/deep-learning.md
           - Endpoints and webhooks: guides/endpoints-and-webhooks.md
           - The Integrations hub: guides/integrations-hub.md
+          - Build a client dashboard: guides/client-dashboards.md
+          - Share dashboards securely: guides/sharing-dashboards-securely.md
+          - "For clients: read your dashboard": guides/for-clients.md
           - Explore a dataset: guides/data-explorer.md
           - Explore a model: guides/model-explorer.md
           - Validate models with governance policies: guides/governance.md
@@ -276,7 +281,7 @@ nav:
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
       - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
-      - "Planned: expert plugins and MCP": roadmap/expert-plugins.md
+      - "Planned: dashboard chat, expert plugins and MCP": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md

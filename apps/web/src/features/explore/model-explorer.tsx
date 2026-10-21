@@ -86,10 +86,10 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
           }}
         >
           <fieldset className="grid gap-2">
-            <legend className="text-[13px] font-medium">Views</legend>
+            <legend className="text-sm font-medium">Views</legend>
             <div className="grid gap-1.5 sm:grid-cols-3">
               {choices.map((s) => (
-                <label key={s} className="flex items-center gap-2 text-[13px]">
+                <label key={s} className="flex items-center gap-2 text-sm">
                   <Checkbox checked={sections.includes(s)} onCheckedChange={(c) => setSections((x) => (c ? [...x, s] : x.filter((y) => y !== s)))} aria-label={MODEL_SECTION_META[s].title} />
                   {MODEL_SECTION_META[s].title}
                 </label>
@@ -111,7 +111,7 @@ function ModelOptionsDialog({ open, onOpenChange, initial, onRun, pending }: { o
           </div>
           {needsPlan ? (
             <fieldset className="grid gap-3 rounded-lg border p-4">
-              <legend className="px-1 text-[13px] font-medium">Backtest plan</legend>
+              <legend className="px-1 text-sm font-medium">Backtest plan</legend>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Plan" htmlFor="mx-kind">
                   <NativeSelect id="mx-kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
@@ -194,7 +194,7 @@ function SectionPanel({ target, section, state, runId, expert, onCompute, canRun
         isPending={view.isPending}
         error={view.error}
         notComputed={
-          <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-[13px]" data-testid="section-missing">
+          <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-sm" data-testid="section-missing">
             <p className="text-muted-foreground">
               {section === "backtest" ? "A backtest fits the model again on earlier parts of the history. Then it scores each fit on the periods that came next. It runs in the sandbox and can take some minutes." : "The sandbox computes this view when you ask for it."}
             </p>
@@ -342,7 +342,7 @@ export function ModelExplorer({ mv, modelId, version, tab, onTab, runId, onRun, 
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {base.isPending ? "Loading the views…" : missing.length ? `The sandbox computes forecasts and backtests when you ask for them (${missing.map((s) => MODEL_SECTION_META[s].title.toLowerCase()).join(", ")}).` : "Every view is ready."}
         </p>
         <div className="flex flex-wrap gap-2">

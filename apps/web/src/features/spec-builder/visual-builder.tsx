@@ -117,7 +117,7 @@ export function VisualBuilder({ text, document, onText, schema, shape, sources, 
       </div>
       <div className="grid min-w-0 content-start gap-2" role="list" aria-label="Spec blocks">
         {!doc ? (
-          <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/8 px-3 py-2 text-[13px]">
+          <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/8 px-3 py-2 text-sm">
             The app cannot read the YAML, so it cannot show the blocks. Correct the YAML in the YAML view.
           </p>
         ) : (
@@ -285,7 +285,7 @@ function Block({
           className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-accent/60"
         >
           <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} aria-hidden />
-          <span className="shrink-0 text-[13px] font-semibold">{title}</span>
+          <span className="shrink-0 text-sm font-semibold">{title}</span>
           {summary ? <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{summary}</span> : null}
           {issues.length ? (
             <Badge variant={errors ? "danger" : "warning"} className="ml-auto shrink-0">
@@ -384,7 +384,7 @@ function DataForm({ text, doc, schema, shape, sources, commit, disabled }: FormP
       })}
 
       <fieldset className="grid gap-3 rounded-md border p-3">
-        <legend className="px-1 text-[13px] font-medium">Train / holdout split</legend>
+        <legend className="px-1 text-sm font-medium">Train / holdout split</legend>
         <Field label="Kind" htmlFor={`${id}-split`}>
           <NativeSelect
             id={`${id}-split`}
@@ -443,7 +443,7 @@ function BindingTable({
   const [extra, setExtra] = useState("");
   return (
     <fieldset className="grid gap-2 rounded-md border p-3">
-      <legend className="px-1 text-[13px] font-medium">{label}</legend>
+      <legend className="px-1 text-sm font-medium">{label}</legend>
       <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>
       {canonical.length ? (
         <div className="grid grid-cols-[minmax(6rem,auto)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
@@ -695,7 +695,7 @@ function StepBlock({
           empty="This step has no settings."
         />
       ) : (
-        <p className="text-[13px] text-muted-foreground">{use ? `${use} is not in the catalog. Edit its settings in the YAML view.` : "This step has no `use`."}</p>
+        <p className="text-sm text-muted-foreground">{use ? `${use} is not in the catalog. Edit its settings in the YAML view.` : "This step has no `use`."}</p>
       )}
     </Block>
   );
@@ -768,7 +768,7 @@ function ModelForm({ text, doc, schema, shape, sources, issues, commit, disabled
       </Field>
       {settingsSchema ? (
         <fieldset className="grid gap-3 rounded-md border p-3">
-          <legend className="px-1 text-[13px] font-medium">Settings</legend>
+          <legend className="px-1 text-sm font-medium">Settings</legend>
           <SchemaForm
             schema={settingsSchema}
             value={asObj(block.settings)}
@@ -781,11 +781,11 @@ function ModelForm({ text, doc, schema, shape, sources, issues, commit, disabled
           />
         </fieldset>
       ) : current ? (
-        <p className="text-[13px] text-muted-foreground">{model ? "This model has no settings." : `${current} is not in the catalog. Edit its settings in the YAML view.`}</p>
+        <p className="text-sm text-muted-foreground">{model ? "This model has no settings." : `${current} is not in the catalog. Edit its settings in the YAML view.`}</p>
       ) : null}
       {fit && current ? (
         <details className="rounded-md border p-3">
-          <summary className="cursor-pointer text-[13px] font-medium">Fit</summary>
+          <summary className="cursor-pointer text-sm font-medium">Fit</summary>
           <div className="mt-3">
             <SchemaForm
               schema={fit}
@@ -855,7 +855,7 @@ function ChipGroup({
 }) {
   return (
     <fieldset className="grid gap-2">
-      <legend className="text-[13px] font-medium">{label}</legend>
+      <legend className="text-sm font-medium">{label}</legend>
       <p className="text-xs text-muted-foreground">{hint}</p>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {

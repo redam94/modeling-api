@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 // ----------------------------------------------------------------------- Badge
 
 export const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap [&_svg]:size-3",
+  // A 24px ODS tag. The tint alphas are pinned by theme-contrast.test.ts (STATUS_BADGES).
+  "inline-flex h-6 items-center gap-1 rounded-sm border px-2 text-xs font-medium whitespace-nowrap [&_svg]:size-3",
   {
     variants: {
       variant: {
@@ -39,36 +40,40 @@ export function Badge({
 
 // ----------------------------------------------------------------------- Card
 
+/**
+ * An ODS sheet: 12px corners, a hairline border, no shadow. The padding lives in CardHeader and
+ * CardContent (20px, 16px on phones) so full-bleed children (tables) keep working.
+ */
 export function Card({ className, ...props }: React.ComponentProps<"section">) {
   return (
     <section
       data-slot="card"
-      className={cn("rounded-lg border bg-card text-card-foreground shadow-[0_1px_0_0_rgb(0_0_0/0.03)]", className)}
+      className={cn("rounded-xl border bg-card text-card-foreground", className)}
       {...props}
     />
   );
 }
 
 export function CardHeader({ className, ...props }: React.ComponentProps<"header">) {
-  return <header className={cn("flex items-start justify-between gap-4 px-5 pt-4 pb-3", className)} {...props} />;
+  return <header className={cn("flex items-start justify-between gap-4 px-5 pt-5 pb-3 max-sm:px-4 max-sm:pt-4", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
-  return <h2 className={cn("text-[15px] leading-6 font-semibold tracking-tight", className)} {...props} />;
+  return <h2 className={cn("text-lg font-semibold", className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
-  return <p className={cn("text-muted-foreground text-[13px]", className)} {...props} />;
+  return <p className={cn("text-xs text-hint", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("px-5 pb-5", className)} {...props} />;
+  return <div className={cn("px-5 pb-5 max-sm:px-4 max-sm:pb-4", className)} {...props} />;
 }
 
 // ----------------------------------------------------------------------- Inputs
 
 const fieldBase =
-  "w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring";
+  "focus-ring w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors placeholder:text-hint hover:border-hint disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
 
 /** Set by {@link Field} for the control whose id is `controlId`. */
 interface FieldState {
@@ -97,7 +102,7 @@ function useFieldAria(
 
 export function Input({ className, type = "text", ...props }: React.ComponentProps<"input">) {
   const aria = useFieldAria(props.id, props);
-  return <input type={type} data-slot="input" className={cn(fieldBase, "h-9 py-1", className)} {...props} {...aria} />;
+  return <input type={type} data-slot="input" className={cn(fieldBase, "h-10 py-1", className)} {...props} {...aria} />;
 }
 
 export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
@@ -112,7 +117,7 @@ export function Textarea({ className, ...props }: React.ComponentProps<"textarea
 export function NativeSelect({ className, children, ...props }: React.ComponentProps<"select">) {
   const aria = useFieldAria(props.id, props);
   return (
-    <select data-slot="select" className={cn(fieldBase, "h-9 shrink-0 py-1 pr-8", className)} {...props} {...aria}>
+    <select data-slot="select" className={cn(fieldBase, "h-10 shrink-0 py-1 pr-8", className)} {...props} {...aria}>
       {children}
     </select>
   );
@@ -122,7 +127,7 @@ export function Label({ className, ...props }: React.ComponentProps<typeof Label
   return (
     <LabelPrimitive.Root
       data-slot="label"
-      className={cn("text-[13px] leading-none font-medium select-none peer-disabled:opacity-50", className)}
+      className={cn("text-sm leading-none font-semibold select-none peer-disabled:opacity-50", className)}
       {...props}
     />
   );
@@ -197,7 +202,7 @@ export function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[11px] text-muted-foreground",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-2xs text-muted-foreground",
         className,
       )}
       {...props}
@@ -241,13 +246,13 @@ export function Table({ className, ...props }: React.ComponentProps<"table">) {
     // `contain: inline-size` keeps a wide table from widening its (grid) ancestors on narrow
     // screens: it scrolls inside its own box instead of making the page scroll sideways.
     <div className="relative w-full overflow-x-auto [contain:inline-size]">
-      <table className={cn("w-full caption-bottom text-[13px]", className)} {...props} />
+      <table className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );
 }
 
 export function THead({ className, ...props }: React.ComponentProps<"thead">) {
-  return <thead className={cn("[&_tr]:border-b", className)} {...props} />;
+  return <thead className={cn("[&_tr]:border-b [&_tr]:border-border-strong [&_tr]:hover:bg-transparent", className)} {...props} />;
 }
 
 export function TBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -255,18 +260,18 @@ export function TBody({ className, ...props }: React.ComponentProps<"tbody">) {
 }
 
 export function TR({ className, ...props }: React.ComponentProps<"tr">) {
-  return <tr className={cn("border-b transition-colors data-[state=selected]:bg-accent", className)} {...props} />;
+  return <tr className={cn("border-b border-border transition-colors hover:bg-surface-hover data-[state=selected]:bg-accent", className)} {...props} />;
 }
 
 export function TH({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
-      className={cn("h-9 px-3 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground", className)}
+      className={cn("h-10 px-3 text-left align-middle text-sm font-semibold whitespace-nowrap text-foreground [&.num]:text-right", className)}
       {...props}
     />
   );
 }
 
 export function TD({ className, ...props }: React.ComponentProps<"td">) {
-  return <td className={cn("px-3 py-2 align-middle", className)} {...props} />;
+  return <td className={cn("h-12 px-3 py-2 align-middle [&.num]:text-right", className)} {...props} />;
 }

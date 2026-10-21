@@ -95,7 +95,7 @@ export function PlotFrame({
 
   if (status === "compromised") {
     return (
-      <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 p-4 text-[13px]">
+      <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 p-4 text-sm">
         <ShieldAlert className="size-4 text-destructive" />
         <p>{error}</p>
       </div>

@@ -2,16 +2,17 @@ import type { Theme } from "./protocol";
 
 /** Shared chart palette; mirrors the web app's `--series-*` tokens. */
 export const SERIES: Record<Theme, string[]> = {
-  light: ["#5B4BDB", "#1F8A70", "#D9822B", "#C2417A", "#2F7FD6", "#8A9A2B", "#7A5C3E", "#5C6B7A"],
-  dark: ["#A094FF", "#3FC1A0", "#F0A35E", "#E772A6", "#6FB0F2", "#B8C653", "#C09A74", "#97A6B6"],
+  light: ["#2954ff", "#0068ad", "#12871c", "#cc4b00", "#b41880", "#832eea", "#646c72", "#0e8a6a"],
+  dark: ["#85a3ff", "#7ab6ff", "#6ce07b", "#ff9e66", "#ed78c6", "#b794ff", "#a2a9b0", "#45e4b6"],
 };
 
 export const INK: Record<Theme, { text: string; muted: string; grid: string; domain: string }> = {
-  light: { text: "#1B2333", muted: "#5B6577", grid: "#E3E6EC", domain: "#B8BFCB" },
-  dark: { text: "#DCE1EA", muted: "#9AA3B2", grid: "#2A3140", domain: "#465063" },
+  light: { text: "#121619", muted: "#4d5358", grid: "#e7eaee", domain: "#c1c7cd" },
+  dark: { text: "#f4f5f7", muted: "#a2a9b0", grid: "#2c3440", domain: "#3c4552" },
 };
 
-const FONT = "'Hanken Grotesk Variable', 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif";
+// The sandbox loads no web font of its own: Inter only shows where the viewer has it installed.
+const FONT = "'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif";
 
 /** Vega-Lite config merged under the spec's own config. */
 export function vegaConfig(theme: Theme): Record<string, unknown> {
@@ -36,7 +37,7 @@ export function vegaConfig(theme: Theme): Record<string, unknown> {
     title: { color: ink.text, subtitleColor: ink.muted, fontSize: 14, anchor: "start" },
     range: {
       category: SERIES[theme],
-      heatmap: theme === "dark" ? { scheme: "magma" } : { scheme: "purples" },
+      heatmap: theme === "dark" ? { scheme: "magma" } : { scheme: "blues" },
     },
     mark: { color: SERIES[theme][0] },
     // Vega-Lite colours these black by default, whatever `mark.color` says: on the dark card

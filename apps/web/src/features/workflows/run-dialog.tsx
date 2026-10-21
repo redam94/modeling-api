@@ -47,7 +47,7 @@ export function RunDialog({ workflowId, revision, onClose }: { workflowId: strin
         <DialogDescription>Select the data and set the parameters for this run. The workflow document does not change.</DialogDescription>
         {invalid ? (
           <div role="alert" className="grid gap-2 rounded-md border border-destructive/35 bg-destructive/6 p-3">
-            <p className="text-[13px] font-medium">This revision has problems and cannot run. Correct the problems in the editor. Then save a new revision.</p>
+            <p className="text-sm font-medium">This revision has problems and cannot run. Correct the problems in the editor. Then save a new revision.</p>
             <IssueList issues={(revision.validation.issues ?? []).filter((i) => (i.severity ?? "error") === "error")} />
           </div>
         ) : null}
@@ -60,12 +60,12 @@ export function RunDialog({ workflowId, revision, onClose }: { workflowId: strin
             <h3 className="text-sm font-semibold">Parameters</h3>
             <ParamsForm doc={doc} value={params} onChange={setParams} errors={fieldErrors} />
           </section>
-          <label className="flex items-center gap-2 text-[13px]">
+          <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={useCache} onCheckedChange={(c) => setUseCache(c === true)} />
             Use the last results again for steps that have the same inputs (faster and cheaper)
           </label>
           {submitted && missing.length ? (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               Still needed: {missing.join(", ")}. Give a value for each item.
             </p>
           ) : null}

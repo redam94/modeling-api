@@ -113,7 +113,7 @@ function EventRow({ event }: { event: RunEventView }) {
     <li className="grid grid-cols-[1rem_1fr_auto] gap-x-3 py-1.5">
       <span className="pt-0.5">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[13px]">{title}</p>
+        <p className="text-sm">{title}</p>
         {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
         {untrusted ? (
           <details className="mt-1">

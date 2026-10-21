@@ -29,7 +29,7 @@ export function RunChips({ runs, labels, onRemove, onAdd }: { runs: readonly Run
   return (
     <div className="flex flex-wrap items-center gap-2" role="list" aria-label="Compared runs">
       {runs.map((r, i) => (
-        <span key={r.id} role="listitem" className="inline-flex max-w-full items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-[13px]">
+        <span key={r.id} role="listitem" className="inline-flex max-w-full items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-sm">
           <RunSwatch index={i} />
           <Link to="/runs/$runId" params={{ runId: r.id }} className="max-w-64 truncate hover:underline" title={r.id}>
             {labels[i] ?? shortId(r.id)}
@@ -83,7 +83,7 @@ function AddRunList({ exclude, onPick }: { exclude: readonly string[]; onPick: (
         <ul className="grid max-h-80 gap-1 overflow-auto">
           {items.map((r) => (
             <li key={r.id}>
-              <button type="button" className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent" onClick={() => onPick(r.id)}>
+              <button type="button" className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent" onClick={() => onPick(r.id)}>
                 <StateBadge state={r.state} />
                 <span className="min-w-0 flex-1 truncate">{runName(r) ?? <Mono>{shortId(r.id)}</Mono>}</span>
                 <span className="text-xs text-muted-foreground">{r.kind}</span>
@@ -93,7 +93,7 @@ function AddRunList({ exclude, onPick }: { exclude: readonly string[]; onPick: (
           ))}
         </ul>
       ) : (
-        <p className="text-[13px] text-muted-foreground">No runs match.</p>
+        <p className="text-sm text-muted-foreground">No runs match.</p>
       )}
     </div>
   );

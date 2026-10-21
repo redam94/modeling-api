@@ -125,7 +125,7 @@ export function CommandPalette() {
             aria-controls="palette-list"
             aria-activedescendant={commands[active] ? `cmd-${commands[active].id}` : undefined}
             placeholder="Type a page name, or paste the id of a run, dataset, spec or model"
-            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-hint"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -147,13 +147,16 @@ export function CommandPalette() {
                 c.run();
               }}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-[13px]",
-                i === active && "bg-accent text-accent-foreground",
+                "flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm",
+                // the keyboard's place: the accent tint plus a ring-coloured bar (3:1 on the
+                // popover), since the tint alone is about 1.1:1 against it
+                i === active && "bg-accent text-accent-foreground shadow-[inset_3px_0_0_var(--ring)]",
               )}
             >
-              <span className="text-muted-foreground">{c.icon}</span>
+              <span className={i === active ? "text-accent-foreground" : "text-muted-foreground"}>{c.icon}</span>
               <span className="font-medium">{c.label}</span>
-              <span className="ml-auto truncate text-xs text-muted-foreground">{c.hint}</span>
+              {/* hint grey is 4.2:1 on the light accent tint: the active row's hint takes its text colour */}
+              <span className={cn("ml-auto truncate text-xs", i === active ? "text-accent-foreground" : "text-hint")}>{c.hint}</span>
             </li>
           ))}
           {commands.length === 0 ? <li className="px-3 py-6 text-center text-muted-foreground">No matches.</li> : null}
@@ -181,7 +184,7 @@ export function ShortcutsDialog() {
       <DialogContent>
         <DialogTitle>Keyboard shortcuts</DialogTitle>
         <DialogDescription>Single-key shortcuts work only when no text field has the focus.</DialogDescription>
-        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2 text-[13px]">
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2 text-sm">
           {SHORTCUTS.map(([keys, label]) => (
             <div key={label} className="contents">
               <dt className="flex gap-1">

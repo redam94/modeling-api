@@ -20,7 +20,7 @@ export function SchemaTable({ schema }: { schema: DataSchema }) {
   return (
     <div className="grid gap-6">
       <div>
-        <h3 className="mb-2 text-[13px] font-semibold">Dims</h3>
+        <h3 className="mb-2 text-sm font-semibold">Dims</h3>
         <Table>
           <THead>
             <TR>
@@ -45,7 +45,7 @@ export function SchemaTable({ schema }: { schema: DataSchema }) {
         </Table>
       </div>
       <div>
-        <h3 className="mb-2 text-[13px] font-semibold">Variables</h3>
+        <h3 className="mb-2 text-sm font-semibold">Variables</h3>
         <Table>
           <THead>
             <TR>
@@ -109,7 +109,7 @@ function CoordValues({ name, c }: { name: string; c: CoordSummary }) {
           ) : null}
           <div className="flex max-h-36 flex-wrap gap-1 overflow-y-auto">
             {filtered.slice(0, 500).map((v) => (
-              <span key={v} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">{v}</span>
+              <span key={v} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{v}</span>
             ))}
           </div>
         </>
@@ -275,11 +275,11 @@ export function CollectionSummary({ version, info }: { version: DatasetVersion; 
       />
       <div className="grid gap-6 md:grid-cols-2">
         <section aria-label="Classes" className="grid content-start gap-2">
-          <h3 className="text-[13px] font-semibold">Classes</h3>
+          <h3 className="text-sm font-semibold">Classes</h3>
           {c.label && classes.length ? (
             <ul className="grid gap-1.5" data-testid="collection-classes">
               {classes.map((x) => (
-                <li key={x.label} className="grid grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-[13px]">
+                <li key={x.label} className="grid grid-cols-[minmax(6rem,10rem)_1fr_auto] items-center gap-2 text-sm">
                   <Mono className="truncate" title={x.label}>{x.label}</Mono>
                   <span className="h-2 rounded-full bg-primary/70" style={{ width: `${Math.max(2, (100 * x.count) / top)}%` }} aria-hidden />
                   <span className="text-right tabular">{n(x.count)}</span>
@@ -292,7 +292,7 @@ export function CollectionSummary({ version, info }: { version: DatasetVersion; 
           {listed > 0 ? <p className="text-xs text-muted-foreground">The list shows the 10 largest classes. {n(listed)} other classes are not in the list.</p> : null}
         </section>
         <section aria-label="Splits" className="grid content-start gap-2">
-          <h3 className="text-[13px] font-semibold">Splits</h3>
+          <h3 className="text-sm font-semibold">Splits</h3>
           {splits.length ? (
             <div className="flex flex-wrap gap-1.5">
               {splits.map(([name, k]) => (

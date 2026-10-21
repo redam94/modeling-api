@@ -97,7 +97,7 @@ function LogRow({
         {l.fields.length ? (
           <span className="ml-2 inline-flex flex-wrap gap-1 align-[1px]">
             {l.fields.map(([k, v]) => (
-              <span key={k} className="rounded bg-muted px-1 text-[11px] leading-4 text-muted-foreground">
+              <span key={k} className="rounded bg-muted px-1 text-xs leading-4 text-muted-foreground">
                 {k}={v}
               </span>
             ))}
@@ -189,7 +189,7 @@ export function LogsViewer({ runId, live }: { runId: string; live: boolean }) {
         onWheel={() => setFollow(false)}
       >
         {lines.length === 0 ? (
-          <p className="p-4 font-sans text-[13px] text-muted-foreground">
+          <p className="p-4 font-sans text-sm text-muted-foreground">
             {logs.isPending ? "Loading logs…" : needle || minLevel ? "No lines match the filter." : live ? "The run has no output yet." : "This run wrote no output."}
           </p>
         ) : virtualItems.length === 0 ? (

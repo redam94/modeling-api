@@ -54,7 +54,7 @@ export function ArrayBrowser({
         </ul>
       ) : null}
       <div className="max-h-72 overflow-auto rounded-lg border">
-        <table aria-label={`Arrays of ${file}`} className="w-full text-[13px]">
+        <table aria-label={`Arrays of ${file}`} className="w-full text-sm">
           <thead className="sticky top-0 bg-card">
             <tr className="border-b text-xs text-muted-foreground">
               {selected ? <th className="w-8 px-2 py-2 text-left font-medium"><span className="sr-only">Map</span></th> : null}
@@ -139,14 +139,14 @@ export function Hdf5Mapper({
     <div className="grid gap-4">
       {mapped.length ? (
         <div className="grid gap-2">
-          <h4 className="text-[13px] font-semibold">Variables</h4>
+          <h4 className="text-sm font-semibold">Variables</h4>
           {!expert ? (
             <p className="text-xs text-muted-foreground">
               Give each array a variable name. Type one dim name for each axis, separated by commas (for example <Mono>row, col</Mono>). Arrays with the same dim name must have the same size on that axis. The node is the place of the variable in the tree: / is the top.
             </p>
           ) : null}
           <div className="overflow-x-auto rounded-lg border">
-            <table aria-label="Variables from the arrays" className="w-full text-[13px]">
+            <table aria-label="Variables from the arrays" className="w-full text-sm">
               <thead>
                 <tr className="border-b text-xs text-muted-foreground">
                   <th className="px-2 py-2 text-left font-medium">Array</th>
@@ -197,14 +197,14 @@ export function Hdf5Mapper({
       ) : null}
       {coords.length ? (
         <div className="grid gap-2">
-          <h4 className="text-[13px] font-semibold">Coordinates</h4>
+          <h4 className="text-sm font-semibold">Coordinates</h4>
           {!expert ? (
             <p className="text-xs text-muted-foreground">
               A coordinate gives the labels of a dim. Use positions 0, 1, 2… (index), the values of a 1-D array of the file, or a range: a first value and a step (numbers, or a date such as 2024-01-01 and a frequency such as W-MON).
             </p>
           ) : null}
           <div className="overflow-x-auto rounded-lg border">
-            <table aria-label="Coordinates of the dims" className="w-full text-[13px]">
+            <table aria-label="Coordinates of the dims" className="w-full text-sm">
               <thead>
                 <tr className="border-b text-xs text-muted-foreground">
                   <th className="px-2 py-2 text-left font-medium">Dim</th>

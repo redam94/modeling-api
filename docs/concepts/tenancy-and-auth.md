@@ -70,10 +70,11 @@ slug that is unique in the tenant. The id is short because it shows in reference
 
 ## Roles
 
-There are four project roles. Each role can do all the actions of the role before it:
+There are five project roles. Each role can do all the actions of the role before it:
 
 | Role | Can |
 |---|---|
+| `client` (v0.16) | Read only the published client dashboards that an editor or an admin gave them, and use their inputs. Nothing else. See [the client role](#the-client-role) |
 | `viewer` | Read all items in the project: datasets, specs, runs, logs, models, plots and usage. Validate specs. Mint tokens for themselves. |
 | `editor` | Also make and change datasets, specs, workflows and saved plots. |
 | `runner` | Also **spend compute**. Submit, cancel, resume and retry runs. Run and cancel workflows. Score models and endpoints. Render plots. Submit models for governance validation. |
@@ -112,6 +113,8 @@ summary:
 | plot | viewer | editor | — | — | `run` (render): runner |
 | plugin | viewer | admin | — | admin | — |
 | embed link | viewer | editor | — | editor | — |
+| dashboard (v0.16) | client (granted and published only) | editor | editor (publish also needs runner) | editor (archive) | `run` (what-ifs, uploads): client |
+| dashboard grant, share link (v0.16) | editor | editor | — | editor | A share link that allows inputs needs runner |
 | webhook | admin | admin | admin | admin | — |
 | workflow (v0.5) | viewer | editor | editor | admin | `run`, `cancel`: runner |
 | governance policy (v0.5) | viewer | admin | admin | admin | tenant-wide policies: admin (tenant-wide) |
@@ -132,6 +135,38 @@ specs, models and plots) through the API. No role or flag gives this access.
 `update` on the dataset, as `create_upload`, because their answer holds a signed PUT URL. A
 person who can only read the dataset can ask which images a collection does not have
 (`blobs/missing`), but cannot write its uploads.
+
+## The client role <span class="mapi-badge">v0.16</span> { #the-client-role }
+
+`client` is the lowest project role (`client` < `viewer` < `editor` < `runner` < `admin`). It
+is for persons outside the team who read [client dashboards](client-dashboards.md). Two gates
+apply:
+
+1. **The permission matrix.** A client has only `read` and `run` on `dashboard`. All rules
+   before v0.16 deny the role.
+2. **The allow-list.** `mapi_spec.api.CLIENT_OPERATIONS` names each operation that a client
+   can call: `list_dashboards`, `get_dashboard`, the dashboard input and readout routes,
+   `get_me` and the session routes (`/auth/login`, `/auth/callback`, `/auth/session`,
+   `/auth/logout`). The server checks it after it builds the `AuthContext`:
+    - On a project route, if the effective role in the project is `client` and the operation
+      is not in the list, the answer is `404 NOT_FOUND`.
+    - On a tenant or an authenticated route, if **all** memberships of the caller are
+      `client`, the same rule applies.
+
+   The server audits each denial. A person who is a client in project A and a viewer in
+   project B keeps the viewer routes in B.
+
+A client also sees a dashboard only if it is published and a grant names the client. Other
+rules:
+
+- A client membership is always for one project. A tenant-wide client is refused
+  (`422 INVALID_ROLE_SCOPE`). A database check enforces this too.
+- Editors and admins give dashboards to clients. Only admins invite new clients.
+- A client cannot mint API tokens.
+- A client never gets `create` on `run` or `run` on `model`. Exact what-ifs and uploads run as
+  the person who published the dashboard (the run-as owner).
+
+In the web app, a client sees only the portal at `/c`. The full app is not loaded.
 
 **Experiments and saved views** <span class="mapi-badge">v0.14</span> have no permissions of
 their own. They use the permissions of runs: a viewer can read them, and a runner (or a token
@@ -158,7 +193,9 @@ with `runs:write`) can make, change and delete them.
    this sequence: internal rules, operator rules, the status of the tenant, and the role at
    the level of the rule. For tokens, it then applies the scopes. If the caller cannot see a
    resource, the answer is `404`. If the caller can see a resource but cannot change it, the
-   answer is `403 FORBIDDEN`.
+   answer is `403 FORBIDDEN`. From v0.16, a second gate applies to the `client` role: an
+   operation that is not in `CLIENT_OPERATIONS` gives `404` (see
+   [the client role](#the-client-role)).
 5. **Check quotas.** The platform checks quotas before each action that uses compute or
    storage (see [Quotas and cost](quotas-and-cost.md)).
 

@@ -19,9 +19,9 @@ export function ChooserTeaser({ className, title = "Not sure where to start?" }:
           <h2 id="chooser-teaser-h" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
             <Sparkles aria-hidden className="size-4 text-primary" /> {title}
           </h2>
-          <p className="text-[13px] text-muted-foreground">Tell us what you want to do. Answer some plain questions. Then you get the applicable analyses and models, with the reasons.</p>
+          <p className="text-sm text-muted-foreground">Tell us what you want to do. Answer some plain questions. Then you get the applicable analyses and models, with the reasons.</p>
         </div>
-        <Link to="/choose" className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
+        <Link to="/choose" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
           Help me choose <ArrowRight aria-hidden className="size-3.5" />
         </Link>
       </div>
@@ -32,7 +32,7 @@ export function ChooserTeaser({ className, title = "Not sure where to start?" }:
               <Link
                 to="/choose"
                 search={{ goal: c.value }}
-                className="inline-flex items-center rounded-full border bg-card px-3 py-1 text-[13px] hover:border-primary/50 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                className="inline-flex items-center rounded-full border bg-card px-3 py-1 text-sm hover:border-primary/50 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {c.label}
               </Link>

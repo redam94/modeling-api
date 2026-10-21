@@ -90,7 +90,7 @@ export function TokensPage() {
         cell: ({ row }) => (
           <div className="flex max-w-72 flex-wrap gap-1">
             {row.original.scopes.map((s) => (
-              <Badge key={s} variant={s === "admin" ? "warning" : "outline"} className="font-mono text-[11px]">
+              <Badge key={s} variant={s === "admin" ? "warning" : "outline"} className="font-mono text-xs">
                 {s}
               </Badge>
             ))}
@@ -170,7 +170,7 @@ export function TokensPage() {
         actions={
           <>
             {canManage ? (
-              <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Switch
                   checked={Boolean(search.all)}
                   onCheckedChange={(v) => void navigate({ search: (s) => ({ ...s, all: v ? true : undefined }) })}
@@ -330,7 +330,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
             <Input id="tok-name" autoFocus maxLength={100} value={form.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
           <fieldset className="grid gap-2" aria-describedby={shown.scopes ? "tok-scopes-error" : undefined}>
-            <legend className="mb-1 text-[13px] font-medium">Scopes</legend>
+            <legend className="mb-1 text-sm font-medium">Scopes</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {SCOPE_OPTIONS.map((o) => {
                 const checked = form.scopes.includes(o.value);
@@ -344,7 +344,7 @@ function CreateTokenDialog({ role, preset, onClose, onCreated }: { role: Project
                   >
                     <Checkbox id={id} checked={checked} onCheckedChange={(v) => toggle(o.value, v === true)} className="mt-0.5" />
                     <span className="grid gap-0.5">
-                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                      <span className="flex items-center gap-2 text-sm font-medium">
                         {o.label} <Mono className="text-muted-foreground">{o.value}</Mono>
                       </span>
                       <span className="text-xs text-muted-foreground">{o.description}</span>
@@ -434,7 +434,7 @@ function SecretDialog({ created, onClose }: { created: TokenCreated; onClose: ()
               readOnly
               value={secret}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
+              className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none"
               spellCheck={false}
               autoComplete="off"
             />
@@ -444,12 +444,12 @@ function SecretDialog({ created, onClose }: { created: TokenCreated; onClose: ()
             Send it as <Mono>Authorization: Bearer mapi_…</Mono>. It works in {token.tenant_id}/{token.project_id} until {absoluteTime(token.expires_at)}.
           </p>
         </div>
-        <details className="rounded-md border p-3 text-[13px]">
+        <details className="rounded-md border p-3 text-sm">
           <summary className="cursor-pointer font-medium">Use it from a shell</summary>
           <pre className="mt-2 overflow-x-auto rounded bg-muted/60 p-2 font-mono text-xs">{`export MAPI_TOKEN='<paste the token>'
 curl -H "Authorization: Bearer $MAPI_TOKEN" ${env.apiBase}/v1/me`}</pre>
         </details>
-        <label className="flex items-center gap-2 text-[13px]">
+        <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={acknowledged} onCheckedChange={(v) => setAcknowledged(v === true)} />
           I have stored the token somewhere safe
         </label>

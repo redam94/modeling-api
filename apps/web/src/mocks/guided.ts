@@ -404,7 +404,7 @@ function plotSpecFor(id: string): PlotSpec | null {
         layer: [
           { mark: { type: "area", opacity: 0.2 }, encoding: { x: { field: "t", type: "temporal", title: null }, y: { field: "lo", type: "quantitative", title: "Result", axis: { format: "~s" } }, y2: { field: "hi" } } },
           { mark: { type: "line", strokeWidth: 2 }, encoding: { x: { field: "t", type: "temporal" }, y: { field: "mean", type: "quantitative" } } },
-          { mark: { type: "point", filled: true, size: 16, color: "#737373" }, encoding: { x: { field: "t", type: "temporal" }, y: { field: "actual", type: "quantitative" }, tooltip: [{ field: "t", type: "temporal", title: "Week" }, { field: "actual", title: "Actual", format: ",.0f" }, { field: "mean", title: "Model", format: ",.0f" }] } },
+          { mark: { type: "point", filled: true, size: 16, color: "#697077" }, encoding: { x: { field: "t", type: "temporal" }, y: { field: "actual", type: "quantitative" }, tooltip: [{ field: "t", type: "temporal", title: "Week" }, { field: "actual", title: "Actual", format: ",.0f" }, { field: "mean", title: "Model", format: ",.0f" }] } },
         ],
       },
       datasets: { fit: { kind: "data_ref", path: "ui/plotdata/fit.json", format: "json" } },

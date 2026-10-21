@@ -84,6 +84,10 @@ RESOURCE_LABELS: dict[str, str] = {
     "workflow": "Workflows, their runs, schedules and triggers",
     "policy": "A project's governance policies",
     "tenant_policy": "Tenant-wide governance policies (every project's floor)",
+    # v0.16
+    "dashboard": "Client dashboards, their revisions, inputs and readouts",
+    "dashboard_grant": "Which client users see a dashboard",
+    "dashboard_share": "Share links of a dashboard",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {

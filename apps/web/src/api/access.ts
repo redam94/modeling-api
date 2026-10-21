@@ -23,6 +23,7 @@ export const DEFAULT_TOKEN_TTL_DAYS: number = generated.default_token_ttl_days;
 export const MAX_TOKEN_TTL_DAYS: number = generated.max_token_ttl_days;
 
 export const ROLE_META: Record<ProjectRole, { label: string; description: string }> = {
+  client: { label: "Client", description: "Sees only the dashboards that you share with them." },
   viewer: { label: "Viewer", description: "Reads datasets, specs, runs, models and plots." },
   editor: { label: "Editor", description: "Viewer, plus uploads data and edits specs and plots." },
   runner: { label: "Runner", description: "Editor, plus starts runs and scores models (spends compute)." },

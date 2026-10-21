@@ -90,7 +90,7 @@ export const InsertPanel = forwardRef<HTMLInputElement, InsertPanelProps>(functi
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1" role="list" aria-label="Insertable items">
         {filtered.map((g) => (
           <details key={g.name} open={Boolean(q) || g.name === "Pipeline steps" || g.name === "Columns"} className="rounded-md" role="listitem">
-            <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-accent" title={g.hint}>
+            <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent" title={g.hint}>
               {g.name}
               <span className="ml-auto text-xs text-muted-foreground">{g.items.length}</span>
             </summary>
@@ -105,7 +105,7 @@ export const InsertPanel = forwardRef<HTMLInputElement, InsertPanelProps>(functi
           </details>
         ))}
         {filtered.length === 0 ? (
-          <p className="px-2 text-[13px] text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p>
+          <p className="px-2 text-sm text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p>
         ) : null}
       </div>
     </section>
@@ -120,7 +120,7 @@ function ItemButton({ item, disabled }: { item: InsertItem; disabled?: boolean |
       onClick={item.apply}
       data-insert={item.key}
       title={item.detail ?? item.title}
-      className={cn("grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-accent disabled:opacity-50", item.current && "bg-accent/50")}
+      className={cn("grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent disabled:opacity-50", item.current && "bg-accent/50")}
     >
       <span className="min-w-0 truncate">
         {item.title}

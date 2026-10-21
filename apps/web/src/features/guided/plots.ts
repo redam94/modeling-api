@@ -142,7 +142,7 @@ export function fanPlot(fan: FanChart, opts: { title: string; splitAt?: string |
   if (fan.observed?.some((v) => v != null)) {
     layers.push({
       transform: [{ filter: "datum.observed != null" }],
-      mark: { type: "point", filled: true, size: 18, opacity: 0.85, color: "#737373" },
+      mark: { type: "point", filled: true, size: 18, opacity: 0.85, color: "#697077" },
       encoding: { x: xEnc, y: { field: "observed", type: "quantitative", scale: yScale }, tooltip: [{ field: "x", title: "Period", ...(temporal ? { type: "temporal" } : {}) }, { field: "observed", title: "Actual", format: ",.0f" }] },
     });
   }

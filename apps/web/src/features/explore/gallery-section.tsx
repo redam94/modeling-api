@@ -60,9 +60,9 @@ function Thumb({ item, view, selected, onSelect, size }: { item: GalleryItem; vi
       {src ? (
         <img src={src} alt="" width={size} height={Math.round((size * view.thumb_height) / view.thumb_width)} className="w-full bg-muted/40" style={{ imageRendering: pixelated ? "pixelated" : "auto", aspectRatio: `${view.thumb_width} / ${view.thumb_height}` }} />
       ) : (
-        <span className="grid aspect-square place-items-center bg-muted/40 text-[11px] text-muted-foreground">no image</span>
+        <span className="grid aspect-square place-items-center bg-muted/40 text-xs text-muted-foreground">no image</span>
       )}
-      <span className="truncate text-[11px] text-muted-foreground">{name}</span>
+      <span className="truncate text-xs text-muted-foreground">{name}</span>
     </button>
   );
 }
@@ -73,7 +73,7 @@ function Detail({ item, view }: { item: GalleryItem; view: GalleryView }) {
   return (
     <figure className="grid gap-3 rounded-lg border p-3 md:grid-cols-[minmax(0,16rem)_1fr]" data-testid="gallery-detail" aria-label={`Image ${metaText(item.label ?? item.index)}`}>
       {src ? <img src={src} alt="" className="w-full rounded-sm border bg-muted/40" style={{ imageRendering: "pixelated", aspectRatio: `${view.thumb_width} / ${view.thumb_height}` }} /> : null}
-      <dl className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+      <dl className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted-foreground">{view.frame_dim}</dt>
         <dd className="break-all">{metaText(item.label)}</dd>
         <dt className="text-muted-foreground">Position</dt>
@@ -126,7 +126,7 @@ export function GallerySection({ view }: { view: GalleryView; expert: boolean })
       <p className="text-xs text-muted-foreground" data-testid="gallery-note">
         {galleryNote(view)}
       </p>
-      <p className="text-[13px]" aria-live="polite" data-testid="gallery-count">
+      <p className="text-sm" aria-live="polite" data-testid="gallery-count">
         {matching.length === view.items.length ? `${count(matching.length)} thumbnails.` : `${count(matching.length)} of ${count(view.items.length)} thumbnails match the filters.`}
       </p>
       {shown.length ? (
@@ -145,7 +145,7 @@ export function GallerySection({ view }: { view: GalleryView; expert: boolean })
           <Button size="sm" variant="outline" disabled={current === 0} onClick={() => setPage(current - 1)}>
             Previous
           </Button>
-          <span className="tabular text-[13px]">
+          <span className="tabular text-sm">
             Page {current + 1} of {pages}
           </span>
           <Button size="sm" variant="outline" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>

@@ -56,7 +56,7 @@ export function PlotsSection({ runs, labels }: { runs: readonly Run[]; labels: r
       {plots.length ? (
         plots.map((p) => (
           <div key={p.id} className="grid min-w-0 gap-2" data-compare-plot={p.id}>
-            <h3 className="text-[13px] font-semibold">{p.title}</h3>
+            <h3 className="text-sm font-semibold">{p.title}</h3>
             <div className="grid grid-flow-col gap-4 overflow-x-auto pb-2 [contain:inline-size]" style={{ gridAutoColumns: autoCols }}>
               {p.byRun.map((plot, i) => (
                 <div key={runs[i]!.id} className="grid min-w-0 content-start gap-2 rounded-lg border bg-card p-3">
@@ -71,7 +71,7 @@ export function PlotsSection({ runs, labels }: { runs: readonly Run[]; labels: r
           </div>
         ))
       ) : (
-        <p className="rounded-md border border-dashed px-3 py-6 text-center text-[13px] text-muted-foreground">
+        <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
           No plot is in two or more of the runs. Fits show their plots on the page of the model version.
         </p>
       )}

@@ -31,7 +31,7 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field, field_validator
 
-from mapi_plots.palette import BAND, EMPTY, ESTIMATE, OBSERVED, REFERENCE, SURFACE
+from mapi_plots.palette import EMPTY, ESTIMATE, OBSERVED, REFERENCE, SURFACE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -467,7 +467,7 @@ def roc_pr(inp: RecipeInput, s: RocPrSettings) -> Figure:
             y=alt.Y("base:Q", title="precision", scale=unit),
         ),
         alt.Chart(named("pr"))
-        .mark_line(color=BAND, strokeWidth=2)
+        .mark_line(color=ESTIMATE, strokeWidth=2)
         .encode(
             x="recall:Q",
             y="precision:Q",

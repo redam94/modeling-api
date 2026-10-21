@@ -86,14 +86,14 @@ export function ParamsSection({ view, expert }: P<ParamTableView>) {
       cols.push({ id: "rhat", header: "R-hat", accessorFn: (r) => r.r_hat ?? null, cell: ({ getValue }) => <span className={cn("tabular", ((getValue() as number | null) ?? 0) > 1.01 && "font-medium text-warning")}>{num(getValue() as number | null, 4)}</span> });
       cols.push({ id: "ess", header: "ESS (bulk)", accessorFn: (r) => r.ess_bulk ?? null, cell: ({ getValue }) => <span className={cn("tabular", ((getValue() as number | null) ?? 1e9) < 400 && "text-warning")}>{num(getValue() as number | null, 3)}</span> });
     }
-    if (rows.some((r) => r.prior)) cols.push({ id: "prior", header: "Prior", accessorFn: (r) => r.prior ?? "", cell: ({ getValue }) => <span className="font-mono text-[11px] text-muted-foreground">{String(getValue())}</span> });
+    if (rows.some((r) => r.prior)) cols.push({ id: "prior", header: "Prior", accessorFn: (r) => r.prior ?? "", cell: ({ getValue }) => <span className="font-mono text-xs text-muted-foreground">{String(getValue())}</span> });
     return cols;
   }, [rows, bayes, interval]);
   return (
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        <p className="text-[13px] text-muted-foreground">Each dot is the best estimate of the model. Each line is its {interval}: the range that most probably contains the value. If a line crosses zero, the model cannot tell if there is an effect.</p>
+        <p className="text-sm text-muted-foreground">Each dot is the best estimate of the model. Each line is its {interval}: the range that most probably contains the value. If a line crosses zero, the model cannot tell if there is an effect.</p>
       </PlainSummary>
       <div className="flex flex-wrap items-end gap-3">
         <Picker label="Parameter" value={group} options={names} onChange={setGroup} />
@@ -131,7 +131,7 @@ export function DiagnosticsSection({ view, expert }: P<ModelDiagnosticsView>) {
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        {diagnostics.length ? <p className="text-[13px] text-muted-foreground">The fit gave {diagnostics.length} note{diagnostics.length === 1 ? "" : "s"}. {diagnostics.length === 1 ? "It is" : "They are"} below.</p> : null}
+        {diagnostics.length ? <p className="text-sm text-muted-foreground">The fit gave {diagnostics.length} note{diagnostics.length === 1 ? "" : "s"}. {diagnostics.length === 1 ? "It is" : "They are"} below.</p> : null}
       </PlainSummary>
       {diagnostics.length ? (
         <ul className="grid gap-2" aria-label="Fit diagnostics">
@@ -141,11 +141,11 @@ export function DiagnosticsSection({ view, expert }: P<ModelDiagnosticsView>) {
             return (
               <li key={`${String(d.code)}-${k}`} className="grid grid-cols-[1.25rem_1fr] gap-3 rounded-lg border p-3">
                 <Icon aria-hidden className={cn("mt-0.5 size-4", SEV_CLASS[sev])} />
-                <div className="grid min-w-0 gap-0.5 text-[13px]">
+                <div className="grid min-w-0 gap-0.5 text-sm">
                   <p className="font-medium">{[d.message_plain, d.message_expert, d.code].find((x): x is string => typeof x === "string")}</p>
                   {typeof d.suggested_action === "string" ? <p className="text-muted-foreground">{d.suggested_action}</p> : null}
                   {expert ? (
-                    <p className="font-mono text-[11px] text-muted-foreground">
+                    <p className="font-mono text-xs text-muted-foreground">
                       {typeof d.code === "string" ? d.code : ""}
                       {typeof d.message_expert === "string" ? ` · ${d.message_expert}` : ""}
                     </p>
@@ -320,7 +320,7 @@ export function ResponseCurvesSection({ view, expert }: P<ResponseCurvesView>) {
     <>
       <PlainSummary tone={saturated.length ? "warn" : "neutral"}>
         <p>Each curve shows how much a channel adds when its spend increases. On each curve, the dot is what you spend today.</p>
-        {saturated.length ? <p className="text-[13px]">{saturated.join(", ")} {saturated.length === 1 ? "is" : "are"} near saturation. The next unit of money adds much less than the first units.</p> : null}
+        {saturated.length ? <p className="text-sm">{saturated.join(", ")} {saturated.length === 1 ? "is" : "are"} near saturation. The next unit of money adds much less than the first units.</p> : null}
       </PlainSummary>
       <fieldset className="flex flex-wrap gap-1.5">
         <legend className="sr-only">Channels to show</legend>
@@ -443,7 +443,7 @@ export function FieldsSection({ view, expert }: P<FieldsView>) {
         </p>
       </PlainSummary>
       {fields.length > 1 ? <Picker label="Output" value={String(pick)} options={fields.map((f, i) => ({ value: String(i), label: fieldLabel(f) }))} onChange={(v) => setPick(Number(v))} /> : null}
-      {field.description ? <p className="text-[13px] text-muted-foreground">{field.description}</p> : null}
+      {field.description ? <p className="text-sm text-muted-foreground">{field.description}</p> : null}
       <FieldViewer key={`${pick}:${fieldLabel(field)}`} field={field} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert} label="Show the grid details">
@@ -457,7 +457,7 @@ export function FieldsSection({ view, expert }: P<FieldsView>) {
             ["Colour map", `${field.colormap ?? "viridis"}${field.log ? ", log scale" : ""}`],
           ]}
         />
-        {view.omitted?.length ? <p className="text-[13px] text-muted-foreground">Not shown: {view.omitted.join(", ")}.</p> : null}
+        {view.omitted?.length ? <p className="text-sm text-muted-foreground">Not shown: {view.omitted.join(", ")}.</p> : null}
       </Statistics>
     </div>
   );
@@ -498,7 +498,7 @@ export function ForecastSection({ view, expert }: P<ModelForecastView>) {
             ? `For all the forecast periods, the total of ${f.kpi} is about ${num(total.mean, 3)}${f.units ? ` ${f.units}` : ""}${q("0.05") !== undefined && q("0.95") !== undefined ? ` (90% likely between ${num(q("0.05"), 3)} and ${num(q("0.95"), 3)})` : ""}.`
             : endOfHorizon(f)}
         </p>
-        {f.summed_over?.length ? <p className="text-[13px] text-muted-foreground">This is the sum over {f.summed_over.join(" and ")}.</p> : null}
+        {f.summed_over?.length ? <p className="text-sm text-muted-foreground">This is the sum over {f.summed_over.join(" and ")}.</p> : null}
       </PlainSummary>
       <ExplorerPlot plot={plot} title={`Forecast of ${f.kpi}`} caption="Dots: history. After the dashed line: the forecast, its middle line and the 50% and 90% bands." height={300} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />

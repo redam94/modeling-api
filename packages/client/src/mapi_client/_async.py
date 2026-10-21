@@ -151,6 +151,7 @@ from mapi_client._m35_async import (
 from mapi_client._tracking import AsyncRunTracker
 from mapi_client._v014_async import AsyncExperiments, AsyncRunsV014Mixin, AsyncRunViews
 from mapi_client._v015_async import AsyncDatasetsV015Mixin
+from mapi_client._v016_async import AsyncDashboards
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -240,6 +241,7 @@ class AsyncClient:
         self.explorations = AsyncExplorations(self)
         self.experiments = AsyncExperiments(self)
         self.run_views = AsyncRunViews(self)
+        self.dashboards = AsyncDashboards(self)
 
     async def aclose(self) -> None:
         await self._http.aclose()

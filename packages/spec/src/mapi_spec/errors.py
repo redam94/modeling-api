@@ -117,6 +117,16 @@ class ErrorCode(StrEnum):
     # --- M4: tree datasets, HDF5 and multi-file versions -------------------------------------
     NOT_READY = "NOT_READY"
     INGEST_UNSAFE_FILE = "INGEST_UNSAFE_FILE"
+    # --- v0.16: client dashboards and share links ----------------------------------------
+    DASHBOARD_NOT_PUBLISHED = "DASHBOARD_NOT_PUBLISHED"
+    DASHBOARD_INPUT_DISABLED = "DASHBOARD_INPUT_DISABLED"
+    DASHBOARD_LIVE_PAUSED = "DASHBOARD_LIVE_PAUSED"
+    DASHBOARD_RUN_LIMIT = "DASHBOARD_RUN_LIMIT"
+    DASHBOARD_SPEC_STALE = "DASHBOARD_SPEC_STALE"
+    SHARE_PASSCODE_REQUIRED = "SHARE_PASSCODE_REQUIRED"
+    SHARE_PASSCODE_INVALID = "SHARE_PASSCODE_INVALID"
+    SHARE_LOCKED = "SHARE_LOCKED"
+    INVALID_ROLE_SCOPE = "INVALID_ROLE_SCOPE"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -242,6 +252,28 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.NOT_READY: ErrorInfo(409, "The result is not ready yet", "api", retryable=True),
     ErrorCode.INGEST_UNSAFE_FILE: ErrorInfo(
         422, "The upload was refused: it is unsafe to read", "run"
+    ),
+    # v0.16: client dashboards and share links
+    ErrorCode.DASHBOARD_NOT_PUBLISHED: ErrorInfo(409, "The dashboard is not published", "api"),
+    ErrorCode.DASHBOARD_INPUT_DISABLED: ErrorInfo(
+        409, "This input is not available on the dashboard", "api"
+    ),
+    ErrorCode.DASHBOARD_LIVE_PAUSED: ErrorInfo(
+        409, "New results are paused on this dashboard", "api"
+    ),
+    ErrorCode.DASHBOARD_RUN_LIMIT: ErrorInfo(
+        429, "The limit for new results is reached", "quota", retryable=True
+    ),
+    ErrorCode.DASHBOARD_SPEC_STALE: ErrorInfo(
+        412, "The dashboard draft changed since you read it", "api"
+    ),
+    ErrorCode.SHARE_PASSCODE_REQUIRED: ErrorInfo(401, "The link needs a passcode", "api"),
+    ErrorCode.SHARE_PASSCODE_INVALID: ErrorInfo(401, "The passcode is not correct", "api"),
+    ErrorCode.SHARE_LOCKED: ErrorInfo(
+        429, "The link is locked after too many wrong passcodes", "api", retryable=True
+    ),
+    ErrorCode.INVALID_ROLE_SCOPE: ErrorInfo(
+        422, "The role cannot be granted on the whole tenant", "api"
     ),
 }
 

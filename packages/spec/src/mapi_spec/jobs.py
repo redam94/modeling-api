@@ -97,6 +97,7 @@ __all__ = [
     "INPUT_DATASET",
     "INPUT_EVALUATION",
     "INPUT_EVALUATION_MANIFEST",
+    "INPUT_EXTEND_BASE",
     "INPUT_HISTORY",
     "INPUT_METRICS_SUFFIX",
     "INPUT_PLOTS",
@@ -146,6 +147,9 @@ INPUT_UPLOAD: Final = "upload"
 INPUT_UPLOAD_PREFIX: Final = "upload."
 """M4 (``ingest`` with an :class:`~mapi_spec.ingest.IngestAssembly`): ``upload.<i>`` is the
 raw file of source ``i``."""
+INPUT_EXTEND_BASE: Final = "base"
+"""v0.16 (``ingest`` with ``extend_dim``): the data of the dataset version the new version
+extends (a plain ``data.zarr.zip`` written by an earlier ingest)."""
 INPUT_SCHEMA: Final = "schema"
 INPUT_SCENARIO: Final = "scenario"
 INPUT_BUNDLE_MANIFEST: Final = "bundle.manifest"
@@ -338,6 +342,14 @@ class IngestJob(StrictModel):
         description="v0.15: an image collection (inputs manifest, part.<i>, base.*)",
         exclude_if=lambda v: v is None,
     )
+    extend_dim: str | None = Field(
+        None,
+        max_length=128,
+        description="v0.16: the new version is the dataset of input 'base' plus the upload's "
+        "labels along this dim (an upload label replaces the base's); it keeps the base's "
+        "schema, and is validated with it",
+        exclude_if=lambda v: v is None,
+    )
 
     @model_validator(mode="after")
     def _one_of(self) -> IngestJob:
@@ -346,6 +358,8 @@ class IngestJob(StrictModel):
         )
         if given != 1:
             raise ValueError("give exactly one of 'mapping', 'preset', 'assembly' or 'collection'")
+        if self.extend_dim is not None and self.mapping is None:
+            raise ValueError("'extend_dim' extends a base dataset with one mapped upload")
         if self.assembly is not None and len(self.assembly.sources) > self.max_sources:
             raise ValueError(f"the assembly has more than max_sources ({self.max_sources})")
         return self
