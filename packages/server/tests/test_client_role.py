@@ -28,7 +28,7 @@ from mapi_server_testkit.identity import (
     token_caller,
 )
 from mapi_spec.api import ALL_ENDPOINTS, CLIENT_OPERATIONS, RouteScope
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
@@ -51,7 +51,7 @@ def settings(settings: Settings) -> Settings:
 
 @pytest.fixture
 async def kit(ctx: ServerContext, client: httpx.AsyncClient) -> dict[str, Any]:
-    return await dashboard_kit(ctx, client)
+    return {**await dashboard_kit(ctx, client), "ctx": ctx}
 
 
 async def test_a_client_sees_only_granted_published_dashboards(kit: dict[str, Any]) -> None:
@@ -98,6 +98,15 @@ async def test_a_client_reaches_no_other_route(kit: dict[str, Any]) -> None:
     assert r.status_code == 200, r.text
     roles = [p["role"] for t in r.json()["tenants"] for p in t["projects"]]
     assert roles == ["client"]
+    # the tenant as a client sees it: id, name and status, nothing the operator wrote
+    async with kit["ctx"].db.session() as s:
+        await s.execute(
+            update(m.Tenant).where(m.Tenant.id == "default").values(status_reason="billing note")
+        )
+    (tenant,) = [t["tenant"] for t in (await cleo.get("/v1/me")).json()["tenants"]]
+    assert set(tenant) == {"id", "name", "status"}, tenant
+    (full,) = [t["tenant"] for t in (await kit["vic"].get("/v1/me")).json()["tenants"]]
+    assert full["trust_tier"] and full["status_reason"] == "billing note"
 
 
 async def test_every_route_outside_the_allow_list_is_404_for_a_client(

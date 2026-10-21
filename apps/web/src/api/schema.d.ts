@@ -6181,6 +6181,25 @@ export interface components {
             title: string;
         };
         /**
+         * ClientTenant
+         * @description The tenant as a caller whose every grant there is the ``client`` role sees it (v0.16):
+         *     its id, name and status only. The trust tier, residency and the operator's status
+         *     reason are the tenant's own business.
+         * @example {
+         *       "id": "acme",
+         *       "name": "Acme Retail",
+         *       "status": "active"
+         *     }
+         */
+        ClientTenant: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** @default active */
+            status?: components["schemas"]["TenantStatus"];
+        };
+        /**
          * CollectionInfo
          * @description ``collection.json``: what a collection version holds.
          */
@@ -13262,7 +13281,8 @@ export interface components {
         /**
          * MeTenant
          * @description A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the
-         *     caller only has project memberships).
+         *     caller only has project memberships). ``tenant`` is a :class:`ClientTenant` when every
+         *     grant of the caller in the tenant is the ``client`` role.
          * @example {
          *       "projects": [
          *         {
@@ -13286,7 +13306,8 @@ export interface components {
             /** Projects */
             projects?: components["schemas"]["MeProject"][];
             role?: components["schemas"]["ProjectRole"] | null;
-            tenant: components["schemas"]["Tenant"];
+            /** Tenant */
+            tenant: components["schemas"]["Tenant"] | components["schemas"]["ClientTenant"];
         };
         /**
          * MediaKeySummary

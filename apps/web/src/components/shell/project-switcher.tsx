@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/overlays";
 import { Badge, Field, Input, Textarea } from "@/components/ui/primitives";
-import { useWorkspace, type ProjectChoice } from "@/features/auth/workspace";
+import { trustTierOf, useWorkspace, type ProjectChoice } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
 import { useScope } from "@/stores/scope";
 import { toast } from "@/stores/toast";
@@ -102,9 +102,11 @@ export function ProjectSwitcher({ className }: { className?: string }) {
                 <DropdownMenuLabel className="flex items-center gap-2">
                   <Building2 className="size-3.5" />
                   <span className="truncate font-medium text-foreground">{t.tenant.name}</span>
-                  <Badge variant="outline" className="ml-auto h-5 text-2xs">
-                    {TIER_LABEL[t.tenant.trust_tier] ?? t.tenant.trust_tier}
-                  </Badge>
+                  {trustTierOf(t.tenant) ? (
+                    <Badge variant="outline" className="ml-auto h-5 text-2xs">
+                      {TIER_LABEL[trustTierOf(t.tenant)!] ?? trustTierOf(t.tenant)}
+                    </Badge>
+                  ) : null}
                   {t.tenant.status && t.tenant.status !== "active" ? (
                     <Badge variant="warning" className="h-5 text-2xs">
                       {t.tenant.status}

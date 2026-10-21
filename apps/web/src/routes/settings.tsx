@@ -177,7 +177,7 @@ export function SettingsPage() {
             />
           </CardContent>
         </Card>
-        {ws.mode === "session" && ws.current?.tenantRole === "admin" ? <DataSettings tenant={ws.current.tenant} /> : null}
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant ? <DataSettings tenant={ws.current.tenant} /> : null}
       </div>
     </>
   );

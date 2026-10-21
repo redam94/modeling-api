@@ -3561,6 +3561,39 @@
         "title": "ClientDashboard",
         "type": "object"
       },
+      "ClientTenant": {
+        "description": "The tenant as a caller whose every grant there is the ``client`` role sees it (v0.16):\nits id, name and status only. The trust tier, residency and the operator's status\nreason are the tenant's own business.",
+        "examples": [
+          {
+            "id": "acme",
+            "name": "Acme Retail",
+            "status": "active"
+          }
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus",
+            "default": "active"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ClientTenant",
+        "type": "object"
+      },
       "CollectionInfo": {
         "additionalProperties": false,
         "description": "``collection.json``: what a collection version holds.",
@@ -16758,7 +16791,7 @@
         "type": "object"
       },
       "MeTenant": {
-        "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships).",
+        "description": "A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the\ncaller only has project memberships). ``tenant`` is a :class:`ClientTenant` when every\ngrant of the caller in the tenant is the ``client`` role.",
         "examples": [
           {
             "projects": [
@@ -16798,7 +16831,15 @@
             ]
           },
           "tenant": {
-            "$ref": "#/components/schemas/Tenant"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tenant"
+              },
+              {
+                "$ref": "#/components/schemas/ClientTenant"
+              }
+            ],
+            "title": "Tenant"
           }
         },
         "required": [

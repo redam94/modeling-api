@@ -6,7 +6,7 @@ import { loginHref, safeReturnTo } from "@/api/session";
 import type { Me } from "@/api/types";
 import { initials } from "@/components/shell/user-menu";
 import { sectionRoot, slugify } from "@/components/shell/project-switcher";
-import { buildWorkspace, localMe, projectChoices, resolveActive } from "@/features/auth/workspace";
+import { buildWorkspace, localMe, projectChoices, resolveActive, trustTierOf } from "@/features/auth/workspace";
 import { dayBound, parseLimits, tenantChanges } from "@/routes/admin";
 import { parseInvitee } from "@/routes/members";
 import { validateTokenForm } from "@/routes/tokens";
@@ -346,5 +346,13 @@ describe("usage periods", () => {
     expect(series).toHaveLength(28);
     expect(series[2]).toMatchObject({ key: "2026-02-03", label: "3", value: 500 });
     expect(series[0]?.value).toBe(0);
+  });
+});
+
+describe("trustTierOf", () => {
+  it("reads the tier of a full tenant and nothing from a client-only one", () => {
+    expect(trustTierOf({ id: "acme", name: "Acme", trust_tier: "public", created_at: "1970-01-01T00:00:00Z" })).toBe("public");
+    expect(trustTierOf({ id: "acme", name: "Acme", status: "active" })).toBeUndefined();
+    expect(trustTierOf(undefined)).toBeUndefined();
   });
 });

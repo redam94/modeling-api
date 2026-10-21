@@ -126,6 +126,8 @@ export type ResourceKind = S["ResourceKind"];
 export type RunCost = S["RunCost"];
 export type SessionInfo = S["SessionInfo"];
 export type Tenant = S["Tenant"];
+/** The tenant as a client-only caller sees it in `/v1/me` (id, name and status). */
+export type ClientTenant = S["ClientTenant"];
 export type TenantAdminUpdate = S["TenantAdminUpdate"];
 export type TenantCost = S["TenantCost"];
 export type TenantCreate = S["TenantCreate"];

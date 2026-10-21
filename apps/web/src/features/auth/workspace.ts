@@ -5,11 +5,12 @@
 import { createContext, useContext } from "react";
 
 import { maxRole, type Grants } from "@/api/access";
-import type { Me, MeProject, ProjectRole, Tenant } from "@/api/types";
+import type { ClientTenant, Me, MeProject, ProjectRole, Tenant } from "@/api/types";
 import { scopeKey, type ProjectRef } from "@/stores/scope";
 
 export interface ProjectChoice {
-  tenant: Tenant;
+  /** A {@link ClientTenant} (no trust tier) when every grant of the user there is `client`. */
+  tenant: Tenant | ClientTenant;
   /** The tenant-wide role (`null` when the user only has project memberships). */
   tenantRole: ProjectRole | null;
   project: MeProject;
@@ -59,6 +60,11 @@ export function projectChoices(me: Me): ProjectChoice[] {
     }
   }
   return out;
+}
+
+/** The tenant's trust tier (`undefined` for a client-only tenant, which never sees it). */
+export function trustTierOf(tenant: Tenant | ClientTenant | undefined): Tenant["trust_tier"] | undefined {
+  return tenant && "trust_tier" in tenant ? tenant.trust_tier : undefined;
 }
 
 /** The preferred project if the user can still act in it, else the first one. */

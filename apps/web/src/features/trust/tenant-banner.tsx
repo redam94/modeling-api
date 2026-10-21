@@ -44,7 +44,7 @@ export function TenantStatusBanner() {
             <span className="font-medium">{t.name} is suspended.</span>{" "}
             <span className="text-muted-foreground">
               All items are read-only. You cannot change or run anything.
-              {t.status_reason ? ` Reason: ${t.status_reason}` : ""}
+              {"status_reason" in t && t.status_reason ? ` Reason: ${t.status_reason}` : ""}
             </span>
           </>
         )}

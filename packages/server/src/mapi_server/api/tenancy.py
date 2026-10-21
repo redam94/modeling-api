@@ -16,6 +16,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
 from mapi_spec.api import (
+    ClientTenant,
     Me,
     MembershipCreate,
     MembershipUpdate,
@@ -52,7 +53,7 @@ from mapi_server.api.common import (
     encode_cursor,
 )
 from mapi_server.auth.identity import local_principal, membership_dto
-from mapi_server.auth.request import Credential, RequestAuth
+from mapi_server.auth.request import Credential, RequestAuth, client_only
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.audit import audit_dto, audit_query, write_audit
@@ -153,7 +154,11 @@ async def get_me(ctx: Ctx, auth: Auth, system: SystemSession) -> Me:
             projects.append(MeProject(tenant_id=tenant_id, project_id=p.id, name=p.name, role=role))
         tenants.append(
             MeTenant(
-                tenant=tenant_dto(tenant),
+                tenant=(
+                    ClientTenant(id=tenant.id, name=tenant.name, status=TenantStatus(tenant.status))
+                    if client_only(auth.memberships, tenant_id) and not auth.operator
+                    else tenant_dto(tenant)
+                ),
                 role=_role_at(auth.memberships, tenant_id, None),
                 projects=projects,
             )
