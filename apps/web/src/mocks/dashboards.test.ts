@@ -63,6 +63,10 @@ describe("analysts", () => {
   it("create, edit (If-Match), validate and publish a dashboard (a runner publishes; it runs as them)", async () => {
     const draft = (await call<Dashboard>("ana", "GET", `/v1/dashboards/${DRAFT_DASHBOARD_ID}`)).data;
     expect(draft.status).toBe("draft");
+    // v0.17: new dashboards are layout 2; the mock's `dashboard_layout1_create` lets layout 1 in
+    const retired = await call<{ code: string }>("ana", "POST", "/v1/dashboards", { name: "copy-of-promo", spec: draft.draft_spec });
+    expect(retired).toMatchObject({ status: 422, data: { code: "DASHBOARD_LAYOUT_RETIRED" } });
+    localStorage.setItem("mapi.mock.layout1Create", "1");
     const created = await call<Dashboard>("ana", "POST", "/v1/dashboards", { name: "copy-of-promo", spec: draft.draft_spec });
     expect(created.status).toBe(201);
     const id = created.data.id;
@@ -92,6 +96,7 @@ describe("analysts", () => {
     const rl = await call<ReadoutList>("rui", "GET", `/v1/dashboards/${id}/readouts`);
     expect(rl.data.items?.[0]?.status).toBe("ready");
     expect((await call<{ items: unknown[] }>("rui", "GET", `/v1/dashboards/${id}/revisions`)).data.items).toHaveLength(1);
+    localStorage.removeItem("mapi.mock.layout1Create");
   });
 
   it("grant to project members only, and manage share links", async () => {
@@ -154,6 +159,16 @@ describe("analysts", () => {
     expect(out.data.code).toBe("SCENARIO_OUT_OF_RANGE");
     const none = await call<{ code: string }>("vic", "GET", `/v1/dashboards/${FORECAST_DASHBOARD_ID}/grid`);
     expect(none).toMatchObject({ status: 409, data: { code: "DASHBOARD_INPUT_DISABLED" } });
+  });
+
+  it("take uploads on the forecast dashboard (its daily run cap is not 0)", async () => {
+    const d = (await call<Dashboard>("ana", "GET", `/v1/dashboards/${FORECAST_DASHBOARD_ID}`)).data;
+    expect(layout1Spec(d.published_revision!.spec).limits?.exact_runs_per_day).toBe(20);
+    const t = (await call<{ kpi_column: string; input_table: { horizon_dim: string } }>("cleo", "GET", `/v1/dashboards/${FORECAST_DASHBOARD_ID}/actuals/template`)).data;
+    const body = { inputs: { coords: { [t.input_table.horizon_dim]: { dims: [t.input_table.horizon_dim], data: ["2026-10-01"] } }, data_vars: { [t.kpi_column]: { dims: [t.input_table.horizon_dim], data: [181_000] } } } };
+    const sent = await call<ReadoutHeader>("cleo", "POST", `/v1/dashboards/${FORECAST_DASHBOARD_ID}/actuals`, body, { "Idempotency-Key": "fc-1" });
+    expect(sent.status).toBe(202);
+    expect(sent.data.visibility).toBe("published");
   });
 });
 

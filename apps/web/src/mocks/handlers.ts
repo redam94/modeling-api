@@ -61,7 +61,7 @@ interface MockState {
   media: ReturnType<typeof createMediaState>;
   /** v0.15: the image collection dataset and its uploads. */
   collections: ReturnType<typeof createCollectionState>;
-  /** v0.16: client dashboards, readouts, share links and share sessions, refit requests. */
+  /** v0.16: client dashboards, readouts, share links and share sessions, refit requests; v0.17: layout 2. */
   dashboards: ReturnType<typeof createDashboardsState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
@@ -213,7 +213,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       const body = (await request.clone().json()) as { model_version_id?: string | null };
       return (body.model_version_id && notValidatedProblem(state.governance, body.model_version_id)) || undefined;
     }),
-    // v0.16: client dashboards and the public share-link routes (mocks/dashboards.ts).
+    // v0.16: client dashboards and the public share-link routes; v0.17: layout 2 dashboards of
+    // any model type, presets, sources, upgrade, tried cases, scored files, pictures (mocks/dashboards.ts).
     ...createDashboardHandlers(state.dashboards),
     // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
