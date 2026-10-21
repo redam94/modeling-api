@@ -68,7 +68,9 @@ export function Scorecard({ dashboard, rows }: { dashboard: ClientDashboard; row
       data-readout="scorecard"
     >
       <div role="table" aria-label="Channel scorecard" className="grid min-w-0 gap-3 min-[1100px]:gap-0">
-        <div role="row" className={cn("hidden border-b pb-2 text-xs text-hint", GRID)}>
+        {/* Narrow: visually hidden but kept in the accessibility tree (the cells' own labels are
+            aria-hidden), so a screen reader still hears each value with its column header. */}
+        <div role="row" data-readout="scorecard-head" className={cn("sr-only border-b pb-2 text-xs text-hint min-[1100px]:not-sr-only", GRID)}>
           {SCORECARD_COLUMNS.map((c) => (
             <span role="columnheader" key={c.key} className={c.key === "share" ? "text-right" : undefined}>
               {c.label}
