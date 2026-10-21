@@ -4,8 +4,26 @@ import toolsGen from "@/api/dashboard-tools.gen.json";
 import { qk } from "@/api/queries";
 
 import { dk, memberCacheKey, shareCacheKey } from "./keys";
-import { callTool, compareReadouts, DASHBOARD_TOOL_NAMES, explainMetric, getChannel, getLatestReadout, GLOSSARY, listReadouts, ToolArgsError, ToolNotFoundError } from "./tools";
-import { GLOSSARY_KEYS, type ClientDashboard, type DashboardClient, type Readout, type ReadoutHeader, type ReadoutQuery } from "./types";
+import {
+  callTool,
+  compareReadouts,
+  DASHBOARD_TOOL_NAMES,
+  explainMetric,
+  getAccuracy,
+  getBatchSummary,
+  getChannel,
+  getLatestReadout,
+  getPanel,
+  getPrediction,
+  GLOSSARY,
+  listInputs,
+  listPanels,
+  listReadouts,
+  ToolArgsError,
+  ToolNotFoundError,
+  ToolRefusedError,
+} from "./tools";
+import { GLOSSARY_KEYS_V2, type ClientDashboard, type DashboardClient, type KpiBlock, type Readout, type ReadoutHeader, type ReadoutQuery } from "./types";
 
 interface GenTool {
   name: string;
@@ -30,15 +48,26 @@ describe("drift against mapi_spec.dashboard_tools (dashboard-tools.gen.json)", (
       get_channel: ["last_n", "name"],
       explain_metric: ["metric"],
       evaluate_whatif: ["multipliers"],
+      list_panels: [],
+      get_panel: ["panel_id", "seq"],
+      get_accuracy: ["seq"],
+      list_inputs: [],
+      get_prediction: ["seq"],
+      get_batch_summary: ["seq"],
     };
     for (const t of GEN) expect(Object.keys(t.parameters.properties).sort(), t.name).toEqual(known[t.name]);
   });
 
   it("has the glossary's keys and texts", () => {
     const explain = GEN.find((t) => t.name === "explain_metric")!;
-    expect(explain.parameters.properties.metric?.enum).toEqual([...GLOSSARY_KEYS]);
-    expect(Object.keys(GLOSSARY).sort()).toEqual([...GLOSSARY_KEYS].sort());
+    expect(explain.parameters.properties.metric?.enum).toEqual([...GLOSSARY_KEYS_V2]);
+    expect(Object.keys(GLOSSARY).sort()).toEqual([...GLOSSARY_KEYS_V2].sort());
     expect(explain.result.examples?.[0]?.text).toBe(GLOSSARY.return_on_media);
+  });
+
+  it("marks the same arguments required", () => {
+    const required: Record<string, string[]> = { get_readout: ["seq"], compare_readouts: ["a_seq", "b_seq"], get_channel: ["name"], explain_metric: ["metric"], get_panel: ["panel_id"], get_prediction: ["seq"], get_batch_summary: ["seq"] };
+    for (const t of GEN) expect([...(t.parameters.required ?? [])].sort(), t.name).toEqual(required[t.name] ?? []);
   });
 });
 
@@ -98,8 +127,9 @@ function fakeClient(rows: Readout[], dash: ClientDashboard = DASH): DashboardCli
     dashboard: () => Promise.resolve(dash),
     readoutPage: (q: ReadoutQuery = {}) => {
       c.pages.push(q);
-      const items = byNewest.filter((r) => q.beforeSeq === undefined || r.seq < q.beforeSeq).slice(0, q.limit ?? 20);
-      const more = byNewest.filter((r) => q.beforeSeq === undefined || r.seq < q.beforeSeq).length > items.length;
+      const match = byNewest.filter((r) => (q.beforeSeq === undefined || r.seq < q.beforeSeq) && (q.kind === undefined || r.kind === q.kind));
+      const items = match.slice(0, q.limit ?? 20);
+      const more = match.length > items.length;
       return Promise.resolve({ items: items.map(header), next_before_seq: more ? (items.at(-1)?.seq ?? null) : null });
     },
     readouts: async (q?: ReadoutQuery) => (await c.readoutPage(q)).items ?? [],
@@ -165,5 +195,113 @@ describe("tools over a client", () => {
     expect(await callTool(c, "get_channel", { name: "tv" })).toMatchObject({ name: "tv", label: "TV" });
     expect(await callTool(c, "explain_metric", { metric: "zones" })).toEqual({ metric: "zones", text: GLOSSARY.zones });
     expect(await callTool(c, "evaluate_whatif", { multipliers: { tv: 1.2 } })).toMatchObject({ delta_kpi: 1 });
+    expect(await callTool(c, "list_panels")).toEqual({ panels: [] });
+    expect(await callTool(c, "get_accuracy")).toEqual({ seq: null, detail: null, history: [] });
+  });
+});
+
+// ------------------------------------------------------------------------------ layout 2
+
+const DASH2: ClientDashboard = {
+  id: "dsh_2",
+  title: "Churn",
+  kpi: { variable: "churn", label: "Churn", unit: "ratio", decimals: 2 },
+  subject: { variable: "churn", label: "Churn", unit: "probability", decimals: 2 },
+  layout_version: 2,
+  preset: "classifier",
+  channels: [],
+  panels_meta: [
+    { id: "share", kind: "kpi", title: "Share above threshold", caption: null, intent: null },
+    { id: "cal", kind: "chart", title: "Calibration", caption: null, intent: "calibration" },
+  ],
+  inputs: { scenario_rows: true, batch: true, actuals: true, accuracy_kind: "classification" },
+  scenario_form: { inputs: [] } as unknown as ClientDashboard["scenario_form"],
+  latest_readout: null,
+};
+
+function kpi(panel_id: string, title: string, value: number | null): KpiBlock {
+  return { kind: "kpi", panel_id, title, tile: { key: "panel", label: title, value, unit: "percent" } };
+}
+
+function readout2(seq: number, patch: Partial<Readout> = {}, share = 10 + seq): Readout {
+  return {
+    seq,
+    kind: "refresh",
+    trigger: "workflow",
+    visibility: "published",
+    status: "ready",
+    title: `R${seq}`,
+    model_version_id: "mv_a",
+    model_ref: "model://x@v1",
+    created_at: "2026-10-20T09:00:00Z",
+    snapshot: { schema_version: 2, lead: "x", tiles: [{ key: "panel", label: "Share", value: share, unit: "percent" }], channels: [], panels: [kpi("share", "Share above threshold", share)] },
+    ...patch,
+  };
+}
+
+describe("layout 2 tools", () => {
+  it("compares KPI panels when there is no expected tile", async () => {
+    const c = fakeClient([readout2(3, {}, 12), readout2(4, {}, 15.5)], DASH2);
+    const cmp = await compareReadouts(c, { a_seq: 3, b_seq: 4 });
+    expect(cmp.tiles).toEqual([]);
+    expect(cmp.channels).toEqual([]);
+    expect(cmp.panel_deltas).toEqual([{ panel_id: "share", label: "Share above threshold", a: 12, b: 15.5, delta: 3.5 }]);
+    expect(cmp.lead).toBe("Share above threshold went up by 3.50 from readout 3 to readout 4.");
+    const same = await compareReadouts(fakeClient([readout2(3, {}, 12), readout2(4, {}, 12)], DASH2), { a_seq: 3, b_seq: 4 });
+    expect(same.lead).toBe("Share above threshold is the same in readouts 3 and 4.");
+    const down = await compareReadouts(fakeClient([readout2(3, {}, 20), readout2(4, {}, 18)], DASH2), { a_seq: 3, b_seq: 4 });
+    expect(down.lead).toBe("Share above threshold went down by 2 from readout 3 to readout 4.");
+  });
+
+  it("refuses the media tools without the media planner", async () => {
+    const c = fakeClient([readout2(1)], DASH2);
+    await expect(getChannel(c, { name: "tv" })).rejects.toMatchObject({ code: "DASHBOARD_INPUT_DISABLED" });
+    await expect(callTool(c, "evaluate_whatif", { multipliers: {} })).rejects.toBeInstanceOf(ToolRefusedError);
+  });
+
+  it("lists panels and inputs from the dashboard view", async () => {
+    const c = fakeClient([], DASH2);
+    expect((await listPanels(c)).panels.map((p) => p.id)).toEqual(["share", "cal"]);
+    const inp = await listInputs(c);
+    expect(inp.inputs).toMatchObject({ scenario_rows: true, batch: true });
+    expect(inp.scenario_form).toEqual({ inputs: [] });
+    expect(inp.batch_form).toBeNull();
+  });
+
+  it("reads one panel of a readout or of the latest one", async () => {
+    const latest = readout2(5);
+    const c = fakeClient([readout2(4), latest, readout2(6, { status: "running", snapshot: null })], { ...DASH2, latest_readout: latest });
+    expect(await getPanel(c, { panel_id: "share" })).toMatchObject({ seq: 5, panel: { kind: "kpi", tile: { value: 15 } } });
+    expect(await callTool(c, "get_panel", { panel_id: "share", seq: 4 })).toMatchObject({ seq: 4 });
+    await expect(getPanel(c, { panel_id: "cal", seq: 4 })).rejects.toBeInstanceOf(ToolNotFoundError);
+    await expect(getPanel(c, { panel_id: "share", seq: 6 })).rejects.toMatchObject({ code: "NOT_READY" });
+    await expect(getPanel(c, { panel_id: "Share" })).rejects.toBeInstanceOf(ToolArgsError);
+    await expect(getPanel(fakeClient([], DASH2), { panel_id: "share" })).rejects.toBeInstanceOf(ToolNotFoundError);
+  });
+
+  it("reads accuracy from the latest published actuals readout, and layout 1 accuracy as error metrics", async () => {
+    const detail = { kind: "classification", n: 40, accuracy: 0.8 } as const;
+    const history = [{ seq: 7, created_at: "2026-10-20T09:00:00Z", n: 40, values: { accuracy: 0.8 } }];
+    const actuals = (seq: number, visibility: Readout["visibility"]) => readout2(seq, { kind: "actuals", visibility, snapshot: { ...readout2(seq).snapshot!, accuracy_detail: detail, accuracy_history: history } });
+    const c = fakeClient([actuals(7, "published"), actuals(8, "private"), readout2(9)], DASH2);
+    expect(await getAccuracy(c)).toEqual({ seq: 7, detail, history });
+    expect(c.pages.at(-1)).toMatchObject({ kind: "actuals" });
+    const v1 = readout(3, { kind: "actuals", snapshot: { lead: "x", tiles: [], channels: [], accuracy: { n: 4, mape: 5 } } });
+    expect(await getAccuracy(fakeClient([v1]), { seq: 3 })).toEqual({ seq: 3, detail: { kind: "error", n: 4, mape: 5 }, history: [] });
+    await expect(callTool(c, "get_accuracy", { seq: 0 })).rejects.toBeInstanceOf(ToolArgsError);
+  });
+
+  it("reads the caller's prediction and batch summary (never the CSV)", async () => {
+    const pred = readout2(11, { kind: "prediction", visibility: "private", snapshot: { ...readout2(11).snapshot!, prediction: { rows: [] } } });
+    const batch = readout2(12, { kind: "batch", visibility: "private", snapshot: { ...readout2(12).snapshot!, batch: { n_rows: 2000 } as never } });
+    const c = fakeClient([pred, batch], DASH2);
+    const p = await getPrediction(c, { seq: 11 });
+    expect(p.prediction).toEqual({ rows: [] });
+    expect(p.readout).not.toHaveProperty("snapshot");
+    const b = await getBatchSummary(c, { seq: 12 });
+    expect(b.summary).toEqual({ n_rows: 2000 });
+    expect(JSON.stringify(b)).not.toContain("download");
+    await expect(getPrediction(c, { seq: 12 })).rejects.toBeInstanceOf(ToolNotFoundError);
+    await expect(callTool(c, "get_batch_summary", { seq: 11 })).rejects.toBeInstanceOf(ToolNotFoundError);
   });
 });
