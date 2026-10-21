@@ -179,12 +179,12 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
   const ok = checksPass(checks);
 
   return (
-    <div className="grid min-w-0 gap-6" data-tab="update">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6" data-tab="update">
       <InlineMessage tone="info" role="none">
         {MODE_NOTE[template.mode]}
       </InlineMessage>
       {paused ? <InlineMessage tone="warning">Sending numbers is paused on this dashboard. Your analyst is checking it.</InlineMessage> : null}
-      <div className="grid min-w-0 gap-6 lg:grid-cols-12">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12">
         <Section
           className="lg:col-span-8"
           title="Your numbers"

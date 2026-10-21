@@ -33,9 +33,22 @@ function track(page: Page): { url: string; headers: Record<string, string> }[] {
   return seen;
 }
 
+/**
+ * Console errors the share page may cause on purpose: the browser logs every 401 the passcode
+ * exchange answers (a missing or wrong passcode) and the 410 of an ended link as "Failed to
+ * load resource". Anything else in the console fails the test.
+ */
+const EXPECTED_CONSOLE = /^Failed to load resource: the server responded with a status of (401|410) /;
+const consoleErrors = new WeakMap<Page, string[]>();
+
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (err) => {
     throw err;
+  });
+  const errors: string[] = [];
+  consoleErrors.set(page, errors);
+  page.on("console", (m) => {
+    if (m.type() === "error" && !EXPECTED_CONSOLE.test(m.text())) errors.push(m.text());
   });
   await page.addInitScript(() => {
     const w = window as unknown as { __csp: string[] };
@@ -48,6 +61,7 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => {
   const violations = await page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? []);
   expect(violations).toEqual([]);
+  expect(consoleErrors.get(page) ?? []).toEqual([]);
 });
 
 test("a read-only link (the default) shows the readout and no inputs", async ({ page }) => {
@@ -138,5 +152,18 @@ test.describe("at 390 px in the dark theme", () => {
     const path = info.outputPath("share-readout-dark-390.png");
     await page.screenshot({ path, fullPage: true });
     await info.attach("share-readout-dark-390", { path, contentType: "image/png" });
+  });
+
+  test("a link with inputs fits too: the scenarios and the actuals editor (a wide table)", async ({ page }) => {
+    await page.goto(`/s#${TOKENS.inputs}`);
+    await page.getByLabel("Passcode").fill(PASSCODE);
+    await page.getByRole("button", { name: "Open the dashboard" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Weekly media readout" })).toBeVisible();
+    for (const tab of ["Plan scenarios", "Update numbers"]) {
+      await page.getByRole("tab", { name: tab }).click();
+      await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+      const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+      expect(scroll, tab).toBeLessThanOrEqual(client);
+    }
   });
 });

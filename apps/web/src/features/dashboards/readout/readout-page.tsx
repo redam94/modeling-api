@@ -67,7 +67,9 @@ function Body({ client, dashboard, preview, tab, onTab }: { client: DashboardCli
   const period = periodOf(dashboard);
   const open = tabs.includes(tab) ? tab : "this_period";
   return (
-    <div className="grid min-w-0 gap-6">
+    // minmax(0, 1fr): an implicit `auto` track grows to its widest child's max-content (the
+    // header's nowrap button, a tab's wide table), so the page would scroll sideways at 390 px
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid min-w-0 gap-2">
           {dashboard.client_name ? <Eyebrow>{dashboard.client_name}</Eyebrow> : null}
