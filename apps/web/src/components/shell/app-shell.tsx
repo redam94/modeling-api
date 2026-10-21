@@ -98,7 +98,7 @@ function HealthDot() {
           status === "pending" && "bg-muted-foreground/40",
         )}
       />
-      <span className="sr-only sm:not-sr-only">{label}</span>
+      <span className="sr-only whitespace-nowrap sm:not-sr-only">{label}</span>
     </Link>
   );
 }
