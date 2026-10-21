@@ -7,6 +7,9 @@
   never clipped), merged with the defaults and the ``fixed`` values and scored as the
   publisher: a ``predict`` on the inline rows, or a ``forecast`` over the horizon a forecast
   row asks for. The readout is ``private`` (``kind=prediction``, ``trigger=scenario_rows``).
+  Its owner (or an editor) may **keep** it (:func:`keep_prediction`, plan §3.2.5 / Q3): it
+  no longer expires and waits for review (``pending_review``); only an editor's
+  ``…/readouts/{seq}:publish`` takes it into the history.
 * **Batch scoring** (:func:`batch_template`, :func:`submit_batch`): a file of new cases (one
   id column plus the driver columns, parsed in the browser into a one-dim XrJSON table) is
   checked (columns, ids, the row cap, with ``enforce_ranges`` every cell like a scenario
@@ -34,6 +37,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Final
 
+from mapi_spec.audit import AuditAction
 from mapi_spec.capabilities import OutputSelector, Representation
 from mapi_spec.dashboard_inputs import (
     HORIZON_KEY,
@@ -74,9 +78,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
-from mapi_server.errors import NotFoundError, ProblemWithHeaders
+from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.services.dashboards.access import DashboardContext, any_revision_spec
 from mapi_server.services.dashboards.inputs import (
+    _audit,
     _cache_lookup,
     _copy_for,
     _count,
@@ -89,7 +94,12 @@ from mapi_server.services.dashboards.inputs import (
     baseline_request,
     readout_output,
 )
-from mapi_server.services.dashboards.readouts import Actor, _lock_dashboard, new_readout
+from mapi_server.services.dashboards.readouts import (
+    Actor,
+    _lock_dashboard,
+    load_visible,
+    new_readout,
+)
 from mapi_server.services.dashboards.runas import owner_context, paused_error
 from mapi_server.services.endpoints import (
     endpoint_schema_issues,
@@ -108,6 +118,7 @@ __all__ = [
     "batch_columns",
     "batch_template",
     "binding_dims",
+    "keep_prediction",
     "row_context",
     "score_output",
     "submit_baseline_v2",
@@ -451,6 +462,55 @@ async def submit_scenario_rows(
         input_ref={"rows": echo, "row_dim": row_dim, "row_labels": row_labels},
         fingerprint=_fingerprint({"rows": resolved}),
     )  # fmt: skip
+
+
+async def keep_prediction(
+    ctx: ServerContext,
+    session: AsyncSession,
+    dctx: DashboardContext,
+    seq: int,
+    *,
+    editor: bool = False,
+) -> m.DashboardReadout:
+    """``POST …/readouts/{seq}:keep``: keep a tried case (plan §3.2.5 / Q3). The caller's own
+    private ``prediction`` readout (``editor``: anybody's) stops expiring and waits for
+    review (``pending_review``): its owner keeps seeing it, an editor may publish it into the
+    history (``…:publish``) or hide it. ``404`` for a readout the caller may not keep;
+    ``CONFLICT`` for any other kind, a failed one or a hidden one. Idempotent. Audited."""
+    seen = await load_visible(session, dctx, seq)
+    own = seen.actor_kind == dctx.principal_kind and seen.actor_id == dctx.principal_id
+    if not (own or editor):
+        raise NotFoundError("readout", str(seq))
+    await _lock_dashboard(session, dctx.dashboard_id)
+    row = (
+        await session.execute(
+            select(m.DashboardReadout)
+            .where(
+                m.DashboardReadout.dashboard_id == dctx.dashboard_id,
+                m.DashboardReadout.seq == seq,
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise NotFoundError("readout", str(seq))
+    if row.kind != "prediction":
+        raise Conflict("only a tried case (a prediction readout) can be kept")
+    if row.visibility in ("pending_review", "published"):
+        return row  # kept already (and maybe published by an editor)
+    if row.visibility == "hidden":
+        raise Conflict("an editor hid this readout: it cannot be kept")
+    if row.status == "failed":
+        raise Conflict("a failed readout cannot be kept")
+    before = row.visibility
+    row.visibility = "pending_review"
+    row.expires_at = None
+    await session.flush()
+    await _audit(
+        ctx, session, dctx, AuditAction.DASHBOARD_READOUT_KEEP,
+        {"seq": seq, "from": before, "to": "pending_review"},
+    )  # fmt: skip
+    return row
 
 
 async def _spend(

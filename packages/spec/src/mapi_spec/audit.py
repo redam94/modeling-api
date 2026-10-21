@@ -196,6 +196,10 @@ class AuditAction(StrEnum):
     "to_revision": seq | None, "draft": bool, "preset": key, "notes": [...]}``; when the
     upgrade needs review the outcome is ``error`` with ``{"issues": [...]}`` (codes and
     pointers only)."""
+    DASHBOARD_READOUT_KEEP = "dashboard.readout_keep"
+    """A tried case (a private prediction readout) was kept by its owner or an editor: it no
+    longer expires and waits for review (details ``{"seq": n, "from": visibility, "to":
+    "pending_review"}``; a share link's keep adds ``"share_id"``)."""
     DASHBOARD_BATCH_DOWNLOAD = "dashboard.batch_download"
     """A predictions CSV of a batch readout was downloaded (details ``{"seq": n, "rows": n,
     "bytes": n}``)."""

@@ -15,6 +15,8 @@ readout when it is ready in time, else ``202`` with its header (poll ``…/reado
 v0.17 (layout 2): scenario rows (``…/predictions``), batch scoring (``…/batch`` and its
 template) and the predictions download of a batch readout (``…/predictions.csv``: its own
 caller or an editor). ``…/predictions`` and ``…/batch`` take ``Prefer: wait=N`` too.
+``…/readouts/{seq}:keep`` keeps a tried case (its own caller or an editor): it stops
+expiring and waits for an editor's ``:publish``.
 """
 
 from __future__ import annotations
@@ -382,6 +384,25 @@ async def submit_dashboard_predictions(
     dctx = await _dctx(ctx, auth, dashboard_id)
     path = f"/v1/dashboards/{dashboard_id}/predictions"
     return await submit_predictions_as(ctx, dctx, path, body, idempotency_key, prefer)
+
+
+@router.post(
+    "/{dashboard_id}/readouts/{seq}:keep",
+    response_model=ReadoutHeader,
+    **_op("keep_dashboard_readout"),
+)
+async def keep_dashboard_readout(
+    ctx: Ctx, auth: Auth, dashboard_id: DashboardId, seq: Seq
+) -> ReadoutHeader:
+    """Keep a tried case (a private prediction readout of yours; an editor: anybody's): it
+    no longer expires and waits for review - only an editor's ``…:publish`` takes it into the
+    history. ``409`` for another kind of readout, a failed or a hidden one. Idempotent.
+    Audited."""
+    dctx = await _dctx(ctx, auth, dashboard_id)
+    editor = not caller_is_client(auth) and auth.allows(Action.UPDATE, ResourceKind.DASHBOARD)
+    async with ctx.db.tenant_session(dctx.tenant_id) as session:
+        row = await cases.keep_prediction(ctx, session, dctx, seq, editor=editor)
+        return await _header(session, row)
 
 
 @router.get(

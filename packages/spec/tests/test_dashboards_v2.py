@@ -672,7 +672,7 @@ def test_output_decl_meaning_is_optional_and_hash_neutral() -> None:
 def test_v017_table_conventions_and_access() -> None:
     assert api.ENDPOINTS[-len(V017_ENDPOINTS) :] == V017_ENDPOINTS
     ops = {e.operation_id for e in V017_ENDPOINTS}
-    assert len(ops) == len(V017_ENDPOINTS) == 13
+    assert len(ops) == len(V017_ENDPOINTS) == 14
     assert set(ROUTE_ACCESS) == {e.operation_id for e in api.ENDPOINTS}
     for e in V017_ENDPOINTS:
         acc = ROUTE_ACCESS[e.operation_id]
@@ -690,11 +690,12 @@ def test_v017_table_conventions_and_access() -> None:
         if e.method == "POST" and e.request in ("ScenarioRowsRequest", "BatchSubmit"):
             assert e.success == 202 and e.response == "Readout"
             assert api.IDEMPOTENCY_KEY_HEADER in e.headers
-    # clients reach the inputs, the downloads and the pictures; never the analyst routes
+    # clients reach the inputs (keeping a tried case too), the downloads and the pictures;
+    # never the analyst routes
     client_v017 = ops & CLIENT_OPERATIONS
     assert client_v017 == {
-        "submit_dashboard_predictions", "get_dashboard_batch_template", "submit_dashboard_batch",
-        "download_dashboard_predictions", "get_dashboard_asset",
+        "submit_dashboard_predictions", "keep_dashboard_readout", "get_dashboard_batch_template",
+        "submit_dashboard_batch", "download_dashboard_predictions", "get_dashboard_asset",
     }  # fmt: skip
     for op in ("list_dashboard_presets", "get_dashboard_sources", "upgrade_dashboard"):
         assert op not in CLIENT_OPERATIONS

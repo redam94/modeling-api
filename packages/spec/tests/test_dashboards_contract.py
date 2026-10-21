@@ -127,9 +127,9 @@ def test_client_operations_are_only_dashboards_me_and_session() -> None:
         "list_dashboards", "get_dashboard", "get_dashboard_grid", "evaluate_dashboard_whatif",
         "save_dashboard_scenario", "get_dashboard_actuals_template", "submit_dashboard_actuals",
         "list_dashboard_readouts", "get_dashboard_readout",
-        # v0.17 inputs, downloads and pictures
-        "submit_dashboard_predictions", "get_dashboard_batch_template", "submit_dashboard_batch",
-        "download_dashboard_predictions", "get_dashboard_asset",
+        # v0.17 inputs (and keeping a tried case), downloads and pictures
+        "submit_dashboard_predictions", "keep_dashboard_readout", "get_dashboard_batch_template",
+        "submit_dashboard_batch", "download_dashboard_predictions", "get_dashboard_asset",
     }  # fmt: skip
     # membership-only routes and listings stay closed to clients (D4)
     for op in ("list_projects", "list_tenants", "get_catalog", "list_guided_templates",

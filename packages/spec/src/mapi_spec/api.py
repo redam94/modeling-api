@@ -4788,6 +4788,12 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         errors=(*_BODY, *_NF, *_V017_RUN_ERRORS), headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
     ),
     EndpointDecl(
+        "POST", _DSH + "/readouts/{seq}:keep", "keep_dashboard_readout",
+        "Keep a tried case (a private prediction readout): it no longer expires and waits "
+        "for an editor's review before it can enter the history (its owner or an editor)",
+        "ReadoutHeader", 200, errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
         "GET", _DSH + "/batch/template", "get_dashboard_batch_template",
         "The columns of a batch file, an example CSV and the row cap", "BatchTemplate", 200,
         errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
@@ -5076,6 +5082,8 @@ _V017_ACCESS: Final[dict[str, RouteAccess]] = {
     "get_dashboard_sources": _dash(_AC.UPDATE),
     "upgrade_dashboard": _dash(_AC.UPDATE),
     "submit_dashboard_predictions": _dash(_AC.RUN),
+    # the handler also requires the readout's own actor or an editor
+    "keep_dashboard_readout": _dash(_AC.RUN),
     "get_dashboard_batch_template": _dash(_AC.RUN),
     "submit_dashboard_batch": _dash(_AC.RUN),
     # the handler also requires the readout's own actor (same client, same link) or an editor
@@ -5089,7 +5097,8 @@ _V017_ACCESS: Final[dict[str, RouteAccess]] = {
 }
 """Access rules of :data:`V017_ENDPOINTS`, as :data:`_V016_ACCESS`: inputs need ``run`` on
 ``dashboard`` (clients too: the handler checks the published spec and, for a client, the
-grant); downloads and pictures need ``read`` (the handler checks the readout's owner);
+grant); keeping a tried case needs ``run`` (the handler checks the readout's owner, or an
+editor); downloads and pictures need ``read`` (the handler checks the readout's owner);
 presets, sources and the upgrade need an editor."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
@@ -5290,6 +5299,7 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "get_dashboard_readout",
         # v0.17: scenario rows, batch scoring, their downloads and the revision's pictures
         "submit_dashboard_predictions",
+        "keep_dashboard_readout",
         "get_dashboard_batch_template",
         "submit_dashboard_batch",
         "download_dashboard_predictions",
@@ -5302,12 +5312,12 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "auth_session",
     }
 )
-"""Every operation a ``client`` may reach (v0.16, and the v0.17 inputs; fail closed). The
-server refuses any other project-scoped operation (``404``) when the caller's effective role
-in the project is ``client``, and any other signed-in or tenant operation when every
-membership of the caller is ``client``. Refit-request decisions, drafts, grants and
-share-link management are not in the set; neither are the catalog, guided, workflow,
-governance, project and tenant listings."""
+"""Every operation a ``client`` may reach (v0.16, and the v0.17 inputs and keeping a tried
+case; fail closed). The server refuses any other project-scoped operation (``404``) when the
+caller's effective role in the project is ``client``, and any other signed-in or tenant
+operation when every membership of the caller is ``client``. Refit-request decisions,
+drafts, grants and share-link management are not in the set; neither are the catalog,
+guided, workflow, governance, project and tenant listings."""
 
 
 def route_access(operation_id: str) -> RouteAccess:

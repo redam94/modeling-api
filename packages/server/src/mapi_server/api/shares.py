@@ -88,10 +88,12 @@ router = APIRouter(tags=["dashboards"])
 SESSION_BODY_MAX_BYTES: Final = 4096
 """A session exchange is a token and a passcode: anything larger is refused unread."""
 INPUT_BODY_MAX_BYTES: Final = 16 * 1024
-"""What-ifs and saved scenarios: at most 40 channel multipliers and a label."""
+"""What-ifs and saved scenarios: at most 40 channel multipliers and a label (keeping a tried
+case, v0.17, takes no body)."""
 INPUT_BODY_PATHS: Final = (
     r"/v1/shared/(?:whatif:evaluate|scenarios)",
     r"/v1/dashboards/[^/]+/(?:whatif:evaluate|scenarios)",
+    r"/v1/dashboards/[^/]+/readouts/[^/]+:keep",
 )
 ACTUALS_BODY_MAX_BYTES: Final = MAX_XRJSON_BYTES * 2
 """An actuals upload: one inline XrJSON payload (as sent, with its whitespace)."""
