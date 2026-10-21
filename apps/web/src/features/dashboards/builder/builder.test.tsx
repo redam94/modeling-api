@@ -138,7 +138,7 @@ describe("builder › publish", () => {
     const title = await screen.findByLabelText("Title", {}, T);
     await user.clear(title);
     expect(await screen.findByText("Type a title.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Save draft/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: /Save draft/ }).disabled).toBe(true);
     await user.type(title, "Spring plan");
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Publish$/ }).getAttribute("title")).toBe("Save the draft first.");
