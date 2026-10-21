@@ -115,3 +115,25 @@ describe.each([
     },
   );
 });
+
+describe("the keyboard highlight of menus and the command palette", () => {
+  const src = (rel: string) => readFileSync(join(dirname(fileURLToPath(import.meta.url)), rel), "utf8");
+
+  it("uses the accent tint with a ring-coloured bar, never the near-invisible surface-hover", () => {
+    const overlays = src("components/ui/overlays.tsx");
+    const palette = src("components/shell/command-palette.tsx");
+    expect(overlays).not.toMatch(/data-\[highlighted\]:bg-surface-hover/);
+    expect(overlays.match(/data-\[highlighted\]:shadow-\[inset_3px_0_0_var\(--ring\)\]/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(palette).toContain('i === active && "bg-accent text-accent-foreground shadow-[inset_3px_0_0_var(--ring)]"');
+  });
+
+  it.each([
+    ["light", ":root"],
+    ["dark", ".dark"],
+  ])("the bar has 3:1 on the popover and the text 4.5:1 on the tint (%s)", (_n, selector) => {
+    const t = tokens(selector);
+    expect(contrast(rgb(t.ring!), rgb(t.popover!))).toBeGreaterThanOrEqual(3);
+    expect(contrast(rgb(t.ring!), rgb(t.accent!))).toBeGreaterThanOrEqual(3);
+    expect(contrast(rgb(t["accent-foreground"]!), rgb(t.accent!))).toBeGreaterThanOrEqual(4.5);
+  });
+});

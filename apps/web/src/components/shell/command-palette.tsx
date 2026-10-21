@@ -148,12 +148,15 @@ export function CommandPalette() {
               }}
               className={cn(
                 "flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm",
-                i === active && "bg-surface-hover text-foreground",
+                // the keyboard's place: the accent tint plus a ring-coloured bar (3:1 on the
+                // popover), since the tint alone is about 1.1:1 against it
+                i === active && "bg-accent text-accent-foreground shadow-[inset_3px_0_0_var(--ring)]",
               )}
             >
-              <span className="text-muted-foreground">{c.icon}</span>
+              <span className={i === active ? "text-accent-foreground" : "text-muted-foreground"}>{c.icon}</span>
               <span className="font-medium">{c.label}</span>
-              <span className="ml-auto truncate text-xs text-hint">{c.hint}</span>
+              {/* hint grey is 4.2:1 on the light accent tint: the active row's hint takes its text colour */}
+              <span className={cn("ml-auto truncate text-xs", i === active ? "text-accent-foreground" : "text-hint")}>{c.hint}</span>
             </li>
           ))}
           {commands.length === 0 ? <li className="px-3 py-6 text-center text-muted-foreground">No matches.</li> : null}

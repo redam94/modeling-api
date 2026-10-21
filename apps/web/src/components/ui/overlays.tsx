@@ -82,7 +82,7 @@ export function DropdownMenuItem({ className, ...props }: React.ComponentProps<t
   return (
     <MenuPrimitive.Item
       className={cn(
-        "flex min-h-9 cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-hover data-[highlighted]:text-foreground [&_svg]:size-4",
+        "flex min-h-9 cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:shadow-[inset_3px_0_0_var(--ring)] [&_svg]:size-4",
         className,
       )}
       {...props}
@@ -104,7 +104,7 @@ export function DropdownMenuRadioItem({ className, children, ...props }: React.C
   return (
     <MenuPrimitive.RadioItem
       className={cn(
-        "relative flex min-h-9 cursor-default items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-sm outline-none select-none data-[highlighted]:bg-surface-hover",
+        "relative flex min-h-9 cursor-default items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-sm outline-none select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:shadow-[inset_3px_0_0_var(--ring)]",
         className,
       )}
       {...props}
