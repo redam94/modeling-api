@@ -268,6 +268,20 @@ async def test_an_unreadable_upload_never_becomes_a_ready_comparison(
     assert row.status == "failed" and row.problem is not None
 
 
+async def test_a_version_that_ran_uploaded_code_never_materialises(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    await _baseline_done(kit, ctx, SUMMARY)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
+        assert mv is not None
+        mv.lineage = {**(mv.lineage or {}), "overlay_hash": "sha256:" + "1" * 64}
+    await DashboardLoop(ctx).materialise()
+    row = await _readout(ctx, kit["dash_id"], 1)
+    assert row.status == "failed" and row.problem is not None
+    assert row.problem["code"] == "CAPABILITY_UNSUPPORTED"
+
+
 async def test_a_failed_run_fails_its_readout_only_analysts_see(
     kit: dict[str, Any], ctx: ServerContext
 ) -> None:

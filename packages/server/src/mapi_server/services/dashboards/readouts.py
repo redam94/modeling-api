@@ -1366,6 +1366,16 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
         return _Material(problem=Problem.from_code(ErrorCode.NOT_FOUND, "the revision is gone"))
     spec = DashboardSpec.model_validate(rev.spec)
     mv = await session.get(m.ModelVersion, row.model_version_id)
+    from mapi_server.services.sharing import ran_uploaded_code
+
+    if ran_uploaded_code(mv):  # defence in depth: every path that appends one refuses it
+        return _Material(
+            problem=Problem.from_code(
+                ErrorCode.CAPABILITY_UNSUPPORTED,
+                "the model version ran uploaded plugin code; dashboards show only versions "
+                "fitted with platform plugins",
+            )
+        )
     summary = await _summary_of(ctx, session, row.run_ids[0]) if row.run_ids else None
     if row.run_ids and summary is None:
         return _Material(
