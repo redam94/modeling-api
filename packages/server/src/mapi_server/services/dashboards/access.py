@@ -46,6 +46,7 @@ from mapi_server.auth.request import RequestAuth
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, unauthenticated
+from mapi_server.services.endpoints import live_capabilities_snapshot
 from mapi_server.services.runs import now
 
 __all__ = [
@@ -167,8 +168,6 @@ async def actuals_mode(
     """``conditioned`` when the pinned version's plugin build conditions forecasts on actuals
     (statsmodels), else ``compared`` (every MMM: the model's prediction is compared with
     the numbers; the model does not change)."""
-    from mapi_server.services.endpoints import live_capabilities_snapshot
-
     mv = await session.get(m.ModelVersion, model_version_id)
     if mv is None or mv.score_meta is None:
         return "compared"

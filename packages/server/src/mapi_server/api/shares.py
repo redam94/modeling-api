@@ -60,7 +60,9 @@ def _op(operation_id: str, **extra: Any) -> dict[str, Any]:
     return {"operation_id": operation_id, "responses": responses_for(operation_id), **extra}
 
 
-def _wp8() -> NoReturn:  # replaced by the inputs and readouts work package
+async def _wp8(ctx: Ctx, auth: Auth, header: str | None) -> NoReturn:
+    """Until the inputs and readouts land: the session is checked, then ``501``."""
+    await resolve_shared(ctx, header, auth.client_ip)
     raise HTTPException(status_code=501, detail="not available yet")
 
 
@@ -117,41 +119,45 @@ async def get_shared_dashboard(
 
 
 @router.get("/v1/shared/readouts", response_model=ReadoutList, **_op("list_shared_readouts"))
-async def list_shared_readouts(x_mapi_share: ShareHeader = None) -> ReadoutList:
+async def list_shared_readouts(
+    ctx: Ctx, auth: Auth, x_mapi_share: ShareHeader = None
+) -> ReadoutList:
     """Public: published readouts and this link's private ones (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.get("/v1/shared/readouts/{seq}", response_model=Readout, **_op("get_shared_readout"))
-async def get_shared_readout(seq: Seq, x_mapi_share: ShareHeader = None) -> Readout:
+async def get_shared_readout(
+    ctx: Ctx, auth: Auth, seq: Seq, x_mapi_share: ShareHeader = None
+) -> Readout:
     """Public: one readout (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.get("/v1/shared/grid", response_model=DashboardGrid, **_op("get_shared_grid"))
-async def get_shared_grid(x_mapi_share: ShareHeader = None) -> DashboardGrid:
+async def get_shared_grid(ctx: Ctx, auth: Auth, x_mapi_share: ShareHeader = None) -> DashboardGrid:
     """Public: the response grid (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.post(
     "/v1/shared/whatif:evaluate", response_model=WhatIfResult, **_op("evaluate_shared_whatif")
 )
 async def evaluate_shared_whatif(
-    body: WhatIfRequest, x_mapi_share: ShareHeader = None
+    ctx: Ctx, auth: Auth, body: WhatIfRequest, x_mapi_share: ShareHeader = None
 ) -> WhatIfResult:
     """Public: evaluate a spend plan on the grid (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.post(
     "/v1/shared/scenarios", response_model=Readout | ReadoutHeader, **_op("save_shared_scenario")
 )
 async def save_shared_scenario(
-    body: ScenarioSave, x_mapi_share: ShareHeader = None
+    ctx: Ctx, auth: Auth, body: ScenarioSave, x_mapi_share: ShareHeader = None
 ) -> Readout | ReadoutHeader:
     """Public: save a scenario as this link's private readout (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.get(
@@ -159,9 +165,11 @@ async def save_shared_scenario(
     response_model=ActualsTemplate,
     **_op("get_shared_actuals_template"),
 )
-async def get_shared_actuals_template(x_mapi_share: ShareHeader = None) -> ActualsTemplate:
+async def get_shared_actuals_template(
+    ctx: Ctx, auth: Auth, x_mapi_share: ShareHeader = None
+) -> ActualsTemplate:
     """Public: the actuals template (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)
 
 
 @router.post(
@@ -171,7 +179,7 @@ async def get_shared_actuals_template(x_mapi_share: ShareHeader = None) -> Actua
     **_op("submit_shared_actuals"),
 )
 async def submit_shared_actuals(
-    body: ActualsSubmit, x_mapi_share: ShareHeader = None
+    ctx: Ctx, auth: Auth, body: ActualsSubmit, x_mapi_share: ShareHeader = None
 ) -> ReadoutHeader:
     """Public: send new actuals (WP8)."""
-    _wp8()
+    await _wp8(ctx, auth, x_mapi_share)

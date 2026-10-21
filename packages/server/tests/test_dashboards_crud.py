@@ -177,7 +177,9 @@ async def test_viewers_read_published_dashboards_but_not_drafts(kit: dict[str, A
 async def test_validate_points_at_what_to_fix(kit: dict[str, Any]) -> None:
     eve: Caller = kit["eve"]
     channels = [{"name": "tv", "label": "TV"}, {"name": "radio", "label": "Radio"}]
-    spec = dashboard_spec(channels=channels, kpi={"variable": "sales", "label": "S", "unit": "ratio"})
+    spec = dashboard_spec(
+        channels=channels, kpi={"variable": "sales", "label": "S", "unit": "ratio"}
+    )
     r = await eve.post("/v1/dashboards", json={"name": "bad", "spec": spec})
     dash_id = r.json()["id"]
     r = await eve.post(f"/v1/dashboards/{dash_id}:validate")
@@ -247,9 +249,7 @@ async def test_publish_needs_runner_and_pins_the_version(
             )
         ).all()
         audit = (
-            await s.execute(
-                select(m.AuditEvent.action).where(m.AuditEvent.resource_id == dash_id)
-            )
+            await s.execute(select(m.AuditEvent.action).where(m.AuditEvent.resource_id == dash_id))
         ).scalars()
         actions = sorted(audit)
     assert sorted(rows) == [(1, "published"), (2, "published")]
