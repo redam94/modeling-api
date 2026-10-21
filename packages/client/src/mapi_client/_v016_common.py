@@ -1,29 +1,33 @@
-"""Pure helpers of the v0.16 dashboard calls shared by the sync and async clients: request
-bodies, the two views ``GET /v1/dashboards/{id}`` answers with, readout paging and
-completion, and share-link tokens and sessions. No I/O here."""
+"""Pure helpers of the v0.16 and v0.17 dashboard calls shared by the sync and async clients:
+request bodies (specs of either layout, scenario rows, batch files), the two views
+``GET /v1/dashboards/{id}`` answers with, readout paging and completion, and share-link
+tokens and sessions. No I/O here."""
 
 from __future__ import annotations
 
 import dataclasses
 import json
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 import httpx
 from mapi_spec.api import (
     ActualsSubmit,
+    BatchSubmit,
     ClientDashboard,
     Dashboard,
     DashboardShareCreate,
     ReadoutHeader,
     ReadoutList,
     RefitRequestDecision,
+    ScenarioRowsRequest,
     ScenarioSave,
     ShareSession,
     ShareSessionCreate,
     WhatIfRequest,
 )
+from mapi_spec.dashboard_v2 import DashboardSpecV2, parse_dashboard_spec
 from mapi_spec.dashboards import DASHBOARD_SHARE_TOKEN_RE, DashboardSpec
 from mapi_spec.errors import ErrorCode, MapiError, error_from_problem
 from pydantic import SecretStr
@@ -36,12 +40,14 @@ from mapi_client.xrjson import as_inline
 __all__ = [
     "SESSION_REFRESH_MARGIN",
     "actuals_body",
+    "batch_body",
     "dashboard_spec",
     "dashboard_view",
     "decision_body",
     "next_before_seq",
     "readout_done",
     "readout_error",
+    "rows_body",
     "scenario_body",
     "session_body",
     "session_due",
@@ -74,8 +80,38 @@ def dashboard_view(dashboard_id: str) -> Call[Dashboard | ClientDashboard]:
     return dataclasses.replace(vcalls.get_dashboard(dashboard_id), parse=_parse_view)  # type: ignore[arg-type]
 
 
-def dashboard_spec(spec: DashboardSpec | Mapping[str, Any]) -> DashboardSpec:
-    return spec if isinstance(spec, DashboardSpec) else DashboardSpec.model_validate(dict(spec))
+def dashboard_spec(
+    spec: DashboardSpec | DashboardSpecV2 | Mapping[str, Any],
+) -> DashboardSpec | DashboardSpecV2:
+    """A spec of either layout: ``layout_version: 2`` is layout 2 (any model type), a
+    missing ``layout_version`` is layout 1 (the v0.16 MMM layout; the server refuses new
+    layout 1 dashboards from v0.17)."""
+    if isinstance(spec, DashboardSpec | DashboardSpecV2):
+        return spec
+    return parse_dashboard_spec(dict(spec))
+
+
+def rows_body(
+    rows: Mapping[str, Any] | Iterable[Mapping[str, Any]], *, label: str | None
+) -> ScenarioRowsRequest:
+    """Scenario rows ("try a case"): one mapping of input values or a list of them (at most
+    20). Inputs you leave out take the analyst's defaults; the server refuses (never clips)
+    a value outside the range the analyst set."""
+    if isinstance(rows, ScenarioRowsRequest):
+        raise TypeError("pass the rows, not a ScenarioRowsRequest")
+    items = [rows] if isinstance(rows, Mapping) else list(rows)
+    return ScenarioRowsRequest.model_validate(
+        {"rows": [dict(row) for row in items], "label": label}
+    )
+
+
+def batch_body(inputs: object, *, label: str | None) -> BatchSubmit:
+    """A batch file of new cases: ``inputs`` is an ``xr.Dataset`` (encoded as XrJSON), an
+    :class:`~mapi_spec.xrjson.XrJsonDataset` or its mapping, one row per case along the
+    template's id column."""
+    if isinstance(inputs, BatchSubmit):
+        raise TypeError("pass the inputs, not a BatchSubmit")
+    return BatchSubmit.model_validate({"inputs": as_inline(inputs), "label": label})
 
 
 def whatif_body(multipliers: Mapping[str, float]) -> WhatIfRequest:
@@ -110,7 +146,8 @@ def share_body(
     passcode: str | SecretStr | None,
     allowed_inputs: Collection[str],
 ) -> DashboardShareCreate:
-    """A share link: read-only unless ``allowed_inputs`` names ``whatif``/``actuals``."""
+    """A share link: read-only unless ``allowed_inputs`` names ``whatif``, ``actuals``,
+    ``scenario_rows`` or ``batch``."""
     return DashboardShareCreate.model_validate(
         {
             "label": label,

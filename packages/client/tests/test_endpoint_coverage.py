@@ -18,6 +18,7 @@ from mapi_client import _calls_tracking as tr
 from mapi_client import _calls_v014 as v14
 from mapi_client import _calls_v015 as v15
 from mapi_client import _calls_v016 as v16
+from mapi_client import _calls_v017 as v17
 from mapi_client._http import Call
 from mapi_spec.api import (
     ALL_ENDPOINTS,
@@ -26,8 +27,10 @@ from mapi_spec.api import (
     PREFER_HEADER,
     ROUTE_ACCESS,
     V016_ENDPOINTS,
+    V017_ENDPOINTS,
     ActualsSubmit,
     ApprovalCreate,
+    BatchSubmit,
     BlobQuery,
     DashboardCreate,
     DashboardDraftUpdate,
@@ -75,6 +78,7 @@ from mapi_spec.api import (
     RunViewCreate,
     RunViewPatch,
     SavedPlotCreate,
+    ScenarioRowsRequest,
     ScenarioSave,
     ScheduleCreate,
     ScheduleUpdate,
@@ -130,6 +134,7 @@ _VAL = "val_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _EXP = "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
 _DSH = "dsh_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _MPS = "mps_" + "a" * 16 + "." + "b" * 43
+_DSA = "dsa_01jaf3h1j2k3m4n5p6q7r8s9t0"
 
 NOT_FOR_PROGRAMS = frozenset(
     {
@@ -488,6 +493,29 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     ),
     "get_shared_actuals_template": lambda: v16.get_shared_actuals_template(_MPS),
     "submit_shared_actuals": lambda: v16.submit_shared_actuals(_MPS, _ex(ActualsSubmit)),
+    # v0.17: dashboards for any model type
+    "list_dashboard_presets": lambda: v17.list_dashboard_presets(model_id="churn", version=2),
+    "get_dashboard_sources": lambda: v17.get_dashboard_sources(_DSH),
+    "upgrade_dashboard": lambda: v17.upgrade_dashboard(_DSH, '"r3"'),
+    "submit_dashboard_predictions": lambda: v17.submit_dashboard_predictions(
+        _DSH, _ex(ScenarioRowsRequest), idempotency_key="k"
+    ),
+    "keep_dashboard_readout": lambda: v17.keep_dashboard_readout(_DSH, 3),
+    "get_dashboard_batch_template": lambda: v17.get_dashboard_batch_template(_DSH),
+    "submit_dashboard_batch": lambda: v17.submit_dashboard_batch(
+        _DSH, _ex(BatchSubmit), idempotency_key="k"
+    ),
+    "download_dashboard_predictions": lambda: v17.download_dashboard_predictions(_DSH, 3),
+    "get_dashboard_asset": lambda: v17.get_dashboard_asset(_DSH, _DSA),
+    "submit_shared_predictions": lambda: v17.submit_shared_predictions(
+        _MPS, _ex(ScenarioRowsRequest), idempotency_key="k"
+    ),
+    "get_shared_batch_template": lambda: v17.get_shared_batch_template(_MPS),
+    "submit_shared_batch": lambda: v17.submit_shared_batch(
+        _MPS, _ex(BatchSubmit), idempotency_key="k"
+    ),
+    "download_shared_predictions": lambda: v17.download_shared_predictions(_MPS, 3),
+    "get_shared_asset": lambda: v17.get_shared_asset(_MPS, _DSA),
 }
 
 CLIENT_ENDPOINTS = ALL_ENDPOINTS
@@ -629,7 +657,7 @@ def test_m3_public_routes_carry_no_credentials() -> None:
     # v0.16 share links: authorised by X-Mapi-Share, never by the client's credentials
     public |= {
         d.operation_id
-        for d in V016_ENDPOINTS
+        for d in (*V016_ENDPOINTS, *V017_ENDPOINTS)
         if ROUTE_ACCESS[d.operation_id].scope is RouteScope.PUBLIC
     }
     for op, make in BUILDERS.items():
@@ -852,3 +880,29 @@ def test_v016_share_routes_carry_the_session_and_validate_inputs() -> None:
         v16.list_dashboards(None, None, status="deleted")
     with pytest.raises(ValueError):
         v16.save_dashboard_scenario(_DSH, _ex(ScenarioSave), wait=61)
+
+
+def test_v017_builders_validate_inputs() -> None:
+    call = v17.list_dashboard_presets(alias="churn-live")
+    assert call.params == {"alias": "churn-live"} and call.scoped
+    with pytest.raises(ValueError, match="model_id"):
+        v17.list_dashboard_presets()
+    with pytest.raises(ValueError, match="model_id"):
+        v17.list_dashboard_presets(model_id="churn", alias="churn-live")
+    with pytest.raises(ValueError, match="version"):
+        v17.list_dashboard_presets(alias="churn-live", version=2)
+    assert v17.upgrade_dashboard(_DSH, '"r3"').headers == {"If-Match": '"r3"'}
+    with pytest.raises(ValueError, match="etag"):
+        v17.upgrade_dashboard(_DSH, "")
+    assert v17.keep_dashboard_readout(_DSH, 3).idempotent
+    for bad in (0, -1, True):
+        with pytest.raises(ValueError, match="seq"):
+            v17.download_dashboard_predictions(_DSH, bad)
+    with pytest.raises(ValueError, match="picture"):
+        v17.get_dashboard_asset(_DSH, "../etc/passwd")
+    with pytest.raises(ValueError, match="share session"):
+        v17.get_shared_asset("not-a-session", _DSA)
+    call = v17.submit_shared_batch(_MPS, _ex(BatchSubmit))
+    assert call.public and not call.scoped and call.headers["X-Mapi-Share"] == _MPS
+    assert "Idempotency-Key" in call.headers  # a batch spends a run: resent under one key
+    assert v17.download_shared_predictions(_MPS, 3).parse is v17.parse_bytes
