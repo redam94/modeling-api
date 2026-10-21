@@ -73,6 +73,7 @@ from mapi_server.services.dashboards.access import DashboardContext, revision_sp
 from mapi_server.services.dashboards.crud import read_grid
 from mapi_server.services.dashboards.readouts import (
     Actor,
+    _lock_dashboard,
     new_readout,
     readout_labels,
     scenario_snapshot,
@@ -280,7 +281,11 @@ async def _limits_check(
     ctx: ServerContext, session: AsyncSession, dash: m.Dashboard, spec: DashboardSpec,
     actor: Actor,
 ) -> None:  # fmt: skip
-    """``DASHBOARD_RUN_LIMIT`` (429, ``Retry-After``) over a cap of plan D14."""
+    """``DASHBOARD_RUN_LIMIT`` (429, ``Retry-After``) over a cap of plan D14.
+
+    The caller holds the dashboard row lock (``_lock_dashboard``) until the readout is
+    inserted, so concurrent requests count each other's runs (a plain count under READ
+    COMMITTED would let every one of them pass)."""
     at = now()
     day = timedelta(days=1)
     n, oldest = await _count(
@@ -523,8 +528,9 @@ async def save_scenario(
         if hit.actor_kind == actor.kind and hit.actor_id == actor.id:
             return hit
         return await _copy_for(ctx, session, dash, rev, hit, actor, "private")
+    octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)
+    await _lock_dashboard(session, dash.id)  # count-and-insert under the row lock
     await _limits_check(ctx, session, dash, spec, actor)
-    octx = await owner_context(ctx, session, dash)
     row = await new_readout(
         session,
         dash,
@@ -714,8 +720,9 @@ async def submit_actuals(
             else await _copy_for(ctx, session, dash, rev, hit, actor, visibility)
         )
     else:
+        octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)
+        await _lock_dashboard(session, dash.id)  # count-and-insert under the row lock
         await _limits_check(ctx, session, dash, spec, actor)
-        octx = await owner_context(ctx, session, dash)
         stored = await store_inline_inputs(ctx, octx.scope, call)
         ref = dict(stored[INPUT_INLINE_DATA])
         row = await new_readout(
@@ -793,6 +800,7 @@ async def refresh(
     rev = await session.get(m.DashboardRevision, dashboard.published_revision_id)
     assert rev is not None
     spec = revision_spec(rev)
+    await _lock_dashboard(session, dashboard.id)  # debounce, count and insert serialised
     since = now() - timedelta(seconds=ctx.settings.dashboard_refresh_debounce_s)
     recent = (
         await session.execute(

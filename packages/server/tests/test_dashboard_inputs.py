@@ -8,6 +8,7 @@ run in the queue, submitted as ``ana`` with the readout's labels.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -247,6 +248,26 @@ async def test_run_caps_answer_429_with_retry_after(
     # grid scenarios are free: never capped
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.3}})
     assert r.status_code == 200
+
+
+async def test_concurrent_exact_runs_cannot_pass_the_caps_together(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """The count and the insert run under the dashboard row lock: parallel requests with
+    distinct plans (no cache hit) see each other's runs, so the caps hold."""
+    dash_id = await _publish(
+        kit, whatif={"enabled": True, "exact": True}, limits={"exact_runs_per_day": 3}
+    )
+    base = f"/v1/dashboards/{dash_id}/scenarios"
+    plans = [{"multipliers": {"tv": 0.6 + k / 20}, "exact": True} for k in range(8)]
+    answers = await asyncio.gather(*(kit["cleo"].post(base, json=p) for p in plans))
+    codes = sorted(r.status_code for r in answers)
+    assert codes.count(202) == 2, [r.text for r in answers]  # the client's hourly cap
+    assert codes.count(429) == 6
+    more = [{"multipliers": {"search": 0.6 + k / 20}, "exact": True} for k in range(6)]
+    answers = await asyncio.gather(*(kit["carl"].post(base, json=p) for p in more))
+    assert sorted(r.status_code for r in answers).count(202) == 1  # the daily cap (3)
+    assert len(await score_runs(ctx)) == 3
 
 
 async def test_a_demoted_publisher_pauses_the_live_inputs(
