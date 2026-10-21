@@ -27,6 +27,8 @@ from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboar
 
 pytestmark = pytest.mark.integration
 
+REAL_EXACT = inputs.exact_request
+
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
@@ -378,3 +380,22 @@ async def test_a_capable_model_conditions_on_the_actuals(
     (run,) = await score_runs(ctx)
     req = run.payload["request"]
     assert req["mode"] == "forecast" and req["horizon"] == {"dim": "t", "periods": 2}
+
+
+async def test_an_exact_result_needs_a_spend_input_per_channel(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """The real request builder: the counterfactual multiplies the model's ``spend``-role
+    input; ``trend`` has none, so exact results are not available on it."""
+    from mapi_spec.errors import MapiError
+
+    dash_id = await _publish(kit, whatif={"enabled": True, "exact": True})
+    async with ctx.db.session() as s:
+        dash = await s.get(m.Dashboard, dash_id)
+        assert dash is not None and dash.published_revision_id is not None
+        rev = await s.get(m.DashboardRevision, dash.published_revision_id)
+        mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
+        assert rev is not None and mv is not None
+        with pytest.raises(MapiError) as err:
+            await REAL_EXACT(ctx, s, rev, mv, {"tv": 0.8})
+    assert err.value.code.value == "DASHBOARD_INPUT_DISABLED"

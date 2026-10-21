@@ -1,0 +1,358 @@
+"""Dashboard refreshes and refit requests (v0.16, plan D12 and §10.4).
+
+Refreshes never refit: a manual refresh queues a score of the pinned version (debounced),
+a linked workflow's success appends a readout from the run of its score node (no new run),
+and an endpoint promotion either publishes a new revision (``follow_endpoint``) or flags the
+dashboard for the analyst. A refit happens only when an editor with runner rights approves a
+refit request made with an actuals upload: the numbers become a new dataset version and the
+refit workflow starts as the approver once that version is ready.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import httpx
+import pytest
+from mapi_server.context import ServerContext
+from mapi_server.db import models as m
+from mapi_server.services.dashboards import refits
+from mapi_server.services.dashboards.inputs import clear_grid_cache
+from mapi_server.services.dashboards.loop import DashboardLoop
+from mapi_server.services.dashboards.readouts import on_workflow_succeeded
+from mapi_server.services.runs import now
+from mapi_server.settings import Profile, Settings
+from mapi_server_testkit.identity import Caller
+from mapi_server_testkit.integrations import refit_version
+from mapi_spec.api import new_id
+from mapi_spec.dashboards import SHARE_SESSION_HEADER
+from mapi_spec.xrjson import XrJsonDataset
+from sqlalchemy import func, select, update
+from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+
+pytestmark = pytest.mark.integration
+
+WORKFLOW = {
+    "apiVersion": "mapi/v1",
+    "kind": "Workflow",
+    "metadata": {"name": "refit", "project": "default"},
+    "inputs": {"data": {"type": "dataset", "default": "dataset://default/co2@latest"}},
+    "nodes": [{"id": "adf", "use": "test.adf", "inputs": {"data": "inputs.data"}}],
+}
+UPLOAD = {
+    "inputs": {
+        "coords": {"t": {"dims": ["t"], "data": ["2024-01-01", "2024-02-01"]}},
+        "data_vars": {"y": {"dims": ["t"], "data": [410.0, 412.0]}},
+    }
+}
+
+
+@pytest.fixture
+def settings(settings: Settings) -> Settings:
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+
+
+@pytest.fixture
+async def kit(ctx: ServerContext, client: httpx.AsyncClient) -> dict[str, Any]:
+    clear_grid_cache()
+    kit = await dashboard_kit(ctx, client)
+    r = await kit["ana"].post("/v1/workflows", json={"document": WORKFLOW})
+    assert r.status_code == 201, r.text
+    kit["wf_id"] = r.json()["id"]
+    return kit
+
+
+async def _count(ctx: ServerContext, model: Any, *where: Any) -> int:
+    async with ctx.db.session() as s:
+        stmt = select(func.count()).select_from(model)
+        for w in where:
+            stmt = stmt.where(w)
+        return int((await s.execute(stmt)).scalar_one())
+
+
+def _refit_spec(kit: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "actuals": {
+            "enabled": True,
+            "refit_workflow_id": kit["wf_id"],
+            "allow_refit_requests": True,
+        }
+    }
+
+
+# ==================================================================================== refresh
+
+
+async def test_a_manual_refresh_is_queued_debounced_and_editor_only(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit)
+    url = f"/v1/dashboards/{dash_id}:refresh"
+    r = await kit["eve"].post(url)
+    assert r.status_code == 202, r.text
+    head = r.json()
+    assert (head["kind"], head["trigger"], head["status"]) == ("refresh", "manual", "queued")
+    again = await kit["eve"].post(url)
+    assert again.json()["seq"] == head["seq"]  # within the debounce window
+    assert (await kit["cleo"].post(url)).status_code == 404  # not a client operation
+    assert (await kit["vic"].post(url)).status_code == 403
+    await DashboardLoop(ctx).submit_queued()
+    async with ctx.db.session() as s:
+        row = await s.get(m.DashboardReadout, (dash_id, head["seq"]))
+        assert row is not None and row.status == "running"
+        run = await s.get(m.Run, row.run_ids[0])
+        assert run is not None and run.created_by == kit["users"]["ana"].id
+        assert run.labels["mapi.trigger"] == "manual"
+
+
+async def test_a_linked_workflow_success_appends_a_readout_without_a_new_run(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit, refresh={"workflow_id": kit["wf_id"]})
+    r = await kit["ana"].post(
+        f"/v1/workflows/{kit['wf_id']}/runs",
+        json={"inputs": {"data": "dataset://default/co2@latest"}},
+    )
+    assert r.status_code == 202, r.text
+    wr_id = r.json()["run_id"]
+    async with ctx.db.session() as s:
+        wr = await s.get(m.WorkflowRunRow, wr_id)
+        assert wr is not None
+        score = m.Run(
+            id=new_id("run"), tenant_id=wr.tenant_id, project_id=wr.project_id, kind="score",
+            state="succeeded", attempt=1, resource_class="S", timeout_s=60,
+            model_version_id=kit["model"]["mv_id"], labels={}, payload={}, inputs={},
+            created_at=now(), updated_at=now(),
+        )  # fmt: skip
+        s.add(score)
+        await s.flush()
+        s.add(
+            m.WorkflowNodeRunRow(
+                run_id=wr_id, tenant_id=wr.tenant_id, project_id=wr.project_id, node_id="score",
+                position=1, use="model.score@1", kind="model", status="succeeded",
+                child_run_id=score.id,
+            )
+        )  # fmt: skip
+        score_id = score.id
+    runs = await _count(ctx, m.Run)
+    async with ctx.db.session() as s:
+        wr = await s.get(m.WorkflowRunRow, wr_id)
+        assert wr is not None
+        assert await on_workflow_succeeded(s, wr) == 1
+        assert await on_workflow_succeeded(s, wr) == 0  # once per workflow run
+    assert await _count(ctx, m.Run) == runs
+    async with ctx.db.session() as s:
+        row = (
+            await s.execute(
+                select(m.DashboardReadout).where(
+                    m.DashboardReadout.dashboard_id == dash_id,
+                    m.DashboardReadout.kind == "refresh",
+                )
+            )
+        ).scalar_one()
+        assert (row.trigger, row.status, row.visibility) == (
+            "workflow",
+            "materialising",
+            "published",
+        )
+        assert row.run_ids == [score_id] and row.workflow_run_id == wr_id
+
+
+async def _endpoint_dashboard(kit: dict[str, Any], follow: bool) -> str:
+    ana: Caller = kit["ana"]
+    r = await ana.put("/v1/endpoints/trend-prod", json={"model": "model://default/trend@v1"})
+    assert r.status_code == 200, r.text
+    return await create_published(
+        kit,
+        name=f"ep-{follow}",
+        source={"kind": "endpoint", "alias": "trend-prod"},
+        refresh={"follow_endpoint": follow},
+    )
+
+
+@pytest.mark.parametrize("follow", [True, False])
+async def test_an_endpoint_promotion_follows_or_flags(
+    kit: dict[str, Any], ctx: ServerContext, follow: bool
+) -> None:
+    dash_id = await _endpoint_dashboard(kit, follow)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
+        assert mv is not None
+    v2 = await refit_version(ctx, mv)
+    r = await kit["ana"].put(
+        "/v1/endpoints/trend-prod", json={"model": f"model://default/trend@v{v2.version}"}
+    )
+    assert r.status_code == 200, r.text
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    revs = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/revisions")).json()["items"]
+    if follow:
+        assert body["published_revision"]["model_version_id"] == v2.id
+        assert body["published_revision"]["endpoint_revision"] == 2 and len(revs) == 2
+        assert body["latest_readout"]["kind"] == "refresh"
+        assert body["latest_readout"]["trigger"] == "endpoint"
+        assert body["latest_readout"]["model_version_id"] == v2.id
+        assert body["problem"] is None
+    else:
+        assert body["published_revision"]["model_version_id"] == kit["model"]["mv_id"]
+        assert len(revs) == 1 and body["problem"] == "new_version_available"
+        assert body["latest_readout"]["kind"] == "baseline"
+
+
+# ============================================================================ refit requests
+
+
+async def test_a_refit_request_needs_the_dashboard_to_allow_it(kit: dict[str, Any]) -> None:
+    plain = await create_published(kit, actuals={"enabled": True})
+    r = await kit["cleo"].post(
+        f"/v1/dashboards/{plain}/actuals", json={**UPLOAD, "request_refit": True}
+    )
+    assert r.status_code == 409 and r.json()["code"] == "DASHBOARD_INPUT_DISABLED", r.text
+
+
+async def _request(kit: dict[str, Any], dash_id: str, caller: str = "cleo", ys: Any = None) -> int:
+    body = {**UPLOAD, "request_refit": True}
+    if ys is not None:
+        body = {"inputs": {**UPLOAD["inputs"], "data_vars": {"y": {"dims": ["t"], "data": ys}}},
+                "request_refit": True}  # fmt: skip
+    r = await kit[caller].post(f"/v1/dashboards/{dash_id}/actuals", json=body)
+    assert r.status_code == 202, r.text
+    assert r.json()["refit_status"] == "open"
+    return int(r.json()["seq"])
+
+
+async def test_a_newer_request_supersedes_the_open_one(kit: dict[str, Any]) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    first = await _request(kit, dash_id)
+    second = await _request(kit, dash_id, ys=[400.0, 401.0])
+    page = (await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    by_seq = {i["readout_seq"]: i for i in page}
+    assert by_seq[first]["status"] == "superseded" and by_seq[second]["status"] == "open"
+    assert by_seq[second]["requested_by_kind"] == "client"
+    assert by_seq[second]["requested_by"] == kit["users"]["cleo"].id
+    head = (await kit["cleo"].get(f"/v1/dashboards/{dash_id}/readouts/{first}")).json()
+    assert head["refit_status"] == "superseded"
+    open_ = (
+        await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests", params={"status": "open"})
+    ).json()["items"]
+    assert [i["readout_seq"] for i in open_] == [second]
+
+
+async def test_only_an_editor_with_runner_rights_decides(kit: dict[str, Any]) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    await _request(kit, dash_id)
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    url = f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}"
+    assert (await kit["cleo"].post(f"{url}:approve", json={})).status_code == 404
+    assert (await kit["cleo"].get(f"/v1/dashboards/{dash_id}/refit-requests")).status_code == 404
+    r = await kit["eve"].post(f"{url}:approve", json={})
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN"
+
+
+async def test_a_rejected_request_starts_nothing(kit: dict[str, Any], ctx: ServerContext) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    await _request(kit, dash_id)
+    (req,) = (await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    versions = await _count(ctx, m.DatasetVersion)
+    runs = await _count(ctx, m.Run)
+    r = await kit["eve"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:reject", json={"note": "Not now."}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "rejected" and r.json()["decided_by"] == kit["users"]["eve"].id
+    assert await _count(ctx, m.DatasetVersion) == versions and await _count(ctx, m.Run) == runs
+    await DashboardLoop(ctx).once()
+    assert await _count(ctx, m.WorkflowRunRow) == 0
+    again = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve", json={}
+    )
+    assert again.status_code == 409
+
+
+async def test_approval_ingests_the_numbers_then_starts_the_workflow_as_the_approver(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    seq = await _request(kit, dash_id)
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    r = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve",
+        json={"note": "Refit with the January numbers."},
+    )
+    assert r.status_code == 200, r.text
+    done = r.json()
+    assert done["status"] == "approved" and done["decided_by"] == kit["users"]["ana"].id
+    assert (
+        done["dataset_version_id"] == "dataset://default/co2@v2" and done["workflow_run_id"] is None
+    )
+    # the readout entered the history
+    head = await kit["vic"].get(f"/v1/dashboards/{dash_id}/readouts/{seq}")
+    assert head.json()["visibility"] == "published"
+    async with ctx.db.session() as s:
+        ds = (await s.execute(select(m.Dataset).where(m.Dataset.name == "co2"))).scalar_one()
+        dv = await s.get(m.DatasetVersion, (ds.id, 2))
+        assert dv is not None and dv.status == "ingesting" and dv.ingest_run_id
+        ingest = await s.get(m.Run, dv.ingest_run_id)
+        assert ingest is not None and ingest.kind == "ingest"
+        upload = await s.get(m.Upload, dv.upload_id)
+        assert upload is not None
+        csv = (await ctx.store.get(upload.bucket, upload.object_name)).decode()
+        assert csv.splitlines() == ["t,y", "2024-01-01,410.0", "2024-02-01,412.0"]
+        assert dv.mapping is not None and dv.mapping["vars"]["y"]["role"] == "target"
+    # nothing starts before the version is ready
+    await DashboardLoop(ctx).once()
+    assert await _count(ctx, m.WorkflowRunRow) == 0
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DatasetVersion)
+            .where(m.DatasetVersion.dataset_id == ds.id, m.DatasetVersion.version == 2)
+            .values(status="ready", sha256="sha256:" + "2" * 64, ready_at=now())
+        )
+    assert await refits.advance(ctx) == 1
+    async with ctx.db.session() as s:
+        wr = (await s.execute(select(m.WorkflowRunRow))).scalar_one()
+        assert wr.workflow_id == kit["wf_id"] and wr.created_by == kit["users"]["ana"].id
+        assert wr.inputs == {"data": "dataset://default/co2@v2"}
+        row = await s.get(m.DashboardRefitRequest, req["id"])
+        assert row is not None and row.workflow_run_id == wr.run_id
+        # the workflow's success refreshes the dashboard through the usual path
+        assert await on_workflow_succeeded(s, wr) == 0  # (no score node in this workflow)
+
+
+async def test_share_links_ask_for_a_refit_only_with_uploads(
+    kit: dict[str, Any], client: httpx.AsyncClient
+) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    for allowed, want in (([], 409), (["actuals"], 202)):
+        r = await kit["ana"].post(
+            f"/v1/dashboards/{dash_id}/shares", json={"allowed_inputs": allowed}
+        )
+        token = r.json()["token"]
+        session = (await client.post("/v1/share-sessions", json={"token": token})).json()
+        headers = {SHARE_SESSION_HEADER: session["session"]}
+        assert session["dashboard"]["inputs"]["refit_requests"] is bool(allowed)
+        r = await client.post(
+            "/v1/shared/actuals", json={**UPLOAD, "request_refit": True}, headers=headers
+        )
+        assert r.status_code == want, r.text
+    page = (await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    assert [i["requested_by_kind"] for i in page] == ["share"]
+
+
+def test_an_upload_becomes_a_dense_csv() -> None:
+    payload = XrJsonDataset.model_validate(
+        {
+            "coords": {"t": {"dims": ["t"], "data": ["2024-01-01", "2024-02-01"]},
+                       "geo": {"dims": ["geo"], "data": ["de", "fr"]}},
+            "data_vars": {"y": {"dims": ["t", "geo"], "data": [[1.0, 2.0], [3.0, None]]},
+                          "price": {"dims": ["t"], "data": [9.5, 9.0]}},
+        }
+    )  # fmt: skip
+    text = refits.upload_csv(payload, ["t", "geo"]).decode()
+    assert text.splitlines() == [
+        "t,geo,y,price",
+        "2024-01-01,de,1.0,9.5",
+        "2024-01-01,fr,2.0,9.5",
+        "2024-02-01,de,3.0,9.0",
+        "2024-02-01,fr,,9.0",
+    ]
+    assert dashboard_spec()["kpi"]["variable"] == "y"
