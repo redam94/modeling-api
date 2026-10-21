@@ -5,7 +5,7 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
-### Client dashboards and a new look
+## [0.16.0] — Client dashboards and a new look — 2026-10-21
 
 You can now show model results to your clients. An analyst makes a dashboard from a fitted
 model or an endpoint and publishes it. Client users sign in and see only the dashboards that
