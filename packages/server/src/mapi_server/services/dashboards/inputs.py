@@ -137,7 +137,36 @@ async def _parts(
     mv = await session.get(m.ModelVersion, rev.model_version_id)
     if mv is None:  # pragma: no cover - versions are never deleted under a revision
         raise NotFoundError("model version", rev.model_version_id)
-    return dash, rev, revision_spec(rev), mv
+    return dash, rev, _planner_spec(rev), mv
+
+
+def _planner_spec(rev: m.DashboardRevision) -> DashboardSpec:
+    """The layout 1 media planner spec of a revision: the spec itself on layout 1, the v1
+    shape of the planner part of an ``mmm_planner`` layout 2 spec (its channels, what-ifs and
+    tiles, as ``readouts._planner_snapshot`` builds it), else ``DASHBOARD_INPUT_DISABLED``."""
+    spec = any_revision_spec(rev)
+    if isinstance(spec, DashboardSpec):
+        return spec
+    if spec.mmm is None:
+        return revision_spec(rev)  # raises DASHBOARD_INPUT_DISABLED
+    from mapi_spec.dashboard_v2 import kpi_of_subject
+
+    return DashboardSpec.model_construct(
+        title=spec.title,
+        client_name=spec.client_name,
+        summary=spec.summary,
+        period_label=spec.period_label,  # type: ignore[arg-type]  # text only
+        source=spec.source,
+        kpi=kpi_of_subject(spec.subject),
+        channels=list(spec.mmm.channels),
+        tiles=list(spec.mmm.tiles),
+        whatif=spec.mmm.whatif,
+        actuals=spec.actuals,
+        refresh=spec.refresh,
+        limits=spec.limits,
+        show_technical=spec.show_technical,
+        note=spec.note,
+    )
 
 
 async def _is_v2(session: AsyncSession, dctx: DashboardContext) -> bool:
@@ -310,6 +339,19 @@ async def _limits_check(
         m.DashboardReadout.dashboard_id == dash.id,
         m.DashboardReadout.created_at > at - day,
     )
+    # v0.17: picture renders of layout 2 panels spend runs of the same daily cap
+    pictures, first_picture = (
+        await session.execute(
+            select(func.count(), func.min(m.DashboardAsset.created_at)).where(
+                m.DashboardAsset.dashboard_id == dash.id,
+                m.DashboardAsset.created_at > at - day,
+                m.DashboardAsset.run_id.is_not(None),
+            )
+        )
+    ).one()
+    n += int(pictures)
+    if first_picture is not None and (oldest is None or first_picture < oldest):
+        oldest = first_picture
     if n >= spec.limits.exact_runs_per_day:
         raise _limit(oldest, day)
     hour = timedelta(hours=1)

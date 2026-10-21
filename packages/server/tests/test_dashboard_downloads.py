@@ -62,7 +62,6 @@ async def kit(
     kit["users"]["carl"] = carl
     kit["carl"] = await session_caller(ctx, client, carl, tenant_id="default", project_id="default")
     cases_contract(monkeypatch)
-    share_links_read_layout_2(monkeypatch)
     kit["egress"] = charged = []
 
     async def summary_of(ctx: Any, session: Any, run_id: str) -> ScoreSummary | None:
@@ -99,17 +98,6 @@ async def audits(ctx: ServerContext) -> list[m.AuditEvent]:
                 )
             ).scalars()
         )
-
-
-def share_links_read_layout_2(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Share sessions of layout 2 dashboards. ``services/dashboards/shares.py`` (not WP8's)
-    still reads the published spec with the layout 1 accessor ``revision_spec``, which
-    refuses a layout 2 revision; the fix (``any_revision_spec``) is reported to the
-    integrator. Until it lands, the tests apply it here."""
-    from mapi_server.services.dashboards import shares
-    from mapi_server.services.dashboards.access import any_revision_spec
-
-    monkeypatch.setattr(shares, "revision_spec", any_revision_spec)
 
 
 # ======================================================================================= cells

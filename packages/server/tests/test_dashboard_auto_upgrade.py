@@ -15,7 +15,7 @@ import httpx
 import pytest
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
-from mapi_server.services.dashboards import sources, upgrade
+from mapi_server.services.dashboards import inputs, sources, upgrade
 from mapi_server.services.dashboards.upgrade import (
     ADVISORY_LOCK_KEY,
     UpgradeReport,
@@ -197,6 +197,24 @@ async def test_a_media_mix_model_becomes_the_planner(
     # the planner reads the KPI as layout 1 does (the same numbers)
     assert spec.subject.variable == v1.kpi.variable == "y"
     assert spec.subject.value_per_unit == v1.kpi.value_per_unit
+    # the what-if inputs (grid, evaluate, scenarios) read the planner as its layout 1 spec
+    planner = inputs._planner_spec(new)
+    assert isinstance(planner, DashboardSpec)
+    assert planner.channels == v1.channels and planner.whatif == v1.whatif
+    assert planner.kpi.variable == v1.kpi.variable and planner.tiles == v1.tiles
+    assert planner.limits.exact_runs_per_day == spec.limits.exact_runs_per_day
+
+
+async def test_a_non_planner_layout_2_spec_has_no_media_planner_inputs(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    dash_id = await create_published(kit)
+    report = await auto_upgrade_v1(ctx)
+    assert report.published == [dash_id], report
+    _, new = await revisions(ctx, dash_id)
+    with pytest.raises(MapiError) as err:
+        inputs._planner_spec(new)
+    assert err.value.code is ErrorCode.DASHBOARD_INPUT_DISABLED
 
 
 # ==================================================================================== refusals

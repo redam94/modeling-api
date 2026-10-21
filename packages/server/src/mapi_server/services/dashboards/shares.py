@@ -59,11 +59,11 @@ from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.dashboards.access import (
     DashboardContext,
     actuals_mode,
+    any_revision_spec,
     client_dashboard,
     effective_inputs,
     load_dashboard,
     load_revision,
-    revision_spec,
 )
 from mapi_server.services.quotas import count_requests
 from mapi_server.services.runs import now
@@ -405,7 +405,7 @@ async def _context(
     row: m.Dashboard,
     rev: m.DashboardRevision,
 ) -> DashboardContext:
-    spec = revision_spec(rev)
+    spec = any_revision_spec(rev)
     mode = await actuals_mode(session, ctx, rev.model_version_id) if spec.actuals.enabled else None
     return DashboardContext(
         tenant_id=row.tenant_id,

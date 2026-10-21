@@ -149,6 +149,38 @@ async def test_publish_renders_the_picture_and_serves_the_png(
     assert found["core.inline"].status == "ready"
 
 
+async def test_picture_renders_count_against_the_daily_run_cap(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    """The input caps (``inputs._limits_check``) count picture renders as spent runs."""
+    from mapi_server.errors import ProblemWithHeaders
+    from mapi_server.services.dashboards import inputs
+    from mapi_server.services.dashboards.access import any_revision_spec
+    from mapi_server.services.dashboards.readouts import Actor
+
+    dash_id = await picture_dashboard(kit, PICTURE)
+    (asset,) = await assets_of(ctx, dash_id)
+    assert asset.run_id is not None
+    async with ctx.db.session() as s:
+        dash = await s.get(m.Dashboard, dash_id)
+        assert dash is not None and dash.published_revision_id is not None
+        rev = await s.get(m.DashboardRevision, dash.published_revision_id)
+        assert rev is not None
+        spec = any_revision_spec(rev)
+
+        def capped(n: int) -> Any:
+            return spec.model_copy(
+                update={"limits": spec.limits.model_copy(update={"exact_runs_per_day": n})}
+            )
+
+        actor = Actor(kind="member", id=kit["users"]["ana"].id)
+        await inputs._limits_check(ctx, s, dash, capped(2), actor)  # the picture is 1 of 2
+        with pytest.raises(ProblemWithHeaders) as err:
+            await inputs._limits_check(ctx, s, dash, capped(1), actor)
+        assert err.value.code.value == "DASHBOARD_RUN_LIMIT"
+        assert int(err.value.headers["Retry-After"]) > 0
+
+
 async def test_assets_are_isolated_per_dashboard_and_tenant(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:
