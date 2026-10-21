@@ -11,11 +11,11 @@ import type { JsonValue, Theme } from "./protocol";
 
 /** `{light: dark}`; keys and values are lowercase `#rrggbb`. */
 export const DARK_VARIANTS: Readonly<Record<string, string>> = {
-  "#3366cc": "#6fa8f0", // band
-  "#1f4e99": "#8ec5ff", // estimate
-  "#1b2333": "#e3e7ee", // observed
-  "#c62828": "#ff7b72", // alert
-  "#2e7d32": "#5cc46a", // ok
+  "#c7dbff": "#5c85ff", // band
+  "#0014cc": "#85a3ff", // estimate
+  "#121619": "#f4f5f7", // observed
+  "#c20021": "#ff8597", // alert
+  "#036e1b": "#4fd26b", // ok
   "#767e8c": "#8b95a5", // reference
   "#5b6577": "#9aa3b2", // muted
   "#333b48": "#c8cfdb", // strong

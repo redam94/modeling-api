@@ -44,11 +44,13 @@ class Swatch:
 
 
 PALETTE: Final[dict[str, Swatch]] = {
-    "band": Swatch("#3366cc", "#6fa8f0"),  # uncertainty bands (areas) and their lines
-    "estimate": Swatch("#1f4e99", "#8ec5ff"),  # the point estimate over the bands
-    "observed": Swatch("#1b2333", "#e3e7ee"),  # actual values
-    "alert": Swatch("#c62828", "#ff7b72"),  # split line, thresholds, failed checks
-    "ok": Swatch("#2e7d32", "#5cc46a"),  # passed checks
+    # uncertainty bands (areas): the light value is the pale ``--chart-band`` fill, so it is no
+    # stroke colour on the light card; its dark variant keeps 3:1 on the dark card.
+    "band": Swatch("#c7dbff", "#5c85ff", legible=False),
+    "estimate": Swatch("#0014cc", "#85a3ff"),  # the point estimate over the bands
+    "observed": Swatch("#121619", "#f4f5f7"),  # actual values
+    "alert": Swatch("#c20021", "#ff8597"),  # split line, thresholds, failed checks
+    "ok": Swatch("#036e1b", "#4fd26b"),  # passed checks
     "reference": Swatch("#767e8c", "#8b95a5"),  # zero lines, ideal lines, reference rules
     "muted": Swatch("#5b6577", "#9aa3b2"),  # annotations
     "strong": Swatch("#333b48", "#c8cfdb"),  # interval rules and means drawn over bars
