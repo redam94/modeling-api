@@ -1013,7 +1013,7 @@ def phylogeny(inp: RecipeInput, s: PhylogenySettings) -> Figure:
                 "symmetric": False,
                 "array": {"$ref": "tips.plus"},
                 "arrayminus": {"$ref": "tips.minus"},
-                "color": BAND,
+                "color": ESTIMATE,
                 "thickness": 1.5,
                 "width": 0,
             },
@@ -1434,7 +1434,7 @@ def rose(inp: RecipeInput, s: RoseSettings) -> Figure:
         band.append(("whiskers", "r", {"line": {"width": 5, "color": BAND}}))
     elif band_name == "curve":
         for key in ("lo", "hi"):
-            band.append(("curve", key, {"line": {"width": 1.2, "color": BAND, "dash": "dot"}}))
+            band.append(("curve", key, {"line": {"width": 1.2, "color": ESTIMATE, "dash": "dot"}}))
     if band_name:
         band.append((band_name, "med", {"line": {"width": 2, "color": ESTIMATE}}))
     for j, (table, key, extra) in enumerate(band):

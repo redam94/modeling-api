@@ -1382,7 +1382,7 @@ def ensemble(inp: RecipeInput, s: EnsembleSettings) -> Figure:
             "name": "draws",
             "x": {"$ref": "spaghetti.x"},
             "y": {"$ref": "spaghetti.y"},
-            "line": {"color": BAND, "width": 1},
+            "line": {"color": ESTIMATE, "width": 1},
             "opacity": 0.35 if len(picks) > 10 else 0.6,
             "hoverinfo": "skip",
             "showlegend": False,

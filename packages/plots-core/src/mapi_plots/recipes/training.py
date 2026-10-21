@@ -21,7 +21,7 @@ import pandas as pd
 import xarray as xr
 from pydantic import Field
 
-from mapi_plots.palette import BAND, ESTIMATE
+from mapi_plots.palette import ESTIMATE
 from mapi_plots.recipes._base import (
     Figure,
     RecipeDataError,
@@ -149,7 +149,7 @@ def loss_curve(inp: RecipeInput, s: LossCurveSettings) -> Figure:
     y_title = str(first.attrs.get("objective") or (labels[0] if len(curves) == 1 else "value"))
     yscale = alt.Scale(type="log") if log_y else alt.Scale(zero=False)
     if len(curves) == 1:
-        raw_color: Any = alt.value(BAND)
+        raw_color: Any = alt.value(ESTIMATE)
         smooth_color: Any = alt.value(ESTIMATE)
     else:
         colors = alt.Scale(domain=labels, range=_CATEGORY[: len(labels)])

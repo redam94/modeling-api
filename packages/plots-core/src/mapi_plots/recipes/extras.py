@@ -79,7 +79,7 @@ __all__ = [
 GroupName = Literal["auto", "posterior", "predictions", "posterior_predictive"]
 _DRAW_GROUPS: tuple[str, ...] = ("posterior", "predictions", "posterior_predictive")
 # distinct swatches for categories (states); they cycle after ten
-_CATEGORY = [BAND, SCENARIO, OK, ALERT, STRONG, POSITIVE, BASELINE, ESTIMATE, MUTED, REFERENCE]
+_CATEGORY = [ESTIMATE, SCENARIO, OK, ALERT, STRONG, POSITIVE, BASELINE, MUTED, REFERENCE]
 
 
 def _thin(n: int, k: int) -> np.ndarray:
@@ -266,7 +266,7 @@ def pair(inp: RecipeInput, s: PairSettings) -> Figure:
                 ch = alt.layer(
                     base.transform_filter(
                         alt.FieldEqualPredicate(field="transition", equal="regular")
-                    ).mark_circle(size=6, opacity=0.35, color=BAND),
+                    ).mark_circle(size=6, opacity=0.35, color=ESTIMATE),
                     base.transform_filter(
                         alt.FieldEqualPredicate(field="transition", equal="divergent")
                     ).mark_circle(size=16, opacity=0.9, color=ALERT),
@@ -764,7 +764,7 @@ def _reliability(var: str, draws: np.ndarray, y: np.ndarray, s: CalibrationSetti
             x=alt.X("x:Q", title="predicted probability", scale=unit),
             y=alt.Y("x:Q", title="observed frequency", scale=unit),
         ),
-        base.mark_rule(color=BAND, strokeWidth=6, opacity=0.3).encode(
+        base.mark_rule(color=ESTIMATE, strokeWidth=6, opacity=0.3).encode(
             x="predicted:Q", y="lo:Q", y2="hi:Q"
         ),
         base.mark_line(color=ESTIMATE, strokeWidth=1).encode(x="predicted:Q", y="observed:Q"),
