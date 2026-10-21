@@ -85,7 +85,7 @@ function FitMoreCarefully({ session, failed }: { session: GuidedSession; failed:
   return (
     <div className="grid gap-2 rounded-lg border p-4" data-testid="fit-more-carefully">
       <p className="font-medium">{failed ? "The model is not stable yet" : "The model can become more stable"}</p>
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         A new fit with longer, more careful sampling usually corrects the checks under &ldquo;Did the model settle?&rdquo;. Your data and beliefs do not change. The fit takes about two times as long.
       </p>
       <div className="flex flex-wrap items-center gap-3">
@@ -95,7 +95,7 @@ function FitMoreCarefully({ session, failed }: { session: GuidedSession; failed:
         {!allowed ? <span className="text-xs text-muted-foreground">Ask a project admin to fit it again.</span> : null}
       </div>
       {error ? (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -119,7 +119,7 @@ function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: M
           <h2 id="scorecard-h" className="text-[17px] font-semibold tracking-tight">
             Sanity scorecard
           </h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {counts.pass} passed · {counts.warn} to check · {counts.fail} failed
           </p>
         </div>
@@ -133,7 +133,7 @@ function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: M
         <StatusBadge status={scorecard.overall} />
         <div>
           <p className="font-medium">{OVERALL[scorecard.overall].title}</p>
-          <p className="text-[13px] text-muted-foreground">{OVERALL[scorecard.overall].body}</p>
+          <p className="text-sm text-muted-foreground">{OVERALL[scorecard.overall].body}</p>
         </div>
       </div>
       {items.some((i) => i.category === "convergence" && i.status !== "pass") ? (
@@ -156,9 +156,9 @@ function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: M
                       <p className="font-medium">{item.title}</p>
                       <StatusBadge status={item.status} />
                     </div>
-                    <p className="text-[13px] text-muted-foreground">{item.message_plain}</p>
+                    <p className="text-sm text-muted-foreground">{item.message_plain}</p>
                     {item.status !== "pass" && item.suggested_action ? (
-                      <p className="text-[13px]">
+                      <p className="text-sm">
                         <span className="font-medium">What to do: </span>
                         {item.suggested_action}
                       </p>
@@ -171,7 +171,7 @@ function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: M
         ))}
       </div>
       {Object.keys(scorecard.skipped ?? {}).length ? (
-        <details className="rounded-lg border px-4 py-3 text-[13px]">
+        <details className="rounded-lg border px-4 py-3 text-sm">
           <summary className="cursor-pointer font-medium">Checks that could not run ({Object.keys(scorecard.skipped ?? {}).length})</summary>
           <ul className="grid gap-1 pt-2 text-muted-foreground">
             {Object.entries(scorecard.skipped ?? {}).map(([k, why]) => (
@@ -207,7 +207,7 @@ function ChannelTable({ rows, grid }: { rows: ChannelHeadline[]; grid: ResponseG
   const units = grid.spend_units;
   return (
     <div className="overflow-x-auto rounded-lg border [contain:inline-size]">
-      <table className="w-full min-w-[34rem] text-[13px]">
+      <table className="w-full min-w-[34rem] text-sm">
         <caption className="sr-only">Return on spend and share of results per channel, with 90% ranges</caption>
         <thead>
           <tr className="border-b text-xs text-muted-foreground">
@@ -249,7 +249,7 @@ function ModelPlotFigure({ mv, plot }: { mv: ModelVersion; plot: ModelPlot }) {
   if (!data.data) return <Skeleton className="h-64" />;
   return (
     <figure className="grid gap-1.5">
-      <figcaption className="text-[13px] font-medium">{plot.title}</figcaption>
+      <figcaption className="text-sm font-medium">{plot.title}</figcaption>
       <PlotFrame kind={data.data.spec.kind} spec={data.data.body} datasets={data.data.datasets} title={plot.title} height={280} exportName={plot.id} />
       {plot.caption_plain ? <p className="text-xs text-muted-foreground">{plot.caption_plain}</p> : null}
     </figure>
@@ -297,14 +297,14 @@ export function LiftTestCard({ session }: { session: GuidedSession }) {
             <Input id={`${id}-spend`} value={spend} onChange={(e) => setSpend(e.target.value)} inputMode="decimal" className="font-mono" />
           </Field>
         </div>
-        {stale && fittedDocument ? <p className="text-[13px] text-muted-foreground">The lift test uses the markets of the last fit, not your latest changes.</p> : null}
+        {stale && fittedDocument ? <p className="text-sm text-muted-foreground">The lift test uses the markets of the last fit, not your latest changes.</p> : null}
         {treated.length === 1 ? (
-          <label htmlFor={`${id}-geo`} className="flex items-center gap-2 text-[13px]">
+          <label htmlFor={`${id}-geo`} className="flex items-center gap-2 text-sm">
             <Checkbox id={`${id}-geo`} checked={useGeo} onCheckedChange={(c) => setUseGeo(c === true)} />
             The marketing mix model has markets. Use the market {treated[0]} for the test.
           </label>
         ) : treated.length > 1 ? (
-          <p className="text-[13px] text-muted-foreground">The test has {treated.length} markets, so the lift test is for the whole country.</p>
+          <p className="text-sm text-muted-foreground">The test has {treated.length} markets, so the lift test is for the whole country.</p>
         ) : null}
         {loading && runId ? (
           <Skeleton className="h-24" />
@@ -313,7 +313,7 @@ export function LiftTestCard({ session }: { session: GuidedSession }) {
         ) : result?.ok ? (
           <div className="grid gap-1.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium">Add this to the spec of your marketing mix model</p>
+              <p className="text-sm font-medium">Add this to the spec of your marketing mix model</p>
               <CopyButton value={result.yaml} label="Copy the lift test" />
             </div>
             <pre className="overflow-x-auto rounded-md border bg-muted/40 p-3 font-mono text-[12px]" data-testid="lift-test-yaml">
@@ -321,7 +321,7 @@ export function LiftTestCard({ session }: { session: GuidedSession }) {
             </pre>
           </div>
         ) : result ? (
-          <ul className="grid gap-1 text-[13px] text-muted-foreground">
+          <ul className="grid gap-1 text-sm text-muted-foreground">
             {result.problems.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -374,7 +374,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const stale = session.lastGoodFit.spec_revision !== session.latest.revision;
   return (
     <div className="grid gap-8">
-      {stale ? <p className="rounded-lg border border-info/35 bg-info/8 px-4 py-2 text-[13px]">These results are older than your latest changes. Fit the model again to update them.</p> : null}
+      {stale ? <p className="rounded-lg border border-info/35 bg-info/8 px-4 py-2 text-sm">These results are older than your latest changes. Fit the model again to update them.</p> : null}
       <section aria-labelledby="headline-h" className="grid gap-4">
         <h2 id="headline-h" className="sr-only">
           Headline numbers
@@ -396,7 +396,7 @@ export function ReportStep({ session }: { session: GuidedSession }) {
         </section>
       ) : null}
       {session.template.id === "geo_lift" ? <LiftTestCard session={session} /> : null}
-      {mv.scorecard ? <ScorecardView scorecard={mv.scorecard} mv={mv} session={session} /> : <p className="text-[13px] text-muted-foreground">This model has no scorecard.</p>}
+      {mv.scorecard ? <ScorecardView scorecard={mv.scorecard} mv={mv} session={session} /> : <p className="text-sm text-muted-foreground">This model has no scorecard.</p>}
       <StepActions>
         <Button variant="ghost" onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>
           Back

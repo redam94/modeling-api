@@ -41,7 +41,7 @@ export function ScorecardView({ scorecard }: { scorecard: Scorecard | null | und
           </div>
           {item.value != null ? (
             <div className="text-right text-xs tabular">
-              <p className="font-mono text-[13px]">{formatNumber(item.value)}</p>
+              <p className="font-mono text-sm">{formatNumber(item.value)}</p>
               {item.threshold != null ? <p className="text-muted-foreground">limit {formatNumber(item.threshold)}</p> : null}
               {item.metric ? <p className="text-muted-foreground">{item.metric}</p> : null}
             </div>
@@ -77,7 +77,7 @@ export function DiagnosticsTable({ diagnostics, capabilities }: { diagnostics: D
   return (
     <div className="grid gap-3">
       {capabilities && capabilities.loo_valid === false ? (
-        <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/8 p-3 text-[13px]">
+        <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/8 p-3 text-sm">
           <AlertTriangle className="mt-0.5 size-4 text-warning" />
           <span>
             LOO is not valid for this model{capabilities.loo_invalid_reason ? `: ${capabilities.loo_invalid_reason}` : "."} The app does not show Pareto-k and elpd_loo.
@@ -199,7 +199,7 @@ export function TreeBrowser({ mv }: { mv: ModelVersion }) {
       </nav>
       {current ? (
         <div className="min-w-0">
-          <Mono className="mb-3 block text-[13px] font-semibold">{current.path}</Mono>
+          <Mono className="mb-3 block text-sm font-semibold">{current.path}</Mono>
           <GroupDetail group={current} />
         </div>
       ) : null}

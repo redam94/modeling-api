@@ -113,7 +113,7 @@ export function SheetContent({
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px]" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60 backdrop-blur-[1px]" />
       <DialogPrimitive.Content
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-full flex-col gap-4 overflow-y-auto border-l bg-popover p-5 text-popover-foreground shadow-2xl sm:max-w-2xl sm:p-6",
@@ -122,7 +122,7 @@ export function SheetContent({
       >
         <div className="grid gap-1 pr-8">
           <DialogPrimitive.Title className="text-base font-semibold tracking-tight">{title}</DialogPrimitive.Title>
-          {description ? <DialogPrimitive.Description className="text-[13px] text-muted-foreground">{description}</DialogPrimitive.Description> : null}
+          {description ? <DialogPrimitive.Description className="text-sm text-muted-foreground">{description}</DialogPrimitive.Description> : null}
         </div>
         {children}
         <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
@@ -205,7 +205,7 @@ export function ChangeBand({
   return (
     <div className="grid gap-1">
       <ChangeBandTrack lo={lo} mid={mid} hi={hi} exact={exact} label={label} x={x} width={width} tone={tone} />
-      <div aria-hidden className="flex flex-wrap items-center justify-between gap-x-3 text-[11px] text-muted-foreground">
+      <div aria-hidden className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className={cn("h-2 w-4 rounded-full opacity-40", tone)} /> instant estimate
         </span>

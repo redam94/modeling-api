@@ -89,18 +89,18 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
               </div>
             </form>
           ) : a.description_user ? (
-            <p className="text-[14px] leading-relaxed whitespace-pre-line" data-testid="dataset-description">
+            <p className="text-sm leading-relaxed whitespace-pre-line" data-testid="dataset-description">
               {a.description_user}
             </p>
           ) : (
-            <p className="text-[13px] text-muted-foreground">There is no description yet.{editable ? " Add a description so that other persons know where the data comes from." : ""}</p>
+            <p className="text-sm text-muted-foreground">There is no description yet.{editable ? " Add a description so that other persons know where the data comes from." : ""}</p>
           )}
         </section>
         <section className="grid content-start gap-2" aria-labelledby="ds-summary-h">
           <h3 id="ds-summary-h" className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             <Sparkles aria-hidden className="size-3.5" /> Summary from the data
           </h3>
-          <p className="text-[14px] leading-relaxed" data-testid="dataset-summary">
+          <p className="text-sm leading-relaxed" data-testid="dataset-summary">
             {a.summary_generated}
           </p>
           {a.highlights?.length ? (
@@ -113,7 +113,7 @@ export function DatasetAboutCard({ datasetId, actions }: { datasetId: string; ac
             </ul>
           ) : null}
           {a.warnings_plain?.length ? (
-            <ul className="grid gap-1 text-[13px]" aria-label="Things to check">
+            <ul className="grid gap-1 text-sm" aria-label="Things to check">
               {a.warnings_plain.map((w) => (
                 <li key={w} className="flex items-start gap-1.5">
                   <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" />

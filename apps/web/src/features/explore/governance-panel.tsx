@@ -89,7 +89,7 @@ function Evidence({ item }: { item: EvidenceItem }) {
   const inline = item.inline;
   const records = Array.isArray(inline) && inline.every((r) => typeof r === "object" && r !== null && !Array.isArray(r)) ? (inline as Record<string, unknown>[]) : null;
   return (
-    <div className="grid gap-1 text-[13px]">
+    <div className="grid gap-1 text-sm">
       <p className="flex flex-wrap items-baseline gap-2">
         <span className="font-mono text-xs">{item.name}</span>
         {item.value != null ? <span className="font-medium tabular">{num(item.value)}</span> : null}
@@ -133,8 +133,8 @@ function CheckRow({ result, expert }: { result: CheckResult; expert: boolean }) 
             <Badge variant="outline">{result.severity}</Badge>
           </span>
         </div>
-        <p className="text-[13px]">{result.message_plain}</p>
-        {result.suggested_action && result.status !== "pass" ? <p className="text-[13px] text-muted-foreground">{result.suggested_action}</p> : null}
+        <p className="text-sm">{result.message_plain}</p>
+        {result.suggested_action && result.status !== "pass" ? <p className="text-sm text-muted-foreground">{result.suggested_action}</p> : null}
         {result.value != null ? (
           <p className="text-xs text-muted-foreground tabular">
             Measured {num(result.value)}
@@ -152,7 +152,7 @@ function CheckRow({ result, expert }: { result: CheckResult; expert: boolean }) 
             </div>
           </details>
         ) : null}
-        {expert && result.message_expert ? <p className="font-mono text-[11px] text-muted-foreground">{result.message_expert}</p> : null}
+        {expert && result.message_expert ? <p className="font-mono text-xs text-muted-foreground">{result.message_expert}</p> : null}
       </div>
     </li>
   );
@@ -181,7 +181,7 @@ export function GovernancePanel({ modelId, version, expert }: { modelId: string;
       <div className={cn("grid gap-1.5 rounded-lg border-l-[3px] bg-muted/30 px-4 py-3", tone === "success" ? "border-l-success" : tone === "danger" ? "border-l-destructive" : "border-l-warning")}>
         <p className="flex flex-wrap items-center gap-2">
           <ValidationBadge status={latest.status} />
-          <span className="text-[14px]">{meta.plain}</span>
+          <span className="text-sm">{meta.plain}</span>
         </p>
         <p className="text-xs text-muted-foreground">
           {results.filter((r) => r.status === "pass").length} of {results.length} checks passed
@@ -189,7 +189,7 @@ export function GovernancePanel({ modelId, version, expert }: { modelId: string;
           {latest.require_approval ? ` · needs ${latest.approvals_required ?? 1} approval${(latest.approvals_required ?? 1) === 1 ? "" : "s"}` : ""}
           {latest.policies?.length ? ` · policies ${latest.policies.join(", ")}` : ""}
         </p>
-        {latest.failing_checks?.length ? <p className="text-[13px]">Checks that block the version: {latest.failing_checks.join(", ")}</p> : null}
+        {latest.failing_checks?.length ? <p className="text-sm">Checks that block the version: {latest.failing_checks.join(", ")}</p> : null}
         <GovernanceLinks modelId={modelId} version={version} latest={latest} />
       </div>
       <ul className="grid gap-2" aria-label="Check results">

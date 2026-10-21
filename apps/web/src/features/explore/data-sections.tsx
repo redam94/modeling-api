@@ -71,7 +71,7 @@ export function OverviewSection({ view, expert, onSection }: P<DataOverviewView>
     <>
       <PlainSummary tone={score?.tone ?? "neutral"}>
         <p>{view.summary_plain}</p>
-        {score ? <p className="text-[13px] text-muted-foreground">{score.text}</p> : null}
+        {score ? <p className="text-sm text-muted-foreground">{score.text}</p> : null}
       </PlainSummary>
       {shapes.length ? (
         <div className="grid gap-1.5">
@@ -308,7 +308,7 @@ export function CcfSection({ view, expert, unit }: P<CrossCorrelationView> & { u
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        {item ? <p className="text-[13px]">{leadReading(item, view.kpi, unit)}</p> : null}
+        {item ? <p className="text-sm">{leadReading(item, view.kpi, unit)}</p> : null}
       </PlainSummary>
       <div className="flex flex-wrap items-end gap-3">
         <Picker label="Driver" value={pick} options={options} onChange={setPick} />
@@ -391,7 +391,7 @@ export function StationaritySection({ view, expert }: P<StationarityView>) {
     <>
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
-        <p className="text-[13px] text-muted-foreground">A series that wanders has no level to go back to. Model its changes (difference it), or use a model that is made for this type of series.</p>
+        <p className="text-sm text-muted-foreground">A series that wanders has no level to go back to. Model its changes (difference it), or use a model that is made for this type of series.</p>
       </PlainSummary>
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <StatTable
@@ -460,7 +460,7 @@ export function VifSection({ view, expert }: P<VifView>) {
   const flagged = useMemo(() => new Set(view.flagged ?? []), [view.flagged]);
   const entries = useMemo(() => Object.entries(view.vif ?? {}).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)), [view.vif]);
   const plot = useMemo(
-    () => barsPlot(entries.map(([k, v]) => ({ label: k, value: v, group: flagged.has(k) ? "Too much overlap" : "Fine" })), { title: "Variance inflation", ruleAt: view.limit ?? 10, groups: { domain: ["Fine", "Too much overlap"], range: ["#1f8a70", "#d9822b"] } }),
+    () => barsPlot(entries.map(([k, v]) => ({ label: k, value: v, group: flagged.has(k) ? "Too much overlap" : "Fine" })), { title: "Variance inflation", ruleAt: view.limit ?? 10, groups: { domain: ["Fine", "Too much overlap"], range: ["#12871c", "#cc4b00"] } }),
     [entries, flagged, view.limit],
   );
   return (
@@ -505,7 +505,7 @@ export function GroupsSection({ view, expert }: P<GroupComparisonView>) {
       <PlainSummary tone={reading.tone}>
         <p>{reading.text}</p>
         {item?.p_value != null ? (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {item.differs ? `${item.var} is different between the ${view.by} groups` : `${item.var} is similar in all the ${view.by} groups`} ({item.test === "kruskal" ? "Kruskal-Wallis" : "ANOVA"} p {pValue(item.p_value)}).
           </p>
         ) : null}
@@ -559,8 +559,8 @@ export function QualitySection({ view }: P<QualityView>) {
                     <span className="font-medium">{w.message_plain}</span>
                     <span className={cn("text-xs font-medium", meta.className)}>{meta.label}</span>
                   </p>
-                  {w.suggested_action ? <p className="text-[13px] text-muted-foreground">{w.suggested_action}</p> : null}
-                  <p className="font-mono text-[11px] text-muted-foreground">
+                  {w.suggested_action ? <p className="text-sm text-muted-foreground">{w.suggested_action}</p> : null}
+                  <p className="font-mono text-xs text-muted-foreground">
                     {w.code}
                     {w.var ? ` · ${w.var}` : ""}
                     {Object.keys(w.coords ?? {}).length ? ` · ${Object.entries(w.coords ?? {}).map(([k, v]) => `${k}=${String(v)}`).join(", ")}` : ""}

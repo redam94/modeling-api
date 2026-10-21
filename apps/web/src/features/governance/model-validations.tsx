@@ -45,7 +45,7 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
   return (
     <form className="grid gap-4" onSubmit={submit} aria-label="Request a validation">
       <div className="grid gap-2">
-        <p className="text-[13px] font-medium">Policies that apply</p>
+        <p className="text-sm font-medium">Policies that apply</p>
         <p className="text-xs text-muted-foreground" data-testid="policies-in-force-note">
           All policies in force for this type of model apply. To apply one more policy to this version, select it.
         </p>
@@ -54,7 +54,7 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
             {items.map((p) => {
               const checked = extra.includes(p.id);
               return (
-                <li key={p.id} className="flex items-start gap-2 text-[13px]">
+                <li key={p.id} className="flex items-start gap-2 text-sm">
                   <Checkbox
                     id={`pol-${p.id}`}
                     checked={checked}
@@ -76,7 +76,7 @@ function RequestForm({ modelId, version }: { modelId: string; version: number })
             })}
           </ul>
         ) : (
-          <p className="text-[13px] text-muted-foreground">{policies.isPending ? "Loading the policies…" : "No policy is in force. The default rules of the platform apply."}</p>
+          <p className="text-sm text-muted-foreground">{policies.isPending ? "Loading the policies…" : "No policy is in force. The default rules of the platform apply."}</p>
         )}
       </div>
       <DatasetRefPicker value={dataset} onChange={setDataset} label="Data to check against" required={false} hint="To use the dataset of the fit, keep this field empty." />
@@ -164,7 +164,7 @@ export function ModelValidations({ modelId, version }: { modelId: string; versio
               <CardDescription>The checks run in the sandbox. If a policy needs approval, a reviewer approves the validation.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>{mayValidate ? <RequestForm modelId={modelId} version={version} /> : <p className="text-[13px] text-muted-foreground">You need the runner role to request a validation.</p>}</CardContent>
+          <CardContent>{mayValidate ? <RequestForm modelId={modelId} version={version} /> : <p className="text-sm text-muted-foreground">You need the runner role to request a validation.</p>}</CardContent>
         </Card>
       </div>
     </div>
@@ -176,7 +176,7 @@ export function NotValidatedNotice({ modelId, version }: { modelId: string; vers
   const validations = useModelValidations(modelId, version);
   const latest = validations.data?.items[0];
   return (
-    <div role="alert" className="grid gap-2 rounded-md border border-destructive/35 bg-destructive/6 p-3 text-[13px]" data-testid="not-validated">
+    <div role="alert" className="grid gap-2 rounded-md border border-destructive/35 bg-destructive/6 p-3 text-sm" data-testid="not-validated">
       <p className="flex items-center gap-2 font-medium">
         <ShieldAlert className="size-4 text-destructive" aria-hidden /> A governance policy needs a validated model
       </p>

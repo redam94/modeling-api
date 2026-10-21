@@ -90,7 +90,7 @@ export function TreeBrowser({ version, nodes }: { version: DatasetVersion; nodes
                 tabIndex={r.path === node ? 0 : -1}
                 onClick={() => setSelected(r.path)}
                 onKeyDown={(e) => onKey(e, i)}
-                className={cn("flex w-full items-center justify-between gap-2 rounded-md py-1.5 pr-2 text-left text-[13px] hover:bg-accent", r.path === node && "bg-accent font-medium")}
+                className={cn("flex w-full items-center justify-between gap-2 rounded-md py-1.5 pr-2 text-left text-sm hover:bg-accent", r.path === node && "bg-accent font-medium")}
                 style={{ paddingLeft: `${0.5 + r.depth * 0.9}rem` }}
                 title={r.path}
               >
@@ -103,7 +103,7 @@ export function TreeBrowser({ version, nodes }: { version: DatasetVersion; nodes
       </nav>
       <section aria-label={`Node ${node}`} className="grid min-w-0 content-start gap-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Mono className="text-[15px] font-semibold break-all">{node}</Mono>
+          <Mono className="text-base font-semibold break-all">{node}</Mono>
           {node === fallback ? <Badge variant="secondary">default node</Badge> : null}
           {!varCount(schema) ? <Badge variant="outline">group without variables</Badge> : null}
           {varCount(schema) && version.status === "ready" ? (
@@ -120,7 +120,7 @@ export function TreeBrowser({ version, nodes }: { version: DatasetVersion; nodes
           <p className="text-muted-foreground">This node only groups the nodes below it. It has no dims or variables of its own.</p>
         )}
         <div className="grid gap-2">
-          <h3 className="text-[13px] font-semibold">Coordinates</h3>
+          <h3 className="text-sm font-semibold">Coordinates</h3>
           {summaries.isPending ? (
             <LoadingRows rows={2} />
           ) : summaries.isError ? (
@@ -132,7 +132,7 @@ export function TreeBrowser({ version, nodes }: { version: DatasetVersion; nodes
           )}
         </div>
         <div className="grid gap-2">
-          <h3 className="text-[13px] font-semibold">Preview</h3>
+          <h3 className="text-sm font-semibold">Preview</h3>
           {node === fallback ? (
             <PreviewPanel version={version} />
           ) : (

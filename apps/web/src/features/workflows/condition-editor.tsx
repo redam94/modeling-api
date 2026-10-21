@@ -68,7 +68,7 @@ export function ConditionEditor({
   const status = !value.trim() ? null : checking ? "checking" : issue ? "bad" : "ok";
   return (
     <div className="grid gap-2">
-      <label htmlFor={id} className="text-[13px] font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         Condition
       </label>
       <Textarea

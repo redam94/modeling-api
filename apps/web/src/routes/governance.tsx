@@ -173,7 +173,7 @@ export function GovernancePage() {
           <TabsTrigger value="checks">Check catalog</TabsTrigger>
         </TabsList>
         <TabsContent value="policies">
-          <p className="mb-3 text-[13px] text-muted-foreground">All projects inherit the tenant-wide policies as a minimum. The policies of a project can add checks or make thresholds stricter.</p>
+          <p className="mb-3 text-sm text-muted-foreground">All projects inherit the tenant-wide policies as a minimum. The policies of a project can add checks or make thresholds stricter.</p>
           <QueryView query={projectPolicies}>{(page) => <PolicyTable policies={page.items} editable={(p) => (p.scope === "tenant" ? tenantAdmin : projectAdmin)} />}</QueryView>
         </TabsContent>
         <TabsContent value="tenant">

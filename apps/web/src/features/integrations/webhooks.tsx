@@ -78,7 +78,7 @@ export function WebhooksSection({ onCreate }: { onCreate?: () => void }) {
         cell: ({ row }) => (
           <div className="flex max-w-72 flex-wrap gap-1">
             {row.original.events.map((e) => (
-              <Badge key={e} variant="outline" className="font-mono text-[11px]">
+              <Badge key={e} variant="outline" className="font-mono text-xs">
                 {e}
               </Badge>
             ))}
@@ -90,7 +90,7 @@ export function WebhooksSection({ onCreate }: { onCreate?: () => void }) {
         accessorKey: "last_delivery_at",
         header: "Last delivery",
         cell: ({ row }) => (
-          <span className="grid text-[13px]">
+          <span className="grid text-sm">
             <span title={absoluteTime(row.original.last_delivery_at)}>{row.original.last_delivery_at ? relativeTime(row.original.last_delivery_at) : "Never"}</span>
             {row.original.failure_count ? <span className="text-xs text-warning">{row.original.failure_count} failed in a row</span> : null}
           </span>
@@ -171,7 +171,7 @@ export function EventPicker({ value, onChange, idPrefix = "evt" }: { value: Webh
           <label key={e.type} htmlFor={id} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/40", checked && "border-primary/50 bg-accent/40")}>
             <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true ? [...value, e.type] : value.filter((x) => x !== e.type))} className="mt-0.5" />
             <span className="grid gap-0.5">
-              <span className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+              <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
                 {e.label} <Mono className="text-muted-foreground">{e.type}</Mono>
               </span>
               <span className="text-xs text-muted-foreground">{e.description}</span>
@@ -209,7 +209,7 @@ export function CreateWebhookDialog({ initialEvents, onClose, onCreated }: { ini
             <Input id="wh-desc" maxLength={500} placeholder="Planning pipeline" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
           <fieldset className="grid gap-2" aria-describedby={shown.events ? "wh-events-error" : undefined}>
-            <legend className="mb-1 text-[13px] font-medium">Events</legend>
+            <legend className="mb-1 text-sm font-medium">Events</legend>
             <EventPicker value={form.events} onChange={(events) => setForm({ ...form, events })} />
             {shown.events ? (
               <p id="wh-events-error" role="alert" className="text-xs font-medium text-destructive">
@@ -247,7 +247,7 @@ export function WebhookSecretDialog({ created, rotated = false, onClose }: { cre
       copyLabel="Copy signing secret"
       onClose={onClose}
     >
-      <details className="rounded-md border p-3 text-[13px]">
+      <details className="rounded-md border p-3 text-sm">
         <summary className="cursor-pointer font-medium">Verify a delivery (Python)</summary>
         <div className="mt-2">
           <CodeBlock code={VERIFY_SNIPPET} label="Signature check" language="python" />
@@ -270,7 +270,7 @@ export function AutoDisabledNotice({ webhook }: { webhook: Webhook }) {
       <div className="grid gap-1">
         <p className="font-semibold">This webhook was disabled automatically</p>
         <p className="text-muted-foreground">{webhook.disabled_reason}</p>
-        <p className="text-[13px]">Repair the receiver, then enable the webhook again. This sets the failure count to zero. The platform did not queue the events that occurred while the webhook was disabled.</p>
+        <p className="text-sm">Repair the receiver, then enable the webhook again. This sets the failure count to zero. The platform did not queue the events that occurred while the webhook was disabled.</p>
       </div>
     </div>
   );
@@ -296,7 +296,7 @@ export function WebhookSettings({ webhook }: { webhook: Webhook }) {
             Signing secret <Mono>{webhook.secret_hint}</Mono> · created {relativeTime(webhook.created_at)}
           </CardDescription>
         </div>
-        <label className="flex items-center gap-2 text-[13px]">
+        <label className="flex items-center gap-2 text-sm">
           <Switch
             checked={webhook.active}
             disabled={!canUpdate || update.isPending}
@@ -316,7 +316,7 @@ export function WebhookSettings({ webhook }: { webhook: Webhook }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <fieldset className="grid gap-2" disabled={!canUpdate}>
-          <legend className="mb-1 text-[13px] font-medium">Events</legend>
+          <legend className="mb-1 text-sm font-medium">Events</legend>
           <EventPicker value={events} onChange={setEvents} idPrefix="wh-edit" />
         </fieldset>
         <div className="flex flex-wrap gap-2">
@@ -402,7 +402,7 @@ function DeliveryRow({ d, onReplay, canReplay, replaying, open, onToggle }: { d:
       {open ? (
         <TR>
           <TD colSpan={7} className="bg-muted/30">
-            <div className="grid gap-2 py-1 text-[13px]">
+            <div className="grid gap-2 py-1 text-sm">
               {d.next_retry_at ? <p>Next try {relativeTime(d.next_retry_at)} ({absoluteTime(d.next_retry_at)}).</p> : null}
               {d.replay_of ? (
                 <p>

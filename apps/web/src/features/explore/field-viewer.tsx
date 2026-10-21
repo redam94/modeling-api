@@ -92,7 +92,7 @@ function Arrows({ arrows, width, height, origin }: { arrows: FieldArrows; width:
     <svg className="pointer-events-none absolute inset-0 size-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden data-testid="field-arrows">
       {lines.map((l) => (
         <g key={l.key}>
-          <path d={path(l)} fill="none" stroke="rgb(0 0 0 / 0.55)" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <path d={path(l)} fill="none" className="stroke-grey-1000/55" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           <path d={path(l)} fill="none" stroke="white" strokeWidth={1.4} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </g>
       ))}
@@ -105,12 +105,12 @@ function ColorBar({ scale, units, title, clipped = null }: { scale: ColorScale; 
   return (
     <figure className="grid gap-1" aria-label={`Colour scale: ${title}`}>
       <div className="h-3 rounded-sm border" style={{ backgroundImage: gradientCss(scale.colormap) }} aria-hidden />
-      <div className="flex justify-between text-[11px] text-muted-foreground tabular">
+      <div className="flex justify-between text-xs text-muted-foreground tabular">
         {ticks.map((t, i) => (
           <span key={i}>{num(t, 3)}</span>
         ))}
       </div>
-      <figcaption className="text-[11px] text-muted-foreground">
+      <figcaption className="text-xs text-muted-foreground">
         {title}
         {units ? ` (${units})` : ""}
         {scale.log ? ", log scale" : ""}
@@ -174,7 +174,7 @@ function FrameStrip({ stats, at, frameDim, shownLabels, onPick }: { stats: Frame
         <polyline points={line(stats.mean)} fill="none" className="stroke-primary" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
         {at >= 0 ? <line x1={x(at)} x2={x(at)} y1={0} y2={H} className="stroke-foreground" strokeWidth={1.5} vectorEffect="non-scaling-stroke" data-testid="frame-strip-marker" /> : null}
       </svg>
-      <figcaption className="text-[11px] text-muted-foreground">
+      <figcaption className="text-xs text-muted-foreground">
         Mean of each {frameDim} ({num(n)}{stats.downsampled ? ", thinned" : ""}), with the range from the minimum to the maximum. Click to go to a {frameDim}.
       </figcaption>
     </figure>
@@ -347,19 +347,19 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
         </div>
         )}
         {vector ? (
-          <label className="flex items-center gap-2 pb-1 text-[13px]">
+          <label className="flex items-center gap-2 pb-1 text-sm">
             <input type="checkbox" className="accent-primary" checked={arrowsOn} onChange={(e) => setArrowsOn(e.target.checked)} />
             Show the arrows
           </label>
         ) : null}
         {robust && !rgb ? (
-          <label className="flex items-center gap-2 pb-1 text-[13px]">
+          <label className="flex items-center gap-2 pb-1 text-sm">
             <input type="checkbox" className="accent-primary" checked={fullRange} onChange={(e) => setFullRange(e.target.checked)} />
             Colours for the full range
           </label>
         ) : null}
         {maskValues ? (
-          <label className="flex items-center gap-2 pb-1 text-[13px]">
+          <label className="flex items-center gap-2 pb-1 text-sm">
             <input type="checkbox" className="accent-primary" checked={maskOn} onChange={(e) => setMaskOn(e.target.checked)} />
             Shade the cells outside the mask{maskLabel ? ` (${maskLabel})` : ""}
           </label>
@@ -437,16 +437,16 @@ export function FieldViewer({ field, mode = "model", mask = null, maskLabel = nu
             ) : null}
           </div>
           {rgb ? (
-            <p className="text-[11px] text-muted-foreground" data-testid="rgb-note">
+            <p className="text-xs text-muted-foreground" data-testid="rgb-note">
               {rgba ? `Red, green and blue from ${field.channel_dim ?? "the channels"}${field.rgb_scale === "stretch" ? ", stretched from the smallest to the largest value" : " (0 to 255)"}.` : "This image has no colours."}
             </p>
           ) : scale ? (
             <ColorBar scale={scale} units={current === "ratio" ? null : field.units} title={title} clipped={scale === robust ? (data ? "the values" : "the posterior means") : null} />
           ) : (
-            <p className="text-[13px] text-muted-foreground">This raster has no values.</p>
+            <p className="text-sm text-muted-foreground">This raster has no values.</p>
           )}
         </div>
-        <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-[13px]" aria-live="polite" data-testid="field-readout">
+        <dl id={`${ids}-readout`} className="grid h-fit grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-sm" aria-live="polite" data-testid="field-readout">
           {cell ? (
             <>
               <dt className="text-muted-foreground">{field.y_dim}</dt>

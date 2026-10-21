@@ -58,7 +58,7 @@ export function DevIdpPage() {
         </div>
         <div className="grid gap-1">
           <h1 className="text-xl font-semibold tracking-tight">Choose who to sign in as</h1>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Mock mode only. No password: this page stands in for your organisation&apos;s sign-in. You will return to <code className="font-mono">{returnTo}</code>.
           </p>
         </div>
@@ -92,7 +92,7 @@ export function DevIdpPage() {
           ))}
         </ul>
         {error ? (
-          <p role="alert" className="text-[13px] text-destructive">
+          <p role="alert" className="text-sm text-destructive">
             Sign-in failed: {error}
           </p>
         ) : null}

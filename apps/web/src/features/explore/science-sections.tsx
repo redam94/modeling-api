@@ -327,7 +327,7 @@ export function MapSection({ view, expert }: P<MapView>) {
           }}
         />
         {view.edges?.length ? (
-          <label className="flex items-center gap-2 pb-1 text-[13px]">
+          <label className="flex items-center gap-2 pb-1 text-sm">
             <input type="checkbox" className="accent-primary" checked={edges} onChange={(e) => setEdges(e.target.checked)} />
             Show the neighbours
           </label>
@@ -413,7 +413,7 @@ export function NetworkSection({ view, expert }: P<NetworkView>) {
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
         {degree ? <SciPlotView plot={degree} title={`Degree distribution of ${e.var}`} height={220} /> : null}
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Network statistics">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" aria-label="Network statistics">
           <dt className="text-muted-foreground">Nodes</dt>
           <dd className="tabular">{count(e.n_nodes)}</dd>
           <dt className="text-muted-foreground">Ties</dt>
@@ -459,7 +459,7 @@ export function TreeSection({ view, expert }: P<TreeView>) {
   return (
     <>
       {traitVars.length ? (
-        <fieldset className="flex flex-wrap items-center gap-3 text-[13px]">
+        <fieldset className="flex flex-wrap items-center gap-3 text-sm">
           <legend className="sr-only">Traits next to the tree</legend>
           <span className="text-xs font-medium text-muted-foreground">Traits next to the tree (a maximum of 4)</span>
           {traitVars.map((t) => (
@@ -480,7 +480,7 @@ export function TreeSection({ view, expert }: P<TreeView>) {
       <SciPlotView plot={plot} title={`Tree of ${view.node_dim}`} height={480} caption={view.matched_by && view.matched_by !== "label" ? `The trait values are matched to the tips by ${view.matched_by}, not by name.` : undefined} />
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Tree statistics">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" aria-label="Tree statistics">
           <dt className="text-muted-foreground">Nodes</dt>
           <dd className="tabular">{count(view.n_nodes)}</dd>
           <dt className="text-muted-foreground">Tips</dt>
@@ -603,7 +603,7 @@ export function PointsSection({ view, expert }: P<PointsView>) {
       {density ? <SciPlotView plot={density} title={`Density of all ${count(view.n)} points`} height={340} /> : null}
       <ViewNotes caption={view.caption_plain} warnings={view.warnings_plain} />
       <Statistics expert={expert}>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]" aria-label="Point statistics">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm" aria-label="Point statistics">
           <dt className="text-muted-foreground">Points</dt>
           <dd className="tabular">{count(view.n)}</dd>
           <dt className="text-muted-foreground">Position</dt>

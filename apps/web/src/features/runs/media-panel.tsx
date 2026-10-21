@@ -56,7 +56,7 @@ function MediaCard({ runId, group }: { runId: string; group: MediaGroup }) {
     <Card data-media-key={group.key}>
       <CardHeader className="flex-wrap gap-y-2">
         <CardTitle className="flex items-center gap-2">
-          <Mono className="text-[13px]">{group.key}</Mono>
+          <Mono className="text-sm">{group.key}</Mono>
           <Badge variant="outline">{group.kind === "image" ? "images" : "tables"}</Badge>
         </CardTitle>
         {group.series.length > 1 ? (
@@ -93,7 +93,7 @@ function MediaCard({ runId, group }: { runId: string; group: MediaGroup }) {
             <MediaItemView media={current} />
           </>
         ) : (
-          <p className="text-[13px] text-muted-foreground">This label set has no items.</p>
+          <p className="text-sm text-muted-foreground">This label set has no items.</p>
         )}
         {media.data?.more ? <p className="text-xs text-muted-foreground">The key has more items than the tab shows.</p> : null}
       </CardContent>

@@ -34,7 +34,7 @@ function PhaseChecklist({ phase, done }: { phase: string | null; done: boolean }
       {PHASE_ORDER.map((p, i) => {
         const state = i < slot ? "done" : i === slot ? "now" : "later";
         return (
-          <li key={p} className={cn("flex items-center gap-2 text-[13px]", state === "later" && "text-muted-foreground")}>
+          <li key={p} className={cn("flex items-center gap-2 text-sm", state === "later" && "text-muted-foreground")}>
             <span
               aria-hidden
               className={cn(
@@ -79,7 +79,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
             </span>
             <div className="grid gap-1">
               <h2 className="text-[17px] font-semibold tracking-tight">Your model is ready</h2>
-              <p className="text-[13px] text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 It learned from your data. Then it did a test on the weeks that it held back.
                 {current.cost?.amount_micros != null ? ` This fit cost ${formatMicros(current.cost.amount_micros, current.cost.currency)}.` : ""}
               </p>
@@ -101,7 +101,7 @@ function LiveRun({ run, session }: { run: Run; session: GuidedSession }) {
           <div className="grid gap-1" aria-live="polite">
             <p className="text-xs font-medium text-muted-foreground">{stateText(current.state, p !== null)}</p>
             <h2 className="text-[17px] font-semibold tracking-tight">{terminal ? (current.state === "cancelled" ? "The fit was stopped" : "The fit did not finish") : text.title}</h2>
-            <p className="max-w-[60ch] text-[13px] text-muted-foreground">
+            <p className="max-w-[60ch] text-sm text-muted-foreground">
               {terminal ? (advice ? `${advice.title}. ${advice.message}` : (current.problem?.detail ?? current.problem?.title ?? "You can start it again.")) : text.body}
             </p>
           </div>
@@ -168,8 +168,8 @@ export function RunStep({ session }: { session: GuidedSession }) {
       {!run || finished ? (
         <Card>
           <CardContent className="grid gap-3 pt-5">
-            <h2 className="text-[15px] font-semibold tracking-tight">{run ? "Try again" : "Ready to start"}</h2>
-            <p className="max-w-[62ch] text-[13px] text-muted-foreground">
+            <h2 className="text-lg font-semibold tracking-tight">{run ? "Try again" : "Ready to start"}</h2>
+            <p className="max-w-[62ch] text-sm text-muted-foreground">
               The fit runs in a secure sandbox. It usually takes a few minutes. First, the model learns without the latest weeks. This measures how well it forecasts. Then the model learns again from all the data.
               {session.lastGoodFit && session.lastGoodFit.spec_revision !== session.latest.revision ? " Your earlier results stay available until the new fit is complete." : ""}
             </p>
@@ -180,7 +180,7 @@ export function RunStep({ session }: { session: GuidedSession }) {
               {!canRun ? <span className="text-xs text-muted-foreground">You need the runner role to start a fit.</span> : null}
             </div>
             {error ? (
-              <p role="alert" className="text-[13px] text-destructive">
+              <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             ) : null}

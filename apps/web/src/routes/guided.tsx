@@ -43,7 +43,7 @@ export function GuidedPage() {
       <ChooserTeaser title="Which one is best for you? Help me choose" />
       <TemplatePicker />
       <section aria-labelledby="sessions-h" className="grid gap-3">
-        <h2 id="sessions-h" className="text-[15px] font-semibold tracking-tight">
+        <h2 id="sessions-h" className="text-lg font-semibold tracking-tight">
           Continue a saved analysis
         </h2>
         <SessionList />

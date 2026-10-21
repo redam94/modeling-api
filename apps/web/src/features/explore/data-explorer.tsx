@@ -163,10 +163,10 @@ function OptionsDialog({
           }}
         >
           <fieldset className="grid gap-2">
-            <legend className="text-[13px] font-medium">Views</legend>
+            <legend className="text-sm font-medium">Views</legend>
             <div className="grid gap-1.5 sm:grid-cols-3">
               {DATA_ORDER.map((s) => (
-                <label key={s} className="flex items-center gap-2 text-[13px]">
+                <label key={s} className="flex items-center gap-2 text-sm">
                   <Checkbox checked={sections.includes(s)} onCheckedChange={(c) => set({ sections: c ? [...sections, s] : sections.filter((x) => x !== s) })} aria-label={DATA_SECTION_META[s].title} />
                   {DATA_SECTION_META[s].title}
                 </label>
@@ -236,13 +236,13 @@ function OptionsDialog({
             <Field label="Series per view" htmlFor="ex-max">
               <Input id="ex-max" type="number" min={1} max={200} value={req.max_series ?? 50} onChange={(e) => set({ max_series: Number(e.target.value) })} />
             </Field>
-            <label className="flex items-center gap-3 self-end pb-2 text-[13px]">
+            <label className="flex items-center gap-3 self-end pb-2 text-sm">
               <Switch checked={req.prewhiten ?? true} onCheckedChange={(c) => set({ prewhiten: c })} aria-label="Prewhiten before cross-correlating" />
               Prewhiten before the cross-correlation (this prevents false peaks)
             </label>
           </div>
           <fieldset className="grid gap-3 rounded-lg border p-4" data-testid="explore-hints">
-            <legend className="px-1 text-[13px] font-medium">Shape of the data (hints)</legend>
+            <legend className="px-1 text-sm font-medium">Shape of the data (hints)</legend>
             <p className="text-xs text-muted-foreground">The explorer finds images, maps, networks, trees, directions and series automatically. If it finds the wrong shape, tell it which dimension has which role. A hint changes only that dimension or variable.</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {dimSelect("hint-y", "y_dim", "Rows of an image (y)")}
@@ -373,7 +373,7 @@ function SectionPanel({
         isPending={view.isPending}
         error={view.error}
         notComputed={
-          <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-[13px]" data-testid="section-missing">
+          <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5 text-sm" data-testid="section-missing">
             <p className="text-muted-foreground">The sandbox computes this view when you ask for it. Usually, this takes less than one minute.</p>
             <Button size="sm" onClick={onCompute} disabled={!canRun || running}>
               {running ? <Spinner /> : <FlaskConical />} Compute it now
@@ -424,7 +424,7 @@ export function DataExplorer({ datasetId, version, schema, section, onSection, r
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {base.isPending
             ? "Loading the views…"
             : missing.length

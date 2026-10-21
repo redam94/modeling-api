@@ -47,7 +47,7 @@ function ExpertStart({ target, size }: { target: Extract<StartTarget, { kind: "e
   const hintId = useId();
   return (
     <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-      <span id={hintId} className="max-w-[30ch] text-right text-[11px] leading-snug text-muted-foreground">
+      <span id={hintId} className="max-w-[30ch] text-right text-xs leading-snug text-muted-foreground">
         {target.hint}
       </span>
       {target.locked ? (
@@ -113,7 +113,7 @@ function QuestionField({ question, value, onChange }: { question: ChooserQuestio
         {question.prompt_plain}
       </legend>
       {question.help_plain || multiple ? (
-        <p id={`${legendId}-help`} className="-mt-1 text-[13px] text-muted-foreground">
+        <p id={`${legendId}-help`} className="-mt-1 text-sm text-muted-foreground">
           {[question.help_plain, multiple ? "Select all the applicable answers." : null].filter(Boolean).join(" ")}
         </p>
       ) : null}
@@ -124,7 +124,7 @@ function QuestionField({ question, value, onChange }: { question: ChooserQuestio
             <label
               key={choice.value}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3.5 py-3 text-[14px] transition-colors hover:border-primary/40 hover:bg-accent/40",
+                "flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3.5 py-3 text-sm transition-colors hover:border-primary/40 hover:bg-accent/40",
                 "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
                 checked && "border-primary/70 bg-accent/60",
               )}
@@ -173,7 +173,7 @@ export function RecommendationCard({ rec, rank, compact = false }: { rec: Recomm
     <li className="grid gap-2.5 rounded-xl border bg-card p-4" data-recommendation={rec.id} aria-label={`${rank}. ${rec.title}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             {rank === 1 && isGoodMatch(rec) ? "Best match · " : `#${rank} · `}
             {KIND_META[rec.kind].label}
           </p>
@@ -181,9 +181,9 @@ export function RecommendationCard({ rec, rank, compact = false }: { rec: Recomm
         </div>
         <MatchMeter score={rec.score} />
       </div>
-      <p className={cn("text-[13px] text-muted-foreground", compact && "line-clamp-2")}>{rec.summary_plain}</p>
+      <p className={cn("text-sm text-muted-foreground", compact && "line-clamp-2")}>{rec.summary_plain}</p>
       {rec.reasons_plain?.length || rec.cautions_plain?.length ? (
-        <ul className="grid gap-1 text-[13px]">
+        <ul className="grid gap-1 text-sm">
           {(rec.reasons_plain ?? []).map((r) => (
             <li key={r} className="flex items-start gap-1.5">
               <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-success" />
@@ -224,7 +224,7 @@ function Results({ answers, kind, limit, compact }: { answers: ChooserAnswers; k
   const recs = useRecommendations(answers, { kind, limit, enabled: answered > 0 });
   if (!answered) {
     return (
-      <div className="grid place-items-start gap-2 rounded-xl border border-dashed p-5 text-[13px] text-muted-foreground">
+      <div className="grid place-items-start gap-2 rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
         <Sparkles aria-hidden className="size-5 text-primary" />
         <p>Answer the first question. Your best matches then show here. They change after each answer.</p>
       </div>
@@ -282,7 +282,7 @@ export function HelpMeChoose({ answers, onAnswersChange, kind = null, limit = 5,
   };
 
   const questionnaire = (
-    <div className="grid content-start gap-5 rounded-xl border bg-card p-5 shadow-[0_1px_0_0_rgb(0_0_0/0.03)]">
+    <div className="grid content-start gap-5 rounded-xl border bg-card p-5">
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span aria-live="polite">{done ? "All questions answered or skipped" : `Question ${at + 1} of ${questions.length}`}</span>
@@ -299,8 +299,8 @@ export function HelpMeChoose({ answers, onAnswersChange, kind = null, limit = 5,
       ) : (
         <div className="grid gap-2">
           <p className="text-[17px] font-semibold tracking-tight">You answered all the questions.</p>
-          <p className="text-[13px] text-muted-foreground">You can change an answer below. The matches change immediately.</p>
-          <ul className="grid gap-1 text-[13px]">
+          <p className="text-sm text-muted-foreground">You can change an answer below. The matches change immediately.</p>
+          <ul className="grid gap-1 text-sm">
             {questions.map((q, i) => (
               <li key={q.id}>
                 <button type="button" className="flex w-full justify-between gap-3 rounded-md px-2 py-1 text-left hover:bg-accent" onClick={() => setStep(i)}>
@@ -336,7 +336,7 @@ export function HelpMeChoose({ answers, onAnswersChange, kind = null, limit = 5,
 
   const results = (
     <section aria-label="Your matches" className="grid content-start gap-3">
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
         <Sparkles aria-hidden className="size-4 text-primary" /> Your matches
         {kind ? <Badge variant="secondary">{KIND_META[kind].plural}</Badge> : null}
       </h2>

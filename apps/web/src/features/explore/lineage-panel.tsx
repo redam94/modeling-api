@@ -21,7 +21,7 @@ function Step({ icon, title, children }: { icon: ReactNode; title: string; child
       </span>
       <div className="grid min-w-0 gap-0.5 pt-0.5">
         <p className="text-xs font-medium text-muted-foreground">{title}</p>
-        <div className="min-w-0 text-[13px] break-words">{children}</div>
+        <div className="min-w-0 text-sm break-words">{children}</div>
       </div>
     </li>
   );
@@ -113,7 +113,7 @@ export function LineagePanel({ mv, expert }: { mv: ModelVersion; expert: boolean
         </Step>
       </ol>
       <div className="grid content-start gap-3">
-        <h3 className="text-[13px] font-semibold">How to reproduce it</h3>
+        <h3 className="text-sm font-semibold">How to reproduce it</h3>
         <KeyValues
           items={[
             ["Plugin", lin.plugin ? <Mono key="p">{lin.plugin}</Mono> : "—"],

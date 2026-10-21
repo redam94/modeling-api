@@ -44,7 +44,7 @@ function Section({ icon, title, items, tone }: { icon: ReactNode; title: string;
         </span>
         {title}
       </h4>
-      <ul className="grid gap-1 text-[13px]">
+      <ul className="grid gap-1 text-sm">
         {items.map((item) => (
           <li key={item} className="flex gap-2">
             <span aria-hidden className="mt-[0.45rem] size-1 shrink-0 rounded-full bg-muted-foreground/60" />
@@ -155,7 +155,7 @@ export function AboutCard({
       <header className="grid gap-2">
         {kind ? <p className="text-xs font-medium text-muted-foreground">{KIND_META[kind].label}</p> : null}
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <Heading id={titleId} className={cn("leading-snug font-semibold tracking-tight", compact ? "text-[15px]" : "text-[17px]")}>
+          <Heading id={titleId} className={cn("leading-snug font-semibold tracking-tight", compact ? "text-base" : "text-lg")}>
             {heading ?? about.title}
           </Heading>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -163,8 +163,8 @@ export function AboutCard({
             <RuntimeBadge runtime={about.typical_runtime} />
           </div>
         </div>
-        {id ? <p className="font-mono text-[11px] text-muted-foreground">{id}</p> : null}
-        <p className={cn("max-w-[72ch] leading-relaxed", compact ? "text-[13px]" : "text-[15px]")}>{about.summary_plain}</p>
+        {id ? <p className="font-mono text-xs text-muted-foreground">{id}</p> : null}
+        <p className={cn("max-w-[72ch] leading-relaxed", compact ? "text-sm" : "text-base")}>{about.summary_plain}</p>
       </header>
       {media}
       {compact ? null : (
@@ -178,32 +178,32 @@ export function AboutCard({
           <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
             <Lightbulb aria-hidden /> For example
           </h4>
-          <p className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-[13px] italic">{about.example}</p>
+          <p className="rounded-md border-l-2 border-primary/50 bg-muted/40 px-3 py-2 text-sm italic">{about.example}</p>
         </section>
       </div>
       )}
       {compact ? null : <RelatedChips ids={about.related ?? []} onRelated={onRelated} />}
       {hasExpert ? (
         <details className="group rounded-lg border bg-muted/20 px-4 py-2" open={expertOpen}>
-          <summary className="flex cursor-pointer items-center gap-2 py-1 text-[13px] font-medium select-none">
+          <summary className="flex cursor-pointer items-center gap-2 py-1 text-sm font-medium select-none">
             <BookOpen aria-hidden className="size-4 text-muted-foreground" /> For experts: how it works
           </summary>
           <div className="grid gap-3 pt-2 pb-2">
             {compact && about.assumptions.length ? (
               <div className="grid gap-1">
                 <p className="text-xs font-semibold text-muted-foreground">It assumes</p>
-                <ul className="grid list-disc gap-0.5 pl-4 text-[13px]">
+                <ul className="grid list-disc gap-0.5 pl-4 text-sm">
                   {about.assumptions.map((a) => (
                     <li key={a}>{a}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
-            {about.expert_notes ? <p className="text-[13px] leading-relaxed whitespace-pre-line text-foreground/90">{about.expert_notes}</p> : null}
+            {about.expert_notes ? <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{about.expert_notes}</p> : null}
             {refs.length ? (
               <div className="grid gap-1">
                 <p className="text-xs font-semibold text-muted-foreground">References</p>
-                <ul className="grid gap-1 text-[13px]">
+                <ul className="grid gap-1 text-sm">
                   {refs.map((r) => (
                     <li key={r.title}>
                       {r.href ? (
@@ -232,21 +232,21 @@ export function AboutTile({ about, kind, id, onOpen, selected, children }: { abo
     <>
       <span className="flex flex-wrap items-start justify-between gap-2">
         <span className="min-w-0">
-          {kind ? <span className="block text-[11px] font-medium text-muted-foreground">{KIND_META[kind].label}</span> : null}
+          {kind ? <span className="block text-xs font-medium text-muted-foreground">{KIND_META[kind].label}</span> : null}
           <span className="block font-semibold tracking-tight">{about.title}</span>
         </span>
         <DifficultyBadge difficulty={about.difficulty} />
       </span>
-      <span className="line-clamp-3 text-[13px] text-muted-foreground">{about.summary_plain}</span>
+      <span className="line-clamp-3 text-sm text-muted-foreground">{about.summary_plain}</span>
       <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
         <RuntimeBadge runtime={about.typical_runtime} />
-        {id ? <span className="truncate font-mono text-[11px] text-muted-foreground">{id}</span> : null}
+        {id ? <span className="truncate font-mono text-xs text-muted-foreground">{id}</span> : null}
       </span>
       {children}
     </>
   );
   const cls = cn(
-    "flex h-full flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-[0_1px_0_0_rgb(0_0_0/0.03)] transition-colors",
+    "flex h-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
     onOpen && "hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
     selected && "border-primary/60 bg-accent/50",
   );
@@ -321,7 +321,7 @@ export function AboutInline({ kind, id, className }: { kind: AboutKind | null; i
   const { about, entry } = useAbout(kind, id);
   if (!about || !entry) return null;
   return (
-    <p className={cn("flex items-start gap-1 text-[13px] text-muted-foreground", className)}>
+    <p className={cn("flex items-start gap-1 text-sm text-muted-foreground", className)}>
       <span className="min-w-0 flex-1">{about.summary_plain}</span>
       <AboutButton kind={entry.kind} id={entry.id} />
     </p>

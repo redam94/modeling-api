@@ -58,8 +58,8 @@ export function TemplateCard({ template }: { template: GuidedTemplate }) {
         {available ? <ArrowRight aria-hidden className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /> : <Badge variant="outline">Coming soon</Badge>}
       </div>
       <div className="grid gap-1.5">
-        <h2 className="text-[15px] font-semibold tracking-tight">{template.title}</h2>
-        <p className="text-[13px] text-muted-foreground">{template.description_plain}</p>
+        <h2 className="text-lg font-semibold tracking-tight">{template.title}</h2>
+        <p className="text-sm text-muted-foreground">{template.description_plain}</p>
       </div>
       {FOR[template.id] ? (
         <ul className="grid gap-1 text-xs text-muted-foreground">
@@ -81,7 +81,7 @@ export function TemplateCard({ template }: { template: GuidedTemplate }) {
       {!available && template.plugin_note ? <p className="text-xs text-muted-foreground">{template.plugin_note}</p> : null}
     </>
   );
-  const cls = "group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 text-left shadow-[0_1px_0_0_rgb(0_0_0/0.03)] transition-colors";
+  const cls = "group flex h-full flex-col gap-4 rounded-xl border bg-card p-5 text-left transition-colors";
   return available ? (
     <Link
       to="/guided/new/$templateId"

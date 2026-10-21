@@ -62,7 +62,7 @@ function VersionAdder({ models, onAdd, exclude }: { models: Model[]; onAdd: (ref
         <label htmlFor={`${id}-model`} className="text-xs font-medium text-muted-foreground">
           Model
         </label>
-        <NativeSelect id={`${id}-model`} value={modelId} onChange={(e) => setModelId(e.target.value)} className="h-8 w-56 text-[13px]">
+        <NativeSelect id={`${id}-model`} value={modelId} onChange={(e) => setModelId(e.target.value)} className="h-8 w-56 text-sm">
           {models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
@@ -74,7 +74,7 @@ function VersionAdder({ models, onAdd, exclude }: { models: Model[]; onAdd: (ref
         <label htmlFor={`${id}-version`} className="text-xs font-medium text-muted-foreground">
           Version
         </label>
-        <NativeSelect id={`${id}-version`} value={chosen} onChange={(e) => setRef(e.target.value)} className="h-8 w-28 text-[13px]" disabled={!options.length}>
+        <NativeSelect id={`${id}-version`} value={chosen} onChange={(e) => setRef(e.target.value)} className="h-8 w-28 text-sm" disabled={!options.length}>
           {options.map((v) => (
             <option key={v.ref} value={v.ref}>
               v{v.version}
@@ -97,7 +97,7 @@ export function ComparePicker({ refs, onChange }: { refs: string[]; onChange: (r
     <div className="grid gap-3">
       <ol className="flex flex-wrap gap-2" aria-label="Versions to compare">
         {refs.map((r, i) => (
-          <li key={r} className="inline-flex items-center gap-1.5 rounded-full border bg-card py-0.5 pr-1 pl-3 text-[13px]">
+          <li key={r} className="inline-flex items-center gap-1.5 rounded-full border bg-card py-0.5 pr-1 pl-3 text-sm">
             {i === 0 ? <Badge variant="info">first</Badge> : null}
             <Mono>{r}</Mono>
             <Button variant="ghost" size="icon-sm" aria-label={`Remove ${r}`} onClick={() => onChange(refs.filter((x) => x !== r))}>
@@ -105,7 +105,7 @@ export function ComparePicker({ refs, onChange }: { refs: string[]; onChange: (r
             </Button>
           </li>
         ))}
-        {!refs.length ? <li className="text-[13px] text-muted-foreground">Add two or more versions.</li> : null}
+        {!refs.length ? <li className="text-sm text-muted-foreground">Add two or more versions.</li> : null}
       </ol>
       {refs.length < 11 ? <VersionAdder models={models.data.items} exclude={refs} onAdd={(r) => onChange([...refs, r])} /> : null}
       <p className="text-xs text-muted-foreground">The tests compare forecasts on the held-out periods of the first version. Put the most important version first.</p>

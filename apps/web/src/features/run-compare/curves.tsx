@@ -70,7 +70,7 @@ function CurveCard({ metric, runs, labels }: { metric: CompareMetric; runs: read
     <Card data-compare-metric={metric.key}>
       <CardHeader className="flex-wrap gap-y-2">
         <CardTitle>
-          <Mono className="text-[13px]">{metric.key}</Mono>
+          <Mono className="text-sm">{metric.key}</Mono>
         </CardTitle>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {labelKeys.length ? (
@@ -108,7 +108,7 @@ export function CurvesSection({ data, labels, keys, onKeys }: { data: RunCompare
   return (
     <section className="grid gap-4" aria-label="Curves">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[13px] text-muted-foreground">Each chart shows one metric over the steps. The colour shows the run.</p>
+        <p className="text-sm text-muted-foreground">Each chart shows one metric over the steps. The colour shows the run.</p>
         {infos.length ? (
           <div className="ml-auto">
             <KeyPicker infos={infos} selected={selected.filter((k) => infos.some((i) => i.key === k))} onChange={onKeys} />
@@ -122,7 +122,7 @@ export function CurvesSection({ data, labels, keys, onKeys }: { data: RunCompare
           ))}
         </div>
       ) : (
-        <p className="rounded-md border border-dashed px-3 py-6 text-center text-[13px] text-muted-foreground">
+        <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
           {infos.length ? "Select the metrics to draw." : "The runs did not log metrics with steps. The Metric bars section shows their values."}
         </p>
       )}

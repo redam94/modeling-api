@@ -19,7 +19,7 @@ export function TenantStatusBanner() {
   const d = deletion.data;
   const scheduled = d?.state === "scheduled";
   return (
-    <div role="status" data-tenant-status={status} className="flex items-start gap-2 border-b border-warning/35 bg-warning/10 px-4 py-2 text-[13px] md:px-6">
+    <div role="status" data-tenant-status={status} className="flex items-start gap-2 border-b border-warning/35 bg-warning/10 px-4 py-2 text-sm md:px-6">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
       <p>
         {status === "deleting" ? (

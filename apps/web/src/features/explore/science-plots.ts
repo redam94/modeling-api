@@ -268,7 +268,7 @@ export function mapPlot(view: MapView, layer: number, frame: number | null = nul
   const budget = MAX_SANDBOX_ROWS;
   const groups: { c: number; name: string; color: string }[] = [
     ...Array.from({ length: nClass }, (_, c) => ({ c, name: breaks.length > 1 ? `${fmtNum(breaks[c]!)} – ${fmtNum(breaks[c + 1]!)}` : fmtNum(breaks[0] ?? 0), color: hexOf("viridis", nClass > 1 ? c / (nClass - 1) : 0.5) })),
-    { c: -1, name: "No value", color: "#bdbdbd" },
+    { c: -1, name: "No value", color: "#c1c7cd" },
   ];
   for (const g of groups) {
     const rows: Row[] = [];
@@ -405,7 +405,7 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
         x2: { field: "x2" },
         y2: { field: "y2" },
         opacity: entry.weighted ? { field: "w", type: "quantitative", scale: { type: "symlog", range: [0.15, 0.8] }, legend: null } : { value: 0.55 },
-        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#4a6fa5", "#c0392b"] } } } : { color: { value: "#8a8f98" } }),
+        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#4a6fa5", "#c0392b"] } } } : { color: { value: "#8b919a" } }),
       },
     });
   }
@@ -470,7 +470,7 @@ export function dendrogramPlot(view: TreeView, traits: readonly string[] = []): 
     width: 360,
     height,
     layer: [
-      { data: { name: "connectors" }, mark: { type: "rule", strokeWidth: 1, color: "#8a8f98" }, encoding: { x: { field: "x", type: "quantitative", title: "Distance from the root" }, y: yEnc, y2: { field: "y2" } } },
+      { data: { name: "connectors" }, mark: { type: "rule", strokeWidth: 1, color: "#8b919a" }, encoding: { x: { field: "x", type: "quantitative", title: "Distance from the root" }, y: yEnc, y2: { field: "y2" } } },
       {
         data: { name: "branches" },
         mark: { type: "rule", strokeWidth: 1.2 },

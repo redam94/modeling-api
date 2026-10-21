@@ -72,15 +72,15 @@ export function DecisionView({ decision, doc, run, labelOf = (id) => id, expert 
   const sentence = decisionSentence(decision, doc, labelOf);
   return (
     <section className="grid gap-2" aria-label="Decision" data-testid="branch-decision">
-      <p className="flex items-start gap-2 text-[14px] font-medium">
+      <p className="flex items-start gap-2 text-sm font-medium">
         <GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
         <span>{decision.explain_plain ?? sentence}</span>
       </p>
-      {decision.explain_plain ? <p className="text-[13px] text-muted-foreground">{sentence}</p> : null}
+      {decision.explain_plain ? <p className="text-sm text-muted-foreground">{sentence}</p> : null}
       {evidence.length ? (
         <div className="grid gap-1">
           <p className="text-xs font-medium text-muted-foreground">What decided it</p>
-          <ul className="grid gap-1 text-[13px]" aria-label="What decided it">
+          <ul className="grid gap-1 text-sm" aria-label="What decided it">
             {evidence.map((e) => (
               <li key={e.id}>
                 <span className="font-medium">{e.label}:</span> {e.verdict}
@@ -92,7 +92,7 @@ export function DecisionView({ decision, doc, run, labelOf = (id) => id, expert 
       <details className="rounded-md border p-2" open={expert}>
         <summary className="cursor-pointer text-xs font-medium text-muted-foreground">For experts: the condition</summary>
         <div className="grid gap-2 pt-2">
-          <p className="text-[13px]">
+          <p className="text-sm">
             Value <Mono>{String(decision.value)}</Mono>, so the <Badge variant={decision.arm === "then" ? "success" : "secondary"}>{decision.arm}</Badge> path ran.
           </p>
           <pre className="overflow-x-auto rounded-md border bg-muted/50 p-2 font-mono text-xs whitespace-pre-wrap">{decision.condition}</pre>
@@ -153,7 +153,7 @@ export function NodeDrawer({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/30" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay/60" />
         <DialogPrimitive.Content
           className="fixed top-0 right-0 z-50 grid h-dvh w-full max-w-xl content-start gap-4 overflow-y-auto border-l bg-popover p-5 text-popover-foreground shadow-2xl"
           aria-describedby={undefined}
@@ -177,14 +177,14 @@ export function NodeDrawer({
                 <p className="flex flex-wrap items-center gap-2">
                   <Badge variant={TONE_BADGE[meta.tone]}>{meta.label}</Badge>
                   {node.status === "cached" ? (
-                    <span className="inline-flex items-center gap-1 text-[13px]">
+                    <span className="inline-flex items-center gap-1 text-sm">
                       <Recycle className="size-3.5 text-success" aria-hidden /> Reused, not run again
                     </span>
                   ) : node.status === "succeeded" && implId(node.use) !== BRANCH_NODE ? (
-                    <span className="text-[13px] text-muted-foreground">Ran in this run{(node.attempt ?? 0) > 1 ? ` (attempt ${node.attempt})` : ""}</span>
+                    <span className="text-sm text-muted-foreground">Ran in this run{(node.attempt ?? 0) > 1 ? ` (attempt ${node.attempt})` : ""}</span>
                   ) : null}
                 </p>
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {node.status === "cached" && node.cached_from ? (
                     <>
                       The inputs of this step did not change. The server used the result of run <ChildRunLink id={node.cached_from} workflow /> again, at no cost.
@@ -197,7 +197,7 @@ export function NodeDrawer({
                 </p>
                 {node.error ? (
                   <div role="alert" className="grid gap-1 rounded-md border border-destructive/35 bg-destructive/6 p-2">
-                    <p className="text-[13px] font-medium text-destructive">
+                    <p className="text-sm font-medium text-destructive">
                       {node.error.code}: {node.error.message}
                     </p>
                     {node.error.untrusted_text ? (
@@ -252,7 +252,7 @@ export function NodeDrawer({
               {node.child_runs?.length || node.run_id ? (
                 <section className="grid gap-1" aria-label="Runs">
                   <h3 className="text-sm font-semibold">{isSub ? "Child workflow runs" : "Runs"}</h3>
-                  <ul className="grid gap-1 text-[13px]">
+                  <ul className="grid gap-1 text-sm">
                     {node.run_id ? (
                       <li>
                         Sandbox run <ChildRunLink id={node.run_id} workflow={false} />

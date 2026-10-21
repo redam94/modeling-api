@@ -54,11 +54,11 @@ const REASON_ICON: Record<GateOutcome, React.ReactNode> = {
 /** The reasons of a gate decision, in plain words with the check that raised each. */
 export function GateReasons({ decision, empty = "All checks pass." }: { decision: PromotionGateDecision; empty?: string }) {
   const reasons = decision.reasons ?? [];
-  if (!reasons.length) return <p className="text-[13px] text-muted-foreground">{empty}</p>;
+  if (!reasons.length) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
     <ul className="grid gap-2" aria-label="Gate reasons">
       {reasons.map((r, i) => (
-        <li key={`${r.code}-${r.check ?? ""}-${i}`} className="flex items-start gap-2 text-[13px]">
+        <li key={`${r.code}-${r.check ?? ""}-${i}`} className="flex items-start gap-2 text-sm">
           {REASON_ICON[r.outcome]}
           <span className="min-w-0">
             <span className="font-medium">{GATE_REASON_LABEL[r.code]}</span>
@@ -79,11 +79,11 @@ const CARD_ICON = {
 
 /** A compact, plain-language scorecard (the Guided report has the full view). */
 export function ScorecardSummary({ scorecard }: { scorecard: Scorecard | null | undefined }) {
-  if (!scorecard) return <p className="text-[13px] text-muted-foreground">This version has no sanity scorecard.</p>;
+  if (!scorecard) return <p className="text-sm text-muted-foreground">This version has no sanity scorecard.</p>;
   return (
     <ul className="grid gap-1.5" aria-label="Scorecard">
       {(scorecard.items ?? []).map((item) => (
-        <li key={item.check ?? item.code} className="grid grid-cols-[1.25rem_1fr] gap-2 text-[13px]">
+        <li key={item.check ?? item.code} className="grid grid-cols-[1.25rem_1fr] gap-2 text-sm">
           <span className="pt-0.5">{CARD_ICON[item.status]}</span>
           <span className="min-w-0">
             <span className="font-medium">{item.title}</span>
@@ -362,11 +362,11 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
                 <Textarea id="ep-reason" maxLength={1000} value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Holdout error accepted for the Q4 plan; refit after the holidays." />
               </Field>
             ) : (
-              <p className="text-[13px] text-muted-foreground">Only a project admin who is signed in to the app can override the gate. Ask an admin to promote this version, or make the model better.</p>
+              <p className="text-sm text-muted-foreground">Only a project admin who is signed in to the app can override the gate. Ask an admin to promote this version, or make the model better.</p>
             )
           ) : null}
 
-          <details className="rounded-md border p-3 text-[13px]">
+          <details className="rounded-md border p-3 text-sm">
             <summary className="cursor-pointer font-medium">Description and evaluation policy</summary>
             <div className="mt-3 grid gap-4">
               <Field label="Description (optional)" htmlFor="ep-desc">
@@ -396,7 +396,7 @@ export function PromoteDialog({ endpoint, onClose, onPromoted }: { endpoint?: En
           </details>
 
           {stale ? (
-            <p role="alert" className="text-[13px] text-warning">
+            <p role="alert" className="text-sm text-warning">
               Another user promoted this endpoint while the dialog was open. Close the dialog to see the current version. Then try again.
             </p>
           ) : otherError ? (

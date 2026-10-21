@@ -71,13 +71,13 @@ export function RunPlot({ runId, plot, resolveLink, linksKey }: { runId: string;
   return (
     <figure className="grid gap-2">
       <figcaption>
-        <span className="text-[13px] font-medium">{plot.title}</span>
+        <span className="text-sm font-medium">{plot.title}</span>
         {plot.caption_plain ? <span className="block text-xs text-muted-foreground">{plot.caption_plain}</span> : null}
       </figcaption>
       {data.isError ? (
         <ErrorNotice error={data.error} title="Cannot load the plot data" />
       ) : data.data?.kind === "run-file" ? (
-        <p className="rounded-md border border-dashed px-3 py-2 text-[13px] text-muted-foreground">{RUN_FILE_NOTE}</p>
+        <p className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">{RUN_FILE_NOTE}</p>
       ) : data.data ? (
         <PlotFrame kind={plot.kind} spec={plot.spec as JsonObject} datasets={data.data.datasets} title={plot.title} exportName={plot.id} />
       ) : (

@@ -47,10 +47,10 @@ function ComparisonView({ c }: { c: Comparison }) {
     <section aria-label={`Predictions against your actuals: ${c.variable}`} className="grid gap-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <CalendarCheck className="size-4 text-primary" aria-hidden />
-        <h3 className="text-[13px] font-semibold">Predictions against your actuals</h3>
+        <h3 className="text-sm font-semibold">Predictions against your actuals</h3>
         <Mono className="text-xs text-muted-foreground">{c.variable}</Mono>
       </div>
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         For the periods that have actuals (◆), the predictions are one-step-ahead. Each prediction is the value that the model expected before it saw that actual.
         After the last actual (dashed line), the model forecasts.
       </p>
@@ -122,7 +122,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   return (
     <div className="grid gap-0.5 rounded-md border bg-muted/30 px-3 py-2">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-[15px] font-semibold tabular">{value}</dd>
+      <dd className="text-base font-semibold tabular">{value}</dd>
       {hint ? <dd className="text-xs text-muted-foreground">{hint}</dd> : null}
     </div>
   );

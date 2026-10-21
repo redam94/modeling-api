@@ -76,8 +76,8 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
   return (
     <div className="grid gap-5" data-testid="plan-result">
       <PlainSummary tone={headline.tone}>
-        <p className="text-[15px]">{headline.text}</p>
-        <p className="text-[13px] text-muted-foreground">Goal: {expert ? r.objective_label : objectivePlain(r.objective, r.kpi)}. The result uses {num(r.n_draws)} plausible versions of the model{r.horizon ? `, over ${r.horizon} periods` : ""}.</p>
+        <p className="text-base">{headline.text}</p>
+        <p className="text-sm text-muted-foreground">Goal: {expert ? r.objective_label : objectivePlain(r.objective, r.kpi)}. The result uses {num(r.n_draws)} plausible versions of the model{r.horizon ? `, over ${r.horizon} periods` : ""}.</p>
       </PlainSummary>
       <div className="grid gap-3 sm:grid-cols-3">
         <Figure label={`Expected ${r.kpi} with the plan`} value={kpiAmount(r.expected_kpi.mean, r.kpi_units)} detail={expected ? `90% likely ${kpiAmount(expected[0], r.kpi_units)} – ${kpiAmount(expected[1], r.kpi_units)}` : undefined} />
@@ -131,7 +131,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
             ]}
           />
           {extrapolated.length ? (
-            <p className="flex items-start gap-1.5 text-[13px]">
+            <p className="flex items-start gap-1.5 text-sm">
               <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" /> {extrapolated.map(allocationLabel).join(", ")} will spend more than the data shows. For these channels, the model extrapolates.
             </p>
           ) : null}
@@ -166,7 +166,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
         </Card>
       ) : null}
       {expert ? (
-        <ul className="grid gap-1 text-[13px]" aria-label="Notes">
+        <ul className="grid gap-1 text-sm" aria-label="Notes">
           {(r.notes_plain ?? []).map((n) => (
             <li key={n} className="flex items-start gap-1.5">
               <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {n}
@@ -179,7 +179,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
       ) : (
         <>
           {notes.plain.length || notes.technical.length ? (
-            <ul className="grid gap-1 text-[13px]" aria-label="Notes">
+            <ul className="grid gap-1 text-sm" aria-label="Notes">
               {notes.plain.map((n) => (
                 <li key={n} className="flex items-start gap-1.5">
                   <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /> {n}
@@ -192,7 +192,7 @@ export function PlanResult({ result: r, expert }: { result: OptimizeResult; expe
               ) : null}
             </ul>
           ) : null}
-          <details className="rounded-lg border bg-muted/20 px-4 py-2 text-[13px]">
+          <details className="rounded-lg border bg-muted/20 px-4 py-2 text-sm">
             <summary className="flex cursor-pointer items-center gap-2 py-1 font-medium select-none">
               <BookOpen aria-hidden className="size-4 text-muted-foreground" /> For experts: how the plan was found
             </summary>

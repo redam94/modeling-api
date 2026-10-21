@@ -62,12 +62,12 @@ export function nullDistributionPlot(inline: unknown): BuiltPlot | null {
       {
         data: { name: "real" },
         mark: { type: "rule", strokeWidth: 2.5 },
-        encoding: { x: { field: "score", type: "quantitative" }, color: { value: "#c2417a" }, tooltip: [{ field: "score", title: "Your model", format: ".3g" }] },
+        encoding: { x: { field: "score", type: "quantitative" }, color: { value: "#b41880" }, tooltip: [{ field: "score", title: "Your model", format: ".3g" }] },
       },
       {
         data: { name: "real" },
         mark: { type: "text", align: "left", dx: 4, dy: -6, fontWeight: "bold" },
-        encoding: { x: { field: "score", type: "quantitative" }, y: { value: 8 }, text: { value: "Your model" }, color: { value: "#c2417a" } },
+        encoding: { x: { field: "score", type: "quantitative" }, y: { value: 8 }, text: { value: "Your model" }, color: { value: "#b41880" } },
       },
     ],
   };
@@ -131,16 +131,16 @@ export function EvidenceItemView({ item, check }: { item: EvidenceItem; check: s
   const caption = item.caption_plain ?? null;
   if (item.kind === "metric") {
     return (
-      <p className="text-[13px]">
+      <p className="text-sm">
         <span className="font-mono text-xs text-muted-foreground">{item.name}</span> <span className="font-medium tabular">{formatNumber(item.value ?? null)}</span>
         {caption ? <span className="block text-xs text-muted-foreground">{caption}</span> : null}
       </p>
     );
   }
-  if (item.kind === "text") return <p className="text-[13px] text-muted-foreground">{caption ?? item.name}</p>;
+  if (item.kind === "text") return <p className="text-sm text-muted-foreground">{caption ?? item.name}</p>;
   if (item.kind === "artifact") {
     return (
-      <p className="text-[13px]">
+      <p className="text-sm">
         {caption ?? item.name}: <code className="font-mono text-xs">{item.ref}</code>
       </p>
     );
@@ -182,8 +182,8 @@ export function CheckResultCard({ result, def, headingLevel = 3 }: { result: Che
         <div className="flex min-w-0 items-start gap-2">
           <span className="mt-0.5">{STATUS_ICON[result.status]}</span>
           <div className="min-w-0">
-            <H className="text-[14px] font-semibold">{def?.title ?? result.check}</H>
-            <code className="font-mono text-[11px] text-muted-foreground">{result.check}</code>
+            <H className="text-sm font-semibold">{def?.title ?? result.check}</H>
+            <code className="font-mono text-xs text-muted-foreground">{result.check}</code>
           </div>
         </div>
         <span className="flex flex-wrap gap-1">
@@ -193,9 +193,9 @@ export function CheckResultCard({ result, def, headingLevel = 3 }: { result: Che
           </Badge>
         </span>
       </header>
-      <p className="text-[13px]">{result.message_plain}</p>
+      <p className="text-sm">{result.message_plain}</p>
       {result.suggested_action ? (
-        <p className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-[13px]">
+        <p className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-sm">
           <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
           <span>
             <span className="font-medium">What to do: </span>

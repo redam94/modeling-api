@@ -21,7 +21,7 @@ function ActiveRun({ run }: { run: Run }) {
       className="grid grid-cols-[7.5rem_1fr] items-center gap-x-4 gap-y-1 rounded-lg px-3 py-2.5 hover:bg-accent/60 sm:grid-cols-[7.5rem_9rem_1fr_6rem]"
     >
       <StateBadge state={run.state} className="w-fit" />
-      <span className="truncate text-[13px]">
+      <span className="truncate text-sm">
         <span className="font-medium capitalize">{run.kind}</span> <Mono className="text-muted-foreground">{runSubject(run)}</Mono>
       </span>
       <span className="col-span-2 grid gap-1 sm:col-span-1">
@@ -89,7 +89,7 @@ export function HomePage() {
               <ul className="grid gap-1">
                 {attention.map((r) => (
                   <li key={r.id}>
-                    <Link to="/runs/$runId" params={{ runId: r.id }} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent/60">
+                    <Link to="/runs/$runId" params={{ runId: r.id }} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent/60">
                       <StateBadge state={r.state} className="w-fit" />
                       <span className="truncate">{r.problem?.title ?? `${r.kind} ${shortId(r.id)}`}</span>
                       <span className="text-xs text-muted-foreground">{relativeTime(r.finished_at ?? r.updated_at)}</span>
@@ -112,7 +112,7 @@ export function HomePage() {
               <ul className="grid gap-1">
                 {recent.map((r) => (
                   <li key={r.id}>
-                    <Link to="/runs/$runId" params={{ runId: r.id }} className="grid grid-cols-[6.5rem_4rem_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-[13px] hover:bg-accent/60">
+                    <Link to="/runs/$runId" params={{ runId: r.id }} className="grid grid-cols-[6.5rem_4rem_1fr_auto] items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent/60">
                       <StateBadge state={r.state} className="w-fit" />
                       <span className="capitalize">{r.kind}</span>
                       <Mono className="truncate text-muted-foreground">{runSubject(r)}</Mono>
@@ -139,7 +139,7 @@ export function HomePage() {
                     <Link
                       to={m.latest_version ? "/models/$modelId/versions/$version" : "/models/$modelId"}
                       params={{ modelId: m.id, version: String(m.latest_version ?? 1) }}
-                      className="flex items-center justify-between rounded-md px-2 py-1.5 text-[13px] hover:bg-accent/60"
+                      className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent/60"
                     >
                       <span className="font-medium">{m.name}</span>
                       <Mono className="text-muted-foreground">{m.latest_version ? `v${m.latest_version}` : "no versions"}</Mono>

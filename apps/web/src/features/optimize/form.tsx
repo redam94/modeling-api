@@ -23,13 +23,13 @@ function numberOrNull(v: string): number | null {
 function RadioCards<T extends string>({ name, value, options, onChange, legend }: { name: string; value: T; options: readonly { value: T; label: ReactNode; help?: ReactNode }[]; onChange: (v: T) => void; legend: string }) {
   return (
     <fieldset className="grid gap-2">
-      <legend className="pb-1 text-[13px] font-medium">{legend}</legend>
+      <legend className="pb-1 text-sm font-medium">{legend}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((o) => (
           <label
             key={o.value}
             className={cn(
-              "flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3 py-2.5 text-[13px] hover:bg-accent/40 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring",
+              "flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-3 py-2.5 text-sm hover:bg-accent/40 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring",
               value === o.value && "border-primary/70 bg-accent/60",
             )}
           >
@@ -75,7 +75,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
   const limitsTable = (
     <div className="grid gap-3">
       <div className="relative overflow-x-auto rounded-lg border [contain:inline-size]">
-        <table className="w-full text-[13px]" aria-label="Limits per channel">
+        <table className="w-full text-sm" aria-label="Limits per channel">
           <thead>
             <tr className="border-b text-xs text-muted-foreground">
               <th scope="col" className="px-3 py-2 text-left font-medium">Channel</th>
@@ -95,7 +95,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
                   <td className="px-3 py-1.5 font-medium">{ch}</td>
                   <td className="px-3 py-1.5 text-right tabular">{amount(current[ch] ?? 0, units)}</td>
                   <td className="px-3 py-1.5">
-                    <NativeSelect aria-label={`Limits for ${ch} in`} value={l.unit} disabled={l.locked} onChange={(e) => setLimit(ch, { unit: e.target.value as ChannelLimit["unit"], min: null, max: null })} className="h-8 w-44 text-[13px]">
+                    <NativeSelect aria-label={`Limits for ${ch} in`} value={l.unit} disabled={l.locked} onChange={(e) => setLimit(ch, { unit: e.target.value as ChannelLimit["unit"], min: null, max: null })} className="h-8 w-44 text-sm">
                       <option value="multiplier">× today&apos;s spend</option>
                       <option value="money">{units ?? "money"}</option>
                     </NativeSelect>
@@ -115,7 +115,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-end gap-2 text-[13px]">
+      <div className="flex flex-wrap items-end gap-2 text-sm">
         <span className="pb-2 text-muted-foreground">Channels without limits can go from</span>
         <Input aria-label="Default minimum (× today's spend)" type="number" min={0} step={0.1} value={form.defaultMin} onChange={(e) => set({ defaultMin: Number(e.target.value) })} className="h-8 w-20" />
         <span className="pb-2 text-muted-foreground">× to</span>
@@ -171,11 +171,11 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
               <Input id={`${name}-h`} type="number" min={1} max={520} value={form.horizon ?? ""} onChange={(e) => set({ horizon: numberOrNull(e.target.value) })} className="w-28" />
             </Field>
             {geos.length ? (
-              <label className="flex items-center gap-3 pb-2 text-[13px]">
+              <label className="flex items-center gap-3 pb-2 text-sm">
                 <Switch checked={form.byGeo} onCheckedChange={(byGeo) => set({ byGeo })} aria-label="Plan each market separately" /> Plan each of the {geos.length} markets separately
               </label>
             ) : null}
-            <label className="flex items-center gap-3 pb-2 text-[13px]">
+            <label className="flex items-center gap-3 pb-2 text-sm">
               <Switch checked={form.frontier} onCheckedChange={(frontier) => set({ frontier })} aria-label="Show what other budgets would bring" /> Show what other budgets would bring
             </label>
           </div>
@@ -194,7 +194,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
         </Card>
       ) : (
         <details className="rounded-xl border bg-card">
-          <summary className="cursor-pointer px-5 py-3 text-[14px] font-medium select-none">
+          <summary className="cursor-pointer px-5 py-3 text-sm font-medium select-none">
             <Lock aria-hidden className="mr-1.5 inline size-4 text-muted-foreground" /> Limits per channel (optional)
           </summary>
           <div className="border-t p-5">{limitsTable}</div>
@@ -229,7 +229,7 @@ export function PlanFormView({ form, onChange, channels, current, geos, units, p
       ) : null}
 
       {problems.length ? (
-        <div role="alert" className="rounded-lg border border-warning/40 bg-warning/8 p-3 text-[13px]">
+        <div role="alert" className="rounded-lg border border-warning/40 bg-warning/8 p-3 text-sm">
           <ul className="grid gap-1" aria-label="Problems with the plan">
             {problems.map((p) => (
               <li key={p} className="flex items-start gap-2">
@@ -263,7 +263,7 @@ function GroupsEditor({ form, onChange, channels }: { form: PlanForm; onChange: 
         </Button>
       </CardHeader>
       <CardContent className="grid gap-3">
-        {!form.groups.length ? <p className="text-[13px] text-muted-foreground">There are no groups. Click Add a group to make one.</p> : null}
+        {!form.groups.length ? <p className="text-sm text-muted-foreground">There are no groups. Click Add a group to make one.</p> : null}
         {form.groups.map((g, i) => {
           const update = (patch: Partial<(typeof form.groups)[number]>) => setGroups(form.groups.map((x, j) => (j === i ? { ...x, ...patch } : x)));
           return (

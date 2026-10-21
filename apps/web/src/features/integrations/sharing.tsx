@@ -207,7 +207,7 @@ export function EmbedsTable({ plot }: { plot: SavedPlot }) {
             ) : null}
           </>
         ) : (
-          <p className="text-[13px] text-muted-foreground">This plot has no links.</p>
+          <p className="text-sm text-muted-foreground">This plot has no links.</p>
         )
       }
     </QueryView>
@@ -287,9 +287,9 @@ export function EmbedCreatedDialog({ created, title, onClose }: { created: PlotE
       onClose={onClose}
     >
       <div className="grid gap-2">
-        <p className="text-[13px] font-medium">Embed code</p>
+        <p className="text-sm font-medium">Embed code</p>
         <CodeBlock code={iframeSnippet(created.url, title)} label="Embed code" language="html" wrap />
-        <a href={created.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline">
+        <a href={created.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
           <ExternalLink className="size-3.5" /> Open the link in a new tab
         </a>
       </div>
@@ -383,7 +383,7 @@ export function SavePlotDialog({ initial, onClose, onSaved }: { initial?: ModelP
             <Input id="sp-title" maxLength={300} placeholder={effectiveTitle || "Response curves for the board"} value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
           {chosen && !chosen.recipe ? <p className="text-xs text-warning">{NOT_EMBEDDABLE}</p> : null}
-          <label className="flex items-center gap-2 text-[13px]">
+          <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={share} disabled={Boolean(chosen && !chosen.recipe)} onCheckedChange={(x) => setShare(x === true)} />
             Create a share link next
           </label>

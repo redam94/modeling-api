@@ -93,7 +93,7 @@ export function SignupsTab() {
             </option>
           ))}
         </NativeSelect>
-        <p className="text-[13px] text-muted-foreground">A flag never stops a sign-up. It puts the sign-up in this queue. Network addresses and browsers show only as keyed digests.</p>
+        <p className="text-sm text-muted-foreground">A flag never stops a sign-up. It puts the sign-up in this queue. Network addresses and browsers show only as keyed digests.</p>
       </div>
       <QueryView query={signups}>
         {(page) =>
@@ -131,8 +131,8 @@ export function SignupsTab() {
                       {s.flags?.length ? (
                         <ul className="grid gap-1">
                           {(s.flags ?? []).map((f, i) => (
-                            <li key={f} className="text-[13px]">
-                              <Badge variant="warning" className="font-mono text-[11px]">
+                            <li key={f} className="text-sm">
+                              <Badge variant="warning" className="font-mono text-xs">
                                 {f}
                               </Badge>{" "}
                               <span className="text-muted-foreground">{s.reasons_plain?.[i] ?? ""}</span>
@@ -143,7 +143,7 @@ export function SignupsTab() {
                         <span className="text-muted-foreground">Not flagged</span>
                       )}
                       {s.ip_hash || s.device_hash ? (
-                        <span className="mt-1 block text-[11px] text-muted-foreground">
+                        <span className="mt-1 block text-xs text-muted-foreground">
                           {s.ip_hash ? <>address {s.ip_hash} </> : null}
                           {s.device_hash ? <>browser {s.device_hash}</> : null}
                         </span>
@@ -211,7 +211,7 @@ function VerificationSection({ tenant }: { tenant: Tenant }) {
                 ["Uploaded code", v.uploaded_code_allowed ? <Badge key="u" variant="success">allowed</Badge> : <Badge key="u" variant="outline">not allowed</Badge>],
               ]}
             />
-            <p className="text-[13px] text-muted-foreground">{v.reason_plain}</p>
+            <p className="text-sm text-muted-foreground">{v.reason_plain}</p>
             <form
               className="grid gap-3 rounded-lg border p-3"
               onSubmit={(e) => {
@@ -289,7 +289,7 @@ function DeletionSection({ tenant }: { tenant: Tenant }) {
               ) : null}
             </>
           ) : (
-            <p className="text-[13px] text-muted-foreground">The tenant did not ask for deletion.</p>
+            <p className="text-sm text-muted-foreground">The tenant did not ask for deletion.</p>
           )
         }
       </QueryView>

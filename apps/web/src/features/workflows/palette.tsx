@@ -43,7 +43,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
           const about = kindAbout.get(kind);
           return (
             <details key={kind} open={Boolean(q) || kind === "test" || kind === "model"} className="group rounded-md" role="listitem">
-              <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-accent" title={about?.summary_plain}>
+              <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent" title={about?.summary_plain}>
                 <span aria-hidden className="size-2 rounded-full" style={{ background: KIND_COLOR[kind] }} />
                 {about?.title ?? KIND_LABEL[kind]}
                 <span className="ml-auto text-xs text-muted-foreground">{list.length}</span>
@@ -64,7 +64,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
                       data-node={n.id}
                       title={n.about.title}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-accent",
+                        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent",
                         picked === n.id && "bg-accent text-accent-foreground",
                         !disabled && "cursor-grab active:cursor-grabbing",
                       )}
@@ -78,7 +78,7 @@ export function NodePalette({ catalog, onAdd, disabled }: { catalog: Catalog; on
             </details>
           );
         })}
-        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">No node matches “{q}”. Type a different search.</p> : null}
+        {groups.length === 0 ? <p className="px-2 text-sm text-muted-foreground">No node matches “{q}”. Type a different search.</p> : null}
       </div>
       {current ? (
         <AboutCard
