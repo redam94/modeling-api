@@ -408,6 +408,12 @@ def create_app(
     app.add_middleware(
         JsonBodyLimit, paths=shares.ACTUALS_BODY_PATHS, max_bytes=shares.ACTUALS_BODY_MAX_BYTES
     )
+    # v0.17: scenario rows (batch files are capped with the uploads above)
+    app.add_middleware(
+        JsonBodyLimit,
+        paths=shares.PREDICTION_BODY_PATHS,
+        max_bytes=shares.PREDICTION_BODY_MAX_BYTES,
+    )
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)

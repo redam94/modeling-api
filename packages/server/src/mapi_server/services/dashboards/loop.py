@@ -13,6 +13,13 @@ One pass (:meth:`DashboardLoop.once`):
 
 Each step takes at most :data:`BATCH` rows (``FOR UPDATE SKIP LOCKED``), so several worker
 processes share the work without doing a row twice.
+
+Start-up (v0.17, plan §10.1): before the first pass, :meth:`DashboardLoop.start_up` runs the
+automatic layout 1 → layout 2 upgrade once per process
+(:func:`~mapi_server.services.dashboards.upgrade.run_auto_upgrade`: idempotent, under a
+Postgres advisory lock so concurrent workers upgrade each dashboard once, off with
+``MAPI_DASHBOARD_AUTO_UPGRADE=false``). It never raises: a failed pass is logged and the
+next start tries again.
 """
 
 from __future__ import annotations
@@ -29,6 +36,7 @@ from mapi_server.db import models as m
 from mapi_server.services.dashboards import refits
 from mapi_server.services.dashboards.inputs import submit_queued
 from mapi_server.services.dashboards.readouts import materialise, record_failed_attempt
+from mapi_server.services.dashboards.upgrade import UpgradeReport, run_auto_upgrade
 from mapi_server.services.runs import now
 
 __all__ = ["BATCH", "DashboardLoop"]
@@ -43,6 +51,14 @@ class DashboardLoop:
 
     def __init__(self, ctx: ServerContext) -> None:
         self.ctx = ctx
+        self.upgraded: UpgradeReport | None = None
+
+    async def start_up(self) -> UpgradeReport:
+        """The once-per-process start-up work: the automatic layout 2 upgrade (a no-op when
+        ``dashboard_auto_upgrade`` is off or another worker holds the lock)."""
+        if self.upgraded is None:
+            self.upgraded = await run_auto_upgrade(self.ctx)
+        return self.upgraded
 
     async def submit_queued(self) -> int:
         async with self.ctx.db.session() as s:
@@ -114,6 +130,7 @@ class DashboardLoop:
 
     async def run_forever(self, stop: asyncio.Event) -> None:
         log.info("dashboard loop started (every %ss)", self.ctx.settings.workflow_tick_s)
+        await self.start_up()
         while not stop.is_set():
             try:
                 await self.once()
