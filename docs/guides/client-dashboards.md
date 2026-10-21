@@ -345,5 +345,6 @@ with Client() as client:
 layout 1 draft by hand, `keep_readout()` keeps a tried case and `asset()` reads a picture. A
 share link opened with `open_share()` has `predict()`, `batch_template()`, `score_batch()`,
 `download_predictions()` and `asset()` too. See also
-[The Python client](python-client.md#client-dashboards). All routes are in
-[HTTP API: client dashboards](../reference/http-api.md#v016).
+[The Python client](python-client.md#client-dashboards-v017). All routes are in
+[HTTP API: client dashboards](../reference/http-api.md#v016) and
+[HTTP API: dashboards for any model type](../reference/http-api.md#v017).

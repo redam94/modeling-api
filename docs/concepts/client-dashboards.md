@@ -17,7 +17,8 @@ makes the dashboard. Two kinds of persons see it:
 The contracts are in `mapi_spec.dashboards` (layout 1 and the shared DTOs),
 `mapi_spec.dashboard_v2` (layout 2), `mapi_spec.dashboard_presets`,
 `mapi_spec.dashboard_inputs`, `mapi_spec.dashboard_metrics` and `mapi_spec.dashboard_tools`.
-The routes are in [HTTP API: client dashboards](../reference/http-api.md#v016). The practical side is in
+The routes are in [HTTP API: client dashboards](../reference/http-api.md#v016) and
+[HTTP API: dashboards for any model type](../reference/http-api.md#v017). The practical side is in
 [Build a client dashboard](../guides/client-dashboards.md).
 
 ```mermaid

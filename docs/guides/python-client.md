@@ -725,6 +725,40 @@ print(shared.get().title, [r.seq for r in shared.readouts()])
 | `refit_requests(id, *, status=None)`, `approve_refit(id, request_id, *, note=None)`, `reject_refit(id, request_id, *, note=None)` | Refit requests |
 | `open_share(link, *, passcode=None)` | A `SharedDashboard` with `get`, `readouts`, `readout`, `wait_readout`, `grid`, `whatif`, `save_scenario`, `actuals_template` and `submit_actuals`. It gets a new session before the old one expires |
 
+### Dashboards for any model type <span class="mapi-badge">v0.17</span> { #client-dashboards-v017 }
+
+Layout 2 dashboards work for any model family. Start a dashboard from the presets that fit a
+model version, then let clients try cases and score files
+([What's new in 0.17](../whats-new-0.17.md)).
+
+```python
+found = api.dashboards.presets(model_id="mdl_01jaf3c1d2e3f4g5h6j7k8m9n0", version=3)
+print([s.preset for s in found.suggestions])  # best first
+dash = api.dashboards.create("weekly-churn", found.spec)  # the compiled layout 2 spec
+
+readout = api.dashboards.predict(dash.id, {"price": 12, "promo": 1})  # a private tried case
+api.dashboards.keep_readout(dash.id, readout.seq)  # waits for an editor's review
+
+template = api.dashboards.batch_template(dash.id)
+scored = api.dashboards.score_batch(dash.id, cases_ds, label="October stores")
+scored = api.dashboards.wait_readout(dash.id, scored.seq, timeout=300)
+open("predictions.csv", "wb").write(api.dashboards.download_predictions(dash.id, scored.seq))
+```
+
+| Call | What it does |
+|---|---|
+| `presets(*, model_id=None, version=None, alias=None)` | `DashboardPresets`: the presets that fit, and the compiled spec of the first |
+| `sources(id)` | `SourceCatalog`: what the draft's model version offers to panels and inputs |
+| `upgrade(id, *, etag)` | Move a layout 1 draft to layout 2 (`DashboardUpgrade`). The server also does this automatically |
+| `predict(id, rows, *, label=None, idempotency_key=None)` | Try one or more cases: a private prediction readout |
+| `keep_readout(id, seq)` | Keep a tried case for an editor's review (it no longer expires) |
+| `batch_template(id)`, `score_batch(id, inputs, *, label=None, idempotency_key=None)` | Score a file of cases. `inputs` is an `xr.Dataset` or XrJSON along the id column |
+| `download_predictions(id, seq)`, `asset(id, asset_id)` | The predictions CSV of a batch readout, and a picture of the revision, as bytes |
+
+`create` and `update_draft` take a layout 1 or a layout 2 spec. A `SharedDashboard` also has
+`predict`, `batch_template`, `score_batch`, `download_predictions` and `asset`; a share link
+cannot keep a case, and neither a client nor a share link can score image files.
+
 ## Async
 
 `AsyncClient` has the same resources and arguments. Use `await` for the calls. Use

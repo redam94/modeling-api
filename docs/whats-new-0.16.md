@@ -141,9 +141,9 @@ once. An editor publishes it into the history.
 ## A tool surface for v0.17
 
 `mapi_spec.dashboard_tools` declares eight read-only tools, for example `get_latest_readout`
-and `evaluate_whatif`. The member, client and share routes already call them. v0.17 adds a
-chat explainer and an MCP server on top of the same tools
-([Planned for v0.17](roadmap/expert-plugins.md#planned-for-v017)).
+and `evaluate_whatif`. The member, client and share routes already call them. A later
+release adds a chat explainer and an MCP server on top of the same tools
+([Planned for v0.18](roadmap/expert-plugins.md#planned-for-v018)).
 
 ## API, client and configuration
 

@@ -432,3 +432,19 @@ def test_reference_docs_cover_v016() -> None:
     concepts = (docs / "concepts" / "client-dashboards.md").read_text("utf-8")
     for name in dashboard_tools.V016_TOOL_NAMES:  # the v0.17 tools: docs of v0.17
         assert f"`{name}`" in concepts, name
+
+
+def test_reference_docs_cover_v017() -> None:
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    text = (docs / "reference" / "http-api.md").read_text("utf-8")
+    assert "{ #v017 }" in text
+    for e in V017_ENDPOINTS:
+        assert f"`{e.method} {e.path}`" in text, f"http-api.md is missing {e.method} {e.path}"
+        for dto in filter(None, (e.request, e.response)):
+            assert f"`{dto}`" in text, dto
+    for op in sorted(api.CLIENT_OPERATIONS):
+        if any(e.operation_id == op for e in V017_ENDPOINTS):
+            assert f"`{op}`" in text, op
+    assert (docs / "whats-new-0.17.md").exists()
