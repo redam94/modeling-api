@@ -9,7 +9,9 @@ param and tag keys, tracking budgets and the run-search grammar; and the v0.14 c
 run media, experiments, saved run views, run comparison, image-folder ingest and the
 column and stratified splits; and the v0.15 contracts: image collections, safetensors
 weights, the GPU resource class and model side tables; and the v0.16 contracts: client
-dashboards, readouts, share links, the client role and the read-only dashboard tools).
+dashboards, readouts, share links, the client role and the read-only dashboard tools; and the
+v0.17 contracts: layout 2 dashboards for any model type, with presets, panels, scenario rows,
+actuals tracking and batch scoring).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -112,6 +114,13 @@ from mapi_spec.cost import (
     estimate_cost,
 )
 from mapi_spec.dashboard_tools import DASHBOARD_TOOLS, ToolDecl, tools_json_schema
+from mapi_spec.dashboard_v2 import (
+    PRESET_RULES,
+    DashboardSpecV2,
+    PanelBlock,
+    PresetKey,
+    SourceCatalog,
+)
 from mapi_spec.dashboards import (
     ClientDashboard,
     Dashboard,
@@ -122,6 +131,7 @@ from mapi_spec.dashboards import (
     ReadoutSnapshot,
     generate_share_token,
     metrics_of,
+    parse_dashboard_spec,
     zone_of,
 )
 from mapi_spec.effects import (
@@ -420,6 +430,7 @@ __all__ = [
     "PACK_OBJECT_PREFIX",
     "PART_ENTRY_RE",
     "PERMISSIONS",
+    "PRESET_RULES",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
@@ -470,6 +481,7 @@ __all__ = [
     "DashboardRevision",
     "DashboardShare",
     "DashboardSpec",
+    "DashboardSpecV2",
     "DataBlock",
     "DataLayout",
     "DataRef",
@@ -544,6 +556,7 @@ __all__ = [
     "OutputDecl",
     "OutputSelector",
     "PackInfo",
+    "PanelBlock",
     "ParamItem",
     "ParamsPayload",
     "PlotBindings",
@@ -554,6 +567,7 @@ __all__ = [
     "PlotSpec",
     "PolicyCheck",
     "PortType",
+    "PresetKey",
     "PriceTable",
     "Principal",
     "PriorTranslationResult",
@@ -593,6 +607,7 @@ __all__ = [
     "Snippet",
     "SnippetContext",
     "SnippetLanguage",
+    "SourceCatalog",
     "SpecRef",
     "SpecValidation",
     "SplitPlan",
@@ -687,6 +702,7 @@ __all__ = [
     "pack_input",
     "pack_object_name",
     "param_text",
+    "parse_dashboard_spec",
     "parse_document",
     "parse_expression",
     "parse_freq",

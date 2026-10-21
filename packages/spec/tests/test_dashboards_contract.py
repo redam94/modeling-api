@@ -11,7 +11,13 @@ from typing import Any, get_args
 
 import pytest
 from mapi_spec import api, dashboard_tools, dashboards, sharing
-from mapi_spec.api import CLIENT_OPERATIONS, ROUTE_ACCESS, V016_ENDPOINTS, RouteScope
+from mapi_spec.api import (
+    CLIENT_OPERATIONS,
+    ROUTE_ACCESS,
+    V016_ENDPOINTS,
+    V017_ENDPOINTS,
+    RouteScope,
+)
 from mapi_spec.dashboards import (
     DASHBOARD_SHARE_TOKEN_RE,
     GLOSSARY,
@@ -95,7 +101,7 @@ def test_client_operations_exist_in_route_access() -> None:
 
 
 def test_client_operations_are_only_dashboards_me_and_session() -> None:
-    v016 = {e.operation_id for e in V016_ENDPOINTS}
+    v016 = {e.operation_id for e in V016_ENDPOINTS + V017_ENDPOINTS}
     session = {"auth_login", "auth_callback", "auth_logout", "auth_session"}
     for op in CLIENT_OPERATIONS:
         acc = ROUTE_ACCESS[op]
@@ -121,6 +127,9 @@ def test_client_operations_are_only_dashboards_me_and_session() -> None:
         "list_dashboards", "get_dashboard", "get_dashboard_grid", "evaluate_dashboard_whatif",
         "save_dashboard_scenario", "get_dashboard_actuals_template", "submit_dashboard_actuals",
         "list_dashboard_readouts", "get_dashboard_readout",
+        # v0.17 inputs, downloads and pictures
+        "submit_dashboard_predictions", "get_dashboard_batch_template", "submit_dashboard_batch",
+        "download_dashboard_predictions", "get_dashboard_asset",
     }  # fmt: skip
     # membership-only routes and listings stay closed to clients (D4)
     for op in ("list_projects", "list_tenants", "get_catalog", "list_guided_templates",
@@ -177,7 +186,8 @@ def test_v016_rows_follow_the_conventions(e: api.EndpointDecl) -> None:
 
 
 def test_v016_table_is_last_unique_and_exported() -> None:
-    assert api.ENDPOINTS[-len(V016_ENDPOINTS) :] == V016_ENDPOINTS
+    v017 = len(V017_ENDPOINTS)  # the v0.17 rows follow
+    assert api.ENDPOINTS[-len(V016_ENDPOINTS) - v017 : -v017] == V016_ENDPOINTS
     keys = [(e.method, e.path) for e in api.ENDPOINTS]
     assert len(keys) == len(set(keys))
     assert len({e.operation_id for e in V016_ENDPOINTS}) == len(V016_ENDPOINTS) == 37
@@ -356,10 +366,11 @@ def test_zone_breakeven_from_the_kpi() -> None:
 def test_dashboard_tools_read_only_unique_and_schema_exportable() -> None:
     tools = dashboard_tools.DASHBOARD_TOOLS
     names = [t.name for t in tools]
-    assert names == [
+    assert names[:8] == [
         "get_dashboard", "get_latest_readout", "list_readouts", "get_readout",
         "compare_readouts", "get_channel", "explain_metric", "evaluate_whatif",
     ]  # fmt: skip
+    assert tuple(names[:8]) == dashboard_tools.V016_TOOL_NAMES  # v0.17 only appends
     assert tuple(names) == dashboard_tools.DASHBOARD_TOOL_NAMES
     for t in tools:
         assert t.read_only is True
@@ -419,5 +430,5 @@ def test_reference_docs_cover_v016() -> None:
     tenancy = (docs / "concepts" / "tenancy-and-auth.md").read_text("utf-8")
     assert "`client`" in tenancy and "CLIENT_OPERATIONS" in tenancy
     concepts = (docs / "concepts" / "client-dashboards.md").read_text("utf-8")
-    for name in dashboard_tools.DASHBOARD_TOOL_NAMES:
+    for name in dashboard_tools.V016_TOOL_NAMES:  # the v0.17 tools: docs of v0.17
         assert f"`{name}`" in concepts, name

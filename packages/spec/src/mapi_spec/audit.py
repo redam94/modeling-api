@@ -31,6 +31,7 @@ from mapi_spec.tokens import looks_like_token
 
 __all__ = [
     "AUDIT_DETAILS_MAX_KEYS",
+    "SYSTEM_ACTOR_ID",
     "AuditAction",
     "AuditEvent",
     "AuditOutcome",
@@ -40,6 +41,9 @@ __all__ = [
 ]
 
 AUDIT_DETAILS_MAX_KEYS: Final = 32
+SYSTEM_ACTOR_ID: Final = "system"
+"""``actor_id`` of rows that the platform writes by itself (``actor_kind="service"``), for
+example the automatic dashboard upgrade at start-up."""
 _FINGERPRINT = r"^hmac-sha256:[0-9a-f]{32}$"
 
 
@@ -184,6 +188,17 @@ class AuditAction(StrEnum):
     """An actuals upload asked the analyst for a refit (a client, a share link or a member)."""
     DASHBOARD_REFIT_DECIDE = "dashboard.refit_decide"
     """An editor approved (and started the refit workflow) or rejected a refit request."""
+    # --- v0.17 (additive) --------------------------------------------------------------------
+    DASHBOARD_UPGRADED = "dashboard.upgraded"
+    """A layout 1 dashboard moved to layout 2. The automatic pass at start-up writes it with
+    ``actor_kind="service"`` and ``actor_id`` :data:`SYSTEM_ACTOR_ID`; an editor's
+    ``:upgrade`` writes it as that user. Details ``{"from_revision": seq | None,
+    "to_revision": seq | None, "draft": bool, "preset": key, "notes": [...]}``; when the
+    upgrade needs review the outcome is ``error`` with ``{"issues": [...]}`` (codes and
+    pointers only)."""
+    DASHBOARD_BATCH_DOWNLOAD = "dashboard.batch_download"
+    """A predictions CSV of a batch readout was downloaded (details ``{"seq": n, "rows": n,
+    "bytes": n}``)."""
 
 
 class AuditEvent(ResponseModel):

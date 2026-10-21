@@ -22,6 +22,11 @@ editor with runner rights starts it.
 Everything here is plain pydantic: no numpy, no I/O. :func:`metrics_of` is a pure-Python
 port of ``features/score/compare.ts`` ``metricsOf`` (the same golden values), and
 :func:`zone_of` places a channel on its response curve from its return and marginal return.
+
+v0.17 adds layout 2 (:mod:`mapi_spec.dashboard_v2`: presets and panels for any model type)
+**additively**: the layout 1 classes keep their fields and hashes; the DTOs that hold a spec
+take either layout (:data:`AnyDashboardSpec`, parsed with :func:`parse_dashboard_spec`), and
+the snapshot, kinds, triggers and share inputs gain optional fields and values only.
 """
 
 from __future__ import annotations
@@ -32,7 +37,7 @@ import re
 import secrets
 from collections.abc import Mapping, Sequence
 from datetime import date
-from typing import Any, Final, Literal, get_args
+from typing import TYPE_CHECKING, Any, Final, Literal, get_args
 
 from pydantic import (
     AwareDatetime,
@@ -53,6 +58,25 @@ from mapi_spec.loader import canonical_json, spec_hash
 from mapi_spec.views import ResponseGridView
 from mapi_spec.xrjson import XrJsonDataset
 
+if TYPE_CHECKING:  # layout 2 types; linked at import time by mapi_spec.dashboard_v2
+    from mapi_spec.dashboard_v2 import (
+        AccuracyDetail,
+        AccuracyPoint,
+        AnyDashboardSpec,
+        BatchForm,
+        BatchSummary,
+        DashboardSpecV2,
+        PanelBlock,
+        PanelMeta,
+        PeriodLabelV2,
+        PredictionResult,
+        PresetKey,
+        ScenarioForm,
+        SubjectDef,
+        TabKeyV2,
+        parse_dashboard_spec,
+    )
+
 __all__ = [
     "DASHBOARD_SHARE_TOKEN_RE",
     "GLOSSARY",
@@ -67,10 +91,12 @@ __all__ = [
     "MIN_PASSCODE_LEN",
     "SHARE_SESSION_HEADER",
     "SHARE_SESSION_RE",
+    "UPGRADE_NEEDS_REVIEW",
     "ActualsAccuracy",
     "ActualsInputs",
     "ActualsSubmit",
     "ActualsTemplate",
+    "AnyDashboardSpec",
     "ChannelDef",
     "ChannelReadout",
     "ClientDashboard",
@@ -81,6 +107,7 @@ __all__ = [
     "DashboardGrantPut",
     "DashboardGrid",
     "DashboardLimits",
+    "DashboardProblem",
     "DashboardRefitRequest",
     "DashboardRevision",
     "DashboardShare",
@@ -94,6 +121,7 @@ __all__ = [
     "EffectiveInputs",
     "GlossaryKey",
     "KpiDef",
+    "KpiUnit",
     "KpiValue",
     "Readout",
     "ReadoutHeader",
@@ -124,6 +152,7 @@ __all__ = [
     "dashboard_spec_hash",
     "generate_share_token",
     "metrics_of",
+    "parse_dashboard_spec",
     "readout_cache_key",
     "share_display",
     "zone_of",
@@ -312,6 +341,9 @@ class RefreshPolicy(RequestModel):
 
     workflow_id: Id | None = None
     follow_endpoint: bool = False
+    horizon: int | None = Field(None, ge=1, le=104)
+    """Layout 2 forecast presets: periods ahead of the baseline and refresh forecasts (unset:
+    6). Optional and unset by default, so layout 1 hashes do not change."""
 
 
 class DashboardLimits(RequestModel):
@@ -320,8 +352,10 @@ class DashboardLimits(RequestModel):
 
 
 TileKey = Literal[
-    "expected", "vs_expected", "return_on_media", "in_range_spend", "accuracy", "index"
+    "expected", "vs_expected", "return_on_media", "in_range_spend", "accuracy", "index", "panel"
 ]
+"""``panel``: a layout 2 KPI panel copied into the legacy ``tiles`` (v0.17); layout 1 specs
+never name it."""
 TabKey = Literal["this_period", "trends", "scenarios", "update", "history"]
 _DEFAULT_TILES: Final[tuple[TileKey, ...]] = (
     "expected", "vs_expected", "return_on_media", "in_range_spend",
@@ -400,6 +434,8 @@ class DashboardSpec(RequestModel):
             raise ValueError("channel names must be unique")
         if len(set(self.tiles)) != len(self.tiles):
             raise ValueError("tiles must be unique")
+        if "panel" in self.tiles:
+            raise ValueError("the 'panel' tile is for layout 2 readouts")
         if len(set(self.tabs)) != len(self.tabs):
             raise ValueError("tabs must be unique")
         if self.tabs[0] != "this_period":
@@ -412,7 +448,7 @@ class DashboardSpec(RequestModel):
         return self
 
 
-def dashboard_spec_hash(spec: DashboardSpec) -> str:
+def dashboard_spec_hash(spec: DashboardSpec | DashboardSpecV2) -> str:
     """``sha256:<hex>`` of the spec's canonical JSON (stored with each revision and readout,
     so readouts made under different specs can be told apart)."""
     return spec_hash(spec)
@@ -428,13 +464,18 @@ def readout_cache_key(revision_id: str, value: BaseModel | Mapping[str, Any] | s
 # ================================================================================== readouts
 
 DashboardStatus = Literal["draft", "published", "archived"]
-ReadoutKind = Literal["baseline", "refresh", "scenario", "actuals"]
-ReadoutTrigger = Literal["publish", "manual", "whatif", "actuals", "workflow", "endpoint"]
+ReadoutKind = Literal["baseline", "refresh", "scenario", "actuals", "prediction", "batch"]
+ReadoutTrigger = Literal[
+    "publish", "manual", "whatif", "actuals", "workflow", "endpoint", "scenario_rows", "batch"
+]
 ReadoutVisibility = Literal["published", "private", "pending_review", "hidden"]
 ReadoutStatus = Literal["queued", "running", "materialising", "ready", "failed"]
 RefitRequestStatus = Literal["open", "approved", "rejected", "superseded", "failed"]
 RequesterKind = Literal["member", "client", "share"]
-TileUnit = Literal["count", "currency", "ratio", "percent", "index"]
+TileUnit = Literal[
+    "count", "currency", "ratio", "percent", "index", "probability", "number", "label", "rate"
+]
+"""Units of a tile (v0.17 adds ``probability`` 0-1, ``number``, ``label`` and ``rate``)."""
 Zone = Literal["headroom", "optimal", "over", "no_payback"]
 
 _HEADER_EXAMPLE: Final[dict[str, Any]] = {
@@ -501,6 +542,10 @@ class KpiValue(ResponseModel):
     low: float | None = None
     high: float | None = None
     caption: str = Field("", max_length=200)
+    panel_id: str | None = Field(None, max_length=32, description="Layout 2: the KPI panel")
+    approximate: bool = Field(
+        False, description="Layout 2: the value is a sum or mean of point predictions"
+    )
 
 
 class ChannelReadout(ResponseModel):
@@ -545,6 +590,12 @@ class ActualsAccuracy(ResponseModel):
     bias: float | None = None
     band_hit_rate: float | None = None
     n: int = Field(0, ge=0)
+    mae: float | None = None
+    rmse: float | None = None
+    wape: float | None = None
+    smape: float | None = None
+    r2: float | None = None
+    """Layout 2 error metrics (v0.17; :func:`metrics_of` leaves them unset)."""
 
 
 class ReadoutSnapshot(ResponseModel):
@@ -565,6 +616,17 @@ class ReadoutSnapshot(ResponseModel):
     input_fingerprint: str | None = Field(None, max_length=128)
     notes_plain: list[str] = Field(default_factory=list, max_length=MAX_NOTES)
     technical: dict[str, str | float] = Field(default_factory=dict, max_length=64)
+    # --- v0.17 (layout 2; optional: a stored v0.16 snapshot has schema_version 1) ----------
+    schema_version: int = Field(1, ge=1, le=2)
+    preset: PresetKey | None = None
+    panels: list[PanelBlock] = Field(default_factory=list, max_length=24)
+    prediction: PredictionResult | None = None
+    batch: BatchSummary | None = None
+    accuracy_detail: AccuracyDetail | None = None
+    accuracy_history: list[AccuracyPoint] = Field(default_factory=list, max_length=104)
+    inputs_echo: list[dict[str, str | float | bool | None]] = Field(
+        default_factory=list, max_length=20
+    )
 
     @field_validator("notes_plain")
     @classmethod
@@ -576,12 +638,31 @@ class ReadoutSnapshot(ResponseModel):
 
     @model_validator(mode="after")
     def _capped(self) -> ReadoutSnapshot:
+        """Layout 1 caps for ``schema_version`` 1; the larger layout 2 caps (and a byte
+        budget per panel block) for ``schema_version`` 2."""
+        from mapi_spec import dashboard_v2 as v2
+
+        max_points, max_bytes = MAX_SERIES_POINTS, MAX_READOUT_BYTES
         points = sum(len(s.points) for s in self.series)
-        if points > MAX_SERIES_POINTS:
-            raise ValueError(f"the series hold {points} points (max {MAX_SERIES_POINTS})")
+        if self.schema_version >= 2:
+            max_points, max_bytes = v2.MAX_SERIES_POINTS_V2, v2.MAX_READOUT_BYTES_V2
+            for block in self.panels:
+                if isinstance(block, v2.SeriesBlock):
+                    points += sum(len(s.points) for s in block.series)
+                elif isinstance(block, v2.ScatterBlock):
+                    points += len(block.points)
+                size = v2.block_bytes(block)
+                if size > v2.block_budget(block):
+                    raise ValueError(
+                        f"panel {block.panel_id} is {size} bytes (max {v2.block_budget(block)})"
+                    )
+        elif self.panels:
+            raise ValueError("panels need schema_version 2")
+        if points > max_points:
+            raise ValueError(f"the series hold {points} points (max {max_points})")
         size = len(self.model_dump_json().encode("utf-8"))
-        if size > MAX_READOUT_BYTES:
-            raise ValueError(f"the readout snapshot is {size} bytes (max {MAX_READOUT_BYTES})")
+        if size > max_bytes:
+            raise ValueError(f"the readout snapshot is {size} bytes (max {max_bytes})")
         return self
 
 
@@ -681,14 +762,31 @@ class EffectiveInputs(ResponseModel):
     actuals: bool = False
     actuals_mode: Literal["conditioned", "compared"] | None = None
     refit_requests: bool = False
+    scenario_rows: bool = False
+    batch: bool = False
+    accuracy_kind: Literal["error", "classification", "effect"] | None = None
+    """Layout 2 (v0.17): scenario rows, batch scoring, and the accuracy an upload gives."""
+
+
+_REVISION_EXAMPLE: Final[dict[str, Any]] = {
+    "id": _DSR,
+    "seq": 2,
+    "spec": _SPEC_EXAMPLE,
+    "spec_hash": "sha256:" + "5a" * 32,
+    "model_version_id": _MV,
+    "model_ref": "model://growth/eu-geo-mmm@v3",
+    "created_by": _USR,
+    "created_at": EXAMPLE_TS,
+}
 
 
 class DashboardRevision(ResponseModel):
-    """An immutable published revision: the spec and the model version it pins."""
+    """An immutable published revision: the spec (either layout) and the model version it
+    pins."""
 
     id: Id = Field(..., pattern=r"^dsr_[0-9a-z]{26}$")
     seq: int = Field(..., ge=1)
-    spec: DashboardSpec
+    spec: AnyDashboardSpec
     spec_hash: Sha256
     model_version_id: str = Field(..., max_length=128)
     model_ref: str = Field(..., max_length=512)
@@ -697,30 +795,43 @@ class DashboardRevision(ResponseModel):
     created_by: str = Field(..., max_length=128)
     created_at: AwareDatetime
 
-    model_config = dto_examples(
-        {
-            "id": _DSR,
-            "seq": 2,
-            "spec": _SPEC_EXAMPLE,
-            "spec_hash": "sha256:" + "5a" * 32,
-            "model_version_id": _MV,
-            "model_ref": "model://growth/eu-geo-mmm@v3",
-            "created_by": _USR,
-            "created_at": EXAMPLE_TS,
-        }
-    )
+    model_config = dto_examples(_REVISION_EXAMPLE)
+
+
+DashboardProblem = Literal["new_version_available", "upgrade_needs_review"]
+"""Machine words of ``Dashboard.problem`` (the field stays a string: new words are additive)."""
+UPGRADE_NEEDS_REVIEW: Final = "upgrade_needs_review"
+"""``Dashboard.problem`` when the automatic layout 1 → 2 upgrade found blocking issues: the
+dashboard stays on layout 1 and an editor finishes it with ``:upgrade``."""
+
+_DASHBOARD_EXAMPLE: Final[dict[str, Any]] = {
+    "id": _DSH,
+    "name": "acme-weekly",
+    "status": "published",
+    "draft_spec": _SPEC_EXAMPLE,
+    "draft_etag": '"3"',
+    "published_revision": _REVISION_EXAMPLE,
+    "run_as": _USR,
+    "live_inputs": "ok",
+    "created_by": _USR,
+    "created_at": EXAMPLE_TS,
+    "updated_at": EXAMPLE_TS,
+    "latest_readout": _HEADER_EXAMPLE,
+}
 
 
 class Dashboard(ResponseModel):
     """The analyst's view of a dashboard (``GET /v1/dashboards/{dashboard_id}`` for viewers
     and up; a client gets :class:`ClientDashboard`). ``run_as`` is the publisher whose
     compute the live inputs use; ``live_inputs`` is ``paused`` when that user lost the runner
-    role. ``problem`` is a short machine word for the analyst (``new_version_available``)."""
+    role. ``problem`` is a short machine word for the analyst (:data:`DashboardProblem`:
+    ``new_version_available``, ``upgrade_needs_review``); ``upgrade_issues`` are the issues
+    that stopped the automatic layout 2 upgrade (shown in the builder's banner)."""
 
     id: Id = Field(..., pattern=r"^dsh_[0-9a-z]{26}$")
     name: Name
     status: DashboardStatus
-    draft_spec: DashboardSpec
+    draft_spec: AnyDashboardSpec
     draft_etag: str = Field(..., max_length=128)
     published_revision: DashboardRevision | None = None
     run_as: str | None = Field(None, max_length=128)
@@ -730,23 +841,9 @@ class Dashboard(ResponseModel):
     created_at: AwareDatetime
     updated_at: AwareDatetime
     latest_readout: ReadoutHeader | None = None
+    upgrade_issues: list[Issue] = Field(default_factory=list, max_length=50)
 
-    model_config = dto_examples(
-        {
-            "id": _DSH,
-            "name": "acme-weekly",
-            "status": "published",
-            "draft_spec": _SPEC_EXAMPLE,
-            "draft_etag": '"3"',
-            "published_revision": DashboardRevision.model_json_schema()["examples"][0],
-            "run_as": _USR,
-            "live_inputs": "ok",
-            "created_by": _USR,
-            "created_at": EXAMPLE_TS,
-            "updated_at": EXAMPLE_TS,
-            "latest_readout": _HEADER_EXAMPLE,
-        }
-    )
+    model_config = dto_examples(_DASHBOARD_EXAMPLE)
 
 
 class DashboardSummary(ResponseModel):
@@ -757,7 +854,7 @@ class DashboardSummary(ResponseModel):
     title: str = Field(..., max_length=120)
     client_name: str | None = Field(None, max_length=80)
     status: DashboardStatus
-    period_label: Literal["week", "month", "period"] = "week"
+    period_label: PeriodLabelV2 = "week"
     live_inputs: Literal["ok", "paused"] = "ok"
     latest_readout: ReadoutHeader | None = None
     updated_at: AwareDatetime
@@ -797,14 +894,18 @@ _CLIENT_EXAMPLE: Final[dict[str, Any]] = {
 
 class ClientDashboard(ResponseModel):
     """What a client user or a share link sees: the published revision only, with no ids of
-    people and no model internals. ``ends_at`` is the share link's expiry (share views)."""
+    people and no model internals. ``ends_at`` is the share link's expiry (share views).
+
+    Layout 2 (v0.17) adds ``preset``, ``subject`` (``kpi`` is derived from it), the panels to
+    lay out, the forms of the inputs and ``sections``; ``upgrade_note`` is the one-time
+    plain note after the automatic upgrade (the page lets each viewer dismiss it)."""
 
     id: Id = Field(..., pattern=r"^dsh_[0-9a-z]{26}$")
     title: str = Field(..., max_length=120)
     client_name: str | None = Field(None, max_length=80)
     summary: str | None = Field(None, max_length=600)
     note: str | None = Field(None, max_length=2000)
-    period_label: Literal["week", "month", "period"] = "week"
+    period_label: PeriodLabelV2 = "week"
     kpi: KpiDef
     channels: list[ChannelDef] = Field(default_factory=list, max_length=MAX_CHANNELS)
     tiles: list[TileKey] = Field(default_factory=list, max_length=MAX_TILES)
@@ -814,15 +915,26 @@ class ClientDashboard(ResponseModel):
     show_technical: bool = False
     latest_readout: Readout | None = None
     ends_at: AwareDatetime | None = None
+    # --- v0.17 (layout 2) ------------------------------------------------------------------
+    layout_version: int = Field(1, ge=1, le=2)
+    preset: PresetKey | None = None
+    subject: SubjectDef | None = None
+    panels_meta: list[PanelMeta] = Field(default_factory=list, max_length=24)
+    scenario_form: ScenarioForm | None = None
+    batch_form: BatchForm | None = None
+    sections: list[TabKeyV2] = Field(default_factory=list, max_length=5)
+    upgrade_note: str | None = Field(None, max_length=400)
 
     model_config = dto_examples(_CLIENT_EXAMPLE)
 
 
 class DashboardCreate(RequestModel):
-    """``POST /v1/dashboards``: a new draft (unique ``name`` per project)."""
+    """``POST /v1/dashboards``: a new draft (unique ``name`` per project). From v0.17 a new
+    dashboard is layout 2: the server refuses a layout 1 spec with
+    ``DASHBOARD_LAYOUT_RETIRED``."""
 
     name: Name
-    spec: DashboardSpec
+    spec: AnyDashboardSpec
 
     model_config = dto_examples({"name": "acme-weekly", "spec": _SPEC_EXAMPLE})
 
@@ -830,7 +942,7 @@ class DashboardCreate(RequestModel):
 class DashboardDraftUpdate(RequestModel):
     """``PUT …/draft`` with ``If-Match: <draft_etag>`` (a stale etag → ``DASHBOARD_SPEC_STALE``)."""
 
-    spec: DashboardSpec
+    spec: AnyDashboardSpec
 
     model_config = dto_examples({"spec": _SPEC_EXAMPLE})
 
@@ -952,7 +1064,12 @@ class ActualsTemplate(ResponseModel):
     input_table: InputTable
     kpi_column: Name
     example_csv: str = Field(..., max_length=65_536)
-    max_rows: int = Field(MAX_ACTUALS_ROWS, ge=1, le=MAX_ACTUALS_ROWS)
+    max_rows: int = Field(MAX_ACTUALS_ROWS, ge=1, le=5000)
+    match: Literal["time", "row"] = "time"
+    id_column: Name | None = None
+    label_column: Name | None = None
+    """Layout 2 (v0.17): ``row`` uploads are matched per case on ``id_column`` (up to 5000
+    rows); the outcome is ``label_column`` (classes) or ``kpi_column``."""
 
     model_config = dto_examples(
         {
@@ -1029,7 +1146,7 @@ class DashboardGrantPut(RequestModel):
     user_id: str = Field(..., max_length=128)
 
 
-ShareInput = Literal["whatif", "actuals"]
+ShareInput = Literal["whatif", "actuals", "scenario_rows", "batch"]
 
 
 class DashboardShareCreate(RequestModel):
@@ -1078,7 +1195,7 @@ class DashboardShare(ResponseModel):
     display: str = Field(..., max_length=16)
     status: Literal["active", "expired", "revoked"]
     has_passcode: bool = False
-    allowed_inputs: list[ShareInput] = Field(default_factory=list, max_length=2)
+    allowed_inputs: list[ShareInput] = Field(default_factory=list, max_length=4)
     views: int = Field(0, ge=0)
     last_viewed_at: AwareDatetime | None = None
     locked_until: AwareDatetime | None = None
@@ -1299,6 +1416,22 @@ GlossaryKey = Literal[
     "compared",
     "conditioned",
     "refit",
+    # v0.17: any model type
+    "prediction",
+    "likely_range",
+    "probability",
+    "share_positive",
+    "accuracy_rate",
+    "calibration",
+    "typical_error",
+    "effect",
+    "cumulative_effect",
+    "without_intervention",
+    "chance_of_effect",
+    "map",
+    "batch",
+    "approximate",
+    "expected_count",
 ]
 
 GLOSSARY: Final[dict[GlossaryKey, str]] = {
@@ -1332,9 +1465,60 @@ GLOSSARY: Final[dict[GlossaryKey, str]] = {
     "conditioned": "The model uses your numbers to update its forecast. The model parameters "
     "do not change.",
     "refit": "The analyst fits the model again with new data. Only the analyst can start a refit.",
+    "prediction": "The value that the model calculates for the case or the period that you "
+    "selected.",
+    "likely_range": "The range where one new result will probably be. The model is 90% sure "
+    "that the result is in this range.",
+    "probability": "How probable a result is, from 0% (it will not occur) to 100% (it will occur).",
+    "share_positive": "The percentage of cases where the probability of the selected result "
+    "is more than the threshold that the analyst set.",
+    "accuracy_rate": "The percentage of cases where the most probable class was the actual class.",
+    "calibration": "A check of the probabilities. When the model gives a probability of 70%, "
+    "the result must occur in approximately 70% of those cases.",
+    "typical_error": "The average size of the difference between the prediction and the "
+    "actual number, in the units of the result.",
+    "effect": "The difference between the actual result and the result that the model "
+    "calculates without the change.",
+    "cumulative_effect": "The total effect of the change over all periods since it started.",
+    "without_intervention": "The result that the model calculates for the time after the "
+    "change, as if the change did not occur.",
+    "chance_of_effect": "How probable it is that the change had a positive effect, as the "
+    "model calculates it.",
+    "map": "A map of the values that the model calculates for each place. The legend shows "
+    "the value of each colour.",
+    "batch": "A file of many cases. The model calculates a prediction for each case, and you "
+    "can download the predictions as a CSV file.",
+    "approximate": "This value is approximate. The model gives one value per case without a "
+    "range, so the total does not show the uncertainty.",
+    "expected_count": "The number of cases where the result will probably occur. It is the "
+    "sum of the probabilities of all the cases.",
 }
 """Plain (ASD-STE100) definitions behind the "What does this mean?" links and the
 ``explain_metric`` tool. Keys equal :data:`GlossaryKey`."""
 
 if set(GLOSSARY) != set(get_args(GlossaryKey)):  # pragma: no cover - import-time contract check
     raise RuntimeError("GLOSSARY and GlossaryKey disagree")
+
+
+# ================================================================================ layout 2
+
+_V2_NAMES: Final = (
+    "AccuracyDetail", "AccuracyPoint", "AnyDashboardSpec", "BatchForm", "BatchSummary",
+    "DashboardSpecV2", "PanelBlock", "PanelMeta", "PeriodLabelV2", "PredictionResult",
+    "PresetKey", "ScenarioForm", "SubjectDef", "TabKeyV2", "parse_dashboard_spec",
+)  # fmt: skip
+_V2_MODELS: Final[tuple[type[BaseModel], ...]] = (
+    DashboardRevision, Dashboard, DashboardSummary, ReadoutSnapshot, Readout, ClientDashboard,
+    DashboardCreate, DashboardDraftUpdate, ShareSession,
+)  # fmt: skip
+
+
+def _link_v2(namespace: Mapping[str, Any]) -> None:
+    """Called by :mod:`mapi_spec.dashboard_v2` once its types exist (whichever module is
+    imported first): binds them here and completes the layout 1 DTOs that carry them."""
+    globals().update({name: namespace[name] for name in _V2_NAMES})
+    for model in _V2_MODELS:
+        model.model_rebuild(force=True)
+
+
+import mapi_spec.dashboard_v2  # noqa: E402, F401  (links the layout 2 types into this module)

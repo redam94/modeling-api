@@ -11,8 +11,13 @@ results are the DTOs the HTTP routes return.
 :func:`tools_json_schema` exports the declarations as ``{name, description, parameters,
 result}`` JSON Schemas (the shape Gemini function declarations and MCP tools take).
 
-Do not rename or remove a tool, or remove an argument: v0.17 adapters map onto these 1:1.
-New tools and new optional arguments are additive.
+v0.17 adds read-only tools for layout 2 dashboards (panels, accuracy, inputs, the caller's
+own predictions and batch summaries) and ``panel_deltas`` on :class:`ReadoutComparison`.
+The media tools (``get_channel``, ``evaluate_whatif``) answer ``DASHBOARD_INPUT_DISABLED`` on
+dashboards without the media planner.
+
+Do not rename or remove a tool, or remove an argument: the v0.18 adapters (chat and MCP) map
+onto these 1:1. New tools and new optional arguments are additive.
 """
 
 from __future__ import annotations
@@ -23,9 +28,22 @@ from pydantic import AwareDatetime, Field, JsonValue
 
 from mapi_spec._dto import EXAMPLE_TS, RequestModel, ResponseModel, dto_examples
 from mapi_spec._types import Name
+from mapi_spec.dashboard_v2 import (
+    MAX_PANELS,
+    PANEL_ID_RE,
+    AccuracyDetail,
+    AccuracyPoint,
+    BatchForm,
+    BatchSummary,
+    PanelBlock,
+    PanelMeta,
+    PredictionResult,
+    ScenarioForm,
+)
 from mapi_spec.dashboards import (
     GLOSSARY,
     ClientDashboard,
+    EffectiveInputs,
     GlossaryKey,
     Readout,
     ReadoutHeader,
@@ -42,15 +60,25 @@ __all__ = [
     "DASHBOARD_TOOL_NAMES",
     "MAX_CHANNEL_HISTORY",
     "MAX_TOOL_READOUTS",
+    "V016_TOOL_NAMES",
+    "AccuracyReport",
+    "BatchReport",
     "ChannelArgs",
     "ChannelDelta",
     "ChannelHistory",
     "ChannelPoint",
     "CompareArgs",
     "ExplainArgs",
+    "InputsReport",
     "ListReadoutsArgs",
     "MetricExplanation",
     "NoArgs",
+    "OptionalReadoutRef",
+    "PanelArgs",
+    "PanelDelta",
+    "PanelList",
+    "PanelReport",
+    "PredictionReport",
     "PrincipalKind",
     "ReadoutComparison",
     "ReadoutRef",
@@ -105,6 +133,19 @@ class ExplainArgs(RequestModel):
     metric: GlossaryKey
 
 
+class OptionalReadoutRef(RequestModel):
+    """One readout by its number; without ``seq``, the latest published readout."""
+
+    seq: int | None = Field(None, ge=1)
+
+
+class PanelArgs(RequestModel):
+    """One panel of a readout (the latest published readout without ``seq``)."""
+
+    panel_id: str = Field(..., pattern=PANEL_ID_RE)
+    seq: int | None = Field(None, ge=1)
+
+
 # ================================================================================== results
 
 
@@ -129,9 +170,20 @@ class ChannelDelta(ResponseModel):
     zone_b: Zone | None = None
 
 
+class PanelDelta(ResponseModel):
+    """The change of one KPI panel (layout 2) between two readouts."""
+
+    panel_id: str = Field(..., pattern=PANEL_ID_RE)
+    label: str = Field(..., max_length=80)
+    a: float | None = None
+    b: float | None = None
+    delta: float | None = Field(None, description="b - a")
+
+
 class ReadoutComparison(ResponseModel):
-    """Tile and channel changes between two readouts. ``same_model`` is false when the
-    readouts used different model versions (the numbers are then less comparable)."""
+    """Tile, channel and (layout 2) KPI panel changes between two readouts. ``same_model``
+    is false when the readouts used different model versions (the numbers are then less
+    comparable)."""
 
     a: ReadoutHeader
     b: ReadoutHeader
@@ -139,6 +191,7 @@ class ReadoutComparison(ResponseModel):
     tiles: list[TileDelta] = Field(default_factory=list, max_length=6)
     channels: list[ChannelDelta] = Field(default_factory=list, max_length=40)
     lead: str = Field(..., max_length=400)
+    panel_deltas: list[PanelDelta] = Field(default_factory=list, max_length=MAX_PANELS)
 
     model_config = dto_examples(
         {
@@ -189,6 +242,60 @@ class MetricExplanation(ResponseModel):
     text: str = Field(..., max_length=600)
 
     model_config = dto_examples({"metric": "return_on_media", "text": GLOSSARY["return_on_media"]})
+
+
+class PanelList(ResponseModel):
+    """The panels of the published revision, in reading order (layout 2; empty on layout 1)."""
+
+    panels: list[PanelMeta] = Field(default_factory=list, max_length=MAX_PANELS)
+
+    model_config = dto_examples(
+        {"panels": [{"id": "next", "kind": "kpi", "title": "Sales next month"},
+                    {"id": "fan", "kind": "chart", "title": "Sales and forecast",
+                     "intent": "fan"}]}
+    )  # fmt: skip
+
+
+class PanelReport(ResponseModel):
+    """One panel block of a readout, as the readout shows it."""
+
+    seq: int = Field(..., ge=1)
+    panel: PanelBlock
+
+
+class AccuracyReport(ResponseModel):
+    """The accuracy of a readout's actuals (``detail``) and the history over published
+    actuals readouts, oldest first."""
+
+    seq: int | None = Field(None, ge=1)
+    detail: AccuracyDetail | None = None
+    history: list[AccuracyPoint] = Field(default_factory=list, max_length=104)
+
+
+class InputsReport(ResponseModel):
+    """What the caller may send (inputs, narrowed by a share link), the forms of scenario
+    rows and batch files, and the daily caps."""
+
+    inputs: EffectiveInputs
+    scenario_form: ScenarioForm | None = None
+    batch_form: BatchForm | None = None
+    exact_runs_per_day: int | None = Field(None, ge=0)
+    batch_runs_per_day: int | None = Field(None, ge=0)
+
+
+class PredictionReport(ResponseModel):
+    """The result of the caller's own scenario rows readout (private rows of others are
+    never returned)."""
+
+    readout: ReadoutHeader
+    prediction: PredictionResult | None = None
+
+
+class BatchReport(ResponseModel):
+    """The summary of the caller's own batch readout (no CSV and no download link)."""
+
+    readout: ReadoutHeader
+    summary: BatchSummary | None = None
 
 
 def explain(metric: GlossaryKey) -> MetricExplanation:
@@ -253,10 +360,50 @@ DASHBOARD_TOOLS: Final[tuple[ToolDecl, ...]] = (
         "channel (1 is the current plan). This does not start a run and saves nothing.",
         WhatIfRequest, WhatIfResult, True,
     ),
+    # v0.17: layout 2 dashboards
+    ToolDecl(
+        "list_panels",
+        "List the panels of the dashboard: their ids, kinds and titles, in reading order.",
+        NoArgs, PanelList, True,
+    ),
+    ToolDecl(
+        "get_panel",
+        "Get one panel of a readout by its id (the latest published readout without seq).",
+        PanelArgs, PanelReport, True,
+    ),
+    ToolDecl(
+        "get_accuracy",
+        "Get how near the model was to the actual numbers of a readout, and the accuracy "
+        "over time.",
+        OptionalReadoutRef, AccuracyReport, True,
+    ),
+    ToolDecl(
+        "list_inputs",
+        "List what you can send to the dashboard: the values of a case, a file of cases or "
+        "actuals, with their ranges and daily limits.",
+        NoArgs, InputsReport, True,
+    ),
+    ToolDecl(
+        "get_prediction",
+        "Get the result of one of your own scenario rows readouts by its number (seq).",
+        ReadoutRef, PredictionReport, True,
+    ),
+    ToolDecl(
+        "get_batch_summary",
+        "Get the summary of one of your own batch readouts by its number (seq). This does "
+        "not give the file.",
+        ReadoutRef, BatchReport, True,
+    ),
 )  # fmt: skip
 """The tool surface. Every tool is read-only (``read_only`` is always ``True``)."""
 
 DASHBOARD_TOOL_NAMES: Final[tuple[str, ...]] = tuple(t.name for t in DASHBOARD_TOOLS)
+
+V016_TOOL_NAMES: Final[tuple[str, ...]] = (
+    "get_dashboard", "get_latest_readout", "list_readouts", "get_readout",
+    "compare_readouts", "get_channel", "explain_metric", "evaluate_whatif",
+)  # fmt: skip
+"""The v0.16 tools, unchanged in name and arguments (the v0.17 surface is a superset)."""
 
 _BY_NAME: Final[dict[str, ToolDecl]] = {t.name: t for t in DASHBOARD_TOOLS}
 
