@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type * as React from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -123,6 +124,34 @@ describe("ReadoutPage", () => {
     // Polled until ready: the lead of the comparison, the refit request kept on the readout.
     expect(await within(sent).findByText(/^Your numbers were \d+% (more|less) than the model expected over 4 weeks\./, {}, { timeout: 6000 })).toBeInTheDocument();
     expect(within(sent).getByText(/^You asked the analyst to refit the model with these numbers\./)).toBeInTheDocument();
+  });
+
+  it("does not send the same numbers twice, and a retry reuses the Idempotency-Key", { timeout: 15_000 }, async () => {
+    const client = await clientFor(MOCK_SHARE_TOKENS.inputs, MOCK_SHARE_PASSCODE, MMM_DASHBOARD_ID);
+    view(<ReadoutPage client={client} tab="update" />);
+    await screen.findByText("We compare your numbers with what the model expected. The model does not change.");
+    for (let i = 1; i <= 4; i++) await userEvent.type(screen.getByRole("textbox", { name: `revenue, row ${i}` }), String(500000 + i));
+    const send = screen.getByRole("button", { name: "Send" });
+    const posts = () => seen.filter((r) => r.method === "POST" && r.url.endsWith("/v1/shared/actuals"));
+    // the first try fails on the way: the retry of the same rows sends the same key
+    server.use(
+      http.post("*/v1/shared/actuals", () => HttpResponse.json({ type: "about:blank", title: "Unavailable", status: 503, code: "INFRA_ERROR" }, { status: 503 }), { once: true }),
+    );
+    await userEvent.click(send);
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    await waitFor(() => expect(send).toBeEnabled());
+    await userEvent.click(send);
+    await screen.findByText(/^We received your numbers\./);
+    expect(send).toBeDisabled(); // a second tap would start a second score run
+    expect(posts()).toHaveLength(2);
+    const first = posts()[0]!.headers.get("Idempotency-Key");
+    expect(posts()[1]!.headers.get("Idempotency-Key")).toBe(first);
+    // changing a row allows a new send, with a new key
+    await userEvent.type(screen.getByRole("textbox", { name: "revenue, row 1" }), "9");
+    expect(send).toBeEnabled();
+    await userEvent.click(send);
+    await waitFor(() => expect(posts()).toHaveLength(3));
+    expect(posts()[2]!.headers.get("Idempotency-Key")).not.toBe(first);
   });
 
   it("has no refit checkbox when the dashboard does not allow refit requests", async () => {

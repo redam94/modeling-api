@@ -137,6 +137,14 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
   const [refit, setRefit] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [sent, setSent] = useState<ReadoutHeader | null>(null);
+  // one Idempotency-Key per set of rows (and refit choice): a retry or a double tap of the
+  // same numbers replays the first readout instead of starting a second score run
+  const [idemKey, setIdemKey] = useState(() => crypto.randomUUID());
+  /** New numbers (or a new refit choice): a new intent, sendable again with a new key. */
+  const changed = () => {
+    setSent(null);
+    setIdemKey(crypto.randomUUID());
+  };
   const submit = useSubmitActuals(client);
   const pasteId = useId();
   const refitId = useId();
@@ -155,7 +163,7 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
         return;
       }
       setRows(next);
-      setSent(null);
+      changed();
     } catch (err) {
       setReadError(err instanceof Error ? err.message : String(err));
     }
@@ -171,7 +179,7 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
     }
     setReadError(null);
     const body: ActualsSubmit = { inputs, ...(allowRefit && refit ? { request_refit: true } : {}) };
-    submit.mutate({ body }, { onSuccess: (h) => setSent(h) });
+    submit.mutate({ body, idemKey }, { onSuccess: (h) => setSent(h) });
   };
 
   const problem = submit.isError ? problemOf(submit.error) : null;
@@ -223,7 +231,7 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
             rows={rows}
             onChange={(r) => {
               setRows(r);
-              setSent(null);
+              changed();
             }}
             disabled={preview}
           />
@@ -246,7 +254,17 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
             {allowRefit ? (
               <div className="grid gap-1">
                 <div className="flex items-start gap-2">
-                  <Checkbox id={refitId} checked={refit} onCheckedChange={(v) => setRefit(v === true)} disabled={preview} aria-describedby={`${refitId}-hint`} className="mt-0.5" />
+                  <Checkbox
+                    id={refitId}
+                    checked={refit}
+                    onCheckedChange={(v) => {
+                      setRefit(v === true);
+                      changed();
+                    }}
+                    disabled={preview}
+                    aria-describedby={`${refitId}-hint`}
+                    className="mt-0.5"
+                  />
                   <Label htmlFor={refitId} className="leading-snug">
                     Ask the analyst to refit with these numbers
                   </Label>
@@ -257,7 +275,7 @@ function UpdateForm({ client, dashboard, template, preview }: { client: Dashboar
               </div>
             ) : null}
             <div>
-              <Button onClick={send} disabled={preview || paused || !ok || submit.isPending}>
+              <Button onClick={send} disabled={preview || paused || !ok || submit.isPending || sent !== null} title={sent ? "These numbers were sent. Change a row to send again." : undefined}>
                 Send
               </Button>
             </div>
