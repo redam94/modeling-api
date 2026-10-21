@@ -100,6 +100,7 @@ from mapi_server.services.sharing import ran_uploaded_code
 from mapi_server.services.submit import fit_dataset_ref, submit_model_run
 
 __all__ = [
+    "RUN_LIMIT_HOUR_MESSAGE",
     "RUN_LIMIT_MESSAGE",
     "actuals_template",
     "clear_grid_cache",
@@ -114,6 +115,9 @@ __all__ = [
 
 RUN_LIMIT_MESSAGE: Final = (
     "You reached today's limit for new results. Try again tomorrow or ask your analyst."
+)
+RUN_LIMIT_HOUR_MESSAGE: Final = (
+    "You reached this hour's limit for new results. Try again later or ask your analyst."
 )
 _GRID_CACHE_MAX: Final = 64
 _GRID_CACHE: dict[str, tuple[float, DashboardGrid]] = {}
@@ -317,7 +321,7 @@ async def _count(session: AsyncSession, *where: Any) -> tuple[int, datetime | No
 def _limit(oldest: datetime | None, window: timedelta) -> ProblemWithHeaders:
     wait = (oldest + window - now()).total_seconds() if oldest is not None else 60.0
     return ProblemWithHeaders(
-        RUN_LIMIT_MESSAGE,
+        RUN_LIMIT_MESSAGE if window >= timedelta(days=1) else RUN_LIMIT_HOUR_MESSAGE,
         code=ErrorCode.DASHBOARD_RUN_LIMIT,
         headers={"Retry-After": str(max(1, int(wait + 0.999)))},
     )

@@ -262,7 +262,10 @@ and, for each output, the centre, the low and the high value (and the most likel
 A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front of
 it, so that a spreadsheet does not run it. Only the person or the link that sent the file,
 and the editors, can download it. Each download is charged as egress and audited. After the
-private readout expires, the download answers `410 DASHBOARD_DOWNLOAD_GONE`.
+private readout expires, or when the scoring of the file failed, the download answers
+`410 DASHBOARD_DOWNLOAD_GONE`. When the rows of a file give another dim of the model too
+(for example `sku`), each row is scored at its own levels and the CSV echoes the file as
+it was sent.
 
 Image dashboards do not offer batch scoring to clients or share links in v0.17.
 

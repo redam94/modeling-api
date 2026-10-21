@@ -20,6 +20,7 @@ import {
   channelRows,
   dateOf,
   kpiWord,
+  lastSentAccuracy,
   periodOf,
   SCORECARD_COLUMNS,
   scorecardCells,
@@ -122,8 +123,10 @@ export function Scorecard({ dashboard, rows }: { dashboard: ClientDashboard; row
 }
 
 function AccuracyCard({ dashboard, readout, canUpload }: { dashboard: ClientDashboard; readout: Readout; canUpload: boolean }) {
-  const acc = accuracyOf(readout.snapshot);
-  const lines = accuracyLines(acc, dashboard.kpi, periodOf(dashboard));
+  const own = accuracyOf(readout.snapshot);
+  const earlier = own ? null : lastSentAccuracy(readout.snapshot);
+  const lines = accuracyLines(own ?? earlier?.acc ?? null, dashboard.kpi, periodOf(dashboard));
+  if (earlier && lines.length) lines.unshift(`From the numbers sent on ${dateOf(earlier.sentAt)}:`);
   return (
     <Section title="How near the model was" description="The model's expectation against the actual numbers." data-readout="accuracy">
       {lines.length ? (

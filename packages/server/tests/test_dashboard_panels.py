@@ -675,3 +675,93 @@ def test_a_batch_summary_spreads_row_centres_never_intervals() -> None:
     assert stats.min is not None and stats.max is not None and stats.min <= stats.p50 <= stats.max
     assert got.share_positive is not None and 0 <= got.share_positive <= 1
     assert sum(b.count for b in got.histogram) == 45 and got.download.available
+
+
+def _grid_summary() -> ScoreSummary:
+    """A batch scored on the grid of 3 stores × 2 skus (the file gave 3 rows: a/k0,
+    b/k1, c/k0): the cells the rows never gave hold the drivers' gaps."""
+    rows = [
+        ["a", "k0", 1.0, 0.5, 1.5], ["a", "k1", 99.0, 98.0, 100.0],
+        ["b", "k0", 99.0, 98.0, 100.0], ["b", "k1", 2.0, 1.5, 2.5],
+        ["c", "k0", 3.0, 2.5, 3.5], ["c", "k1", 99.0, 98.0, 100.0],
+    ]  # fmt: skip
+    return ScoreSummary.model_validate(
+        {
+            "tables": [
+                {
+                    "variable": "y_hat",
+                    "dims": ["store", "sku"],
+                    "columns": ["store", "sku", "mean", "pi_90_lower", "pi_90_upper"],
+                    "rows": rows,
+                }
+            ]
+        }
+    )
+
+
+def test_a_file_whose_rows_give_another_dim_reads_only_each_rows_own_cell() -> None:
+    """B3 (live): rows with different skus are scored on the store × sku grid; the summary
+    and the CSV take each row's own cell, never the grid cells it did not give."""
+    from mapi_server.services.dashboards.downloads import render_predictions
+    from mapi_spec.xrjson import XrJsonDataset
+
+    m = golden.load_case("regression_conformal")
+    spec = compiled(m)
+    upload = XrJsonDataset.model_validate(
+        {
+            "coords": {"store": {"dims": ["store"], "data": ["a", "b", "c"]}},
+            "data_vars": {
+                "sku": {"dims": ["store"], "data": ["k0", "k1", "k0"]},
+                "price": {"dims": ["store"], "data": [4.6, 6.9, 5.0]},
+            },
+        }
+    )
+    keys = pn.batch_keys(upload, "store", "store", {"sku": "sku"})
+    assert keys == [("a", {"store": "a", "sku": "k0"}), ("b", {"store": "b", "sku": "k1"}),
+                    ("c", {"store": "c", "sku": "k0"})]  # fmt: skip
+    mat = pn.Material(kind="batch", mode="predict", summary=_grid_summary(), band="outcome")
+    got = pn.batch_summary(spec, mat, n_rows=3, id_dim="store", keys=keys)
+    assert got.n_scored == 3 and got.stats["y_hat"].max == 3.0
+    assert got.stats["y_hat"].mean == pytest.approx(2.0)
+    text, n = render_predictions(
+        mat.summary, ["y_hat"], id_dim="store", columns=["sku", "price"],
+        inputs={"a": {"sku": "k0", "price": 4.6}, "b": {"sku": "k1", "price": 6.9},
+                "c": {"sku": "k0", "price": 5.0}},
+        keys=keys,
+    )  # fmt: skip
+    lines = text.splitlines()
+    assert n == 3 and lines[0] == "store,sku,price,y_hat,y_hat_low,y_hat_high"
+    assert lines[1:] == ["a,k0,4.6,1.0,0.5,1.5", "b,k1,6.9,2.0,1.5,2.5", "c,k0,5.0,3.0,2.5,3.5"]
+    # no per-row dims: the old grouping by id
+    assert pn.batch_keys(upload, "store", "store", {}) is None
+
+
+def test_a_fit_metric_kpi_shows_its_recorded_interval() -> None:
+    """B11 (live): ``effect_total`` comes with ``effect_total_p05``/``_p95`` from the fit;
+    the tile shows them (a metric KPI's stat is ``value``, which used to drop the range)."""
+    from mapi_spec.dashboard_v2 import KpiPanel, MetricSource
+
+    m = golden.load_case("causal_impact")
+    spec = compiled(m)
+    mat = material(m)
+    mat.metrics = [
+        pn.MetricValue("effect_total", {}, 113.0),
+        pn.MetricValue("effect_total_p05", {}, 92.2),
+        pn.MetricValue("effect_total_p95", {}, 133.2),
+    ]
+    panel = KpiPanel(id="m_effect_total", title="Total effect", stat="value", band="none",
+                     source=MetricSource(key="effect_total"))  # fmt: skip
+    tile = pn._kpi(panel, spec, mat).tile
+    assert (tile.value, tile.low, tile.high) == (113.0, 92.2, 133.2)
+    mat.metrics = mat.metrics[:1]
+    tile = pn._kpi(panel, spec, mat).tile
+    assert tile.value == 113.0 and tile.low is None and tile.high is None
+
+
+def test_caption_parts_never_run_two_sentences_together() -> None:
+    """B13 (live): "Period 2012-10-01 The range…" lacked its full stop."""
+    assert pn._join("Period 2012-10-01", "The range shows the average.") == (
+        "Period 2012-10-01. The range shows the average."
+    )
+    assert pn._join("Done.", None, "Next") == "Done. Next"
+    assert pn._join("Only one") == "Only one"

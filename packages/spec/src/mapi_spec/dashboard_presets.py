@@ -829,10 +829,37 @@ def _panels_causal(c: _Ctx) -> list[AnyPanel]:
     return out
 
 
+SHARE_ABOVE_DEFAULT: Final = 0.8
+"""The threshold of the field preset's "share of areas" KPI on a probability output."""
+
+
 def _panels_field(c: _Ctx) -> list[AnyPanel]:
     out: list[AnyPanel] = []
     for o in [o for o in c.catalog.outputs if o.shape == "scalar"][:4]:
         out.append(_value_kpi(f"k_{o.name}"[:32], o.name.replace("_", " ").capitalize()[:80], o))
+    # plan §6: a headline number with its range, and the share of areas where a chance is high
+    for o in [o for o in c.catalog.outputs if o.shape == "time" and "last" in o.reduces][:1]:
+        if len(out) < 4:
+            label = o.name.replace("_", " ")
+            out.append(
+                _value_kpi(
+                    f"k_last_{o.name}"[:32], f"Latest {label}"[:80], o, reduce=Reduce(how="last")
+                )
+            )
+    for o in c.catalog.outputs:
+        if len(out) >= 4:
+            break
+        if o.shape == "areal" and o.units == "probability" and "share_above" in o.reduces:
+            label = o.name.replace("_", " ")
+            out.append(
+                KpiPanel(
+                    id=f"k_share_{o.name}"[:32],
+                    title=f"Share of areas where {label} is above {SHARE_ABOVE_DEFAULT:.0%}"[:80],
+                    source=OutputSource(variable=o.name),
+                    reduce=Reduce(how="share_above", threshold=SHARE_ABOVE_DEFAULT),
+                    band="none",
+                )
+            )
     grid = next((o for o in c.catalog.outputs if o.shape == "grid"), None)
     if grid is not None:
         out.append(

@@ -166,6 +166,16 @@ async def test_row_actuals_strip_the_outcome_from_the_scored_cases(
     assert body["match"] == "row" and body["id_column"] == "store"
     assert body["example_csv"].splitlines()[0] == "store,price,promo,y"
     assert body["max_rows"] == MAX_ROW_ACTUALS
+    # B10 (live): the table is the one of the upload (one row per case), not the time one
+    table = body["input_table"]
+    assert [c["name"] for c in table["columns"]] == ["store", "price", "promo", "y"]
+    assert [c["role"] for c in table["columns"]] == ["coord", "input", "input", "target"]
+    assert table["rows"] == []
+    extra = row_upload(["a"], [3.0])
+    extra["inputs"]["data_vars"]["time"] = {"dims": ["store"], "data": ["2024-01-01"]}
+    r = await kit["cleo"].post(f"{base}/actuals", json=extra)
+    assert r.status_code == 422, r.text
+    assert "does not take the column 'time'" in r.json()["errors"][0]["message"]
     r = await kit["cleo"].post(f"{base}/actuals", json=row_upload(["a", "b"], [3.0, 4.5]))
     assert r.status_code == 202, r.text
     (sub,) = seen
@@ -232,3 +242,52 @@ async def test_class_labels_must_be_classes_of_the_model(
     r = await kit["cleo"].post(url, json=row_upload(["a", "b"], ["HIGH ", "low"]))
     assert r.status_code == 202, r.text
     assert len(seen) == 1
+
+
+async def test_an_upload_scored_as_sent_keeps_its_stored_generation(ctx: ServerContext) -> None:
+    """B2 (live): the upload and the score call's identical inline data share one
+    content-addressed name. The second write must reuse the stored generation, or the
+    readout's pinned copy of the upload 404s ("the uploaded numbers can no longer be read")."""
+    from mapi_server.services.endpoints import store_inline_inputs
+    from mapi_server.services.runs import Scope
+    from mapi_spec.endpoints import EndpointScoreCall
+    from mapi_spec.xrjson import XrJsonDataset
+
+    payload = XrJsonDataset.model_validate(time_upload([410.0, 412.5], months(1, 2))["inputs"])
+    scope = Scope("default", "default")
+    first = await store_inline_inputs(ctx, scope, actuals_v2._upload_call(payload))
+    again = await store_inline_inputs(ctx, scope, EndpointScoreCall(mode="predict", data=payload))
+    (a,) = first.values()
+    (b,) = again.values()
+    assert a == b
+    raw = await ctx.store.get(a["bucket"], a["name"], generation=int(a["generation"]))
+    assert json.loads(raw)["data_vars"]["y"]["data"] == [410.0, 412.5]
+
+
+def test_multiclass_outcomes_are_not_held_to_two_labels() -> None:
+    """B4 (live): a model with a chance per class along a ``class`` dim takes its labels
+    from the score's coordinates (the catalog lists none), so three labels are fine."""
+    from mapi_spec.errors import MapiError
+
+    labels = ["low", "mid", "high", "low"]
+    actuals_v2._check_outcomes(
+        labels, "tier", classifier=True, classes=[], positive=None, multiclass=True
+    )
+    with pytest.raises(MapiError, match="two outcome labels"):
+        actuals_v2._check_outcomes(labels, "tier", classifier=True, classes=[], positive=None)
+
+
+def test_the_subject_of_a_class_dim_output_is_multiclass() -> None:
+    from types import SimpleNamespace
+
+    from mapi_spec.capabilities import Representation
+    from mapi_spec.dashboard_presets import catalog_output
+
+    point = Representation.POINT
+    multi = catalog_output("y_hat", ["class", "store"], shape="classification",
+                           representation=point, meaning="class_probability")  # fmt: skip
+    binary = catalog_output("y_hat", ["store"], shape="categorical",
+                            representation=point, meaning="class_probability")  # fmt: skip
+    p: Any = SimpleNamespace(spec=SimpleNamespace(subject=SimpleNamespace(variable="y_hat")))
+    assert actuals_v2._multiclass(p, SimpleNamespace(outputs=[multi]))
+    assert not actuals_v2._multiclass(p, SimpleNamespace(outputs=[binary]))

@@ -239,12 +239,13 @@ async def test_run_caps_answer_429_with_retry_after(
     r = await kit["cleo"].post(base, json={"multipliers": {"tv": 0.9}, "exact": True})
     assert r.status_code == 429 and r.json()["code"] == "DASHBOARD_RUN_LIMIT", r.text
     assert int(r.headers["retry-after"]) >= 1
-    assert "today's limit" in r.json()["detail"]
+    assert "this hour's limit" in r.json()["detail"]  # B13 (live): never "tomorrow"
     # the dashboard's daily cap (3) counts every caller
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.2}, "exact": True})
     assert r.status_code == 202, r.text
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.3}, "exact": True})
     assert r.status_code == 429 and r.json()["code"] == "DASHBOARD_RUN_LIMIT"
+    assert "today's limit" in r.json()["detail"]
     assert len(await score_runs(ctx)) == 3
     # grid scenarios are free: never capped
     r = await kit["carl"].post(base, json={"multipliers": {"tv": 1.3}})

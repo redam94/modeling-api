@@ -321,6 +321,23 @@ export function accuracyOf(snapshot: Pick<ReadoutSnapshot, "accuracy" | "series"
 }
 
 /** The accuracy card in sentences ("The actual number was in the likely range in 9 of 12 weeks."). */
+/**
+ * The accuracy of the last published numbers when this readout has none of its own: a newer
+ * baseline (a refresh, or the one an automatic upgrade adds) would otherwise hide the comparison
+ * the client last saw. `null` when the history holds no error metrics either.
+ */
+export function lastSentAccuracy(snapshot: Pick<ReadoutSnapshot, "accuracy_history"> | null | undefined): { acc: ActualsAccuracy; sentAt: string } | null {
+  const last = (snapshot?.accuracy_history ?? []).at(-1);
+  if (!last || !last.n) return null;
+  const v = last.values ?? {};
+  const num = (k: string): number | null => {
+    const x = (v as Record<string, number | null | undefined>)[k];
+    return isNum(x) ? x : null;
+  };
+  if (num("mape") === null && num("band_hit_rate") === null && num("bias") === null) return null;
+  return { acc: { n: last.n, mape: num("mape"), bias: num("bias"), band_hit_rate: num("band_hit_rate") }, sentAt: last.created_at };
+}
+
 export function accuracyLines(acc: ActualsAccuracy | null, kpi: KpiDef, period: PeriodLabel): string[] {
   if (!acc || !acc.n) return [];
   const n = acc.n;

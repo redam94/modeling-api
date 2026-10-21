@@ -96,28 +96,31 @@ export function Bars({ label, rows, format = plainFormat, className }: { label: 
           );
         })}
       </div>
-      <table id={`${id}-table`} className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Item</th>
-            <th scope="col">Value</th>
-            <th scope="col">Likely range</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.label}-${i}`}>
-              <th scope="row">{r.label}</th>
-              <td>
-                {isNum(r.value) ? format(r.value) : MISSING}
-                {r.tag ? ` ${r.tag}` : ""}
-              </td>
-              <td>{isNum(r.low) && isNum(r.high) ? `${format(r.low)} to ${format(r.high)}` : MISSING}</td>
+      {/* a wrapper clips it: a table ignores the 1px box of sr-only and would scroll a phone sideways */}
+      <div className="sr-only">
+        <table id={`${id}-table`}>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col">Value</th>
+              <th scope="col">Likely range</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={`${r.label}-${i}`}>
+                <th scope="row">{r.label}</th>
+                <td>
+                  {isNum(r.value) ? format(r.value) : MISSING}
+                  {r.tag ? ` ${r.tag}` : ""}
+                </td>
+                <td>{isNum(r.low) && isNum(r.high) ? `${format(r.low)} to ${format(r.high)}` : MISSING}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
@@ -183,23 +186,26 @@ export function Scatter({
       <p aria-hidden className="text-2xs text-hint">
         Across: {xLabel}. Up: {yLabel}.
       </p>
-      <table id={`${id}-table`} className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{xLabel}</th>
-            <th scope="col">{yLabel}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {points.slice(0, 200).map((p, i) => (
-            <tr key={i}>
-              <td>{format(p.x)}</td>
-              <td>{format(p.y)}</td>
+      {/* a wrapper clips it: a table ignores the 1px box of sr-only and would scroll a phone sideways */}
+      <div className="sr-only">
+        <table id={`${id}-table`}>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{xLabel}</th>
+              <th scope="col">{yLabel}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {points.slice(0, 200).map((p, i) => (
+              <tr key={i}>
+                <td>{format(p.x)}</td>
+                <td>{format(p.y)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
@@ -239,25 +245,28 @@ export function Calibration({ label, bins, className }: { label: string; bins: r
         ))}
       </svg>
       <p aria-hidden className="text-2xs text-hint">Across: the probability the model gave. Up: how often the result occurred.</p>
-      <table id={`${id}-table`} className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Probability the model gave</th>
-            <th scope="col">How often it occurred</th>
-            <th scope="col">Cases</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bins.map((b, i) => (
-            <tr key={i}>
-              <td>{pct(b.p_mean)}</td>
-              <td>{pct(b.observed)}</td>
-              <td>{b.n}</td>
+      {/* a wrapper clips it: a table ignores the 1px box of sr-only and would scroll a phone sideways */}
+      <div className="sr-only">
+        <table id={`${id}-table`}>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Probability the model gave</th>
+              <th scope="col">How often it occurred</th>
+              <th scope="col">Cases</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {bins.map((b, i) => (
+              <tr key={i}>
+                <td>{pct(b.p_mean)}</td>
+                <td>{pct(b.observed)}</td>
+                <td>{b.n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
@@ -500,27 +509,30 @@ export function FieldHeatmap({
           />
         </label>
       ) : null}
-      <table id={`${id}-table`} className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Frame</th>
-            <th scope="col">Lowest</th>
-            <th scope="col">Average</th>
-            <th scope="col">Highest</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.map((s, i) => (
-            <tr key={`${s.label}-${i}`}>
-              <th scope="row">{s.label}</th>
-              <td>{isNum(s.min) ? fmt(s.min) : MISSING}</td>
-              <td>{isNum(s.mean) ? fmt(s.mean) : MISSING}</td>
-              <td>{isNum(s.max) ? fmt(s.max) : MISSING}</td>
+      {/* a wrapper clips it: a table ignores the 1px box of sr-only and would scroll a phone sideways */}
+      <div className="sr-only">
+        <table id={`${id}-table`}>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Frame</th>
+              <th scope="col">Lowest</th>
+              <th scope="col">Average</th>
+              <th scope="col">Highest</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {stats.map((s, i) => (
+              <tr key={`${s.label}-${i}`}>
+                <th scope="row">{s.label}</th>
+                <td>{isNum(s.min) ? fmt(s.min) : MISSING}</td>
+                <td>{isNum(s.mean) ? fmt(s.mean) : MISSING}</td>
+                <td>{isNum(s.max) ? fmt(s.max) : MISSING}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
@@ -652,30 +664,33 @@ export function MultiLine({
         </svg>
       </div>
       <Legend items={shown.map((s, i) => ({ label: s.label, color: `series-${i + 1}` as LegendColor, swatch: "line" as const }))} />
-      <table id={`${id}-table`} className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Period</th>
-            {series.map((s) => (
-              <th key={s.label} scope="col">
-                {s.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {ts.map((t) => (
-            <tr key={t}>
-              <th scope="row">{dmy(t)}</th>
-              {series.map((s) => {
-                const p = s.points.find((q) => q.t === t);
-                return <td key={s.label}>{isNum(p?.mean) ? format(p.mean) : MISSING}</td>;
-              })}
+      {/* a wrapper clips it: a table ignores the 1px box of sr-only and would scroll a phone sideways */}
+      <div className="sr-only">
+        <table id={`${id}-table`}>
+          <caption>{label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Period</th>
+              {series.map((s) => (
+                <th key={s.label} scope="col">
+                  {s.label}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {ts.map((t) => (
+              <tr key={t}>
+                <th scope="row">{dmy(t)}</th>
+                {series.map((s) => {
+                  const p = s.points.find((q) => q.t === t);
+                  return <td key={s.label}>{isNum(p?.mean) ? format(p.mean) : MISSING}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

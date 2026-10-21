@@ -149,6 +149,50 @@ async def test_publish_renders_the_picture_and_serves_the_png(
     assert found["core.inline"].status == "ready"
 
 
+@pytest.mark.parametrize("settled_by", ["loop", "fetch"])
+async def test_a_readout_built_before_the_render_ended_gets_the_picture(
+    ctx: ServerContext, kit: dict[str, Any], settled_by: str
+) -> None:
+    """B6 (live): a baseline materialised while the picture was queued froze it as "being
+    prepared"; once the render run ends, the loop settles the asset and patches the block."""
+    from mapi_server.services.dashboards.readouts import settle_pictures
+
+    dash_id = await picture_dashboard(kit, PICTURE)
+    (asset,) = await assets_of(ctx, dash_id)
+    assert asset.run_id is not None
+    frozen = {"kind": "unavailable", "panel_id": "fan_pic", "title": "Forecast picture",
+              "reason": "The picture is being prepared."}  # fmt: skip
+    other = {"kind": "unavailable", "panel_id": "x", "title": "X", "reason": "No values."}
+    async with ctx.db.session() as s:
+        row = (
+            await s.execute(
+                select(m.DashboardReadout).where(m.DashboardReadout.dashboard_id == dash_id)
+            )
+        ).scalar_one()
+        assert row.revision_id == asset.revision_id
+        row.status = "ready"
+        row.snapshot = {"schema_version": 2, "panels": [frozen, other]}
+    assert await settle_pictures(ctx) == 0  # still drawing: nothing changes
+    await complete_run(
+        ctx, asset.run_id, {"renders/core.inline.png": (tiny_png(16, 9), "image/png")}
+    )
+    if settled_by == "loop":
+        assert await settle_pictures(ctx) == 1  # one asset settled, its readout patched
+    else:  # the first fetch of the bytes settles it (and patches the readout) too
+        r = await kit["ana"].get(f"/v1/dashboards/{dash_id}/assets/{asset.id}")
+        assert r.status_code == 200, r.text
+    async with ctx.db.session() as s:
+        row = (
+            await s.execute(
+                select(m.DashboardReadout).where(m.DashboardReadout.dashboard_id == dash_id)
+            )
+        ).scalar_one()
+        pic, rest = row.snapshot["panels"]
+    assert pic["kind"] == "picture" and pic["asset_id"] == asset.id
+    assert (pic["width"], pic["height"]) == (16, 9) and rest == other
+    assert await settle_pictures(ctx) == 0  # settled once
+
+
 async def test_picture_renders_count_against_the_daily_run_cap(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:

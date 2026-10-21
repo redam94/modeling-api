@@ -107,18 +107,24 @@ def render_predictions(
     id_dim: str,
     columns: Sequence[str],
     inputs: Mapping[str, Mapping[str, Any]],
+    keys: Sequence[Any] | None = None,
 ) -> tuple[str, int]:
     """The CSV text and its row count: one row per id (in the order the summary gives
     them), the input ``columns`` of that id, then per output ``<name>`` (the centre),
     ``<name>_low`` and ``<name>_high``, or for class probabilities ``<name>`` (the most likely
     class) and ``<name>_probability``. Raises ``DASHBOARD_BATCH_TOO_LARGE`` over
-    :data:`CSV_MAX_BYTES`."""
-    from mapi_server.services.dashboards.panels import _value_of, table_of
+    :data:`CSV_MAX_BYTES`. ``keys`` (:data:`~.panels.BatchKey`): the file's rows when they
+    give other dims too, in file order; each row then holds only its own cell."""
+    from mapi_server.services.dashboards.panels import _value_of, keyed_groups, table_of
 
     tables = {o: t for o in outputs if (t := table_of(summary, o)) is not None}
     by_id: dict[str, dict[str, list[Any]]] = {}
     order: list[str] = []
     for name, t in tables.items():
+        if keys:
+            for label, cells in keyed_groups(t, keys):
+                by_id.setdefault(label, {})[name] = cells
+            continue
         for c in t.cells:
             key = c.coords.get(id_dim)
             if key is None:
@@ -127,6 +133,8 @@ def render_predictions(
                 by_id[key] = {}
                 order.append(key)
             by_id[key].setdefault(name, []).append(c)
+    if keys:
+        order = [k for k, _ in keys if k in by_id]
     head = [id_dim, *columns]
     for name, t in tables.items():
         if t.class_dim is not None:
@@ -181,6 +189,8 @@ async def predictions_csv(
         raise NotFoundError("readout", str(seq))
     if row.expires_at is not None and row.expires_at <= now():
         raise _gone()
+    if row.status == "failed":
+        raise _gone("this file gave no predictions: working them out failed")
     if row.status != "ready" or not row.run_ids:
         raise NotFoundError("readout", str(seq))
     ref = row.input_ref if isinstance(row.input_ref, dict) else {}
@@ -197,9 +207,10 @@ async def predictions_csv(
     id_column = str(ref.get("id_column") or spec.batch.id_column)
     id_dim = str(ref.get("id_dim") or id_column)
     columns = [str(c) for c in ref.get("columns") or [] if isinstance(c, str)]
+    keys = await readouts._batch_keys(ctx, ref)
     text, n = render_predictions(
         summary, list(spec.batch.outputs), id_dim=id_dim, columns=columns,
-        inputs=_upload_rows(upload, id_column),
+        inputs=_upload_rows(upload, id_column), keys=keys,
     )  # fmt: skip
     data = text.encode("utf-8")
     await charge_egress(ctx, dctx.tenant_id, len(data))

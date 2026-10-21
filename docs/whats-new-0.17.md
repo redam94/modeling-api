@@ -158,6 +158,15 @@ still score image collections in the app.
 - The Python client has `presets()`, `sources()`, `upgrade()`, `predict()`,
   `keep_readout()`, `batch_template()`, `score_batch()`, `download_predictions()` and
   `asset()` on `client.dashboards`, and the same inputs on a share link.
+- A forecast whose model needs future values of its drivers (a SARIMAX with exogenous
+  inputs, a BSTS with a regressor) builds its baseline with the drivers held at their last
+  values (`future_covariates: carry_last`), as a forecast row and a conditioned upload do.
+- In a scored file, each row is scored at its own levels: when the rows give another dim
+  too (`sku`), the summary and the CSV hold only each row's own cell, and the size check
+  counts every id × level the model scores, so a file that is too large is refused before
+  a run.
+- A picture panel that was still being drawn when a readout was built shows the picture
+  as soon as the render ends.
 - Migration `0020_any_model_dashboards`: new readout kinds and triggers, a larger snapshot
   cap (384 KiB for the new layout) and a table for the pictures of a revision.
 

@@ -236,6 +236,7 @@ dashboard, the channels) of the result that you see.
 | Message | What to do |
 |---|---|
 | "You reached today's limit for new results. Try again tomorrow or ask your analyst." | Try again tomorrow. On a media spend dashboard, use the sliders. They have no limit. Or ask your analyst |
+| "You reached this hour's limit for new results. Try again later or ask your analyst." | Wait an hour, or ask your analyst. The sliders of a media spend dashboard have no limit |
 | "Trying cases is paused on this dashboard. Your analyst is checking it." | Wait for your analyst. The results that exist stay visible |
 | "The predictions are no longer kept. Score the file again to get them." | Send the file again |
 | "New results are paused. The readouts here stay available. Your analyst is checking the dashboard." | Wait for your analyst. The results that exist stay visible |

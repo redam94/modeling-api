@@ -786,7 +786,12 @@ def _band_caption(
 
 
 def _join(*parts: str | None) -> str:
-    return " ".join(p.strip() for p in parts if p).strip()[:200]
+    """Caption parts as sentences: a part without an end mark gets a full stop when another
+    part follows ("Period 2012-10-01. The range…", never two sentences run together)."""
+    kept = [p.strip() for p in parts if p and p.strip()]
+    if len(kept) > 1:
+        kept = [p if p[-1] in ".!?:)" else p + "." for p in kept[:-1]] + kept[-1:]
+    return " ".join(kept)[:200]
 
 
 def _direction(delta: float | None) -> Literal["up", "down", "flat"]:
@@ -814,6 +819,10 @@ def _kpi(p: KpiPanel, spec: DashboardSpecV2, mat: Material) -> KpiBlock:
     shown = {"centre": value.centre, "value": value.centre, "low": value.low, "high": value.high}
     v = shown[p.stat]
     low, high = (None, None) if p.band == "none" or p.stat != "centre" else (value.low, value.high)
+    if isinstance(src, MetricSource) and p.stat == "value":
+        # a fit metric's own recorded 90% interval (``<key>_p05``/``_p95``, e.g. the effect
+        # of a causal model) is part of the number, not a band of a score
+        low, high = value.low, value.high
     note = _band_caption(p.band, mat, spec, variable, value.banded and low is not None)
     prev = mat.previous.get(p.id) if p.compare == "previous" else None
     delta = (v - prev) / abs(prev) if v is not None and prev is not None and prev != 0 else None
@@ -1571,6 +1580,57 @@ def _row_groups(
     return [(" · ".join(k) or str(i + 1), v) for i, (k, v) in enumerate(groups.items())]
 
 
+BatchKey = tuple[str, Mapping[str, str]]
+"""One row of a scored file: its id and the model coordinates of its cell (the id dim and
+each per-row dim column, as text)."""
+
+
+def keyed_groups(table: Table, keys: Sequence[BatchKey]) -> list[tuple[str, list[Cell]]]:
+    """The cells of each file row (in file order): those at the row's own coordinates. A
+    file whose rows give other dims (``sku`` per row) is scored on the grid of every id ×
+    level, so grouping by the id alone would mix in cells of levels the row never gave.
+    Rows without a cell are left out (not scored)."""
+    dims = [d for d in (keys[0][1] if keys else {}) if d in table.dims]
+    index: dict[tuple[str, ...], list[Cell]] = {}
+    for c in table.cells:
+        index.setdefault(tuple(c.coords.get(d, "") for d in dims), []).append(c)
+    tdim = table.time_dim or ""
+    out: list[tuple[str, list[Cell]]] = []
+    for label, coords in keys:
+        cells = index.get(tuple(coords.get(d, "") for d in dims))
+        if cells:
+            out.append((label, sorted(cells, key=lambda c: c.coords.get(tdim, ""))))
+    return out
+
+
+def batch_keys(
+    upload: XrJsonDataset | None, id_column: str, id_dim: str, dim_columns: Mapping[str, str]
+) -> list[BatchKey] | None:
+    """The :data:`BatchKey` of each row of a stored file (``None`` without per-row dim
+    columns or a readable one-dim file)."""
+    if upload is None or not dim_columns:
+        return None
+    coord = upload.coords.get(id_column)
+    ids = coord.data if coord is not None and isinstance(coord.data, list) else None
+    if ids is None:
+        return None
+    cols = {
+        c: v.data
+        for c in dim_columns
+        if (v := upload.data_vars.get(c)) is not None and isinstance(v.data, list)
+    }
+    if len(cols) != len(dim_columns):
+        return None
+    keys: list[BatchKey] = []
+    for i, raw in enumerate(ids):
+        coords = {id_dim: _label(raw)}
+        for c, d in dim_columns.items():
+            data = cols[c]
+            coords[d] = _label(data[i] if i < len(data) else None)
+        keys.append((_label(raw), coords))
+    return keys
+
+
 def _value_of(table: Table, cells: Sequence[Cell], band: bool) -> PredictionValue:
     if table.class_dim is not None:
         best = max((c for c in cells if c.centre is not None), key=lambda c: c.centre or 0.0,
@@ -1641,10 +1701,12 @@ def batch_summary(
     *,
     n_rows: int | None = None,
     id_dim: str | None = None,
+    keys: Sequence[BatchKey] | None = None,
 ) -> BatchSummary:
     """The summary of a batch score: per output the spread of the row centres (never an
     interval), the share above the threshold of a binary classifier, the counts of the most
-    likely class, a histogram of the first output and a preview of 20 rows."""
+    likely class, a histogram of the first output and a preview of 20 rows. ``keys``: the
+    file's rows when they give other dims too (only each row's own cell counts)."""
     outputs = list(spec.batch.outputs) if spec.batch is not None else [spec.subject.variable]
     stats: dict[str, BatchStats] = {}
     share: float | None = None
@@ -1656,7 +1718,7 @@ def batch_summary(
         t = table_of(mat.summary, name)
         if t is None:
             continue
-        groups = _row_groups(t, id_dim, [])
+        groups = keyed_groups(t, keys) if keys else _row_groups(t, id_dim, [])
         centres: list[float] = []
         for label, cells in groups:
             v = _value_of(t, cells, False)

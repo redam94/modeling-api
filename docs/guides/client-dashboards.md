@@ -294,7 +294,8 @@ and use the quotas of your tenant. The limits are:
 - 20 000 scored rows each day for each dashboard (`MAPI_BATCH_ROWS_PER_DAY`).
 
 Over a limit, the client sees: "You reached today's limit for new results. Try again
-tomorrow or ask your analyst." (`429 DASHBOARD_RUN_LIMIT`). The same case, the same file or
+tomorrow or ask your analyst." (`429 DASHBOARD_RUN_LIMIT`). Over an hourly limit, it says
+"this hour's limit" and "Try again later" instead. `Retry-After` gives the seconds to wait. The same case, the same file or
 the same numbers within 24 hours give the cached readout, not a new run.
 
 ## Archive

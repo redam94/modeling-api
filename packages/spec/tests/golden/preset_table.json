@@ -213,6 +213,7 @@
     ]
    },
    "panels": [
+    "k_share_p_exceed",
     "areas"
    ]
   },
@@ -324,6 +325,7 @@
    ],
    "blocked": {},
    "panels": [
+    "k_last_total",
     "map",
     "over_time"
    ]

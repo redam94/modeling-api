@@ -38,7 +38,11 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dashboards import refits
 from mapi_server.services.dashboards.inputs import submit_queued
-from mapi_server.services.dashboards.readouts import materialise, record_failed_attempt
+from mapi_server.services.dashboards.readouts import (
+    materialise,
+    record_failed_attempt,
+    settle_pictures,
+)
 from mapi_server.services.dashboards.upgrade import UpgradeReport, run_auto_upgrade
 from mapi_server.services.runs import now
 
@@ -149,6 +153,7 @@ class DashboardLoop:
     async def once(self) -> None:
         await self.submit_queued()
         await self.materialise()
+        await settle_pictures(self.ctx, limit=BATCH)
         await refits.advance(self.ctx, limit=BATCH)
         await self.prune()
 

@@ -40,6 +40,8 @@ from mapi_spec.endpoints import (
     INPUT_INLINE_DATA,
     EndpointSchemaSnapshot,
     EndpointScoreCall,
+    InputTable,
+    InputTableColumn,
     _future_labels,
     input_table,
 )
@@ -164,9 +166,26 @@ async def actuals_template_v2(
     shape = batch_columns(p.spec, snapshot, binding_dims(p.mv), act.id_column)
     names = [shape.id_column, *shape.dim_columns, *shape.variables, kpi]
     names = list(dict.fromkeys(names))[:MAX_ROW_COLUMNS]
+    coords = {shape.id_column, *shape.dim_columns}
+    row_table = InputTable(
+        columns=[
+            InputTableColumn(
+                name=n,
+                role="coord" if n in coords else "target" if n == kpi else "input",
+                dims=[] if n in coords else [shape.id_column],
+                description=(
+                    "One row per case: its id" if n == shape.id_column
+                    else "The actual result of the case" if n == kpi
+                    else f"The {n} of the case" if n in coords
+                    else "The value of the case"
+                ),
+            )
+            for n in names
+        ],
+    )  # fmt: skip
     return ActualsTemplate(
         mode="compared",
-        input_table=table,
+        input_table=row_table,
         kpi_column=kpi,
         example_csv=(",".join(names) + "\n")[:65_536],
         max_rows=MAX_ROW_ACTUALS,
@@ -265,15 +284,26 @@ def _raise_errors(issues: list[Issue]) -> None:
 # ======================================================================================== row
 
 
+def _subject_output(p: V2Parts, catalog: Any) -> Any:
+    return next((o for o in getattr(catalog, "outputs", []) if o.name == p.spec.subject.variable),
+                None)  # fmt: skip
+
+
 def _classes(p: V2Parts, catalog: Any) -> list[str]:
-    out = next((o for o in getattr(catalog, "outputs", []) if o.name == p.spec.subject.variable),
-               None)  # fmt: skip
+    out = _subject_output(p, catalog)
     return list(out.classes) if out is not None else []
+
+
+def _multiclass(p: V2Parts, catalog: Any) -> bool:
+    """Whether the subject gives a chance per class along a class dim (its labels are the
+    coordinates of the score, so the catalog may not list them)."""
+    out = _subject_output(p, catalog)
+    return out is not None and "top_class" in out.reduces
 
 
 def _check_outcomes(
     values: list[Any], column: str, *, classifier: bool, classes: list[str],
-    positive: str | None,
+    positive: str | None, multiclass: bool = False,
 ) -> None:  # fmt: skip
     """The outcome column: finite numbers (regression) or at most 50 class labels that are
     classes of the model."""
@@ -299,7 +329,7 @@ def _check_outcomes(
             for text, i in labels.items():
                 if match_label(text, classes) < 0:
                     issues.append(_err(f"{pointer}/{i}", f"{text!r} is not a class of the model"))
-        elif len(labels) > 2 and positive is None:
+        elif len(labels) > 2 and positive is None and not multiclass:
             issues.append(_err(pointer, "a yes/no model takes two outcome labels"))
     else:
         for i, v in enumerate(values):
@@ -350,7 +380,11 @@ async def _row_call(
     want = set(shape.variables) | set(shape.dim_columns)
     have = set(payload.data_vars) - {kpi}
     issues = [
-        _err(f"/inputs/data_vars/{c}", f"{c!r} is not a column of this upload")
+        _err(
+            f"/inputs/data_vars/{c}",
+            f"the upload does not take the column {c!r} (its columns are "
+            f"{', '.join(repr(x) for x in [shape.id_column, *sorted(want), kpi])})"[:300],
+        )
         for c in sorted(have - want)
     ] + [
         _err(f"/inputs/data_vars/{c}", f"the upload needs the column {c!r}")
@@ -365,7 +399,7 @@ async def _row_call(
     classifier = p.spec.preset == "classifier"
     _check_outcomes(
         [r.get(kpi) for r in rows], kpi, classifier=classifier, classes=_classes(p, catalog),
-        positive=p.spec.subject.positive_label,
+        positive=p.spec.subject.positive_label, multiclass=_multiclass(p, catalog),
     )  # fmt: skip
     columns = {c: _column(p.spec, snapshot, c, dim=True) for c in shape.dim_columns}
     columns |= {v: _column(p.spec, snapshot, v, dim=False) for v in shape.variables}

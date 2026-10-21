@@ -159,6 +159,16 @@ async def test_only_ready_batch_readouts_download(
     # nobody signed in
     anon = await client.get(f"{base}/readouts/{running}/predictions.csv")
     assert anon.status_code in (401, 404)
+    # B5 (live): a batch whose scoring failed says so (410), never "readout not found"
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == dash_id, m.DashboardReadout.seq == running)
+            .values(status="failed")
+        )
+    r = await kit["cleo"].get(f"{base}/readouts/{running}/predictions.csv")
+    assert r.status_code == 410 and r.json()["code"] == "DASHBOARD_DOWNLOAD_GONE", r.text
+    assert "failed" in r.json()["detail"]
     assert kit["egress"] == [] and await audits(ctx) == []
 
 

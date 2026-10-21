@@ -320,6 +320,13 @@ def row_context(defs: ScenarioRowsDef, snapshot: EndpointSchemaSnapshot) -> RowC
 # ============================================================================= scenario rows
 
 
+def needs_future_drivers(snapshot: EndpointSchemaSnapshot) -> bool:
+    """Whether a forecast of the model needs future values of some input (a driver the
+    model reads over the horizon)."""
+    schema = snapshot.input_schema
+    return any(v.future_required and n not in schema.targets for n, v in schema.vars.items())
+
+
 def _forecasting(defs: ScenarioRowsDef, snapshot: EndpointSchemaSnapshot) -> bool:
     return (
         defs.horizon is not None
@@ -528,9 +535,11 @@ async def _spend(
     input_ref: Mapping[str, Any],
     fingerprint: str,
     batch_rows: int | None = None,
+    upload: XrJsonDataset | None = None,
 ) -> m.DashboardReadout:
     """The cached result, or a new private readout scored as the publisher within the caps
-    (counted and inserted under the dashboard row lock)."""
+    (counted and inserted under the dashboard row lock). ``upload``: the file as it was
+    sent, stored as the readout's input (else the scored payload is)."""
     actor = Actor.of(dctx)
     hit = await _cache_lookup(ctx, session, p.dash, key, actor)
     if hit is not None and hit.kind == kind:
@@ -544,6 +553,11 @@ async def _spend(
         await _batch_limits(ctx, session, p, actor, batch_rows)
     stored = await store_inline_inputs(ctx, octx.scope, call) if call.inline_inputs() else {}
     ref = dict(stored[INPUT_INLINE_DATA]) if INPUT_INLINE_DATA in stored else {}
+    if upload is not None:
+        sent = await store_inline_inputs(
+            ctx, octx.scope, EndpointScoreCall(mode="predict", data=upload)
+        )
+        ref = dict(sent[INPUT_INLINE_DATA])
     row = await new_readout(
         session,
         p.dash,
@@ -984,7 +998,10 @@ async def submit_batch(
     for d in snapshot.input_schema.dims:
         if _single_level(snapshot, d) is not None:
             per_row.add(d)
-    cells = batch_cells(p.spec, catalog, n, per_row=per_row, sizes=sizes, dims=dims)
+    grid = n  # the payload is the grid of every id × the levels the rows give
+    for d in shape.dim_columns:
+        grid *= max(1, len({_cell_key(r.get(d)) for r in rows}))
+    cells = batch_cells(p.spec, catalog, grid, per_row=per_row, sizes=sizes, dims=dims)
     if cells > BATCH_CELL_BUDGET:
         raise MapiError(
             f"the file would give about {cells} results, more than one batch can hold "
@@ -1013,10 +1030,16 @@ async def submit_batch(
             "n_rows": n, "id_column": shape.id_column,
             "id_dim": dims.get(shape.id_dim, shape.id_dim),
             "columns": [c for c in [*shape.dim_columns, *shape.variables]][:_MAX_BATCH_COLUMNS],
+            "dim_columns": {c: dims.get(c, c) for c in shape.dim_columns},
         },
         fingerprint=fingerprint,
         batch_rows=n,
+        upload=body.inputs,
     )  # fmt: skip
+
+
+def _cell_key(value: object) -> str:
+    return f"{type(value).__name__}:{value}"
 
 
 # ================================================================================== baselines
@@ -1108,16 +1131,19 @@ async def submit_baseline_v2(
             and snapshot.horizon_dim is not None
         ):
             periods = spec.refresh.horizon or DEFAULT_HORIZON
-            request = ScoreRequest.model_validate(
-                {
-                    "apiVersion": API_VERSION,
-                    "kind": "ScoreRequest",
-                    "model": row.model_ref,
-                    "mode": "forecast",
-                    "horizon": {"dim": snapshot.horizon_dim, "periods": periods},
-                    "output": output.model_dump(exclude_defaults=True),
-                }
-            )
+            fbody: dict[str, Any] = {
+                "apiVersion": API_VERSION,
+                "kind": "ScoreRequest",
+                "model": row.model_ref,
+                "mode": "forecast",
+                "horizon": {"dim": snapshot.horizon_dim, "periods": periods},
+                "output": output.model_dump(exclude_defaults=True),
+            }
+            if needs_future_drivers(snapshot):
+                # nobody supplies the drivers of a baseline: hold them at their last values,
+                # as a forecast row or a conditioned upload does (else MISSING_FUTURE_COVARIATE)
+                fbody["future_covariates"] = FutureCovariates.CARRY_LAST.value
+            request = ScoreRequest.model_validate(fbody)
             await _submit(session, octx, row, request)
             return
         if (

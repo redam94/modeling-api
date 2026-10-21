@@ -1584,6 +1584,25 @@ def _upload_column(spec: DashboardSpecV2, ref: Mapping[str, Any], ds: XrJsonData
     return None
 
 
+async def _batch_keys(
+    ctx: ServerContext, ref: Mapping[str, Any]
+) -> list[tuple[str, Mapping[str, str]]] | None:
+    """The file rows of a batch whose rows give other dims too (``None`` otherwise)."""
+    from mapi_server.services.dashboards import panels as pn
+
+    dim_columns = ref.get("dim_columns")
+    if not isinstance(dim_columns, dict) or not dim_columns or not ref.get("bucket"):
+        return None
+    upload = await _read_upload(ctx, ref)
+    id_column = str(ref.get("id_column") or "")
+    return pn.batch_keys(
+        upload,
+        id_column,
+        str(ref.get("id_dim") or id_column),
+        {str(k): str(v) for k, v in dim_columns.items()},
+    )
+
+
 async def _read_upload(ctx: ServerContext, ref: Mapping[str, Any]) -> XrJsonDataset | None:
     """A stored upload (``None`` when it cannot be read; transient errors raise)."""
     try:
@@ -1895,7 +1914,8 @@ async def _build_v2(
     elif row.kind == "batch":
         n_rows = ref.get("n_rows") if isinstance(ref.get("n_rows"), int) else None
         id_dim = spec.batch.id_column if spec.batch is not None else None
-        batch = pn.batch_summary(spec, material, n_rows=n_rows, id_dim=id_dim)
+        keys = await _batch_keys(ctx, ref)
+        batch = pn.batch_summary(spec, material, n_rows=n_rows, id_dim=id_dim, keys=keys)
     try:
         snapshot = pn.build_snapshot_v2(
             spec,
@@ -2014,3 +2034,86 @@ async def materialise(ctx: ServerContext, dashboard_id: str, seq: int) -> str | 
         if row.visibility == "published":
             await publish_ready_event(s, row)
         return "ready"
+
+
+async def settle_pictures(ctx: ServerContext, *, limit: int = 50) -> int:
+    """Settle the queued pictures whose render run finished (each settled asset patches its
+    revision's readouts, :func:`patch_picture_readouts`); returns the assets settled. The
+    loop does it, so a picture never waits for somebody to ask for its bytes."""
+    from mapi_server.services.dashboards.assets import finish_asset
+
+    settled = 0
+    async with ctx.db.session() as s:
+        queued = list(
+            (
+                await s.execute(
+                    select(m.DashboardAsset)
+                    .where(
+                        m.DashboardAsset.status == "queued",
+                        m.DashboardAsset.run_id.is_not(None),
+                    )
+                    .order_by(m.DashboardAsset.created_at)
+                    .limit(limit)
+                    .with_for_update(skip_locked=True)
+                )
+            ).scalars()
+        )
+        for asset in queued:
+            try:
+                await finish_asset(ctx, s, asset)
+            except MapiError as exc:
+                if _transient(exc):
+                    continue
+                raise
+            settled += asset.status != "queued"
+    return settled
+
+
+async def patch_picture_readouts(session: AsyncSession, asset: m.DashboardAsset) -> int:
+    """Give the ready readouts of ``asset``'s revision that froze it as "being prepared" (a
+    baseline built before the render ended) the settled picture block. Only those
+    unavailable blocks change; returns the readouts patched."""
+    from mapi_server.services.dashboards import panels as pn
+    from mapi_server.services.dashboards.access import any_revision_spec
+
+    rev = await session.get(m.DashboardRevision, asset.revision_id)
+    spec = any_revision_spec(rev) if rev is not None else None
+    if not isinstance(spec, DashboardSpecV2):
+        return 0
+    panels = [
+        p
+        for p in spec.panels
+        if isinstance(p, RecipePanel) and p.is_picture and p.plot_id == asset.plot_id
+    ]
+    if not panels:
+        return 0
+    info = pn.AssetInfo(asset.id, asset.status, asset.width, asset.height, asset.problem)
+    mat = pn.Material(assets={asset.plot_id: info})
+    blocks = {p.id: pn._picture(p, mat).model_dump(mode="json") for p in panels}
+    rows = (
+        await session.execute(
+            select(m.DashboardReadout).where(
+                m.DashboardReadout.revision_id == asset.revision_id,
+                m.DashboardReadout.status == "ready",
+            )
+        )
+    ).scalars()
+    patched = 0
+    for row in rows:
+        snap = row.snapshot if isinstance(row.snapshot, dict) else None
+        old = snap.get("panels") if snap is not None else None
+        if snap is None or not isinstance(old, list):
+            continue
+        new = [
+            blocks[b["panel_id"]]
+            if isinstance(b, dict)
+            and b.get("kind") == "unavailable"
+            and b.get("panel_id") in blocks
+            else b
+            for b in old
+        ]
+        if new != old:
+            row.snapshot = {**snap, "panels": new}
+            patched += 1
+    await session.flush()
+    return patched

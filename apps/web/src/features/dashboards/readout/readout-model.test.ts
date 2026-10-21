@@ -19,6 +19,7 @@ import {
   gridSlope,
   formatValue,
   historyRow,
+  lastSentAccuracy,
   metaLine,
   pageTabs,
   scenarioModel,
@@ -185,6 +186,15 @@ describe("accuracy and change", () => {
     const lines = accuracyLines(acc, KPI, "week");
     expect(lines[0]).toBe("The actual number was in the likely range in 2 of 3 weeks.");
     expect(lines.at(-1)).toMatch(/^The model expected €8 less than the actual number each week/);
+  });
+
+  it("falls back to the last published numbers when a newer baseline has no comparison", () => {
+    const point = { seq: 3, created_at: "2024-03-04T10:00:00Z", n: 4, values: { mape: 2.5, band_hit_rate: 75, bias: -8 } };
+    const got = lastSentAccuracy({ accuracy_history: [point] })!;
+    expect(got.sentAt).toBe(point.created_at);
+    expect(accuracyLines(got.acc, KPI, "week")[0]).toBe("The actual number was in the likely range in 3 of 4 weeks.");
+    expect(lastSentAccuracy({ accuracy_history: [] })).toBeNull();
+    expect(lastSentAccuracy({ accuracy_history: [{ ...point, values: { accuracy: 0.9 } }] })).toBeNull();
   });
 
   it("diffs channel contributions against the readout before", () => {

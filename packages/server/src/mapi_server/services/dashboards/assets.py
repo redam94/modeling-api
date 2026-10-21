@@ -277,9 +277,21 @@ def _fail(asset: m.DashboardAsset, why: str) -> None:
 async def finish_asset(
     ctx: ServerContext, session: AsyncSession, asset: m.DashboardAsset
 ) -> m.DashboardAsset:
-    """Settle a ``queued`` asset whose render run finished (no-op otherwise)."""
+    """Settle a ``queued`` asset whose render run finished (no-op otherwise), and give the
+    ready readouts of its revision that froze it as "being prepared" the settled block."""
     if asset.status != "queued" or asset.run_id is None:
         return asset
+    await _settle(ctx, session, asset)
+    if asset.status != "queued":
+        from mapi_server.services.dashboards.readouts import patch_picture_readouts
+
+        await patch_picture_readouts(session, asset)
+    return asset
+
+
+async def _settle(
+    ctx: ServerContext, session: AsyncSession, asset: m.DashboardAsset
+) -> m.DashboardAsset:
     run = await session.get(m.Run, asset.run_id)
     if run is None:
         _fail(asset, "failed")

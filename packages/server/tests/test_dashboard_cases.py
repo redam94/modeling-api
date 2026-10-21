@@ -12,6 +12,7 @@ executed.
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -566,6 +567,68 @@ async def test_a_batch_whose_summary_would_not_fit_is_refused(
     assert "fewer rows" in r.json()["detail"]
 
 
+GRID_SNAPSHOT = EndpointSchemaSnapshot.model_validate(
+    {
+        "input_schema": {
+            "dims": {
+                "store": {"kind": "categorical", "policy": "new_levels",
+                          "new_level_strategy": "pooled"},
+                "sku": {"kind": "categorical"},
+            },
+            "vars": {
+                "price": {"dims": ["store", "sku"], "dtype": "float64", "role": "covariate"},
+                "promo": {"dims": ["store", "sku"], "dtype": "bool", "role": "covariate"},
+                "y": {"dims": ["store", "sku"], "dtype": "float64", "role": "target"},
+            },
+        },
+        "schema_hash": "sha256:" + "1" * 64,
+        "score_modes": ["predict"],
+        "representation": "draws",
+        "fit_coords": {
+            "store": {"kind": "categorical", "size": 2, "values": ["s1", "s2"]},
+            "sku": {"kind": "categorical", "size": 3, "values": ["k0", "k1", "k2"]},
+        },
+    }
+)  # fmt: skip
+
+
+async def test_a_file_with_a_sku_per_row_keeps_the_file_and_counts_the_whole_grid(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B3/B5 (live): the stored input is the file as sent (scalar cells, its ``sku``
+    column), the readout records the per-row dims, and the size check counts the grid the
+    model scores (every id × every sku the rows give), so it refuses before a run."""
+    seen = cases_contract(monkeypatch)
+
+    async def grid(session: Any, catalogs: Any, mv: Any) -> EndpointSchemaSnapshot:
+        return GRID_SNAPSHOT
+
+    monkeypatch.setattr(cases, "live_capabilities_snapshot", grid)
+    counted: list[int] = []
+    real = cases.batch_cells
+
+    def spy(spec: Any, catalog: Any, n_rows: int, **kw: Any) -> int:
+        counted.append(n_rows)
+        return real(spec, catalog, n_rows, **kw)
+
+    monkeypatch.setattr(cases, "batch_cells", spy)
+    dash_id = await publish_v2(ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH)
+    body = batch_file(["a", "b", "c", "d"], [12.0, 20.5, 30.0, 15.0])
+    body["inputs"]["data_vars"]["sku"] = {"dims": ["store"], "data": ["k0", "k1", "k0", "k2"]}
+    r = await kit["cleo"].post(f"/v1/dashboards/{dash_id}/batch", json=body)
+    assert r.status_code == 202, r.text
+    assert counted == [4 * 3]
+    (run,) = seen
+    row = await readout_row(ctx, dash_id, r.json()["seq"])
+    ref = row.input_ref
+    assert ref is not None and ref["dim_columns"] == {"sku": "sku"}
+    raw = await ctx.store.get(ref["bucket"], ref["name"], generation=int(ref["generation"]))
+    stored = json.loads(raw)
+    assert stored["data_vars"]["sku"]["data"] == ["k0", "k1", "k0", "k2"]
+    assert stored["data_vars"]["price"]["data"] == [12.0, 20.5, 30.0, 15.0]
+    assert run.inputs["inline.data"]["name"] != ref["name"]  # the scored grid is its own
+
+
 async def test_batch_scores_have_daily_caps(
     ctx: ServerContext, kit: dict[str, Any], settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -647,8 +710,36 @@ async def test_a_forecast_baseline_is_a_forecast_run(
     req = run.payload["request"]
     assert req["mode"] == "forecast" and req["horizon"] == {"dim": "t", "periods": 4}
     assert req["output"]["kind"] == "predictive" and "data" not in req
+    assert "future_covariates" not in req  # the trend model needs no drivers
     row = await readout_row(ctx, dash_id, 1)
     assert row.kind == "baseline" and row.status == "running" and row.run_ids == [run.id]
+
+
+async def test_a_forecast_baseline_holds_future_drivers_at_their_last_values(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B1 (live): a model that needs future values of a driver (sarimax with exog) gets a
+    baseline forecast with ``carry_last``, like a forecast row, instead of a run that
+    always fails with ``MISSING_FUTURE_COVARIATE``."""
+    from mapi_server.services.dashboards.loop import DashboardLoop
+
+    real = cases.live_capabilities_snapshot
+
+    async def with_driver(session: Any, catalogs: Any, mv: Any) -> EndpointSchemaSnapshot:
+        snap = await real(session, catalogs, mv)
+        schema = snap.input_schema.model_dump(mode="json")
+        time_dim = snap.horizon_dim
+        schema["vars"]["price"] = {"dims": [time_dim], "dtype": "float64",
+                                   "role": "covariate", "future_required": True}  # fmt: skip
+        return snap.model_copy(update={"input_schema": type(snap.input_schema)
+                                       .model_validate(schema)})  # fmt: skip
+
+    monkeypatch.setattr(cases, "live_capabilities_snapshot", with_driver)
+    await publish_v2(ctx, kit)
+    assert await DashboardLoop(ctx).submit_queued() == 1
+    (run,) = await score_runs(ctx)
+    req = run.payload["request"]
+    assert req["mode"] == "forecast" and req["future_covariates"] == "carry_last"
 
 
 async def test_a_reference_row_is_the_regression_baseline(
