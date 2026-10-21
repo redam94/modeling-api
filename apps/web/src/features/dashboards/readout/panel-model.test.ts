@@ -74,7 +74,7 @@ describe("results in words (the server's numbers)", () => {
 
   it("accuracy of each kind", () => {
     const forecast = classifierDashboard({ period_label: "month", subject: { variable: "y", label: "Sales", unit: "count", decimals: 0 } });
-    expect(accuracyDetailLines({ kind: "error", n: 3, mae: 12, mape: 0.05, bias: -2, band_hit_rate: 2 / 3 }, forecast)).toEqual([
+    expect(accuracyDetailLines({ kind: "error", n: 3, mae: 12, mape: 5, bias: -2, band_hit_rate: 200 / 3 }, forecast)).toEqual([
       "We compared 3 months with the predictions.",
       "The typical error is 12.",
       "On average the prediction was 5.0% from the actual number.",
@@ -87,7 +87,7 @@ describe("results in words (the server's numbers)", () => {
       'It predicted 50.0% "yes"; the actual share was 25.0%.',
       'A case counts as "yes" when its probability is 50.0% or more.',
     ]);
-    expect(accuracyDetailLines({ kind: "effect", n_periods: 4, total: 120, low: 80, high: 160, relative: 0.1, note: "The estimate updates after the analyst refits." }, forecast)).toEqual([
+    expect(accuracyDetailLines({ kind: "effect", n_periods: 4, total: 120, low: 80, high: 160, relative: 10, note: "The estimate updates after the analyst refits." }, forecast)).toEqual([
       "The change added about 120 (likely 80 to 160) over 4 months.",
       "That is 10.0% more than without it.",
       "The estimate updates after the analyst refits.",

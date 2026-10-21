@@ -156,12 +156,12 @@ const CLIENT_ROUTES: readonly (readonly [string, RegExp])[] = [
   ["GET", /^\/v1\/me$/],
   ["GET", /^\/v1\/dashboards$/],
   ["GET", /^\/v1\/dashboards\/[^/:]+$/],
-  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:grid|readouts|readouts\/\d+|actuals\/template)$/],
-  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/],
+  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:grid|readouts|readouts\/\d+|actuals\/template|batch\/template|readouts\/\d+\/predictions\.csv|assets\/[^/:]+)$/],
+  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals|predictions|batch|readouts\/\d+:keep)$/],
 ];
 
 /** Dashboard input routes (`DASHBOARD:RUN`, rank client): open to viewers too. */
-const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/;
+const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals|predictions|batch|readouts\/\d+:keep)$/;
 
 export function isClientRoute(method: string, pathname: string): boolean {
   return CLIENT_ROUTES.some(([m, re]) => m === method.toUpperCase() && re.test(pathname));

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BatchTemplate, ScenarioForm, ScenarioInputDef } from "../../types";
-import { batchCell, batchChecks, batchRows, batchToXr, checkRows, checkValue, defaultRow, fieldValue, g, HORIZON_KEY, issuesByPointer, normaliseLabel, rowActualsChecks } from "./inputs-model";
+import { batchCell, batchChecks, batchRows, batchToXr, checkRows, checkValue, defaultRow, fieldValue, g, HORIZON_KEY, issuesByPointer, normaliseLabel, rowActualsChecks, rowActualsColumns, rowActualsRows, rowActualsToXr } from "./inputs-model";
 
 const price: ScenarioInputDef = { name: "price", label: "Price", type: "number", min: 1, max: 10, step: 0.5, default: 4, bind: { var: "price" } };
 const visits: ScenarioInputDef = { name: "visits", label: "Visits", type: "integer", min: 0, max: 50, default: 3, bind: { var: "visits" } };
@@ -120,5 +120,25 @@ describe("row-matched actuals", () => {
     const bad = rowActualsChecks("id", "churned", cols, [["a", 1, "yes"], ["a", 2, null]], 10);
     expect(bad.map((c) => c.ok)).toEqual([true, false, false]);
     expect(rowActualsChecks("id", "churned", cols, [], 10)[0]?.ok).toBe(false);
+  });
+});
+
+describe("row-matched actuals", () => {
+  it("uses the template's own columns and sends one row per case along the id", () => {
+    const cols = rowActualsColumns({ example_csv: "store,time,price,y\n", input_table: { columns: [] } });
+    expect(cols).toEqual(["store", "time", "price", "y"]);
+    const rows = rowActualsRows(cols, "store", ["y", "store", "time", "price"], [["1", "007", "2024-10-13", "18"], ["", "", "", ""], ["0", "s1", "2024-10-13", "12.5"]]);
+    expect(rows).toEqual([
+      ["007", "2024-10-13", 18, 1],
+      ["s1", "2024-10-13", 12.5, 0],
+    ]);
+    expect(rowActualsToXr(cols, "store", rows)).toEqual({
+      coords: { store: { dims: ["store"], data: ["007", "s1"] } },
+      data_vars: {
+        time: { dims: ["store"], data: ["2024-10-13", "2024-10-13"] },
+        price: { dims: ["store"], data: [18, 12.5] },
+        y: { dims: ["store"], data: [1, 0] },
+      },
+    });
   });
 });

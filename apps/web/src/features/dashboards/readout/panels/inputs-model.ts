@@ -6,9 +6,9 @@
  * that cannot work; the server checks everything again.
  */
 import { grouped } from "@/components/ods/format";
-import type { Cell } from "@/lib/actuals";
+import type { Cell, XrDataset } from "@/lib/actuals";
 
-import type { BatchColumn, BatchSubmit, BatchTemplate, ScenarioForm, ScenarioInputDef, ScenarioRow } from "../../types";
+import type { ActualsTemplate, BatchColumn, BatchSubmit, BatchTemplate, ScenarioForm, ScenarioInputDef, ScenarioRow } from "../../types";
 import { plural, type Check } from "../readout-model";
 
 type Num = number | null | undefined;
@@ -287,4 +287,43 @@ export function rowActualsChecks(idColumn: string, outcomeColumn: string, column
     checks.push(empty.length ? { ok: false, text: `Enter the actual result in the column ${outcomeColumn}. Check ${listed(empty)}.` } : { ok: true, text: `Each row has an actual result in ${outcomeColumn}.` });
   }
   return checks;
+}
+
+/** The columns of a row-matched upload: the template's example CSV header (id, dims, drivers, result). */
+export function rowActualsColumns(t: Pick<ActualsTemplate, "example_csv" | "input_table">): string[] {
+  const first = (t.example_csv.split(/\r?\n/)[0] ?? "").trim();
+  const names = first ? first.split(",").map((c) => c.trim().replace(/^"|"$/g, "")).filter((c) => c !== "") : [];
+  return names.length ? names : (t.input_table.columns ?? []).map((c) => c.name);
+}
+
+/** A cell of a row-matched upload: blank is null, the id stays text, number-like text is a number. */
+export function rowActualsCell(text: string, isId: boolean): Cell {
+  const v = text.trim();
+  if (v === "") return null;
+  if (isId) return v;
+  const n = Number(v.replace(/,/g, ""));
+  if (Number.isFinite(n) && /^[-+]?[\d,]*\.?\d+(e[-+]?\d+)?$/i.test(v)) return n;
+  const t = v.toLowerCase();
+  if (t === "true" || t === "false") return t === "true";
+  return v;
+}
+
+/** The parsed CSV rows (file order) in `columns` order, typed; columns the file lacks are null. */
+export function rowActualsRows(columns: readonly string[], idColumn: string, header: readonly string[], rows: readonly string[][]): Cell[][] {
+  const at = columns.map((c) => header.indexOf(c));
+  return rows
+    .filter((r) => r.some((c) => c.trim() !== ""))
+    .map((r) => columns.map((c, j) => (at[j]! < 0 ? null : rowActualsCell(r[at[j]!] ?? "", c === idColumn))));
+}
+
+/** The rows as the one-dim table the server matches by id: every other column along the id column. */
+export function rowActualsToXr(columns: readonly string[], idColumn: string, rows: readonly Cell[][]): XrDataset {
+  const idAt = columns.indexOf(idColumn);
+  const filled = rows.filter((r) => r.some((c) => c !== null && c !== ""));
+  const data_vars: XrDataset["data_vars"] = {};
+  columns.forEach((c, j) => {
+    if (j === idAt) return;
+    data_vars[c] = { dims: [idColumn], data: filled.map((r) => r[j] ?? null) };
+  });
+  return { coords: { [idColumn]: { dims: [idColumn], data: filled.map((r) => (idAt >= 0 ? (r[idAt] ?? null) : null)) } }, data_vars };
 }

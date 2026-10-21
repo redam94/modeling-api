@@ -78,7 +78,10 @@ export function predictionsFileName(title: string, seq: number): string {
 
 // ------------------------------------------------------------------------------ accuracy
 
+/** A share (0..1) in percent. */
 const pct = (v: Num) => (isNum(v) ? `${fixed(v * 100, 1)}%` : MISSING);
+/** A measure the server already gives in percent (mape, wape, smape, band_hit_rate, an effect's relative). */
+const inPct = (v: Num) => (isNum(v) ? `${fixed(v, 1)}%` : MISSING);
 
 /** The accuracy of an upload in plain words, by kind (the server's numbers). */
 export function accuracyDetailLines(a: AccuracyDetail, d: Pick<ClientDashboard, "kpi" | "subject" | "period_label">): string[] {
@@ -88,9 +91,9 @@ export function accuracyDetailLines(a: AccuracyDetail, d: Pick<ClientDashboard, 
     const n = a.n ?? 0;
     const lines = [`We compared ${n} ${plural(period === "case" ? "case" : period, n)} with the predictions.`];
     if (isNum(a.mae)) lines.push(`The typical error is ${fmt(a.mae)}.`);
-    if (isNum(a.mape)) lines.push(`On average the prediction was ${fixed(a.mape * 100, 1)}% from the actual number.`);
+    if (isNum(a.mape)) lines.push(`On average the prediction was ${fixed(a.mape, 1)}% from the actual number.`);
     if (isNum(a.bias)) lines.push(a.bias > 0 ? `The predictions were ${fmt(a.bias)} too high on average.` : a.bias < 0 ? `The predictions were ${fmt(-a.bias)} too low on average.` : "The predictions were not too high or too low on average.");
-    if (isNum(a.band_hit_rate)) lines.push(`The actual number was in the likely range ${pct(a.band_hit_rate)} of the time.`);
+    if (isNum(a.band_hit_rate)) lines.push(`The actual number was in the likely range ${inPct(a.band_hit_rate)} of the time.`);
     return lines;
   }
   if (a.kind === "classification") {
@@ -103,7 +106,7 @@ export function accuracyDetailLines(a: AccuracyDetail, d: Pick<ClientDashboard, 
   }
   const lines: string[] = [];
   if (isNum(a.total)) lines.push(`The change added about ${fmt(a.total)}${isNum(a.low) && isNum(a.high) ? ` (likely ${fmt(a.low)} to ${fmt(a.high)})` : ""} over ${a.n_periods ?? 0} ${plural(period, a.n_periods ?? 0)}.`);
-  if (isNum(a.relative)) lines.push(`That is ${fixed(Math.abs(a.relative) * 100, 1)}% ${a.relative >= 0 ? "more" : "less"} than without it.`);
+  if (isNum(a.relative)) lines.push(`That is ${fixed(Math.abs(a.relative), 1)}% ${a.relative >= 0 ? "more" : "less"} than without it.`);
   if (a.note) lines.push(a.note);
   return lines;
 }
@@ -116,10 +119,10 @@ export function accuracyMeasures(a: AccuracyDetail, d: Pick<ClientDashboard, "kp
     return [
       { label: "Typical error (MAE)", value: num(a.mae) },
       { label: "RMSE", value: num(a.rmse) },
-      { label: "MAPE", value: pct(a.mape) },
-      { label: "WAPE", value: pct(a.wape) },
+      { label: "MAPE", value: inPct(a.mape) },
+      { label: "WAPE", value: inPct(a.wape) },
       { label: "R²", value: dec(a.r2) },
-      { label: "Inside the likely range", value: pct(a.band_hit_rate) },
+      { label: "Inside the likely range", value: inPct(a.band_hit_rate) },
     ].filter((m) => m.value !== MISSING);
   if (a.kind === "classification")
     return [
@@ -130,7 +133,7 @@ export function accuracyMeasures(a: AccuracyDetail, d: Pick<ClientDashboard, "kp
     ].filter((m) => m.value !== MISSING);
   return [
     { label: "Effect", value: num(a.total) },
-    { label: "Relative effect", value: pct(a.relative) },
+    { label: "Relative effect", value: inPct(a.relative) },
   ].filter((m) => m.value !== MISSING);
 }
 

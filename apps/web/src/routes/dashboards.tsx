@@ -60,7 +60,7 @@ export function DashboardsPage() {
     <>
       <PageHeader
         title="Dashboards"
-        description="Readouts for your clients in plain words: the latest results, trends, plan scenarios and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
+        description="Readouts for your clients in plain words, for any model: the latest results, trends, cases to try and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
         actions={
           <>
             <SegmentedControl<"active" | DashboardStatus>

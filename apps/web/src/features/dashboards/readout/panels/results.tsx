@@ -158,12 +158,14 @@ export function AccuracyHistoryView({ points }: { points: readonly AccuracyPoint
   const metric = historyMetric(points);
   if (!metric || points.length < 2) return null;
   const label = HISTORY_METRIC_LABEL[metric] ?? metric;
-  const percent = ["mape", "wape", "smape", "band_hit_rate", "accuracy", "effect_relative"].includes(metric);
+  // The server gives these in percent already; accuracy is a share (0..1).
+  const inPercent = ["mape", "wape", "smape", "band_hit_rate", "effect_relative"].includes(metric);
+  const share = metric === "accuracy";
   return (
     <MultiLine
       label={`${label} over time`}
       series={[{ label, points: points.map((p) => ({ t: p.created_at.slice(0, 10), mean: p.values?.[metric] ?? null })) }]}
-      format={percent ? (v) => `${fixed(v * 100, 1)}%` : plainNumber}
+      format={inPercent ? (v) => `${fixed(v, 1)}%` : share ? (v) => `${fixed(v * 100, 1)}%` : plainNumber}
     />
   );
 }

@@ -305,7 +305,7 @@ export type GlossaryKey = (typeof GLOSSARY_KEYS)[number];
 /**
  * The glossary of v0.17 (`mapi_spec.dashboards.GlossaryKey`, the `explain_metric` enum of
  * `dashboard-tools.gen.json`): the v0.16 keys, then the words of any model type. The tool
- * surface (`tools.ts`) moves from {@link GLOSSARY_KEYS} to this list once it has their texts.
+ * surface (`tools.ts`) explains every key of this list.
  */
 export const GLOSSARY_KEYS_V2 = [
   ...GLOSSARY_KEYS,
@@ -328,7 +328,7 @@ export const GLOSSARY_KEYS_V2 = [
 export type GlossaryKeyV2 = (typeof GLOSSARY_KEYS_V2)[number];
 
 export interface MetricExplanation {
-  metric: GlossaryKey;
+  metric: GlossaryKeyV2;
   text: string;
 }
 

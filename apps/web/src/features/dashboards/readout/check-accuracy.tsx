@@ -16,11 +16,12 @@ import { FileDrop, InlineMessage } from "@/components/ods";
 import { SmallTable } from "@/components/readout-charts-extra";
 import { Button } from "@/components/ui/button";
 import { Label, Textarea } from "@/components/ui/primitives";
-import { parsePasted, tableToXr, type Cell } from "@/lib/actuals";
+import type { Cell } from "@/lib/actuals";
+import { parseCsv } from "@/lib/csv";
 
 import { dashboardErrorMessage, problemOf, useActualsTemplate, useReadout, useSubmitActuals } from "../client";
 import { MAX_ROW_ACTUALS, type ActualsSubmit, type ActualsTemplate, type ClientDashboard, type DashboardClient, type ReadoutHeader } from "../types";
-import { rowActualsChecks } from "./panels/inputs-model";
+import { rowActualsChecks, rowActualsColumns, rowActualsRows, rowActualsToXr } from "./panels/inputs-model";
 import { ChecksList } from "./panels/checks-list";
 import { AccuracyDetailView, AccuracySection } from "./panels/results";
 import { ReadoutState, Section, saveText, Tags, Working } from "./parts";
@@ -59,7 +60,8 @@ function RowForm({ client, dashboard, template, preview }: { client: DashboardCl
   const [sent, setSent] = useState<ReadoutHeader | null>(null);
   const [idemKey, setIdemKey] = useState(() => crypto.randomUUID());
   const submit = useSubmitActuals(client);
-  const cols = useMemo(() => (template.input_table.columns ?? []).map((c) => c.name), [template]);
+  // One row per case in the template's own columns (its example CSV), not the time-shaped input table.
+  const cols = useMemo(() => rowActualsColumns(template), [template]);
   const idColumn = template.id_column ?? cols[0] ?? "id";
   const outcome = template.label_column ?? template.kpi_column;
   const max = Math.min(template.max_rows ?? MAX_ROW_ACTUALS, MAX_ROW_ACTUALS);
@@ -74,7 +76,8 @@ function RowForm({ client, dashboard, template, preview }: { client: DashboardCl
   const take = (text: string) => {
     setReadError(null);
     try {
-      const next = parsePasted(template.input_table, text);
+      const csv = parseCsv(text, max + 1);
+      const next = csv.header.length ? rowActualsRows(cols, idColumn, csv.header, csv.rows) : [];
       if (!next.length) {
         setReadError("We found no rows. Put the column names in the first row and one case on each next row.");
         return;
@@ -86,13 +89,7 @@ function RowForm({ client, dashboard, template, preview }: { client: DashboardCl
     }
   };
   const send = () => {
-    let inputs: ActualsSubmit["inputs"];
-    try {
-      inputs = tableToXr(template.input_table, rows);
-    } catch (err) {
-      setReadError(err instanceof Error ? err.message : String(err));
-      return;
-    }
+    const inputs = rowActualsToXr(cols, idColumn, rows) as ActualsSubmit["inputs"];
     const body: ActualsSubmit = { inputs, ...(allowRefit && refit ? { request_refit: true } : {}) };
     submit.mutate({ body, idemKey }, { onSuccess: (h) => setSent(h) });
   };

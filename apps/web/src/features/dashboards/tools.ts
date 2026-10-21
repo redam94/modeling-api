@@ -104,9 +104,6 @@ export const GLOSSARY: Readonly<Record<GlossaryKeyV2, string>> = {
   expected_count: "The number of cases where the result will probably occur. It is the sum of the probabilities of all the cases.",
 };
 
-/** `explain_metric`'s result over the v0.17 glossary (`MetricExplanation.metric` is any key). */
-export type MetricExplanationV2 = Omit<MetricExplanation, "metric"> & { metric: GlossaryKeyV2 };
-
 // ------------------------------------------------------------------------------ arguments
 
 export interface ListReadoutsArgs {
@@ -320,7 +317,7 @@ export function channelHistoryOf(dash: Pick<ClientDashboard, "channels">, name: 
   return { name: ch.name, label: ch.label, points: points.reverse() };
 }
 
-export function explainMetric(args: ExplainArgs): MetricExplanationV2 {
+export function explainMetric(args: ExplainArgs): MetricExplanation {
   if (!(GLOSSARY_KEYS_V2 as readonly string[]).includes(args.metric)) throw new ToolArgsError(`no explanation for ${String(args.metric)}`);
   return { metric: args.metric, text: GLOSSARY[args.metric] };
 }
@@ -483,7 +480,7 @@ export type ToolResult =
   | ReadoutList
   | ReadoutComparison
   | ChannelHistory
-  | MetricExplanationV2
+  | MetricExplanation
   | WhatIfResult
   | PanelList
   | PanelReport

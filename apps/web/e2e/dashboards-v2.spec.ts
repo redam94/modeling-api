@@ -36,29 +36,6 @@ const TOKENS = {
 const UPGRADE_NOTE = "This dashboard has a new layout. The numbers come from the same model. The likely ranges now show where one new result will probably be. They are wider than before.";
 const SHOTS = process.env.MAPI_SHOTS_DIR;
 
-/**
- * The mock's role check (`CLIENT_ROUTES` in src/mocks/tenancy.ts) still lists only the v0.16
- * client routes, so a client user's tried cases, scored files, their downloads and pictures get
- * a 403 from the mock (the server's `CLIENT_OPERATIONS` has them). The tests that need them are
- * marked to fail until the mock lists them; remove the mark then (Playwright reports a marked
- * test that passes).
- */
-/**
- * The web multiplies the server's percent measures by 100 again (`pct` and the MAPE line in
- * src/features/dashboards/readout/panels/results-model.ts; `ErrorAccuracy` has `mape`, `wape`,
- * `smape` and `band_hit_rate` in percent), so a MAPE of 3.6% reads "355.6%".
- */
-const WEB_PERCENT_TWICE = "readout/panels/results-model.ts shows the server's percent measures (mape, wape, band_hit_rate) times 100";
-/**
- * A row-matched upload (`match: "row"`) is built from the time-shaped `input_table` with
- * `parsePasted`/`tableToXr` (src/features/dashboards/readout/check-accuracy.tsx, RowForm), so the
- * template's own columns fail in the browser ('row 1 has no "sku"') and a file with every
- * dimension is refused by the server and the mock ("every column needs one value per row"): the
- * server wants one row per case along the id column, as a scored file.
- */
-const WEB_ROW_ACTUALS_SHAPE = "readout/check-accuracy.tsx RowForm sends the time-shaped table instead of one row per case";
-const MOCK_CLIENT_V017_ROUTES = "src/mocks/tenancy.ts CLIENT_ROUTES lacks the v0.17 client routes (predictions, batch, batch/template, predictions.csv, assets, :keep)";
-
 type Persona = "ana" | "cleo" | "signed-out";
 
 /** Sign in as a persona (once per test: a reload keeps what the page stored) in a project. */
@@ -307,7 +284,6 @@ test.describe("a client user", () => {
   });
 
   test("the forecast's accuracy measures read in percent", async ({ page }) => {
-    test.fail(true, WEB_PERCENT_TWICE);
     await as(page, "cleo");
     await page.goto(`/c/${IDS.forecast}`);
     const acc = await openSection(page, "Check accuracy");
@@ -320,7 +296,6 @@ test.describe("a client user", () => {
   });
 
   test("the classifier scores a tried case and refuses a value out of range at its field", async ({ page }) => {
-    test.fail(true, MOCK_CLIENT_V017_ROUTES);
     await as(page, "cleo");
     await page.goto(`/c/${IDS.classifier}`);
     await expect(page.getByRole("heading", { level: 1, name: "High demand weeks" })).toBeVisible();
@@ -339,7 +314,6 @@ test.describe("a client user", () => {
   });
 
   test("the classifier scores a file and gives the predictions to download", async ({ page }) => {
-    test.fail(true, MOCK_CLIENT_V017_ROUTES);
     await as(page, "cleo");
     await page.goto(`/c/${IDS.classifier}`);
     const tab = await openSection(page, "Score a file");
@@ -368,7 +342,6 @@ test.describe("a client user", () => {
   });
 
   test("the regression predicts a case with a likely range", async ({ page }) => {
-    test.fail(true, MOCK_CLIENT_V017_ROUTES);
     await as(page, "cleo");
     await page.goto(`/c/${IDS.regression}`);
     await expect(page.getByRole("heading", { level: 1, name: "Weekly demand per store" })).toBeVisible();
@@ -390,7 +363,6 @@ test.describe("a client user", () => {
   });
 
   test("the image model shows its picture and offers no file scoring", async ({ page }) => {
-    test.fail(true, MOCK_CLIENT_V017_ROUTES);
     await as(page, "cleo");
     await page.goto(`/c/${IDS.image}`);
     await expect(page.getByRole("heading", { level: 1, name: "Shape check" })).toBeVisible();
@@ -504,14 +476,13 @@ test.describe("a share link", () => {
   });
 
   test("the classifier link sends actual results, one row per case as in the template", async ({ page }) => {
-    test.fail(true, WEB_ROW_ACTUALS_SHAPE);
     await page.goto(`/s#${TOKENS.classifier}`);
     const acc = await openSection(page, "Check accuracy");
     // The template's own columns (its example CSV): the id, the drivers and the outcome.
     await acc.locator("input[type=file]").setInputFiles(csv(["store,time,price,promo,y", "s0,2024-10-13,18,0,1", "s1,2024-10-13,12,1,0", "s2,2024-10-13,30,0,1"]));
     await expect(acc.getByRole("list", { name: "Checks" })).toContainText("Passed: 3 cases to send.");
     await acc.getByRole("button", { name: "Send", exact: true }).click();
-    await expect(acc.getByText(/^We received the results\./)).toBeVisible({ timeout: 15_000 });
+    await expect(acc.getByRole("status").filter({ hasText: "We received the results." })).toBeVisible({ timeout: 15_000 });
     await expect(acc.locator("[data-readout=sent] [data-readout=accuracy]")).toBeVisible({ timeout: 15_000 });
   });
 

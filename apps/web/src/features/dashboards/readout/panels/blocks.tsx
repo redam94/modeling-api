@@ -50,7 +50,24 @@ export function BlockCard({ block, children }: { block: PanelBlock; children: Re
 
 const SERIES_LABELS: Partial<Record<SeriesBlock["intent"], { expected: string; actual: string }>> = {
   effect: { expected: "Without the change", actual: "Actual" },
-  accuracy_history: { expected: "Error", actual: "Actual" },
+};
+
+/** The accuracy history's line, by its metric (the series name): its words and how to show it. */
+const ACCURACY_LINE: Record<string, { label: string; format: "percent" | "share" | "number" | "subject" }> = {
+  mae: { label: "Typical error", format: "subject" },
+  rmse: { label: "RMSE", format: "subject" },
+  bias: { label: "Bias", format: "subject" },
+  mape: { label: "Average error", format: "percent" },
+  wape: { label: "WAPE", format: "percent" },
+  smape: { label: "SMAPE", format: "percent" },
+  band_hit_rate: { label: "Inside the likely range", format: "percent" },
+  r2: { label: "R²", format: "number" },
+  accuracy: { label: "Right predictions", format: "share" },
+  brier: { label: "Brier score", format: "number" },
+  log_score: { label: "Log score", format: "number" },
+  auc: { label: "AUC", format: "number" },
+  effect_total: { label: "Effect", format: "subject" },
+  effect_relative: { label: "Relative effect", format: "percent" },
 };
 
 function SeriesView({ dashboard, block }: { dashboard: ClientDashboard; block: SeriesBlock }) {
@@ -58,14 +75,24 @@ function SeriesView({ dashboard, block }: { dashboard: ClientDashboard; block: S
   const points = (s?.points ?? []).map((p) => ({ t: p.t, mean: p.mean ?? null, low: p.low ?? null, high: p.high ?? null, actual: p.actual ?? null }));
   if (!points.length) return <p className="text-sm text-muted-foreground">This panel has no values yet.</p>;
   const split = block.split_at ? points.findIndex((p) => p.t === block.split_at) : -1;
-  const words = SERIES_LABELS[block.intent] ?? { expected: "Prediction", actual: "Actual" };
+  const line = block.intent === "accuracy_history" ? ACCURACY_LINE[s?.name ?? ""] : undefined;
+  const words = line ? { expected: line.label, actual: "Actual" } : (SERIES_LABELS[block.intent] ?? { expected: block.intent === "accuracy_history" ? s?.label || "Accuracy" : "Prediction", actual: "Actual" });
   const unit = dashboard.subject?.unit ?? dashboard.kpi.unit;
+  const subjectFormat = (v: number) => unitText(v, unit === "probability" ? "number" : unit, dashboard);
+  const format =
+    line?.format === "percent"
+      ? (v: number) => `${v.toFixed(1)}%`
+      : line?.format === "share"
+        ? (v: number) => `${(v * 100).toFixed(1)}%`
+        : line?.format === "number"
+          ? (v: number) => v.toFixed(3)
+          : subjectFormat;
   return (
     <BandLine
       label={`${s?.label || block.title} each ${periodOf(dashboard)}`}
       points={points}
       period={periodOf(dashboard)}
-      format={(v) => unitText(v, unit === "probability" ? "number" : unit, dashboard)}
+      format={format}
       nowAt={split >= 0 ? split : undefined}
       expectedLabel={words.expected}
       actualLabel={words.actual}
