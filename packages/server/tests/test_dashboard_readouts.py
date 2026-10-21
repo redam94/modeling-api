@@ -37,7 +37,7 @@ from mapi_spec.views import ResponseGridView
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from pydantic import ValidationError
 from sqlalchemy import func, select, update
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -57,7 +57,7 @@ SUMMARY = {
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture

@@ -675,9 +675,10 @@ class Settings(BaseSettings):
         "layout 1 and is flagged)",
     )
     dashboard_layout1_create: bool = Field(
-        True,
+        False,
         description="Accept new layout 1 (media planner only) dashboard specs on create and "
-        "draft save; off refuses them with DASHBOARD_LAYOUT_RETIRED",
+        "on a layout 2 draft's save (off, the default from v0.17: new dashboards are layout 2 "
+        "and a layout 1 spec is refused with DASHBOARD_LAYOUT_RETIRED)",
     )
 
     # ------------------------------------------------------------------- observability

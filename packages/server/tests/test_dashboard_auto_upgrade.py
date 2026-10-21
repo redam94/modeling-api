@@ -22,15 +22,21 @@ from mapi_server.services.dashboards.upgrade import (
     auto_upgrade_v1,
     run_auto_upgrade,
 )
+from mapi_server.settings import Settings
 from mapi_server_testkit.identity import Caller
 from mapi_spec.audit import SYSTEM_ACTOR_ID
 from mapi_spec.dashboard_v2 import UPGRADE_NOTE, SourceCatalog, parse_dashboard_spec
 from mapi_spec.dashboards import UPGRADE_NEEDS_REVIEW, DashboardSpec
 from mapi_spec.errors import ErrorCode, MapiError
 from sqlalchemy import select, text
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def settings(settings: Settings) -> Settings:
+    return settings.model_copy(update=LAYOUT1)  # layout 1 dashboards are created here too
 
 
 @pytest.fixture

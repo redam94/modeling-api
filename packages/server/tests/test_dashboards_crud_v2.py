@@ -2,8 +2,8 @@
 client view, the editor's ``:upgrade`` of a layout 1 draft and the inputs a caller may use.
 
 The model is the trend model of the v0.16 tests (``ts.hsgp_trend``): its preset is
-``forecast``. Layout 1 dashboards still come from :func:`create_published` (layout 1
-creation stays allowed while the ``dashboard_layout1_create`` setting does not exist).
+``forecast``. Layout 1 dashboards still come from :func:`create_published`: this module opts
+in to layout 1 creation (``dashboard_layout1_create``, off by default from v0.17).
 """
 
 from __future__ import annotations
@@ -16,13 +16,19 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dashboards import crud, sources
 from mapi_server.services.dashboards.access import effective_inputs
+from mapi_server.settings import Settings
 from mapi_server_testkit.identity import Caller
 from mapi_spec.dashboard_v2 import UPGRADE_NOTE, DashboardSpecV2, parse_dashboard_spec
 from mapi_spec.dashboards import DashboardSpec, dashboard_spec_hash
 from sqlalchemy import select
-from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def settings(settings: Settings) -> Settings:
+    return settings.model_copy(update=LAYOUT1)  # layout 1 dashboards are created here too
 
 
 @pytest.fixture
@@ -99,12 +105,14 @@ async def test_clients_see_the_layout_2_view(kit: dict[str, Any]) -> None:
     assert "draft_spec" not in body and "run_as" not in body
 
 
-async def test_layout_1_creation_can_be_retired(
-    kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+async def test_layout_1_creation_is_retired_by_default(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     eve: Caller = kit["eve"]
     dash_id, etag = await create_v2(kit)
-    monkeypatch.setattr(crud, "layout1_create_allowed", lambda ctx: False)
+    assert Settings.model_fields["dashboard_layout1_create"].default is False
+    monkeypatch.setattr(ctx.settings, "dashboard_layout1_create", False)
+    assert not crud.layout1_create_allowed(ctx)
     r = await eve.post("/v1/dashboards", json={"name": "old", "spec": dashboard_spec()})
     assert r.status_code == 422 and r.json()["code"] == "DASHBOARD_LAYOUT_RETIRED"
     r = await eve.put(

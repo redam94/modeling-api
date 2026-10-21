@@ -30,7 +30,7 @@ from mapi_spec.api import new_id
 from mapi_spec.dashboards import SHARE_SESSION_HEADER
 from mapi_spec.xrjson import XrJsonDataset
 from sqlalchemy import func, select, update
-from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import GRID, LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -51,7 +51,7 @@ UPLOAD = {
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture

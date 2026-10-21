@@ -27,6 +27,10 @@ from sqlalchemy import select, update
 
 pytestmark = pytest.mark.integration
 
+LAYOUT1: dict[str, Any] = {"dashboard_layout1_create": True}
+"""The settings these tests opt in with: they create layout 1 dashboards, which v0.17
+refuses by default (``DASHBOARD_LAYOUT_RETIRED``; plan §10.1)."""
+
 GRID: dict[str, Any] = {
     "format": "mapi.response-grid/v1",
     "kpi": "y",
@@ -110,7 +114,7 @@ async def create_published(
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture

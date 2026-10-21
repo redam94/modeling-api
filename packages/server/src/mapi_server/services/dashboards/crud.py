@@ -25,7 +25,7 @@ layout 2 spec is validated against the source catalog of its model version
 block a publish), and its publish also queues the revision's pictures
 (:func:`~mapi_server.services.dashboards.assets.queue_pictures`). A new dashboard is layout 2:
 creating one from a layout 1 spec is refused (``DASHBOARD_LAYOUT_RETIRED``) unless the
-``dashboard_layout1_create`` setting allows it.
+``dashboard_layout1_create`` setting (off by default) allows it.
 """
 
 from __future__ import annotations
@@ -170,9 +170,9 @@ async def create_dashboard(
 
 def layout1_create_allowed(ctx: ServerContext) -> bool:
     """May a new dashboard (or a layout 2 draft) take a layout 1 spec? The
-    ``dashboard_layout1_create`` setting (true until the setting exists: v0.16 callers and
-    tests keep working)."""
-    return bool(getattr(ctx.settings, "dashboard_layout1_create", True))
+    ``dashboard_layout1_create`` setting (off by default from v0.17, plan §10.1: new
+    dashboards are layout 2)."""
+    return ctx.settings.dashboard_layout1_create
 
 
 async def update_draft(

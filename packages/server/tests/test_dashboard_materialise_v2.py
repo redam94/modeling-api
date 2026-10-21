@@ -31,7 +31,7 @@ from mapi_spec.dashboards import ReadoutSnapshot
 from sqlalchemy import select
 from test_dashboard_readouts import MONTHS, SUMMARY, _fit_metrics, _readout
 from test_dashboard_refresh import _GRID_OBJECT, _endpoint_dashboard, _promote, _version
-from test_dashboards_crud import create_published, dashboard_kit
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit
 
 pytestmark = pytest.mark.integration
 
@@ -51,7 +51,7 @@ PREDICTIVE = {  # the same centres as SUMMARY; the range of one new result is wi
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture

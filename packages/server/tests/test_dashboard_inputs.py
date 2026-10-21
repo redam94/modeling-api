@@ -24,7 +24,7 @@ from mapi_spec.dashboards import DashboardSpec
 from mapi_spec.views import ResponseGridView
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from sqlalchemy import select, update
-from test_dashboards_crud import GRID, create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud import GRID, LAYOUT1, create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
 
@@ -34,7 +34,7 @@ REAL_EXACT = inputs.exact_request
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
     return settings.model_copy(
-        update={"profile": Profile.MULTI_TENANT, "client_run_rate_per_hour": 2}
+        update={"profile": Profile.MULTI_TENANT, "client_run_rate_per_hour": 2, **LAYOUT1}
     )
 
 

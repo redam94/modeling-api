@@ -32,7 +32,7 @@ from mapi_spec.dashboard_v2 import DashboardSpecV2, SourceCatalog, parse_dashboa
 from mapi_spec.dashboards import DashboardSpec, ReadoutSnapshot, dashboard_spec_hash
 from mapi_spec.errors import MapiError
 from sqlalchemy import func, select
-from test_dashboards_crud import create_published, dashboard_kit
+from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit
 
 pytestmark = pytest.mark.integration
 
@@ -50,7 +50,7 @@ SNAP_B = {
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT})
+    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, **LAYOUT1})
 
 
 @pytest.fixture

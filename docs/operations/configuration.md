@@ -160,13 +160,13 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_SHARE_LOCKOUT_S` | `900` | How long a share link stays locked after too many wrong passcodes |
 | `MAPI_DASHBOARD_GRID_MAX_BYTES` | `4000000` | The largest response grid (`ui/grids/response_curves.json`) that a dashboard reads for its what-if sliders |
 | `MAPI_DASHBOARD_CACHE_TTL_S` | `86400` | How long a ready exact readout answers the same scenario or the same actuals again, in place of a new run. `0` turns the cache off |
-| `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios and exact what-ifs) |
+| `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios, exact what-ifs, tried cases and batch scores). A case that its owner keeps (`…/readouts/{seq}:keep`) does not expire |
 | `MAPI_DASHBOARD_REFRESH_DEBOUNCE_S` | `60` | The minimum time between two refresh readouts of one dashboard |
 | `MAPI_SHARE_BATCH_PER_DAY` | `2` | The batch scores (an uploaded file of cases) that one share link can start in each 24 hours. `0` stops batch scoring from share links |
 | `MAPI_CLIENT_BATCH_PER_DAY` | `4` | The batch scores that one client user can start in each 24 hours on one dashboard |
 | `MAPI_BATCH_ROWS_PER_DAY` | `20000` | The rows of all batch scores of one dashboard in each 24 hours, for all callers together |
 | `MAPI_DASHBOARD_AUTO_UPGRADE` | `true` | Move every layout 1 dashboard to layout 2 once when a worker starts. The pass is idempotent and runs under a Postgres advisory lock. A dashboard that needs review keeps its layout 1 revision |
-| `MAPI_DASHBOARD_LAYOUT1_CREATE` | `true` | Accept new layout 1 (media planner only) dashboard specs on create and on draft save. `false` refuses them with `422 DASHBOARD_LAYOUT_RETIRED` |
+| `MAPI_DASHBOARD_LAYOUT1_CREATE` | `false` | Accept new layout 1 (media planner only) dashboard specs on create, and on the draft save of a layout 2 dashboard. Off (the default from v0.17), new dashboards are layout 2 and a layout 1 spec is refused with `422 DASHBOARD_LAYOUT_RETIRED`. A layout 1 draft that exists can still be saved |
 
 **Object storage**
 
