@@ -545,6 +545,10 @@ class WorkflowOrchestrator:
             event_type=event,
             data=data,
         )
+        if status is WorkflowRunStatus.SUCCEEDED:  # v0.16: linked dashboards get a readout
+            from mapi_server.services.dashboards.readouts import on_workflow_succeeded
+
+            await on_workflow_succeeded(env.session, wr)
 
     # --------------------------------------------------------------------------- start
     async def _start(self, env: _Env, action: Action) -> None:

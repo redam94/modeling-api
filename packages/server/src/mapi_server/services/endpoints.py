@@ -594,6 +594,11 @@ async def promote(
             "action": "promote",
         },
     )
+    from mapi_server.services.dashboards.readouts import on_endpoint_promoted  # v0.16
+
+    await on_endpoint_promoted(
+        session, row, mv, debounce_s=ctx.settings.dashboard_refresh_debounce_s
+    )
     obs_metrics.record_endpoint_promotion("overridden" if overridden else "allowed")
     return row, True
 
