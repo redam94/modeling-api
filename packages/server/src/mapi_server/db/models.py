@@ -7,13 +7,14 @@ hold Pydantic-validated documents from :mod:`mapi_spec`; they are never parsed f
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, ClassVar
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -28,7 +29,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSON, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSON, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 __all__ = [
@@ -39,6 +40,12 @@ __all__ = [
     "Base",
     "Catalog",
     "CostLedgerEntry",
+    "Dashboard",
+    "DashboardGrant",
+    "DashboardReadout",
+    "DashboardRefitRequest",
+    "DashboardRevision",
+    "DashboardShare",
     "Dataset",
     "DatasetVersion",
     "Endpoint",
@@ -147,6 +154,13 @@ TENANT_TABLES: tuple[str, ...] = (
     "experiments",
     "run_views",
     "run_media",
+    # v0.16 client dashboards (0018_client_dashboards)
+    "dashboards",
+    "dashboard_revisions",
+    "dashboard_grants",
+    "dashboard_readouts",
+    "dashboard_shares",
+    "dashboard_refit_requests",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -289,7 +303,9 @@ class Membership(Base):
     created_by: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
-        CheckConstraint("role in ('viewer','editor','runner','admin')", name="role"),
+        CheckConstraint("role in ('client','viewer','editor','runner','admin')", name="role"),
+        # v0.16: a client grant is always project-scoped (0018_client_dashboards)
+        CheckConstraint("role <> 'client' OR project_id IS NOT NULL", name="client_project"),
         CheckConstraint("principal_kind in ('user','service_account')", name="principal_kind"),
         ForeignKeyConstraint(
             ["tenant_id", "project_id"],
@@ -1742,4 +1758,261 @@ class ValidationApproval(_Scoped, Base):
         CheckConstraint("decision in ('approve','reject')", name="decision"),
         UniqueConstraint("validation_id", "round", "approver_id"),
         Index("ix_validation_approvals_validation", "validation_id", "round"),
+    )
+
+
+# ==================================================================== client dashboards (v0.16)
+
+DASHBOARD_SPEC_MAX_BYTES = 65_536
+"""``mapi_spec.dashboards.MAX_SPEC_BYTES``: the cap on ``draft_spec`` / ``spec`` as text."""
+DASHBOARD_SNAPSHOT_MAX_BYTES = 300_000
+"""The database's cap on a readout snapshot as text (the contract's own cap is lower)."""
+
+
+class Dashboard(_Scoped, Base):
+    """An analyst-authored client dashboard (:class:`mapi_spec.dashboards.Dashboard`).
+
+    ``draft_spec`` is the editable :class:`~mapi_spec.dashboards.DashboardSpec` (``draft_etag``
+    guards concurrent edits); clients and share links only ever see ``published_revision_id``
+    (a :class:`DashboardRevision`, not a foreign key: the two tables would reference each
+    other). ``run_as`` is the publisher whose rights the dashboard's sandboxed runs use;
+    ``live_inputs = 'paused'`` once those rights are gone."""
+
+    __tablename__ = "dashboards"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
+    draft_spec: Mapped[dict[str, Any]] = mapped_column()
+    draft_etag: Mapped[str] = mapped_column(String(128))
+    published_revision_id: Mapped[str | None] = mapped_column(String(64))
+    run_as: Mapped[str | None] = mapped_column(String(64))
+    live_inputs: Mapped[str] = mapped_column(String(8), default="ok", server_default="ok")
+    problem: Mapped[str | None] = mapped_column(String(200))
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+    archived_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint("tenant_id", "project_id", "name"),
+        CheckConstraint("status in ('draft','published','archived')", name="status"),
+        CheckConstraint("live_inputs in ('ok','paused')", name="live_inputs"),
+        CheckConstraint(
+            f"octet_length(draft_spec::text) <= {DASHBOARD_SPEC_MAX_BYTES}", name="draft_spec_size"
+        ),
+        Index("ix_dashboards_status", "tenant_id", "project_id", "status"),
+    )
+
+
+class DashboardRevision(_Scoped, Base):
+    """An immutable published spec of a dashboard (``seq`` per dashboard), with the model
+    version it pinned (and the endpoint alias + revision it was resolved from). The request
+    path may insert and read revisions, never change or delete them."""
+
+    __tablename__ = "dashboard_revisions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"))
+    seq: Mapped[int] = mapped_column(Integer)
+    spec: Mapped[dict[str, Any]] = mapped_column()
+    spec_hash: Mapped[str] = mapped_column(String(71))
+    model_version_id: Mapped[str] = mapped_column(String(64))
+    model_ref: Mapped[str] = mapped_column(String(512))
+    endpoint_alias: Mapped[str | None] = mapped_column(String(128))
+    endpoint_revision: Mapped[int | None] = mapped_column(Integer)
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint("dashboard_id", "seq"),
+        CheckConstraint("seq >= 1", name="seq"),
+        CheckConstraint(
+            f"octet_length(spec::text) <= {DASHBOARD_SPEC_MAX_BYTES}", name="spec_size"
+        ),
+    )
+
+
+class DashboardGrant(_Scoped, Base):
+    """A client user who may see a published dashboard."""
+
+    __tablename__ = "dashboard_grants"
+
+    dashboard_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboards.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    granted_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        Index("ix_dashboard_grants_user", "tenant_id", "project_id", "user_id"),
+    )
+
+
+class DashboardReadout(_Scoped, Base):
+    """One readout of a dashboard (``seq`` per dashboard): a capped JSON snapshot
+    (:class:`mapi_spec.dashboards.ReadoutSnapshot`) built after its runs finish, immutable
+    once ``ready``. ``actor_kind``/``actor_id`` say who asked (a member, a client user, a
+    share link or the system); ``input_ref`` points at an uploaded input in object storage
+    (rows never hold the input itself). ``cache_key`` finds a ready readout of the same
+    revision and input; private readouts carry ``expires_at``."""
+
+    __tablename__ = "dashboard_readouts"
+
+    dashboard_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboards.id", ondelete="CASCADE"), primary_key=True
+    )
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboard_revisions.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(16))
+    trigger: Mapped[str] = mapped_column(String(16))
+    visibility: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(200))
+    actor_kind: Mapped[str] = mapped_column(String(8))
+    actor_id: Mapped[str | None] = mapped_column(String(128))
+    share_id: Mapped[str | None] = mapped_column(String(64))
+    model_version_id: Mapped[str] = mapped_column(String(64))
+    model_ref: Mapped[str] = mapped_column(String(512))
+    endpoint_revision: Mapped[int | None] = mapped_column(Integer)
+    spec_hash: Mapped[str] = mapped_column(String(71))
+    run_ids: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), default=list, server_default=text("'{}'::text[]")
+    )
+    workflow_run_id: Mapped[str | None] = mapped_column(String(64))
+    input_ref: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    input_fingerprint: Mapped[str | None] = mapped_column(String(71))
+    scenario: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    cache_key: Mapped[str | None] = mapped_column(String(71))
+    period_start: Mapped[date | None] = mapped_column(Date)
+    period_end: Mapped[date | None] = mapped_column(Date)
+    snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    expires_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    ready_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint("seq >= 1", name="seq"),
+        CheckConstraint("kind in ('baseline','refresh','scenario','actuals')", name="kind"),
+        CheckConstraint(
+            "trigger in ('publish','manual','whatif','actuals','workflow','endpoint')",
+            name="trigger",
+        ),
+        CheckConstraint(
+            "visibility in ('published','private','pending_review','hidden')", name="visibility"
+        ),
+        CheckConstraint(
+            "status in ('queued','running','materialising','ready','failed')", name="status"
+        ),
+        CheckConstraint("actor_kind in ('member','client','share','system')", name="actor_kind"),
+        CheckConstraint(
+            f"octet_length(snapshot::text) <= {DASHBOARD_SNAPSHOT_MAX_BYTES}", name="snapshot_size"
+        ),
+        Index("ix_dashboard_readouts_history", "dashboard_id", "visibility", text("seq DESC")),
+        Index(
+            "ix_dashboard_readouts_pending",
+            "status",
+            postgresql_where=text("status in ('queued','materialising')"),
+        ),
+        Index(
+            "ix_dashboard_readouts_cache",
+            "dashboard_id",
+            "cache_key",
+            postgresql_where=text("status = 'ready'"),
+        ),
+        Index(
+            "ix_dashboard_readouts_expiry",
+            "expires_at",
+            postgresql_where=text("expires_at IS NOT NULL"),
+        ),
+    )
+
+
+class DashboardShare(_Scoped, Base):
+    """A tokenised share link to a published dashboard. Only ``token_hash`` (HMAC-SHA256
+    under the server pepper) is stored, as for embeds; ``passcode_hash`` is
+    ``scrypt$14$8$1$<salt>$<hash>``. Bumping ``session_version`` ends every session of the
+    link. The gateway role reads only the lookup columns (0018)."""
+
+    __tablename__ = "dashboard_shares"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(80), unique=True)
+    label: Mapped[str | None] = mapped_column(String(80))
+    display: Mapped[str] = mapped_column(String(16))
+    passcode_hash: Mapped[str | None] = mapped_column(String(200))
+    session_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    allowed_inputs: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), default=list, server_default=text("'{}'::text[]")
+    )
+    views: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    last_viewed_at: Mapped[datetime | None] = mapped_column()
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column()
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    expires_at: Mapped[datetime] = mapped_column()
+    revoked_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint("session_version >= 1", name="session_version"),
+        CheckConstraint(
+            "allowed_inputs <@ ARRAY['whatif','actuals']::text[]", name="allowed_inputs"
+        ),
+        Index("ix_dashboard_shares_dashboard", "tenant_id", "project_id", "dashboard_id"),
+    )
+
+
+class DashboardRefitRequest(_Scoped, Base):
+    """An actuals upload's request that the analyst refits the model with those numbers
+    (:class:`mapi_spec.dashboards.DashboardRefitRequest`). At most one ``open`` request per
+    dashboard (a newer one supersedes it); approval records the dataset version it ingested
+    and the workflow run it started. Decided, never deleted by the request path."""
+
+    __tablename__ = "dashboard_refit_requests"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"))
+    readout_seq: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default="open")
+    requested_by_kind: Mapped[str] = mapped_column(String(8))
+    requested_by: Mapped[str] = mapped_column(String(128))
+    note: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    decided_by: Mapped[str | None] = mapped_column(String(128))
+    decided_at: Mapped[datetime | None] = mapped_column()
+    workflow_run_id: Mapped[str | None] = mapped_column(String(64))
+    dataset_version_id: Mapped[str | None] = mapped_column(String(128))
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    __table_args__ = (
+        _scope_fk(),
+        ForeignKeyConstraint(
+            ["dashboard_id", "readout_seq"],
+            ["dashboard_readouts.dashboard_id", "dashboard_readouts.seq"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "status in ('open','approved','rejected','superseded','failed')", name="status"
+        ),
+        CheckConstraint(
+            "requested_by_kind in ('member','client','share')", name="requested_by_kind"
+        ),
+        Index("ix_dashboard_refit_requests_dashboard", "dashboard_id", "created_at"),
+        Index(
+            "uq_dashboard_refit_requests_open",
+            "dashboard_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
     )
