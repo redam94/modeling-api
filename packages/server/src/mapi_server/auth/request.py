@@ -12,7 +12,10 @@
 3. resolves the tenant/project (:func:`mapi_spec.tenancy.resolve_project_scope`) and the
    caller's roles from memberships *now* (a token acts as its owner, narrowed by scopes); a
    tenant or project the caller cannot see is ``NOT_FOUND``;
-4. checks the route's permission with :meth:`mapi_spec.tenancy.AuthContext.require`
+4. lets a ``client`` (v0.16) reach only :data:`mapi_spec.api.CLIENT_OPERATIONS` (``404``
+   otherwise: a client's role in the project, or every membership of a caller who is a
+   client only, for signed-in and tenant routes);
+5. checks the route's permission with :meth:`mapi_spec.tenancy.AuthContext.require`
    (plus unconditional secondary checks), then the request-rate limits at token, tenant and
    global level (``RATE_LIMITED`` with ``Retry-After``).
 
@@ -33,7 +36,13 @@ from enum import StrEnum
 from typing import Any, Final
 
 from fastapi import Request
-from mapi_spec.api import ROUTE_ACCESS, TOKEN_TENANT_ROUTES, RouteAccess, RouteScope
+from mapi_spec.api import (
+    CLIENT_OPERATIONS,
+    ROUTE_ACCESS,
+    TOKEN_TENANT_ROUTES,
+    RouteAccess,
+    RouteScope,
+)
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, make_audit_event
 from mapi_spec.auth import CookieSpec
 from mapi_spec.errors import ErrorCode, MapiError
@@ -98,6 +107,7 @@ __all__ = [
     "RequestAuth",
     "access_for",
     "authenticate",
+    "client_only",
     "csrf_cookie",
     "session_cookie",
     "still_authorized",
@@ -471,6 +481,26 @@ def held_capabilities(
     )
 
 
+class _ClientDenied(NotFoundError):
+    """A ``client`` asked for an operation outside :data:`CLIENT_OPERATIONS` (``404``, as for
+    a resource they cannot see; audited like a refusal for the operations of
+    :data:`_DENIED_AUDIT`)."""
+
+
+def client_only(memberships: Sequence[Membership], tenant_id: str | None = None) -> bool:
+    """Is every grant of the caller (in ``tenant_id``, when given) the ``client`` role? A
+    caller without grants is not a client (the permission checks refuse them anyway)."""
+    roles = [mm.role for mm in memberships if tenant_id is None or mm.tenant_id == tenant_id]
+    return bool(roles) and all(r is ProjectRole.CLIENT for r in roles)
+
+
+def _client_gate(auth: RequestAuth, role: ProjectRole | None, what: str, ident: str) -> None:
+    """v0.16: the second, fail-closed gate after :meth:`AuthContext.allows`. A client reaches
+    only :data:`CLIENT_OPERATIONS`; anything else answers as if it did not exist."""
+    if role is ProjectRole.CLIENT and auth.operation_id not in CLIENT_OPERATIONS:
+        raise _ClientDenied(what, ident)
+
+
 def _local_memberships(ctx: ServerContext, at: datetime) -> list[Membership]:
     return [
         Membership(
@@ -530,6 +560,8 @@ async def _resolve(
         member = any(mm.tenant_id == tenant_id for mm in memberships)
         if tenant is None or not (member or who.operator):
             raise NotFoundError("tenant", tenant_id)
+        if client_only(memberships, tenant_id):
+            _client_gate(auth, ProjectRole.CLIENT, "tenant", tenant_id)
         auth.tenant_id = tenant.id
         auth.context = AuthContext(
             **common,
@@ -561,6 +593,7 @@ async def _resolve(
         )
         if tenant is None or project is None or not (role is not None or operator_may):
             raise NotFoundError("project", str(selector))
+        _client_gate(auth, role, "project", str(selector))
         auth.tenant_id = tenant.id
         auth.scope = Scope(tenant.id, project.id)
         auth.context = AuthContext(
@@ -574,6 +607,8 @@ async def _resolve(
             trust_tier=TrustTier(tenant.trust_tier),
         )
     else:  # AUTHENTICATED, PLATFORM
+        if client_only(memberships):
+            _client_gate(auth, ProjectRole.CLIENT, "route", auth.operation_id)
         auth.context = AuthContext(**common)
     if access.resource is not None and access.action is not None:
         named = request.path_params.get(access.name_param) if access.name_param else None
@@ -637,7 +672,9 @@ async def authenticate(request: Request) -> RequestAuth:
         raise failure.error from None
     except MapiError as exc:
         denied = _DENIED_AUDIT.get(auth.operation_id)
-        if denied is not None and exc.code is ErrorCode.FORBIDDEN:
+        if denied is not None and (
+            exc.code is ErrorCode.FORBIDDEN or isinstance(exc, _ClientDenied)
+        ):
             action, resource = denied
             await write_audit(
                 ctx.db, [auth.audit(ctx, action, resource, AuditOutcome.DENIED, code=exc.code)]

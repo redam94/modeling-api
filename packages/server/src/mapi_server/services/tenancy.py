@@ -14,7 +14,13 @@ from collections.abc import Sequence
 
 from mapi_spec.api import MembershipCreate, new_id
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.tenancy import DEFAULT_RESIDENCY, Capability, PrincipalKind, ProjectRole
+from mapi_spec.tenancy import (
+    DEFAULT_RESIDENCY,
+    Capability,
+    PrincipalKind,
+    ProjectRole,
+    check_role_scope,
+)
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,7 +178,9 @@ async def add_member(
     body: MembershipCreate,
     created_by: str | None,
 ) -> m.Membership:
-    """Grant ``body.role`` (409 if the principal already has a grant at this scope)."""
+    """Grant ``body.role`` (409 if the principal already has a grant at this scope). A
+    ``client`` grant names a project (``INVALID_ROLE_SCOPE`` on the tenant, v0.16)."""
+    check_role_scope(body.role, project_id)
     principal_id, kind, email, name = await _principal(system, body)
     existing = await _find(session, tenant_id, project_id, principal_id)
     if existing is not None:
@@ -239,7 +247,10 @@ async def change_role(
     role: ProjectRole | None,
     capabilities: list[Capability] | None = None,
 ) -> m.Membership:
-    """Change a member's role and/or (M3.5) capabilities (``reviewer``)."""
+    """Change a member's role and/or (M3.5) capabilities (``reviewer``). A tenant-wide grant
+    cannot become ``client`` (``INVALID_ROLE_SCOPE``, v0.16)."""
+    if role is not None:
+        check_role_scope(role, project_id)
     row = await _find(session, tenant_id, project_id, principal_id)
     if row is None:
         raise NotFoundError("member", principal_id)

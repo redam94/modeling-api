@@ -600,6 +600,55 @@ class Settings(BaseSettings):
         900, ge=60, le=86400, description="Lifetime of the PNG fallback's signed URL"
     )
 
+    # ------------------------------------------------------------------- client dashboards (v0.16)
+    share_ip_rate_per_minute: int = Field(
+        30,
+        ge=1,
+        description="Public share-link requests per minute and client address, valid or not "
+        "(counted before the token is looked at)",
+    )
+    share_rate_per_minute: int = Field(
+        120, ge=1, description="Public requests per minute and share link (429 beyond)"
+    )
+    share_run_rate_per_hour: int = Field(
+        6, ge=0, description="Exact results (score runs) a share link may start per hour"
+    )
+    client_run_rate_per_hour: int = Field(
+        12,
+        ge=0,
+        description="Exact results (score runs) a client user may start per hour and dashboard",
+    )
+    share_session_ttl_s: int = Field(
+        1800,
+        ge=60,
+        le=86400,
+        description="Lifetime of a share session (the page refreshes it while the link is valid)",
+    )
+    share_passcode_max_failures: int = Field(
+        5, ge=1, le=100, description="Wrong passcodes before a share link is locked"
+    )
+    share_lockout_s: int = Field(
+        900, ge=60, le=86400, description="How long a share link stays locked after that"
+    )
+    dashboard_grid_max_bytes: int = Field(
+        4_000_000,
+        ge=1024,
+        le=64_000_000,
+        description="Largest response grid (ui/grids/response_curves.json) a dashboard reads",
+    )
+    dashboard_cache_ttl_s: int = Field(
+        86400,
+        ge=0,
+        description="How long a ready exact readout answers the same scenario or actuals again "
+        "instead of a new run",
+    )
+    dashboard_private_ttl_days: int = Field(
+        30, ge=1, le=3650, description="Days private readouts (saved scenarios) are kept"
+    )
+    dashboard_refresh_debounce_s: int = Field(
+        60, ge=0, description="Least time between two refresh readouts of one dashboard"
+    )
+
     # ------------------------------------------------------------------- observability
     log_json: bool = Field(
         True, description="Emit JSON logs (structlog); off gives a human console renderer"

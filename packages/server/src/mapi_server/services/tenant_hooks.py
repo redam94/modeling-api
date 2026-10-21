@@ -7,6 +7,8 @@ registered on :class:`~mapi_server.services.trust.TrustServices`:
 * :class:`EmbedRevoker` revokes every embed link of the tenant when the deletion starts, so
   no public view resolves while the purge runs (the public route also refuses tenants that
   are not active; this makes the links dead for good, even if a deletion is retried).
+* :class:`~mapi_server.services.dashboards.shares.DashboardShareRevoker` (v0.16) revokes every
+  dashboard share link of the tenant when the deletion starts, for the same reason.
 * :class:`WebhookRevoker` disables the tenant's webhooks when the deletion starts: the relay
   sends nothing more for a tenant that is going away. Pending deliveries end ``failed``
   when the relay next claims them.
@@ -17,7 +19,7 @@ registered on :class:`~mapi_server.services.trust.TrustServices`:
   sender as every delivery, with a few quick retries. The outbox cannot carry this event: its
   rows belong to the tenant and are purged.
 
-:func:`install_tenant_hooks` registers all three on a server context.
+:func:`install_tenant_hooks` registers them on a server context.
 """
 
 from __future__ import annotations
@@ -43,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.observability import metrics as obs_metrics
+from mapi_server.services.dashboards.shares import DashboardShareRevoker
 from mapi_server.services.sharing import clear_embed_cache
 from mapi_server.services.trust import trust_services
 from mapi_server.services.webhooks.crypto import SealError, SecretBox
@@ -261,10 +264,11 @@ class WebhookDeletionNotifier:
 
 
 def install_tenant_hooks(ctx: ServerContext) -> None:
-    """Register the embed and webhook revokers and the deletion notifier on ``ctx`` (once)."""
+    """Register the embed, share-link and webhook revokers and the deletion notifier on
+    ``ctx`` (once)."""
     trust = trust_services(ctx)
     names = set(trust.revoker_names())
-    for revoker in (EmbedRevoker(), WebhookRevoker()):
+    for revoker in (EmbedRevoker(), DashboardShareRevoker(), WebhookRevoker()):
         if revoker.name not in names:
             trust.add_revoker(revoker)
     if not isinstance(trust.notifier, WebhookDeletionNotifier):

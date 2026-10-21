@@ -1,0 +1,453 @@
+"""Who may see which dashboard, and what they see of it (v0.16, plan D4-D5).
+
+One function decides visibility, :func:`load_dashboard`:
+
+* viewers and up see every dashboard of the project (a ``draft`` one needs the editor
+  role: drafts are work in progress);
+* a ``client`` sees a dashboard only when it is ``published`` and a ``dashboard_grants`` row
+  names them; anything else answers ``404`` (as for a dashboard that does not exist).
+
+:func:`member_context` turns a signed-in caller and a dashboard into the
+:class:`DashboardContext` the readout, input and tool functions act on; share-link
+sessions build theirs in :mod:`mapi_server.services.dashboards.shares`. The DTO builders
+here (:func:`dashboard_dto`, :func:`client_dashboard`, :func:`readout_dto`, ...) are the
+only way rows become responses, so the analyst, client and share views cannot drift.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Literal
+
+from mapi_spec.dashboard_tools import PrincipalKind
+from mapi_spec.dashboards import (
+    ClientDashboard,
+    Dashboard,
+    DashboardGrant,
+    DashboardRevision,
+    DashboardShare,
+    DashboardSpec,
+    DashboardSummary,
+    EffectiveInputs,
+    Readout,
+    ReadoutHeader,
+    ReadoutSnapshot,
+    TabKey,
+)
+from mapi_spec.errors import ErrorCode, MapiError, Problem
+from mapi_spec.tenancy import Action, ProjectRole, ResourceKind
+from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from mapi_server.auth.request import RequestAuth
+from mapi_server.context import ServerContext
+from mapi_server.db import models as m
+from mapi_server.errors import NotFoundError, unauthenticated
+from mapi_server.services.runs import now
+
+__all__ = [
+    "ActualsMode",
+    "DashboardContext",
+    "actuals_mode",
+    "caller_is_client",
+    "client_dashboard",
+    "dashboard_dto",
+    "effective_inputs",
+    "grant_dto",
+    "latest_readout",
+    "load_dashboard",
+    "load_revision",
+    "member_context",
+    "readout_dto",
+    "readout_header",
+    "refit_statuses",
+    "revision_dto",
+    "revision_spec",
+    "share_dto",
+    "share_status",
+    "summary_dto",
+]
+
+ActualsMode = Literal["conditioned", "compared"]
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardContext:
+    """One caller acting on one published dashboard (plan I-3).
+
+    ``principal_id`` is the user id (members, clients) or the share id (share links);
+    ``inputs`` are what the caller may use (the published spec, narrowed by a share link);
+    ``is_analyst``: a viewer-or-higher member (sees every readout, private ones included)."""
+
+    tenant_id: str
+    project_id: str
+    dashboard_id: str
+    revision_id: str
+    principal_kind: PrincipalKind
+    principal_id: str
+    inputs: EffectiveInputs
+    is_analyst: bool
+
+
+# ================================================================================== callers
+
+
+def caller_is_client(auth: RequestAuth | None) -> bool:
+    """Is the caller's effective role in the project ``client`` (the rank-0 role)?"""
+    ctx = auth.context if auth is not None else None
+    return ctx is not None and ctx.role is ProjectRole.CLIENT
+
+
+def _is_analyst(auth: RequestAuth | None) -> bool:
+    ctx = auth.context if auth is not None else None
+    if ctx is None:
+        return False
+    return ctx.operator or (ctx.role is not None and ctx.role >= ProjectRole.VIEWER)
+
+
+# ================================================================================== loading
+
+
+async def load_dashboard(
+    session: AsyncSession,
+    ctx: ServerContext,
+    dashboard_id: str,
+    *,
+    for_update: bool = False,
+) -> m.Dashboard:
+    """The dashboard if the caller may see it, else ``404`` (plan D5: the one decision).
+
+    A client needs a published dashboard granted to them; a draft needs the editor role."""
+    sc = ctx.scope
+    stmt = select(m.Dashboard).where(
+        m.Dashboard.id == dashboard_id,
+        m.Dashboard.tenant_id == sc.tenant_id,
+        m.Dashboard.project_id == sc.project_id,
+    )
+    if for_update:
+        stmt = stmt.with_for_update()
+    row = (await session.execute(stmt)).scalar_one_or_none()
+    if row is None:
+        raise NotFoundError("dashboard", dashboard_id)
+    auth = ctx.request
+    if caller_is_client(auth):
+        assert auth is not None
+        if row.status != "published" or row.published_revision_id is None:
+            raise NotFoundError("dashboard", dashboard_id)
+        granted = await session.get(m.DashboardGrant, (row.id, auth.user_id or ""))
+        if granted is None:
+            raise NotFoundError("dashboard", dashboard_id)
+    elif row.status == "draft" and not (
+        auth is None or auth.allows(Action.UPDATE, ResourceKind.DASHBOARD)
+    ):
+        raise NotFoundError("dashboard", dashboard_id)
+    return row
+
+
+async def load_revision(session: AsyncSession, row: m.Dashboard) -> m.DashboardRevision | None:
+    """The published revision of a dashboard (``None`` while it was never published)."""
+    if row.published_revision_id is None:
+        return None
+    rev = await session.get(m.DashboardRevision, row.published_revision_id)
+    if rev is None or rev.dashboard_id != row.id:  # pragma: no cover - written together
+        return None
+    return rev
+
+
+def revision_spec(rev: m.DashboardRevision) -> DashboardSpec:
+    return DashboardSpec.model_validate(rev.spec)
+
+
+async def actuals_mode(
+    session: AsyncSession, ctx: ServerContext, model_version_id: str
+) -> ActualsMode:
+    """``conditioned`` when the pinned version's plugin build conditions forecasts on actuals
+    (statsmodels), else ``compared`` (every MMM: the model's prediction is compared with
+    the numbers; the model does not change)."""
+    from mapi_server.services.endpoints import live_capabilities_snapshot
+
+    mv = await session.get(m.ModelVersion, model_version_id)
+    if mv is None or mv.score_meta is None:
+        return "compared"
+    try:
+        snapshot = await live_capabilities_snapshot(session, ctx.catalogs, mv)
+    except (MapiError, ValidationError):
+        return "compared"
+    return "conditioned" if snapshot.conditions_on_actuals else "compared"
+
+
+def effective_inputs(
+    spec: DashboardSpec,
+    mode: ActualsMode | None,
+    allowed: Iterable[str] | None = None,
+) -> EffectiveInputs:
+    """The published spec's inputs, narrowed by a share link's ``allowed_inputs`` (``None``:
+    a signed-in caller, no narrowing)."""
+    narrow = None if allowed is None else set(allowed)
+    whatif = spec.whatif.enabled and (narrow is None or "whatif" in narrow)
+    actuals = spec.actuals.enabled and (narrow is None or "actuals" in narrow)
+    return EffectiveInputs(
+        whatif=whatif,
+        exact=whatif and spec.whatif.exact,
+        actuals=actuals,
+        actuals_mode=(mode or "compared") if actuals else None,
+        refit_requests=actuals and spec.actuals.allow_refit_requests,
+    )
+
+
+async def member_context(
+    ctx: ServerContext,
+    auth: RequestAuth,
+    dashboard_id: str,
+    *,
+    session: AsyncSession | None = None,
+) -> DashboardContext:
+    """The :class:`DashboardContext` of a signed-in caller (member or client) on a published
+    dashboard: ``404`` when they may not see it, ``DASHBOARD_NOT_PUBLISHED`` (409) for an
+    analyst on a dashboard that has no published revision yet."""
+    rctx = ctx if ctx.request is auth else ctx.for_request(auth)
+    if session is None:
+        if auth.tenant_id is None:
+            raise unauthenticated()
+        async with ctx.db.tenant_session(auth.tenant_id) as own:
+            return await member_context(rctx, auth, dashboard_id, session=own)
+    row = await load_dashboard(session, rctx, dashboard_id)
+    rev = await load_revision(session, row)
+    if rev is None:
+        raise MapiError(
+            "the dashboard is not published yet: publish it first",
+            code=ErrorCode.DASHBOARD_NOT_PUBLISHED,
+        )
+    spec = revision_spec(rev)
+    mode = await actuals_mode(session, rctx, rev.model_version_id) if spec.actuals.enabled else None
+    client = caller_is_client(auth)
+    return DashboardContext(
+        tenant_id=row.tenant_id,
+        project_id=row.project_id,
+        dashboard_id=row.id,
+        revision_id=rev.id,
+        principal_kind="client" if client else "member",
+        principal_id=auth.user_id or auth.principal_id or "",
+        inputs=effective_inputs(spec, mode),
+        is_analyst=not client and _is_analyst(auth),
+    )
+
+
+# ================================================================================== readouts
+
+
+def _period(row: m.DashboardReadout) -> tuple[date, date] | None:
+    if row.period_start is None or row.period_end is None:
+        return None
+    return (row.period_start, row.period_end)
+
+
+def readout_header(row: m.DashboardReadout, refit_status: str | None = None) -> ReadoutHeader:
+    return ReadoutHeader.model_validate(
+        {
+            "seq": row.seq,
+            "kind": row.kind,
+            "trigger": row.trigger,
+            "visibility": row.visibility,
+            "status": row.status,
+            "title": row.title,
+            "period": _period(row),
+            "model_version_id": row.model_version_id,
+            "model_ref": row.model_ref,
+            "endpoint_revision": row.endpoint_revision,
+            "created_at": row.created_at,
+            "ready_at": row.ready_at,
+            "refit_status": refit_status,
+        }
+    )
+
+
+def readout_dto(row: m.DashboardReadout, refit_status: str | None = None) -> Readout:
+    """A readout with its snapshot (only once ``ready``) or its problem (``failed``)."""
+    head = readout_header(row, refit_status)
+    snapshot = (
+        ReadoutSnapshot.model_validate(row.snapshot)
+        if row.status == "ready" and row.snapshot is not None
+        else None
+    )
+    problem = Problem.model_validate(row.problem) if row.problem else None
+    return Readout(**head.model_dump(), snapshot=snapshot, problem=problem)
+
+
+async def refit_statuses(
+    session: AsyncSession, dashboard_id: str, seqs: Sequence[int]
+) -> dict[int, str]:
+    """The refit-request status of each of these readouts that has one (newest request)."""
+    if not seqs:
+        return {}
+    rows = await session.execute(
+        select(m.DashboardRefitRequest.readout_seq, m.DashboardRefitRequest.status)
+        .where(
+            m.DashboardRefitRequest.dashboard_id == dashboard_id,
+            m.DashboardRefitRequest.readout_seq.in_(list(seqs)),
+        )
+        .order_by(m.DashboardRefitRequest.created_at)
+    )
+    return {int(seq): str(status) for seq, status in rows}
+
+
+async def latest_readout(
+    session: AsyncSession, dashboard_id: str, *, published_only: bool
+) -> m.DashboardReadout | None:
+    """The newest readout: for clients and share links the newest ready, published one (the
+    history they see); for analysts the newest of any state."""
+    stmt = select(m.DashboardReadout).where(m.DashboardReadout.dashboard_id == dashboard_id)
+    if published_only:
+        stmt = stmt.where(
+            m.DashboardReadout.visibility == "published", m.DashboardReadout.status == "ready"
+        )
+    return (
+        await session.execute(stmt.order_by(m.DashboardReadout.seq.desc()).limit(1))
+    ).scalar_one_or_none()
+
+
+# ================================================================================ dashboards
+
+
+def revision_dto(rev: m.DashboardRevision) -> DashboardRevision:
+    return DashboardRevision(
+        id=rev.id,
+        seq=rev.seq,
+        spec=revision_spec(rev),
+        spec_hash=rev.spec_hash,
+        model_version_id=rev.model_version_id,
+        model_ref=rev.model_ref,
+        endpoint_alias=rev.endpoint_alias,
+        endpoint_revision=rev.endpoint_revision,
+        created_by=rev.created_by,
+        created_at=rev.created_at,
+    )
+
+
+async def dashboard_dto(session: AsyncSession, row: m.Dashboard) -> Dashboard:
+    """The analyst's view (viewers and up)."""
+    rev = await load_revision(session, row)
+    latest = await latest_readout(session, row.id, published_only=False)
+    head = None
+    if latest is not None:
+        statuses = await refit_statuses(session, row.id, [latest.seq])
+        head = readout_header(latest, statuses.get(latest.seq))
+    return Dashboard(
+        id=row.id,
+        name=row.name,
+        status=row.status,
+        draft_spec=DashboardSpec.model_validate(row.draft_spec),
+        draft_etag=row.draft_etag,
+        published_revision=revision_dto(rev) if rev is not None else None,
+        run_as=row.run_as,
+        live_inputs=row.live_inputs,
+        problem=row.problem,
+        created_by=row.created_by,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        latest_readout=head,
+    )
+
+
+def summary_dto(
+    row: m.Dashboard, spec: DashboardSpec, latest: ReadoutHeader | None
+) -> DashboardSummary:
+    """A list row: ``spec`` is the published one for clients, the draft for analysts."""
+    return DashboardSummary(
+        id=row.id,
+        name=row.name,
+        title=spec.title,
+        client_name=spec.client_name,
+        status=row.status,
+        period_label=spec.period_label,
+        live_inputs=row.live_inputs,
+        latest_readout=latest,
+        updated_at=row.updated_at,
+    )
+
+
+def _tabs(spec: DashboardSpec, inputs: EffectiveInputs) -> list[TabKey]:
+    """The tabs the viewer can use: no scenarios without what-ifs, no upload without actuals."""
+    hidden: set[TabKey] = set()
+    if not inputs.whatif:
+        hidden.add("scenarios")
+    if not inputs.actuals:
+        hidden.add("update")
+    return [t for t in spec.tabs if t not in hidden]
+
+
+async def client_dashboard(
+    session: AsyncSession,
+    row: m.Dashboard,
+    rev: m.DashboardRevision,
+    inputs: EffectiveInputs,
+    *,
+    ends_at: datetime | None = None,
+) -> ClientDashboard:
+    """What a client user or a share link sees (the published revision only, no ids of
+    people). ``latest_readout`` is the newest ready, published readout."""
+    spec = revision_spec(rev)
+    latest = await latest_readout(session, row.id, published_only=True)
+    readout = None
+    if latest is not None:
+        statuses = await refit_statuses(session, row.id, [latest.seq])
+        readout = readout_dto(latest, statuses.get(latest.seq))
+    return ClientDashboard(
+        id=row.id,
+        title=spec.title,
+        client_name=spec.client_name,
+        summary=spec.summary,
+        note=spec.note,
+        period_label=spec.period_label,
+        kpi=spec.kpi,
+        channels=list(spec.channels),
+        tiles=list(spec.tiles),
+        tabs=_tabs(spec, inputs),
+        inputs=inputs,
+        live_inputs=row.live_inputs,
+        show_technical=spec.show_technical,
+        latest_readout=readout,
+        ends_at=ends_at,
+    )
+
+
+# ============================================================================= grants, shares
+
+
+def grant_dto(row: m.DashboardGrant, member: m.Membership | None) -> DashboardGrant:
+    return DashboardGrant(
+        user_id=row.user_id,
+        email=member.email if member is not None else None,
+        display_name=member.display_name if member is not None else None,
+        granted_by=row.granted_by,
+        created_at=row.created_at,
+    )
+
+
+def share_status(row: m.DashboardShare, at: datetime) -> Literal["active", "expired", "revoked"]:
+    if row.revoked_at is not None:
+        return "revoked"
+    return "expired" if row.expires_at <= at else "active"
+
+
+def share_dto(row: m.DashboardShare, at: datetime | None = None) -> DashboardShare:
+    ts = at or now()
+    locked = row.locked_until if row.locked_until is not None and row.locked_until > ts else None
+    return DashboardShare(
+        id=row.id,
+        label=row.label,
+        display=row.display,
+        status=share_status(row, ts),
+        has_passcode=row.passcode_hash is not None,
+        allowed_inputs=sorted(row.allowed_inputs or []),
+        views=row.views,
+        last_viewed_at=row.last_viewed_at,
+        locked_until=locked,
+        expires_at=row.expires_at,
+        revoked_at=row.revoked_at,
+        created_by=row.created_by,
+        created_at=row.created_at,
+    )
