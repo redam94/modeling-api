@@ -1359,8 +1359,8 @@ Answers set `Cache-Control: private, no-store` and `Referrer-Policy: no-referrer
 | `GET /v1/shared/actuals/template` | Public: the actuals template (the link must allow uploads) | — | `ActualsTemplate` | 200 | `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `DASHBOARD_INPUT_DISABLED` |
 | `POST /v1/shared/actuals` | Public: send new actuals (the readout waits for the analyst's review) | `ActualsSubmit` | `ReadoutHeader` | 202 | `SCHEMA_INVALID`, `UNAUTHENTICATED`, `LINK_EXPIRED`, `RATE_LIMITED`, `ACTUALS_INVALID`, `ACTUALS_NOT_SUPPORTED`, `PAYLOAD_TOO_LARGE`, `DASHBOARD_INPUT_DISABLED`, `DASHBOARD_LIVE_PAUSED`, `DASHBOARD_RUN_LIMIT`, `QUOTA_EXCEEDED`, `IDEMPOTENCY_CONFLICT` |
 
-Rate limits: 30 requests each minute from one client address, valid or not, counted before
-the token check (`MAPI_SHARE_IP_RATE_PER_MINUTE`), and 120 each minute for each link
+Rate limits: 120 requests each minute from one client address, valid or not, counted before
+the token check (`MAPI_SHARE_IP_RATE_PER_MINUTE`), and 300 each minute for each link
 (`MAPI_SHARE_RATE_PER_MINUTE`). After 5 wrong passcodes, the link answers `429 SHARE_LOCKED`
 with `Retry-After` for 15 minutes. The grid, what-if and scenario routes need a link that
 allows `whatif`. The actuals routes need `actuals`. Else the answer is

@@ -7,7 +7,7 @@ import { MOCK_SESSION_KEY, mockCsrfToken, PERSONAS } from "@/mocks/tenancy";
 import { useAuth } from "@/stores/auth";
 
 import { effectiveInputs, memberClient, openShareSession, problemOf, refreshShareSession, shareClient, ShareApiError, toClientDashboard, visibleTabs } from "./client";
-import { isFullReadout, SHARE_SESSION_RE, type Dashboard, type DashboardSpec, type Readout, type ShareSessionHandle } from "./types";
+import { isFullReadout, READOUT_POLL_MAX_MS, READOUT_POLL_MS, readoutPollMs, SHARE_SESSION_RE, type Dashboard, type DashboardSpec, type Readout, type ShareSessionHandle } from "./types";
 
 const server = setupServer(...createHandlers());
 const seen: Request[] = [];
@@ -243,5 +243,18 @@ describe("pure helpers", () => {
     expect(problemOf(new ShareApiError(409, { type: "x", title: "t", status: 409, code: "DASHBOARD_INPUT_DISABLED" }))).toMatchObject({ status: 409, code: "DASHBOARD_INPUT_DISABLED" });
     expect(problemOf(new Error("x"))).toBeNull();
     expect(problemOf("nope")).toBeNull();
+  });
+});
+
+describe("readoutPollMs", () => {
+  it("backs off from 2 s to 15 s so a long run stays well inside the share link's address budget", () => {
+    expect(readoutPollMs(0)).toBe(READOUT_POLL_MS);
+    expect(readoutPollMs(1)).toBe(3_000);
+    expect(readoutPollMs(50)).toBe(READOUT_POLL_MAX_MS);
+    // the first minute of a pending readout: far below the 120 requests per address
+    let t = 0;
+    let polls = 0;
+    while (t < 60_000) t += readoutPollMs(polls++);
+    expect(polls).toBeLessThanOrEqual(10);
   });
 });

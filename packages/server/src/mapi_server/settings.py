@@ -602,13 +602,14 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------------------- client dashboards (v0.16)
     share_ip_rate_per_minute: int = Field(
-        30,
+        120,
         ge=1,
         description="Public share-link requests per minute and client address, valid or not "
-        "(counted before the token is looked at)",
+        "(counted before the token is looked at). The share page itself makes a few requests a "
+        "minute per viewer, and viewers behind one office address share this budget",
     )
     share_rate_per_minute: int = Field(
-        120, ge=1, description="Public requests per minute and share link (429 beyond)"
+        300, ge=1, description="Public requests per minute and share link (429 beyond)"
     )
     share_run_rate_per_hour: int = Field(
         6, ge=0, description="Exact results (score runs) a share link may start per hour"

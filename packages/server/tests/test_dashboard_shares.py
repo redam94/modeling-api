@@ -306,6 +306,14 @@ async def test_input_bodies_are_capped_before_they_are_parsed(
     assert r.status_code == 401
 
 
+def test_the_address_budget_leaves_room_for_the_share_page_itself() -> None:
+    """The page polls a pending readout (with a backoff) besides its own reads: several
+    viewers behind one office address must fit the per-address budget."""
+    fields = Settings.model_fields
+    assert fields["share_ip_rate_per_minute"].default >= 120
+    assert fields["share_rate_per_minute"].default >= fields["share_ip_rate_per_minute"].default
+
+
 async def test_cors_allows_the_web_origin_without_credentials(
     client: httpx.AsyncClient, kit: dict[str, Any]
 ) -> None:

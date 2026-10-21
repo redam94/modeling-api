@@ -151,8 +151,8 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MAPI_SHARE_IP_RATE_PER_MINUTE` | `30` | The public share-link requests in each minute from one client address, valid or not valid. The server counts the request before it looks at the token. This makes token guesses slower |
-| `MAPI_SHARE_RATE_PER_MINUTE` | `120` | The public requests in each minute for one share link. More requests get `429 RATE_LIMITED` |
+| `MAPI_SHARE_IP_RATE_PER_MINUTE` | `120` | The public share-link requests in each minute from one client address, valid or not valid. The server counts the request before it looks at the token. This makes token guesses slower |
+| `MAPI_SHARE_RATE_PER_MINUTE` | `300` | The public requests in each minute for one share link. More requests get `429 RATE_LIMITED` |
 | `MAPI_SHARE_RUN_RATE_PER_HOUR` | `6` | The exact results (score runs) that one share link can start in each hour. `0` stops all exact results from share links |
 | `MAPI_CLIENT_RUN_RATE_PER_HOUR` | `12` | The exact results (score runs) that one client user can start in each hour on one dashboard |
 | `MAPI_SHARE_SESSION_TTL_S` | `1800` | The life of a share session (`mps_…`). The share page gets a new session before this time while the link is valid |

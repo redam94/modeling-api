@@ -119,6 +119,18 @@ export const MAX_READOUT_PAGE = 50;
 export const MAX_CHANNEL_HISTORY = 26;
 /** How long an exact scenario may take ("This can take up to two minutes."). */
 export const READOUT_POLL_MS = 2_000;
+/** The slowest poll of a pending readout (the backoff stops growing here). */
+export const READOUT_POLL_MAX_MS = 15_000;
+
+/**
+ * The wait before the next poll of a pending readout: {@link READOUT_POLL_MS}, then 1.5×
+ * longer each time up to {@link READOUT_POLL_MAX_MS}. A share link's requests count against
+ * a per-address budget that viewers in one office share, so a long run must not poll at a
+ * steady 30 requests a minute.
+ */
+export function readoutPollMs(polls: number): number {
+  return Math.min(READOUT_POLL_MAX_MS, Math.round(READOUT_POLL_MS * 1.5 ** Math.max(0, polls)));
+}
 
 /** The redacted form of a share token shown in lists (`share_display`). */
 export function shareDisplay(token: string): string {

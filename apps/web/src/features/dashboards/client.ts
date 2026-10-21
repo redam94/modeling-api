@@ -22,7 +22,7 @@ import { dk, memberCacheKey, shareCacheKey } from "./keys";
 import {
   isAnalystDashboard,
   isFullReadout,
-  READOUT_POLL_MS,
+  readoutPollMs,
   SHARE_SESSION_HEADER,
   TERMINAL_READOUT,
   type ActualsSubmit,
@@ -370,13 +370,13 @@ export function useReadoutList(client: DashboardClient, q: ReadoutQuery = {}, op
   return useQuery({ queryKey: dk.viewReadouts(client.cacheKey, q), queryFn: () => client.readoutPage(q), enabled: opts.enabled ?? true });
 }
 
-/** One readout, polled every {@link READOUT_POLL_MS} until it is ready or failed. */
+/** One readout, polled with a backoff ({@link readoutPollMs}) until it is ready or failed. */
 export function useReadout(client: DashboardClient, seq: number | null) {
   return useQuery({
     queryKey: dk.viewReadout(client.cacheKey, seq ?? 0),
     queryFn: () => client.readout(seq ?? 0),
     enabled: seq !== null,
-    refetchInterval: (q) => (q.state.data && TERMINAL_READOUT.has(q.state.data.status) ? false : READOUT_POLL_MS),
+    refetchInterval: (q) => (q.state.data && TERMINAL_READOUT.has(q.state.data.status) ? false : readoutPollMs(q.state.dataUpdateCount - 1)),
   });
 }
 

@@ -79,7 +79,7 @@ expiry and the number of views.
 
 | Risk | Protection |
 |---|---|
-| A guessed token | The token is `mpd_` + 40 random Crockford base32 characters (200 bits). Each client address can make 30 requests in each minute, valid or not (`MAPI_SHARE_IP_RATE_PER_MINUTE`). The server counts the request before it looks at the token |
+| A guessed token | The token is `mpd_` + 40 random Crockford base32 characters (200 bits). Each client address can make 120 requests in each minute, valid or not (`MAPI_SHARE_IP_RATE_PER_MINUTE`). The server counts the request before it looks at the token |
 | The token in logs or in the `Referer` header | The token is in the URL fragment (`#…`). Browsers do not send the fragment to a server. The page removes the token from the address bar at once, and sends it one time, in a POST body. Share pages and answers set `Referrer-Policy: no-referrer` |
 | A stolen session | The session (`mps_…`) is signed by the server and lives 30 minutes (`MAPI_SHARE_SESSION_TTL_S`). The page keeps it in memory only, never in storage or a cookie. The page gets a new session while the link is valid |
 | A revoked or expired link that stays open | Each request looks up the link again. Revocation, expiry and a suspended tenant stop the next request (`410 LINK_EXPIRED`) |
