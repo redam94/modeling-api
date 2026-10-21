@@ -149,7 +149,7 @@ async def _latest(session: AsyncSession, dctx: DashboardContext) -> Readout:
     if row is None:
         raise NotFoundError("readout", "latest")
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
-    return readout_dto(row, statuses.get(row.seq))
+    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
 
 
 def _snap(row: m.DashboardReadout) -> ReadoutSnapshot | None:

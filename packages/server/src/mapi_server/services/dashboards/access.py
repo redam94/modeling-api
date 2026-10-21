@@ -16,10 +16,10 @@ only way rows become responses, so the analyst, client and share views cannot dr
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Final, Literal
 
 from mapi_spec.dashboard_tools import PrincipalKind
 from mapi_spec.dashboards import (
@@ -70,6 +70,7 @@ __all__ = [
     "share_dto",
     "share_status",
     "summary_dto",
+    "viewer_problem",
 ]
 
 ActualsMode = Literal["conditioned", "compared"]
@@ -264,15 +265,37 @@ def readout_header(row: m.DashboardReadout, refit_status: str | None = None) -> 
     )
 
 
-def readout_dto(row: m.DashboardReadout, refit_status: str | None = None) -> Readout:
-    """A readout with its snapshot (only once ``ready``) or its problem (``failed``)."""
+READOUT_FAILED_DETAIL: Final = (
+    "This result could not be worked out. Your analyst can see why and can try again."
+)
+"""The only explanation a client user or a share link gets for a failed readout."""
+
+
+def viewer_problem(stored: Mapping[str, Any]) -> Problem:
+    """A failed readout's problem as a client user or a share link sees it: the code and a
+    fixed title and detail. The run's own detail, ``untrusted_text`` (exception text from the
+    publisher's model code), ``errors`` and ``instance`` stay with the analysts."""
+    try:
+        code = ErrorCode(str(stored.get("code")))
+    except ValueError:
+        code = ErrorCode.INTERNAL_ERROR
+    return Problem.from_code(code, READOUT_FAILED_DETAIL)
+
+
+def readout_dto(
+    row: m.DashboardReadout, refit_status: str | None = None, *, analyst: bool = False
+) -> Readout:
+    """A readout with its snapshot (only once ``ready``) or its problem (``failed``): the full
+    problem for an ``analyst``, else :func:`viewer_problem`."""
     head = readout_header(row, refit_status)
     snapshot = (
         ReadoutSnapshot.model_validate(row.snapshot)
         if row.status == "ready" and row.snapshot is not None
         else None
     )
-    problem = Problem.model_validate(row.problem) if row.problem else None
+    problem = None
+    if row.problem:
+        problem = Problem.model_validate(row.problem) if analyst else viewer_problem(row.problem)
     return Readout(**head.model_dump(), snapshot=snapshot, problem=problem)
 
 

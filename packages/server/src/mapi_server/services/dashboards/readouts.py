@@ -352,7 +352,7 @@ async def get_readout(session: AsyncSession, dctx: DashboardContext, seq: int) -
     """One readout (``404`` when it does not exist or the caller may not see it)."""
     row = await load_visible(session, dctx, seq)
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
-    return readout_dto(row, statuses.get(row.seq))
+    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
 
 
 async def review(

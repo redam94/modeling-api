@@ -112,7 +112,7 @@ async def wait_readout(
         async with ctx.db.tenant_session(dctx.tenant_id) as s:
             row = await readouts.load_visible(s, dctx, seq)
             statuses = await refit_statuses(s, row.dashboard_id, [row.seq])
-            dto = readout_dto(row, statuses.get(row.seq))
+            dto = readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
         if dto.status in ("ready", "failed") or loop.time() >= deadline:
             return dto
         await asyncio.sleep(min(1.0, max(0.05, deadline - loop.time())))

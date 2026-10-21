@@ -27,7 +27,7 @@ from mapi_spec.api import ScoreSummary
 from mapi_spec.dashboards import DashboardSpec, ReadoutSnapshot
 from mapi_spec.run import Actor, RunTrigger
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
@@ -143,6 +143,34 @@ async def test_a_failed_run_fails_its_readout_only_analysts_see(
     assert (await kit["vic"].get(f"{base}/1")).json()["status"] == "failed"
     assert (await kit["cleo"].get(f"{base}/1")).status_code == 404
     assert (await kit["cleo"].get(base)).json()["items"] == []
+
+
+async def test_viewers_get_a_generic_problem_without_the_runs_text(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """A client's own failed readout: the code and a fixed explanation, never the detail or
+    the ``untrusted_text`` the publisher's model code wrote. Analysts keep the full one."""
+    base = f"/v1/dashboards/{kit['dash_id']}"
+    r = await kit["cleo"].post(f"{base}/scenarios", json={"multipliers": {"tv": 0.8}})
+    seq = r.json()["seq"]
+    leak = "Traceback: /srv/models/zq-secret/model.py line 3, host db.internal"
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == kit["dash_id"], m.DashboardReadout.seq == seq)
+            .values(status="failed", snapshot=None, problem={
+                "type": "about:blank", "title": "Run failed", "status": 500,
+                "code": "USER_CODE_ERROR", "detail": "ValueError at /srv/models/zq-secret",
+                "untrusted_text": leak, "instance": "/v1/runs/run_x",
+                "errors": [{"code": "USER_CODE_ERROR", "pointer": "/x", "message": leak}],
+            })
+        )  # fmt: skip
+    mine = (await kit["cleo"].get(f"{base}/readouts/{seq}")).json()
+    assert mine["status"] == "failed" and mine["problem"]["code"] == "USER_CODE_ERROR"
+    assert "zq-secret" not in str(mine) and not mine["problem"].get("untrusted_text")
+    assert not mine["problem"].get("errors") and not mine["problem"].get("instance")
+    full = (await kit["vic"].get(f"{base}/readouts/{seq}")).json()
+    assert full["problem"]["untrusted_text"] == leak
 
 
 async def test_a_paused_owner_fails_the_queued_baseline(
