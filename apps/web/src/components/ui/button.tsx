@@ -5,25 +5,33 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+  // focus-ring (app.css): the ODS focus treatment, a surface-coloured gap and then the ring.
+  "focus-ring inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
-        outline: "border border-input bg-card shadow-xs hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active disabled:bg-brand-300 dark:disabled:opacity-50",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50",
+        // Secondary and outline are one style: a white button with a brand ring.
+        secondary:
+          "bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong",
+        outline:
+          "bg-card text-primary ring-1 ring-primary ring-inset hover:bg-accent disabled:text-hint disabled:ring-border-strong",
+        ghost: "hover:bg-surface-hover hover:text-foreground disabled:opacity-50",
+        link: "text-primary underline-offset-4 hover:text-primary-hover hover:underline disabled:opacity-50",
+        // A text-only primary action ("Edit", "Show all").
+        action: "text-primary hover:bg-accent hover:text-primary-hover disabled:text-hint",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-6",
-        icon: "size-9",
+        default: "h-10 px-5",
+        sm: "h-8 px-4",
+        lg: "h-12 px-6",
+        icon: "size-10",
         "icon-sm": "size-8",
       },
     },
+    compoundVariants: [{ variant: "action", class: "px-2" }],
     defaultVariants: { variant: "default", size: "default" },
   },
 );

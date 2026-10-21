@@ -34,7 +34,7 @@ export function UserMenu() {
         <button
           type="button"
           aria-label={`Account: ${user.name}`}
-          className="relative grid size-8 shrink-0 place-items-center rounded-full bg-primary/14 text-[11px] font-semibold text-primary ring-offset-2 hover:bg-primary/20 focus-visible:outline-2 focus-visible:outline-ring"
+          className="focus-ring relative grid size-8 shrink-0 place-items-center rounded-full bg-accent text-2xs font-semibold text-accent-foreground hover:bg-brand-200 dark:hover:bg-secondary"
         >
           {initials(user.name)}
           {ws.operator ? (
@@ -46,7 +46,7 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="grid gap-0.5">
-          <span className="truncate text-[13px] font-medium text-foreground">{user.name}</span>
+          <span className="truncate text-sm font-semibold text-foreground">{user.name}</span>
           {user.email ? <span className="truncate">{user.email}</span> : null}
           {ws.operator ? <span className="text-primary">Platform operator</span> : null}
           {ws.expiresAt ? <span>Session ends {relativeTime(ws.expiresAt)}</span> : null}

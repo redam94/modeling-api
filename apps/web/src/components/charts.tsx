@@ -71,7 +71,7 @@ export function BarChart({
             return (
               <g key={t}>
                 <line x1={left} x2={W - 8} y1={y} y2={y} className="stroke-border" strokeDasharray={t === 0 ? undefined : "3 4"} />
-                <text x={left - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+                <text x={left - 8} y={y + 4} textAnchor="end" className="tabular fill-hint text-2xs">
                   {fmtAxis(t)}
                 </text>
               </g>
@@ -92,7 +92,7 @@ export function BarChart({
                   className={cn("fill-primary transition-opacity", hover !== null && hover !== i && "opacity-40")}
                 />
                 {i % labelEvery === 0 ? (
-                  <text x={left + i * band + band / 2} y={H - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+                  <text x={left + i * band + band / 2} y={H - 6} textAnchor="middle" className="tabular fill-hint text-2xs">
                     {d.label}
                   </text>
                 ) : null}
@@ -103,9 +103,9 @@ export function BarChart({
         {hovered ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-1 right-2 rounded-md border bg-popover px-2 py-1 text-xs shadow-sm"
+            className="pointer-events-none absolute top-1 right-2 rounded-md bg-tooltip px-2 py-1.5 text-xs text-tooltip-foreground shadow-sm"
           >
-            <span className="text-muted-foreground">{hovered.title ?? hovered.label}</span>{" "}
+            <span className="text-tooltip-foreground/80">{hovered.title ?? hovered.label}</span>{" "}
             <span className="font-medium tabular">{format(hovered.value)}</span>
           </div>
         ) : null}
@@ -150,7 +150,7 @@ export function BarList({
     <ul aria-label={label} className="grid gap-2.5">
       {sorted.map((i) => (
         <li key={i.key} className="grid gap-1">
-          <div className="flex items-baseline justify-between gap-3 text-[13px]">
+          <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="min-w-0 truncate">{i.label}</span>
             <span className="shrink-0 font-medium tabular">{format(i.value)}</span>
           </div>

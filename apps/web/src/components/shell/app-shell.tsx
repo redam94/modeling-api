@@ -46,12 +46,11 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       to={item.to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group relative flex h-9 items-center gap-3 rounded-md px-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground",
-        active && "bg-background text-foreground shadow-xs",
+        "focus-ring group relative flex min-h-10 items-center gap-3 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
+        active && "bg-border text-foreground hover:bg-border",
         collapsed && "justify-center px-0",
       )}
     >
-      {active ? <span aria-hidden className="absolute top-2 bottom-2 -left-2 w-0.5 rounded-full bg-primary" /> : null}
       <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
       {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
     </Link>
@@ -73,8 +72,8 @@ function CompactNavLink({ item }: { item: NavItem }) {
       to={item.to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground",
-        active && "bg-accent text-foreground",
+        "rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+        active && "bg-border text-foreground",
       )}
     >
       {item.label}
@@ -158,7 +157,7 @@ function SignedOutBanner() {
   const show = useAuth((s) => s.expired && s.dismissed);
   if (!show) return null;
   return (
-    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/35 bg-info/8 px-4 py-2 text-[13px] md:px-6">
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-info/35 bg-info/8 px-4 py-2 text-sm md:px-6">
       <LogIn className="size-4 text-info" aria-hidden />
       <span>You are signed out. The page does not change, but the app cannot load or save data.</span>
       <Button size="sm" variant="outline" className="h-7" onClick={() => signIn()}>
@@ -223,7 +222,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <div className={cn("flex items-center gap-2 px-2 pb-4", collapsed && "justify-center px-0")}>
           <Logo />
           {collapsed ? null : (
-            <span className="text-[15px] font-semibold tracking-tight">
+            <span className="text-base font-semibold">
               modeling<span className="text-muted-foreground">-api</span>
             </span>
           )}
@@ -234,7 +233,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           ))}
           {projectNav.length ? (
             <>
-              <p className={cn("px-2.5 pt-4 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase", collapsed && "sr-only")}>Project</p>
+              <p className={cn("eyebrow px-2.5 pt-4 pb-1", collapsed && "sr-only")}>Project</p>
               {projectNav.map((item) => (
                 <NavLink key={item.to} item={item} collapsed={collapsed} />
               ))}
@@ -242,7 +241,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           ) : null}
           {adminNav.length ? (
             <>
-              <p className={cn("px-2.5 pt-4 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase", collapsed && "sr-only")}>Platform</p>
+              <p className={cn("eyebrow px-2.5 pt-4 pb-1", collapsed && "sr-only")}>Platform</p>
               {adminNav.map((item) => (
                 <NavLink key={item.to} item={item} collapsed={collapsed} />
               ))}
@@ -264,7 +263,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b bg-card/90 backdrop-blur">
           <div className="flex h-12 items-center gap-3 px-4 md:px-6">
             <ProjectSwitcher />
             <Button variant="ghost" size="icon-sm" onClick={() => setPaletteOpen(true)} aria-label="Jump to…" className="lg:hidden">
@@ -273,7 +272,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden h-8 w-56 items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-muted-foreground hover:text-foreground lg:flex xl:w-72"
+              className="focus-ring hidden h-8 w-56 items-center gap-2 rounded-lg border border-border-strong bg-card px-2.5 text-sm text-hint hover:border-hint hover:text-foreground lg:flex xl:w-72"
             >
               <Search className="size-4" />
               Jump to…
@@ -313,7 +312,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 /** An operator without a project on a project page. */
 function NoProjectNotice() {
   return (
-    <div className="grid max-w-xl gap-2 rounded-lg border border-dashed p-8">
+    <div className="grid max-w-xl gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8">
       <h1 className="font-semibold">No project selected</h1>
       <p className="text-muted-foreground">
         You are not a member of a project. Thus, there is no project data to show. You can use the admin console without a project.

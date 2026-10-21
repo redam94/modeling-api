@@ -77,18 +77,18 @@ export function ProjectSwitcher({ className }: { className?: string }) {
             type="button"
             aria-label={`Project: ${label}. Switch project`}
             className={cn(
-              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] xl:max-w-[26rem] gap-2 rounded-md border bg-card px-2 text-left text-[13px] shadow-xs hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+              "group flex h-8 max-w-[9.5rem] min-w-0 items-center sm:max-w-[16rem] lg:max-w-[19rem] xl:max-w-[26rem] focus-ring gap-2 rounded-lg border border-border-strong bg-card px-2 text-left text-sm hover:bg-surface-hover",
               className,
             )}
           >
-            <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded bg-primary/12 text-[11px] font-semibold text-primary uppercase">
+            <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-sm bg-accent text-2xs font-semibold text-accent-foreground uppercase">
               {(current?.tenant.name ?? "?").slice(0, 1)}
             </span>
             <span className="min-w-0 truncate">
               <span className="hidden text-muted-foreground sm:inline">{current?.tenant.name ?? "—"} / </span>
               <span className="font-medium">{current?.project.name ?? "No project"}</span>
             </span>
-            {current ? <span className="hidden text-[11px] text-muted-foreground lg:inline">{current.role}</span> : null}
+            {current ? <span className="hidden text-xs text-hint lg:inline">{current.role}</span> : null}
             <ChevronsUpDown className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
@@ -102,11 +102,11 @@ export function ProjectSwitcher({ className }: { className?: string }) {
                 <DropdownMenuLabel className="flex items-center gap-2">
                   <Building2 className="size-3.5" />
                   <span className="truncate font-medium text-foreground">{t.tenant.name}</span>
-                  <Badge variant="outline" className="ml-auto text-[10px]">
+                  <Badge variant="outline" className="ml-auto h-5 text-2xs">
                     {TIER_LABEL[t.tenant.trust_tier] ?? t.tenant.trust_tier}
                   </Badge>
                   {t.tenant.status && t.tenant.status !== "active" ? (
-                    <Badge variant="warning" className="text-[10px]">
+                    <Badge variant="warning" className="h-5 text-2xs">
                       {t.tenant.status}
                     </Badge>
                   ) : null}
@@ -117,7 +117,7 @@ export function ProjectSwitcher({ className }: { className?: string }) {
                     <DropdownMenuItem key={c.key} onSelect={() => switchTo(c)} aria-current={selected ? "true" : undefined} className="relative pl-7">
                       <span className="absolute left-2.5 flex size-3.5 items-center">{selected ? <Check className="size-3.5 text-primary" /> : null}</span>
                       <span className="min-w-0 flex-1 truncate">{c.project.name}</span>
-                      <span className="text-[11px] text-muted-foreground" title={ROLE_META[c.role].description}>
+                      <span className="text-xs text-hint" title={ROLE_META[c.role].description}>
                         {c.role}
                       </span>
                     </DropdownMenuItem>
