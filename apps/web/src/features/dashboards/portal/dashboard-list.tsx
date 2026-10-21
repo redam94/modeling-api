@@ -17,6 +17,10 @@ const PERIOD_WORD: Record<NonNullable<DashboardSummary["period_label"]>, string>
   week: "Weekly",
   month: "Monthly",
   period: "Each period",
+  day: "Daily",
+  quarter: "Quarterly",
+  year: "Yearly",
+  case: "Per case",
 };
 
 function DashboardCard({ d, onOpen }: { d: DashboardSummary; onOpen: (id: string) => void }) {

@@ -121,6 +121,13 @@ export function formatValue(v: Num, unit: KpiValue["unit"], kpi?: Pick<KpiDef, "
       return `${fixed(v, 1)}%`;
     case "index":
       return fixed(v, 0);
+    case "probability":
+      return `${fixed(v * 100, 1)}%`;
+    case "rate":
+      return fixed(v, 2);
+    case "number":
+    case "label":
+      return grouped(v, decimals);
   }
 }
 
@@ -353,6 +360,8 @@ export const KIND_WORD: Record<Readout["kind"], string> = {
   refresh: "Regular update",
   scenario: "Saved plan",
   actuals: "Your numbers",
+  prediction: "Your prediction",
+  batch: "Batch scores",
 };
 
 export const STATUS_WORD: Record<Readout["status"], string> = {

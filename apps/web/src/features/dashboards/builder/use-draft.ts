@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/api/client";
 
 import { useRefetchDashboard, useUpdateDraft } from "../api";
-import type { Dashboard, DashboardSpec } from "../types";
+import { type Dashboard, type DashboardSpec, layout1Spec } from "../types";
 import { cleanSpec, sameSpec } from "./spec-form";
 
 export interface Draft {
@@ -30,17 +30,17 @@ export interface Draft {
 export function useDraft(d: Dashboard): Draft {
   const update = useUpdateDraft(d.id);
   const refetch = useRefetchDashboard(d.id);
-  const [spec, setSpec] = useState<DashboardSpec>(d.draft_spec);
+  const [spec, setSpec] = useState<DashboardSpec>(layout1Spec(d.draft_spec));
   // the server draft the working copy started from, and its etag
-  const [base, setBase] = useState<{ spec: DashboardSpec; etag: string }>({ spec: d.draft_spec, etag: d.draft_etag });
+  const [base, setBase] = useState<{ spec: DashboardSpec; etag: string }>({ spec: layout1Spec(d.draft_spec), etag: d.draft_etag });
   const [stale, setStale] = useState(false);
   const dirty = !sameSpec(spec, base.spec);
 
   useEffect(() => {
     if (d.draft_etag === base.etag) return;
-    if (!dirty || sameSpec(spec, d.draft_spec)) {
-      setSpec(d.draft_spec);
-      setBase({ spec: d.draft_spec, etag: d.draft_etag });
+    if (!dirty || sameSpec(spec, layout1Spec(d.draft_spec))) {
+      setSpec(layout1Spec(d.draft_spec));
+      setBase({ spec: layout1Spec(d.draft_spec), etag: d.draft_etag });
       setStale(false);
     } else {
       setStale(true);
@@ -54,8 +54,8 @@ export function useDraft(d: Dashboard): Draft {
   const save = async (): Promise<Dashboard | null> => {
     try {
       const out = await update.mutateAsync({ spec: cleanSpec(spec), etag: base.etag });
-      setSpec(out.draft_spec);
-      setBase({ spec: out.draft_spec, etag: out.draft_etag });
+      setSpec(layout1Spec(out.draft_spec));
+      setBase({ spec: layout1Spec(out.draft_spec), etag: out.draft_etag });
       setStale(false);
       return out;
     } catch (e) {
@@ -66,8 +66,8 @@ export function useDraft(d: Dashboard): Draft {
 
   const reset = async () => {
     const fresh = (await refetch()) ?? d;
-    setSpec(fresh.draft_spec);
-    setBase({ spec: fresh.draft_spec, etag: fresh.draft_etag });
+    setSpec(layout1Spec(fresh.draft_spec));
+    setBase({ spec: layout1Spec(fresh.draft_spec), etag: fresh.draft_etag });
     setStale(false);
     update.reset();
   };

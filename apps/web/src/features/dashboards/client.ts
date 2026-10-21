@@ -22,6 +22,7 @@ import { dk, memberCacheKey, shareCacheKey } from "./keys";
 import {
   isAnalystDashboard,
   isFullReadout,
+  layout1Spec,
   readoutPollMs,
   SHARE_SESSION_HEADER,
   TERMINAL_READOUT,
@@ -125,7 +126,7 @@ export function visibleTabs(tabs: readonly TabKey[], inputs: EffectiveInputs): T
  * published one) with `latest` as its latest readout.
  */
 export function toClientDashboard(d: Dashboard, latest: Readout | null, use: "draft" | "published" = "draft"): ClientDashboard {
-  const spec = use === "published" && d.published_revision ? d.published_revision.spec : d.draft_spec;
+  const spec = layout1Spec(use === "published" && d.published_revision ? d.published_revision.spec : d.draft_spec);
   const inputs = effectiveInputs(spec);
   return {
     id: d.id,

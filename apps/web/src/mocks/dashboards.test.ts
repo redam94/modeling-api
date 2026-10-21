@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { Dashboard, DashboardRefitRequest, DashboardShareCreated, DashboardSummary, Readout, ReadoutHeader, ReadoutList } from "@/api/types";
 import { env } from "@/env";
+import { layout1Spec } from "@/features/dashboards/types";
 
 import { DRAFT_DASHBOARD_ID, FORECAST_DASHBOARD_ID, MMM_DASHBOARD_ID, whatIfOf, zoneOf } from "./dashboards";
 import { createHandlers } from "./handlers";
@@ -168,7 +169,7 @@ describe("fixture maths", () => {
   it("answers the current plan with no change", async () => {
     const d = (await call<Dashboard>("ana", "GET", `/v1/dashboards/${MMM_DASHBOARD_ID}`)).data;
     const grid = (await call<Parameters<typeof whatIfOf>[1]>("ana", "GET", `/v1/dashboards/${MMM_DASHBOARD_ID}/grid`)).data;
-    const w = whatIfOf(d.draft_spec, grid, {});
+    const w = whatIfOf(layout1Spec(d.draft_spec), grid, {});
     expect(Math.abs(w.delta_kpi)).toBeLessThan(1e-6);
     expect(w.lead).toBe("This plan brings the same result as the current plan.");
     expect(w.channels?.map((c) => c.zone)).toEqual(expect.arrayContaining([expect.stringMatching(/headroom|optimal|over|no_payback/)]));

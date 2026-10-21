@@ -15,6 +15,7 @@ import type {
   Dashboard,
   DashboardGrid,
   DashboardSpec,
+  DashboardSpecV2,
   DashboardWhatIfResult,
   KpiDef,
   KpiValue,
@@ -46,6 +47,8 @@ export type {
   DashboardShareCreated,
   DashboardSource,
   DashboardSpec,
+  DashboardSpecV2,
+  AnyDashboardSpec,
   DashboardSummary,
   DashboardValidation,
   EffectiveInputs,
@@ -66,6 +69,22 @@ export type {
   WhatIfRequest,
 } from "@/api/types";
 
+type DashboardShareAllowed = import("@/api/types").DashboardShare["allowed_inputs"];
+
+/** Is a stored spec a layout 2 one (v0.17)? */
+export function isLayout2(spec: DashboardSpec | DashboardSpecV2): spec is DashboardSpecV2 {
+  return spec.layout_version === 2;
+}
+
+/**
+ * The layout 1 view of a stored spec. The v0.16 builder and preview edit layout 1 only; until
+ * the v0.17 layout 2 builder lands, a layout 2 spec is read through the fields both layouts
+ * share (title, source, actuals, refresh, limits) and the layout 1 fields are simply absent.
+ */
+export function layout1Spec(spec: DashboardSpec | DashboardSpecV2): DashboardSpec {
+  return spec as DashboardSpec;
+}
+
 /** `mapi_spec.dashboards.WhatIfResult` (the guided module has its own, per-draw one). */
 export type WhatIfResult = DashboardWhatIfResult;
 
@@ -83,8 +102,8 @@ export type ReadoutVisibility = ReadoutHeader["visibility"];
 export type ReadoutStatus = ReadoutHeader["status"];
 export type RefitStatus = NonNullable<ReadoutHeader["refit_status"]>;
 export type ActualsMode = ActualsTemplate["mode"];
-export type ShareInput = "whatif" | "actuals";
-export type PeriodLabel = NonNullable<DashboardSpec["period_label"]>;
+export type ShareInput = NonNullable<DashboardShareAllowed>[number];
+export type PeriodLabel = NonNullable<ClientDashboard["period_label"]>;
 export type KpiUnit = KpiDef["unit"];
 export type PrincipalKind = "member" | "client" | "share";
 

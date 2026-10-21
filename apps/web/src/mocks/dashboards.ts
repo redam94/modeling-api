@@ -51,6 +51,7 @@ import type {
   ShareSession,
 } from "@/api/types";
 import { env } from "@/env";
+import { layout1Spec } from "@/features/dashboards/types";
 import { evaluateScenario, type ResponseGrid } from "@/features/guided/whatif";
 
 import { EXTRA_MODEL_IDS, EXTRA_MODELS } from "./explore";
@@ -855,7 +856,8 @@ function headerOf(r: Readout): ReadoutHeader {
 }
 
 function publishedSpec(x: MockDashboard): DashboardSpec | null {
-  return x.d.published_revision?.spec ?? null;
+  const spec = x.d.published_revision?.spec;
+  return spec ? layout1Spec(spec) : null;
 }
 
 function latestPublished(x: MockDashboard): Readout | null {
@@ -1344,7 +1346,7 @@ export function createDashboardHandlers(state: DashboardsState): HttpHandler[] {
       if ([...state.dashboards.values()].some((x) => x.project === key && x.d.name === body.name)) return problem(409, "CONFLICT", "Conflict", "a dashboard with this name exists");
       const id = `dsh_01jaf3w1${Array.from({ length: 18 }, () => BASE32[Math.floor(Math.random() * 32)]).join("")}`;
       const now = Date.now();
-      const x: MockDashboard = { project: key, d: { ...dashboardRow(id, body.name, body.spec, null, now), created_by: s.v.id }, revisions: [], readouts: [], grants: [], shares: [], refits: [], grid: body.spec.source.alias === integrationsGen.forecast.alias ? null : MMM_GRID, template: body.spec.source.alias === integrationsGen.forecast.alias ? forecastTemplate() : mmmTemplate(), idem: new Map() };
+      const x: MockDashboard = { project: key, d: { ...dashboardRow(id, body.name, layout1Spec(body.spec), null, now), created_by: s.v.id }, revisions: [], readouts: [], grants: [], shares: [], refits: [], grid: body.spec.source.alias === integrationsGen.forecast.alias ? null : MMM_GRID, template: body.spec.source.alias === integrationsGen.forecast.alias ? forecastTemplate() : mmmTemplate(), idem: new Map() };
       state.dashboards.set(id, x);
       return HttpResponse.json(analystView(x), { status: 201, headers: { ETag: x.d.draft_etag } });
     }),
@@ -1371,11 +1373,11 @@ export function createDashboardHandlers(state: DashboardsState): HttpHandler[] {
       const now = Date.now();
       const isForecast = x.d.draft_spec.source.alias === integrationsGen.forecast.alias;
       const mv = isForecast ? { id: ARIMAX_V2.id, ref: ARIMAX_V2.ref } : { id: MV_ID, ref: modelVersion.ref };
-      const rev = { ...revisionOf(x.d.id, x.revisions.length + 1, x.d.draft_spec, mv, x.d.draft_spec.source.alias ?? null, now), created_by: s.v.id };
+      const rev = { ...revisionOf(x.d.id, x.revisions.length + 1, layout1Spec(x.d.draft_spec), mv, x.d.draft_spec.source.alias ?? null, now), created_by: s.v.id };
       x.revisions.push(rev);
       Object.assign(x.d, { status: "published", published_revision: rev, run_as: s.v.id, live_inputs: "ok", problem: null });
       touch(x);
-      const spec = rev.spec;
+      const spec = layout1Spec(rev.spec);
       const seq = nextSeq(x);
       x.readouts.push({
         r: header(seq, { kind: "baseline", trigger: "publish", status: "queued", ready_at: null, title: "First readout", period: isForecast ? null : [day(LAST_SUNDAY - 6 * DAY), day(LAST_SUNDAY)] }, mv, now),
@@ -1632,7 +1634,7 @@ export function createDashboardHandlers(state: DashboardsState): HttpHandler[] {
 
 /** `crud.validate_draft` (the parts the mock can check): JSON pointers into the draft. */
 function validate(x: MockDashboard): DashboardValidation {
-  const spec = x.d.draft_spec;
+  const spec = layout1Spec(x.d.draft_spec);
   const issues: Issue[] = [];
   const add = (pointer: string, message: string) => issues.push({ code: "SCHEMA_INVALID", severity: "error", pointer, message });
   if (!spec.title.trim()) add("/title", "Give the dashboard a title.");

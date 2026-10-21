@@ -15,7 +15,7 @@ import { useWorkspace } from "@/features/auth/workspace";
 import { toast } from "@/stores/toast";
 
 import { usePublishDashboard, useValidateDashboard } from "../api";
-import type { Dashboard } from "../types";
+import { type Dashboard, layout1Spec } from "../types";
 import { publishPermission } from "./spec-form";
 
 function publishStale(e: unknown): boolean {
@@ -30,7 +30,7 @@ export function PublishDialog({ dashboard, onClose, onIssue }: { dashboard: Dash
   const perm = publishPermission(ws.grants.projectRole);
   const check = useValidateDashboard(dashboard.id, dashboard.draft_etag);
   const publish = usePublishDashboard(dashboard.id);
-  const spec = dashboard.draft_spec;
+  const spec = layout1Spec(dashboard.draft_spec);
   const live = (spec.whatif?.exact ?? false) || (spec.actuals?.enabled ?? false);
   const again = dashboard.status === "published";
   const issues = check.data?.issues ?? [];

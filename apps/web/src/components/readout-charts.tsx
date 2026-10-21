@@ -163,6 +163,8 @@ function labelIndices(n: number, plotW: number, gap = 56): number[] {
   return out;
 }
 
+/** The period words of a dashboard (v0.17 adds day, quarter, year and case). */
+export type ChartPeriod = "week" | "month" | "period" | "day" | "quarter" | "year" | "case";
 const PERIOD_PLURAL: Record<string, string> = { week: "weeks", month: "months", period: "periods" };
 const plural = (period: string, n: number) => (n === 1 ? period : (PERIOD_PLURAL[period] ?? `${period}s`));
 
@@ -249,7 +251,7 @@ export function IndexLine({
   reference?: number;
   minHalf?: number;
   format?: (v: number) => string;
-  period?: "week" | "month" | "period";
+  period?: ChartPeriod;
   regions?: readonly ChartRegion[];
   nowAt?: number | undefined;
   versions?: readonly VersionMark[];
@@ -426,7 +428,7 @@ export function BandLine({
   label: string;
   points: readonly BandPoint[];
   format?: (v: number) => string;
-  period?: "week" | "month" | "period";
+  period?: ChartPeriod;
   nowAt?: number | undefined;
   expectedLabel?: string;
   actualLabel?: string;
@@ -671,7 +673,7 @@ export function ZoneBar({
   high?: number | null | undefined;
   usual?: number;
   scaleMax?: number;
-  period?: "week" | "month" | "period";
+  period?: ChartPeriod;
   className?: string;
 }) {
   const pct = (v: number) => `${clamp((v / scaleMax) * 100, 0, 100)}%`;

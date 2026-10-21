@@ -50,6 +50,7 @@ export const TILE_LABEL: Record<TileKey, { label: string; hint: string }> = {
   in_range_spend: { label: "Spend within range", hint: "The share of spend in channels that are within their best range." },
   accuracy: { label: "Accuracy", hint: "How close the model was to the numbers the client sent." },
   index: { label: "Index", hint: "The result as an index of the first readout (100)." },
+  panel: { label: "Panel", hint: "A layout 2 KPI panel." },
 };
 
 export const TAB_LABEL: Record<TabKey, { label: string; hint: string }> = {
@@ -350,7 +351,7 @@ export function shareCreateBody(f: ShareForm, available: readonly ShareInput[]):
   return body;
 }
 
-export const SHARE_INPUT_WORD: Record<ShareInput, string> = { whatif: "Plan scenarios", actuals: "Uploads" };
+export const SHARE_INPUT_WORD: Record<ShareInput, string> = { whatif: "Plan scenarios", actuals: "Uploads", scenario_rows: "Try cases", batch: "Score a file" };
 
 /** "Read only" or the inputs a link allows, in words. */
 export function shareAccessWords(allowed: readonly ShareInput[] | null | undefined): string {
