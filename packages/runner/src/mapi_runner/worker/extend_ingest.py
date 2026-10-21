@@ -16,6 +16,8 @@ wire-format checks); nothing here unpickles anything.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import xarray as xr
 from mapi_spec.errors import ErrorCode
@@ -31,6 +33,27 @@ def _unknown(labels: xr.DataArray, known: xr.DataArray) -> list[str]:
     """The labels of ``labels`` that ``known`` lacks (as text, for the message)."""
     missing = ~labels.isin(known.values)
     return sorted(str(x) for x in np.asarray(labels.values[missing.values]).tolist())
+
+
+def _collapse_broadcast(new: xr.Dataset, base: xr.Dataset) -> xr.Dataset:
+    """Undo the long table's broadcast: an upload arrives as one CSV row per label
+    combination, so a variable of fewer dims (``price(week)`` beside ``spend(channel,
+    week)``) comes back with every dim. A numeric variable that is the same along the dims
+    the dataset's variable lacks (missing cells aside) is reduced to the dataset's dims; any
+    other is left for the dims check to refuse."""
+    out = new
+    for name, var in new.data_vars.items():
+        want = set(base[name].dims)
+        extra = [d for d in var.dims if d not in want]
+        if not extra or not want <= set(var.dims) or not np.issubdtype(var.dtype, np.number):
+            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)  # all-missing slices
+            hi = var.max(extra, skipna=True)
+            lo = var.min(extra, skipna=True)
+        if bool(((hi == lo) | hi.isnull()).all()):
+            out = out.assign({name: hi.drop_vars(extra, errors="ignore")})
+    return out
 
 
 def extend_dataset(base: xr.Dataset, new: xr.Dataset, dim: str, limits: IngestLimits) -> xr.Dataset:
@@ -73,6 +96,7 @@ def extend_dataset(base: xr.Dataset, new: xr.Dataset, dim: str, limits: IngestLi
                 pointer=_POINTER,
                 action="Use the labels of the template.",
             )
+    new = _collapse_broadcast(new, base)
     for name, var in new.data_vars.items():
         if set(var.dims) != set(base[name].dims):
             raise problem(

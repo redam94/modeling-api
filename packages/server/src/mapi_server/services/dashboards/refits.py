@@ -32,17 +32,17 @@ from typing import Any, Final
 from mapi_spec.api import new_id
 from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
 from mapi_spec.dashboards import DashboardRefitRequest, RefitRequestDecision
-from mapi_spec.endpoints import EndpointSchemaSnapshot
 from mapi_spec.errors import ErrorCode, MapiError, Problem
 from mapi_spec.ingest import DimMapping, IngestMapping, VarMapping
 from mapi_spec.refs import DatasetRef
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
-from mapi_spec.schema import Role
+from mapi_spec.schema import DataSchema, Role
+from mapi_spec.spec import Binding
 from mapi_spec.storage import quarantine_key
 from mapi_spec.tenancy import ResourceKind
 from mapi_spec.workflow import WorkflowRunCreate, WorkflowSpec, WorkflowTriggerEvent
 from mapi_spec.workflow_nodes import PortType
-from mapi_spec.xrjson import MAX_XRJSON_BYTES, XrJsonDataset
+from mapi_spec.xrjson import MAX_XRJSON_BYTES, XrJsonDataset, XrJsonVariable
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -289,10 +289,43 @@ def upload_csv(payload: XrJsonDataset, dims: Sequence[str]) -> bytes:
     return out.getvalue().encode("utf-8")
 
 
-def _mapping(
-    snapshot: EndpointSchemaSnapshot, payload: XrJsonDataset
-) -> tuple[list[str], IngestMapping]:
-    schema = snapshot.input_schema
+async def _fit_binding(session: AsyncSession, mv: m.ModelVersion) -> dict[str, str]:
+    """Canonical name -> dataset name of the spec ``mv`` was fitted with (``data.bind``);
+    empty when the fit run or its spec revision is gone (the names are then the same)."""
+    run = await session.get(m.Run, mv.run_id)
+    if run is None or run.spec_id is None or run.spec_revision is None:
+        return {}
+    rev = await session.get(m.SpecRevision, (run.spec_id, run.spec_revision))
+    data = rev.document.get("data") if rev is not None else None
+    bind = data.get("bind") if isinstance(data, dict) else None
+    if not isinstance(bind, dict):
+        return {}
+    try:
+        return Binding.model_validate(bind).dataset_of()
+    except ValidationError:
+        return {}
+
+
+def _to_dataset_names(payload: XrJsonDataset, to_dataset: dict[str, str]) -> XrJsonDataset:
+    """The upload under the dataset's own names: uploads use the input contract's canonical
+    names (``time``, ``y``), the dataset version being extended its own (``week``,
+    ``sales``)."""
+    if not to_dataset:
+        return payload
+
+    def var(v: XrJsonVariable) -> XrJsonVariable:
+        return v.model_copy(update={"dims": [to_dataset.get(d, d) for d in v.dims]})
+
+    return payload.model_copy(
+        update={
+            "coords": {to_dataset.get(k, k): var(v) for k, v in payload.coords.items()},
+            "data_vars": {to_dataset.get(k, k): var(v) for k, v in payload.data_vars.items()},
+            "dims": {to_dataset.get(k, k): n for k, n in payload.dims.items()},
+        }
+    )
+
+
+def _mapping(schema: DataSchema, payload: XrJsonDataset) -> tuple[list[str], IngestMapping]:
     dims = [d for d in schema.dims if any(d in v.dims for v in payload.data_vars.values())]
     return dims, IngestMapping(
         format="csv",
@@ -372,8 +405,17 @@ async def approve(
         payload = XrJsonDataset.model_validate(loads_limited(raw))
     except (MapiError, ValidationError, ValueError, KeyError, TypeError):
         raise Conflict("the request's upload is no longer available") from None
-    snapshot = await live_capabilities_snapshot(session, ctx.catalogs, mv)
-    dims, mapping = _mapping(snapshot, payload)
+    # the upload is in the contract's canonical names; the version it extends is in the
+    # dataset's own names (and is validated with its own schema)
+    to_dataset = await _fit_binding(session, mv)
+    payload = _to_dataset_names(payload, to_dataset)
+    time_dim = to_dataset.get(time_dim, time_dim)
+    if fit.data_schema:
+        schema = DataSchema.model_validate(fit.data_schema)
+    else:
+        snapshot = await live_capabilities_snapshot(session, ctx.catalogs, mv)
+        schema = snapshot.input_schema.renamed(to_dataset)
+    dims, mapping = _mapping(schema, payload)
     body_bytes = upload_csv(payload, dims)
     if len(body_bytes) > _MAX_UPLOAD_BYTES:
         raise MapiError("the upload is too large to ingest", code=ErrorCode.PAYLOAD_TOO_LARGE)

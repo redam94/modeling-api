@@ -57,6 +57,21 @@ def test_an_upload_with_fewer_geos_is_missing_for_the_others() -> None:
     assert np.isnan(last.sel(geo="de").item()) and last.sel(geo="fr").item() == 50.0
 
 
+def test_a_variable_broadcast_by_the_long_table_is_reduced_to_its_dims() -> None:
+    """The server sends the upload as a long CSV (one row per ``t`` x ``geo``), so
+    ``price(t)`` arrives as ``price(t, geo)``, repeated per geo or blank in some rows."""
+    new_t = [T[-1] + pd.Timedelta(weeks=1), T[-1] + pd.Timedelta(weeks=2)]
+    new = xr.Dataset(
+        {"y": (("t", "geo"), [[1.0, 2.0], [3.0, 4.0]]),
+         "price": (("t", "geo"), [[1.5, 1.5], [np.nan, 1.6]])},
+        coords={"t": new_t, "geo": ["de", "fr"]},
+    )  # fmt: skip
+    out = extend_dataset(_base(), new, "t", IngestLimits())
+    assert out["price"].dims == ("t",)
+    assert out["price"].values[-2:].tolist() == [1.5, 1.6]
+    assert out["y"].isel(t=-1).values.tolist() == [3.0, 4.0]
+
+
 @pytest.mark.parametrize(
     ("new", "message"),
     [
@@ -64,8 +79,9 @@ def test_an_upload_with_fewer_geos_is_missing_for_the_others() -> None:
         (xr.Dataset({"y": (("t", "geo"), [[1.0]])}, coords={"t": [T[0]], "geo": ["it"]}),
          "labels of 'geo'"),
         (xr.Dataset({"y": (("geo",), [1.0])}, coords={"geo": ["de"]}), "no 't' dimension"),
-        (xr.Dataset({"price": (("t", "geo"), [[1.0]])}, coords={"t": [T[0]], "geo": ["de"]}),
-         "has dims"),
+        (xr.Dataset({"price": (("t", "geo"), [[1.0, 2.0]])},
+                    coords={"t": [T[0]], "geo": ["de", "fr"]}),
+         "has dims"),  # differs along a dim the dataset's variable does not have
     ],
 )  # fmt: skip
 def test_anything_the_base_does_not_have_is_refused(new: xr.Dataset, message: str) -> None:

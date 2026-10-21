@@ -496,6 +496,49 @@ async def test_approval_ingests_the_numbers_then_starts_the_workflow_as_the_appr
         assert await on_workflow_succeeded(s, wr) == 0  # (no score node in this workflow)
 
 
+async def test_approval_ingests_under_the_dataset_names_of_a_bound_spec(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """Uploads use the contract's canonical names (``t``, ``y``); a spec that binds them to
+    other dataset names (``month``, ``co2_ppm``) is extended under the dataset's own names,
+    or the ingest finds no ``t`` dimension and the refit fails."""
+    from mapi_spec.schema import DataSchema
+
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    await _request(kit, dash_id)
+    async with ctx.db.session() as s:
+        mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
+        assert mv is not None
+        run = await s.get(m.Run, mv.run_id)
+        assert run is not None and run.spec_id is not None
+        rev = await s.get(m.SpecRevision, (run.spec_id, run.spec_revision))
+        assert rev is not None
+        doc = json.loads(json.dumps(rev.document))
+        doc["data"]["bind"] = {"dims": {"t": "month"}, "vars": {"y": "co2_ppm"}}
+        rev.document = doc
+        ds = (await s.execute(select(m.Dataset).where(m.Dataset.name == "co2"))).scalar_one()
+        fitted = await s.get(m.DatasetVersion, (ds.id, 1))
+        assert fitted is not None and fitted.data_schema
+        raw = DataSchema.model_validate(fitted.data_schema).renamed({"t": "month", "y": "co2_ppm"})
+        fitted.data_schema = raw.model_dump(mode="json")
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    r = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve", json={}
+    )
+    assert r.status_code == 200, r.text
+    async with ctx.db.session() as s:
+        dv = await s.get(m.DatasetVersion, (ds.id, 2))
+        assert dv is not None and dv.ingest_run_id and dv.mapping is not None
+        ingest = await s.get(m.Run, dv.ingest_run_id)
+        assert ingest is not None and ingest.payload["extend_dim"] == "month"
+        upload = await s.get(m.Upload, dv.upload_id)
+        assert upload is not None
+        csv = (await ctx.store.get(upload.bucket, upload.object_name)).decode()
+        assert csv.splitlines()[0] == "month,co2_ppm"
+        assert set(dv.mapping["dims"]) == {"month"}
+        assert dv.mapping["vars"]["co2_ppm"]["role"] == "target"
+
+
 async def test_share_links_ask_for_a_refit_only_with_uploads(
     kit: dict[str, Any], client: httpx.AsyncClient
 ) -> None:
