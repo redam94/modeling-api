@@ -8,9 +8,12 @@
  *
  * Once the app has rendered, an ended session never tears it down: a dialog asks the user to
  * sign in again, so unsaved work on the page survives.
+ *
+ * A `client` in the selected project gets the client portal (its own lazy chunk and router)
+ * instead of the app: the main router is never mounted for them (plan D15).
  */
 import { LogIn, LogOut, RefreshCw } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ApiError } from "@/api/client";
 import { useMe, useSession } from "@/api/queries";
@@ -24,6 +27,9 @@ import { useAuth } from "@/stores/auth";
 import { scopeKey, useScope } from "@/stores/scope";
 
 import { buildWorkspace, localMe, WorkspaceContext, type Workspace } from "./workspace";
+
+// The client portal: only clients load it (and the full app's routes never load for them).
+const ClientApp = lazy(() => import("@/features/dashboards/portal/client-app").then((m) => ({ default: m.ClientApp })));
 
 export function WorkspaceGate({ children }: { children: ReactNode }) {
   useApplyTheme();
@@ -64,7 +70,13 @@ export function WorkspaceGate({ children }: { children: ReactNode }) {
     entered.current = true;
     return (
       <WorkspaceContext.Provider value={workspace}>
-        {children}
+        {workspace.current?.role === "client" ? (
+          <Suspense fallback={<Splash />}>
+            <ClientApp />
+          </Suspense>
+        ) : (
+          children
+        )}
         {expired ? <SessionExpiredDialog info={info} /> : null}
       </WorkspaceContext.Provider>
     );
@@ -143,7 +155,7 @@ export function SignInScreen({ info }: { info: SessionInfo | null }) {
           >
             {busy ? <Spinner /> : <LogIn />} Continue to sign in
           </Button>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             New here?{" "}
             <a href="/signup" className="font-medium text-primary hover:underline">
               Create a workspace
