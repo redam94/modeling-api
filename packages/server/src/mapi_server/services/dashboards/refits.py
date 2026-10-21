@@ -61,6 +61,7 @@ __all__ = [
     "advance",
     "approve",
     "list_requests",
+    "on_workflow_ended",
     "refit_dto",
     "reject",
     "request_refit",
@@ -318,7 +319,7 @@ async def approve(
     version was fitted on (a sandboxed ingest run). The refit workflow starts as the approver
     once that version is ready (:func:`advance`). Audited."""
     dash, req = await _open_request(session, ctx, dashboard_id, request_id)
-    if dash.published_revision_id is None:
+    if dash.status != "published" or dash.published_revision_id is None:
         raise Conflict("the dashboard is not published")
     rev = await session.get(m.DashboardRevision, dash.published_revision_id)
     assert rev is not None
@@ -431,7 +432,7 @@ async def approve(
     req.decided_by = _decider(ctx)
     req.decided_at = ts
     req.note = body.note
-    req.dataset_version_id = f"dataset://{ds.project_id}/{ds.name}@v{version}"[:128]
+    req.dataset_version_id = f"dataset://{ds.project_id}/{ds.name}@v{version}"  # ≤ 215 chars
     await session.flush()
     await _audit_decision(ctx, session, req, "approved")
     return req
@@ -453,6 +454,38 @@ def _dataset_input(spec: WorkflowSpec, dataset_name: str) -> str | None:
             except ValueError:
                 continue
     return datasets[0] if len(datasets) == 1 else None
+
+
+async def on_workflow_ended(session: AsyncSession, wr: m.WorkflowRunRow) -> int:
+    """A workflow run failed or was cancelled: the approved refit requests it ran become
+    ``failed`` with the run's problem (the uploader's "refit requested" then says so).
+    Returns how many."""
+    rows = list(
+        (
+            await session.execute(
+                select(m.DashboardRefitRequest).where(
+                    m.DashboardRefitRequest.tenant_id == wr.tenant_id,
+                    m.DashboardRefitRequest.workflow_run_id == wr.run_id,
+                    m.DashboardRefitRequest.status == "approved",
+                )
+            )
+        ).scalars()
+    )
+    error = wr.error or {}
+    try:
+        code = ErrorCode(str(error.get("code")))
+    except ValueError:
+        code = ErrorCode.CANCELLED if wr.status == "cancelled" else ErrorCode.INTERNAL_ERROR
+    detail = (
+        "the refit workflow run was cancelled"
+        if wr.status == "cancelled"
+        else f"the refit workflow run failed: {str(error.get('message') or code.value)[:400]}"
+    )
+    for req in rows:
+        await _fail(req, code, detail)
+    if rows:
+        await session.flush()
+    return len(rows)
 
 
 async def _fail(req: m.DashboardRefitRequest, code: ErrorCode, detail: str) -> None:
@@ -486,7 +519,12 @@ async def advance(ctx: ServerContext, *, limit: int = 20) -> int:
             ).scalars()
         )
         for req in rows:
-            ref = DatasetRef.parse(str(req.dataset_version_id))
+            try:
+                ref = DatasetRef.parse(str(req.dataset_version_id))
+            except ValueError:  # never abort the pass (and the prune after it) for one row
+                await _fail(req, ErrorCode.REF_UNRESOLVED, "the dataset version ref is invalid")
+                changed += 1
+                continue
             ds = (
                 await s.execute(
                     select(m.Dataset).where(
@@ -505,6 +543,10 @@ async def advance(ctx: ServerContext, *, limit: int = 20) -> int:
             if dv.status != "ready":
                 continue
             dash = await s.get(m.Dashboard, req.dashboard_id)
+            if dash is None or dash.status != "published":
+                await _fail(req, ErrorCode.DASHBOARD_NOT_PUBLISHED, "the dashboard is archived")
+                changed += 1
+                continue
             rev = (
                 await s.get(m.DashboardRevision, dash.published_revision_id)
                 if dash is not None and dash.published_revision_id

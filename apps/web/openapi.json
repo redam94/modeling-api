@@ -5966,7 +5966,7 @@
           "dataset_version_id": {
             "anyOf": [
               {
-                "maxLength": 128,
+                "maxLength": 256,
                 "type": "string"
               },
               {

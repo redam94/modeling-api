@@ -519,6 +519,10 @@ class WorkflowOrchestrator:
 
     async def _finished(self, env: _Env, status: WorkflowRunStatus) -> None:
         wr = env.wr
+        if status is not WorkflowRunStatus.SUCCEEDED:  # v0.16: a refit it ran has failed
+            from mapi_server.services.dashboards.refits import on_workflow_ended
+
+            await on_workflow_ended(env.session, wr)
         if status is WorkflowRunStatus.CANCELLED:
             return
         event = (

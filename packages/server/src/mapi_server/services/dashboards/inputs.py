@@ -471,6 +471,10 @@ async def submit_queued(ctx: ServerContext, session: AsyncSession, row: m.Dashbo
         return
     mv = await session.get(m.ModelVersion, row.model_version_id)
     try:
+        if dash.status != "published":  # archived (or unpublished) after it was queued
+            raise MapiError(
+                "the dashboard is not published", code=ErrorCode.DASHBOARD_NOT_PUBLISHED
+            )
         if mv is None:
             raise NotFoundError("model version", row.model_version_id)
         _refuse_unsafe(mv)

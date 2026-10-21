@@ -1157,7 +1157,7 @@ class DashboardRefitRequest(ResponseModel):
     decided_at: AwareDatetime | None = None
     note: str | None = Field(None, max_length=500)
     workflow_run_id: str | None = Field(None, max_length=128)
-    dataset_version_id: str | None = Field(None, max_length=128)
+    dataset_version_id: str | None = Field(None, max_length=256)
     problem: Problem | None = None
 
     model_config = dto_examples(

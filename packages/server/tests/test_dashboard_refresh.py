@@ -529,3 +529,92 @@ def test_an_upload_becomes_a_dense_csv() -> None:
         "2024-02-01,fr,,9.0",
     ]
     assert dashboard_spec()["kpi"]["variable"] == "y"
+
+
+async def _approved_and_started(kit: dict[str, Any], ctx: ServerContext) -> tuple[str, str]:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    await _request(kit, dash_id)
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    r = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve", json={}
+    )
+    assert r.status_code == 200, r.text
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DatasetVersion)
+            .where(m.DatasetVersion.status == "ingesting")
+            .values(status="ready", sha256="sha256:" + "2" * 64, ready_at=now())
+        )
+    assert await refits.advance(ctx) == 1
+    return dash_id, str(req["id"])
+
+
+@pytest.mark.parametrize("status", ["failed", "cancelled"])
+async def test_a_refit_whose_workflow_fails_is_marked_failed(
+    kit: dict[str, Any], ctx: ServerContext, status: str
+) -> None:
+    dash_id, req_id = await _approved_and_started(kit, ctx)
+    async with ctx.db.session() as s:
+        req = await s.get(m.DashboardRefitRequest, req_id)
+        assert req is not None and req.workflow_run_id is not None
+        wr = await s.get(m.WorkflowRunRow, req.workflow_run_id)
+        assert wr is not None
+        wr.status = status
+        wr.error = {"code": "USER_CODE_ERROR", "message": "the fit diverged"}
+        assert await refits.on_workflow_ended(s, wr) == 1
+    page = (await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    assert page[0]["status"] == "failed" and page[0]["problem"]["code"]
+    seq = page[0]["readout_seq"]
+    head = (await kit["cleo"].get(f"/v1/dashboards/{dash_id}/readouts/{seq}")).json()
+    assert head["refit_status"] == "failed"
+
+
+async def test_a_long_dataset_name_is_pinned_whole_and_a_bad_ref_never_aborts_the_pass(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    long = "co2-" + "x" * 120  # 124 characters: the ref is longer than 128
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Dataset).where(m.Dataset.name == "co2").values(name=long))
+    await _request(kit, dash_id)
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    r = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve", json={}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["dataset_version_id"] == f"dataset://default/{long}@v2"
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardRefitRequest)
+            .where(m.DashboardRefitRequest.id == req["id"])
+            .values(dataset_version_id="dataset://default/" + "y" * 100 + "@")
+        )
+    assert await refits.advance(ctx) == 1  # failed, not raised
+    async with ctx.db.session() as s:
+        row = await s.get(m.DashboardRefitRequest, req["id"])
+        assert row is not None and row.status == "failed"
+
+
+async def test_an_archived_dashboard_spends_nothing_more(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    await _request(kit, dash_id)
+    (req,) = (await kit["ana"].get(f"/v1/dashboards/{dash_id}/refit-requests")).json()["items"]
+    r = await kit["eve"].post(f"/v1/dashboards/{dash_id}:refresh")
+    assert r.status_code == 202, r.text
+    refresh_seq = r.json()["seq"]
+    assert (await kit["ana"].post(f"/v1/dashboards/{dash_id}:archive")).status_code == 200
+    runs = await _count(ctx, m.Run)
+    await DashboardLoop(ctx).submit_queued()
+    assert await _count(ctx, m.Run) == runs
+    async with ctx.db.session() as s:
+        queued = await s.get(m.DashboardReadout, (dash_id, refresh_seq))
+        assert queued is not None and queued.status == "failed"
+        decided = await s.get(m.DashboardRefitRequest, req["id"])
+        assert decided is not None and decided.status == "superseded"
+    r = await kit["ana"].post(
+        f"/v1/dashboards/{dash_id}/refit-requests/{req['id']}:approve", json={}
+    )
+    assert r.status_code in (404, 409), r.text
+    assert await _count(ctx, m.DatasetVersion) == 1

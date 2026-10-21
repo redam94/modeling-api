@@ -32,7 +32,7 @@ from mapi_spec.dashboards import (
     DashboardValidation,
     dashboard_spec_hash,
 )
-from mapi_spec.errors import ErrorCode, Issue, MapiError
+from mapi_spec.errors import ErrorCode, Issue, MapiError, Problem
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.views import RESPONSE_GRID_VIEW, ResponseGridView
 from pydantic import JsonValue, ValidationError
@@ -513,6 +513,32 @@ async def archive(session: AsyncSession, ctx: ServerContext, dashboard_id: str) 
         update(m.DashboardShare)
         .where(m.DashboardShare.dashboard_id == row.id, m.DashboardShare.revoked_at.is_(None))
         .values(revoked_at=ts, session_version=m.DashboardShare.session_version + 1)
+        .execution_options(synchronize_session=False)
+    )
+    # an archived dashboard spends nothing more: open requests are superseded, approved ones
+    # whose workflow has not started fail (queued readouts fail when the loop sees them)
+    await session.execute(
+        update(m.DashboardRefitRequest)
+        .where(
+            m.DashboardRefitRequest.dashboard_id == row.id,
+            m.DashboardRefitRequest.status == "open",
+        )
+        .values(status="superseded", decided_at=ts)
+        .execution_options(synchronize_session=False)
+    )
+    await session.execute(
+        update(m.DashboardRefitRequest)
+        .where(
+            m.DashboardRefitRequest.dashboard_id == row.id,
+            m.DashboardRefitRequest.status == "approved",
+            m.DashboardRefitRequest.workflow_run_id.is_(None),
+        )
+        .values(
+            status="failed",
+            problem=Problem.from_code(
+                ErrorCode.DASHBOARD_NOT_PUBLISHED, "the dashboard was archived"
+            ).model_dump(mode="json", exclude_none=True),
+        )
         .execution_options(synchronize_session=False)
     )
     await session.flush()
