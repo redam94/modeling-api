@@ -10,13 +10,25 @@ import { InlineMessage, StatGrid, StatTile } from "@/components/ods";
 import { fixed, grouped, MISSING } from "@/components/ods/format";
 import { Bars, Calibration, ConfusionGrid, MultiLine, SmallTable } from "@/components/readout-charts-extra";
 import { Button } from "@/components/ui/button";
-import { saveBytes } from "@/lib/download";
 
 import { dashboardErrorMessage, problemOf, useDownloadPredictions } from "../../client";
 import type { AccuracyDetail, AccuracyPoint, BatchSummary, ClientDashboard, DashboardClient, PredictionResult, Readout } from "../../types";
 import { asClientV2, plainNumber, unitText } from "../panel-model";
 import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, HISTORY_METRIC_LABEL, historyMetric, predictionLines, predictionsFileName } from "./results-model";
 import { Section } from "../parts";
+
+/** Save a downloaded Blob as a file (a same-origin Blob URL; the type stays CSV text). */
+function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(new Blob([blob], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename.replace(/[^A-Za-z0-9_.-]+/g, "_");
+  a.rel = "noopener";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
 
 function outputLabel(dashboard: ClientDashboard, name: string): string {
   return dashboard.subject && dashboard.subject.variable === name ? dashboard.subject.label : name;
@@ -78,8 +90,7 @@ export function BatchView({ client, dashboard, readout, summary }: { client: Das
   const gone = download.isError && problemOf(download.error)?.status === 410;
   const save = () =>
     download.mutate(readout.seq, {
-      onSuccess: (blob) =>
-        void blob.arrayBuffer().then((buf) => saveBytes(new Uint8Array(buf), predictionsFileName(dashboard.title, readout.seq), "text/csv")),
+      onSuccess: (blob) => saveBlob(blob, predictionsFileName(dashboard.title, readout.seq)),
     });
   return (
     <div className="grid gap-4" data-readout="batch">
