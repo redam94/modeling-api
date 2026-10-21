@@ -21,7 +21,7 @@ from mapi_spec.tenancy import (
     ProjectRole,
     check_role_scope,
 )
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +33,7 @@ from mapi_server.services.runs import now
 __all__ = [
     "add_member",
     "change_role",
+    "drop_dashboard_grants",
     "ensure_local_admin",
     "ensure_platform_tenant",
     "grant",
@@ -246,9 +247,10 @@ async def change_role(
     principal_id: str,
     role: ProjectRole | None,
     capabilities: list[Capability] | None = None,
-) -> m.Membership:
+) -> tuple[m.Membership, list[str]]:
     """Change a member's role and/or (M3.5) capabilities (``reviewer``). A tenant-wide grant
-    cannot become ``client`` (``INVALID_ROLE_SCOPE``, v0.16)."""
+    cannot become ``client`` (``INVALID_ROLE_SCOPE``, v0.16). A client who gets another role
+    loses their dashboard grants: returns the membership and those dashboard ids."""
     if role is not None:
         check_role_scope(role, project_id)
     row = await _find(session, tenant_id, project_id, principal_id)
@@ -258,21 +260,47 @@ async def change_role(
         row.capabilities = sorted({c.value for c in capabilities})
     if role is None:
         await session.flush()
-        return row
+        return row, []
     if (
         row.role == ProjectRole.ADMIN.value
         and role is not ProjectRole.ADMIN
         and await _admins_left(session, tenant_id, project_id, row.id) == 0
     ):
         raise MapiError("the last admin cannot be demoted", code=ErrorCode.CONFLICT)
+    was_client = row.role == ProjectRole.CLIENT.value
     row.role = role.value
     await session.flush()
-    return row
+    dropped: list[str] = []
+    if was_client and role is not ProjectRole.CLIENT and project_id is not None:
+        dropped = await drop_dashboard_grants(session, tenant_id, project_id, principal_id)
+    return row, dropped
+
+
+async def drop_dashboard_grants(
+    session: AsyncSession, tenant_id: str, project_id: str, user_id: str
+) -> list[str]:
+    """Delete the user's dashboard grants in the project (v0.16): a grant is part of the
+    client membership it was made for, so a removed or re-roled client who is later invited
+    again starts with none (and never sees their old private readouts through an old
+    grant). Returns the dashboard ids, sorted."""
+    rows = await session.execute(
+        delete(m.DashboardGrant)
+        .where(
+            m.DashboardGrant.tenant_id == tenant_id,
+            m.DashboardGrant.project_id == project_id,
+            m.DashboardGrant.user_id == user_id,
+        )
+        .returning(m.DashboardGrant.dashboard_id)
+        .execution_options(synchronize_session=False)
+    )
+    return sorted(str(d) for d in rows.scalars())
 
 
 async def remove_member(
     session: AsyncSession, *, tenant_id: str, project_id: str | None, principal_id: str
-) -> m.Membership:
+) -> tuple[m.Membership, list[str]]:
+    """Remove a membership; a project membership's dashboard grants go with it (returns the
+    membership and those dashboard ids)."""
     row = await _find(session, tenant_id, project_id, principal_id)
     if row is None:
         raise NotFoundError("member", principal_id)
@@ -283,4 +311,7 @@ async def remove_member(
         raise MapiError("the last admin cannot be removed", code=ErrorCode.CONFLICT)
     await session.delete(row)
     await session.flush()
-    return row
+    dropped: list[str] = []
+    if project_id is not None:
+        dropped = await drop_dashboard_grants(session, tenant_id, project_id, principal_id)
+    return row, dropped

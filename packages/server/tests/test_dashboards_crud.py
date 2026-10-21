@@ -310,3 +310,41 @@ async def test_grants_name_members_of_the_project(ctx: ServerContext, kit: dict[
             ).scalars()
         )
     assert actions == ["dashboard.grant", "dashboard.ungrant"]
+
+
+async def test_grants_end_with_the_client_membership(
+    ctx: ServerContext, client: httpx.AsyncClient, kit: dict[str, Any]
+) -> None:
+    """Removing a client (or giving them another role) deletes their grants, audited, so
+    inviting the same user again as a client restores nothing by itself."""
+    dash_id = await create_published(kit)
+    other = await create_published(kit, name="acme-monthly")
+    cleo = kit["users"]["cleo"]
+    members = f"/v1/tenants/default/projects/default/members/{cleo.id}"
+    assert len((await kit["cleo"].get("/v1/dashboards")).json()["items"]) == 2
+    r = await kit["ana"].delete(members)
+    assert r.status_code == 204, r.text
+    await grant_role(ctx, cleo, "default", "default", "client")  # invited again
+    again = await session_caller(ctx, client, cleo, tenant_id="default", project_id="default")
+    assert (await again.get("/v1/dashboards")).json()["items"] == []
+    assert (await again.get(f"/v1/dashboards/{dash_id}")).status_code == 404
+    # client -> viewer -> client: the same
+    r = await kit["ana"].put(f"/v1/dashboards/{dash_id}/grants/{cleo.id}")
+    assert r.status_code == 200, r.text
+    r = await kit["ana"].patch(members, json={"role": "viewer"})
+    assert r.status_code == 200, r.text
+    r = await kit["ana"].patch(members, json={"role": "client"})
+    assert r.status_code == 200, r.text
+    assert (await again.get("/v1/dashboards")).json()["items"] == []
+    async with ctx.db.session() as s:
+        ungrants = sorted(
+            (e.resource_id, (e.details or {}).get("reason"))
+            for e in (
+                await s.execute(
+                    select(m.AuditEvent).where(m.AuditEvent.action == "dashboard.ungrant")
+                )
+            ).scalars()
+        )
+    assert ungrants == sorted(
+        [(dash_id, "member_removed"), (other, "member_removed"), (dash_id, "role_changed")]
+    )
