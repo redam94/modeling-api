@@ -264,10 +264,13 @@ async def _pictures(session: AsyncSession, mv: m.ModelVersion) -> list[CatalogPi
     ).scalars()
     out: list[CatalogPicture] = []
     for row in rows:
-        prov = (row.spec or {}).get("provenance") or {}
-        source = str(prov.get("source") or "") if isinstance(prov, dict) else ""
-        recipe = row.recipe or (str(prov.get("recipe")) if isinstance(prov, dict) else None)
-        if not recipe or not embeddable("model_plot", source, recipe):
+        prov = (row.spec or {}).get("provenance")
+        if not isinstance(prov, dict):
+            continue
+        # PlotProvenance: exactly one of recipe, plugin or author (the stored, sanitized doc)
+        source = "recipe" if prov.get("recipe") else "plugin" if prov.get("plugin") else "author"
+        recipe = str(prov.get("recipe") or "") or None
+        if recipe is None or row.recipe != recipe or not embeddable("model_plot", source, recipe):
             continue
         name = recipe.split("@", 1)[0]  # panels name recipes without a version
         out.append(CatalogPicture(plot_id=row.plot_id, recipe=name, title=row.title[:200]))
@@ -405,11 +408,17 @@ async def _check_planner(
 
 
 async def check_version_v2(
-    ctx: ServerContext, session: AsyncSession, spec: DashboardSpecV2, mv: m.ModelVersion
+    ctx: ServerContext,
+    session: AsyncSession,
+    spec: DashboardSpecV2,
+    mv: m.ModelVersion,
+    *,
+    catalog: SourceCatalog | None = None,
 ) -> list[Issue]:
     """What stops ``spec`` on ``mv`` (errors) or asks the analyst to check (warnings,
     infos): a version that is not ready or ran uploaded code, a catalog that cannot be read,
-    and every rule of :func:`mapi_spec.dashboard_presets.check_spec_v2`."""
+    and every rule of :func:`mapi_spec.dashboard_presets.check_spec_v2` (against
+    ``catalog`` when the caller already read it, else :func:`source_catalog`)."""
     issues: list[Issue] = []
     if mv.status != "ready":
         issues.append(_issue(ErrorCode.NOT_READY, "/source", f"model version {mv.id} is not ready"))
@@ -423,11 +432,13 @@ async def check_version_v2(
             )
         )
         return issues
-    try:
-        catalog = await source_catalog(ctx, session, mv)
-    except MapiError as exc:
-        issues.append(_issue(exc.code, "/source", f"the model's sources cannot be read: {exc}"))
-        return issues
+    if catalog is None:
+        try:
+            catalog = await source_catalog(ctx, session, mv)
+        except MapiError as exc:
+            why = f"the model's sources cannot be read: {exc}"
+            issues.append(_issue(exc.code, "/source", why))
+            return issues
     if spec.preset == "mmm_planner":
         await _check_planner(ctx, session, spec, mv, issues)
     if spec.actuals.enabled and mv.score_meta is None:

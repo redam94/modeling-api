@@ -149,7 +149,8 @@ async def _plot_of(session: AsyncSession, mv: m.ModelVersion, panel: RecipePanel
             select(m.Plot)
             .where(
                 m.Plot.model_version_id == mv.id,
-                (m.Plot.recipe == panel.recipe) | m.Plot.recipe.startswith(panel.recipe + "@", autoescape=True),
+                (m.Plot.recipe == panel.recipe)
+                | m.Plot.recipe.startswith(panel.recipe + "@", autoescape=True),
             )
             .order_by(m.Plot.plot_id)
             .limit(1)

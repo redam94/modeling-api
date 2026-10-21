@@ -635,7 +635,7 @@ async def upgrade_draft(
         new, notes = upgrade_v1(spec, catalog)
     except (ValueError, ValidationError) as exc:
         raise _upgrade_refused(exc) from None
-    issues = await check_version_v2(ctx, session, new, binding.model_version)
+    issues = await check_version_v2(ctx, session, new, binding.model_version, catalog=catalog)
     row.draft_spec = new.model_dump(mode="json")
     row.draft_etag = next_etag(row.draft_etag)
     row.updated_at = now()

@@ -27,7 +27,6 @@ from mapi_spec.dashboard_v2 import CatalogMetric, CatalogPicture, SourceCatalog
 from mapi_spec.dashboards import DashboardSource
 from mapi_spec.endpoints import EndpointSchemaSnapshot
 from mapi_spec.schema import DimPolicy
-
 from test_dashboards_crud import dashboard_kit
 
 _p = Path(__file__).parent / "fixtures" / "dashboards_v017" / "loader.py"
@@ -106,7 +105,6 @@ def test_catalog_matches_the_manifest_only_catalog_for_outputs() -> None:
 
 
 # ===================================================================================== server
-
 
 
 @pytest.fixture

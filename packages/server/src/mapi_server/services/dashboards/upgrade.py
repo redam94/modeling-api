@@ -156,7 +156,7 @@ async def convert(
         msg = f"the spec cannot be converted to layout 2: {str(exc)[:300]}"
         return Conversion(None, [], [_blocked(ErrorCode.SCHEMA_INVALID, "", msg)])
     try:
-        issues = await check_version_v2(ctx, session, new, mv)
+        issues = await check_version_v2(ctx, session, new, mv, catalog=catalog)
     except Exception as exc:
         if not _transient(exc):
             raise
@@ -308,6 +308,8 @@ async def _upgrade_one(
             mv = await _draft_binding(session, row, draft_v1)
             drafted = await convert(ctx, session, draft_v1, mv, catalog_of=catalog_of)
     done = [c for c in (published, drafted) if c is not None]
+    if len(done) == 2 and done[0] is done[1]:  # the draft is the published spec
+        done = done[:1]
     if any(c.transient for c in done):
         report.retry.append(row.id)
         return
