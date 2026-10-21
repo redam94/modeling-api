@@ -51,7 +51,7 @@ from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.dashboards.access import DashboardContext, load_dashboard, revision_spec
-from mapi_server.services.dashboards.readouts import review
+from mapi_server.services.dashboards.readouts import _lock_dashboard, review
 from mapi_server.services.endpoints import live_capabilities_snapshot
 from mapi_server.services.quotas import admit_storage
 from mapi_server.services.runs import Scope, now
@@ -107,6 +107,9 @@ async def request_refit(
             "asking for a refit is not available on this dashboard",
             code=ErrorCode.DASHBOARD_INPUT_DISABLED,
         )
+    # the supersede and the insert run under the dashboard row lock, so two requests never
+    # both insert an open row (uq_dashboard_refit_requests_open)
+    await _lock_dashboard(session, dash.id)
     ts = now()
     await session.execute(
         update(m.DashboardRefitRequest)

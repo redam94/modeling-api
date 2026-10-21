@@ -10,6 +10,7 @@ refit workflow starts as the approver once that version is ready.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -235,6 +236,31 @@ async def test_a_newer_request_supersedes_the_open_one(kit: dict[str, Any]) -> N
         await kit["eve"].get(f"/v1/dashboards/{dash_id}/refit-requests", params={"status": "open"})
     ).json()["items"]
     assert [i["readout_seq"] for i in open_] == [second]
+
+
+async def test_concurrent_requests_on_a_cached_upload_keep_one_open(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """A double submit of the same numbers hits the uploader's own ready readout (no new
+    readout, so no lock from it): the request itself locks the dashboard, so the partial
+    unique index never fails the upload with a 500."""
+    dash_id = await create_published(kit, **_refit_spec(kit))
+    seq = await _request(kit, dash_id)
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == dash_id, m.DashboardReadout.seq == seq)
+            .values(status="ready", ready_at=now(), snapshot={"lead": "Done."})
+        )
+    body = {**UPLOAD, "request_refit": True}
+    url = f"/v1/dashboards/{dash_id}/actuals"
+    answers = await asyncio.gather(*(kit["cleo"].post(url, json=body) for _ in range(4)))
+    assert all(r.status_code < 300 for r in answers), [r.text for r in answers]
+    assert {r.json()["seq"] for r in answers} == {seq}
+    assert await _count(
+        ctx, m.DashboardRefitRequest,
+        m.DashboardRefitRequest.dashboard_id == dash_id, m.DashboardRefitRequest.status == "open",
+    ) == 1  # fmt: skip
 
 
 async def test_only_an_editor_with_runner_rights_decides(kit: dict[str, Any]) -> None:
