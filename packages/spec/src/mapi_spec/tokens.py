@@ -339,15 +339,22 @@ _SCORE_GRANTS = frozenset({("endpoint", "read"), ("endpoint", "run"), ("model", 
 """What ``score:<target>`` covers on the endpoint or model named ``<target>``."""
 
 TOKEN_NEVER: Final[frozenset[tuple[str, str]]] = frozenset(
-    {("token", "create"), ("endpoint", "manage"), ("model", "approve")}
+    {
+        ("token", "create"),
+        ("endpoint", "manage"),
+        ("model", "approve"),
+        ("dashboard_grant", "create"),
+        ("dashboard_share", "create"),
+    }
 )
 """``(resource, action)`` pairs no token may do, whatever its scopes (even ``admin``):
-minting tokens, overriding an endpoint's promotion gate and approving a model validation
-(M3.5: a reviewer's decision)."""
+minting tokens, overriding an endpoint's promotion gate, approving a model validation
+(M3.5: a reviewer's decision) and granting a dashboard or minting a share link (v0.16: both
+hand access to people outside the token's audit trail)."""
 
 _READABLE = (
     "catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project",
-    "workflow", "policy",
+    "workflow", "policy", "dashboard",
 )  # fmt: skip
 _READ = frozenset((r, "read") for r in _READABLE)
 _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {
