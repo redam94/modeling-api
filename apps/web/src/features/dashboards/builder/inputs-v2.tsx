@@ -21,6 +21,7 @@ import { Field, Input, NativeSelect } from "@/components/ui/primitives";
 import { Section } from "../readout/parts";
 import { MAX_BATCH_ROWS, MAX_HORIZON, MAX_SCENARIO_INPUTS, MAX_SCENARIO_ROWS, type DashboardSpecV2, type ScenarioInputDef, type SourceCatalog } from "../types";
 import { Toggle, WorkflowPicker } from "./inputs";
+import { ListInput } from "./list-input";
 import type { SpecEditorProps } from "./setup";
 import { v2Change } from "./setup-v2";
 import { issueAt, MAX_EXACT_RUNS, type FormIssue } from "./spec-form";
@@ -123,7 +124,7 @@ function OutputChecks({ id, legend, value, max, catalog, onChange, error }: { id
           );
         })
       ) : (
-        <Input aria-label={legend} className="font-mono" value={value.join(", ")} onChange={(e) => onChange(e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, max))} />
+        <ListInput aria-label={legend} className="font-mono" value={value} max={max} onChange={onChange} />
       )}
       {error ? (
         <p role="alert" className="text-xs font-medium text-destructive">
@@ -292,7 +293,7 @@ function InputDefEditor({ d, i, issues, catalog, horizon, onChange, onRemove }: 
       {d.type === "choice" ? (
         <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Field label="Choices" htmlFor={fid("choices")} error={err("choices")} hint="Separated by commas.">
-            <Input id={fid("choices")} value={(d.choices ?? []).join(", ")} onChange={(e) => onChange({ ...d, choices: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+            <ListInput id={fid("choices")} value={d.choices ?? []} onChange={(choices) => onChange({ ...d, choices })} />
           </Field>
           <Field label="Default" htmlFor={fid("default")} error={err("default")}>
             <NativeSelect id={fid("default")} value={String(d.default)} onChange={(e) => onChange({ ...d, default: e.target.value })}>

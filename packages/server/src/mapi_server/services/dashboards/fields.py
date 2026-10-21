@@ -11,11 +11,11 @@ most :data:`~mapi_spec.dashboard_v2.MAX_FIELD_SIDE` x ``MAX_FIELD_SIDE`` uint8 c
 2. block-averages it to at most 64 x 64 cells (the mean of the present cells of each
    block; a block with none stays missing) and keeps at most 8 frames (even thinning,
    first and last kept);
-3. re-quantises every frame on one shared range to uint8 codes: code ``c`` is
-   ``vmin + c / 255 * (vmax - vmin)``. When the entry draws ``log10`` of the value, the
+3. re-quantises every frame on one shared range to uint8 codes: code ``c`` (0 … 254) is
+   ``vmin + c / 254 * (vmax - vmin)``. When the entry draws ``log10`` of the value, the
    range and the codes are on ``log10`` (``vmin``/``vmax`` are then ``log10`` values).
-   A missing cell (or a value <= 0 on a log map) gets code 0: the block has no missing
-   code, and the frame keeps the shape.
+   A missing cell (or a value <= 0 on a log map) gets the block's ``missing_code`` (255):
+   it is drawn transparent and left out of the statistics, and the frame keeps the shape.
 
 Row 0 of a block is the top row: a raster with ``origin == "lower"`` is flipped.
 """
@@ -25,9 +25,15 @@ from __future__ import annotations
 import base64
 import math
 from collections.abc import Sequence
-from typing import Final
 
-from mapi_spec.dashboard_v2 import MAX_FIELD_FRAMES, MAX_FIELD_SIDE, FieldBlock, FieldFrame
+from mapi_spec.dashboard_v2 import (
+    FIELD_MISSING_CODE,
+    FIELD_VALUE_CODES,
+    MAX_FIELD_FRAMES,
+    MAX_FIELD_SIDE,
+    FieldBlock,
+    FieldFrame,
+)
 from mapi_spec.views import FieldEntry, FieldsView, decode_raster
 
 __all__ = [
@@ -37,8 +43,6 @@ __all__ = [
     "pick_frames",
     "quantise",
 ]
-
-_CODES: Final = 255
 
 
 def field_entry(
@@ -94,14 +98,17 @@ def pick_frames(n: int, keep: int = MAX_FIELD_FRAMES) -> list[int]:
 
 
 def quantise(values: Sequence[float | None], vmin: float, vmax: float) -> bytes:
-    """uint8 codes of ``values`` on ``[vmin, vmax]`` (missing: 0)."""
+    """uint8 codes of ``values`` on ``[vmin, vmax]``: ``0`` … ``254`` for values, and
+    :data:`~mapi_spec.dashboard_v2.FIELD_MISSING_CODE` (255) for a missing cell (masked,
+    non-finite, or not above zero on a log map), so it never reads as the minimum."""
     span = vmax - vmin
-    out = bytearray(len(values))
+    top = FIELD_VALUE_CODES
+    out = bytearray([FIELD_MISSING_CODE]) * len(values)
     for i, v in enumerate(values):
         if v is None or not math.isfinite(v):
             continue
-        c = 0 if span <= 0 else round((v - vmin) / span * _CODES)
-        out[i] = min(_CODES, max(0, c))
+        c = 0 if span <= 0 else round((v - vmin) / span * top)
+        out[i] = min(top, max(0, c))
     return bytes(out)
 
 
@@ -162,6 +169,7 @@ def field_block(
         ],
         vmin=vmin,
         vmax=vmax,
+        missing_code=FIELD_MISSING_CODE,
         log=log,
         colormap=entry.colormap,
         units=_text(entry.units),

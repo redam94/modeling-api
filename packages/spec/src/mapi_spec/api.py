@@ -4554,7 +4554,8 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "PUT", _DSH + "/draft", "update_dashboard_draft",
         "Replace the draft spec (If-Match: the draft_etag)", "Dashboard", 200,
         request="DashboardDraftUpdate",
-        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED),
+        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED,
+                _E.DASHBOARD_LAYOUT_RETIRED),
         headers=(*_PH, _IF_MATCH),
     ),
     EndpointDecl(
@@ -4777,15 +4778,19 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", _DSH + ":upgrade", "upgrade_dashboard",
         "Convert a layout 1 draft to layout 2 and save it as the draft (If-Match: the "
-        "draft_etag); publish it as usual", "DashboardUpgrade", 200,
-        errors=(*_NF, _E.DASHBOARD_SPEC_STALE, _E.CONFLICT), headers=(*_PH, _IF_MATCH),
+        "draft_etag; SCHEMA_INVALID with the issues when it cannot be converted); publish it "
+        "as usual", "DashboardUpgrade", 200,
+        errors=(*_NF, *_BODY, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED, _E.CONFLICT),
+        headers=(*_PH, _IF_MATCH),
     ),
     # inputs (clients too): scenario rows, batch scoring, downloads, pictures
     EndpointDecl(
         "POST", _DSH + "/predictions", "submit_dashboard_predictions",
         "Score scenario rows (values checked against the published revision): a private "
-        "prediction readout", "Readout", 202, request="ScenarioRowsRequest",
-        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS), headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+        "prediction readout (Prefer: wait=N -> 200 with the readout if done, else 202 with "
+        "its header)", "Readout", 202, request="ScenarioRowsRequest",
+        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
     ),
     EndpointDecl(
         "POST", _DSH + "/readouts/{seq}:keep", "keep_dashboard_readout",
@@ -4801,9 +4806,10 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "POST", _DSH + "/batch", "submit_dashboard_batch",
         "Score a file of new cases: a private batch readout with a summary and a "
-        "predictions download", "Readout", 202, request="BatchSubmit",
+        "predictions download (Prefer: wait=N -> 200 with the readout if done, else 202 "
+        "with its header)", "Readout", 202, request="BatchSubmit",
         errors=(*_BODY, *_NF, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE),
-        headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
     ),
     EndpointDecl(
         "GET", _DSH + "/readouts/{seq}/predictions.csv", "download_dashboard_predictions",
@@ -4812,15 +4818,17 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "GET", _DSH + "/assets/{asset_id}", "get_dashboard_asset",
-        "A picture of the published revision (PNG)", None, 200, errors=_NF, headers=_PH,
+        "A picture of the dashboard (PNG): a client reads only those of the published "
+        "revision, members those of any revision", None, 200, errors=_NF, headers=_PH,
     ),
     # share links (public; the session in X-Mapi-Share authorises)
     EndpointDecl(
         "POST", "/v1/shared/predictions", "submit_shared_predictions",
-        "Public: score scenario rows as this link's private readout", "Readout", 202,
+        "Public: score scenario rows as this link's private readout (Prefer: wait=N -> 200 "
+        "with the readout if done, else 202 with its header)", "Readout", 202,
         request="ScenarioRowsRequest",
         errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS),
-        headers=(*_SH, IDEMPOTENCY_KEY_HEADER),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
     ),
     EndpointDecl(
         "GET", "/v1/shared/batch/template", "get_shared_batch_template",
@@ -4830,10 +4838,11 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "POST", "/v1/shared/batch", "submit_shared_batch",
-        "Public: score a file of new cases as this link's private readout", "Readout", 202,
+        "Public: score a file of new cases as this link's private readout (Prefer: wait=N "
+        "-> 200 with the readout if done, else 202 with its header)", "Readout", 202,
         request="BatchSubmit",
         errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE),
-        headers=(*_SH, IDEMPOTENCY_KEY_HEADER),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
     ),
     EndpointDecl(
         "GET", "/v1/shared/readouts/{seq}/predictions.csv", "download_shared_predictions",

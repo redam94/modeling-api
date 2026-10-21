@@ -90,8 +90,17 @@ When the worker of v0.17 starts, it moves each v0.16 dashboard (layout 1) to the
   run-as owner. It also starts a new baseline readout.
 - The server never changes a stored row. The old revisions and the old readouts stay as
   they were. **History** shows the old readouts with the old look.
-- Share links, client grants, saved scenarios and refit requests keep their function.
-- Drafts move to the new layout too.
+- A **Media planner** dashboard keeps its share links, client grants, saved scenarios and
+  refit requests as they were.
+- A dashboard that moves to another preset (for example **Forecast**) keeps its client
+  grants, share links and refit requests, but it has no channel what-ifs: the grid, the
+  what-if and the saved scenarios answer `409 DASHBOARD_INPUT_DISABLED`. A share link that
+  allowed only what-ifs becomes read-only. Uploads stay on only if the new preset allows
+  them.
+- Drafts move to the new layout too. An unfinished draft that cannot move stays on the old
+  layout (the builder shows why); the published revision moves without it.
+- If the server cannot read the catalog of the new release yet, it tries again every
+  minute; it never picks a preset without it.
 
 If the app cannot move a dashboard by itself, the dashboard stays on the old layout.
 Clients see no change. The builder shows the problems and a **Use the new layout** button,

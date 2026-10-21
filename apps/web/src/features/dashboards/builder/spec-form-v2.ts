@@ -770,7 +770,9 @@ export function catalogIssuesV2(spec: DashboardSpecV2, catalog: SourceCatalog | 
   const add = (pointer: string, message: string) => void out.push({ pointer, message });
   const names = new Set((catalog.outputs ?? []).map((o) => o.name));
   const known = (n: string) => names.has(n);
-  if ((catalog.outputs ?? []).length && !known(spec.subject.variable)) add("/subject/variable", `The model has no output named ${spec.subject.variable}.`);
+  // the planner reads its KPI from the model's variables and the response grid, never an output
+  // (`check_spec_v2` skips it too)
+  if (spec.preset !== "mmm_planner" && (catalog.outputs ?? []).length && !known(spec.subject.variable)) add("/subject/variable", `The model has no output named ${spec.subject.variable}.`);
   spec.panels.forEach((p, i) => {
     const at = `/panels/${i}`;
     if ((p.kind === "kpi" || p.kind === "chart" || p.kind === "table") && p.source.kind === "output") {

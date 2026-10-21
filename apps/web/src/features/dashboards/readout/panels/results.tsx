@@ -80,6 +80,15 @@ export function PredictionView({ dashboard, result, labels }: { dashboard: Clien
   );
 }
 
+/**
+ * Whether a failed download means the predictions expired (`410 DASHBOARD_DOWNLOAD_GONE`). Any other
+ * 410 (a share link that was revoked or ended: `LINK_EXPIRED`) is not: its own message says why.
+ */
+export function downloadGone(err: unknown): boolean {
+  const p = problemOf(err);
+  return p?.status === 410 && p.problem?.code === "DASHBOARD_DOWNLOAD_GONE";
+}
+
 /** The summary of a scored file, and "Download predictions" for the viewer who sent it. */
 export function BatchView({ client, dashboard, readout, summary }: { client: DashboardClient; dashboard: ClientDashboard; readout: Pick<Readout, "seq">; summary: BatchSummary }) {
   const v2 = asClientV2(client);
@@ -87,7 +96,7 @@ export function BatchView({ client, dashboard, readout, summary }: { client: Das
   const unit = dashboard.subject?.unit ?? dashboard.kpi.unit;
   const preview = summary.preview ?? [];
   const cols = preview.length ? Object.keys(preview[0] ?? {}) : [];
-  const gone = download.isError && problemOf(download.error)?.status === 410;
+  const gone = download.isError && downloadGone(download.error);
   const save = () =>
     download.mutate(readout.seq, {
       onSuccess: (blob) => saveBlob(blob, predictionsFileName(dashboard.title, readout.seq)),
@@ -170,13 +179,21 @@ export function AccuracyHistoryView({ points }: { points: readonly AccuracyPoint
   );
 }
 
+/** The analyst's labels of the inputs (name → label), so a tried case never shows raw names. */
+export function inputLabels(dashboard: Pick<ClientDashboard, "scenario_form">): Record<string, string> {
+  const form = dashboard.scenario_form;
+  const out: Record<string, string> = Object.fromEntries((form?.inputs ?? []).map((i) => [i.name, i.label]));
+  if (form?.horizon && !("horizon" in out)) out.horizon = "Periods ahead";
+  return out;
+}
+
 /** Accuracy, prediction and batch results of a readout snapshot, each when it has one. */
 export function ReadoutResults({ client, dashboard, readout }: { client: DashboardClient; dashboard: ClientDashboard; readout: Readout }) {
   const snap = readout.snapshot;
   if (!snap) return null;
   return (
     <>
-      {snap.prediction ? <PredictionView dashboard={dashboard} result={snap.prediction} /> : null}
+      {snap.prediction ? <PredictionView dashboard={dashboard} result={snap.prediction} labels={inputLabels(dashboard)} /> : null}
       {snap.batch ? <BatchView client={client} dashboard={dashboard} readout={readout} summary={snap.batch} /> : null}
       {snap.accuracy_detail ? <AccuracyDetailView dashboard={dashboard} detail={snap.accuracy_detail} /> : null}
     </>

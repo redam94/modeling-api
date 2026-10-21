@@ -454,12 +454,14 @@ export async function listInputs(c: DashboardClient): Promise<InputsReport> {
 }
 
 /**
- * The caller's readout `seq` of `kind` (`tools._own`). The read routes give a client user or a
- * share link only its own private rows; a readout of another kind is "not found".
+ * The caller's readout `seq` of `kind` (`tools._own`): only a readout the caller made
+ * (`ReadoutHeader.mine`; an analyst reads every readout, but these tools read the caller's own, as
+ * the server tool does). A readout of another kind, or somebody else's, is "not found".
  */
 async function own(c: DashboardClient, seq: number, kind: ReadoutKind): Promise<Readout> {
   const r = await c.readout(seq);
   if (r.kind !== kind) throw new ToolNotFoundError(`readout ${seq} is not a ${kind} readout`);
+  if (r.mine === false) throw new ToolNotFoundError(`readout ${seq} is not one of yours`);
   return r;
 }
 

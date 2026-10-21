@@ -439,7 +439,7 @@ async def submit_actuals_v2(
         row = (
             hit
             if hit.actor_kind == actor.kind and hit.actor_id == actor.id
-            else await _copy_for(ctx, session, p.dash, p.rev, hit, actor, visibility)
+            else await _copy_for(ctx, session, p.dash, p.rev, hit, actor, visibility, title=title)
         )
     else:
         octx = await owner_context(ctx, session, p.dash)  # before the lock (it may pause)

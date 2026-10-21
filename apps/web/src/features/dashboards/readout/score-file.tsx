@@ -29,6 +29,8 @@ const PREVIEW_ROWS = 20;
 
 interface FileState {
   name: string;
+  /** The file is separated by `;`: a comma in a number is its decimal mark. */
+  decimalComma: boolean;
   header: string[];
   /** The raw cells of the rows read (≤ max rows + 1), in the file's column order. */
   raw: string[][];
@@ -65,7 +67,7 @@ function ScoreForm({ client, dashboard, template, preview }: { client: Dashboard
   const max = Math.min(template.max_rows, MAX_BATCH_ROWS);
   const paused = dashboard.live_inputs === "paused";
 
-  const rows = useMemo(() => (file ? batchRows(template, file.header, file.raw) : []), [file, template]);
+  const rows = useMemo(() => (file ? batchRows(template, file.header, file.raw, file.decimalComma) : []), [file, template]);
   const checks = useMemo(() => (file ? batchChecks({ ...template, max_rows: max }, file.header, rows, file.total) : []), [file, template, rows, max]);
   const ok = file !== null && checksPass(checks);
 
@@ -83,7 +85,7 @@ function ScoreForm({ client, dashboard, template, preview }: { client: Dashboard
           return;
         }
         const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "").length - 1;
-        setFile({ name: f.name, header: csv.header, raw: csv.rows.slice(0, max + 1), total: csv.truncated ? Math.max(lines, max + 1) : csv.rows.filter((r) => r.some((c) => c.trim() !== "")).length });
+        setFile({ name: f.name, decimalComma: csv.delimiter === ";", header: csv.header, raw: csv.rows.slice(0, max + 1), total: csv.truncated ? Math.max(lines, max + 1) : csv.rows.filter((r) => r.some((c) => c.trim() !== "")).length });
       },
       (e: unknown) => setReadError(String(e)),
     );

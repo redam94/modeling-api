@@ -76,6 +76,7 @@ export function HeavyBlock({ client, dashboard, block }: { client: DashboardClie
           frames={block.frames}
           vmin={block.vmin}
           vmax={block.vmax}
+          missingCode={block.missing_code ?? null}
           log={block.log ?? false}
           colormap={block.colormap ?? "viridis"}
           units={block.units ?? null}

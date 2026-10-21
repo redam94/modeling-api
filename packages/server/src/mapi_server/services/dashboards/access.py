@@ -78,6 +78,7 @@ __all__ = [
     "dashboard_dto",
     "effective_inputs",
     "grant_dto",
+    "is_mine",
     "latest_readout",
     "load_dashboard",
     "load_revision",
@@ -317,7 +318,14 @@ def _period(row: m.DashboardReadout) -> tuple[date, date] | None:
     return (row.period_start, row.period_end)
 
 
-def readout_header(row: m.DashboardReadout, refit_status: str | None = None) -> ReadoutHeader:
+def is_mine(row: m.DashboardReadout, dctx: DashboardContext) -> bool:
+    """Whether ``dctx``'s caller made the readout (the server tools' ``_own`` rule)."""
+    return row.actor_kind == dctx.principal_kind and row.actor_id == dctx.principal_id
+
+
+def readout_header(
+    row: m.DashboardReadout, refit_status: str | None = None, *, mine: bool | None = None
+) -> ReadoutHeader:
     return ReadoutHeader.model_validate(
         {
             "seq": row.seq,
@@ -333,6 +341,7 @@ def readout_header(row: m.DashboardReadout, refit_status: str | None = None) -> 
             "created_at": row.created_at,
             "ready_at": row.ready_at,
             "refit_status": refit_status,
+            "mine": mine,
         }
     )
 
@@ -355,11 +364,15 @@ def viewer_problem(stored: Mapping[str, Any]) -> Problem:
 
 
 def readout_dto(
-    row: m.DashboardReadout, refit_status: str | None = None, *, analyst: bool = False
+    row: m.DashboardReadout,
+    refit_status: str | None = None,
+    *,
+    analyst: bool = False,
+    mine: bool | None = None,
 ) -> Readout:
     """A readout with its snapshot (only once ``ready``) or its problem (``failed``): the full
     problem for an ``analyst``, else :func:`viewer_problem`."""
-    head = readout_header(row, refit_status)
+    head = readout_header(row, refit_status, mine=mine)
     snapshot = (
         ReadoutSnapshot.model_validate(row.snapshot)
         if row.status == "ready" and row.snapshot is not None

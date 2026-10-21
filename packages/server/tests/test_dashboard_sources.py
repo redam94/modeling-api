@@ -134,7 +134,8 @@ async def test_source_catalog_of_a_fitted_version(ctx: ServerContext, kit: dict[
     assert {"y_hat", "trend"} <= names
     y_hat = next(o for o in cat.outputs if o.name == "y_hat")
     assert y_hat.time_dim is not None and y_hat.representation.value == "draws"
-    assert {"sum", "mean", "last", "next"} <= set(y_hat.reduces)
+    # draws: only the forecast total over the time dim, never a mean the run did not aggregate
+    assert {"sum", "last", "next"} <= set(y_hat.reduces) and "mean" not in y_hat.reduces
     assert {"forecast", "predict"} <= set(cat.score_modes)
 
 

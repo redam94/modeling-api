@@ -27,8 +27,22 @@ export interface PanelsEditorProps {
 
 const ADD_WORD: Record<PanelKind, string> = { kpi: "Key number", chart: "Chart", table: "Table", note: "Note", recipe: "Model plot", mmm: "Planner part" };
 
+/**
+ * Stable row keys of the panel list. A panel's `id` is editable (typing in it must not close the
+ * editor or remount the row), so rows are keyed and opened by a client-side key that follows the
+ * panel through moves, adds and removes.
+ */
+function useRowKeys(n: number) {
+  const keys = useRef<string[]>([]);
+  const next = useRef(0);
+  while (keys.current.length < n) keys.current.push(`row-${next.current++}`);
+  if (keys.current.length > n) keys.current.length = n;
+  return keys.current;
+}
+
 export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false }: PanelsEditorProps) {
-  const [open, setOpen] = useState<string | null>(null);
+  const keys = useRowKeys(spec.panels.length);
+  const [openKey, setOpen] = useState<string | null>(null);
   const [said, setSaid] = useState("");
   const focusNext = useRef<{ id: string; dir: "up" | "down" } | null>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement | null>());
@@ -48,7 +62,9 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
     const p = spec.panels[i];
     if (!p) return;
     const to = Math.max(0, Math.min(spec.panels.length - 1, i + delta));
-    focusNext.current = { id: p.id, dir: delta < 0 ? "up" : "down" };
+    const key = keys[i];
+    focusNext.current = key ? { id: key, dir: delta < 0 ? "up" : "down" } : null;
+    if (to !== i && key !== undefined && keys[to] !== undefined) [keys[i], keys[to]] = [keys[to], key];
     onChange((s) => movePanel(s, i, delta));
     setSaid(`${p.title || p.id} moved to place ${to + 1} of ${spec.panels.length}.`);
   };
@@ -56,13 +72,15 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
     const p = defaultPanel(spec, kind, catalog);
     if (!p) return;
     onChange((s) => addPanel(s, p));
-    setOpen(p.id);
+    keys.push(`row-new-${keys.length}-${Date.now()}`);
+    setOpen(keys[keys.length - 1] ?? null);
     setSaid(`${ADD_WORD[kind]} added at place ${spec.panels.length + 1}.`);
   };
   const remove = (i: number) => {
     const p = spec.panels[i];
     if (!p) return;
     onChange((s) => removePanel(s, i));
+    keys.splice(i, 1);
     setSaid(`${p.title || p.id} removed.`);
   };
 
@@ -81,14 +99,15 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
       <ol aria-label="Panels" className="grid gap-2">
         {spec.panels.map((p, i) => {
           const who = p.title.trim() || p.id || `panel ${i + 1}`;
-          const isOpen = open === p.id;
+          const rowKey = keys[i] ?? `row-${i}`;
+          const isOpen = openKey === rowKey;
           const problem = issueAt(issues, `/panels/${i}`, true);
           const editorId = `panel-editor-${i}`;
           const what = p.kind === "chart" ? INTENT_WORD[p.intent] : PANEL_KIND_WORD[p.kind];
           return (
-            <li key={`${p.id}-${i}`} data-panel={p.id} className="rounded-lg border">
+            <li key={rowKey} data-panel={p.id} className="rounded-lg border">
               <div className="flex flex-wrap items-center gap-2 p-2">
-                <Button size="sm" variant="ghost" aria-expanded={isOpen} aria-controls={editorId} onClick={() => setOpen(isOpen ? null : p.id)} className="min-w-0 flex-1 justify-start">
+                <Button size="sm" variant="ghost" aria-expanded={isOpen} aria-controls={editorId} onClick={() => setOpen(isOpen ? null : rowKey)} className="min-w-0 flex-1 justify-start">
                   {isOpen ? <ChevronDown /> : <ChevronRight />}
                   <span className="text-xs text-muted-foreground tabular-nums">{i + 1}.</span>
                   <span className="truncate font-medium">{who}</span>
@@ -100,7 +119,7 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
                   <Button
                     size="icon-sm"
                     variant="ghost"
-                    ref={(el) => void buttons.current.set(`${p.id}:up`, el)}
+                    ref={(el) => void buttons.current.set(`${rowKey}:up`, el)}
                     aria-label={`Move ${who} up`}
                     disabled={readOnly || i === 0}
                     onClick={() => move(i, -1)}
@@ -110,7 +129,7 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
                   <Button
                     size="icon-sm"
                     variant="ghost"
-                    ref={(el) => void buttons.current.set(`${p.id}:down`, el)}
+                    ref={(el) => void buttons.current.set(`${rowKey}:down`, el)}
                     aria-label={`Move ${who} down`}
                     disabled={readOnly || i === spec.panels.length - 1}
                     onClick={() => move(i, 1)}

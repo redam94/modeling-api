@@ -211,6 +211,40 @@ async def test_a_media_mix_model_becomes_the_planner(
     assert planner.limits.exact_runs_per_day == spec.limits.exact_runs_per_day
 
 
+async def test_the_upgraded_planner_baseline_keeps_its_layout_1_centres(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    """Plan §10.1-2: the planner's baseline is a predictive run (the band) and an expected
+    run (the layout 1 centres); the readout waits for both."""
+    from mapi_server.services.dashboards.loop import DashboardLoop
+    from mapi_server.services.dashboards.readouts import run_terminal
+    from mapi_spec.run import RunState
+
+    dash_id = await create_published(kit, whatif={"enabled": True})
+
+    async def as_mmm(c: ServerContext, s: Any, mv: m.ModelVersion) -> SourceCatalog:
+        cat = await sources.source_catalog(c, s, mv)
+        modes = sorted({*cat.score_modes, "counterfactual"})
+        return cat.model_copy(update={"family": "mmm", "namespace": "mmm", "score_modes": modes})
+
+    assert (await auto_upgrade_v1(ctx, catalog_of=as_mmm)).published == [dash_id]
+    assert await DashboardLoop(ctx).submit_queued() >= 1
+    row = (await readouts(ctx, dash_id))[-1]  # the layout 2 baseline (after the layout 1 one)
+    assert row.status == "running" and len(row.run_ids) == 2
+    async with ctx.db.session() as s:
+        runs = [await s.get(m.Run, r) for r in row.run_ids]
+        kinds = [r.payload["request"]["output"].get("kind", "expected") for r in runs if r]
+        assert kinds == ["predictive", "expected"]
+    for i, rid in enumerate(row.run_ids):
+        async with ctx.db.session() as s:
+            run = await s.get(m.Run, rid)
+            assert run is not None
+            run.state = RunState.SUCCEEDED.value
+            await run_terminal(s, run, RunState.SUCCEEDED)
+        status = next(r.status for r in await readouts(ctx, dash_id) if r.seq == row.seq)
+        assert status == ("running" if i == 0 else "materialising")
+
+
 async def test_a_non_planner_layout_2_spec_has_no_media_planner_inputs(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:
@@ -254,6 +288,146 @@ async def test_a_blocked_upgrade_keeps_layout_1_and_flags_the_dashboard(
     report = await auto_upgrade_v1(ctx)
     assert report.published == [dash_id]
     assert (await dashboard(ctx, dash_id)).problem is None
+
+
+async def _broken_draft(ctx: ServerContext, dash_id: str) -> None:
+    """An unfinished layout 1 draft whose source no longer resolves."""
+    async with ctx.db.session() as s:
+        row = await s.get(m.Dashboard, dash_id)
+        assert row is not None
+        row.draft_spec = {**dashboard_spec(), "source": {"kind": "model_version",
+                                                         "model_id": "nope"}}  # fmt: skip
+
+
+async def test_a_broken_draft_never_holds_back_the_published_revision(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    dash_id = await create_published(kit)
+    await _broken_draft(ctx, dash_id)
+    report = await auto_upgrade_v1(ctx)
+    assert report.published == [dash_id] and report.needs_review == [dash_id]
+    _, new = await revisions(ctx, dash_id)
+    assert _layout(new.spec) == 2  # clients get the new layout
+    row = await dashboard(ctx, dash_id)
+    assert _layout(row.draft_spec) == 1 and row.problem == UPGRADE_NEEDS_REVIEW  # kept, flagged
+    # the banner names what stops the draft (the published part only had notes)
+    body = (await kit["eve"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert body["upgrade_issues"], body
+    assert all(i["severity"] == "error" for i in body["upgrade_issues"])
+    assert any(i["pointer"].startswith("/source") for i in body["upgrade_issues"])
+    # idempotent: the next start publishes nothing new and audits the flag once
+    again = await auto_upgrade_v1(ctx)
+    assert again.published == [] and len(await revisions(ctx, dash_id)) == 2
+
+
+async def test_the_review_lists_the_drafts_issues_beside_a_published_v1(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_spec.errors import Issue, Severity
+
+    dash_id = await create_published(kit)
+    await _broken_draft(ctx, dash_id)
+    real = upgrade.convert
+
+    async def notes_only(c: Any, s: Any, spec: Any, mv: Any, **kw: Any) -> Any:
+        got = await real(c, s, spec, mv, **kw)
+        if mv is None:
+            return got
+        info = Issue(code=ErrorCode.BINDING_INVALID, severity=Severity.INFO, pointer="/x",
+                     message="accuracy shows after actuals are uploaded")  # fmt: skip
+        return upgrade.Conversion(None, [], [info, *got.issues])  # blocked, infos only
+
+    monkeypatch.setattr(upgrade, "convert", notes_only)
+    async with ctx.db.session() as s:
+        row = await s.get(m.Dashboard, dash_id)
+        assert row is not None
+        row.problem = UPGRADE_NEEDS_REVIEW
+        issues = await upgrade.review_issues(ctx, s, row)
+    assert issues and all(i.severity is Severity.ERROR for i in issues)
+    assert any(i.pointer.startswith("/source") for i in issues)
+
+
+async def test_the_flag_keeps_other_problems_and_survives_a_promotion(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dash_id = await create_published(kit)
+    async with ctx.db.session() as s:
+        row = await s.get(m.Dashboard, dash_id)
+        assert row is not None
+        row.problem = "new_version_available"
+
+    def boom(spec: Any, catalog: Any) -> Any:
+        raise ValueError("no preset fits")
+
+    monkeypatch.setattr(upgrade, "upgrade_v1", boom)
+    assert (await auto_upgrade_v1(ctx)).needs_review == [dash_id]
+    assert (await dashboard(ctx, dash_id)).problem == "new_version_available"
+    assert len(await upgraded_audits(ctx, dash_id)) == 1
+    await auto_upgrade_v1(ctx)  # audited once even though the flag is not the problem
+    assert len(await upgraded_audits(ctx, dash_id)) == 1
+
+
+async def test_the_pass_waits_for_the_image_catalog(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """At a release the catalog of the new images is described after start-up: without it
+    the pass would pick ``generic`` for good, so the dashboard waits (retry)."""
+    dash_id = await create_published(kit)
+    assert ctx.catalogs is not None
+
+    async def none(session: Any) -> None:
+        return None
+
+    monkeypatch.setattr(ctx.catalogs, "get", none)
+    report = await auto_upgrade_v1(ctx)
+    assert report.retry == [dash_id] and report.published == [] and report.needs_review == []
+    assert len(await revisions(ctx, dash_id)) == 1
+    monkeypatch.undo()
+    report = await auto_upgrade_v1(ctx)
+    assert report.published == [dash_id]
+    _, new = await revisions(ctx, dash_id)
+    assert new.spec["preset"] == "forecast"
+
+
+async def test_the_loop_retries_a_pass_that_left_dashboards_for_later(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards import loop as loop_mod
+
+    loop = loop_mod.DashboardLoop(ctx)
+    loop.upgraded = UpgradeReport(ran=True, retry=["dsh_x"])
+    seen: list[int] = []
+
+    async def again(c: Any) -> UpgradeReport:
+        seen.append(1)
+        return UpgradeReport(ran=True)
+
+    monkeypatch.setattr(loop_mod, "run_auto_upgrade", again)
+    assert await loop.retry_upgrade(force=True) is not None and seen == [1]
+    assert await loop.retry_upgrade(force=True) is None  # nothing left to retry
+
+
+async def test_pictures_of_a_publisher_who_lost_run_rights_never_hang_the_pass(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards import assets
+
+    dash_id = await create_published(kit)
+    async with ctx.db.session() as s:
+        await s.execute(
+            text("UPDATE memberships SET role = 'viewer' WHERE principal_id = :u"),
+            {"u": kit["users"]["ana"].id},
+        )
+    queued: list[str] = []
+
+    async def queue(octx: Any, session: Any, rev: Any, spec: Any) -> None:
+        queued.append(rev.id)
+
+    monkeypatch.setattr(assets, "picture_panels", lambda spec: ["plot"])
+    monkeypatch.setattr(assets, "queue_pictures", queue)
+    report = await asyncio.wait_for(auto_upgrade_v1(ctx), 20)
+    assert report.published == [dash_id] and queued == []
+    assert (await dashboard(ctx, dash_id)).live_inputs != "paused"  # no write under the lock
 
 
 async def test_an_unreadable_catalog_needs_review(ctx: ServerContext, kit: dict[str, Any]) -> None:

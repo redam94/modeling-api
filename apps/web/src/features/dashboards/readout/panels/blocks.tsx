@@ -7,13 +7,14 @@
  * Every block keeps its own card: the panel title, the analyst's caption and an "Approximate"
  * tag when a total was added up from single values (it has no likely range).
  */
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import type * as React from "react";
 
 import { InlineMessage, StatGrid, StatTile } from "@/components/ods";
 import { BandLine } from "@/components/readout-charts";
 
 import type { ClientDashboard, DashboardClient, KpiBlock, NoteBlock, PanelBlock, ReadoutSnapshot, SeriesBlock, UnavailableBlock } from "../../types";
+import { LazyPart } from "../load-boundary";
 import { APPROXIMATE_TEXT, blockTags, isPlannerDuplicate, panelTile, splitBlocks, unitText } from "../panel-model";
 import { Section, Tags, Working } from "../parts";
 import { periodOf } from "../readout-model";
@@ -121,9 +122,9 @@ export function PanelBlockView({ client, dashboard, block }: { client: Dashboard
   else if (block.kind === "kpi") body = <PanelTiles dashboard={dashboard} blocks={[block]} label={block.title} />;
   else
     body = (
-      <Suspense fallback={<Working>Loading the panel…</Working>}>
+      <LazyPart fallback={<Working>Loading the panel…</Working>} label={block.title}>
         <HeavyBlock client={client} dashboard={dashboard} block={block} />
-      </Suspense>
+      </LazyPart>
     );
   return <BlockCard block={block}>{body}</BlockCard>;
 }

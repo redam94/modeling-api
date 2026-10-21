@@ -208,6 +208,30 @@ async def test_assets_are_isolated_per_dashboard_and_tenant(
     assert r.status_code == 404
 
 
+async def test_a_client_reads_only_the_pictures_of_the_published_revision(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    dash_id = await picture_dashboard(kit, PICTURE)
+    (asset,) = await assets_of(ctx, dash_id)
+    assert asset.run_id is not None
+    await complete_run(
+        ctx, asset.run_id, {"renders/core.inline.png": (tiny_png(4, 4), "image/png")}
+    )
+    url = f"/v1/dashboards/{dash_id}/assets/{asset.id}"
+    assert (await kit["cleo"].get(url)).status_code == 200
+    # the analyst removes the picture and publishes again: the old one is gone for clients
+    ana: Caller = kit["ana"]
+    got = (await ana.get(f"/v1/dashboards/{dash_id}")).json()
+    spec = {**got["draft_spec"], "panels": [p for p in got["draft_spec"]["panels"]
+                                            if p.get("id") != PICTURE["id"]]}  # fmt: skip
+    r = await ana.put(f"/v1/dashboards/{dash_id}/draft", json={"spec": spec},
+                      headers={"If-Match": got["draft_etag"]})  # fmt: skip
+    assert r.status_code == 200, r.text
+    assert (await ana.post(f"/v1/dashboards/{dash_id}:publish")).status_code == 200
+    assert (await kit["cleo"].get(url)).status_code == 404
+    assert (await ana.get(url)).status_code == 200  # members: History of older revisions
+
+
 async def test_plugin_plots_are_refused(ctx: ServerContext, kit: dict[str, Any]) -> None:
     plugin = {"id": "custom", "kind": "recipe", "title": "Custom",
               "recipe": "acme.custom", "plot_id": "acme.custom"}  # fmt: skip

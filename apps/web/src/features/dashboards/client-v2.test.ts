@@ -280,6 +280,15 @@ describe("layout 2 helpers", () => {
     expect(v.batch_form).toEqual({ max_rows: 2000, id_column: "case_id", columns: ["case_id", "age"], outputs: ["churn"] });
   });
 
+  it("previews an image dashboard without Score a file, as its clients see it", () => {
+    const image = { ...V2, preset: "image" } as DashboardSpecV2;
+    const d = { id: "dsh_i", name: "n", status: "draft", draft_spec: image, draft_etag: "e", created_by: "u", created_at: "t", updated_at: "t" } as Dashboard;
+    const v = toClientDashboard(d, null);
+    expect(v.inputs?.batch).toBe(false);
+    expect(v.batch_form).toBeNull();
+    expect(v.sections).not.toContain("batch");
+  });
+
   it("gives an MMM planner its layout 1 tiles and tabs", () => {
     const mmm = {
       ...V2,

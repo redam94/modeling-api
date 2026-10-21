@@ -245,7 +245,8 @@ export function toClientDashboard(d: Dashboard, latest: Readout | null, use: "dr
 
 /** The layout 2 half of {@link toClientDashboard} (`access.client_dashboard`; no upgrade note in a preview). */
 function toClientDashboardV2(d: Dashboard, spec: DashboardSpecV2, latest: Readout | null): ClientDashboard {
-  const inputs = effectiveInputs(spec);
+  // what a client gets (`access.effective_inputs(client=True)`): never "Score a file" of images
+  const inputs = effectiveInputs(spec, null, null, { client: true });
   const planner = spec.preset === "mmm_planner" ? (spec.mmm ?? null) : null;
   const rows = spec.scenario_rows;
   const scenarioForm: ScenarioForm | null =

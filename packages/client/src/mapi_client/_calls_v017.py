@@ -30,7 +30,7 @@ from mapi_spec.api import (
 from mapi_spec.dashboard_v2 import ASSET_ID_RE
 
 from mapi_client._calls import _ACCEPTED_OR_REPLAY
-from mapi_client._calls_v016 import V1, _dash, _share
+from mapi_client._calls_v016 import V1, _dash, _share, _wait
 from mapi_client._http import Call, dump, idempotency_headers, parse_model, segment
 
 __all__ = [
@@ -115,16 +115,23 @@ def upgrade_dashboard(dashboard_id: str, etag: str) -> Call[DashboardUpgrade]:
 
 
 def submit_dashboard_predictions(
-    dashboard_id: str, body: ScenarioRowsRequest, *, idempotency_key: str | None = None
+    dashboard_id: str,
+    body: ScenarioRowsRequest,
+    *,
+    wait: int | None = None,
+    idempotency_key: str | None = None,
 ) -> Call[Readout]:
-    # 202 with the private prediction readout (200 when a cached copy is ready at once)
+    # 202 with the private prediction readout (200 when a cached copy is ready at once, or
+    # when it finished within ``wait`` seconds: Prefer: wait=N)
+    headers = idempotency_headers(idempotency_key)
     return Call(
         "POST",
         f"{_dash(dashboard_id)}/predictions",
         parse_model(Readout),
         _ACCEPTED_OR_REPLAY,
         json=dump(body),
-        headers=idempotency_headers(idempotency_key),
+        headers=headers,
+        server_wait=_wait(headers, wait),
     )
 
 
@@ -143,15 +150,21 @@ def get_dashboard_batch_template(dashboard_id: str) -> Call[BatchTemplate]:
 
 
 def submit_dashboard_batch(
-    dashboard_id: str, body: BatchSubmit, *, idempotency_key: str | None = None
+    dashboard_id: str,
+    body: BatchSubmit,
+    *,
+    wait: int | None = None,
+    idempotency_key: str | None = None,
 ) -> Call[Readout]:
+    headers = idempotency_headers(idempotency_key)
     return Call(
         "POST",
         f"{_dash(dashboard_id)}/batch",
         parse_model(Readout),
         _ACCEPTED_OR_REPLAY,
         json=dump(body),
-        headers=idempotency_headers(idempotency_key),
+        headers=headers,
+        server_wait=_wait(headers, wait),
     )
 
 
@@ -168,15 +181,21 @@ def get_dashboard_asset(dashboard_id: str, asset_id: str) -> Call[bytes]:
 
 
 def submit_shared_predictions(
-    session: str, body: ScenarioRowsRequest, *, idempotency_key: str | None = None
+    session: str,
+    body: ScenarioRowsRequest,
+    *,
+    wait: int | None = None,
+    idempotency_key: str | None = None,
 ) -> Call[Readout]:
+    headers = {**_share(session), **idempotency_headers(idempotency_key)}
     return Call(
         "POST",
         f"{_SHARED}/predictions",
         parse_model(Readout),
         _ACCEPTED_OR_REPLAY,
         json=dump(body),
-        headers={**_share(session), **idempotency_headers(idempotency_key)},
+        headers=headers,
+        server_wait=_wait(headers, wait),
         scoped=False,
         public=True,
     )
@@ -194,15 +213,21 @@ def get_shared_batch_template(session: str) -> Call[BatchTemplate]:
 
 
 def submit_shared_batch(
-    session: str, body: BatchSubmit, *, idempotency_key: str | None = None
+    session: str,
+    body: BatchSubmit,
+    *,
+    wait: int | None = None,
+    idempotency_key: str | None = None,
 ) -> Call[Readout]:
+    headers = {**_share(session), **idempotency_headers(idempotency_key)}
     return Call(
         "POST",
         f"{_SHARED}/batch",
         parse_model(Readout),
         _ACCEPTED_OR_REPLAY,
         json=dump(body),
-        headers={**_share(session), **idempotency_headers(idempotency_key)},
+        headers=headers,
+        server_wait=_wait(headers, wait),
         scoped=False,
         public=True,
     )

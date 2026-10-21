@@ -213,6 +213,24 @@ async def test_an_endpoint_promotion_follows_or_flags(
         assert body["latest_readout"]["kind"] == "baseline"
 
 
+async def test_a_followed_promotion_keeps_the_upgrade_review_flag(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """The new revision carries the same layout 1 spec: it still needs the editor's review."""
+    from mapi_spec.dashboards import UPGRADE_NEEDS_REVIEW
+
+    dash_id = await _endpoint_dashboard(kit, True)
+    async with ctx.db.session() as s:
+        row = await s.get(m.Dashboard, dash_id)
+        assert row is not None
+        row.problem = UPGRADE_NEEDS_REVIEW
+    v2 = await refit_version(ctx, await _version(ctx, kit["model"]["mv_id"]), add=_GRID_OBJECT)
+    await _promote(kit, v2.version)
+    body = (await kit["ana"].get(f"/v1/dashboards/{dash_id}")).json()
+    assert body["published_revision"]["model_version_id"] == v2.id
+    assert body["problem"] == UPGRADE_NEEDS_REVIEW
+
+
 async def _refreshes(ctx: ServerContext, dash_id: str) -> list[m.DashboardReadout]:
     async with ctx.db.session() as s:
         return list(

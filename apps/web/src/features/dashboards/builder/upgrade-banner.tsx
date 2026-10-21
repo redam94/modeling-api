@@ -95,12 +95,29 @@ function staleError(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 412 || e.code === "DASHBOARD_SPEC_STALE");
 }
 
-/** "Use the new layout" on a layout 1 draft (nothing on a layout 2 one). */
+/**
+ * "Use the new layout" on a layout 1 draft. The builder shows it above its tabs, so an editor sees
+ * it wherever they land. On a layout 2 draft it shows only when the automatic move stopped (the
+ * published revision is still layout 1): what stopped it, and that publishing the draft finishes it.
+ */
 export function UpgradeBanner({ spec, readOnly = false }: { spec: AnyDashboardSpec; readOnly?: boolean }) {
   const d = useBuilderDashboard();
   const upgrade = useUpgradeDashboard(d?.id ?? "");
-  if (!d || isLayout2(spec) || isLayout2(d.draft_spec)) return null;
-  const review = d.problem === "upgrade_needs_review";
+  if (!d) return null;
+  const review = d.problem === "upgrade_needs_review" || (d.upgrade_issues ?? []).length > 0;
+  if (isLayout2(spec) || isLayout2(d.draft_spec)) {
+    const published = d.published_revision?.spec;
+    if (!review || !published || isLayout2(published)) return null;
+    return (
+      <div data-testid="upgrade-banner" data-state="published-v1" className="grid gap-2">
+        <InlineMessage tone="warning" role="none">
+          <span className="font-medium">The published dashboard could not move to the new layout by itself.</span> Clients still see the old layout. Your draft uses the new layout: check it, then publish
+          it to finish the move.
+          <PlainIssues issues={d.upgrade_issues ?? []} label="What stopped the move to the new layout" />
+        </InlineMessage>
+      </div>
+    );
+  }
   const dirty = !sameSpec(spec, d.draft_spec);
   const blocked = readOnly ? "Only editors and admins change dashboards." : dirty ? "Save or discard your changes first." : null;
   const issues = d.upgrade_issues ?? [];

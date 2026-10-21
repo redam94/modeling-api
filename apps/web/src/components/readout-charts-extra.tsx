@@ -340,24 +340,62 @@ export function decodeCodes(b64: string, cells: number): Uint8Array | null {
   }
 }
 
-/** Code `c` as a value: `vmin + c / 255 (vmax − vmin)`, back from log10 on a log map. */
-export function codeValue(c: number, vmin: number, vmax: number, log: boolean): number {
-  const v = vmin + (c / 255) * (vmax - vmin);
+/**
+ * Code `c` as a value: `vmin + c / top (vmax − vmin)`, back from log10 on a log map. `top` is 255 for
+ * a block without a missing code and 254 for one with it (code 255 is then a cell with no value).
+ */
+export function codeValue(c: number, vmin: number, vmax: number, log: boolean, top = 255): number {
+  const v = vmin + (c / top) * (vmax - vmin);
   return log ? 10 ** v : v;
 }
 
-/** Paint codes to RGBA through the colour map's lookup table. */
-export function paintCodes(codes: Uint8Array, colormap: ColormapName): Uint8ClampedArray<ArrayBuffer> {
+/** The highest value code of a block: 254 when 255 marks a missing cell, else 255. */
+export function topCode(missingCode: number | null | undefined): number {
+  return missingCode === 255 ? 254 : 255;
+}
+
+/**
+ * Paint codes to RGBA through the colour map's lookup table. A missing cell (`missingCode`) is transparent; value
+ * codes are stretched over the whole colour map.
+ */
+export function paintCodes(codes: Uint8Array, colormap: ColormapName, missingCode: number | null = null): Uint8ClampedArray<ArrayBuffer> {
   const lut = colormapLut(colormap);
+  const top = topCode(missingCode);
   const out = new Uint8ClampedArray(new ArrayBuffer(codes.length * 4));
   for (let i = 0; i < codes.length; i++) {
-    const k = 3 * (codes[i] ?? 0);
+    const c = codes[i] ?? 0;
+    if (missingCode !== null && c === missingCode) continue; // transparent: no value here
+    const k = 3 * Math.round((Math.min(c, top) / top) * 255);
     out[4 * i] = lut[k] ?? 0;
     out[4 * i + 1] = lut[k + 1] ?? 0;
     out[4 * i + 2] = lut[k + 2] ?? 0;
     out[4 * i + 3] = 255;
   }
   return out;
+}
+
+/** Lowest, average and highest value of a frame's codes, leaving missing cells out (`null` when none has a value). */
+export function codeStats(
+  codes: Uint8Array,
+  vmin: number,
+  vmax: number,
+  log: boolean,
+  missingCode: number | null = null,
+): { min: number | null; mean: number | null; max: number | null; missing: number } {
+  const top = topCode(missingCode);
+  let mn = 255;
+  let mx = -1;
+  let sum = 0;
+  let n = 0;
+  for (const v of codes) {
+    if (missingCode !== null && v === missingCode) continue;
+    mn = Math.min(mn, v);
+    mx = Math.max(mx, v);
+    sum += codeValue(v, vmin, vmax, log, top);
+    n++;
+  }
+  if (!n) return { min: null, mean: null, max: null, missing: codes.length };
+  return { min: codeValue(mn, vmin, vmax, log, top), mean: sum / n, max: codeValue(mx, vmin, vmax, log, top), missing: codes.length - n };
 }
 
 /** A field map: ≤ 64 x 64 cells per frame, ≤ 8 frames behind a slider, and a colour legend. */
@@ -368,6 +406,7 @@ export function FieldHeatmap({
   frames,
   vmin,
   vmax,
+  missingCode = null,
   log = false,
   colormap = "viridis",
   units,
@@ -381,6 +420,8 @@ export function FieldHeatmap({
   frames: readonly FieldFrameCodes[];
   vmin: number;
   vmax: number;
+  /** The code of a cell with no value (255), or none (a block built before the missing code). */
+  missingCode?: number | null;
   log?: boolean;
   colormap?: ColormapName;
   units?: string | null;
@@ -395,8 +436,9 @@ export function FieldHeatmap({
   const cells = width * height;
   const codes = frame ? decodeCodes(frame.codes_b64, cells) : null;
   const fmt = (v: number) => `${plainFormat(v)}${units ? ` ${units}` : ""}`;
-  const lo = codeValue(0, vmin, vmax, log);
-  const hi = codeValue(255, vmin, vmax, log);
+  const top = topCode(missingCode);
+  const lo = codeValue(0, vmin, vmax, log, top);
+  const hi = codeValue(top, vmin, vmax, log, top);
   useEffect(() => {
     const el = canvasRef.current;
     if (!el || !codes) return;
@@ -407,23 +449,16 @@ export function FieldHeatmap({
       ctx = null; // jsdom has no canvas
     }
     if (!ctx) return;
-    ctx.putImageData(new ImageData(paintCodes(codes, colormap), width, height), 0, 0);
-  }, [codes, colormap, width, height]);
+    ctx.putImageData(new ImageData(paintCodes(codes, colormap, missingCode), width, height), 0, 0);
+  }, [codes, colormap, width, height, missingCode]);
   const stats = frames.map((f) => {
     const c = decodeCodes(f.codes_b64, cells);
-    if (!c?.length) return { label: f.label, min: null, mean: null, max: null };
-    let mn = 255;
-    let mx = 0;
-    let sum = 0;
-    for (const v of c) {
-      mn = Math.min(mn, v);
-      mx = Math.max(mx, v);
-      sum += codeValue(v, vmin, vmax, log);
-    }
-    return { label: f.label, min: codeValue(mn, vmin, vmax, log), mean: sum / c.length, max: codeValue(mx, vmin, vmax, log) };
+    if (!c?.length) return { label: f.label, min: null, mean: null, max: null, missing: 0 };
+    return { label: f.label, ...codeStats(c, vmin, vmax, log, missingCode) };
   });
   const cur = stats[Math.min(at, stats.length - 1)];
-  const summary = `${label}${frame ? `, ${frame.label}` : ""}: a map of ${width} by ${height} cells. Values from ${fmt(lo)} to ${fmt(hi)}${cur && isNum(cur.mean) ? `; the average is ${fmt(cur.mean)}` : ""}.`;
+  const gaps = cur && cur.missing > 0 ? `; ${cur.missing} cells have no value` : "";
+  const summary = `${label}${frame ? `, ${frame.label}` : ""}: a map of ${width} by ${height} cells. Values from ${fmt(lo)} to ${fmt(hi)}${cur && isNum(cur.mean) ? `; the average is ${fmt(cur.mean)}` : ""}${gaps}.`;
   return (
     <figure className={cn("grid min-w-0 gap-3", className)} data-chart="field">
       <canvas

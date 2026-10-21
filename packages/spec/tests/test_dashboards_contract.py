@@ -448,3 +448,47 @@ def test_reference_docs_cover_v017() -> None:
         if any(e.operation_id == op for e in V017_ENDPOINTS):
             assert f"`{op}`" in text, op
     assert (docs / "whats-new-0.17.md").exists()
+
+
+def _python_blocks(text: str, after: str) -> list[str]:
+    start = text.index(after)
+    return re.findall(r"```python\n(.*?)```", text[start:], flags=re.S)
+
+
+@pytest.mark.parametrize(
+    ("page", "anchor"),
+    [("guides/python-client.md", "{ #client-dashboards-v017 }"),
+     ("guides/client-dashboards.md", "## With the API or the Python client")],
+)  # fmt: skip
+def test_v017_sdk_examples_turn_the_inputs_on_and_publish_before_using_them(
+    page: str, anchor: str
+) -> None:
+    """A compiled preset has every input off: the documented flows enable scenario rows and
+    batch scoring, and publish, before they predict or score a file."""
+    from mapi_spec.dashboard_presets import compile_preset
+    from mapi_spec.dashboard_v2 import SourceCatalog
+
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    code = _python_blocks((docs / page).read_text("utf-8"), anchor)[0]
+    for call in ("ScenarioRowsDef(enabled=True", "BatchDef(enabled=True", "publish("):
+        assert call in code, (page, call)
+    assert code.index("publish(") < code.index("predict(") < code.index("score_batch(")
+    compiled = compile_preset("generic", SourceCatalog.model_validate({}), title="T",
+                              source={"kind": "endpoint", "alias": "a"})  # fmt: skip
+    assert compiled.scenario_rows.enabled is False and compiled.batch is None
+
+
+def test_whats_new_says_which_moved_dashboards_lose_their_what_ifs() -> None:
+    """Only the media planner keeps channel what-ifs and saved scenarios after the move: a
+    dashboard moved to another preset has none (PRESET_RULES), and the page says so."""
+    from mapi_spec.dashboard_v2 import PRESET_RULES
+
+    assert "whatif" not in PRESET_RULES["forecast"].inputs
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    text = (docs / "whats-new-0.17.md").read_text("utf-8")
+    assert "Share links, client grants, saved scenarios and refit requests keep their" not in text
+    assert "DASHBOARD_INPUT_DISABLED" in text and "read-only" in text

@@ -6,7 +6,7 @@
  * that cannot work; the server checks everything again.
  */
 import { grouped } from "@/components/ods/format";
-import type { Cell, XrDataset } from "@/lib/actuals";
+import { numberOf, type Cell, type XrDataset } from "@/lib/actuals";
 
 import type { ActualsTemplate, BatchColumn, BatchSubmit, BatchTemplate, ScenarioForm, ScenarioInputDef, ScenarioRow } from "../../types";
 import { plural, type Check } from "../readout-model";
@@ -87,6 +87,24 @@ export function defaultRow(form: ScenarioForm): ScenarioRow {
   return row;
 }
 
+/**
+ * `rows` on a changed form (the analyst published new inputs while the page was open): values of
+ * inputs that are gone are dropped, new inputs get their defaults, and the other values stay.
+ * Returns `rows` itself when nothing changed.
+ */
+export function reconcileRows(rows: readonly ScenarioRow[], form: ScenarioForm): ScenarioRow[] {
+  const base = defaultRow(form);
+  const keys = Object.keys(base);
+  let changed = false;
+  const next = rows.map((r) => {
+    const out: ScenarioRow = {};
+    for (const k of keys) out[k] = (k in r ? r[k] : base[k]) ?? null;
+    if (Object.keys(r).length !== keys.length || keys.some((k) => !(k in r))) changed = true;
+    return out;
+  });
+  return changed ? next : (rows as ScenarioRow[]);
+}
+
 export function horizonKey(form: Pick<ScenarioForm, "horizon" | "inputs">): string | null {
   if (!form.horizon || (form.inputs ?? []).some((i) => i.name === HORIZON_KEY)) return null;
   return HORIZON_KEY;
@@ -150,15 +168,16 @@ export interface ParsedBatch {
   checks: Check[];
 }
 
-/** A cell of a batch file as the value it sends (by the template column's type). */
-export function batchCell(text: string, col: Pick<BatchColumn, "type" | "role">): Cell {
+/**
+ * A cell of a batch file as the value it sends (by the template column's type). `decimalComma`: the
+ * file is separated by `;`, so `1,5` is 1.5 (see `numberOf`); a comma that does not group thousands
+ * is otherwise not a number and is refused.
+ */
+export function batchCell(text: string, col: Pick<BatchColumn, "type" | "role">, decimalComma = false): Cell {
   const v = text.trim();
   if (v === "") return null;
   if (col.role === "id") return v;
-  if (col.type === "number" || col.type === "integer") {
-    const n = Number(v.replace(/,/g, ""));
-    return Number.isFinite(n) && /^[-+]?[\d,]*\.?\d+(e[-+]?\d+)?$/i.test(v) ? n : v;
-  }
+  if (col.type === "number" || col.type === "integer") return numberOf(v, decimalComma) ?? v;
   if (col.type === "toggle") {
     const t = v.toLowerCase();
     return t === "true" || t === "1" || t === "yes" ? true : t === "false" || t === "0" || t === "no" ? false : v;
@@ -233,11 +252,11 @@ export function batchChecks(t: Pick<BatchTemplate, "columns" | "id_column" | "ma
 }
 
 /** The parsed CSV rows (strings, file order) in the template's column order, typed. */
-export function batchRows(t: Pick<BatchTemplate, "columns">, header: readonly string[], rows: readonly string[][]): Cell[][] {
+export function batchRows(t: Pick<BatchTemplate, "columns">, header: readonly string[], rows: readonly string[][], decimalComma = false): Cell[][] {
   const at = t.columns.map((c) => header.indexOf(c.name));
   return rows
     .filter((r) => r.some((c) => c.trim() !== ""))
-    .map((r) => t.columns.map((c, j) => (at[j]! < 0 ? null : batchCell(r[at[j]!] ?? "", c))));
+    .map((r) => t.columns.map((c, j) => (at[j]! < 0 ? null : batchCell(r[at[j]!] ?? "", c, decimalComma))));
 }
 
 /** The rows as the one-dim table `submit_batch` reads: every column along the id column. */
@@ -297,23 +316,23 @@ export function rowActualsColumns(t: Pick<ActualsTemplate, "example_csv" | "inpu
 }
 
 /** A cell of a row-matched upload: blank is null, the id stays text, number-like text is a number. */
-export function rowActualsCell(text: string, isId: boolean): Cell {
+export function rowActualsCell(text: string, isId: boolean, decimalComma = false): Cell {
   const v = text.trim();
   if (v === "") return null;
   if (isId) return v;
-  const n = Number(v.replace(/,/g, ""));
-  if (Number.isFinite(n) && /^[-+]?[\d,]*\.?\d+(e[-+]?\d+)?$/i.test(v)) return n;
+  const n = numberOf(v, decimalComma);
+  if (n !== null) return n;
   const t = v.toLowerCase();
   if (t === "true" || t === "false") return t === "true";
   return v;
 }
 
 /** The parsed CSV rows (file order) in `columns` order, typed; columns the file lacks are null. */
-export function rowActualsRows(columns: readonly string[], idColumn: string, header: readonly string[], rows: readonly string[][]): Cell[][] {
+export function rowActualsRows(columns: readonly string[], idColumn: string, header: readonly string[], rows: readonly string[][], decimalComma = false): Cell[][] {
   const at = columns.map((c) => header.indexOf(c));
   return rows
     .filter((r) => r.some((c) => c.trim() !== ""))
-    .map((r) => columns.map((c, j) => (at[j]! < 0 ? null : rowActualsCell(r[at[j]!] ?? "", c === idColumn))));
+    .map((r) => columns.map((c, j) => (at[j]! < 0 ? null : rowActualsCell(r[at[j]!] ?? "", c === idColumn, decimalComma))));
 }
 
 /** The rows as the one-dim table the server matches by id: every other column along the id column. */

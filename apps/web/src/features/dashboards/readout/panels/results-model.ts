@@ -53,6 +53,17 @@ export function bandNote(band: PredictionResult["band"]): string | null {
   return null;
 }
 
+/**
+ * The words for a model output in a client's text: the subject's label for the subject (or for the
+ * only output), else the name in plain words ("y_hat" never shows).
+ */
+export function outputWords(name: string, d: Pick<ClientDashboard, "kpi" | "subject">, outputs = 1): string {
+  const subject = d.subject?.variable ?? d.kpi.variable;
+  if (name === subject || outputs === 1) return d.subject?.label ?? d.kpi.label ?? "The prediction";
+  const words = name.replace(/_hat$/, "").replace(/[_\s]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "The prediction";
+}
+
 /** The summary lines of a scored file ("spread of predictions", never an interval). */
 export function batchLines(b: BatchSummary, d: Pick<ClientDashboard, "kpi" | "subject">): string[] {
   const lines = [`The model scored ${grouped(b.n_scored)} of ${grouped(b.n_rows)} ${plural("case", b.n_rows)}.`];
@@ -61,11 +72,12 @@ export function batchLines(b: BatchSummary, d: Pick<ClientDashboard, "kpi" | "su
     lines.push(`${fixed(b.share_positive * 100, 1)}% of the cases are ${pos ? `likely "${pos}"` : "above the threshold"}.`);
   }
   const unit = d.subject?.unit ?? d.kpi.unit;
-  for (const [name, s] of Object.entries(b.stats ?? {})) {
+  const stats = Object.entries(b.stats ?? {});
+  for (const [name, s] of stats) {
     const fmt = (x: number) => unitText(x, unit, d);
     if (!isNum(s.p50)) continue;
     const spread = isNum(s.p10) && isNum(s.p90) ? `; most are between ${fmt(s.p10)} and ${fmt(s.p90)}` : "";
-    lines.push(`${name}: the middle prediction is ${fmt(s.p50)}${spread}. This is the spread of the predictions, not a likely range.`);
+    lines.push(`${outputWords(name, d, stats.length)}: the middle prediction is ${fmt(s.p50)}${spread}. This is the spread of the predictions, not a likely range.`);
   }
   return lines;
 }

@@ -304,4 +304,10 @@ describe("layout 2 tools", () => {
     await expect(getPrediction(c, { seq: 12 })).rejects.toBeInstanceOf(ToolNotFoundError);
     await expect(callTool(c, "get_batch_summary", { seq: 11 })).rejects.toBeInstanceOf(ToolNotFoundError);
   });
+
+  it("never returns somebody else's readout to an analyst (as the server tool's _own)", async () => {
+    const theirs = readout2(13, { kind: "prediction", visibility: "private", mine: false, snapshot: { ...readout2(13).snapshot!, prediction: { rows: [] } } });
+    const c = fakeClient([theirs], DASH2);
+    await expect(getPrediction(c, { seq: 13 })).rejects.toBeInstanceOf(ToolNotFoundError);
+  });
 });

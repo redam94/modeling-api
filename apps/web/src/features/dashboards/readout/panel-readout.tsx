@@ -16,7 +16,7 @@
  * sections load lazily. WP13's builder preview renders this component with `preview`.
  */
 import { Download, X } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, useState } from "react";
 import type * as React from "react";
 
 import { Eyebrow, InlineMessage } from "@/components/ods";
@@ -25,9 +25,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overla
 
 import { hasPanels, type ClientDashboard, type DashboardClient, type Readout, type SectionKey, type TabKey } from "../types";
 import { History } from "./history";
+import { LazyPart } from "./load-boundary";
 import { asClientV2, dismissUpgradeNote, pageSections, SECTION_LABEL, sectionOfTab, summaryCsvV2, upgradeNoteDismissed } from "./panel-model";
 import { PanelBlocks } from "./panels/blocks";
-import { KpiChart, ReadoutState, ReadoutTiles, saveText, Working } from "./parts";
+import { KpiChart, ReadoutState, ReadoutTiles, saveText } from "./parts";
 import { metaLine, periodOf, summaryFileName } from "./readout-model";
 import { PlannerBody } from "./v1/planner-body";
 import { TechnicalToggle } from "./v1/technical-toggle";
@@ -80,7 +81,7 @@ export function UpgradeNote({ client, dashboard, preview = false }: { client: Da
 }
 
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<Working>Loading…</Working>}>{children}</Suspense>;
+  return <LazyPart>{children}</LazyPart>;
 }
 
 function Overview({ client, dashboard, readout }: { client: DashboardClient; dashboard: ClientDashboard; readout: Readout | null }) {

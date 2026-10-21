@@ -193,6 +193,7 @@ DECLARE
   shares bigint;
   snapshots bigint;
   assets bigint;
+  specs bigint;
 BEGIN
   SELECT count(*) INTO readouts FROM dashboard_readouts
     WHERE kind NOT IN ({_in(OLD_KINDS)}) OR trigger NOT IN ({_in(OLD_TRIGGERS)});
@@ -201,11 +202,17 @@ BEGIN
   SELECT count(*) INTO snapshots FROM dashboard_readouts
     WHERE octet_length(snapshot::text) > {OLD_SNAPSHOT_MAX_BYTES};
   SELECT count(*) INTO assets FROM {TABLE};
-  IF readouts + shares + snapshots + assets > 0 THEN
+  -- the automatic upgrade writes layout 2 specs and schema 2 snapshots in rows of the old
+  -- kinds: a v0.16 server cannot read them (its spec takes layout_version 1 only)
+  SELECT (SELECT count(*) FROM dashboard_revisions WHERE spec->>'layout_version' = '2')
+       + (SELECT count(*) FROM dashboards WHERE draft_spec->>'layout_version' = '2')
+       + (SELECT count(*) FROM dashboard_readouts WHERE snapshot->>'schema_version' = '2')
+    INTO specs;
+  IF readouts + shares + snapshots + assets + specs > 0 THEN
     RAISE EXCEPTION 'layout 2 dashboard data exists (% readouts with a new kind or trigger, '
-      '% share links with a new input, % snapshots above % bytes, % assets): remove it '
-      'before downgrading below 0020_any_model_dashboards',
-      readouts, shares, snapshots, {OLD_SNAPSHOT_MAX_BYTES}, assets;
+      '% share links with a new input, % snapshots above % bytes, % assets, % layout 2 '
+      'specs or snapshots): remove it before downgrading below 0020_any_model_dashboards',
+      readouts, shares, snapshots, {OLD_SNAPSHOT_MAX_BYTES}, assets, specs;
   END IF;
 END $$
 """

@@ -321,14 +321,17 @@ class Dashboards:
         rows: Mapping[str, Any] | Iterable[Mapping[str, Any]],
         *,
         label: str | None = None,
+        wait: int | None = None,
         idempotency_key: str | None = None,
     ) -> Readout:
         """Try a case: score one or more scenario rows (at most 20; inputs you leave out
         take the defaults) as your own private prediction readout. A value outside the
-        range the analyst set is refused, never clipped. See :meth:`wait_readout`."""
+        range the analyst set is refused, never clipped. ``wait``: seconds the server may
+        hold the call for the result (``Prefer: wait=N``). See :meth:`wait_readout`."""
         call = v17.submit_dashboard_predictions(
-            dashboard_id, rows_body(rows, label=label), idempotency_key=idempotency_key
-        )
+            dashboard_id, rows_body(rows, label=label), wait=wait,
+            idempotency_key=idempotency_key,
+        )  # fmt: skip
         return self._c.send(call)
 
     def keep_readout(self, dashboard_id: str, seq: int) -> ReadoutHeader:
@@ -346,14 +349,17 @@ class Dashboards:
         inputs: object,
         *,
         label: str | None = None,
+        wait: int | None = None,
         idempotency_key: str | None = None,
     ) -> Readout:
         """Score a file of new cases (an ``xr.Dataset`` or XrJSON with the template's
-        columns, one row per id) as your own private batch readout. When it is ready,
+        columns, one row per id) as your own private batch readout (``wait``: seconds the
+        server may hold the call for the result). When it is ready,
         :meth:`download_predictions` gives the predictions as CSV."""
         call = v17.submit_dashboard_batch(
-            dashboard_id, batch_body(inputs, label=label), idempotency_key=idempotency_key
-        )
+            dashboard_id, batch_body(inputs, label=label), wait=wait,
+            idempotency_key=idempotency_key,
+        )  # fmt: skip
         return self._c.send(call)
 
     def download_predictions(self, dashboard_id: str, seq: int) -> bytes:
@@ -520,26 +526,34 @@ class SharedDashboard:
         rows: Mapping[str, Any] | Iterable[Mapping[str, Any]],
         *,
         label: str | None = None,
+        wait: int | None = None,
         idempotency_key: str | None = None,
     ) -> Readout:
         """Try a case (only when the link allows ``scenario_rows``): a private readout of
-        this link."""
+        this link (``wait``: seconds the server may hold the call for the result)."""
         call = v17.submit_shared_predictions(
-            self._token(), rows_body(rows, label=label), idempotency_key=idempotency_key
-        )
+            self._token(), rows_body(rows, label=label), wait=wait,
+            idempotency_key=idempotency_key,
+        )  # fmt: skip
         return self._c.send(call)
 
     def batch_template(self) -> BatchTemplate:
         return self._c.send(v17.get_shared_batch_template(self._token()))
 
     def score_batch(
-        self, inputs: object, *, label: str | None = None, idempotency_key: str | None = None
+        self,
+        inputs: object,
+        *,
+        label: str | None = None,
+        wait: int | None = None,
+        idempotency_key: str | None = None,
     ) -> Readout:
         """Score a file of new cases (only when the link allows ``batch``): a private
-        readout of this link."""
+        readout of this link (``wait``: seconds the server may hold the call)."""
         call = v17.submit_shared_batch(
-            self._token(), batch_body(inputs, label=label), idempotency_key=idempotency_key
-        )
+            self._token(), batch_body(inputs, label=label), wait=wait,
+            idempotency_key=idempotency_key,
+        )  # fmt: skip
         return self._c.send(call)
 
     def download_predictions(self, seq: int) -> bytes:

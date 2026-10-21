@@ -76,6 +76,7 @@ from mapi_server.services.dashboards.access import (
     DashboardContext,
     any_revision_spec,
     client_dashboard,
+    is_mine,
     readout_dto,
     readout_header,
     refit_statuses,
@@ -211,7 +212,7 @@ async def _latest(session: AsyncSession, dctx: DashboardContext) -> Readout:
     if row is None:
         raise NotFoundError("readout", "latest")
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
-    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
+    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst, mine=is_mine(row, dctx))
 
 
 def _snap(row: m.DashboardReadout) -> ReadoutSnapshot | None:
@@ -327,8 +328,8 @@ async def _compare(
         lead += " The model changed between the two readouts."
     statuses = await refit_statuses(session, dctx.dashboard_id, [ra.seq, rb.seq])
     return ReadoutComparison(
-        a=readout_header(ra, statuses.get(ra.seq)),
-        b=readout_header(rb, statuses.get(rb.seq)),
+        a=readout_header(ra, statuses.get(ra.seq), mine=is_mine(ra, dctx)),
+        b=readout_header(rb, statuses.get(rb.seq), mine=is_mine(rb, dctx)),
         same_model=ra.model_version_id == rb.model_version_id,
         tiles=tiles,
         channels=channels[:40],
@@ -480,7 +481,7 @@ async def _prediction(
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
     snap = _snap(row)
     return PredictionReport(
-        readout=readout_header(row, statuses.get(row.seq)),
+        readout=readout_header(row, statuses.get(row.seq), mine=True),
         prediction=snap.prediction if snap else None,
     )
 
@@ -490,6 +491,6 @@ async def _batch(session: AsyncSession, dctx: DashboardContext, args: ReadoutRef
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
     snap = _snap(row)
     return BatchReport(
-        readout=readout_header(row, statuses.get(row.seq)),
+        readout=readout_header(row, statuses.get(row.seq), mine=True),
         summary=snap.batch if snap else None,
     )

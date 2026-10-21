@@ -502,6 +502,21 @@ def test_downgrade_below_0020_refuses_with_layout_2_data(scratch_db: str) -> Non
             "DELETE FROM dashboard_assets",
             "1 assets",
         ),
+        (  # the automatic upgrade: layout 2 specs in rows of the old kinds
+            "UPDATE dashboard_revisions SET spec = spec || '{\"layout_version\": 2}'",
+            "UPDATE dashboard_revisions SET spec = spec - 'layout_version'",
+            "1 layout 2 specs or snapshots",
+        ),
+        (
+            "UPDATE dashboards SET draft_spec = draft_spec || '{\"layout_version\": 2}'",
+            "UPDATE dashboards SET draft_spec = draft_spec - 'layout_version'",
+            "1 layout 2 specs or snapshots",
+        ),
+        (
+            "UPDATE dashboard_readouts SET snapshot = '{\"schema_version\": 2}'",
+            'UPDATE dashboard_readouts SET snapshot = \'{"lead": "Fine."}\'',
+            "1 layout 2 specs or snapshots",
+        ),
     ]
     for make, undo, message in fixes:
         with psycopg.connect(scratch_db, autocommit=True) as conn:

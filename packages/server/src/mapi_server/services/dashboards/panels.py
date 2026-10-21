@@ -201,6 +201,8 @@ class Pair:
     actual: float
     low: float | None = None
     high: float | None = None
+    coords: dict[str, str] = field(default_factory=dict)
+    """The table coordinates of the key (so a chart of selected series joins only theirs)."""
 
 
 @dataclass(slots=True)
@@ -297,6 +299,41 @@ def table_of(summary: ScoreSummary | None, variable: str) -> Table | None:
     return _read(t) if t is not None else None
 
 
+def with_centres(banded: ScoreSummary, centres: ScoreSummary) -> ScoreSummary:
+    """``banded`` (a predictive score: its range is one of single results) with the centre
+    column of each table taken from the same table of ``centres`` (an expected score of the
+    same inputs: the expected mean), matched by coordinates. Cells ``centres`` lacks keep
+    their own centre."""
+    tables: list[ScoreSummaryTable] = []
+    for t in banded.tables:
+        other = next((x for x in centres.tables if x.variable == t.variable), None)
+        stats = table_stats(t)
+        centre = next((c for c in CENTRES if c in stats), None)
+        if other is None or centre is None or centre not in other.columns:
+            tables.append(t)
+            continue
+        dims = table_dims(t)
+        oi = {c: i for i, c in enumerate(other.columns)}
+        if any(d not in oi for d in dims):
+            tables.append(t)
+            continue
+        by_key = {
+            tuple(_label(r[oi[d]]) for d in dims): r[oi[centre]]
+            for r in other.rows
+            if len(r) == len(other.columns)
+        }
+        ti = {c: i for i, c in enumerate(t.columns)}
+        rows = []
+        for r in t.rows:
+            row = list(r)
+            k = tuple(_label(r[ti[d]]) if ti[d] < len(r) else "" for d in dims)
+            if k in by_key and ti[centre] < len(row):
+                row[ti[centre]] = by_key[k]
+            rows.append(row)
+        tables.append(t.model_copy(update={"rows": rows}))
+    return banded.model_copy(update={"tables": tables})
+
+
 def _read(t: ScoreSummaryTable) -> Table:
     dims = table_dims(t)
     stats = table_stats(t)
@@ -333,6 +370,38 @@ def _coords_text(coords: Mapping[str, str], dims: Iterable[str]) -> str:
 
 def _varying(table: Table, cells: Sequence[Cell]) -> list[str]:
     return [d for d in table.dims if len(table.levels(d, cells)) > 1]
+
+
+_NUMBER = re.compile(r"^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$")
+
+
+def period_key(label: str) -> tuple[int, float, str]:
+    """The order of a period label: numbers (integer steps ``0, 1, …, 10``) by value, other
+    labels (ISO dates) as text after them."""
+    if _NUMBER.match(label.strip()):
+        try:
+            return (0, float(label), label)
+        except ValueError:
+            pass
+    return (1, 0.0, label)
+
+
+def _series_keys(table: Table, cells: Iterable[Cell]) -> set[tuple[str, ...]]:
+    keep = [d for d in table.dims if d not in (table.time_dim, table.class_dim)]
+    return {tuple(c.coords.get(d, "") for d in keep) for c in cells}
+
+
+def _whole_forecast(table: Table, cells: Sequence[Cell], fc: ForecastView | None) -> bool:
+    """Whether the forecast view (its fan, total and history: the KPI summed over
+    ``summed_over``) is the value of ``cells``: the view is of this output, every other dim
+    of the table that varies is one the view sums over, and ``cells`` hold every series (no
+    selection narrows them)."""
+    if fc is None or fc.kpi != table.variable:
+        return False
+    others = [d for d in _varying(table, table.cells) if d not in (table.time_dim, table.class_dim)]
+    if any(d not in fc.summed_over for d in others):
+        return False
+    return _series_keys(table, cells) == _series_keys(table, table.cells)
 
 
 # ===================================================================================== values
@@ -416,7 +485,7 @@ def _cells_value(
         c = cells[0]
         return _Value(c.centre, c.low, c.high, banded=table.banded)
     fc = mat.forecast
-    if t is not None and fc is not None and fc.kpi == table.variable:
+    if t is not None and fc is not None and _whole_forecast(table, cells, fc):
         got = _fan_at(fc.fan, t)
         if got is not None and got[0] is not None:
             over = ", ".join(fc.summed_over) or "every series"
@@ -435,7 +504,7 @@ def _cells_value(
 def _periods(table: Table, cells: Sequence[Cell]) -> list[str]:
     if table.time_dim is None:
         return []
-    return sorted({c.coords.get(table.time_dim, "") for c in cells} - {""})
+    return sorted({c.coords.get(table.time_dim, "") for c in cells} - {""}, key=period_key)
 
 
 def _output_value(
@@ -491,7 +560,7 @@ def _period_value(
     if how == "next":
         split = _label(mat.forecast.split_at) if mat.forecast is not None else ""
         if split:
-            ahead = [p for p in periods if p >= split]
+            ahead = [p for p in periods if period_key(p) >= period_key(split)]
             t = ahead[0] if ahead else None
         elif mat.mode == "forecast":
             t = periods[0]
@@ -533,6 +602,7 @@ def _aggregate(
         and fc.total is not None
         and fc.kpi == variable
         and left == [table.time_dim]
+        and _whole_forecast(table, cells, fc)
     ):
         centre, lo, hi = _dist(fc.total)
         return _Value(centre, lo, hi, caption="The total over the forecast", banded=True)
@@ -789,11 +859,17 @@ class _Chart:
     max_items: int
 
 
-def _actual_by_t(mat: Material) -> dict[str, float]:
+def _actual_by_t(mat: Material, select: Mapping[str, str | int] | None = None) -> dict[str, float]:
+    """The actual per period, added up over the joined series that ``select`` keeps (a
+    chart of one selected series gets that series' actuals only)."""
+    want = {k: normalise_label(_label(v)) for k, v in (select or {}).items()}
     out: dict[str, float] = {}
     for p in mat.pairs:
-        if p.t is not None:
-            out[p.t] = out.get(p.t, 0.0) + p.actual
+        if p.t is None:
+            continue
+        if any(k in p.coords and normalise_label(p.coords[k]) != v for k, v in want.items()):
+            continue
+        out[p.t] = out.get(p.t, 0.0) + p.actual
     return out
 
 
@@ -842,13 +918,14 @@ def _series_block(c: _Chart, spec: DashboardSpecV2, mat: Material) -> SeriesBloc
     try:
         split = _split_dim(c, table, cells, x_dim)
     except _Unavailable:
-        if fc is not None and fc.kpi == table.variable:  # the fan of the sum over series
+        if fc is not None and _whole_forecast(table, cells, fc):  # the fan of the sum
             return _fan_block(c, fc.fan, split_at, table.variable)
         raise
     if split is not None and len(table.levels(split, cells)) > _MAX_SERIES:
         raise _Unavailable(f"{split} has more than {_MAX_SERIES} values: choose some.")
     keep_band = c.band != "none"
-    actual = _actual_by_t(mat) if split is None else {}
+    actual = _actual_by_t(mat, c.source.select) if split is None else {}
+    whole = _whole_forecast(table, cells, fc)
     series: list[Series] = []
     groups: dict[str, list[Cell]] = {}
     for cell in cells:
@@ -865,8 +942,8 @@ def _series_block(c: _Chart, spec: DashboardSpecV2, mat: Material) -> SeriesBloc
             for i, cell in enumerate(members)
         ]
         if x_kind == "time":
-            pts.sort(key=lambda p: p.t)
-        if split is None and fc is not None and fc.kpi == table.variable and fc.history:
+            pts.sort(key=lambda p: period_key(p.t))
+        if split is None and whole and fc is not None and fc.history:
             pts = _history(fc) + [p for p in pts if p.t not in {h.t for h in _history(fc)}]
         series.append(
             Series(
@@ -1075,7 +1152,7 @@ def _table_block(p: TablePanel, spec: DashboardSpecV2, mat: Material) -> TableBl
     cells = _select(table.cells, p.source.select)
     cols = list(p.columns) or [*table.dims, "centre", *(["low", "high"] if table.banded else [])]
     if table.time_dim is not None:
-        cells = sorted(cells, key=lambda c: c.coords.get(table.time_dim or "", ""))
+        cells = sorted(cells, key=lambda c: period_key(c.coords.get(table.time_dim or "", "")))
     stat = {"centre": lambda c: c.centre, "low": lambda c: c.low, "high": lambda c: c.high}
     rows: list[list[str | float | None]] = []
     for cell in cells[: p.max_rows]:
@@ -1304,15 +1381,17 @@ def accuracy_of(
     *,
     names: Mapping[str, str] | None = None,
 ) -> tuple[ErrorAccuracy | ClassAccuracy | EffectAccuracy | None, list[Pair], list[str]]:
-    """The accuracy of the readout's predictions of the subject against ``uploaded`` (and
-    the actuals a conditioned forecast echoes). Returns the detail, the joined pairs (for
-    scatter and residual charts) and plain notes."""
+    """The accuracy of the readout's predictions of the subject against ``uploaded`` (or,
+    when nothing was uploaded, the actuals a conditioned forecast echoes). Returns the
+    detail, the joined pairs (for scatter and residual charts) and plain notes."""
     variable = spec.subject.variable
     table = table_of(mat.summary, variable)
     notes: list[str] = []
     if table is None:
         return None, [], [f"This readout has no values of {variable} to compare."]
-    cells = [*_summary_actuals(mat.summary, variable), *uploaded]
+    # the upload, else the actuals a conditioned forecast echoes: never both (a conditioned
+    # forecast echoes the upload itself, and numbers of one key are added up)
+    cells = list(uploaded) or _summary_actuals(mat.summary, variable)
     key_dims, preds, actual = join_actuals(table, cells, names)
     if not preds:
         return None, [], ["None of the results you sent match a prediction of the model."]
@@ -1358,9 +1437,10 @@ def _pairs(
                 actual=a,
                 low=members[0].low if one else None,  # never a sum of bounds
                 high=members[0].high if one else None,
+                coords={d: members[0].coords.get(d, "") for d in key_dims},
             )
         )
-    out.sort(key=lambda p: (p.t or "", p.label))
+    out.sort(key=lambda p: (period_key(p.t or ""), p.label))
     return out
 
 
@@ -1378,15 +1458,17 @@ def _class_accuracy(
     cdim = table.class_dim
     threshold = spec.actuals.threshold
     if cdim is None:
-        positive = spec.subject.positive_label or "1"
         ps: list[float] = []
         ys: list[str] = []
+        raw: list[float | str] = []
         for k, members in preds.items():
             c = members[0]
             if c.centre is None or k not in actual:
                 continue
             ps.append(c.centre)
             ys.append(label_of(actual[k]))
+            raw.append(actual[k])
+        positive = spec.subject.positive_label or binary_positive(raw)
         return classification_metrics_of(ps, ys, positive, threshold)
     probs: list[dict[str, float]] = []
     ys = []
@@ -1401,6 +1483,30 @@ def _class_accuracy(
     if len(classes) == 2 and pos is not None and pos in classes:
         return classification_metrics_of([r.get(pos, 0.0) for r in probs], ys, pos, threshold)
     return multiclass_metrics_of(probs, ys)
+
+
+def binary_positive(values: Sequence[float | str]) -> str:
+    """The positive class of binary outcomes when the dashboard names none, as the SDK's
+    metrics pick it: ``1`` of 0/1 outcomes, the larger of two numbers, ``true`` of
+    booleans. Raises ``ValueError`` for two other labels (the analyst sets the positive
+    label of the subject)."""
+
+    def text(v: float | str) -> str:
+        return str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)
+
+    labels = {text(v) for v in values}
+    if labels <= {"0", "1"}:
+        return "1"
+    if {normalise_label(x) for x in labels} <= {"true", "false"}:
+        return "true"
+    numbers = [v for v in values if isinstance(v, float)]
+    if len(numbers) == len(values) and len(set(numbers)) == 2:
+        return text(max(numbers))
+    shown = ", ".join(sorted(labels)[:3])
+    raise ValueError(
+        f"the outcomes are {shown}: the dashboard must name which one is the positive class "
+        "(the subject's positive label)"
+    )
 
 
 def accuracy_point(
@@ -1508,9 +1614,8 @@ def prediction_result(
         values: dict[str, PredictionValue] = {}
         for name, groups in per_output.items():
             if i < len(groups):
-                cells = sorted(
-                    groups[i][1], key=lambda c: c.coords.get(tables[name].time_dim or "", "")
-                )
+                tdim = tables[name].time_dim or ""
+                cells = sorted(groups[i][1], key=lambda c: period_key(c.coords.get(tdim, "")))
                 if tables[name].time_dim and tables[name].class_dim is None:
                     cells = cells[:1]
                 values[name] = _value_of(tables[name], cells, True)

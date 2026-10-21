@@ -512,6 +512,11 @@ class ReadoutHeader(ResponseModel):
     created_at: AwareDatetime
     ready_at: AwareDatetime | None = None
     refit_status: RefitRequestStatus | None = None
+    mine: bool | None = Field(
+        None,
+        description="Whether the caller made this readout (its own tried case, file or "
+        "upload); set on the readout list and reads, null where the caller is not known",
+    )
 
     model_config = dto_examples(
         _HEADER_EXAMPLE,

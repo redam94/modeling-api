@@ -536,7 +536,7 @@ async def _spend(
     if hit is not None and hit.kind == kind:
         if hit.actor_kind == actor.kind and hit.actor_id == actor.id:
             return hit
-        return await _copy_for(ctx, session, p.dash, p.rev, hit, actor, "private")
+        return await _copy_for(ctx, session, p.dash, p.rev, hit, actor, "private", title=title)
     octx = await owner_context(ctx, session, p.dash)  # before the lock (it may pause)
     await _lock_dashboard(session, p.dash.id)
     await _limits_check(ctx, session, p.dash, p.spec, actor)
@@ -677,8 +677,17 @@ def _def_for(spec: DashboardSpecV2, column: str, *, dim: bool) -> ScenarioInputD
 
 
 def _column(
-    spec: DashboardSpecV2, snapshot: EndpointSchemaSnapshot, name: str, *, dim: bool
+    spec: DashboardSpecV2,
+    snapshot: EndpointSchemaSnapshot,
+    name: str,
+    *,
+    dim: bool,
+    reveal: bool = True,
 ) -> BatchColumn:
+    """The column of a batch file. Choices and a range the analyst defined (a
+    ``ScenarioInputDef``) are always given; the model's own fitted levels and variable
+    bounds only when ``reveal`` (a team member): a client or a share-link holder never
+    learns training-data levels or fitted ranges the analyst did not choose to show."""
     idef = _def_for(spec, name, dim=dim)
     if idef is not None:
         return BatchColumn(
@@ -692,7 +701,7 @@ def _column(
             return BatchColumn(name=name, role="driver", type="date")
         cs = snapshot.fit_coords.get(name)
         levels = [str(v)[:64] for v in (cs.values or [])[:200]] if cs is not None else []
-        if d.policy == DimPolicy.FIXED and levels:
+        if d.policy == DimPolicy.FIXED and levels and reveal:
             return BatchColumn(name=name, role="driver", type="choice", choices=levels)
         return BatchColumn(name=name, role="driver", type="text")
     dtype = str(schema.vars[name].dtype)
@@ -703,7 +712,7 @@ def _column(
         else "date" if dtype.startswith("datetime")
         else "text"
     )  # fmt: skip
-    bounds = schema.vars[name].bounds
+    bounds = schema.vars[name].bounds if reveal else None
     lo, hi = bounds if bounds is not None else (None, None)
     return BatchColumn(name=name, role="driver", type=kind, min=lo, max=hi)
 
@@ -741,8 +750,9 @@ async def batch_template(
     snapshot = await _snapshot(ctx, session, p.mv, "scoring a file")
     shape = batch_columns(p.spec, snapshot, binding_dims(p.mv))
     columns = [BatchColumn(name=shape.id_column, role="id", type="text")]
-    columns += [_column(p.spec, snapshot, d, dim=True) for d in shape.dim_columns]
-    columns += [_column(p.spec, snapshot, v, dim=False) for v in shape.variables]
+    reveal = dctx.principal_kind == "member"
+    columns += [_column(p.spec, snapshot, d, dim=True, reveal=reveal) for d in shape.dim_columns]
+    columns += [_column(p.spec, snapshot, v, dim=False, reveal=reveal) for v in shape.variables]
     columns = columns[:_MAX_BATCH_COLUMNS]
     lines = [",".join(c.name for c in columns)]
     for k in range(2):
@@ -942,6 +952,7 @@ async def submit_batch(
     ]
     if issues:
         raise _input_invalid(issues, "the file cannot be used")
+    reveal = dctx.principal_kind == "member"
     columns = {c: _column(p.spec, snapshot, c, dim=True) for c in shape.dim_columns}
     columns |= {v: _column(p.spec, snapshot, v, dim=False) for v in shape.variables}
     for i, row in enumerate(rows):
@@ -953,7 +964,11 @@ async def submit_batch(
             if why is None and col.min is not None and col.max is not None and idef is None:
                 x = row.get(c)
                 if isinstance(x, int | float) and not col.min <= float(x) <= col.max:
-                    why = f"{c} must be between {col.min:g} and {col.max:g}"
+                    why = (
+                        f"{c} must be between {col.min:g} and {col.max:g}"
+                        if reveal
+                        else f"{c} is outside the range the model accepts"
+                    )
             if why is not None:
                 issues.append(_issue(f"/inputs/data_vars/{c}/data/{i}", why))
             elif idef is not None:
@@ -1119,3 +1134,14 @@ async def submit_baseline_v2(
         body = request.model_dump(mode="json", by_alias=True, exclude_none=True)
         body["output"] = output.model_dump(exclude_defaults=True)
         await _submit(session, octx, row, ScoreRequest.model_validate(body))
+        if preset == "mmm_planner" and output.kind == "predictive":
+            # plan §10.1: an upgraded media planner keeps the numbers of its layout 1
+            # readouts (the expected mean); only the band is the predictive one (§10.2).
+            # A second, expected run gives the centres (the readout waits for both).
+            body["output"] = output.model_copy(update={"kind": "expected"}).model_dump(
+                exclude_defaults=True
+            )
+            first = list(row.run_ids)
+            await _submit(session, octx, row, ScoreRequest.model_validate(body))
+            row.run_ids = [*first, *row.run_ids]
+            await session.flush()

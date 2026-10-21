@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import type { KpiBlock } from "../types";
 import { asClientV2, pageSections, panelTile, sectionOfTab, splitBlocks, summaryCsvV2, unitText } from "./panel-model";
-import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, historyMetric, predictionLines } from "./panels/results-model";
+import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, historyMetric, outputWords, predictionLines } from "./panels/results-model";
 import { classifierDashboard, CLASSIFIER_BLOCKS, fakeClient, readout } from "./panels/test-fixtures";
 
 describe("sections", () => {
@@ -67,9 +67,16 @@ describe("results in words (the server's numbers)", () => {
     expect(bandNote("none")).toBeNull();
   });
 
+  it("names outputs in plain words, never the raw variable", () => {
+    const d = { kpi: { variable: "y_hat", label: "Visits", unit: "count" }, subject: { variable: "y_hat", label: "Store visits", unit: "count" } } as never;
+    expect(outputWords("y_hat", d)).toBe("Store visits");
+    expect(outputWords("price_eur", d, 2)).toBe("Price eur");
+    expect(outputWords("level_hat", d, 2)).toBe("Level");
+  });
+
   it("batch: the spread of predictions, never an interval", () => {
     const lines = batchLines({ n_rows: 3, n_scored: 2, share_positive: null, stats: { churn: { p50: 0.5, p10: 0.1, p90: 0.9 } } }, d);
-    expect(lines).toEqual(["The model scored 2 of 3 cases.", "churn: the middle prediction is 50.0%; most are between 10.0% and 90.0%. This is the spread of the predictions, not a likely range."]);
+    expect(lines).toEqual(["The model scored 2 of 3 cases.", "Churn: the middle prediction is 50.0%; most are between 10.0% and 90.0%. This is the spread of the predictions, not a likely range."]);
   });
 
   it("accuracy of each kind", () => {

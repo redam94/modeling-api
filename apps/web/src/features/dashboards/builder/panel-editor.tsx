@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
 
 import { RECIPE_INTENTS, type AccuracyKind, type CatalogOutput, type ChartIntent, type DashboardSpecV2, type Panel, type PresetKey, type SourceCatalog } from "../types";
+import { ListInput } from "./list-input";
 import { issueAt, type FormIssue } from "./spec-form";
 import {
   bandOf,
@@ -136,12 +137,7 @@ export function PanelEditor({ spec, index, panel: p, onChange, issues, catalog }
               error={err("columns")}
               hint={`Dims and values, in order, separated by commas.${outputOf(catalog, p.source.variable)?.dims?.length ? ` Dims: ${outputOf(catalog, p.source.variable)!.dims!.join(", ")}.` : ""} Values: centre, low, high.`}
             >
-              <Input
-                id={fid("columns")}
-                className="font-mono"
-                value={(p.columns ?? []).join(", ")}
-                onChange={(e) => onChange({ ...p, columns: e.target.value.split(",").map((c) => c.trim()).filter(Boolean) })}
-              />
+              <ListInput id={fid("columns")} className="font-mono" value={p.columns ?? []} onChange={(columns) => onChange({ ...p, columns })} />
             </Field>
             <Field label="Rows" htmlFor={fid("rows")} error={err("max_rows")}>
               <Input id={fid("rows")} type="number" min={1} max={MAX_TABLE_ROWS} step={1} value={p.max_rows ?? 20} onChange={(e) => onChange({ ...p, max_rows: Number(e.target.value) })} />
@@ -238,7 +234,7 @@ function SummaryFields({ p, o, onChange, fid, err }: { p: KpiPanel | ChartPanel;
               );
             })
           ) : (
-            <Input aria-label="Dims to reduce over" className="font-mono" value={(r.over ?? []).join(", ")} onChange={(e) => set({ over: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+            <ListInput aria-label="Dims to reduce over" className="font-mono" value={r.over ?? []} onChange={(over) => set({ over })} />
           )}
           {err("reduce/over") ? (
             <p role="alert" className="text-xs font-medium text-destructive">

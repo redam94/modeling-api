@@ -77,7 +77,7 @@ function RowForm({ client, dashboard, template, preview }: { client: DashboardCl
     setReadError(null);
     try {
       const csv = parseCsv(text, max + 1);
-      const next = csv.header.length ? rowActualsRows(cols, idColumn, csv.header, csv.rows) : [];
+      const next = csv.header.length ? rowActualsRows(cols, idColumn, csv.header, csv.rows, csv.delimiter === ";") : [];
       if (!next.length) {
         setReadError("We found no rows. Put the column names in the first row and one case on each next row.");
         return;

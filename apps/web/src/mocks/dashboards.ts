@@ -93,7 +93,7 @@ import {
 import { evaluateScenario, type ResponseGrid } from "@/features/guided/whatif";
 
 import { EXTRA_MODEL_IDS, EXTRA_MODELS } from "./explore";
-import { MODEL_ID as fx_MODEL_ID, MV_ID, modelVersion } from "./fixtures";
+import { artifactLink, MODEL_ID as fx_MODEL_ID, MV_ID, modelVersion } from "./fixtures";
 import { synthGrid } from "./guided-engine";
 import integrationsGen from "./integrations.gen.json";
 import { encodeRgbPng } from "./png";
@@ -362,6 +362,9 @@ const MMM_SPEC: DashboardSpec = {
   note: "Spend in this readout is net media spend. Agency fees are not included.",
 };
 
+/** The response grid as the MMM version's artifact (`ui/grids/response_curves.json`). */
+const MMM_GRID_ARTIFACT = "dashboards/mmm/ui/grids/response_curves.json";
+
 /** Weeks of the fit window: the grid holds totals over them, the readout shows one week. */
 const MMM_WEEKS = 52;
 
@@ -374,6 +377,7 @@ const MMM_GRID: ResponseGrid = synthGrid({
   statedRoi: { tv: 1.9, search: 2.7, social: 1.25, display: 0.85 },
   kpiUnits: "EUR",
 });
+const MMM_GRID_BYTES = new TextEncoder().encode(JSON.stringify(MMM_GRID));
 
 /** Week `w` (0 = the newest) ends on Sunday 18/10/2026 minus `w` weeks. */
 const LAST_SUNDAY = Date.parse("2026-10-18T00:00:00Z");
@@ -2695,15 +2699,20 @@ function listReadouts(x: MockDashboard, v: Viewer, url: URL): Response {
   const limit = Math.max(1, Math.min(50, Number(url.searchParams.get("limit") ?? 20) || 20));
   const rows = visible(x, v)
     .filter((row) => (!kind || row.r.kind === kind) && (!visibility || row.r.visibility === visibility) && (before === null || row.r.seq < before))
-    .map((row) => row.r)
+    .map((row) => ({ ...row.r, mine: mineOf(row, v) }))
     .sort((a, b) => b.seq - a.seq);
   const items = rows.slice(0, limit);
   return HttpResponse.json({ items: items.map(headerOf), next_before_seq: rows.length > limit ? (items[items.length - 1]?.seq ?? null) : null });
 }
 
+/** `ReadoutHeader.mine`: the viewer made the readout (`access.is_mine`). */
+function mineOf(row: MockReadout, v: Viewer): boolean {
+  return row.actor.kind === v.kind && row.actor.id === v.id;
+}
+
 function getReadout(x: MockDashboard, v: Viewer, seq: number): Response {
   const row = visible(x, v).find((r) => r.r.seq === seq);
-  return row ? HttpResponse.json(row.r) : NOT_FOUND("readout");
+  return row ? HttpResponse.json({ ...row.r, mine: mineOf(row, v) }) : NOT_FOUND("readout");
 }
 
 // ---------------------------------------------------------------------------- handlers
@@ -2788,6 +2797,14 @@ export function createDashboardHandlers(state: DashboardsState): HttpHandler[] {
     };
 
   return [
+    // ------------------------------------------------------------------ the MMM's response grid
+    // In acme/retail `geo-mmm-prod` serves the media mix model of the upgraded planner: its
+    // version wrote the response grid the planner's what-ifs read (the builder looks for it, as
+    // for a real MMM version). Other projects keep their own mocks of that version.
+    http.get(new RegExp(`^${API_RE}/v1/models/${fx_MODEL_ID}/versions/1/artifacts/ui(%2F|/)grids(%2F|/)response_curves\\.json$`), ({ request }) =>
+      request.headers.get("X-Mapi-Project") === V2_PROJECT ? HttpResponse.json(artifactLink(MMM_GRID_ARTIFACT, MMM_GRID_BYTES, "application/json")) : undefined,
+    ),
+    http.get(`http://127.0.0.1:4443/mock-artifacts/${encodeURIComponent(MMM_GRID_ARTIFACT)}`, () => new HttpResponse(MMM_GRID_BYTES, { headers: { "content-type": "application/json" } })),
     // ------------------------------------------------------------------ public share links
     http.post(`${API}/v1/share-sessions`, async ({ request }) => {
       await delay(120);

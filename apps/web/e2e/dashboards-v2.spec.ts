@@ -161,6 +161,10 @@ test.describe("the analyst", () => {
     await expect(panels.getByRole("button", { name: /^1\. This period , Planner part\. Edit\.$/ })).toBeVisible();
     // The channels of the layout 1 spec came along.
     await expect(page.getByRole("table", { name: "Channels" }).getByRole("textbox", { name: "Label of Paid search" })).toHaveValue("Paid search");
+    // It opens cleanly: the planner's KPI and the model's response grid are found.
+    await expect(page.getByText(/The response grid has 4 channels/)).toBeVisible();
+    await expect(page.getByText(/has no output named/)).toHaveCount(0);
+    await expect(page.getByText(/no response grid/)).toHaveCount(0);
 
     // History: both revisions and the layout 1 readouts from before the upgrade.
     await page.getByRole("tablist", { name: "Dashboard builder" }).getByRole("tab", { name: "History" }).click();

@@ -797,8 +797,9 @@ export interface paths {
         };
         /**
          * Get Dashboard Asset
-         * @description A picture of the dashboard (PNG, at most 512 KiB). Anyone who may read the
-         *     dashboard (a client: a published one granted to them) may read its pictures.
+         * @description A picture of the dashboard (PNG, at most 512 KiB). Members (viewers and up) may
+         *     read the pictures of any revision (History, the builder); a client only those of the
+         *     published revision (as a share link), so a picture the analyst removed stays gone.
          */
         get: operations["get_dashboard_asset"];
         put?: never;
@@ -12304,8 +12305,11 @@ export interface components {
         };
         /**
          * FieldBlock
-         * @description A 2-D field map (at most 64 × 64 cells, 8 frames). Code ``c`` maps to
-         *     ``vmin + c / 255 * (vmax - vmin)`` (on log10 when ``log``).
+         * @description A 2-D field map (at most 64 × 64 cells, 8 frames). Without ``missing_code`` (blocks
+         *     built before v0.17.0's fix) code ``c`` maps to ``vmin + c / 255 * (vmax - vmin)``; with
+         *     it, the value codes are ``0`` … ``254`` and map to ``vmin + c / 254 * (vmax - vmin)``,
+         *     and ``missing_code`` (255) is a cell with no value (drawn transparent, left out of the
+         *     statistics). Values are on log10 when ``log``.
          */
         FieldBlock: {
             /**
@@ -12335,6 +12339,8 @@ export interface components {
              * @default false
              */
             log?: boolean;
+            /** Missing Code */
+            missing_code?: 255 | null;
             /** Panel Id */
             panel_id: string;
             /** Title */
@@ -19338,6 +19344,11 @@ export interface components {
              * @enum {string}
              */
             kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
+            /**
+             * Mine
+             * @description Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known
+             */
+            mine?: boolean | null;
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -19420,6 +19431,11 @@ export interface components {
              * @enum {string}
              */
             kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
+            /**
+             * Mine
+             * @description Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known
+             */
+            mine?: boolean | null;
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -19588,10 +19604,11 @@ export interface components {
          * @description How an output becomes the panel's numbers.
          *
          *     ``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the
-         *     next forecast period; ``mean``/``sum`` over dims ``over`` (draws only, asked from the
-         *     score run so the range is the range of the aggregate; point outputs are allowed and
-         *     flagged ``approximate``); ``share_above``: the share of cells above ``threshold``;
-         *     ``top_class``: the most probable class. The server never adds interval bounds.
+         *     next forecast period; ``mean``/``sum`` over dims ``over`` (of draws only the ``sum``
+         *     over the time dim of a forecast: the forecast total, with its range; point outputs
+         *     are allowed and flagged ``approximate``); ``share_above``: the share of cells above
+         *     ``threshold``; ``top_class``: the most probable class. The server never adds interval
+         *     bounds.
          */
         Reduce: {
             /**
@@ -27792,7 +27809,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID */
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_LAYOUT_RETIRED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -29684,7 +29701,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: DASHBOARD_SPEC_STALE */
+            /** @description Problem: DASHBOARD_SPEC_STALE, PRECONDITION_FAILED */
             412: {
                 headers: {
                     [name: string]: unknown;
@@ -29693,13 +29710,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Problem: SCHEMA_INVALID */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem: RATE_LIMITED */

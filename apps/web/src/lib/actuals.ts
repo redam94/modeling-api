@@ -10,6 +10,27 @@ import type { EndpointScoreCall, ForecastConditioning, InputTable, InputTableCol
 
 export type Cell = string | number | boolean | null;
 
+const PLAIN = /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i;
+const GROUPED = /^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$/; // 1,234,567.5
+const DECIMAL_COMMA = /^[-+]?\d+,\d+(e[-+]?\d+)?$/i; // 1,5
+const GROUPED_DECIMAL_COMMA = /^[-+]?\d{1,3}(\.\d{3})+(,\d+)?$/; // 1.234,5
+
+/**
+ * The number a cell of a CSV file holds, or `null` when it is not a plain number. `decimalComma`
+ * (a file separated by `;`, as spreadsheets with a decimal comma save it): `1,5` is 1.5 and
+ * `1.234,5` is 1234.5. Otherwise a comma only groups thousands (`1,234.5`); any other comma
+ * (`1,5`) is not a number, so it is refused instead of being read ten times too large.
+ */
+export function numberOf(text: string, decimalComma = false): number | null {
+  const v = text.trim();
+  let n: number | null = null;
+  if (PLAIN.test(v)) n = Number(v);
+  else if (decimalComma && DECIMAL_COMMA.test(v)) n = Number(v.replace(",", "."));
+  else if (decimalComma && GROUPED_DECIMAL_COMMA.test(v)) n = Number(v.replace(/\./g, "").replace(",", "."));
+  else if (!decimalComma && GROUPED.test(v)) n = Number(v.replace(/,/g, ""));
+  return n !== null && Number.isFinite(n) ? n : null;
+}
+
 /** An editor cell as JSON: blank is null; numbers in value columns (and integer coordinates) are numbers. */
 export function parseCell(text: string, column: InputTableColumn): Cell {
   const v = text.trim();
@@ -18,8 +39,8 @@ export function parseCell(text: string, column: InputTableColumn): Cell {
     if (column.freq) return v;
     return /^-?\d+$/.test(v) ? Number(v) : v;
   }
-  const n = Number(v.replace(/,/g, ""));
-  if (v !== "" && Number.isFinite(n) && /^[-+]?[\d,]*\.?\d+(e[-+]?\d+)?$/i.test(v)) return n;
+  const n = numberOf(v, false);
+  if (n !== null) return n;
   if (v === "true" || v === "false") return v === "true";
   return v;
 }

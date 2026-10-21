@@ -35,7 +35,6 @@ import {
   UNIT_LABEL,
   type FormIssue,
 } from "./spec-form";
-import { UpgradeBanner } from "./upgrade-banner";
 import type { SpecUpdate } from "./use-draft";
 
 export interface SpecEditorProps {
@@ -67,7 +66,6 @@ export function SetupTab({ spec, onChange, issues, grid, readOnly = false }: Spe
   const change = v1Change(onChange);
   return (
     <div className="grid min-w-0 gap-5">
-      <UpgradeBanner spec={spec} readOnly={readOnly} />
       <fieldset disabled={readOnly} className="grid min-w-0 gap-5 xl:grid-cols-2">
         <legend className="sr-only">Setup</legend>
         <WordsSection spec={spec} onChange={onChange} issues={issues} />

@@ -46,6 +46,23 @@ describe("builder › layout 2", () => {
     expect(screen.getByRole("table", { name: "Channels" })).toBeTruthy();
     expect(screen.queryByTestId("upgrade-banner")).toBeNull();
     expect(screen.queryByText("Unsaved changes")).toBeNull();
+    // the upgraded mock is consistent: the planner's KPI and its grid are found
+    await waitFor(() => expect(screen.getByRole("table", { name: "Channels" })).toBeTruthy(), T);
+    await new Promise((r) => setTimeout(r, 300));
+    const said = [...document.querySelectorAll("p,div,li,span")].map((e) => e.textContent ?? "").filter((t) => /has no output named|no response grid/.test(t));
+    expect(said.at(-1) ?? null).toBeNull();
+  });
+
+  it("keeps a panel's editor open while its id is typed", async () => {
+    const user = userEvent.setup();
+    renderApp(`/dashboards/${V2_DASHBOARD_IDS.classifier}`, "ana", RETAIL);
+    await screen.findByRole("list", { name: "Panels" }, T);
+    await user.click(screen.getByRole("button", { name: /^Note$/ }));
+    const id = await screen.findByLabelText<HTMLInputElement>("Id");
+    await user.type(id, "abc");
+    expect(screen.getByLabelText<HTMLInputElement>("Id").value).toBe("noteabc");
+    expect(screen.getByLabelText<HTMLInputElement>("Id")).toBe(document.activeElement);
+    expect(panelTitles().at(-1)).toBe("noteabc");
   });
 
   it("moves, removes and adds panels from the keyboard, says where a panel went, and saves layout 2", async () => {
@@ -119,6 +136,25 @@ describe("builder › layout 2", () => {
     await user.clear(runs);
     await user.type(runs, "0");
     expect(await screen.findByText(/With 0 runs each day, every one of the/)).toBeTruthy();
+  });
+});
+
+describe("builder › history › tried cases", () => {
+  it("lists kept tried cases for review with their inputs, and keeps a client's private one", async () => {
+    const user = userEvent.setup();
+    renderApp(`/dashboards/${V2_DASHBOARD_IDS.classifier}?tab=history`, "ana", RETAIL);
+    const pending = await screen.findByRole("list", { name: "Readouts waiting for review" }, T);
+    const kept = within(pending).getByText("Kept: store s0 on promotion").closest("li")!;
+    expect(within(kept as HTMLElement).getByText(/Tried case · kept/)).toBeTruthy();
+    expect(within(kept as HTMLElement).getByRole("button", { name: "Publish readout 5" })).toBeTruthy();
+    expect(within(kept as HTMLElement).getByRole("button", { name: "Hide readout 5" })).toBeTruthy();
+    await user.click(within(kept as HTMLElement).getByRole("button", { name: /Show the case/ }));
+    expect(await within(kept as HTMLElement).findByText((_, el) => el?.getAttribute("data-readout") === "prediction", {}, T)).toBeTruthy();
+
+    const all = screen.getByRole("table", { name: "All readouts" });
+    await user.click(within(all).getByRole("button", { name: "Keep tried case 3" }));
+    await waitFor(() => expect(seen.some((r) => r.method === "POST" && r.url.endsWith("/readouts/3:keep"))).toBe(true), T);
+    expect(await within(screen.getByRole("list", { name: "Readouts waiting for review" })).findByText("Two prices for store s0", {}, T)).toBeTruthy();
   });
 });
 

@@ -376,6 +376,27 @@ async def test_a_repeated_case_answers_from_the_cache_in_a_private_copy(
     assert r.status_code == 409
 
 
+async def test_a_cached_copy_never_carries_another_persons_label(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    """The cache key covers the rows, never the label: a copy is titled with the caller's
+    own words (their label, or the default), not the first person's private label."""
+    dash_id = await publish_v2(ctx, kit, scenario_rows=HORIZON_ROWS)
+    base = f"/v1/dashboards/{dash_id}"
+    rows = [{"horizon": 4}]
+    secret = {"rows": rows, "label": "Cleo secret plan"}
+    first = (await kit["cleo"].post(f"{base}/predictions", json=secret)).json()
+    assert first["title"] == "Cleo secret plan"
+    await finish(ctx, dash_id, first["seq"], {"lead": "Cached."})
+    theirs = await kit["carl"].post(f"{base}/predictions", json={"rows": rows, "label": "Mine"})
+    assert theirs.status_code == 200, theirs.text
+    assert theirs.json()["seq"] != first["seq"] and theirs.json()["title"] == "Mine"
+    plain = await kit["carl"].post(f"{base}/predictions", json={"rows": rows})
+    assert plain.status_code == 200, plain.text
+    assert "Cleo secret plan" not in plain.json()["title"]
+    assert len(await score_runs(ctx)) == 1
+
+
 async def test_scenario_rows_count_against_the_run_caps(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:
@@ -458,6 +479,39 @@ async def test_the_batch_template_names_the_id_and_the_drivers(
     assert cols["promo"]["type"] == "toggle"
     lines = body["example_csv"].splitlines()
     assert lines[0] == "store,price,promo" and lines[1] == "case1,20,false"
+
+
+async def test_the_batch_template_hides_fitted_levels_and_bounds_from_clients(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A fixed dim and a variable no analyst input covers: clients and share links get the
+    column's type only, never the model's fitted levels or variable bounds."""
+    cases_contract(monkeypatch)
+    raw = CASES_SNAPSHOT.model_dump(mode="json", by_alias=True)
+    raw["input_schema"]["dims"]["region"] = {"kind": "categorical", "policy": "fixed"}
+    raw["input_schema"]["vars"]["cost"] = {
+        "dims": ["store", "region"], "dtype": "float64", "role": "covariate", "bounds": [0, 99],
+    }  # fmt: skip
+    raw["fit_coords"]["region"] = {"kind": "categorical", "size": 2,
+                                   "values": ["Secret North", "Secret South"]}  # fmt: skip
+    wide = EndpointSchemaSnapshot.model_validate(raw)
+
+    async def snapshot(session: Any, catalogs: Any, mv: Any) -> EndpointSchemaSnapshot:
+        return wide
+
+    monkeypatch.setattr(cases, "live_capabilities_snapshot", snapshot)
+    dash_id = await publish_v2(ctx, kit, preset="generic", scenario_rows=CASE_ROWS, batch=BATCH)
+    url = f"/v1/dashboards/{dash_id}/batch/template"
+    r = await kit["cleo"].get(url)
+    assert r.status_code == 200, r.text
+    assert "Secret North" not in r.text
+    cols = {c["name"]: c for c in r.json()["columns"]}
+    assert cols["region"]["type"] == "text" and not cols["region"].get("choices")
+    assert cols["cost"].get("min") is None and cols["cost"].get("max") is None
+    assert cols["price"]["min"] == 10.0  # the analyst's own range is shown
+    team = {c["name"]: c for c in (await kit["ana"].get(url)).json()["columns"]}
+    assert team["region"]["choices"] == ["Secret North", "Secret South"]
+    assert team["cost"]["max"] == 99
 
 
 async def test_a_batch_is_checked_then_scored_as_the_publisher(

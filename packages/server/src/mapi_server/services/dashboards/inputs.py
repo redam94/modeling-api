@@ -411,9 +411,13 @@ async def _copy_for(
     src: m.DashboardReadout,
     actor: Actor,
     visibility: str,
+    *,
+    title: str,
 ) -> m.DashboardReadout:
     """A cache hit for another actor: the same result in a row of the caller's own (no
-    ``cache_key``: it spent no run)."""
+    ``cache_key``: it spent no run). ``title`` is the caller's own (their label or the
+    default text): the cache key never covers the label, so the source row's title (another
+    person's private words) is never copied."""
     from mapi_spec.dashboards import ReadoutSnapshot
 
     snap = ReadoutSnapshot.model_validate(src.snapshot) if src.snapshot else None
@@ -425,7 +429,7 @@ async def _copy_for(
         trigger=src.trigger,  # type: ignore[arg-type]
         visibility=visibility,  # type: ignore[arg-type]
         actor=actor,
-        title=src.title,
+        title=title,
         status="ready",
         model_version_id=src.model_version_id,
         model_ref=src.model_ref,
@@ -622,7 +626,7 @@ async def save_scenario(
     if hit is not None:
         if hit.actor_kind == actor.kind and hit.actor_id == actor.id:
             return hit
-        return await _copy_for(ctx, session, dash, rev, hit, actor, "private")
+        return await _copy_for(ctx, session, dash, rev, hit, actor, "private", title=title)
     octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)
     await _lock_dashboard(session, dash.id)  # count-and-insert under the row lock
     await _limits_check(ctx, session, dash, spec, actor)
@@ -820,7 +824,7 @@ async def submit_actuals(
         row = (
             hit
             if hit.actor_kind == actor.kind and hit.actor_id == actor.id
-            else await _copy_for(ctx, session, dash, rev, hit, actor, visibility)
+            else await _copy_for(ctx, session, dash, rev, hit, actor, visibility, title=title)
         )
     else:
         octx = await owner_context(ctx, session, dash)  # before the lock (it may pause)

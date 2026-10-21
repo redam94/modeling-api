@@ -11,7 +11,7 @@
  * to review.
  */
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type * as React from "react";
 
 import { InlineMessage } from "@/components/ods";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 import { dashboardErrorMessage, problemOf, useKeepReadout, usePredict, useReadout } from "../client";
 import type { ClientDashboard, DashboardClientV2, Readout, ScenarioForm, ScenarioInputDef, ScenarioRow } from "../types";
-import { checkRows, defaultRow, fieldValue, g, horizonKey, issuesByPointer } from "./panels/inputs-model";
+import { checkRows, defaultRow, fieldValue, g, horizonKey, issuesByPointer, reconcileRows } from "./panels/inputs-model";
 import { PredictionView } from "./panels/results";
 import { ReadoutState, Section, Working } from "./parts";
 
@@ -81,7 +81,8 @@ function InputField({
     control = (
       <Input
         type="number"
-        inputMode="decimal"
+        // the decimal pad of phones has no minus key: only for inputs that cannot be negative
+        inputMode={def.min !== null && def.min !== undefined && def.min >= 0 ? "decimal" : undefined}
         {...common}
         value={text(value)}
         min={def.min ?? undefined}
@@ -153,6 +154,12 @@ function TryForm({ client, dashboard, form, preview }: { client: DashboardClient
   const local = useMemo(() => checkRows(rows, form), [rows, form]);
   const server = issuesByPointer(predict.isError ? (problemOf(predict.error)?.problem?.errors ?? undefined) : undefined);
   const hkey = horizonKey(form);
+  const names = [...(form.inputs ?? []).map((i) => i.name), hkey ?? ""].join("\u0000");
+  useEffect(() => {
+    // a new revision changed the inputs while the page was open: keep the rows in step with it
+    setRows((rs) => reconcileRows(rs, form));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the inputs themselves change
+  }, [names]);
   const labels = Object.fromEntries((form.inputs ?? []).map((i) => [i.name, i.label]));
   if (hkey) labels[hkey] = "Periods ahead";
 

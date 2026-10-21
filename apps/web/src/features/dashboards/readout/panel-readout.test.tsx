@@ -182,6 +182,16 @@ describe("Try a case", () => {
     return client;
   }
 
+  it("gives phones a minus key on inputs that can be negative", async () => {
+    const base = classifierDashboard();
+    const form = base.scenario_form!;
+    const change = { name: "price_change", label: "Price change", type: "number" as const, min: -20, max: 20, default: 0, bind: { var: "price_change" } };
+    open({ ...base, scenario_form: { ...form, inputs: [...(form.inputs ?? []), change] } });
+    const tenure = await screen.findByRole("spinbutton", { name: "Months as a customer" });
+    expect(tenure.getAttribute("inputmode")).toBe("decimal");
+    expect(screen.getByRole("spinbutton", { name: "Price change" }).getAttribute("inputmode")).toBeNull();
+  });
+
   it("marks a value out of range at its field before sending, then shows the prediction and keeps it", async () => {
     const d = classifierDashboard();
     const client = open(d);
@@ -235,7 +245,7 @@ describe("Score a file", () => {
     await userEvent.click(screen.getByRole("button", { name: "Score the file" }));
     expect(await screen.findByText("The model scored 2 of 2 cases.")).toBeInTheDocument();
     expect(screen.getByText('50.0% of the cases are likely "yes".')).toBeInTheDocument();
-    expect(screen.getByText(/^churn: the middle prediction is 40\.0%; most are between 12\.0% and 70\.0%\. This is the spread of the predictions, not a likely range\.$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Churn: the middle prediction is 40\.0%; most are between 12\.0% and 70\.0%\. This is the spread of the predictions, not a likely range\.$/)).toBeInTheDocument();
     const sent = client.calls.find((c) => c.method === "submitBatch")?.args[0] as { inputs: unknown };
     expect(sent.inputs).toEqual({ coords: { case_id: { dims: ["case_id"], data: ["a", "b"] } }, data_vars: { tenure: { dims: ["case_id"], data: [12, 20] }, plan: { dims: ["case_id"], data: ["basic", "pro"] } } });
     await userEvent.click(screen.getByRole("button", { name: "Download predictions (.csv)" }));
@@ -278,5 +288,22 @@ describe("History", () => {
     expect(await within(detail()).findByRole("list", { name: "Key numbers of Readout 3" })).toBeInTheDocument();
     await userEvent.click(within(list).getByRole("button", { name: /Old readout/ }));
     expect(await within(detail()).findByText("Expected churn")).toBeInTheDocument();
+  });
+
+  it("offers Keep on the viewer's own private tried case, never on somebody else's", async () => {
+    const d = classifierDashboard();
+    const client = fakeClient(d);
+    const prediction = { rows: [{ inputs: { tenure: 12 }, outputs: {} }] } as never;
+    client.readouts_.set(7, readout(7, { kind: "prediction", visibility: "private", title: "My case", mine: true, snapshot: snapshot({ lead: "Mine.", prediction }) }));
+    client.readouts_.set(8, readout(8, { kind: "prediction", visibility: "private", title: "Their case", mine: false, snapshot: snapshot({ lead: "Theirs.", prediction }) }));
+    view(<PanelReadout client={client} dashboard={d} section="history" />);
+    const list = await screen.findByRole("list", { name: "Readouts" });
+    await userEvent.click(await within(list).findByRole("button", { name: /My case/ }));
+    const detail = () => document.querySelector("[data-readout=detail]") as HTMLElement;
+    await userEvent.click(await within(detail()).findByRole("button", { name: "Keep this case" }));
+    await waitFor(() => expect(client.calls.some((c) => c.method === "keep" && c.args[0] === 7)).toBe(true));
+    await userEvent.click(within(list).getByRole("button", { name: /Their case/ }));
+    await within(detail()).findByText("Theirs.");
+    expect(within(detail()).queryByRole("button", { name: "Keep this case" })).toBeNull();
   });
 });

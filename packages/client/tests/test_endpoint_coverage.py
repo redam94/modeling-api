@@ -498,21 +498,21 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_dashboard_sources": lambda: v17.get_dashboard_sources(_DSH),
     "upgrade_dashboard": lambda: v17.upgrade_dashboard(_DSH, '"r3"'),
     "submit_dashboard_predictions": lambda: v17.submit_dashboard_predictions(
-        _DSH, _ex(ScenarioRowsRequest), idempotency_key="k"
+        _DSH, _ex(ScenarioRowsRequest), wait=30, idempotency_key="k"
     ),
     "keep_dashboard_readout": lambda: v17.keep_dashboard_readout(_DSH, 3),
     "get_dashboard_batch_template": lambda: v17.get_dashboard_batch_template(_DSH),
     "submit_dashboard_batch": lambda: v17.submit_dashboard_batch(
-        _DSH, _ex(BatchSubmit), idempotency_key="k"
+        _DSH, _ex(BatchSubmit), wait=30, idempotency_key="k"
     ),
     "download_dashboard_predictions": lambda: v17.download_dashboard_predictions(_DSH, 3),
     "get_dashboard_asset": lambda: v17.get_dashboard_asset(_DSH, _DSA),
     "submit_shared_predictions": lambda: v17.submit_shared_predictions(
-        _MPS, _ex(ScenarioRowsRequest), idempotency_key="k"
+        _MPS, _ex(ScenarioRowsRequest), wait=30, idempotency_key="k"
     ),
     "get_shared_batch_template": lambda: v17.get_shared_batch_template(_MPS),
     "submit_shared_batch": lambda: v17.submit_shared_batch(
-        _MPS, _ex(BatchSubmit), idempotency_key="k"
+        _MPS, _ex(BatchSubmit), wait=30, idempotency_key="k"
     ),
     "download_shared_predictions": lambda: v17.download_shared_predictions(_MPS, 3),
     "get_shared_asset": lambda: v17.get_shared_asset(_MPS, _DSA),

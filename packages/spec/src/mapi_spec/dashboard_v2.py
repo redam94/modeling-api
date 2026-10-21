@@ -79,6 +79,8 @@ from mapi_spec.xrjson import XrJsonDataset
 
 __all__ = [
     "ASSET_ID_RE",
+    "FIELD_MISSING_CODE",
+    "FIELD_VALUE_CODES",
     "MAX_BATCH_ROWS",
     "MAX_BLOCK_BYTES",
     "MAX_FIELD_BLOCK_BYTES",
@@ -425,10 +427,11 @@ class Reduce(RequestModel):
     """How an output becomes the panel's numbers.
 
     ``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the
-    next forecast period; ``mean``/``sum`` over dims ``over`` (draws only, asked from the
-    score run so the range is the range of the aggregate; point outputs are allowed and
-    flagged ``approximate``); ``share_above``: the share of cells above ``threshold``;
-    ``top_class``: the most probable class. The server never adds interval bounds."""
+    next forecast period; ``mean``/``sum`` over dims ``over`` (of draws only the ``sum``
+    over the time dim of a forecast: the forecast total, with its range; point outputs
+    are allowed and flagged ``approximate``); ``share_above``: the share of cells above
+    ``threshold``; ``top_class``: the most probable class. The server never adds interval
+    bounds."""
 
     how: Literal["none", "select", "last", "next", "mean", "sum", "share_above", "top_class"] = (
         "none"
@@ -994,9 +997,18 @@ class FieldFrame(ResponseModel):
     codes_b64: str = Field(..., max_length=8192)
 
 
+FIELD_MISSING_CODE: Final = 255
+"""The code of a field cell with no value (:class:`FieldBlock` ``missing_code``)."""
+FIELD_VALUE_CODES: Final = 254
+"""The highest value code of a field block with a ``missing_code`` (``vmax``)."""
+
+
 class FieldBlock(_BlockBase):
-    """A 2-D field map (at most 64 × 64 cells, 8 frames). Code ``c`` maps to
-    ``vmin + c / 255 * (vmax - vmin)`` (on log10 when ``log``)."""
+    """A 2-D field map (at most 64 × 64 cells, 8 frames). Without ``missing_code`` (blocks
+    built before v0.17.0's fix) code ``c`` maps to ``vmin + c / 255 * (vmax - vmin)``; with
+    it, the value codes are ``0`` … ``254`` and map to ``vmin + c / 254 * (vmax - vmin)``,
+    and ``missing_code`` (255) is a cell with no value (drawn transparent, left out of the
+    statistics). Values are on log10 when ``log``."""
 
     kind: Literal["field"] = "field"
     width: int = Field(..., ge=1, le=MAX_FIELD_SIDE)
@@ -1004,6 +1016,7 @@ class FieldBlock(_BlockBase):
     frames: list[FieldFrame] = Field(..., min_length=1, max_length=MAX_FIELD_FRAMES)
     vmin: float
     vmax: float
+    missing_code: Literal[255] | None = None
     log: bool = False
     colormap: Literal["viridis", "magma", "cividis", "gray", "diverging"] = "viridis"
     units: str | None = Field(None, max_length=64)

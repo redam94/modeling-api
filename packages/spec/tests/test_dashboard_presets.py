@@ -325,7 +325,27 @@ def test_sum_of_quantiles_is_refused_and_of_points_flagged() -> None:
         assert _codes(spec, _cat(rep))[0][2] == "/panels/0/reduce"
     assert _codes(spec, _cat(Representation.POINT)) == [("info", "BINDING_INVALID",
                                                          "/panels/0/reduce")]  # fmt: skip
-    assert _codes(spec, _cat(Representation.DRAWS)) == []
+    # draws: a readout holds only the forecast total (the run never aggregates per panel)
+    assert _codes(spec, _cat(Representation.DRAWS)) == [
+        ("error", "BINDING_INVALID", "/panels/0/reduce")
+    ]
+
+
+def test_draws_are_only_added_up_over_the_forecast_period() -> None:
+    """The one total of draws with a range a readout holds is the forecast view's total
+    over the horizon: other sums and every mean of draws are refused, never advertised."""
+    total = _spec("forecast", [_kpi(reduce={"how": "sum", "over": ["week"]})])
+    assert _codes(total, _cat(Representation.DRAWS)) == []
+    no_forecast = _cat(Representation.DRAWS, score_modes=["predict"])
+    assert ("error", "BINDING_INVALID", "/panels/0/reduce") in _codes(total, no_forecast)
+    mean = _spec("forecast", [_kpi(reduce={"how": "mean", "over": ["week"]})])
+    assert _codes(mean, _cat(Representation.DRAWS)) == [
+        ("error", "BINDING_INVALID", "/panels/0/reduce")
+    ]
+    out = _cat(Representation.DRAWS).outputs[0]
+    assert "sum" in out.reduces and "mean" not in out.reduces
+    flat = catalog_output("y", ["area"], shape="areal", representation=Representation.DRAWS)
+    assert "sum" not in flat.reduces and "mean" not in flat.reduces
 
 
 def test_unknown_sources_and_bad_bindings() -> None:

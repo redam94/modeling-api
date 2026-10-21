@@ -341,10 +341,14 @@ async def upgrade_dashboard(
 async def get_dashboard_asset(
     ctx: Ctx, session: Session, dashboard_id: DashboardId, asset_id: AssetId
 ) -> Response:
-    """A picture of the dashboard (PNG, at most 512 KiB). Anyone who may read the
-    dashboard (a client: a published one granted to them) may read its pictures."""
+    """A picture of the dashboard (PNG, at most 512 KiB). Members (viewers and up) may
+    read the pictures of any revision (History, the builder); a client only those of the
+    published revision (as a share link), so a picture the analyst removed stays gone."""
     row = await load_dashboard(session, ctx, dashboard_id)
-    asset = await read_asset(ctx, session, row.id, asset_id)
+    narrow: list[str] | None = None
+    if caller_is_client(ctx.request):
+        narrow = [row.published_revision_id] if row.published_revision_id else []
+    asset = await read_asset(ctx, session, row.id, asset_id, revision_ids=narrow)
     return Response(
         content=asset.data,
         media_type=asset.content_type,

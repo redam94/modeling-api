@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BatchTemplate, ScenarioForm, ScenarioInputDef } from "../../types";
-import { batchCell, batchChecks, batchRows, batchToXr, checkRows, checkValue, defaultRow, fieldValue, g, HORIZON_KEY, issuesByPointer, normaliseLabel, rowActualsChecks, rowActualsColumns, rowActualsRows, rowActualsToXr } from "./inputs-model";
+import { batchCell, batchChecks, batchRows, batchToXr, checkRows, checkValue, defaultRow, fieldValue, g, HORIZON_KEY, issuesByPointer, normaliseLabel, reconcileRows, rowActualsChecks, rowActualsColumns, rowActualsRows, rowActualsToXr } from "./inputs-model";
 
 const price: ScenarioInputDef = { name: "price", label: "Price", type: "number", min: 1, max: 10, step: 0.5, default: 4, bind: { var: "price" } };
 const visits: ScenarioInputDef = { name: "visits", label: "Visits", type: "integer", min: 0, max: 50, default: 3, bind: { var: "visits" } };
@@ -140,5 +140,33 @@ describe("row-matched actuals", () => {
         y: { dims: ["store"], data: [1, 0] },
       },
     });
+  });
+});
+
+describe("decimal commas are never read as ten times the number", () => {
+  const num = { type: "number" as const, role: "driver" as const };
+  it("a ;-separated file reads the comma as the decimal mark", () => {
+    expect(batchCell("1,5", num, true)).toBe(1.5);
+    expect(batchCell("1.234,5", num, true)).toBe(1234.5);
+    expect(batchCell("-0,25", num, true)).toBe(-0.25);
+    const rows = rowActualsRows(["id", "y"], "id", ["id", "y"], [["a", "12,5"]], true);
+    expect(rows).toEqual([["a", 12.5]]);
+  });
+  it("otherwise a comma only groups thousands; any other comma is refused, not guessed", () => {
+    expect(batchCell("1,234.5", num)).toBe(1234.5);
+    expect(batchCell("1,5", num)).toBe("1,5"); // not a number: the check says so
+    expect(rowActualsRows(["id", "y"], "id", ["id", "y"], [["a", "1,5"]])).toEqual([["a", "1,5"]]);
+    expect(batchCell("15", num)).toBe(15);
+  });
+});
+
+describe("reconcileRows keeps a tried case in step with a new revision", () => {
+  it("drops inputs that are gone and fills new ones with their defaults", () => {
+    const rows = [{ price: 6, visits: 9, gone: 1 }];
+    const next = reconcileRows(rows, { ...form, inputs: [price, promo] });
+    expect(next).toEqual([{ price: 6, promo: false }]);
+    expect(checkRows(next, { ...form, inputs: [price, promo] }).size).toBe(0);
+    const same = [defaultRow(form)];
+    expect(reconcileRows(same, form)).toBe(same);
   });
 });

@@ -68,6 +68,7 @@ log = logging.getLogger(__name__)
 ADVISORY_LOCK_KEY: Final = 0x6D617069_64736875  # "mapidshu": one pass at a time, cluster-wide
 """The transaction-scoped advisory lock of the pass (``pg_try_advisory_xact_lock``)."""
 _MAX_AUDIT_ISSUES: Final = 20
+_LOCK_TIMEOUT_MS: Final = 10_000
 
 CatalogOf = Callable[[ServerContext, AsyncSession, m.ModelVersion], Awaitable[Any]]
 """Reads the source catalog of a model version (tests replace it)."""
@@ -115,9 +116,18 @@ def _blocked(code: ErrorCode, pointer: str, message: str) -> Issue:
     return Issue(code=code, pointer=pointer, message=message[:2000])
 
 
+class CatalogNotReady(RuntimeError):
+    """The image catalog of the running release is not stored yet (its describe run is
+    queued at start-up): a transient state, never a reason to pick another preset."""
+
+
 async def _default_catalog(ctx: ServerContext, session: AsyncSession, mv: m.ModelVersion) -> Any:
     from mapi_server.services.dashboards.sources import source_catalog
 
+    if ctx.catalogs is not None and await ctx.catalogs.get(session) is None:
+        # without the plugin manifests the catalog has no family: the upgrade would pick
+        # ``generic`` (or flag a media planner) for good. Wait for the catalog instead.
+        raise CatalogNotReady("the image catalog of this release is not read yet")
     return await source_catalog(ctx, session, mv)
 
 
@@ -201,13 +211,35 @@ def _issue_refs(issues: list[Issue]) -> list[JsonValue]:
     return out
 
 
+async def _last_upgrade_failed(session: AsyncSession, row: m.Dashboard) -> bool:
+    """Whether the dashboard's latest upgrade audit is a refusal (it was flagged)."""
+    outcome = (
+        await session.execute(
+            select(m.AuditEvent.outcome)
+            .where(
+                m.AuditEvent.action == AuditAction.DASHBOARD_UPGRADED.value,
+                m.AuditEvent.resource_id == row.id,
+            )
+            .order_by(m.AuditEvent.ts.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    return outcome == AuditOutcome.ERROR.value
+
+
 async def _flag(
     ctx: ServerContext, session: AsyncSession, row: m.Dashboard, issues: list[Issue]
 ) -> None:
-    """Keep the dashboard on layout 1 and flag it (audited once, when the flag is set)."""
-    if row.problem == UPGRADE_NEEDS_REVIEW:
+    """Flag the part that stays on layout 1 (audited once, when the flag is set). Another
+    problem the dashboard holds (a newer endpoint version, paused inputs) keeps its words:
+    the flag is set only over no problem, and the builder still offers the upgrade of a
+    layout 1 spec."""
+    if row.problem == UPGRADE_NEEDS_REVIEW or (
+        row.problem is not None and await _last_upgrade_failed(session, row)
+    ):
         return
-    row.problem = UPGRADE_NEEDS_REVIEW
+    if row.problem is None:
+        row.problem = UPGRADE_NEEDS_REVIEW
     row.updated_at = now()
     await session.flush()
     first = next((i for i in issues if i.severity is Severity.ERROR), None)
@@ -251,17 +283,21 @@ async def _pictures(
     spec: DashboardSpecV2,
 ) -> None:  # fmt: skip
     """Queue the new revision's pictures as the publisher (skipped when the publisher may
-    not run any more: the readout then shows the pictures as unavailable)."""
+    not run any more: the readout then shows the pictures as unavailable).
+
+    The pass holds the dashboard row lock here, so this never calls ``owner_context``: its
+    pause write runs in a second transaction on the same row and would wait on this one
+    for ever. The publisher's rights are read without writing; the dashboard loop pauses
+    the dashboard when it next submits as the publisher."""
     from mapi_server.services.dashboards.assets import picture_panels, queue_pictures
-    from mapi_server.services.dashboards.runas import owner_context
+    from mapi_server.services.dashboards.runas import _may_run, owner_auth
 
     if not picture_panels(spec):
         return
-    try:
-        octx = await owner_context(ctx, session, row)
-    except MapiError:
+    auth = await owner_auth(ctx, row.tenant_id, row.project_id, row.run_as)
+    if auth is None or not _may_run(auth):
         return
-    await queue_pictures(octx, session, rev, spec)
+    await queue_pictures(ctx.for_request(auth), session, rev, spec)
 
 
 async def _draft_binding(
@@ -313,9 +349,16 @@ async def _upgrade_one(
     if any(c.transient for c in done):
         report.retry.append(row.id)
         return
-    if any(c.blocked for c in done):
-        issues = [i for c in done for i in c.issues]
-        await _flag(ctx, session, row, issues)
+    if published is not None and published.blocked:
+        await _flag(ctx, session, row, list(published.issues))
+        report.needs_review.append(row.id)
+        return
+    # the published revision converts: it moves on even when an unfinished layout 1 draft
+    # does not (the draft stays as it is, flagged for the editor)
+    draft_blocked = drafted is not None and drafted is not published and drafted.blocked
+    if draft_blocked and published is None:
+        assert drafted is not None
+        await _flag(ctx, session, row, list(drafted.issues))
         report.needs_review.append(row.id)
         return
     ts = now()
@@ -331,7 +374,7 @@ async def _upgrade_one(
         details.update(from_revision=pub_v1.seq, to_revision=new_rev.seq,
                        preset=published.spec.preset, notes=list(published.notes[:20]))  # fmt: skip
         report.published.append(row.id)
-    if drafted is not None and drafted.spec is not None:
+    if drafted is not None and drafted.spec is not None and not draft_blocked:
         row.draft_spec = drafted.spec.model_dump(mode="json")
         row.draft_etag = next_etag(row.draft_etag)
         details["draft"] = True
@@ -345,6 +388,10 @@ async def _upgrade_one(
     if new_rev is not None and published is not None and published.spec is not None:
         await _pictures(ctx, session, row, new_rev, published.spec)
     await write_audit(ctx.db, [_audit_event(row, AuditOutcome.SUCCESS, details)], session=session)
+    if draft_blocked:
+        assert drafted is not None
+        await _flag(ctx, session, row, list(drafted.issues))
+        report.needs_review.append(row.id)
 
 
 async def auto_upgrade_v1(
@@ -367,6 +414,9 @@ async def auto_upgrade_v1(
         if not got:
             log.info("dashboard upgrade: another worker runs the pass")
             return report
+        # a lock the pass waits on (a dashboard row an API request holds) never stalls the
+        # worker's start: the dashboard fails this pass and is retried
+        await s.execute(text(f"SET LOCAL lock_timeout = '{_LOCK_TIMEOUT_MS}ms'"))
         report.ran = True
         ids = [
             str(i)
@@ -424,7 +474,9 @@ async def review_issues(
     catalog_of: CatalogOf | None = None,
 ) -> list[Issue]:
     """What stops the upgrade of a dashboard flagged ``upgrade_needs_review`` now (the
-    builder's banner): the blocking issues of its layout 1 revision or draft."""
+    builder's banner): the blocking issues of its layout 1 revision and of its layout 1
+    draft (each part converts on its own: a published conversion with only notes never
+    hides what stops the draft)."""
     if row.problem != UPGRADE_NEEDS_REVIEW:
         return []
     out: list[Issue] = []
@@ -439,7 +491,14 @@ async def review_issues(
             mv = await session.get(m.ModelVersion, rev.model_version_id)
             out += (await convert(ctx, session, spec, mv, catalog_of=catalog_of)).issues
     draft = parse_dashboard_spec(row.draft_spec)
-    if not out and isinstance(draft, DashboardSpec):
+    blocking = [i for i in out if i.severity is Severity.ERROR]
+    published = parse_dashboard_spec(rev.spec) if rev is not None else None
+    if isinstance(draft, DashboardSpec) and draft != published:
         mv = await _draft_binding(session, row, draft)
-        out += (await convert(ctx, session, draft, mv, catalog_of=catalog_of)).issues
-    return [i for i in out if i.severity is Severity.ERROR][:50]
+        found = (await convert(ctx, session, draft, mv, catalog_of=catalog_of)).issues
+        seen = {(i.code, i.pointer, i.message) for i in blocking}
+        blocking += [
+            i for i in found
+            if i.severity is Severity.ERROR and (i.code, i.pointer, i.message) not in seen
+        ]  # fmt: skip
+    return blocking[:50]

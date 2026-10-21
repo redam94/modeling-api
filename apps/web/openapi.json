@@ -14672,7 +14672,7 @@
         "type": "object"
       },
       "FieldBlock": {
-        "description": "A 2-D field map (at most 64 × 64 cells, 8 frames). Code ``c`` maps to\n``vmin + c / 255 * (vmax - vmin)`` (on log10 when ``log``).",
+        "description": "A 2-D field map (at most 64 × 64 cells, 8 frames). Without ``missing_code`` (blocks\nbuilt before v0.17.0's fix) code ``c`` maps to ``vmin + c / 255 * (vmax - vmin)``; with\nit, the value codes are ``0`` … ``254`` and map to ``vmin + c / 254 * (vmax - vmin)``,\nand ``missing_code`` (255) is a cell with no value (drawn transparent, left out of the\nstatistics). Values are on log10 when ``log``.",
         "properties": {
           "approximate": {
             "default": false,
@@ -14728,6 +14728,18 @@
             "default": false,
             "title": "Log",
             "type": "boolean"
+          },
+          "missing_code": {
+            "anyOf": [
+              {
+                "const": 255,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Code"
           },
           "panel_id": {
             "pattern": "^[a-z][a-z0-9_]{0,31}$",
@@ -28932,6 +28944,18 @@
             "title": "Kind",
             "type": "string"
           },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known",
+            "title": "Mine"
+          },
           "model_ref": {
             "maxLength": 512,
             "title": "Model Ref",
@@ -29135,6 +29159,18 @@
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the caller made this readout (its own tried case, file or upload); set on the readout list and reads, null where the caller is not known",
+            "title": "Mine"
           },
           "model_ref": {
             "maxLength": 512,
@@ -29736,7 +29772,7 @@
       },
       "Reduce": {
         "additionalProperties": false,
-        "description": "How an output becomes the panel's numbers.\n\n``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the\nnext forecast period; ``mean``/``sum`` over dims ``over`` (draws only, asked from the\nscore run so the range is the range of the aggregate; point outputs are allowed and\nflagged ``approximate``); ``share_above``: the share of cells above ``threshold``;\n``top_class``: the most probable class. The server never adds interval bounds.",
+        "description": "How an output becomes the panel's numbers.\n\n``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the\nnext forecast period; ``mean``/``sum`` over dims ``over`` (of draws only the ``sum``\nover the time dim of a forecast: the forecast total, with its range; point outputs\nare allowed and flagged ``approximate``); ``share_above``: the share of cells above\n``threshold``; ``top_class``: the most probable class. The server never adds interval\nbounds.",
         "properties": {
           "how": {
             "default": "none",
@@ -45540,7 +45576,7 @@
     },
     "/v1/dashboards/{dashboard_id}/assets/{asset_id}": {
       "get": {
-        "description": "A picture of the dashboard (PNG, at most 512 KiB). Anyone who may read the\ndashboard (a client: a published one granted to them) may read its pictures.",
+        "description": "A picture of the dashboard (PNG, at most 512 KiB). Members (viewers and up) may\nread the pictures of any revision (History, the builder); a client only those of the\npublished revision (as a share link), so a picture the analyst removed stays gone.",
         "operationId": "get_dashboard_asset",
         "parameters": [
           {
@@ -46305,6 +46341,17 @@
             "content": {
               "application/problem+json": {
                 "examples": {
+                  "DASHBOARD_LAYOUT_RETIRED": {
+                    "summary": "New dashboards use layout 2: layout 1 can no longer be created",
+                    "value": {
+                      "code": "DASHBOARD_LAYOUT_RETIRED",
+                      "detail": "New dashboards use layout 2: layout 1 can no longer be created",
+                      "errors": [],
+                      "status": 422,
+                      "title": "New dashboards use layout 2: layout 1 can no longer be created",
+                      "type": "urn:mapi:error:DASHBOARD_LAYOUT_RETIRED"
+                    }
+                  },
                   "SCHEMA_INVALID": {
                     "summary": "The document does not match its schema",
                     "value": {
@@ -46322,7 +46369,7 @@
                 }
               }
             },
-            "description": "Problem: SCHEMA_INVALID"
+            "description": "Problem: SCHEMA_INVALID, DASHBOARD_LAYOUT_RETIRED"
           },
           "429": {
             "content": {
@@ -50895,6 +50942,17 @@
                       "title": "The dashboard draft changed since you read it",
                       "type": "urn:mapi:error:DASHBOARD_SPEC_STALE"
                     }
+                  },
+                  "PRECONDITION_FAILED": {
+                    "summary": "Precondition failed",
+                    "value": {
+                      "code": "PRECONDITION_FAILED",
+                      "detail": "Precondition failed",
+                      "errors": [],
+                      "status": 412,
+                      "title": "Precondition failed",
+                      "type": "urn:mapi:error:PRECONDITION_FAILED"
+                    }
                   }
                 },
                 "schema": {
@@ -50902,17 +50960,30 @@
                 }
               }
             },
-            "description": "Problem: DASHBOARD_SPEC_STALE"
+            "description": "Problem: DASHBOARD_SPEC_STALE, PRECONDITION_FAILED"
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Problem: SCHEMA_INVALID"
           },
           "429": {
             "content": {

@@ -105,6 +105,41 @@ async def test_clients_see_the_layout_2_view(kit: dict[str, Any]) -> None:
     assert "draft_spec" not in body and "run_as" not in body
 
 
+def _declares(operation_id: str, code: str) -> bool:
+    """Whether the contract declares ``code`` for the operation (SDKs and the docs read it)."""
+    from mapi_spec.api import ENDPOINTS
+
+    decl = next(d for d in ENDPOINTS if d.operation_id == operation_id)
+    return code in {e.value for e in decl.errors}
+
+
+async def test_the_draft_and_upgrade_routes_declare_every_code_they_answer(
+    ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    eve: Caller = kit["eve"]
+    dash_id, etag = await create_v2(kit)
+    monkeypatch.setattr(ctx.settings, "dashboard_layout1_create", False)
+    r = await eve.put(
+        f"/v1/dashboards/{dash_id}/draft", json={"spec": dashboard_spec()},
+        headers={"If-Match": etag},
+    )  # fmt: skip
+    assert r.json()["code"] == "DASHBOARD_LAYOUT_RETIRED"
+    assert _declares("update_dashboard_draft", r.json()["code"])
+    monkeypatch.setattr(ctx.settings, "dashboard_layout1_create", True)
+    r = await eve.post("/v1/dashboards", json={"name": "old", "spec": dashboard_spec()})
+    old = r.json()["id"]
+    r = await eve.post(f"/v1/dashboards/{old}:upgrade")
+    assert r.status_code == 412 and _declares("upgrade_dashboard", r.json()["code"])
+    for code in ("SCHEMA_INVALID", "DASHBOARD_SPEC_STALE", "CONFLICT", "NOT_FOUND"):
+        assert _declares("upgrade_dashboard", code), code
+    for op in ("submit_dashboard_predictions", "submit_dashboard_batch",
+               "submit_shared_predictions", "submit_shared_batch"):  # fmt: skip
+        from mapi_spec.api import ENDPOINTS, PREFER_HEADER
+
+        decl = next(d for d in ENDPOINTS if d.operation_id == op)
+        assert PREFER_HEADER in decl.headers, op
+
+
 async def test_layout_1_creation_is_retired_by_default(
     ctx: ServerContext, kit: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:

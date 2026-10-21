@@ -250,7 +250,107 @@ def test_several_series_at_one_period_add_their_centres_only() -> None:
     assert "cannot be added up" in nxt.tile.caption
 
 
+def _summed_forecast(m: Any) -> Any:
+    """A forecast view of the sarimax fixture's ``y_hat`` summed over ``geo`` (one fitted
+    period of history, then the forecast dates)."""
+    from mapi_spec.views import ForecastView
+
+    table = pn.table_of(m.scores["predictive"].summary, "y_hat")
+    assert table is not None and table.time_dim == "date"
+    dates = sorted({c.coords["date"] for c in table.cells})
+    coords = ["2024-10-27", *dates]
+    sums = [sum(c.centre or 0.0 for c in table.cells if c.coords["date"] == d) for d in dates]
+    return ForecastView.model_validate({
+        "kpi": "y_hat", "dim": "date", "history": 1, "split_at": dates[0],
+        "summed_over": ["geo"],
+        "fan": {"dim": "date", "coords": coords, "quantiles": [0.05, 0.5, 0.95],
+                "values": [[None, *(x - 1 for x in sums)], [None, *sums],
+                           [None, *(x + 1 for x in sums)]],
+                "observed": [9999.0, *([None] * len(dates))]},
+        "total": {"mean": 123456.0, "sd": 1.0, "quantiles": {"0.05": 1.0, "0.95": 2.0}},
+    })  # fmt: skip
+
+
+def test_the_forecast_of_all_series_is_never_used_for_a_selected_one() -> None:
+    m = golden.load_case("forecast_sarimax")
+    fc = _summed_forecast(m)
+    north = {"kind": "output", "variable": "y_hat", "select": {"geo": "north"}}
+    spec = with_panels(
+        compiled(m),
+        kpi("all", "y_hat", reduce={"how": "sum", "over": ["date"]}),
+        kpi("north", "y_hat", source=north, reduce={"how": "sum", "over": ["date"]}),
+        {"kind": "chart", "id": "line", "title": "North", "intent": "line", "source": north},
+        {"kind": "chart", "id": "whole", "title": "All", "intent": "line",
+         "source": {"kind": "output", "variable": "y_hat"}, "facet": "geo"},
+    )  # fmt: skip
+    got = blocks_of(pn.build_snapshot_v2(spec, material(m, "predictive", forecast=fc)))
+    assert got["all"].tile.value == pytest.approx(123456.0)  # every series: the run's total
+    assert got["north"].kind == "unavailable" or got["north"].tile.value != pytest.approx(123456.0)
+    (line,) = got["line"].series
+    assert all(p.actual != 9999.0 for p in line.points)  # no all-series history
+    assert line.points[0].t != "2024-10-27"
+
+
+def test_integer_steps_are_ordered_by_value() -> None:
+    from mapi_spec.api import ScoreSummaryTable
+
+    steps = list(range(12))
+    summary = ScoreSummary(tables=[ScoreSummaryTable(
+        variable="y_hat", columns=["step", "mean"], dims=["step"],
+        rows=[[k, float(k * 10)] for k in steps],
+    )])  # fmt: skip
+    m = golden.load_case("regression_point")
+    spec = with_panels(
+        compiled(m),
+        kpi("last", "y_hat", reduce={"how": "last"}),
+        {"kind": "chart", "id": "line", "title": "Steps", "intent": "line",
+         "source": {"kind": "output", "variable": "y_hat"}},
+        subject={**compiled(m).subject.model_dump(mode="json"), "variable": "y_hat"},
+    )  # fmt: skip
+    mat = pn.Material(kind="baseline", mode="predict", summary=summary)
+    table = pn.table_of(summary, "y_hat")
+    assert table is not None and table.time_dim == "step"
+    got = blocks_of(pn.build_snapshot_v2(spec, mat))
+    assert got["last"].tile.value == pytest.approx(110.0)
+    (line,) = got["line"].series
+    assert [p.t for p in line.points] == [str(k) for k in steps]
+    assert pn.period_key("10") > pn.period_key("9")
+    assert pn.period_key("2024-01-02") > pn.period_key("2024-01-01")
+
+
+def test_a_selected_series_chart_draws_only_its_own_actuals() -> None:
+    m = golden.load_case("forecast_sarimax")
+    spec = compiled(m)
+    mat = material(m, "predictive")
+    mat.accuracy, mat.pairs, _ = pn.accuracy_of(spec, mat, uploaded(m), names=m.actuals["names"])
+    assert {p.coords.get("geo") for p in mat.pairs} >= {"north", "south"}
+    north = {"kind": "output", "variable": "y_hat", "select": {"geo": "north"}}
+    spec = with_panels(spec, {"kind": "chart", "id": "line", "title": "North",
+                              "intent": "line", "source": north})  # fmt: skip
+    (line,) = blocks_of(pn.build_snapshot_v2(spec, mat))["line"].series
+    own = {p.t: p.actual for p in mat.pairs if p.coords.get("geo") == "north"}
+    drawn = {p.t: p.actual for p in line.points if p.actual is not None}
+    assert drawn and all(drawn[t] == pytest.approx(own[t]) for t in drawn)
+
+
 # ======================================================================================= bands
+
+
+def test_the_planner_centres_come_from_the_expected_run_and_the_band_from_the_predictive() -> None:
+    m = golden.load_case("forecast_bsts")
+    expected = pn.table_of(m.scores["baseline"].summary, "y_hat")
+    predictive = pn.table_of(m.scores["predictive"].summary, "y_hat")
+    merged = pn.table_of(
+        pn.with_centres(m.scores["predictive"].summary, m.scores["baseline"].summary), "y_hat"
+    )
+    assert expected is not None and predictive is not None and merged is not None
+    by = {c.coords["date"]: c for c in expected.cells}
+    pred = {c.coords["date"]: c for c in predictive.cells}
+    assert any(by[k].centre != pred[k].centre for k in by)  # the fixture's means differ
+    for c in merged.cells:
+        k = c.coords["date"]
+        assert c.centre == by[k].centre  # the layout 1 number
+        assert (c.low, c.high) == (pred[k].low, pred[k].high)  # the predictive band
 
 
 def test_the_outcome_band_says_when_it_is_the_range_of_the_average() -> None:
@@ -333,6 +433,26 @@ def test_field_maps_are_block_averaged_to_64_cells_a_side() -> None:
     assert (cells, bh, bw) == ([3.0], 1, 1)
 
 
+def test_missing_field_cells_get_their_own_code_never_the_minimum() -> None:
+    from mapi_server.services.dashboards.fields import quantise
+    from mapi_spec.dashboard_v2 import FIELD_MISSING_CODE, FIELD_VALUE_CODES
+
+    codes = quantise([1.0, None, 3.0, float("nan")], 1.0, 3.0)
+    assert list(codes) == [0, FIELD_MISSING_CODE, FIELD_VALUE_CODES, FIELD_MISSING_CODE]
+    view = FieldsView.model_validate(
+        {"fields": [{"output": "rate", "y_dim": "row", "x_dim": "col", "height": 1, "width": 3,
+                     "source_height": 1, "source_width": 3, "y_coords": [0],
+                     "x_coords": [0, 1, 2], "log": True,
+                     "frames": [{"label": "f", "mean": {"lo": 0.0, "hi": 10.0,
+                                                        "data": _raster([0, 30000, 65000])}}]}]}
+    )  # fmt: skip
+    block = field_block(view.fields[0], panel_id="map", title="Rate")
+    assert block.missing_code == FIELD_MISSING_CODE
+    raw = base64.b64decode(block.frames[0].codes_b64)
+    assert raw[0] == FIELD_MISSING_CODE  # zero on a log map: missing, not vmin
+    assert max(c for c in raw if c != FIELD_MISSING_CODE) == FIELD_VALUE_CODES
+
+
 def test_the_lgcp_map_comes_from_the_runs_fields_view() -> None:
     m = golden.load_case("field_lgcp")
     got = blocks_of(pn.build_snapshot_v2(compiled(m), material(m)))
@@ -363,6 +483,34 @@ def test_error_accuracy_matches_the_sdk_metrics(case: str, against: str) -> None
         assert detail.band_hit_rate is None  # point predictions have no band
 
 
+def test_a_conditioned_forecast_echo_never_doubles_the_uploaded_actuals() -> None:
+    """A conditioned forecast echoes the upload in ``summary.actuals``: the accuracy is the
+    same as without the echo (the two are never added up)."""
+    from mapi_spec.api import ScoreSummaryTable
+
+    m = golden.load_case("forecast_bsts")
+    spec = compiled(m)
+    mat = material(m, "predictive")
+    plain, pairs, _ = pn.accuracy_of(spec, mat, uploaded(m), names=m.actuals["names"])
+    assert isinstance(plain, ErrorAccuracy) and pairs
+    table = pn.table_of(mat.summary, "y_hat")
+    assert table is not None and table.time_dim is not None
+    echo = ScoreSummaryTable(
+        variable="y_hat", columns=[table.time_dim, "actual"], dims=[table.time_dim],
+        rows=[[p.t, p.actual] for p in pairs],
+    )  # fmt: skip
+    assert mat.summary is not None
+    mat.summary = mat.summary.model_copy(update={"actuals": [echo]})
+    echoed, again, _ = pn.accuracy_of(spec, mat, uploaded(m), names=m.actuals["names"])
+    assert isinstance(echoed, ErrorAccuracy) and echoed.n == plain.n
+    assert [p.actual for p in again] == [p.actual for p in pairs]
+    assert echoed.mae == pytest.approx(plain.mae) and echoed.bias == pytest.approx(plain.bias)
+    # with nothing uploaded, the echo alone is the actuals
+    alone, only, _ = pn.accuracy_of(spec, mat, [])
+    assert isinstance(alone, ErrorAccuracy) and alone.mae == pytest.approx(plain.mae)
+    assert len(only) == len(pairs)
+
+
 def test_binary_classifier_accuracy_matches_the_sdk_metrics() -> None:
     m = golden.load_case("classifier_binary")
     spec = compiled(m)
@@ -379,6 +527,31 @@ def test_binary_classifier_accuracy_matches_the_sdk_metrics() -> None:
     assert got["calibration"].kind == "calibration" and got["confusion"].kind == "confusion"
     assert snap.lead == "On the 45 cases you sent, the model was right 78% of the time."
     assert snap.accuracy is None and snap.accuracy_detail == detail
+
+
+def test_a_binary_classifier_without_a_positive_label_picks_it_as_the_sdk_does() -> None:
+    assert pn.binary_positive([0.0, 1.0, 1.0]) == "1"
+    assert pn.binary_positive([1.0, 2.0]) == "2"  # the larger of two values
+    assert pn.binary_positive(["true", "false"]) == "true"
+    with pytest.raises(ValueError, match="positive class"):
+        pn.binary_positive(["yes", "no"])
+    m = golden.load_case("classifier_binary")
+    spec = compiled(m)
+    assert spec.subject.positive_label is None or spec.subject.positive_label == "1"
+    spec = spec.model_copy(update={"subject": spec.subject.model_copy(
+        update={"positive_label": None})})  # fmt: skip
+    cells = uploaded(m)
+    want, _, _ = pn.accuracy_of(spec, material(m), cells, names=m.actuals["names"])
+    assert isinstance(want, ClassAccuracy) and want.auc is not None
+    # the same outcomes coded 1/2: 2 is the positive class, the numbers do not change
+    two = [(c, (v + 1.0) if isinstance(v, float) else v) for c, v in cells]
+    got, _, _ = pn.accuracy_of(spec, material(m), two, names=m.actuals["names"])
+    assert isinstance(got, ClassAccuracy)
+    assert got.auc == pytest.approx(want.auc) and got.accuracy == pytest.approx(want.accuracy)
+    # yes/no without a positive label: refused with a plain note, never a guess
+    words = [(c, ("yes" if v == 1.0 else "no")) for c, v in cells]
+    detail, _, notes = pn.accuracy_of(spec, material(m), words, names=m.actuals["names"])
+    assert detail is None and "positive class" in notes[0]
 
 
 def test_multiclass_accuracy_matches_the_sdk_metrics() -> None:

@@ -36,14 +36,15 @@ from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit
 pytestmark = pytest.mark.integration
 
 MMM_WORDS = re.compile(r"\b(media|channels?|spend|roi|return on)\b", re.IGNORECASE)
-PREDICTIVE = {  # the same centres as SUMMARY; the range of one new result is wider
+PREDICTIVE = {  # the mean of noisy predictive draws (never the planner's centre) and the
+    # wider range of one new result
     "tables": [
         {
             "variable": "y",
             "columns": ["t", "mean", "hdi_90_lower", "hdi_90_upper"],
             "dims": ["t"],
             "time_dim": "t",
-            "rows": [[t, 400.0 + k, 340.0 + k, 460.0 + k] for k, t in enumerate(MONTHS)],
+            "rows": [[t, 400.7 + k, 340.0 + k, 460.0 + k] for k, t in enumerate(MONTHS)],
         }
     ]
 }
@@ -67,17 +68,20 @@ async def _as_mmm(c: ServerContext, s: Any, mv: m.ModelVersion) -> SourceCatalog
     return cat.model_copy(update={"family": "mmm", "namespace": "mmm", "score_modes": modes})
 
 
-async def _run_readout(ctx: ServerContext, dash_id: str, seq: int, summary: Any) -> ReadoutSnapshot:
-    """Submit the queued readout ``seq``, finish its run with ``summary`` and materialise."""
+async def _run_readout(
+    ctx: ServerContext, dash_id: str, seq: int, summary: Any, expected: Any = None
+) -> ReadoutSnapshot:
+    """Submit the queued readout ``seq``, finish its run with ``summary`` (a media planner's
+    second, expected run with ``expected``) and materialise."""
     loop = DashboardLoop(ctx)
     assert await loop.submit_queued() >= 1
     running = await _readout(ctx, dash_id, seq)
     assert running.status == "running", running.problem
-    await complete_run(
-        ctx,
-        running.run_ids[0],
-        add={"summary.json": (json.dumps(summary).encode(), "application/json")},
-    )
+    for i, run_id in enumerate(running.run_ids):
+        body = summary if i == 0 else (expected or summary)
+        await complete_run(
+            ctx, run_id, add={"summary.json": (json.dumps(body).encode(), "application/json")}
+        )
     assert await loop.materialise() >= 1
     ready = await _readout(ctx, dash_id, seq)
     assert ready.status == "ready", ready.problem
@@ -107,7 +111,8 @@ async def test_an_upgraded_planner_shows_the_numbers_of_its_last_v1_readout(
     assert report.published == [dash_id]
     spec = await _published_spec(ctx, dash_id)
     assert isinstance(spec, DashboardSpecV2) and spec.preset == "mmm_planner"
-    v2 = await _run_readout(ctx, dash_id, 2, PREDICTIVE)  # the band is predictive now
+    # the band is predictive now; the centres come from the expected run (plan §10.1)
+    v2 = await _run_readout(ctx, dash_id, 2, PREDICTIVE, expected=SUMMARY)
     assert v2.schema_version == 2 and v2.preset == "mmm_planner"
     # every number equals the layout 1 readout; only the ranges differ
     assert v2.lead == v1.lead

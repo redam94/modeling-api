@@ -4,14 +4,16 @@
  * page. A sent upload shows whether it waits for review and the state of its refit request.
  */
 import { ChevronRight } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 
 import { InlineMessage } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { dashboardErrorMessage, useReadout, useReadoutList } from "../client";
-import { hasPanels, type ClientDashboard, type DashboardClient } from "../types";
+import { dashboardErrorMessage, useKeepReadout, useReadout, useReadoutList } from "../client";
+import { hasPanels, type ClientDashboard, type DashboardClient, type DashboardClientV2, type Readout } from "../types";
+import { LazyPart } from "./load-boundary";
+import { asClientV2 } from "./panel-model";
 import { PanelBlocks } from "./panels/blocks";
 import { KpiChart, ReadoutState, ReadoutTiles, Section, Tags, Working } from "./parts";
 import { historyRow, metaLine, periodOf } from "./readout-model";
@@ -86,6 +88,26 @@ function HistoryPage({
   );
 }
 
+/** "Keep this case" on the viewer's own private tried case (never on a share link: it has no keep). */
+function KeepTried({ client, readout }: { client: DashboardClient; readout: Readout }) {
+  const v2 = asClientV2(client);
+  const keep = useKeepReadout(v2 ?? (client as DashboardClientV2));
+  if (!v2?.keep || readout.kind !== "prediction" || readout.status !== "ready" || readout.mine === false) return null;
+  if (readout.visibility !== "private" && readout.visibility !== "pending_review") return null;
+  const kept = readout.visibility === "pending_review";
+  return (
+    <div className="grid gap-1" data-readout="keep">
+      <div>
+        <Button variant="secondary" size="sm" disabled={kept || keep.isPending} onClick={() => keep.mutate(readout.seq)}>
+          Keep this case
+        </Button>
+      </div>
+      <p className="text-xs text-hint">{kept ? "Kept. The analyst checks it before other people see it." : "Only you can see this result. Keep it to show it to the analyst."}</p>
+      {keep.isError ? <InlineMessage tone="error">{dashboardErrorMessage(keep.error)}</InlineMessage> : null}
+    </div>
+  );
+}
+
 function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; dashboard: ClientDashboard; seq: number }) {
   const q = useReadout(client, seq);
   if (q.isPending) return <Working>Loading the readout…</Working>;
@@ -100,9 +122,10 @@ function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; da
         <>
           <p className="text-base text-foreground">{r.snapshot.lead}</p>
           <PanelBlocks client={client} dashboard={dashboard} snapshot={r.snapshot} label={`Key numbers of ${r.title}`} />
-          <Suspense fallback={<Working>Loading…</Working>}>
+          <LazyPart>
             <ReadoutResults client={client} dashboard={dashboard} readout={r} />
-          </Suspense>
+          </LazyPart>
+          <KeepTried client={client} readout={r} />
         </>
       ) : r.status === "ready" && r.snapshot ? (
         <>

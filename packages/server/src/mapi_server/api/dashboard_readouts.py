@@ -71,6 +71,7 @@ from mapi_server.services.dashboards import cases, downloads, inputs, readouts, 
 from mapi_server.services.dashboards.access import (
     DashboardContext,
     caller_is_client,
+    is_mine,
     load_dashboard,
     member_context,
     readout_dto,
@@ -131,7 +132,9 @@ async def wait_readout(
         async with ctx.db.tenant_session(dctx.tenant_id) as s:
             row = await readouts.load_visible(s, dctx, seq)
             statuses = await refit_statuses(s, row.dashboard_id, [row.seq])
-            dto = readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
+            dto = readout_dto(
+                row, statuses.get(row.seq), analyst=dctx.is_analyst, mine=is_mine(row, dctx)
+            )
         if dto.status in ("ready", "failed") or loop.time() >= deadline:
             return dto
         await asyncio.sleep(min(1.0, max(0.05, deadline - loop.time())))

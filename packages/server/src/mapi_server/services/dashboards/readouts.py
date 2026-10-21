@@ -49,6 +49,7 @@ from mapi_spec.dashboard_v2 import (
 from mapi_spec.dashboards import (
     MAX_CHANNELS,
     MAX_SERIES_POINTS,
+    UPGRADE_NEEDS_REVIEW,
     ActualsAccuracy,
     ChannelReadout,
     DashboardSpec,
@@ -86,6 +87,7 @@ from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.dashboards.access import (
     DashboardContext,
+    is_mine,
     readout_dto,
     readout_header,
     refit_statuses,
@@ -284,6 +286,22 @@ async def run_terminal(session: AsyncSession, run: m.Run, state: RunState) -> No
     ).scalar_one_or_none()
     if row is None:
         return
+    if state is RunState.SUCCEEDED and len(row.run_ids) > 1:
+        # a readout of several runs (a media planner's predictive and expected scores)
+        # materialises once every run succeeded; this one is committed before the others
+        # read it (the readout row lock orders them)
+        others = [r for r in row.run_ids if r != run.id]
+        states = dict(
+            (
+                await session.execute(
+                    select(m.Run.id, m.Run.state).where(
+                        m.Run.id.in_(others), m.Run.tenant_id == run.tenant_id
+                    )
+                )
+            ).all()
+        )
+        if any(states.get(r) != RunState.SUCCEEDED.value for r in others):
+            return  # the last run to succeed materialises the readout (a failed one failed it)
     if state is RunState.SUCCEEDED:
         row.status = "materialising"
     else:
@@ -339,7 +357,7 @@ async def list_readouts(
     rows = rows[:limit]
     statuses = await refit_statuses(session, dctx.dashboard_id, [r.seq for r in rows])
     return ReadoutList(
-        items=[readout_header(r, statuses.get(r.seq)) for r in rows],
+        items=[readout_header(r, statuses.get(r.seq), mine=is_mine(r, dctx)) for r in rows],
         next_before_seq=rows[-1].seq if more and rows else None,
     )
 
@@ -361,7 +379,7 @@ async def get_readout(session: AsyncSession, dctx: DashboardContext, seq: int) -
     """One readout (``404`` when it does not exist or the caller may not see it)."""
     row = await load_visible(session, dctx, seq)
     statuses = await refit_statuses(session, dctx.dashboard_id, [row.seq])
-    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst)
+    return readout_dto(row, statuses.get(row.seq), analyst=dctx.is_analyst, mine=is_mine(row, dctx))
 
 
 async def review(
@@ -665,7 +683,8 @@ async def on_endpoint_promoted(
         session.add(new_rev)
         await session.flush()
         locked.published_revision_id = new_rev.id
-        locked.problem = None
+        if locked.problem != UPGRADE_NEEDS_REVIEW:  # the spec is unchanged: still to review
+            locked.problem = None
         locked.updated_at = ts
         title = _period_title(spec, "Model updated")
         recent = await _recent_refresh(session, dash.id, debounce_s)
@@ -1797,6 +1816,11 @@ async def _build_v2(
                 ErrorCode.INTERNAL_ERROR, "the score run wrote no readable summary"
             )
         )
+    if spec.preset == "mmm_planner" and len(row.run_ids) > 1 and summary is not None:
+        # the expected run's centres with the predictive run's band (plan §10.1-2)
+        expected = await _summary_of(ctx, session, row.run_ids[1])
+        if expected is not None:
+            summary = pn.with_centres(summary, expected)
     if row.kind == "batch" and summary is not None and summary.truncated:
         return _Material(
             problem=Problem.from_code(

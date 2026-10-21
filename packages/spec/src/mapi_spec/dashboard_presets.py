@@ -248,7 +248,8 @@ def catalog_output(
 ) -> CatalogOutput:
     """One catalog output with what may be asked of it: the stats (``low``/``high`` only
     with an uncertainty representation), the reductions (``last``/``next`` with a time dim;
-    ``sum``/``mean`` for draws, and point outputs flagged; ``share_above`` over cells;
+    ``sum``/``mean`` of point outputs, flagged approximate; of draws only the ``sum`` over
+    the time dim, the forecast total; ``share_above`` over cells;
     ``top_class`` of class probabilities), the chart intents of its shape, and whether a
     predictive score gives an outcome range (not for point outputs or probabilities)."""
     dims = [d for d in dims if d not in SAMPLE_DIMS]
@@ -258,7 +259,12 @@ def catalog_output(
     reduces: list[ReduceHow] = ["none", "select"]
     if time_dim is not None:
         reduces += ["last", "next"]
-    if dims and REPRESENTATION_RULES[representation].aggregate in ("any", "linear"):
+    if dims and representation is Representation.DRAWS:
+        # a total of draws needs the run to add the draws up: the one total a readout
+        # holds is the forecast total over the horizon (the forecast view's)
+        if time_dim is not None:
+            reduces.append("sum")
+    elif dims and REPRESENTATION_RULES[representation].aggregate in ("any", "linear"):
         reduces += ["mean", "sum"]
     if dims and shape != "classification":
         reduces.append("share_above")
@@ -803,7 +809,7 @@ def _panels_causal(c: _Ctx) -> list[AnyPanel]:
     )
     effect = _out(c.catalog, "effect")
     if effect is not None and effect.time_dim is not None:
-        if not out and "sum" in effect.reduces:
+        if not out and "sum" in effect.reduces and effect.representation is Representation.POINT:
             out.append(
                 _value_kpi(
                     "effect_total",
@@ -1227,7 +1233,16 @@ def _check_output_source(
     how = reduce.how
     if how not in o.reduces:
         rules = REPRESENTATION_RULES[o.representation]
-        if how in ("sum", "mean") and rules.aggregate == "none":
+        if how in ("sum", "mean") and o.representation is Representation.DRAWS:
+            issues.append(
+                _err(
+                    f"{base}/reduce",
+                    f"the {how} of the draws of {o.name!r} is not available: a readout holds "
+                    "only the total over the forecast period",
+                    action="show per-period values",
+                )
+            )
+        elif how in ("sum", "mean") and rules.aggregate == "none":
             issues.append(
                 _err(
                     f"{base}/reduce",
@@ -1239,6 +1254,19 @@ def _check_output_source(
             issues.append(_err(f"{base}/reduce", f"the output {o.name!r} has no time dim"))
         else:
             issues.append(_err(f"{base}/reduce", f"{how!r} is not possible on {o.name!r}"))
+    elif (
+        how == "sum"
+        and o.representation is Representation.DRAWS
+        and (list(reduce.over) != [o.time_dim] or "forecast" not in catalog.score_modes)
+    ):
+        issues.append(
+            _err(
+                f"{base}/reduce",
+                f"the total of the draws of {o.name!r} is only available over its time dim "
+                f"({o.time_dim!r}) of a forecast",
+                action="show per-period values",
+            )
+        )
     elif how in ("sum", "mean") and o.representation is Representation.POINT:
         issues.append(
             Issue(

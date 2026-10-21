@@ -23,6 +23,7 @@ import { NewDashboardDialog } from "@/features/dashboards/builder/new-dashboard-
 import { PreviewTab } from "@/features/dashboards/builder/preview";
 import { PublishDialog } from "@/features/dashboards/builder/publish-dialog";
 import { SetupTab } from "@/features/dashboards/builder/setup";
+import { UpgradeBanner } from "@/features/dashboards/builder/upgrade-banner";
 import { useSourceGrid } from "@/features/dashboards/builder/source";
 import { publishPermission, specIssues, tabOfIssue } from "@/features/dashboards/builder/spec-form";
 import { useDraft } from "@/features/dashboards/builder/use-draft";
@@ -241,7 +242,8 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             Live inputs are paused{dashboard.problem ? `: ${dashboard.problem}` : "."} Clients see the last readout. Publish again as a member with the runner role to start them again.
           </InlineMessage>
         ) : null}
-        {dashboard.problem && dashboard.live_inputs !== "paused" ? (
+        <UpgradeBanner spec={spec} readOnly={!canEdit} />
+        {dashboard.problem && dashboard.live_inputs !== "paused" && dashboard.problem !== "upgrade_needs_review" ? (
           <InlineMessage tone="warning" role="none">
             {dashboardProblemText(dashboard.problem)}
           </InlineMessage>

@@ -30,7 +30,6 @@
     ]
    },
    "panels": [
-    "effect_total",
     "effect",
     "outcome"
    ]

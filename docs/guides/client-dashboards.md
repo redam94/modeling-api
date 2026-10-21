@@ -323,12 +323,24 @@ The Python client has the same calls on `client.dashboards`:
 
 ```python
 from mapi_client import Client
+from mapi_spec.dashboard_v2 import BatchDef, ScenarioInputDef, ScenarioRowsDef
 
 with Client() as client:
     found = client.dashboards.presets(model_id="churn", version=3)
     print([(s.preset, s.reasons) for s in found.suggestions])
-    board = client.dashboards.create("churn-weekly", found.spec)
-    client.dashboards.publish(board.id)
+    # the compiled spec has every client input off: turn on the ones clients may use
+    spec = found.spec.model_copy(update={
+        "scenario_rows": ScenarioRowsDef(enabled=True, outputs=["p_churn"], inputs=[
+            ScenarioInputDef(name="tenure", label="Months as a customer",
+                             bind={"var": "tenure"}, type="integer", min=0, max=120,
+                             default=12),
+            ScenarioInputDef(name="plan", label="Plan", bind={"var": "plan"},
+                             type="choice", choices=["basic", "plus"], default="basic"),
+        ]),
+        "batch": BatchDef(enabled=True, outputs=["p_churn"], id_column="customer"),
+    })
+    board = client.dashboards.create("churn-weekly", spec)
+    client.dashboards.publish(board.id)  # inputs work on the published revision only
 
     # try a case: one private prediction readout (a value out of range is refused)
     tried = client.dashboards.predict(board.id, {"tenure": 24, "plan": "plus"})
