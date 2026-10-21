@@ -11,6 +11,10 @@ overlaid.
 (:data:`mapi_spec.tenancy.PERMISSIONS`) so the UI hides actions the caller's role cannot do
 (the server still decides).
 
+``src/api/dashboard-tools.gen.json`` exports :func:`mapi_spec.dashboard_tools.tools_json_schema`
+(the read-only dashboard tool declarations) so ``features/dashboards/tools.ts`` cannot drift
+from the server's tool names and arguments.
+
 ``src/api/schema.d.ts`` is generated from ``openapi.json`` with ``openapi-typescript``
 (``pnpm --filter @mapi/web openapi:types``); the web code refers to component names only
 through ``src/api/types.ts``.
@@ -32,12 +36,14 @@ from pathlib import Path
 from typing import Any
 
 from mapi_server.app import openapi_document
+from mapi_spec.dashboard_tools import tools_json_schema
 from mapi_spec.tenancy import PERMISSIONS, ProjectRole
 from mapi_spec.tokens import DEFAULT_TOKEN_TTL_DAYS, MAX_TOKEN_TTL_DAYS, ScopeName
 
 WEB = Path(__file__).resolve().parent.parent
 OUT = WEB / "openapi.json"
 ACCESS_OUT = WEB / "src" / "api" / "access.gen.json"
+TOOLS_OUT = WEB / "src" / "api" / "dashboard-tools.gen.json"
 
 
 def build() -> dict[str, Any]:
@@ -70,7 +76,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Write apps/web/openapi.json from mapi_server")
     parser.add_argument("--check", action="store_true", help="fail if a written file is stale")
     args = parser.parse_args(argv)
-    outputs = {OUT: _render(build()), ACCESS_OUT: _render(access())}
+    outputs = {
+        OUT: _render(build()),
+        ACCESS_OUT: _render(access()),
+        TOOLS_OUT: _render(tools_json_schema()),
+    }
     if args.check:
         stale = [
             p

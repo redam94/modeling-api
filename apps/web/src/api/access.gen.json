@@ -14,6 +14,50 @@
       "level": "project",
       "min_role": "viewer"
     },
+    "dashboard:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard:delete": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard:read": {
+      "level": "project",
+      "min_role": "client"
+    },
+    "dashboard:run": {
+      "level": "project",
+      "min_role": "client"
+    },
+    "dashboard:update": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_grant:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_grant:delete": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_grant:read": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_share:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_share:delete": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "dashboard_share:read": {
+      "level": "project",
+      "min_role": "editor"
+    },
     "dataset:create": {
       "level": "project",
       "min_role": "editor"
@@ -372,6 +416,7 @@
     }
   },
   "roles": [
+    "client",
     "viewer",
     "editor",
     "runner",
