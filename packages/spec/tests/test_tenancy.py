@@ -28,6 +28,7 @@ from mapi_spec.tenancy import (
     TrustTier,
     UserPrincipal,
     can,
+    check_role_scope,
     effective_role,
     parse_project_selector,
     placement_allows,
@@ -38,8 +39,14 @@ from mapi_spec.tenancy import (
 )
 from pydantic import TypeAdapter, ValidationError
 
-V, E, R, A = ProjectRole.VIEWER, ProjectRole.EDITOR, ProjectRole.RUNNER, ProjectRole.ADMIN
-ROLES: list[ProjectRole | None] = [None, V, E, R, A]
+C, V, E, R, A = (
+    ProjectRole.CLIENT,
+    ProjectRole.VIEWER,
+    ProjectRole.EDITOR,
+    ProjectRole.RUNNER,
+    ProjectRole.ADMIN,
+)
+ROLES: list[ProjectRole | None] = [None, C, V, E, R, A]
 
 # Written independently of PERMISSIONS: resource -> action -> "<min role letter>/<level>".
 # "op" = operators only, "int" = internal services only; unlisted pairs are denied.
@@ -78,8 +85,13 @@ EXPECTED: dict[str, dict[str, str]] = {
                  "run": "R/P", "cancel": "R/P"},
     "policy": {"read": "V/P", "create": "A/P", "update": "A/P", "delete": "A/P"},
     "tenant_policy": {"read": "V/T", "create": "A/T", "update": "A/T", "delete": "A/T"},
+    # v0.16: client dashboards
+    "dashboard": {"read": "C/P", "run": "C/P", "create": "E/P", "update": "E/P",
+                  "delete": "E/P"},
+    "dashboard_grant": {"read": "E/P", "create": "E/P", "delete": "E/P"},
+    "dashboard_share": {"read": "E/P", "create": "E/P", "delete": "E/P"},
 }  # fmt: skip
-LETTER = {"V": V, "E": E, "R": R, "A": A}
+LETTER = {"C": C, "V": V, "E": E, "R": R, "A": A}
 
 
 def _expected_can(role: ProjectRole | None, action: Action, resource: ResourceKind) -> bool:
@@ -133,10 +145,11 @@ def test_every_resource_is_readable_by_someone_and_unknown_inputs_deny() -> None
 
 
 def test_roles_are_totally_ordered_and_cumulative() -> None:
-    assert V < E < R < A and A >= R >= E >= V and not (V > E)
-    assert sorted([A, V, R, E]) == [V, E, R, A]
+    assert C < V < E < R < A and A >= R >= E >= V >= C and not (V > E)
+    assert sorted([A, V, C, R, E]) == [C, V, E, R, A]
+    assert [r.rank for r in ProjectRole] == [0, 1, 2, 3, 4]
     assert Role is ProjectRole
-    for lo, hi in itertools.combinations([V, E, R, A], 2):
+    for lo, hi in itertools.combinations([C, V, E, R, A], 2):
         for action, resource in itertools.product(Action, ResourceKind):
             if can(lo, action, resource):
                 assert can(hi, action, resource), (lo, hi, action, resource)
@@ -181,6 +194,16 @@ def test_effective_role_takes_the_highest_applicable_grant() -> None:
     assert effective_role(ms, USR, "acme", "unknown") is V
     assert effective_role(ms, USR, "nobody") is None
     assert effective_role([_m(R, "growth")], USR, "acme") is None
+    # v0.16: a tenant-wide viewer outranks a project client (why clients are project-only)
+    assert effective_role([_m(C, "growth"), _m(V)], USR, "acme", "growth") is V
+
+
+def test_client_role_is_project_scoped_only() -> None:
+    check_role_scope(C, "growth")
+    check_role_scope("viewer", None)
+    with pytest.raises(MapiError) as err:
+        check_role_scope("client", None)
+    assert err.value.code is ErrorCode.INVALID_ROLE_SCOPE
 
 
 # ---------------------------------------------------------------------------- auth context

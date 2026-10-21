@@ -62,6 +62,7 @@ __all__ = [
     "TrustTier",
     "UserPrincipal",
     "can",
+    "check_role_scope",
     "effective_role",
     "parse_project_selector",
     "placement_allows",
@@ -251,8 +252,15 @@ class Project(ResponseModel):
 
 
 class ProjectRole(StrEnum):
-    """Project roles, ordered ``viewer < editor < runner < admin`` (each includes the last)."""
+    """Project roles, ordered ``client < viewer < editor < runner < admin`` (each includes the
+    last).
 
+    ``client`` (v0.16) is rank 0: every rule needs at least ``viewer`` except the dashboard
+    reads and inputs, so a client sees only the published dashboards granted to them. A
+    client membership is always project-scoped (:func:`check_role_scope`), and the server
+    lets a client reach only :data:`mapi_spec.api.CLIENT_OPERATIONS`."""
+
+    CLIENT = "client"
     VIEWER = "viewer"
     EDITOR = "editor"
     RUNNER = "runner"
@@ -283,7 +291,13 @@ class ProjectRole(StrEnum):
         return self.rank >= other.rank
 
 
-_ROLE_ORDER: Final = (ProjectRole.VIEWER, ProjectRole.EDITOR, ProjectRole.RUNNER, ProjectRole.ADMIN)
+_ROLE_ORDER: Final = (
+    ProjectRole.CLIENT,
+    ProjectRole.VIEWER,
+    ProjectRole.EDITOR,
+    ProjectRole.RUNNER,
+    ProjectRole.ADMIN,
+)
 
 Role = ProjectRole
 """Alias used in this module's vocabulary (``mapi_spec.Role`` is the *variable* role)."""
@@ -344,6 +358,12 @@ class ResourceKind(StrEnum):
     """A project's governance policies (M3.5)."""
     TENANT_POLICY = "tenant_policy"
     """Tenant-wide governance policies, the floor every project inherits (M3.5)."""
+    DASHBOARD = "dashboard"
+    """Client dashboards, their revisions, inputs and readouts (v0.16)."""
+    DASHBOARD_GRANT = "dashboard_grant"
+    """Which client users may see a dashboard (v0.16)."""
+    DASHBOARD_SHARE = "dashboard_share"
+    """Revocable share links of a dashboard (v0.16)."""
 
 
 class Capability(StrEnum):
@@ -374,7 +394,13 @@ class Rule:
     """M3.5: also needs this capability (project admins hold every capability)."""
 
 
-_V, _E, _R, _A = ProjectRole.VIEWER, ProjectRole.EDITOR, ProjectRole.RUNNER, ProjectRole.ADMIN
+_C, _V, _E, _R, _A = (
+    ProjectRole.CLIENT,
+    ProjectRole.VIEWER,
+    ProjectRole.EDITOR,
+    ProjectRole.RUNNER,
+    ProjectRole.ADMIN,
+)
 _P, _T = Level.PROJECT, Level.TENANT
 _OP = Rule(None, Level.PLATFORM)
 _RK, _AC = ResourceKind, Action
@@ -473,6 +499,19 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.MODEL, _AC.VALIDATE): Rule(_R, _P),
     (_RK.MODEL, _AC.APPROVE): Rule(_E, _P, Capability.REVIEWER),
     (_RK.MODEL, _AC.UPDATE): Rule(_A, _P),  # deprecate a validated version
+    # v0.16: client dashboards. A client reads and uses only published dashboards granted
+    # to them (the handler decides); drafts, grants and share links need an editor.
+    (_RK.DASHBOARD, _AC.READ): Rule(_C, _P),
+    (_RK.DASHBOARD, _AC.RUN): Rule(_C, _P),  # grid, what-ifs, scenarios, actuals (spec inputs)
+    (_RK.DASHBOARD, _AC.CREATE): Rule(_E, _P),
+    (_RK.DASHBOARD, _AC.UPDATE): Rule(_E, _P),
+    (_RK.DASHBOARD, _AC.DELETE): Rule(_E, _P),
+    (_RK.DASHBOARD_GRANT, _AC.READ): Rule(_E, _P),
+    (_RK.DASHBOARD_GRANT, _AC.CREATE): Rule(_E, _P),  # the user must hold a project membership
+    (_RK.DASHBOARD_GRANT, _AC.DELETE): Rule(_E, _P),
+    (_RK.DASHBOARD_SHARE, _AC.READ): Rule(_E, _P),
+    (_RK.DASHBOARD_SHARE, _AC.CREATE): Rule(_E, _P),  # with inputs: the caller must be a runner
+    (_RK.DASHBOARD_SHARE, _AC.DELETE): Rule(_E, _P),
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""
 
@@ -617,6 +656,18 @@ def effective_role(
         if best is None or m.role > best:
             best = m.role
     return best
+
+
+def check_role_scope(role: ProjectRole | str, project_id: str | None) -> None:
+    """Refuse (``INVALID_ROLE_SCOPE``) a tenant-wide ``client`` grant (v0.16).
+
+    A tenant-wide grant counts in every project and the higher of two grants wins, so a
+    client must always be a member of named projects only."""
+    if ProjectRole(role) is ProjectRole.CLIENT and project_id is None:
+        raise MapiError(
+            "the client role is granted on a project only: give a project id",
+            code=ErrorCode.INVALID_ROLE_SCOPE,
+        )
 
 
 # ================================================================================== principals
