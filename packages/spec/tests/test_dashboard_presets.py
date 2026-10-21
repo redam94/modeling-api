@@ -99,8 +99,9 @@ def test_golden_preset_table() -> None:
         # every model gets a family preset, or generic with a reason
         assert row["presets"][-1] == "generic", mid
         if row["presets"][0] == "generic":
-            sug = suggest_presets(_manifests()[mid], _manifests()[mid].capabilities,
-                                  catalog_from_manifest(_manifests()[mid]))  # fmt: skip
+            # the same manifest the row was computed from (no declared meaning)
+            h = _heuristic(_manifests()[mid])
+            sug = suggest_presets(h, h.capabilities, catalog_from_manifest(h))
             assert len(sug[0].reasons) >= 2, mid
 
 
