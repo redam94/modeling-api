@@ -4,7 +4,7 @@
  * page. A sent upload shows whether it waits for review and the state of its refit request.
  */
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { InlineMessage } from "@/components/ods";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ import { KpiChart, ReadoutState, ReadoutTiles, Section, Tags, Working } from "./
 import { historyRow, metaLine, periodOf } from "./readout-model";
 
 const PAGE = 20;
+/** Below `lg` the list and the detail stack: the detail is below the whole list. */
+const STACKED = "(max-width: 1023.98px)";
+
+function stacked(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(STACKED).matches;
+}
 
 function HistoryPage({
   client,
@@ -100,8 +106,22 @@ function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; da
 export function History({ client, dashboard, initial = null }: { client: DashboardClient; dashboard: ClientDashboard; initial?: number | null }) {
   const [cursors, setCursors] = useState<(number | undefined)[]>([undefined]);
   const [selected, setSelected] = useState<number | null>(initial);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const [jump, setJump] = useState(0);
+  // On a phone the detail renders below the whole list, off screen: bring it into view and
+  // move the focus there (keyboard and screen-reader users hear the readout they chose).
+  useEffect(() => {
+    if (!jump) return;
+    const el = detailRef.current;
+    el?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
+  }, [jump]);
+  const choose = (seq: number) => {
+    setSelected(seq);
+    if (stacked()) setJump((j) => j + 1);
+  };
   return (
-    <div className="grid min-w-0 gap-6 lg:grid-cols-12" data-tab="history">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12" data-tab="history">
       <Section className="lg:col-span-5" title="Readouts" description="The newest first. Your saved plans and sent numbers show only to you and the analysts.">
         <ul aria-label="Readouts" className="-mx-5 -mb-5 max-sm:-mx-4 max-sm:-mb-4">
           {cursors.map((c, i) => (
@@ -110,14 +130,14 @@ export function History({ client, dashboard, initial = null }: { client: Dashboa
               client={client}
               beforeSeq={c}
               selected={selected}
-              onSelect={setSelected}
+              onSelect={choose}
               last={i === cursors.length - 1}
               onOlder={(before) => setCursors((prev) => [...prev, before])}
             />
           ))}
         </ul>
       </Section>
-      <div className="min-w-0 lg:col-span-7">
+      <div ref={detailRef} tabIndex={-1} role="region" aria-label="The chosen readout" className="min-w-0 scroll-mt-4 outline-none lg:col-span-7">
         {selected !== null ? (
           <ReadoutDetail client={client} dashboard={dashboard} seq={selected} />
         ) : (

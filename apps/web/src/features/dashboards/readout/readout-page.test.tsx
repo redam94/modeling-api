@@ -67,6 +67,12 @@ describe("ReadoutPage", () => {
     expect(screen.getByRole("img", { name: /^Revenue each week, 26 weeks to 18\/10\/2026\./ })).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Channel scorecard" });
     expect(within(table).getAllByRole("row")).toHaveLength(5);
+    // the column headers stay in the accessibility tree on narrow screens (sr-only, never
+    // display:none), since the cells' visible labels are aria-hidden
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Channel", "Where the spend sits", "Return on media", "Expected result", "Share"]);
+    const head = table.querySelector("[data-readout=scorecard-head]")!;
+    expect(head.className.split(/\s+/)).not.toContain("hidden");
+    expect(head.className.split(/\s+/)).toContain("sr-only");
     expect(within(table).getByRole("img", { name: /^TV: (More room|Within range|Past its best|Not paying back)$/ })).toBeInTheDocument();
     expect(within(table).getByRole("img", { name: /^Paid search return on media: \d\.\d\d, likely range .* the break-even of 1\.00\.$/ })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Zones" })).toBeInTheDocument();
@@ -170,5 +176,28 @@ describe("ReadoutPage", () => {
     await userEvent.click(within(list).getAllByRole("button")[0]!);
     const detail = document.querySelector("[data-readout=detail]") as HTMLElement;
     expect(await within(detail).findByRole("list", { name: /^Key numbers of / })).toBeInTheDocument();
+  });
+
+  it("on a phone, choosing a readout brings the detail into view and moves the focus there", async () => {
+    const match = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: q.includes("max-width"), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    const scrolled: Element[] = [];
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      const client = await clientFor(MOCK_SHARE_TOKENS.readOnly, null, MMM_DASHBOARD_ID);
+      view(<ReadoutPage client={client} tab="history" />);
+      const list = await screen.findByRole("list", { name: "Readouts" });
+      await waitFor(() => expect(within(list).getAllByRole("button").length).toBeGreaterThan(3));
+      await userEvent.click(within(list).getAllByRole("button")[1]!);
+      const region = screen.getByRole("region", { name: "The chosen readout" });
+      await waitFor(() => expect(document.activeElement).toBe(region));
+      expect(scrolled).toContain(region);
+    } finally {
+      window.matchMedia = match;
+      Element.prototype.scrollIntoView = scroll;
+    }
   });
 });
