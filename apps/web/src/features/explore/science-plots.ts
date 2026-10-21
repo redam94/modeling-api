@@ -405,7 +405,7 @@ export function nodeLinkPlot(entry: NetworkEntry, attr: string | null = null): S
         x2: { field: "x2" },
         y2: { field: "y2" },
         opacity: entry.weighted ? { field: "w", type: "quantitative", scale: { type: "symlog", range: [0.15, 0.8] }, legend: null } : { value: 0.55 },
-        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#4a6fa5", "#c0392b"] } } } : { color: { value: "#8b919a" } }),
+        ...(entry.signed ? { color: { field: "sign", type: "nominal", title: "Sign", scale: { domain: ["positive", "negative"], range: ["#1f6fb4", "#c20021"] } } } : { color: { value: "#8b919a" } }),
       },
     });
   }
@@ -583,7 +583,7 @@ export function rosePlot(entry: CircularEntry): SciPlot | null {
     const max = Math.max(0, ...g.counts);
     if (finite(g.mean_direction) && finite(g.resultant_length) && max > 0) {
       const deg = (g.mean_direction / entry.period) * 360;
-      traces.push({ type: "scatterpolar", subplot: id, mode: "lines", r: [0, Math.max(0, Math.min(1, g.resultant_length)) * max], theta: [deg, deg], line: { width: 3, color: "#c0392b" }, hoverinfo: "skip", name: "Mean direction" });
+      traces.push({ type: "scatterpolar", subplot: id, mode: "lines", r: [0, Math.max(0, Math.min(1, g.resultant_length)) * max], theta: [deg, deg], line: { width: 3, color: "#c20021" }, hoverinfo: "skip", name: "Mean direction" });
     }
     const col = k % cols;
     const row = Math.floor(k / cols);
