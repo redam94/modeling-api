@@ -32,7 +32,9 @@ WEB = "http://127.0.0.1:5173"
 
 @pytest.fixture
 def settings(settings: Settings) -> Settings:
-    return settings.model_copy(update={"profile": Profile.MULTI_TENANT, "web_origin": WEB, **LAYOUT1})
+    return settings.model_copy(
+        update={"profile": Profile.MULTI_TENANT, "web_origin": WEB, **LAYOUT1}
+    )
 
 
 @pytest.fixture
