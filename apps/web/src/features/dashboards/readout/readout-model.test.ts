@@ -14,7 +14,9 @@ import {
   changeRows,
   channelRows,
   checksPass,
+  csvCell,
   deltaWords,
+  gridSlope,
   formatValue,
   historyRow,
   metaLine,
@@ -230,6 +232,14 @@ describe("Update numbers checks", () => {
     expect(texts([["11/10/2026", 1, 1]])).toEqual(["Row 1: write the date as yyyy-MM-dd."]);
     expect(texts([["2026-10-04", 1, 1], ["2026-10-11", 1, 1], ["2026-10-18", 1, 1], ["2026-10-25", 1, 1]])).toEqual(["Use 3 rows or fewer. You have 4."]);
   });
+
+  it("names the rows as the editor numbers them, blank rows included", () => {
+    const rows = [["2026-10-04", 1, 1], [null, null, null], [null, null, null], ["2026-10-18", 1, "12k"]];
+    const texts = actualsChecks(template, rows).filter((c) => !c.ok).map((c) => c.text);
+    expect(texts).toEqual(["Use numbers only. Check row 4, spend_tv."]);
+    const noDate = actualsChecks(template, [[null, null, null], [null, 5, 1]]).filter((c) => !c.ok).map((c) => c.text);
+    expect(noDate).toEqual(["Row 2 has no date."]);
+  });
 });
 
 describe("summary CSV", () => {
@@ -239,6 +249,43 @@ describe("summary CSV", () => {
     expect(csv).toContain("Expected revenue,\"€412,300\",3.2% more than the week before,Likely range");
     expect(csv).toContain("'=HYPERLINK(1)");
     expect(csv).toContain("Channel,Where the spend sits,Return on media,Expected result,Share");
+  });
+
+  it("keeps plain signed numbers as they are (no literal apostrophe) and still guards formulas", () => {
+    expect(csvCell("+3.2%")).toBe("+3.2%");
+    expect(csvCell("-1,200")).toBe('"-1,200"');
+    expect(csvCell("+0.4 pts")).toBe("+0.4 pts");
+    expect(csvCell("+cmd|' /C calc'!A0")).toBe("'+cmd|' /C calc'!A0");
+    expect(csvCell("-2+3")).toBe("'-2+3");
+    expect(csvCell("@SUM(A1)")).toBe("'@SUM(A1)");
+  });
+});
+
+describe("live zones and slider steps", () => {
+  // one channel, three draws equal, multipliers 0.5/1/1.5, contribution flattening out
+  const grid = parseResponseGrid({
+    format: "mapi.response-grid/v1", kpi: "revenue", periods: 52, channels: ["tv"], multipliers: [0.5, 1, 1.5], draws: 1,
+    contribution: [[[1400, 2000, 2200]]], spend: [[500, 1000, 1500]], current_spend: [1000], baseline: [2000],
+  });
+  const d = { kpi: KPI, channels: [{ name: "tv", label: "TV", min_mult: 0.5, max_mult: 1.5 }] };
+
+  it("uses the slope of the grid segment that holds the multiplier, the last one at the end (as the server)", () => {
+    expect(gridSlope(grid, 0, 0.5)).toBeCloseTo(1.2); // (2000-1400)/(1000-500)
+    expect(gridSlope(grid, 0, 0.75)).toBeCloseTo(1.2); // inside the first segment
+    expect(gridSlope(grid, 0, 1)).toBeCloseTo(0.4); // the segment to the right at a knot
+    expect(gridSlope(grid, 0, 1.5)).toBeCloseTo(0.4); // the end: the last segment
+    // at the top of the slider the zone word stays (it vanished with a +0.1 secant)
+    const top = scenarioModel(grid, d, { tv: 1.5 }).channels[0]!;
+    expect(top.zone).toBe("over");
+    expect(top.zoneWord).not.toBe("No zone");
+  });
+
+  it("starts the steps so that the current plan (1) is one of them", () => {
+    expect(sliderBounds({ min_mult: 0.75, max_mult: 1.5, step: 0.1 }, grid)).toEqual({ min: 0.8, max: 1.5, step: 0.1 });
+    expect(sliderBounds({ min_mult: 0.5, max_mult: 1.5, step: 0.05 }, grid).min).toBe(0.5);
+    const b = sliderBounds({ min_mult: 0.75, max_mult: 1.5, step: 0.1 }, grid);
+    const k = (1 - b.min) / b.step;
+    expect(Math.abs(k - Math.round(k))).toBeLessThan(1e-9);
   });
 });
 

@@ -467,9 +467,13 @@ export function trendRoi(points: readonly TrendPoint[], channel: string): (numbe
 export function sliderBounds(ch: Pick<ChannelDef, "min_mult" | "max_mult" | "step">, grid: Pick<ResponseGrid, "multipliers">): { min: number; max: number; step: number } {
   const gMin = grid.multipliers[0] ?? 1;
   const gMax = grid.multipliers[grid.multipliers.length - 1] ?? 1;
-  const min = Math.max(ch.min_mult ?? 0.5, gMin);
-  const max = Math.min(ch.max_mult ?? 1.5, gMax);
-  return { min: Math.min(min, 1), max: Math.max(max, 1), step: ch.step ?? 0.05 };
+  const lo = Math.min(Math.max(ch.min_mult ?? 0.5, gMin), 1);
+  const hi = Math.max(Math.min(ch.max_mult ?? 1.5, gMax), 1);
+  const step = ch.step ?? 0.05;
+  // A range input's steps count from `min`: start them at 1 - k·step so the current plan (1)
+  // is a step the thumb can land on (min 0.75 with step 0.1 would offer 0.95 and 1.05 only).
+  const min = Math.round((1 - Math.floor((1 - lo) / step + 1e-9) * step) * 1e6) / 1e6;
+  return { min, max: hi, step };
 }
 
 /** Keep a multiplier on the slider (and on its step, to 4 decimals). */
@@ -517,6 +521,27 @@ export function kpiWord(kpi: Pick<KpiDef, "label">): string {
 }
 
 /**
+ * The marginal return of channel `c` at multiplier `x`: the slope of the mean contribution over
+ * spend on the grid segment that holds `x` (the one to its right at a grid point, the last one at
+ * the end). The server's `_slope` (`grid_facts`), so the live zone words match the scorecard's.
+ */
+export function gridSlope(grid: Pick<ResponseGrid, "multipliers" | "contribution" | "spend" | "draws">, c: number, x: number): number | null {
+  const xs = grid.multipliers;
+  const spend = grid.spend[c];
+  if (xs.length < 2 || !spend) return null;
+  let i = xs.findIndex((v, k) => k >= 1 && x < v);
+  if (i < 1) i = xs.length - 1;
+  const draws = Math.max(1, grid.draws || grid.contribution.length);
+  const mean = (k: number) => {
+    let sum = 0;
+    for (let d = 0; d < draws; d++) sum += grid.contribution[d]?.[c]?.[k] ?? 0;
+    return sum / draws;
+  };
+  const ds = (spend[i] ?? 0) - (spend[i - 1] ?? 0);
+  return ds ? (mean(i) - mean(i - 1)) / ds : 0;
+}
+
+/**
  * Evaluate the sliders on the grid (instant, in the browser): channel results with their live
  * zone words, the KPI change and the plan's sentence. Throws `WhatIfError` when a multiplier is
  * outside the grid (the sliders clamp, so only a stale grid can do that).
@@ -527,17 +552,14 @@ export function scenarioModel(grid: ResponseGrid, d: Pick<ClientDashboard, "kpi"
   const res = evaluateScenario(grid, { multipliers: m });
   const cur = evaluateScenario(grid, {});
   const be = breakevenOf(d.kpi);
-  const top = grid.multipliers[grid.multipliers.length - 1] ?? 1;
   const channels: ScenarioChannel[] = [];
   for (const def of d.channels ?? []) {
     const out = res.channels[def.name];
     const base = cur.channels[def.name];
     if (!out || !base) continue;
     const at = out.multiplier;
-    const step = Math.min(at + 0.1, top);
-    const next = step > at ? evaluateScenario(grid, { multipliers: { ...m, [def.name]: step } }).channels[def.name] : null;
     const roi = out.spend > 0 ? out.contribution.mean / out.spend : null;
-    const mroi = next && next.spend > out.spend ? (next.contribution.mean - out.contribution.mean) / (next.spend - out.spend) : null;
+    const mroi = gridSlope(grid, grid.channels.indexOf(def.name), at);
     const zone = be !== null ? zoneOf(roi, mroi, be) : null;
     channels.push({
       name: def.name,
@@ -581,9 +603,13 @@ function isDateLike(v: Cell): boolean {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && !Number.isNaN(Date.parse(v.slice(0, 10)));
 }
 
+function isFilled(r: readonly Cell[]): boolean {
+  return r.some((c) => c !== null && c !== "");
+}
+
 /** The rows that hold a value (blank rows are left out when the numbers are sent). */
 export function filledRows(rows: readonly Cell[][]): Cell[][] {
-  return rows.filter((r) => r.some((c) => c !== null && c !== ""));
+  return rows.filter(isFilled);
 }
 
 /**
@@ -592,7 +618,10 @@ export function filledRows(rows: readonly Cell[][]): Cell[][] {
  */
 export function actualsChecks(t: Pick<ActualsTemplate, "input_table" | "kpi_column" | "max_rows">, rows: readonly Cell[][]): Check[] {
   const cols = t.input_table.columns ?? [];
-  const filled = filledRows(rows);
+  // each filled row with its number in the editor (blank rows keep their numbers there)
+  const numbered = rows.map((r, i) => ({ r, n: i + 1 })).filter(({ r }) => isFilled(r));
+  const filled = numbered.map(({ r }) => r);
+  const rowNo = (i: number) => numbered[i]?.n ?? i + 1;
   const max = t.max_rows ?? 520;
   const kpiAt = cols.findIndex((c) => c.name === t.kpi_column);
   const kpiLabel = t.kpi_column;
@@ -613,8 +642,8 @@ export function actualsChecks(t: Pick<ActualsTemplate, "input_table" | "kpi_colu
     filled.forEach((r, i) => {
       const v = r[j] ?? null;
       if (v === null || v === "") return;
-      if (typeof v !== "number") notNumber.push(`row ${i + 1}, ${c.name}`);
-      else if (v < 0) negative.push(`row ${i + 1}, ${c.name}`);
+      if (typeof v !== "number") notNumber.push(`row ${rowNo(i)}, ${c.name}`);
+      else if (v < 0) negative.push(`row ${rowNo(i)}, ${c.name}`);
     });
   });
   checks.push(notNumber.length ? { ok: false, text: `Use numbers only. Check ${notNumber.slice(0, 3).join("; ")}${notNumber.length > 3 ? ` and ${notNumber.length - 3} more` : ""}.` } : { ok: true, text: "All values are numbers." });
@@ -629,8 +658,8 @@ export function actualsChecks(t: Pick<ActualsTemplate, "input_table" | "kpi_colu
     const bad = freq ? labels.findIndex((v) => v !== null && v !== "" && !isDateLike(v)) : -1;
     const keys = labels.map((v) => String(v));
     const dup = keys.findIndex((k, i) => keys.indexOf(k) !== i);
-    if (missing >= 0) checks.push({ ok: false, text: `Row ${missing + 1} has no ${dim}.` });
-    else if (bad >= 0) checks.push({ ok: false, text: `Row ${bad + 1}: write the ${dim} as yyyy-MM-dd.` });
+    if (missing >= 0) checks.push({ ok: false, text: `Row ${rowNo(missing)} has no ${dim}.` });
+    else if (bad >= 0) checks.push({ ok: false, text: `Row ${rowNo(bad)}: write the ${dim} as yyyy-MM-dd.` });
     else if (dup >= 0) checks.push({ ok: false, text: `The ${dim} ${keys[dup]} occurs two times.` });
     else checks.push({ ok: true, text: `Each row has its own ${dim}.` });
   }
@@ -643,9 +672,13 @@ export function checksPass(checks: readonly Check[]): boolean {
 
 // ------------------------------------------------------------------------------ "Download summary (.csv)"
 
-function csvCell(v: string): string {
-  // Spreadsheet formula injection: a cell that starts with = + - @ is read as text.
-  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+/** A plain signed number ("+3.2%", "-1,200", "+0.4 pts"): data, never a formula. */
+const SIGNED_NUMBER = /^[+-]\d[\d,]*(?:\.\d+)?(?:\s?%| pts)?$/;
+
+export function csvCell(v: string): string {
+  // Spreadsheet formula injection: a cell that starts with = + - @ is read as text, except a
+  // plain signed number (a positive change, "+3.2%"), which would show a literal apostrophe.
+  const safe = /^[=+\-@\t\r]/.test(v) && !SIGNED_NUMBER.test(v) ? `'${v}` : v;
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
