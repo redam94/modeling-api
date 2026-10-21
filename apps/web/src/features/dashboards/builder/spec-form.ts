@@ -12,13 +12,16 @@ import type { Issue, ProjectRole } from "@/api/types";
 
 import {
   DEFAULT_SHARE_DAYS,
+  SHARE_INPUTS,
   MAX_CHANNELS,
   MAX_PASSCODE_LEN,
   MAX_SHARE_DAYS,
   MAX_TILES,
   MIN_PASSCODE_LEN,
+  isLayout2,
   TAB_KEYS,
   TILE_KEYS,
+  type AnyDashboardSpec,
   type ChannelDef,
   type DashboardShareCreate,
   type DashboardSource,
@@ -28,6 +31,7 @@ import {
   type TabKey,
   type TileKey,
 } from "../types";
+import { cleanSpecV2, shareInputsOfV2, specIssuesV2, tabOfIssueV2 } from "./spec-form-v2";
 
 /** `mapi_spec._types.NAME_RE`: names of dashboards, channels and KPI variables. */
 export const NAME_RE = /^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/;
@@ -186,8 +190,10 @@ export function setRefitWorkflow(spec: DashboardSpec, workflowId: string | null)
 
 const blank = (v: string | null | undefined): string | null => (v && v.trim() ? v.trim() : null);
 
-/** The spec as it is saved: empty optional texts become `null`, tabs and tiles in order. */
-export function cleanSpec(spec: DashboardSpec): DashboardSpec {
+/** The spec as it is saved: empty optional texts become `null`, tabs and tiles in order (either layout). */
+export function cleanSpec<S extends AnyDashboardSpec>(spec: S): S;
+export function cleanSpec(spec: AnyDashboardSpec): AnyDashboardSpec {
+  if (isLayout2(spec)) return cleanSpecV2(spec);
   return {
     ...spec,
     title: spec.title.trim(),
@@ -203,7 +209,7 @@ export function cleanSpec(spec: DashboardSpec): DashboardSpec {
 }
 
 /** Two specs are the same draft (to know whether there is something to save). */
-export function sameSpec(a: DashboardSpec, b: DashboardSpec): boolean {
+export function sameSpec(a: AnyDashboardSpec, b: AnyDashboardSpec): boolean {
   return JSON.stringify(cleanSpec(a)) === JSON.stringify(cleanSpec(b));
 }
 
@@ -220,8 +226,15 @@ export interface SpecContext {
   gridChannels?: readonly string[] | null | undefined;
 }
 
-/** What is wrong with the draft, in plain words (empty: the server will accept the shape). */
-export function specIssues(spec: DashboardSpec, ctx: SpecContext = {}): FormIssue[] {
+/**
+ * What is wrong with the draft, in plain words (empty: the server will accept the shape).
+ * A layout 2 draft is checked by {@link specIssuesV2}.
+ */
+export function specIssues(spec: AnyDashboardSpec, ctx: SpecContext = {}): FormIssue[] {
+  return isLayout2(spec) ? specIssuesV2(spec, ctx) : specIssuesV1(spec, ctx);
+}
+
+function specIssuesV1(spec: DashboardSpec, ctx: SpecContext): FormIssue[] {
   const out: FormIssue[] = [];
   const add = (pointer: string, message: string) => out.push({ pointer, message });
 
@@ -298,9 +311,9 @@ export function issueAt(issues: readonly (FormIssue | Issue)[], pointer: string,
   return issues.find((i) => i.pointer === pointer || (deep && (i.pointer ?? "").startsWith(`${pointer}/`)))?.message;
 }
 
-/** The tab of the builder where an issue is fixed. */
+/** The tab of the builder where an issue is fixed (pointers of either layout). */
 export function tabOfIssue(pointer: string | null | undefined): "setup" | "inputs" {
-  return /^\/(whatif|actuals|refresh|limits)(\/|$)/.test(pointer ?? "") ? "inputs" : "setup";
+  return /^\/whatif(\/|$)/.test(pointer ?? "") ? "inputs" : tabOfIssueV2(pointer);
 }
 
 // ------------------------------------------------------------------------------ share links
@@ -313,9 +326,17 @@ export interface ShareForm {
   /** New links are read-only (§10.3): every input is off until the analyst turns it on. */
   whatif: boolean;
   actuals: boolean;
+  /** Layout 2: "Try a case" and "Score a file". */
+  scenario_rows: boolean;
+  batch: boolean;
 }
 
-export const DEFAULT_SHARE_FORM: Readonly<ShareForm> = { label: "", days: DEFAULT_SHARE_DAYS, passcode: "", whatif: false, actuals: false };
+export const DEFAULT_SHARE_FORM: Readonly<ShareForm> = { label: "", days: DEFAULT_SHARE_DAYS, passcode: "", whatif: false, actuals: false, scenario_rows: false, batch: false };
+
+/** The form with every input off (a member without the runner role makes read-only links). */
+export function readOnlyShareForm(f: ShareForm): ShareForm {
+  return { ...f, whatif: false, actuals: false, scenario_rows: false, batch: false };
+}
 
 export interface ShareFormIssues {
   label?: string;
@@ -332,19 +353,19 @@ export function shareFormIssues(f: ShareForm): ShareFormIssues {
   return out;
 }
 
-/** The inputs a link may allow: only those the dashboard has. */
-export function shareInputsOf(spec: Pick<DashboardSpec, "whatif" | "actuals">): ShareInput[] {
+/** The inputs a link may allow: only those the dashboard has (either layout). */
+export function shareInputsOf(spec: Pick<DashboardSpec, "whatif" | "actuals"> | AnyDashboardSpec): ShareInput[] {
+  if ("layout_version" in spec && spec.layout_version === 2) return shareInputsOfV2(spec);
+  const v1 = spec as Pick<DashboardSpec, "whatif" | "actuals">;
   const out: ShareInput[] = [];
-  if (spec.whatif?.enabled ?? true) out.push("whatif");
-  if (spec.actuals?.enabled) out.push("actuals");
+  if (v1.whatif?.enabled ?? true) out.push("whatif");
+  if (v1.actuals?.enabled) out.push("actuals");
   return out;
 }
 
 /** The request body; inputs the dashboard does not have are never sent. */
 export function shareCreateBody(f: ShareForm, available: readonly ShareInput[]): DashboardShareCreate {
-  const allowed: ShareInput[] = [];
-  if (f.whatif && available.includes("whatif")) allowed.push("whatif");
-  if (f.actuals && available.includes("actuals")) allowed.push("actuals");
+  const allowed = SHARE_INPUTS.filter((k) => f[k] && available.includes(k));
   const body: DashboardShareCreate = { expires_in_days: f.days, allowed_inputs: allowed };
   if (f.label.trim()) body.label = f.label.trim();
   if (f.passcode) body.passcode = f.passcode;
