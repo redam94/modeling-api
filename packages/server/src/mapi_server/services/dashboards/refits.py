@@ -27,7 +27,7 @@ import logging
 from collections.abc import Sequence
 from typing import Any, Final
 
-from mapi_spec.api import Page, new_id
+from mapi_spec.api import new_id
 from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
 from mapi_spec.dashboards import DashboardRefitRequest, RefitRequestDecision
 from mapi_spec.endpoints import EndpointSchemaSnapshot
@@ -175,12 +175,6 @@ async def list_requests(
         ).scalars()
     )
     return rows[:limit], len(rows) > limit
-
-
-def page_of(
-    rows: Sequence[m.DashboardRefitRequest], cursor: str | None
-) -> Page[DashboardRefitRequest]:
-    return Page[DashboardRefitRequest](items=[refit_dto(r) for r in rows], next_cursor=cursor)
 
 
 # ================================================================================== decisions
