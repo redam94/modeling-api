@@ -456,6 +456,8 @@ class DLImageModel[S: ImageSettings](CustomModel[S]):
             "dims": [CLASS],
             "dims_of": "label",
             "units": "1",
+            "meaning": "class_probability",
+            "classes_dim": CLASS,
             "description": "Probability of each class per image (sums to 1 over class)",
         }
     }

@@ -161,6 +161,7 @@ class CausalImpactModel(CausalBase, CustomModel[ImpactSettings]):
         "effect": {
             "dims": [TIME],
             "units_of": TARGET,
+            "meaning": "effect",
             "description": "The effect of the intervention: y minus what y would be without it",
         },
     }
