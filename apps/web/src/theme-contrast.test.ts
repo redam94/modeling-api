@@ -2,7 +2,10 @@
  * WCAG 2.1 AA contrast for the theme tokens in app.css, in both themes:
  * - status text (Badge `text-xs`, banners) needs 4.5:1, on its tinted badge background as well
  *   as on the card and the page background;
- * - form field borders (`--input`) are non-text UI and need 3:1 against what they sit on.
+ * - form field borders (`--input`), the focus ring and chart series are non-text UI and need 3:1
+ *   against what they sit on;
+ * - every foreground / background pair the primitives use (primary buttons, accent, tooltips,
+ *   destructive fills, hint text) needs 4.5:1.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -50,7 +53,13 @@ describe.each([
   const surfaces: [string, Rgb][] = [
     ["card", rgb(t.card!)],
     ["background", rgb(t.background!)],
+    ["popover", rgb(t.popover!)],
   ];
+  const on = (fg: string, bg: string) => contrast(rgb(t[fg]!), rgb(t[bg]!));
+
+  it("parses the whole block (a format slip fails loudly)", () => {
+    expect(Object.keys(t).length).toBeGreaterThanOrEqual(40);
+  });
 
   it.each(STATUS_BADGES)("--%s text reads at 4.5:1 on its badge, the card and the page", (token, alpha) => {
     const fg = rgb(t[token]!);
@@ -67,9 +76,42 @@ describe.each([
     }
   });
 
-  it("--input borders reach 3:1 against the card and the page", () => {
+  it("--input borders reach 3:1 against the card, the page and muted", () => {
     for (const [name, surface] of surfaces) {
       expect(contrast(rgb(t.input!), surface), name).toBeGreaterThanOrEqual(3);
     }
+    expect(on("input", "muted"), "muted").toBeGreaterThanOrEqual(3);
   });
+
+  it("--primary reads as link text at 4.5:1 on the card and the page", () => {
+    expect(on("primary", "card")).toBeGreaterThanOrEqual(4.5);
+    expect(on("primary", "background")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("--hint reads at 4.5:1 on the card, the page and muted", () => {
+    for (const bg of ["card", "background", "muted"]) {
+      expect(on("hint", bg), bg).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it.each([
+    ["primary-foreground", "primary"],
+    ["accent-foreground", "accent"],
+    ["tooltip-foreground", "tooltip"],
+    ["destructive-foreground", "destructive"],
+  ])("--%s reads at 4.5:1 on --%s", (fg, bg) => {
+    expect(on(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("--ring reaches 3:1 against the card and the page", () => {
+    expect(on("ring", "card")).toBeGreaterThanOrEqual(3);
+    expect(on("ring", "background")).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(["series-1", "series-2", "series-3", "series-4", "series-5", "series-6", "series-7", "series-8", "chart-index"])(
+    "--%s reaches 3:1 against the card",
+    (token) => {
+      expect(on(token, "card")).toBeGreaterThanOrEqual(3);
+    },
+  );
 });
