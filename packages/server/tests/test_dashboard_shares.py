@@ -274,6 +274,33 @@ async def test_the_address_limit_counts_before_the_token_is_read(
         ctx.settings.rate_limits_enabled = False
 
 
+async def test_input_bodies_are_capped_before_they_are_parsed(
+    client: httpx.AsyncClient, kit: dict[str, Any]
+) -> None:
+    """No session, no token: an oversized or deeply nested body is refused (413 / 422)
+    before FastAPI reads it into a model, on the public and the member routes."""
+    from mapi_server.api.shares import ACTUALS_BODY_MAX_BYTES, INPUT_BODY_MAX_BYTES
+
+    big = b'{"multipliers": {"tv": 1.0}, "label": "' + b"x" * INPUT_BODY_MAX_BYTES + b'"}'
+    for path in ("/v1/shared/scenarios", "/v1/shared/whatif:evaluate",
+                 f"/v1/dashboards/{kit['dash_id']}/scenarios"):  # fmt: skip
+        r = await client.post(path, content=big, headers={"content-type": "application/json"})
+        assert r.status_code == 413 and r.json()["code"] == "PAYLOAD_TOO_LARGE", (path, r.text)
+    huge = b'{"inputs": "' + b"x" * (ACTUALS_BODY_MAX_BYTES + 1) + b'"}'
+    r = await client.post(
+        "/v1/shared/actuals", content=huge, headers={"content-type": "application/json"}
+    )
+    assert r.status_code == 413 and r.json()["code"] == "PAYLOAD_TOO_LARGE"
+    deep = b"[" * 200 + b"]" * 200
+    r = await client.post(
+        "/v1/shared/actuals", content=deep, headers={"content-type": "application/json"}
+    )
+    assert r.status_code == 422 and r.json()["code"] == "SCHEMA_INVALID"
+    # a small body still reaches the session check
+    r = await client.post("/v1/shared/scenarios", json={"multipliers": {"tv": 1.0}})
+    assert r.status_code == 401
+
+
 async def test_cors_allows_the_web_origin_without_credentials(
     client: httpx.AsyncClient, kit: dict[str, Any]
 ) -> None:

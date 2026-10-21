@@ -37,6 +37,7 @@ from mapi_spec.dashboards import (
     WhatIfResult,
 )
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.xrjson import MAX_XRJSON_BYTES
 
 from mapi_server.api.common import Auth, Ctx, IdempotencyKeyHeader
 from mapi_server.api.dashboard_readouts import PreferHeader, save_scenario_as, submit_actuals_as
@@ -52,12 +53,31 @@ from mapi_server.services.dashboards.shares import (
 )
 from mapi_server.services.dashboards.tools import call_tool
 
-__all__ = ["SESSION_BODY_MAX_BYTES", "router"]
+__all__ = [
+    "ACTUALS_BODY_MAX_BYTES",
+    "ACTUALS_BODY_PATHS",
+    "INPUT_BODY_MAX_BYTES",
+    "INPUT_BODY_PATHS",
+    "SESSION_BODY_MAX_BYTES",
+    "router",
+]
 
 router = APIRouter(tags=["dashboards"])
 
 SESSION_BODY_MAX_BYTES: Final = 4096
 """A session exchange is a token and a passcode: anything larger is refused unread."""
+INPUT_BODY_MAX_BYTES: Final = 16 * 1024
+"""What-ifs and saved scenarios: at most 40 channel multipliers and a label."""
+INPUT_BODY_PATHS: Final = (
+    r"/v1/shared/(?:whatif:evaluate|scenarios)",
+    r"/v1/dashboards/[^/]+/(?:whatif:evaluate|scenarios)",
+)
+ACTUALS_BODY_MAX_BYTES: Final = MAX_XRJSON_BYTES * 2
+"""An actuals upload: one inline XrJSON payload (as sent, with its whitespace)."""
+ACTUALS_BODY_PATHS: Final = (r"/v1/shared/actuals", r"/v1/dashboards/[^/]+/actuals")
+"""The public share routes are anonymous: :class:`~mapi_server.api.problems.JsonBodyLimit`
+caps and depth-checks these bodies before FastAPI reads and validates them (that happens
+before the handler, so before the session check and the per-address limit)."""
 
 ShareHeader = Annotated[
     str | None, Header(alias=SHARE_SESSION_HEADER, max_length=512, include_in_schema=True)

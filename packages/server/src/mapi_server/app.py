@@ -400,6 +400,14 @@ def create_app(
         paths=endpoints.SCORE_BODY_PATHS,
         max_bytes=endpoints.SCORE_BODY_MAX_BYTES,
     )
+    # dashboard inputs (v0.16): the share routes are public, so their bodies are capped and
+    # depth-checked before FastAPI parses them (and before the session check)
+    app.add_middleware(
+        JsonBodyLimit, paths=shares.INPUT_BODY_PATHS, max_bytes=shares.INPUT_BODY_MAX_BYTES
+    )
+    app.add_middleware(
+        JsonBodyLimit, paths=shares.ACTUALS_BODY_PATHS, max_bytes=shares.ACTUALS_BODY_MAX_BYTES
+    )
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
