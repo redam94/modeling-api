@@ -7,15 +7,11 @@
  * Links and redirects use `href` strings: the app's typed route register is the main router's.
  */
 import { createBrowserHistory, createRootRoute, createRoute, createRouter, Outlet, useRouter, type RouterHistory } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { useProjectScope } from "@/api/queries";
-
-import { useMemberClient } from "../api";
-import { dk } from "../keys";
+import { useDashboards, useMemberClient } from "../api";
 import { ReadoutPage } from "../readout/readout-page";
-import { TAB_KEYS, type DashboardSummary, type TabKey } from "../types";
+import { TAB_KEYS, type TabKey } from "../types";
 import { ClientShell } from "./client-shell";
 import { DashboardList } from "./dashboard-list";
 
@@ -32,8 +28,9 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[]): T | undefin
 
 /** The client name for the header: the one every shared dashboard names, if they agree. */
 function useClientName(): string | null {
-  const s = useProjectScope();
-  const q = useQuery<{ items?: DashboardSummary[] }>({ queryKey: dk.list(s.key, { status: "published" }), enabled: false });
+  // The portal's own list query (shared cache): an observer of that key without a queryFn
+  // made TanStack Query log "No queryFn was passed" whenever the list refetched.
+  const q = useDashboards({ status: "published" });
   const names = new Set((q.data?.items ?? []).map((d) => d.client_name).filter((n): n is string => Boolean(n)));
   return names.size === 1 ? ([...names][0] ?? null) : null;
 }

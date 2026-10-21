@@ -240,6 +240,29 @@ describe("Update numbers checks", () => {
     const noDate = actualsChecks(template, [[null, null, null], [null, 5, 1]]).filter((c) => !c.ok).map((c) => c.text);
     expect(noDate).toEqual(["Row 2 has no date."]);
   });
+
+  it("takes a long table's week x channel rows as distinct, not as repeated weeks", () => {
+    // The template of an MMM with a channel dim: one row per week and channel.
+    const mmm: ActualsTemplate = {
+      ...template,
+      kpi_column: "y",
+      input_table: {
+        horizon_dim: "time",
+        columns: [
+          { name: "time", role: "coord", dims: [], freq: "W-SUN" },
+          { name: "channel", role: "coord", dims: [] },
+          { name: "y", role: "target", dims: ["time"] },
+          { name: "spend", role: "driver", dims: ["channel", "time"] },
+        ],
+      },
+    };
+    const rows = [["2024-01-14", "tv", 6200, 1000], ["2024-01-14", "search", 6200, 800]];
+    const checks = actualsChecks(mmm, rows);
+    expect(checksPass(checks)).toBe(true);
+    expect(checks.at(-1)?.text).toBe("Each row has its own time and channel.");
+    const twice = actualsChecks(mmm, [...rows, ["2024-01-14", "tv", 6200, 900]]).filter((c) => !c.ok).map((c) => c.text);
+    expect(twice).toEqual(["The time 2024-01-14, channel tv occurs two times."]);
+  });
 });
 
 describe("summary CSV", () => {

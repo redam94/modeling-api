@@ -26,12 +26,13 @@ export function Section({
 }: Omit<React.ComponentProps<"section">, "title"> & { title: string; description?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <Card className={cn("min-w-0", className)} {...props}>
-      <CardHeader>
-        <div className="grid min-w-0 gap-1">
+      {/* On a phone the action wraps under the title instead of pushing the card wider. */}
+      <CardHeader className="flex-wrap">
+        <div className="grid min-w-0 flex-1 basis-64 gap-1">
           <CardTitle>{title}</CardTitle>
           {description ? <CardDescription className="text-sm text-muted-foreground">{description}</CardDescription> : null}
         </div>
-        {action ? <div className="flex-none">{action}</div> : null}
+        {action ? <div className="max-w-full min-w-0 flex-none">{action}</div> : null}
       </CardHeader>
       <CardContent className="grid min-w-0 gap-4">{children}</CardContent>
     </Card>

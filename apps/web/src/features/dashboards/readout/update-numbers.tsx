@@ -48,7 +48,7 @@ function RowsEditor({ template, rows, onChange, disabled }: { template: ActualsT
   };
   return (
     <div className="grid gap-2">
-      <div className="max-w-full overflow-x-auto rounded-lg border" data-slot="scroll-x">
+      <div className="relative max-w-full overflow-x-auto rounded-lg border" data-slot="scroll-x">
         <table className="w-max min-w-full border-collapse text-sm">
           <caption className="sr-only">Your numbers, one row a period</caption>
           <thead>

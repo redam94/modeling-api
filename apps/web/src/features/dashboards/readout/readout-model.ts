@@ -656,12 +656,17 @@ export function actualsChecks(t: Pick<ActualsTemplate, "input_table" | "kpi_colu
     const missing = labels.findIndex((v) => v === null || v === "");
     const freq = cols[dimAt]?.freq;
     const bad = freq ? labels.findIndex((v) => v !== null && v !== "" && !isDateLike(v)) : -1;
-    const keys = labels.map((v) => String(v));
+    // A row is one combination of the coordinate columns: a long table (an MMM's week x
+    // channel) repeats each period once per channel, which is not a duplicate.
+    const coordAt = cols.map((c, j) => (c.role === "coord" ? j : -1)).filter((j) => j >= 0);
+    const others = coordAt.filter((j) => j !== dimAt);
+    const keys = filled.map((r) => JSON.stringify(coordAt.map((j) => String(r[j] ?? ""))));
     const dup = keys.findIndex((k, i) => keys.indexOf(k) !== i);
+    const what = (i: number) => [`${dim} ${String(labels[i])}`, ...others.map((j) => `${cols[j]?.name} ${String(filled[i]?.[j] ?? "")}`)].join(", ");
     if (missing >= 0) checks.push({ ok: false, text: `Row ${rowNo(missing)} has no ${dim}.` });
     else if (bad >= 0) checks.push({ ok: false, text: `Row ${rowNo(bad)}: write the ${dim} as yyyy-MM-dd.` });
-    else if (dup >= 0) checks.push({ ok: false, text: `The ${dim} ${keys[dup]} occurs two times.` });
-    else checks.push({ ok: true, text: `Each row has its own ${dim}.` });
+    else if (dup >= 0) checks.push({ ok: false, text: `The ${what(dup)} occurs two times.` });
+    else checks.push({ ok: true, text: others.length ? `Each row has its own ${[dim, ...others.map((j) => cols[j]?.name)].join(" and ")}.` : `Each row has its own ${dim}.` });
   }
   return checks;
 }
