@@ -420,3 +420,29 @@ async def test_an_exact_result_needs_a_spend_input_per_channel(
         with pytest.raises(MapiError) as err:
             await REAL_EXACT(ctx, s, rev, mv, {"tv": 0.8})
     assert err.value.code.value == "DASHBOARD_INPUT_DISABLED"
+
+
+@pytest.mark.parametrize(
+    ("representation", "summary"),
+    [
+        (None, ["mean", "hdi_90"]),
+        ("draws", ["mean", "hdi_90"]),
+        ("quantiles", ["median", "eti_90"]),  # statsmodels forecasts
+        ("moments", ["mean", "eti_90"]),
+        ("interval", ["point", "interval"]),
+        ("point", ["mean"]),
+    ],
+)
+def test_readouts_ask_for_summaries_the_representation_allows(
+    representation: str | None, summary: list[str]
+) -> None:
+    """A ``quantiles`` model cannot give a mean or an HDI: asking for them failed every
+    baseline, refresh and actuals readout of a statsmodels forecast dashboard."""
+    from mapi_spec.capabilities import Representation, summary_allowed
+
+    out = inputs.readout_output(representation)
+    assert out.summary == summary
+    rep = Representation(representation or "draws")
+    assert all(summary_allowed(rep, s) for s in out.summary)
+    req = inputs.baseline_request("model://default/trend@v1", "dataset://default/co2@v1", rep)
+    assert req.output.summary == summary

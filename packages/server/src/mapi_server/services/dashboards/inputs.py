@@ -34,6 +34,7 @@ from datetime import datetime, timedelta
 from typing import Any, Final
 
 from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
+from mapi_spec.capabilities import OutputSelector, Representation, summary_allowed
 from mapi_spec.dashboards import (
     MAX_ACTUALS_COLS,
     MAX_ACTUALS_ROWS,
@@ -413,9 +414,33 @@ async def _submit(
     return run
 
 
-def baseline_request(model_ref: str, data: str) -> ScoreRequest:
+def readout_output(representation: Representation | str | None) -> OutputSelector:
+    """The summaries a readout asks for: the mean and 90 % HDI of joint draws, else the
+    centre and band the model's representation allows (a ``quantiles`` forecast, e.g.
+    statsmodels: median and 90 % equal-tailed interval). The readout reads either."""
+    try:
+        rep = Representation(representation) if representation else Representation.DRAWS
+    except ValueError:
+        rep = Representation.DRAWS
+    if rep is Representation.DRAWS:
+        return DEFAULT_GUIDED_OUTPUT
+    centre = next((s for s in ("mean", "median", "point") if summary_allowed(rep, s)), None)
+    band = next((s for s in ("hdi_90", "eti_90", "interval") if summary_allowed(rep, s)), None)
+    return DEFAULT_GUIDED_OUTPUT.model_copy(
+        update={"summary": [s for s in (centre, band) if s is not None]}
+    )
+
+
+def _representation(mv: m.ModelVersion) -> str | None:
+    rep = (mv.capabilities or {}).get("representation")
+    return rep if isinstance(rep, str) else None
+
+
+def baseline_request(
+    model_ref: str, data: str, representation: Representation | str | None = None
+) -> ScoreRequest:
     """The standing request of a baseline or refresh readout: the expected KPI over the
-    fitted data (mean and 90 % interval, no draws)."""
+    fitted data (centre and 90 % interval, no draws; see :func:`readout_output`)."""
     return ScoreRequest.model_validate(
         {
             "apiVersion": API_VERSION,
@@ -423,7 +448,7 @@ def baseline_request(model_ref: str, data: str) -> ScoreRequest:
             "model": model_ref,
             "mode": "predict",
             "data": data,
-            "output": DEFAULT_GUIDED_OUTPUT.model_dump(exclude_defaults=True),
+            "output": readout_output(representation).model_dump(exclude_defaults=True),
         }
     )
 
@@ -481,7 +506,8 @@ async def submit_queued(ctx: ServerContext, session: AsyncSession, row: m.Dashbo
         octx = await owner_context(ctx, session, dash)
         async with session.begin_nested():
             data = await fit_dataset_ref(session, mv)
-            await _submit(session, octx, row, baseline_request(row.model_ref, data))
+            request = baseline_request(row.model_ref, data, _representation(mv))
+            await _submit(session, octx, row, request)
     except MapiError as exc:
         row.status = "failed"
         row.problem = exc.to_problem().model_dump(mode="json", exclude_none=True)
@@ -626,7 +652,7 @@ def _actuals_call(
     payload: XrJsonDataset, snapshot: EndpointSchemaSnapshot, mode: str, kpi: str,
     hdim: str | None,
 ) -> EndpointScoreCall:  # fmt: skip
-    output = DEFAULT_GUIDED_OUTPUT
+    output = readout_output(snapshot.representation)
     if mode == "conditioned" and hdim is not None:
         labels = payload.coords[hdim].data if hdim in payload.coords else []
         n = len(labels) if isinstance(labels, list) else 0
