@@ -362,7 +362,7 @@ def test_every_operation_has_route_access_and_a_real_permission() -> None:
             assert e.path.startswith("/v1/tenants/{tenant_id}"), e.path
         if acc.scope is RouteScope.PUBLIC:
             assert e.path in ("/healthz", "/readyz", "/v1/schemas/{name}") or e.path.startswith(
-                ("/auth/", "/v1/embeds/")
+                ("/auth/", "/v1/embeds/", "/v1/shared/", "/v1/share-sessions")
             ), e.path
         if acc.scope is RouteScope.PROJECT and acc.resource is not None:
             rule = PERMISSIONS[(acc.resource, acc.action)]  # type: ignore[index]

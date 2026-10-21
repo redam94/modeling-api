@@ -71,7 +71,7 @@ function PlotCard({ plot, onOpen }: { plot: PlotCatalogEntry; onOpen: () => void
       aria-label={`${title}: ${summary}`}
       data-testid="plot-card"
       data-plot={plot.id}
-      className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-[0_1px_0_0_rgb(0_0_0/0.03)] transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card text-left transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <div className="border-b bg-muted/20 p-2">
         <PlotExample id={plot.id} version={plot.version ?? "1.0.0"} title={title} height={190} preview />
@@ -79,19 +79,19 @@ function PlotCard({ plot, onOpen }: { plot: PlotCatalogEntry; onOpen: () => void
       <span className="flex flex-1 flex-col gap-2 p-4">
         <span className="flex flex-wrap items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className="block text-[11px] font-medium text-muted-foreground">{PACK_LABEL[plotPack(plot.id)] ?? plotPack(plot.id)}</span>
+            <span className="block text-xs font-medium text-muted-foreground">{PACK_LABEL[plotPack(plot.id)] ?? plotPack(plot.id)}</span>
             <span className="block font-semibold tracking-tight">{title}</span>
           </span>
           {plot.about ? <DifficultyBadge difficulty={plot.about.difficulty} /> : null}
         </span>
-        {summary ? <span className="line-clamp-3 text-[13px] text-muted-foreground">{summary}</span> : null}
+        {summary ? <span className="line-clamp-3 text-sm text-muted-foreground">{summary}</span> : null}
         <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
           {(plot.requires_groups ?? []).map((g) => (
             <Badge key={g} variant="outline" className="font-mono text-[10px]">
               {g}
             </Badge>
           ))}
-          <span className="truncate font-mono text-[11px] text-muted-foreground">{plot.id}</span>
+          <span className="truncate font-mono text-xs text-muted-foreground">{plot.id}</span>
         </span>
       </span>
     </button>
@@ -128,7 +128,7 @@ export function PlotDetail({ plot, onClose }: { plot: PlotCatalogEntry; onClose:
         ) : (
           example
         )}
-        <h3 className="text-[13px] font-semibold">Technical details</h3>
+        <h3 className="text-sm font-semibold">Technical details</h3>
         {technical}
       </DialogContent>
     </Dialog>

@@ -54,7 +54,7 @@ function InputSheetHelp({ endpoint }: { endpoint: Endpoint }) {
     .join("")}InputSheet`;
   return (
     <div role="group" className="grid gap-2 rounded-md border bg-muted/30 p-2.5" aria-label="Input sheet">
-      <p className="text-[13px] font-medium">The Input sheet: {table.conditions_on_actuals ? "your latest actuals and the dates to forecast" : "the dates to forecast"}</p>
+      <p className="text-sm font-medium">The Input sheet: {table.conditions_on_actuals ? "your latest actuals and the dates to forecast" : "the dates to forecast"}</p>
       <InputTablePreview table={table} maxRows={4} />
       <p className="text-xs text-muted-foreground">
         {actualsHint(table)} Type dates as yyyy-MM-dd. Run <Mono>{fn}()</Mono> one time to create the sheet with the periods after the fit.
@@ -68,7 +68,7 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
   const script = snippets.data?.items?.find((s) => s.language === "apps_script");
   return (
     <div className="grid gap-3">
-      <ol className="grid list-decimal gap-1 pl-5 text-[13px]">
+      <ol className="grid list-decimal gap-1 pl-5 text-sm">
         <li>
           <Link to="/tokens" search={{ preset: `score:${endpoint.alias}` }} className="text-primary hover:underline">
             Create a token
@@ -87,7 +87,7 @@ function SheetsSteps({ endpoint }: { endpoint: Endpoint }) {
         </li>
       </ol>
       <InputSheetHelp endpoint={endpoint} />
-      {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-[13px] text-muted-foreground">This endpoint has no Apps Script snippet.</p>}
+      {snippets.isPending ? <LoadingRows rows={2} /> : script ? <CodeBlock code={script.code} label="Apps Script" language="apps_script" /> : <p className="text-sm text-muted-foreground">This endpoint has no Apps Script snippet.</p>}
     </div>
   );
 }
@@ -116,7 +116,7 @@ function SheetsCard({ goTo }: { goTo: (tab: HubTab) => void }) {
         </>
       ) : (
         <>
-          <p className="text-[13px] text-muted-foreground">A sheet calls an endpoint. An endpoint is a stable name for one fitted model. Promote a model first.</p>
+          <p className="text-sm text-muted-foreground">A sheet calls an endpoint. An endpoint is a stable name for one fitted model. Promote a model first.</p>
           <Button variant="outline" size="sm" className="w-fit" onClick={() => goTo("endpoints")}>
             Set up an endpoint <ArrowRight />
           </Button>
@@ -150,7 +150,7 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
               ))}
             </NativeSelect>
           </Field>
-          <p className="text-[13px] text-muted-foreground">The link expires after 30 days (the default). You can revoke it at any time. Paste it as an embed or iframe URL.</p>
+          <p className="text-sm text-muted-foreground">The link expires after 30 days (the default). You can revoke it at any time. Paste it as an embed or iframe URL.</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={!canEmbed} onClick={() => setSharing(chosen)}>
               <Share2 /> Create embed link
@@ -162,7 +162,7 @@ function BiCard({ goTo }: { goTo: (tab: HubTab) => void }) {
         </>
       ) : (
         <>
-          <p className="text-[13px] text-muted-foreground">Save a plot from a fitted model first. You can share plots of the platform recipes by link.</p>
+          <p className="text-sm text-muted-foreground">Save a plot from a fitted model first. You can share plots of the platform recipes by link.</p>
           <Button variant="outline" size="sm" className="w-fit" onClick={() => goTo("sharing")}>
             Save a model plot <ArrowRight />
           </Button>
@@ -191,7 +191,7 @@ function WebhookCard({ goTo }: { goTo: (tab: HubTab) => void }) {
   const [created, setCreated] = useState<WebhookCreated | null>(null);
   return (
     <GuidedCard icon={<WebhookIcon />} title="Webhook" description="Get a signed call in your own system when a model is ready or a run fails.">
-      <p className="text-[13px] text-muted-foreground">Use the URL of a Zapier or Make hook, a Slack workflow or your pipeline. The platform signs each delivery, tries it again if it fails and records it in a log.</p>
+      <p className="text-sm text-muted-foreground">Use the URL of a Zapier or Make hook, a Slack workflow or your pipeline. The platform signs each delivery, tries it again if it fails and records it in a log.</p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={!canCreate} title={canCreate ? undefined : "Only project admins can set up webhooks."} onClick={() => setCreating(true)}>
           <WebhookIcon /> Set up a webhook
@@ -221,7 +221,7 @@ function ExpertLink({ icon, title, children, action }: { icon: ReactNode; title:
       <span className="pt-0.5 text-muted-foreground [&_svg]:size-4">{icon}</span>
       <div className="min-w-0">
         <p className="font-medium">{title}</p>
-        <p className="text-[13px] text-muted-foreground">{children}</p>
+        <p className="text-sm text-muted-foreground">{children}</p>
       </div>
       <div className="col-start-2 sm:col-start-3">{action}</div>
     </li>
@@ -232,7 +232,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
   return (
     <div className="grid gap-8">
       <section aria-labelledby="guided-cards" className="grid gap-3">
-        <h2 id="guided-cards" className="text-[15px] font-semibold">
+        <h2 id="guided-cards" className="text-lg font-semibold">
           Connect in a few steps
         </h2>
         <div className="grid items-start gap-4 lg:grid-cols-3">
@@ -242,7 +242,7 @@ export function IntegrationsOverview({ goTo }: { goTo: (tab: HubTab) => void }) 
         </div>
       </section>
       <section aria-labelledby="expert-links" className="grid gap-3">
-        <h2 id="expert-links" className="text-[15px] font-semibold">
+        <h2 id="expert-links" className="text-lg font-semibold">
           For developers
         </h2>
         <ul className="grid gap-2">

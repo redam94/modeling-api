@@ -49,7 +49,7 @@ import pandas as pd
 import xarray as xr
 from pydantic import Field, field_validator
 
-from mapi_plots.palette import BAND, ESTIMATE, MUTED, OBSERVED
+from mapi_plots.palette import BAND, ESTIMATE, MUTED, OBSERVED, band_opacity
 from mapi_plots.recipes._base import (
     Figure,
     Recipe,
@@ -1167,7 +1167,7 @@ def profile_bands(inp: RecipeInput, s: ProfileBandsSettings) -> Figure:
             fill = {
                 "fill": "tonexty",
                 "fillcolor": BAND if single else colour,
-                "opacity": round(0.16 + 0.12 * j, 3),
+                "opacity": band_opacity(j, len(s.levels)),
             }
             for col, extra in ((lo_c, {}), (hi_c, fill)):
                 traces.append(
@@ -1358,10 +1358,12 @@ def ensemble(inp: RecipeInput, s: EnsembleSettings) -> Figure:
         cols["observed"] = np.asarray(obs.values, dtype=np.float32)
     summary = pd.DataFrame(cols)
     traces: list[dict[str, Any]] = []
-    for j, (_lv, lo_c, hi_c) in enumerate(interval_columns(s.levels)):
+    bands = interval_columns(s.levels)
+    for j, (_lv, lo_c, hi_c) in enumerate(bands):
+        opacity = band_opacity(j, len(bands))
         for col, extra in (
             (lo_c, {}),
-            (hi_c, {"fill": "tonexty", "fillcolor": BAND, "opacity": round(0.14 + 0.1 * j, 3)}),
+            (hi_c, {"fill": "tonexty", "fillcolor": BAND, "opacity": opacity}),
         ):
             traces.append(
                 {
@@ -1382,7 +1384,7 @@ def ensemble(inp: RecipeInput, s: EnsembleSettings) -> Figure:
             "name": "draws",
             "x": {"$ref": "spaghetti.x"},
             "y": {"$ref": "spaghetti.y"},
-            "line": {"color": BAND, "width": 1},
+            "line": {"color": ESTIMATE, "width": 1},
             "opacity": 0.35 if len(picks) > 10 else 0.6,
             "hoverinfo": "skip",
             "showlegend": False,

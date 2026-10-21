@@ -519,6 +519,10 @@ class WorkflowOrchestrator:
 
     async def _finished(self, env: _Env, status: WorkflowRunStatus) -> None:
         wr = env.wr
+        if status is not WorkflowRunStatus.SUCCEEDED:  # v0.16: a refit it ran has failed
+            from mapi_server.services.dashboards.refits import on_workflow_ended
+
+            await on_workflow_ended(env.session, wr)
         if status is WorkflowRunStatus.CANCELLED:
             return
         event = (
@@ -545,6 +549,10 @@ class WorkflowOrchestrator:
             event_type=event,
             data=data,
         )
+        if status is WorkflowRunStatus.SUCCEEDED:  # v0.16: linked dashboards get a readout
+            from mapi_server.services.dashboards.readouts import on_workflow_succeeded
+
+            await on_workflow_succeeded(env.session, wr)
 
     # --------------------------------------------------------------------------- start
     async def _start(self, env: _Env, action: Action) -> None:

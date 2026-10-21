@@ -45,13 +45,19 @@ Releases v0.10 to v0.15 add:
   stopping, checkpoints and draws, image collections of up to a million images with resumable
   uploads, pretrained weights as datasets, and a GPU resource class.
 
+v0.16 adds **client dashboards**: analysts publish a dashboard from a model or an endpoint,
+client users (the new `client` role) see only the dashboards granted to them, and other
+persons open revocable share links with an expiry and an optional passcode. Clients try other
+spend, upload new numbers and ask for a refit, and each dashboard keeps a history of
+readouts. The web app has a new MEI / ODS look in light and dark.
+
 The built-in catalog has 50 models: marketing mix (mmm-framework), statsmodels and Bayesian time
 series, causal models, tabular and classification models (scikit-learn, xgboost, LightGBM,
 CatBoost, hierarchical GLMs), customer choice, science models and neural networks. The
 documentation (`make docs-serve`) starts at `docs/index.md`. See
-`docs/whats-new-0.15.md` for the details of v0.10 to v0.15.
+`docs/whats-new-0.16.md` and `docs/whats-new-0.15.md` for the details of v0.10 to v0.16.
 
-> Status: under active development. The latest release is v0.15.1 (Docs refresh for 0.10 to 0.15). See [CHANGELOG.md](CHANGELOG.md).
+> Status: under active development. The latest release is v0.16.0 (Client dashboards and a new look). See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 

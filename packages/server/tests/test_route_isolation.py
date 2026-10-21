@@ -48,6 +48,7 @@ _VALUES = {
     "name": "x",
     "path": "x.json",
     "alias": "x",
+    "seq": "1",
 }
 SELF_AUTHENTICATED = frozenset({"ingest_event", "metrics"})
 
@@ -107,3 +108,27 @@ async def test_no_route_serves_another_tenants_project(
             )
         checked += 1
     assert checked > 40
+
+
+async def test_share_routes_take_no_credential_and_need_a_share_session(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """v0.16: the public share-link routes ignore cookies and tokens; without a share
+    session (``X-Mapi-Share``) they answer 401, and an exchange without a valid token 404."""
+    await make_tenant(ctx, "alpha")
+    ana = await make_user(ctx, "ana@alpha.test")
+    await grant_role(ctx, ana, "alpha", None, "admin")
+    signed_in = (await session_caller(ctx, client, ana)).in_project("alpha", "main")
+    checked = 0
+    for op, method, path in _routes(_app(ctx.settings, ctx)):
+        if not path.startswith(("/v1/shared/", "/v1/share-sessions")):
+            continue
+        assert access_for(op).scope is RouteScope.PUBLIC, op
+        r = await signed_in.request(method, path, json={})
+        want = {404} if op == "create_share_session" else {401}
+        if op == "submit_shared_actuals":  # its body is validated first
+            want.add(422)
+        assert r.status_code in want, f"{method} {path} ({op}) -> {r.status_code} {r.text}"
+        assert r.headers["cache-control"] == "private, no-store"
+        checked += 1
+    assert checked == 10

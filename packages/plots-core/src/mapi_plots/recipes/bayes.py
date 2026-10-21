@@ -18,7 +18,7 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field
 
-from mapi_plots.palette import ALERT, BAND, OK, REFERENCE
+from mapi_plots.palette import ALERT, ESTIMATE, OK, REFERENCE
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -131,7 +131,7 @@ def energy(inp: RecipeInput, s: EnergySettings) -> Figure:
                 "kind:N",
                 title=None,
                 sort=kinds,
-                scale=alt.Scale(domain=kinds, range=[REFERENCE, BAND]),
+                scale=alt.Scale(domain=kinds, range=[REFERENCE, ESTIMATE]),
             ),
             tooltip=[
                 "kind:N",
@@ -304,7 +304,7 @@ def prior_posterior(inp: RecipeInput, s: PriorPosteriorSettings) -> Figure:
                 "group:N",
                 title=None,
                 sort=groups,
-                scale=alt.Scale(domain=groups, range=[REFERENCE, BAND]),
+                scale=alt.Scale(domain=groups, range=[REFERENCE, ESTIMATE]),
             ),
             tooltip=["parameter:N", "group:N", alt.Tooltip("overlap:Q", format=".0%")],
         )

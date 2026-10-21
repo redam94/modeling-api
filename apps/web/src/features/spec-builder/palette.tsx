@@ -126,7 +126,7 @@ export function SpecPalette({
       <div className="grid max-h-[calc(100svh-24rem)] min-w-0 grid-cols-[minmax(0,1fr)] gap-1 overflow-y-auto pr-1" role="list" aria-label="Palette items">
         {groups.map((g) => (
           <details key={g.key} open={Boolean(q) || g.key.startsWith("step:")} className="rounded-md" role="listitem">
-            <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-accent" title={g.hint}>
+            <summary className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent" title={g.hint}>
               <span aria-hidden className="size-2 rounded-full" style={{ background: KIND_COLOR[g.items[0]!.kind] }} />
               {g.title}
               <span className="ml-auto text-xs text-muted-foreground">{g.items.length}</span>
@@ -150,7 +150,7 @@ export function SpecPalette({
                       data-palette={key}
                       title={i.detail ?? i.title}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-accent",
+                        "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent",
                         picked === key && "bg-accent text-accent-foreground",
                         !disabled && "cursor-grab active:cursor-grabbing",
                       )}
@@ -163,11 +163,11 @@ export function SpecPalette({
             </ul>
           </details>
         ))}
-        {groups.length === 0 ? <p className="px-2 text-[13px] text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p> : null}
+        {groups.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{q ? `No item matches “${q}”. Type a different word.` : "The app gets the catalog…"}</p> : null}
       </div>
       {current ? (
         <div className="grid gap-2 rounded-lg border bg-card p-3">
-          <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
             {current.title}
             <Badge variant="outline" className="font-mono text-[10px]">
               {current.id}

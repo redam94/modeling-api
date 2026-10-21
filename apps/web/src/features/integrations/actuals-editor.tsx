@@ -118,7 +118,7 @@ export function ActualsEditor({ schema, onUse }: { schema: EndpointSchema; onUse
         <span className="font-medium">{table.conditions_on_actuals ? "Your latest actuals and the dates to forecast" : "The dates to forecast"}</span>
         <Badge variant={table.conditions_on_actuals ? "success" : "outline"}>{table.conditions_on_actuals ? "conditions on actuals" : "forecasts from the fit"}</Badge>
       </div>
-      <p className="text-[13px] text-muted-foreground">{actualsHint(table)}</p>
+      <p className="text-sm text-muted-foreground">{actualsHint(table)}</p>
       <Table aria-label="Actuals table" className="text-xs">
         <THead>
           <TR>
@@ -200,7 +200,7 @@ export function ActualsEditor({ schema, onUse }: { schema: EndpointSchema; onUse
         </Field>
       ) : null}
       {error ? (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -211,7 +211,7 @@ export function ActualsEditor({ schema, onUse }: { schema: EndpointSchema; onUse
 /** The answer's note: conditioned on actuals through …, or from the end of the fitted history. */
 export function ConditioningNote({ conditioning }: { conditioning: ForecastConditioning }) {
   return (
-    <div role="note" aria-label="What the forecast was conditioned on" className={cn("grid gap-1 rounded-md border p-2.5 text-[13px]", conditioning.conditioned ? "border-success/30 bg-success/6" : "bg-muted/40")}>
+    <div role="note" aria-label="What the forecast was conditioned on" className={cn("grid gap-1 rounded-md border p-2.5 text-sm", conditioning.conditioned ? "border-success/30 bg-success/6" : "bg-muted/40")}>
       <p className="flex flex-wrap items-center gap-2 font-medium">
         <CalendarClock className="size-4" /> {conditioningHeadline(conditioning)}
         {conditioning.revised ? <Badge variant="info">{conditioning.revised} revised</Badge> : null}

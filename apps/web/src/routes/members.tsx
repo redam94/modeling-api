@@ -231,11 +231,11 @@ function RoleLegend({ current }: { current: ProjectRole }) {
   return (
     <Card aria-label="What each role can do">
       <CardContent className="grid gap-3 pt-4">
-        <p className="text-[13px] font-medium">Roles</p>
+        <p className="text-sm font-medium">Roles</p>
         <ol className="grid gap-2.5">
           {ROLES.map((r) => (
             <li key={r} className="grid gap-0.5">
-              <span className="flex items-center gap-2 text-[13px] font-medium">
+              <span className="flex items-center gap-2 text-sm font-medium">
                 {ROLE_META[r].label}
                 {r === current ? <Badge variant="info">you</Badge> : null}
               </span>
@@ -279,12 +279,12 @@ function InviteDialog({ tenantId, projectId, where, onClose }: { tenantId: strin
             <Input id="inv-who" autoFocus autoComplete="off" placeholder="ana@example.com" value={who} onChange={(e) => setWho(e.target.value)} />
           </Field>
           <fieldset className="grid gap-2">
-            <legend className="mb-1 text-[13px] font-medium">Role</legend>
+            <legend className="mb-1 text-sm font-medium">Role</legend>
             {ROLES.map((r) => (
               <label key={r} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent/40", role === r && "border-primary/50 bg-accent/40")}>
                 <input type="radio" name="inv-role" value={r} checked={role === r} onChange={() => setRole(r)} className="mt-1 accent-[var(--primary)]" />
                 <span className="grid gap-0.5">
-                  <span className="text-[13px] font-medium">{ROLE_META[r].label}</span>
+                  <span className="text-sm font-medium">{ROLE_META[r].label}</span>
                   <span className="text-xs text-muted-foreground">{ROLE_META[r].description}</span>
                 </span>
               </label>

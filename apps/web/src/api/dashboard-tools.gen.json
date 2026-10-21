@@ -1,0 +1,6077 @@
+[
+  {
+    "description": "Get the dashboard: its title, KPI, channels, tabs, inputs and latest readout.",
+    "name": "get_dashboard",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "No arguments.",
+      "properties": {},
+      "title": "NoArgs",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActualsAccuracy": {
+          "description": "How close the model's predictions were to uploaded actuals (:func:`metrics_of`).\n\n``mape`` and ``band_hit_rate`` are percentages (as ``compare.ts``); ``bias`` is the mean of\npredicted − actual in KPI units (above 0: the model expected more).",
+          "properties": {
+            "band_hit_rate": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Band Hit Rate"
+            },
+            "bias": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bias"
+            },
+            "mape": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mape"
+            },
+            "n": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N",
+              "type": "integer"
+            }
+          },
+          "title": "ActualsAccuracy",
+          "type": "object"
+        },
+        "ChannelDef": {
+          "additionalProperties": false,
+          "description": "One media channel and the range its what-if slider covers (``1`` = the current plan).",
+          "examples": [
+            {
+              "label": "TV",
+              "max_mult": 1.5,
+              "min_mult": 0.5,
+              "name": "tv"
+            }
+          ],
+          "properties": {
+            "label": {
+              "maxLength": 60,
+              "minLength": 1,
+              "title": "Label",
+              "type": "string"
+            },
+            "max_mult": {
+              "default": 1.5,
+              "maximum": 5,
+              "title": "Max Mult",
+              "type": "number"
+            },
+            "min_mult": {
+              "default": 0.5,
+              "minimum": 0,
+              "title": "Min Mult",
+              "type": "number"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "step": {
+              "default": 0.05,
+              "exclusiveMinimum": 0,
+              "title": "Step",
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelDef",
+          "type": "object"
+        },
+        "ChannelReadout": {
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+          "properties": {
+            "contribution": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution"
+            },
+            "label": {
+              "maxLength": 60,
+              "title": "Label",
+              "type": "string"
+            },
+            "mroi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mroi"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "roi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi"
+            },
+            "roi_high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi High"
+            },
+            "roi_low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi Low"
+            },
+            "share": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of the media contribution, 0-1",
+              "title": "Share"
+            },
+            "spend": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelReadout",
+          "type": "object"
+        },
+        "EffectiveInputs": {
+          "description": "What the viewer may do: the published spec's inputs, narrowed by a share link's\n``allowed_inputs``. ``refit_requests``: an upload may ask for a refit.",
+          "properties": {
+            "actuals": {
+              "default": false,
+              "title": "Actuals",
+              "type": "boolean"
+            },
+            "actuals_mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "conditioned",
+                    "compared"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Actuals Mode"
+            },
+            "exact": {
+              "default": false,
+              "title": "Exact",
+              "type": "boolean"
+            },
+            "refit_requests": {
+              "default": false,
+              "title": "Refit Requests",
+              "type": "boolean"
+            },
+            "whatif": {
+              "default": false,
+              "title": "Whatif",
+              "type": "boolean"
+            }
+          },
+          "title": "EffectiveInputs",
+          "type": "object"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+          "enum": [
+            "SCHEMA_INVALID",
+            "SPEC_PARSE_ERROR",
+            "PAYLOAD_TOO_LARGE",
+            "UNSUPPORTED_API_VERSION",
+            "REF_UNRESOLVED",
+            "SETTINGS_INVALID",
+            "BINDING_INVALID",
+            "SPLIT_INVALID",
+            "LEAKAGE_RISK",
+            "DIM_POLICY_LOOSENED",
+            "SCHEMA_DYNAMIC",
+            "SIDE_TABLE_COVERAGE",
+            "PLOT_UNSAFE",
+            "UNSEEN_LEVELS",
+            "COORD_NOT_ALLOWED",
+            "HORIZON_EXCEEDS_FIT",
+            "MISSING_FUTURE_COVARIATE",
+            "NON_CONTIGUOUS_EXTENSION",
+            "CAPABILITY_UNSUPPORTED",
+            "RECURSIVE_UNSUPPORTED",
+            "MODE_NOT_SUPPORTED",
+            "QUOTA_EXCEEDED",
+            "RATE_LIMITED",
+            "UNAUTHENTICATED",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "CONFLICT",
+            "IDEMPOTENCY_CONFLICT",
+            "PRECONDITION_FAILED",
+            "USER_CODE_ERROR",
+            "RESOURCE_EXHAUSTED",
+            "INFRA_ERROR",
+            "INTEGRITY_FAILURE",
+            "TIMEOUT",
+            "SANDBOX_VIOLATION",
+            "CANCELLED",
+            "INTERNAL_ERROR",
+            "GUIDED_ANSWERS_INVALID",
+            "BUSINESS_PRIORS_INVALID",
+            "CALIBRATION_UNSUPPORTED",
+            "IMPORT_UNSUPPORTED",
+            "SCENARIO_OUT_OF_RANGE",
+            "PROMOTION_BLOCKED",
+            "OVERRIDE_REQUIRED",
+            "WEBHOOK_URL_BLOCKED",
+            "WEBHOOK_SIGNATURE_INVALID",
+            "EMBED_NOT_ALLOWED",
+            "LINK_EXPIRED",
+            "EMAIL_NOT_ALLOWED",
+            "TERMS_NOT_ACCEPTED",
+            "EMAIL_NOT_VERIFIED",
+            "IDENTITY_VERIFICATION_REQUIRED",
+            "ABOUT_INCOMPLETE",
+            "CHOOSER_ANSWER_INVALID",
+            "WORKFLOW_INVALID",
+            "EXPRESSION_INVALID",
+            "EXPRESSION_ERROR",
+            "NODE_UNKNOWN",
+            "SCHEDULE_INVALID",
+            "WORKFLOW_NOT_RUNNABLE",
+            "POLICY_INVALID",
+            "VALIDATION_TRANSITION_INVALID",
+            "SELF_APPROVAL_FORBIDDEN",
+            "NOT_VALIDATED",
+            "EXPLORE_INVALID",
+            "OPTIMIZE_INFEASIBLE",
+            "ACTUALS_NOT_SUPPORTED",
+            "ACTUALS_INVALID",
+            "NOT_READY",
+            "INGEST_UNSAFE_FILE",
+            "DASHBOARD_NOT_PUBLISHED",
+            "DASHBOARD_INPUT_DISABLED",
+            "DASHBOARD_LIVE_PAUSED",
+            "DASHBOARD_RUN_LIMIT",
+            "DASHBOARD_SPEC_STALE",
+            "SHARE_PASSCODE_REQUIRED",
+            "SHARE_PASSCODE_INVALID",
+            "SHARE_LOCKED",
+            "INVALID_ROLE_SCOPE"
+          ],
+          "title": "ErrorCode",
+          "type": "string"
+        },
+        "ForecastConditioning": {
+          "description": "What a forecast was conditioned on: the fitted history, the supplied actuals and where\nthe forecast periods came from. ``parameters`` is always ``fitted``: conditioning never\nre-estimates the model. ``message`` says the same in plain language.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "conditioned": true,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+              "n_actuals": 3,
+              "n_series": 1,
+              "parameters": "fitted",
+              "periods": 8,
+              "revised": 0,
+              "series": [
+                {
+                  "actuals_through": "1961-03-01",
+                  "first_actual": "1961-01-01",
+                  "forecast_from": "1961-04-01",
+                  "forecast_to": "1961-11-01",
+                  "missing": 0,
+                  "n_actuals": 3,
+                  "n_forecast": 8,
+                  "origin": "1961-03-01",
+                  "revised": 0,
+                  "series": {}
+                }
+              ],
+              "series_conditioned": 1,
+              "truncated": false
+            },
+            {
+              "conditioned": false,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+              "n_actuals": 0,
+              "periods": 8,
+              "series": [
+                {
+                  "forecast_from": "1961-01-01",
+                  "forecast_to": "1961-08-01",
+                  "n_actuals": 0,
+                  "n_forecast": 8,
+                  "origin": "1960-12-01"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The latest actual over every series",
+              "title": "Actuals Through"
+            },
+            "conditioned": {
+              "description": "Whether any supplied actual was used",
+              "title": "Conditioned",
+              "type": "boolean"
+            },
+            "dim": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dim",
+              "type": "string"
+            },
+            "fit_end": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "description": "The last period of the fitted history",
+              "title": "Fit End"
+            },
+            "horizon_source": {
+              "enum": [
+                "rows",
+                "horizon"
+              ],
+              "title": "Horizon Source",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "n_actuals": {
+              "description": "Actuals used, over every series",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_series": {
+              "default": 1,
+              "minimum": 0,
+              "title": "N Series",
+              "type": "integer"
+            },
+            "parameters": {
+              "const": "fitted",
+              "default": "fitted",
+              "title": "Parameters",
+              "type": "string"
+            },
+            "periods": {
+              "description": "Forecast periods (the most over series)",
+              "minimum": 0,
+              "title": "Periods",
+              "type": "integer"
+            },
+            "revised": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/SeriesConditioning"
+              },
+              "maxItems": 1000,
+              "title": "Series",
+              "type": "array"
+            },
+            "series_conditioned": {
+              "default": 0,
+              "description": "Series with at least one actual",
+              "minimum": 0,
+              "title": "Series Conditioned",
+              "type": "integer"
+            },
+            "truncated": {
+              "default": false,
+              "description": "More series than MAX_CONDITIONING_SERIES",
+              "title": "Truncated",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "dim",
+            "fit_end",
+            "conditioned",
+            "n_actuals",
+            "horizon_source",
+            "periods",
+            "message"
+          ],
+          "title": "ForecastConditioning",
+          "type": "object"
+        },
+        "Issue": {
+          "additionalProperties": false,
+          "description": "One problem found while validating a document, located by a JSON pointer.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "context": {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "title": "Context",
+              "type": "object"
+            },
+            "message": {
+              "description": "Trusted, platform-authored text",
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "pointer": {
+              "default": "",
+              "description": "RFC 6901 JSON pointer into the submitted document",
+              "title": "Pointer",
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity",
+              "default": "error"
+            },
+            "suggested_action": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Suggested Action"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 8000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "User/plugin-originated text; render as text only",
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "Issue",
+          "type": "object"
+        },
+        "JsonValue": {},
+        "KpiDef": {
+          "additionalProperties": false,
+          "description": "The business result the dashboard reports (a model output variable).\n\n``value_per_unit`` (currency per unit of a ``count`` KPI, e.g. the margin of one order)\ngives a breakeven return, so the channel zones can be shown for count KPIs too.",
+          "examples": [
+            {
+              "label": "Orders",
+              "unit": "count",
+              "value_per_unit": 42.0,
+              "variable": "orders"
+            },
+            {
+              "currency": "EUR",
+              "label": "Revenue",
+              "unit": "currency",
+              "variable": "revenue"
+            }
+          ],
+          "properties": {
+            "currency": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Z]{3}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "ISO 4217 code",
+              "title": "Currency"
+            },
+            "decimals": {
+              "default": 0,
+              "maximum": 4,
+              "minimum": 0,
+              "title": "Decimals",
+              "type": "integer"
+            },
+            "label": {
+              "maxLength": 60,
+              "minLength": 1,
+              "title": "Label",
+              "type": "string"
+            },
+            "unit": {
+              "enum": [
+                "count",
+                "currency",
+                "ratio",
+                "percent"
+              ],
+              "title": "Unit",
+              "type": "string"
+            },
+            "value_per_unit": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value Per Unit"
+            },
+            "variable": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Variable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "variable",
+            "label",
+            "unit"
+          ],
+          "title": "KpiDef",
+          "type": "object"
+        },
+        "KpiValue": {
+          "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+          "properties": {
+            "caption": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Caption",
+              "type": "string"
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta"
+            },
+            "delta_basis": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta Basis"
+            },
+            "delta_dir": {
+              "default": "flat",
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "alert"
+              ],
+              "title": "Delta Dir",
+              "type": "string"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "key": {
+              "enum": [
+                "expected",
+                "vs_expected",
+                "return_on_media",
+                "in_range_spend",
+                "accuracy",
+                "index"
+              ],
+              "title": "Key",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "unit": {
+              "enum": [
+                "count",
+                "currency",
+                "ratio",
+                "percent",
+                "index"
+              ],
+              "title": "Unit",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "required": [
+            "key",
+            "label",
+            "unit"
+          ],
+          "title": "KpiValue",
+          "type": "object"
+        },
+        "Problem": {
+          "additionalProperties": false,
+          "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Detail"
+            },
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/Issue"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "instance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Instance"
+            },
+            "status": {
+              "maximum": 599,
+              "minimum": 100,
+              "title": "Status",
+              "type": "integer"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "trace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Trace Id"
+            },
+            "type": {
+              "default": "about:blank",
+              "title": "Type",
+              "type": "string"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 65536,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "title",
+            "status",
+            "code"
+          ],
+          "title": "Problem",
+          "type": "object"
+        },
+        "Readout": {
+          "description": "A readout with its snapshot (``None`` until ``ready``) or the problem that stopped it.",
+          "examples": [
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "refresh",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "period": [
+                "2026-10-12",
+                "2026-10-18"
+              ],
+              "ready_at": "2026-10-15T09:30:00Z",
+              "seq": 12,
+              "snapshot": {
+                "channels": [
+                  {
+                    "contribution": 2300.0,
+                    "label": "TV",
+                    "mroi": 0.9,
+                    "name": "tv",
+                    "roi": 1.86,
+                    "roi_high": 2.5,
+                    "roi_low": 1.2,
+                    "share": 0.55,
+                    "spend": 52000.0,
+                    "zone": "over"
+                  },
+                  {
+                    "contribution": 1910.0,
+                    "label": "Paid search",
+                    "mroi": 3.1,
+                    "name": "search",
+                    "roi": 4.46,
+                    "share": 0.45,
+                    "spend": 18000.0,
+                    "zone": "headroom"
+                  }
+                ],
+                "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+                "notes_plain": [
+                  "The model was fitted on data to 18/10/2026."
+                ],
+                "series": [
+                  {
+                    "label": "Orders",
+                    "name": "orders",
+                    "points": [
+                      {
+                        "actual": 4150.0,
+                        "high": 4400.0,
+                        "low": 3800.0,
+                        "mean": 4100.0,
+                        "t": "2026-10-11"
+                      },
+                      {
+                        "actual": 4210.0,
+                        "high": 4390.0,
+                        "low": 3790.0,
+                        "mean": 4090.0,
+                        "t": "2026-10-18"
+                      }
+                    ]
+                  }
+                ],
+                "source_run_ids": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "technical": {
+                  "draws": 300,
+                  "model_ref": "model://growth/eu-geo-mmm@v3"
+                },
+                "tiles": [
+                  {
+                    "caption": "Likely range 3,890 to 4,530",
+                    "delta": 0.03,
+                    "delta_basis": "the model's expectation",
+                    "delta_dir": "up",
+                    "high": 4530.0,
+                    "key": "expected",
+                    "label": "Orders from media",
+                    "low": 3890.0,
+                    "unit": "count",
+                    "value": 4210.0
+                  },
+                  {
+                    "caption": "Each 1 EUR of media brought 2.40 EUR",
+                    "delta_dir": "flat",
+                    "key": "return_on_media",
+                    "label": "Return on media",
+                    "unit": "ratio",
+                    "value": 2.4
+                  }
+                ]
+              },
+              "status": "ready",
+              "title": "Week ending 18/10/2026",
+              "trigger": "workflow",
+              "visibility": "published"
+            }
+          ],
+          "properties": {
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "endpoint_revision": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Endpoint Revision"
+            },
+            "kind": {
+              "enum": [
+                "baseline",
+                "refresh",
+                "scenario",
+                "actuals"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 512,
+              "title": "Model Ref",
+              "type": "string"
+            },
+            "model_version_id": {
+              "maxLength": 128,
+              "title": "Model Version Id",
+              "type": "string"
+            },
+            "period": {
+              "anyOf": [
+                {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "format": "date",
+                      "type": "string"
+                    }
+                  ],
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Period"
+            },
+            "problem": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Problem"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "ready_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Ready At"
+            },
+            "refit_status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "approved",
+                    "rejected",
+                    "superseded",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Refit Status"
+            },
+            "seq": {
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            },
+            "snapshot": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReadoutSnapshot"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "materialising",
+                "ready",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "trigger": {
+              "enum": [
+                "publish",
+                "manual",
+                "whatif",
+                "actuals",
+                "workflow",
+                "endpoint"
+              ],
+              "title": "Trigger",
+              "type": "string"
+            },
+            "visibility": {
+              "enum": [
+                "published",
+                "private",
+                "pending_review",
+                "hidden"
+              ],
+              "title": "Visibility",
+              "type": "string"
+            }
+          },
+          "required": [
+            "seq",
+            "kind",
+            "trigger",
+            "visibility",
+            "status",
+            "title",
+            "model_version_id",
+            "model_ref",
+            "created_at"
+          ],
+          "title": "Readout",
+          "type": "object"
+        },
+        "ReadoutSnapshot": {
+          "description": "What a readout shows, built server-side and capped at :data:`MAX_READOUT_BYTES`.\n\n``lead`` is one plain sentence; ``notes_plain`` are at most :data:`MAX_NOTES` plain notes;\n``technical`` is shown behind the \"Show technical notes\" toggle. Raw arrays, plots and\nsummaries are never copied in: ``source_run_ids`` keep the provenance.",
+          "properties": {
+            "accuracy": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActualsAccuracy"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "channels": {
+              "items": {
+                "$ref": "#/$defs/ChannelReadout"
+              },
+              "maxItems": 40,
+              "title": "Channels",
+              "type": "array"
+            },
+            "conditioning": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastConditioning"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "input_fingerprint": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Input Fingerprint"
+            },
+            "lead": {
+              "maxLength": 400,
+              "title": "Lead",
+              "type": "string"
+            },
+            "notes_plain": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "title": "Notes Plain",
+              "type": "array"
+            },
+            "scenario": {
+              "anyOf": [
+                {
+                  "patternProperties": {
+                    "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Scenario"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/Series"
+              },
+              "maxItems": 42,
+              "title": "Series",
+              "type": "array"
+            },
+            "source_run_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 16,
+              "title": "Source Run Ids",
+              "type": "array"
+            },
+            "technical": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxProperties": 64,
+              "title": "Technical",
+              "type": "object"
+            },
+            "tiles": {
+              "items": {
+                "$ref": "#/$defs/KpiValue"
+              },
+              "maxItems": 6,
+              "title": "Tiles",
+              "type": "array"
+            }
+          },
+          "required": [
+            "lead"
+          ],
+          "title": "ReadoutSnapshot",
+          "type": "object"
+        },
+        "Series": {
+          "properties": {
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 128,
+              "title": "Name",
+              "type": "string"
+            },
+            "points": {
+              "items": {
+                "$ref": "#/$defs/SeriesPoint"
+              },
+              "maxItems": 520,
+              "title": "Points",
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "Series",
+          "type": "object"
+        },
+        "SeriesConditioning": {
+          "description": "What one series' forecast was conditioned on.\n\n``series`` holds the series' labels on the target's other dims (empty for a single\nseries). ``origin`` is the last period the forecast starts from: the last actual, or the\nend of the fitted history when the series has none.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "first_actual": "1961-01-01",
+              "forecast_from": "1961-04-01",
+              "forecast_to": "1961-11-01",
+              "missing": 0,
+              "n_actuals": 3,
+              "n_forecast": 8,
+              "origin": "1961-03-01",
+              "revised": 0,
+              "series": {}
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The last supplied actual",
+              "title": "Actuals Through"
+            },
+            "first_actual": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "First Actual"
+            },
+            "forecast_from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast From"
+            },
+            "forecast_to": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast To"
+            },
+            "missing": {
+              "default": 0,
+              "description": "Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)",
+              "minimum": 0,
+              "title": "Missing",
+              "type": "integer"
+            },
+            "n_actuals": {
+              "description": "Periods with a supplied actual",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_forecast": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N Forecast",
+              "type": "integer"
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "title": "Origin"
+            },
+            "revised": {
+              "default": 0,
+              "description": "Actuals inside the fitted range: they replaced the fitted values",
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              },
+              "title": "Series",
+              "type": "object"
+            }
+          },
+          "required": [
+            "n_actuals",
+            "origin"
+          ],
+          "title": "SeriesConditioning",
+          "type": "object"
+        },
+        "SeriesPoint": {
+          "properties": {
+            "actual": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Actual"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "mean": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mean"
+            },
+            "t": {
+              "description": "The period (ISO date)",
+              "maxLength": 32,
+              "title": "T",
+              "type": "string"
+            }
+          },
+          "required": [
+            "t"
+          ],
+          "title": "SeriesPoint",
+          "type": "object"
+        },
+        "Severity": {
+          "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "description": "What a client user or a share link sees: the published revision only, with no ids of\npeople and no model internals. ``ends_at`` is the share link's expiry (share views).",
+      "examples": [
+        {
+          "channels": [
+            {
+              "label": "TV",
+              "name": "tv"
+            },
+            {
+              "label": "Paid search",
+              "max_mult": 2.0,
+              "min_mult": 0.5,
+              "name": "search"
+            }
+          ],
+          "client_name": "Acme Retail",
+          "ends_at": "2026-11-14T09:30:00Z",
+          "id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+          "inputs": {
+            "actuals": true,
+            "actuals_mode": "compared",
+            "exact": true,
+            "refit_requests": true,
+            "whatif": true
+          },
+          "kpi": {
+            "label": "Orders",
+            "unit": "count",
+            "value_per_unit": 42.0,
+            "variable": "orders"
+          },
+          "latest_readout": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "kind": "refresh",
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "period": [
+              "2026-10-12",
+              "2026-10-18"
+            ],
+            "ready_at": "2026-10-15T09:30:00Z",
+            "seq": 12,
+            "snapshot": {
+              "channels": [
+                {
+                  "contribution": 2300.0,
+                  "label": "TV",
+                  "mroi": 0.9,
+                  "name": "tv",
+                  "roi": 1.86,
+                  "roi_high": 2.5,
+                  "roi_low": 1.2,
+                  "share": 0.55,
+                  "spend": 52000.0,
+                  "zone": "over"
+                },
+                {
+                  "contribution": 1910.0,
+                  "label": "Paid search",
+                  "mroi": 3.1,
+                  "name": "search",
+                  "roi": 4.46,
+                  "share": 0.45,
+                  "spend": 18000.0,
+                  "zone": "headroom"
+                }
+              ],
+              "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+              "notes_plain": [
+                "The model was fitted on data to 18/10/2026."
+              ],
+              "series": [
+                {
+                  "label": "Orders",
+                  "name": "orders",
+                  "points": [
+                    {
+                      "actual": 4150.0,
+                      "high": 4400.0,
+                      "low": 3800.0,
+                      "mean": 4100.0,
+                      "t": "2026-10-11"
+                    },
+                    {
+                      "actual": 4210.0,
+                      "high": 4390.0,
+                      "low": 3790.0,
+                      "mean": 4090.0,
+                      "t": "2026-10-18"
+                    }
+                  ]
+                }
+              ],
+              "source_run_ids": [
+                "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+              ],
+              "technical": {
+                "draws": 300,
+                "model_ref": "model://growth/eu-geo-mmm@v3"
+              },
+              "tiles": [
+                {
+                  "caption": "Likely range 3,890 to 4,530",
+                  "delta": 0.03,
+                  "delta_basis": "the model's expectation",
+                  "delta_dir": "up",
+                  "high": 4530.0,
+                  "key": "expected",
+                  "label": "Orders from media",
+                  "low": 3890.0,
+                  "unit": "count",
+                  "value": 4210.0
+                },
+                {
+                  "caption": "Each 1 EUR of media brought 2.40 EUR",
+                  "delta_dir": "flat",
+                  "key": "return_on_media",
+                  "label": "Return on media",
+                  "unit": "ratio",
+                  "value": 2.4
+                }
+              ]
+            },
+            "status": "ready",
+            "title": "Week ending 18/10/2026",
+            "trigger": "workflow",
+            "visibility": "published"
+          },
+          "live_inputs": "ok",
+          "period_label": "week",
+          "summary": "How media spend drives online orders, updated every Monday.",
+          "tabs": [
+            "this_period",
+            "trends",
+            "scenarios",
+            "update",
+            "history"
+          ],
+          "tiles": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "in_range_spend"
+          ],
+          "title": "Weekly media results"
+        }
+      ],
+      "properties": {
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelDef"
+          },
+          "maxItems": 40,
+          "title": "Channels",
+          "type": "array"
+        },
+        "client_name": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Client Name"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ends At"
+        },
+        "id": {
+          "examples": [
+            "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/EffectiveInputs"
+        },
+        "kpi": {
+          "$ref": "#/$defs/KpiDef"
+        },
+        "latest_readout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Readout"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "live_inputs": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "paused"
+          ],
+          "title": "Live Inputs",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "period_label": {
+          "default": "week",
+          "enum": [
+            "week",
+            "month",
+            "period"
+          ],
+          "title": "Period Label",
+          "type": "string"
+        },
+        "show_technical": {
+          "default": false,
+          "title": "Show Technical",
+          "type": "boolean"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "tabs": {
+          "items": {
+            "enum": [
+              "this_period",
+              "trends",
+              "scenarios",
+              "update",
+              "history"
+            ],
+            "type": "string"
+          },
+          "title": "Tabs",
+          "type": "array"
+        },
+        "tiles": {
+          "items": {
+            "enum": [
+              "expected",
+              "vs_expected",
+              "return_on_media",
+              "in_range_spend",
+              "accuracy",
+              "index"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Tiles",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 120,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "kpi"
+      ],
+      "title": "ClientDashboard",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Get the latest published readout with its tiles, channels and series.",
+    "name": "get_latest_readout",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "No arguments.",
+      "properties": {},
+      "title": "NoArgs",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActualsAccuracy": {
+          "description": "How close the model's predictions were to uploaded actuals (:func:`metrics_of`).\n\n``mape`` and ``band_hit_rate`` are percentages (as ``compare.ts``); ``bias`` is the mean of\npredicted − actual in KPI units (above 0: the model expected more).",
+          "properties": {
+            "band_hit_rate": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Band Hit Rate"
+            },
+            "bias": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bias"
+            },
+            "mape": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mape"
+            },
+            "n": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N",
+              "type": "integer"
+            }
+          },
+          "title": "ActualsAccuracy",
+          "type": "object"
+        },
+        "ChannelReadout": {
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+          "properties": {
+            "contribution": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution"
+            },
+            "label": {
+              "maxLength": 60,
+              "title": "Label",
+              "type": "string"
+            },
+            "mroi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mroi"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "roi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi"
+            },
+            "roi_high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi High"
+            },
+            "roi_low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi Low"
+            },
+            "share": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of the media contribution, 0-1",
+              "title": "Share"
+            },
+            "spend": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelReadout",
+          "type": "object"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+          "enum": [
+            "SCHEMA_INVALID",
+            "SPEC_PARSE_ERROR",
+            "PAYLOAD_TOO_LARGE",
+            "UNSUPPORTED_API_VERSION",
+            "REF_UNRESOLVED",
+            "SETTINGS_INVALID",
+            "BINDING_INVALID",
+            "SPLIT_INVALID",
+            "LEAKAGE_RISK",
+            "DIM_POLICY_LOOSENED",
+            "SCHEMA_DYNAMIC",
+            "SIDE_TABLE_COVERAGE",
+            "PLOT_UNSAFE",
+            "UNSEEN_LEVELS",
+            "COORD_NOT_ALLOWED",
+            "HORIZON_EXCEEDS_FIT",
+            "MISSING_FUTURE_COVARIATE",
+            "NON_CONTIGUOUS_EXTENSION",
+            "CAPABILITY_UNSUPPORTED",
+            "RECURSIVE_UNSUPPORTED",
+            "MODE_NOT_SUPPORTED",
+            "QUOTA_EXCEEDED",
+            "RATE_LIMITED",
+            "UNAUTHENTICATED",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "CONFLICT",
+            "IDEMPOTENCY_CONFLICT",
+            "PRECONDITION_FAILED",
+            "USER_CODE_ERROR",
+            "RESOURCE_EXHAUSTED",
+            "INFRA_ERROR",
+            "INTEGRITY_FAILURE",
+            "TIMEOUT",
+            "SANDBOX_VIOLATION",
+            "CANCELLED",
+            "INTERNAL_ERROR",
+            "GUIDED_ANSWERS_INVALID",
+            "BUSINESS_PRIORS_INVALID",
+            "CALIBRATION_UNSUPPORTED",
+            "IMPORT_UNSUPPORTED",
+            "SCENARIO_OUT_OF_RANGE",
+            "PROMOTION_BLOCKED",
+            "OVERRIDE_REQUIRED",
+            "WEBHOOK_URL_BLOCKED",
+            "WEBHOOK_SIGNATURE_INVALID",
+            "EMBED_NOT_ALLOWED",
+            "LINK_EXPIRED",
+            "EMAIL_NOT_ALLOWED",
+            "TERMS_NOT_ACCEPTED",
+            "EMAIL_NOT_VERIFIED",
+            "IDENTITY_VERIFICATION_REQUIRED",
+            "ABOUT_INCOMPLETE",
+            "CHOOSER_ANSWER_INVALID",
+            "WORKFLOW_INVALID",
+            "EXPRESSION_INVALID",
+            "EXPRESSION_ERROR",
+            "NODE_UNKNOWN",
+            "SCHEDULE_INVALID",
+            "WORKFLOW_NOT_RUNNABLE",
+            "POLICY_INVALID",
+            "VALIDATION_TRANSITION_INVALID",
+            "SELF_APPROVAL_FORBIDDEN",
+            "NOT_VALIDATED",
+            "EXPLORE_INVALID",
+            "OPTIMIZE_INFEASIBLE",
+            "ACTUALS_NOT_SUPPORTED",
+            "ACTUALS_INVALID",
+            "NOT_READY",
+            "INGEST_UNSAFE_FILE",
+            "DASHBOARD_NOT_PUBLISHED",
+            "DASHBOARD_INPUT_DISABLED",
+            "DASHBOARD_LIVE_PAUSED",
+            "DASHBOARD_RUN_LIMIT",
+            "DASHBOARD_SPEC_STALE",
+            "SHARE_PASSCODE_REQUIRED",
+            "SHARE_PASSCODE_INVALID",
+            "SHARE_LOCKED",
+            "INVALID_ROLE_SCOPE"
+          ],
+          "title": "ErrorCode",
+          "type": "string"
+        },
+        "ForecastConditioning": {
+          "description": "What a forecast was conditioned on: the fitted history, the supplied actuals and where\nthe forecast periods came from. ``parameters`` is always ``fitted``: conditioning never\nre-estimates the model. ``message`` says the same in plain language.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "conditioned": true,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+              "n_actuals": 3,
+              "n_series": 1,
+              "parameters": "fitted",
+              "periods": 8,
+              "revised": 0,
+              "series": [
+                {
+                  "actuals_through": "1961-03-01",
+                  "first_actual": "1961-01-01",
+                  "forecast_from": "1961-04-01",
+                  "forecast_to": "1961-11-01",
+                  "missing": 0,
+                  "n_actuals": 3,
+                  "n_forecast": 8,
+                  "origin": "1961-03-01",
+                  "revised": 0,
+                  "series": {}
+                }
+              ],
+              "series_conditioned": 1,
+              "truncated": false
+            },
+            {
+              "conditioned": false,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+              "n_actuals": 0,
+              "periods": 8,
+              "series": [
+                {
+                  "forecast_from": "1961-01-01",
+                  "forecast_to": "1961-08-01",
+                  "n_actuals": 0,
+                  "n_forecast": 8,
+                  "origin": "1960-12-01"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The latest actual over every series",
+              "title": "Actuals Through"
+            },
+            "conditioned": {
+              "description": "Whether any supplied actual was used",
+              "title": "Conditioned",
+              "type": "boolean"
+            },
+            "dim": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dim",
+              "type": "string"
+            },
+            "fit_end": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "description": "The last period of the fitted history",
+              "title": "Fit End"
+            },
+            "horizon_source": {
+              "enum": [
+                "rows",
+                "horizon"
+              ],
+              "title": "Horizon Source",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "n_actuals": {
+              "description": "Actuals used, over every series",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_series": {
+              "default": 1,
+              "minimum": 0,
+              "title": "N Series",
+              "type": "integer"
+            },
+            "parameters": {
+              "const": "fitted",
+              "default": "fitted",
+              "title": "Parameters",
+              "type": "string"
+            },
+            "periods": {
+              "description": "Forecast periods (the most over series)",
+              "minimum": 0,
+              "title": "Periods",
+              "type": "integer"
+            },
+            "revised": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/SeriesConditioning"
+              },
+              "maxItems": 1000,
+              "title": "Series",
+              "type": "array"
+            },
+            "series_conditioned": {
+              "default": 0,
+              "description": "Series with at least one actual",
+              "minimum": 0,
+              "title": "Series Conditioned",
+              "type": "integer"
+            },
+            "truncated": {
+              "default": false,
+              "description": "More series than MAX_CONDITIONING_SERIES",
+              "title": "Truncated",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "dim",
+            "fit_end",
+            "conditioned",
+            "n_actuals",
+            "horizon_source",
+            "periods",
+            "message"
+          ],
+          "title": "ForecastConditioning",
+          "type": "object"
+        },
+        "Issue": {
+          "additionalProperties": false,
+          "description": "One problem found while validating a document, located by a JSON pointer.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "context": {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "title": "Context",
+              "type": "object"
+            },
+            "message": {
+              "description": "Trusted, platform-authored text",
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "pointer": {
+              "default": "",
+              "description": "RFC 6901 JSON pointer into the submitted document",
+              "title": "Pointer",
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity",
+              "default": "error"
+            },
+            "suggested_action": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Suggested Action"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 8000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "User/plugin-originated text; render as text only",
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "Issue",
+          "type": "object"
+        },
+        "JsonValue": {},
+        "KpiValue": {
+          "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+          "properties": {
+            "caption": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Caption",
+              "type": "string"
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta"
+            },
+            "delta_basis": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta Basis"
+            },
+            "delta_dir": {
+              "default": "flat",
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "alert"
+              ],
+              "title": "Delta Dir",
+              "type": "string"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "key": {
+              "enum": [
+                "expected",
+                "vs_expected",
+                "return_on_media",
+                "in_range_spend",
+                "accuracy",
+                "index"
+              ],
+              "title": "Key",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "unit": {
+              "enum": [
+                "count",
+                "currency",
+                "ratio",
+                "percent",
+                "index"
+              ],
+              "title": "Unit",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "required": [
+            "key",
+            "label",
+            "unit"
+          ],
+          "title": "KpiValue",
+          "type": "object"
+        },
+        "Problem": {
+          "additionalProperties": false,
+          "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Detail"
+            },
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/Issue"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "instance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Instance"
+            },
+            "status": {
+              "maximum": 599,
+              "minimum": 100,
+              "title": "Status",
+              "type": "integer"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "trace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Trace Id"
+            },
+            "type": {
+              "default": "about:blank",
+              "title": "Type",
+              "type": "string"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 65536,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "title",
+            "status",
+            "code"
+          ],
+          "title": "Problem",
+          "type": "object"
+        },
+        "ReadoutSnapshot": {
+          "description": "What a readout shows, built server-side and capped at :data:`MAX_READOUT_BYTES`.\n\n``lead`` is one plain sentence; ``notes_plain`` are at most :data:`MAX_NOTES` plain notes;\n``technical`` is shown behind the \"Show technical notes\" toggle. Raw arrays, plots and\nsummaries are never copied in: ``source_run_ids`` keep the provenance.",
+          "properties": {
+            "accuracy": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActualsAccuracy"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "channels": {
+              "items": {
+                "$ref": "#/$defs/ChannelReadout"
+              },
+              "maxItems": 40,
+              "title": "Channels",
+              "type": "array"
+            },
+            "conditioning": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastConditioning"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "input_fingerprint": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Input Fingerprint"
+            },
+            "lead": {
+              "maxLength": 400,
+              "title": "Lead",
+              "type": "string"
+            },
+            "notes_plain": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "title": "Notes Plain",
+              "type": "array"
+            },
+            "scenario": {
+              "anyOf": [
+                {
+                  "patternProperties": {
+                    "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Scenario"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/Series"
+              },
+              "maxItems": 42,
+              "title": "Series",
+              "type": "array"
+            },
+            "source_run_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 16,
+              "title": "Source Run Ids",
+              "type": "array"
+            },
+            "technical": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxProperties": 64,
+              "title": "Technical",
+              "type": "object"
+            },
+            "tiles": {
+              "items": {
+                "$ref": "#/$defs/KpiValue"
+              },
+              "maxItems": 6,
+              "title": "Tiles",
+              "type": "array"
+            }
+          },
+          "required": [
+            "lead"
+          ],
+          "title": "ReadoutSnapshot",
+          "type": "object"
+        },
+        "Series": {
+          "properties": {
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 128,
+              "title": "Name",
+              "type": "string"
+            },
+            "points": {
+              "items": {
+                "$ref": "#/$defs/SeriesPoint"
+              },
+              "maxItems": 520,
+              "title": "Points",
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "Series",
+          "type": "object"
+        },
+        "SeriesConditioning": {
+          "description": "What one series' forecast was conditioned on.\n\n``series`` holds the series' labels on the target's other dims (empty for a single\nseries). ``origin`` is the last period the forecast starts from: the last actual, or the\nend of the fitted history when the series has none.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "first_actual": "1961-01-01",
+              "forecast_from": "1961-04-01",
+              "forecast_to": "1961-11-01",
+              "missing": 0,
+              "n_actuals": 3,
+              "n_forecast": 8,
+              "origin": "1961-03-01",
+              "revised": 0,
+              "series": {}
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The last supplied actual",
+              "title": "Actuals Through"
+            },
+            "first_actual": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "First Actual"
+            },
+            "forecast_from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast From"
+            },
+            "forecast_to": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast To"
+            },
+            "missing": {
+              "default": 0,
+              "description": "Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)",
+              "minimum": 0,
+              "title": "Missing",
+              "type": "integer"
+            },
+            "n_actuals": {
+              "description": "Periods with a supplied actual",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_forecast": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N Forecast",
+              "type": "integer"
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "title": "Origin"
+            },
+            "revised": {
+              "default": 0,
+              "description": "Actuals inside the fitted range: they replaced the fitted values",
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              },
+              "title": "Series",
+              "type": "object"
+            }
+          },
+          "required": [
+            "n_actuals",
+            "origin"
+          ],
+          "title": "SeriesConditioning",
+          "type": "object"
+        },
+        "SeriesPoint": {
+          "properties": {
+            "actual": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Actual"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "mean": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mean"
+            },
+            "t": {
+              "description": "The period (ISO date)",
+              "maxLength": 32,
+              "title": "T",
+              "type": "string"
+            }
+          },
+          "required": [
+            "t"
+          ],
+          "title": "SeriesPoint",
+          "type": "object"
+        },
+        "Severity": {
+          "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "description": "A readout with its snapshot (``None`` until ``ready``) or the problem that stopped it.",
+      "examples": [
+        {
+          "created_at": "2026-10-15T09:30:00Z",
+          "kind": "refresh",
+          "model_ref": "model://growth/eu-geo-mmm@v3",
+          "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+          "period": [
+            "2026-10-12",
+            "2026-10-18"
+          ],
+          "ready_at": "2026-10-15T09:30:00Z",
+          "seq": 12,
+          "snapshot": {
+            "channels": [
+              {
+                "contribution": 2300.0,
+                "label": "TV",
+                "mroi": 0.9,
+                "name": "tv",
+                "roi": 1.86,
+                "roi_high": 2.5,
+                "roi_low": 1.2,
+                "share": 0.55,
+                "spend": 52000.0,
+                "zone": "over"
+              },
+              {
+                "contribution": 1910.0,
+                "label": "Paid search",
+                "mroi": 3.1,
+                "name": "search",
+                "roi": 4.46,
+                "share": 0.45,
+                "spend": 18000.0,
+                "zone": "headroom"
+              }
+            ],
+            "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+            "notes_plain": [
+              "The model was fitted on data to 18/10/2026."
+            ],
+            "series": [
+              {
+                "label": "Orders",
+                "name": "orders",
+                "points": [
+                  {
+                    "actual": 4150.0,
+                    "high": 4400.0,
+                    "low": 3800.0,
+                    "mean": 4100.0,
+                    "t": "2026-10-11"
+                  },
+                  {
+                    "actual": 4210.0,
+                    "high": 4390.0,
+                    "low": 3790.0,
+                    "mean": 4090.0,
+                    "t": "2026-10-18"
+                  }
+                ]
+              }
+            ],
+            "source_run_ids": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "technical": {
+              "draws": 300,
+              "model_ref": "model://growth/eu-geo-mmm@v3"
+            },
+            "tiles": [
+              {
+                "caption": "Likely range 3,890 to 4,530",
+                "delta": 0.03,
+                "delta_basis": "the model's expectation",
+                "delta_dir": "up",
+                "high": 4530.0,
+                "key": "expected",
+                "label": "Orders from media",
+                "low": 3890.0,
+                "unit": "count",
+                "value": 4210.0
+              },
+              {
+                "caption": "Each 1 EUR of media brought 2.40 EUR",
+                "delta_dir": "flat",
+                "key": "return_on_media",
+                "label": "Return on media",
+                "unit": "ratio",
+                "value": 2.4
+              }
+            ]
+          },
+          "status": "ready",
+          "title": "Week ending 18/10/2026",
+          "trigger": "workflow",
+          "visibility": "published"
+        }
+      ],
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "endpoint_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endpoint Revision"
+        },
+        "kind": {
+          "enum": [
+            "baseline",
+            "refresh",
+            "scenario",
+            "actuals"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "model_ref": {
+          "maxLength": 512,
+          "title": "Model Ref",
+          "type": "string"
+        },
+        "model_version_id": {
+          "maxLength": 128,
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ready_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ready At"
+        },
+        "refit_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "approved",
+                "rejected",
+                "superseded",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refit Status"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadoutSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "materialising",
+            "ready",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "publish",
+            "manual",
+            "whatif",
+            "actuals",
+            "workflow",
+            "endpoint"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "published",
+            "private",
+            "pending_review",
+            "hidden"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "trigger",
+        "visibility",
+        "status",
+        "title",
+        "model_version_id",
+        "model_ref",
+        "created_at"
+      ],
+      "title": "Readout",
+      "type": "object"
+    }
+  },
+  {
+    "description": "List the readouts, newest first. You can filter by kind and page back with before_seq.",
+    "name": "list_readouts",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "Readouts newest first; ``before_seq`` pages back.",
+      "properties": {
+        "before_seq": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Before Seq"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "baseline",
+                "refresh",
+                "scenario",
+                "actuals"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "ListReadoutsArgs",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ReadoutHeader": {
+          "description": "A readout without its snapshot (lists, ``202`` answers while it is being built).\n\n``refit_status`` is the state of the refit request made with an actuals upload (§10.4),\nshown to the uploader and the analysts.",
+          "examples": [
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "refresh",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "period": [
+                "2026-10-12",
+                "2026-10-18"
+              ],
+              "ready_at": "2026-10-15T09:30:00Z",
+              "seq": 12,
+              "status": "ready",
+              "title": "Week ending 18/10/2026",
+              "trigger": "workflow",
+              "visibility": "published"
+            },
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "scenario",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "seq": 13,
+              "status": "running",
+              "title": "TV −20 %, search +30 %",
+              "trigger": "whatif",
+              "visibility": "private"
+            }
+          ],
+          "properties": {
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "endpoint_revision": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Endpoint Revision"
+            },
+            "kind": {
+              "enum": [
+                "baseline",
+                "refresh",
+                "scenario",
+                "actuals"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 512,
+              "title": "Model Ref",
+              "type": "string"
+            },
+            "model_version_id": {
+              "maxLength": 128,
+              "title": "Model Version Id",
+              "type": "string"
+            },
+            "period": {
+              "anyOf": [
+                {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "format": "date",
+                      "type": "string"
+                    }
+                  ],
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Period"
+            },
+            "ready_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Ready At"
+            },
+            "refit_status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "approved",
+                    "rejected",
+                    "superseded",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Refit Status"
+            },
+            "seq": {
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "materialising",
+                "ready",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "trigger": {
+              "enum": [
+                "publish",
+                "manual",
+                "whatif",
+                "actuals",
+                "workflow",
+                "endpoint"
+              ],
+              "title": "Trigger",
+              "type": "string"
+            },
+            "visibility": {
+              "enum": [
+                "published",
+                "private",
+                "pending_review",
+                "hidden"
+              ],
+              "title": "Visibility",
+              "type": "string"
+            }
+          },
+          "required": [
+            "seq",
+            "kind",
+            "trigger",
+            "visibility",
+            "status",
+            "title",
+            "model_version_id",
+            "model_ref",
+            "created_at"
+          ],
+          "title": "ReadoutHeader",
+          "type": "object"
+        }
+      },
+      "description": "Readouts, newest first; pass ``next_before_seq`` as ``before_seq`` for the next page.",
+      "examples": [
+        {
+          "items": [
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "refresh",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "period": [
+                "2026-10-12",
+                "2026-10-18"
+              ],
+              "ready_at": "2026-10-15T09:30:00Z",
+              "seq": 12,
+              "status": "ready",
+              "title": "Week ending 18/10/2026",
+              "trigger": "workflow",
+              "visibility": "published"
+            }
+          ],
+          "next_before_seq": 12
+        }
+      ],
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ReadoutHeader"
+          },
+          "maxItems": 50,
+          "title": "Items",
+          "type": "array"
+        },
+        "next_before_seq": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Before Seq"
+        }
+      },
+      "title": "ReadoutList",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Get one readout by its number (seq).",
+    "name": "get_readout",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq"
+      ],
+      "title": "ReadoutRef",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ActualsAccuracy": {
+          "description": "How close the model's predictions were to uploaded actuals (:func:`metrics_of`).\n\n``mape`` and ``band_hit_rate`` are percentages (as ``compare.ts``); ``bias`` is the mean of\npredicted − actual in KPI units (above 0: the model expected more).",
+          "properties": {
+            "band_hit_rate": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Band Hit Rate"
+            },
+            "bias": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bias"
+            },
+            "mape": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mape"
+            },
+            "n": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N",
+              "type": "integer"
+            }
+          },
+          "title": "ActualsAccuracy",
+          "type": "object"
+        },
+        "ChannelReadout": {
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+          "properties": {
+            "contribution": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution"
+            },
+            "label": {
+              "maxLength": 60,
+              "title": "Label",
+              "type": "string"
+            },
+            "mroi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mroi"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "roi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi"
+            },
+            "roi_high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi High"
+            },
+            "roi_low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi Low"
+            },
+            "share": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of the media contribution, 0-1",
+              "title": "Share"
+            },
+            "spend": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelReadout",
+          "type": "object"
+        },
+        "ErrorCode": {
+          "description": "Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.",
+          "enum": [
+            "SCHEMA_INVALID",
+            "SPEC_PARSE_ERROR",
+            "PAYLOAD_TOO_LARGE",
+            "UNSUPPORTED_API_VERSION",
+            "REF_UNRESOLVED",
+            "SETTINGS_INVALID",
+            "BINDING_INVALID",
+            "SPLIT_INVALID",
+            "LEAKAGE_RISK",
+            "DIM_POLICY_LOOSENED",
+            "SCHEMA_DYNAMIC",
+            "SIDE_TABLE_COVERAGE",
+            "PLOT_UNSAFE",
+            "UNSEEN_LEVELS",
+            "COORD_NOT_ALLOWED",
+            "HORIZON_EXCEEDS_FIT",
+            "MISSING_FUTURE_COVARIATE",
+            "NON_CONTIGUOUS_EXTENSION",
+            "CAPABILITY_UNSUPPORTED",
+            "RECURSIVE_UNSUPPORTED",
+            "MODE_NOT_SUPPORTED",
+            "QUOTA_EXCEEDED",
+            "RATE_LIMITED",
+            "UNAUTHENTICATED",
+            "FORBIDDEN",
+            "NOT_FOUND",
+            "CONFLICT",
+            "IDEMPOTENCY_CONFLICT",
+            "PRECONDITION_FAILED",
+            "USER_CODE_ERROR",
+            "RESOURCE_EXHAUSTED",
+            "INFRA_ERROR",
+            "INTEGRITY_FAILURE",
+            "TIMEOUT",
+            "SANDBOX_VIOLATION",
+            "CANCELLED",
+            "INTERNAL_ERROR",
+            "GUIDED_ANSWERS_INVALID",
+            "BUSINESS_PRIORS_INVALID",
+            "CALIBRATION_UNSUPPORTED",
+            "IMPORT_UNSUPPORTED",
+            "SCENARIO_OUT_OF_RANGE",
+            "PROMOTION_BLOCKED",
+            "OVERRIDE_REQUIRED",
+            "WEBHOOK_URL_BLOCKED",
+            "WEBHOOK_SIGNATURE_INVALID",
+            "EMBED_NOT_ALLOWED",
+            "LINK_EXPIRED",
+            "EMAIL_NOT_ALLOWED",
+            "TERMS_NOT_ACCEPTED",
+            "EMAIL_NOT_VERIFIED",
+            "IDENTITY_VERIFICATION_REQUIRED",
+            "ABOUT_INCOMPLETE",
+            "CHOOSER_ANSWER_INVALID",
+            "WORKFLOW_INVALID",
+            "EXPRESSION_INVALID",
+            "EXPRESSION_ERROR",
+            "NODE_UNKNOWN",
+            "SCHEDULE_INVALID",
+            "WORKFLOW_NOT_RUNNABLE",
+            "POLICY_INVALID",
+            "VALIDATION_TRANSITION_INVALID",
+            "SELF_APPROVAL_FORBIDDEN",
+            "NOT_VALIDATED",
+            "EXPLORE_INVALID",
+            "OPTIMIZE_INFEASIBLE",
+            "ACTUALS_NOT_SUPPORTED",
+            "ACTUALS_INVALID",
+            "NOT_READY",
+            "INGEST_UNSAFE_FILE",
+            "DASHBOARD_NOT_PUBLISHED",
+            "DASHBOARD_INPUT_DISABLED",
+            "DASHBOARD_LIVE_PAUSED",
+            "DASHBOARD_RUN_LIMIT",
+            "DASHBOARD_SPEC_STALE",
+            "SHARE_PASSCODE_REQUIRED",
+            "SHARE_PASSCODE_INVALID",
+            "SHARE_LOCKED",
+            "INVALID_ROLE_SCOPE"
+          ],
+          "title": "ErrorCode",
+          "type": "string"
+        },
+        "ForecastConditioning": {
+          "description": "What a forecast was conditioned on: the fitted history, the supplied actuals and where\nthe forecast periods came from. ``parameters`` is always ``fitted``: conditioning never\nre-estimates the model. ``message`` says the same in plain language.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "conditioned": true,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast updated with 3 actuals (1961-01-01 to 1961-03-01) after the fitted history, which ends 1960-12-01; the model's parameters were not re-estimated. 8 periods forecast from 1961-04-01 to 1961-11-01.",
+              "n_actuals": 3,
+              "n_series": 1,
+              "parameters": "fitted",
+              "periods": 8,
+              "revised": 0,
+              "series": [
+                {
+                  "actuals_through": "1961-03-01",
+                  "first_actual": "1961-01-01",
+                  "forecast_from": "1961-04-01",
+                  "forecast_to": "1961-11-01",
+                  "missing": 0,
+                  "n_actuals": 3,
+                  "n_forecast": 8,
+                  "origin": "1961-03-01",
+                  "revised": 0,
+                  "series": {}
+                }
+              ],
+              "series_conditioned": 1,
+              "truncated": false
+            },
+            {
+              "conditioned": false,
+              "dim": "t",
+              "fit_end": "1960-12-01",
+              "horizon_source": "horizon",
+              "message": "Forecast from the end of the fitted history (1960-12-01); no actuals were supplied. 8 periods forecast from 1961-01-01 to 1961-08-01.",
+              "n_actuals": 0,
+              "periods": 8,
+              "series": [
+                {
+                  "forecast_from": "1961-01-01",
+                  "forecast_to": "1961-08-01",
+                  "n_actuals": 0,
+                  "n_forecast": 8,
+                  "origin": "1960-12-01"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The latest actual over every series",
+              "title": "Actuals Through"
+            },
+            "conditioned": {
+              "description": "Whether any supplied actual was used",
+              "title": "Conditioned",
+              "type": "boolean"
+            },
+            "dim": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Dim",
+              "type": "string"
+            },
+            "fit_end": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "description": "The last period of the fitted history",
+              "title": "Fit End"
+            },
+            "horizon_source": {
+              "enum": [
+                "rows",
+                "horizon"
+              ],
+              "title": "Horizon Source",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "n_actuals": {
+              "description": "Actuals used, over every series",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_series": {
+              "default": 1,
+              "minimum": 0,
+              "title": "N Series",
+              "type": "integer"
+            },
+            "parameters": {
+              "const": "fitted",
+              "default": "fitted",
+              "title": "Parameters",
+              "type": "string"
+            },
+            "periods": {
+              "description": "Forecast periods (the most over series)",
+              "minimum": 0,
+              "title": "Periods",
+              "type": "integer"
+            },
+            "revised": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/SeriesConditioning"
+              },
+              "maxItems": 1000,
+              "title": "Series",
+              "type": "array"
+            },
+            "series_conditioned": {
+              "default": 0,
+              "description": "Series with at least one actual",
+              "minimum": 0,
+              "title": "Series Conditioned",
+              "type": "integer"
+            },
+            "truncated": {
+              "default": false,
+              "description": "More series than MAX_CONDITIONING_SERIES",
+              "title": "Truncated",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "dim",
+            "fit_end",
+            "conditioned",
+            "n_actuals",
+            "horizon_source",
+            "periods",
+            "message"
+          ],
+          "title": "ForecastConditioning",
+          "type": "object"
+        },
+        "Issue": {
+          "additionalProperties": false,
+          "description": "One problem found while validating a document, located by a JSON pointer.",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "context": {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "title": "Context",
+              "type": "object"
+            },
+            "message": {
+              "description": "Trusted, platform-authored text",
+              "maxLength": 2000,
+              "title": "Message",
+              "type": "string"
+            },
+            "pointer": {
+              "default": "",
+              "description": "RFC 6901 JSON pointer into the submitted document",
+              "title": "Pointer",
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity",
+              "default": "error"
+            },
+            "suggested_action": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Suggested Action"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 8000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "User/plugin-originated text; render as text only",
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "Issue",
+          "type": "object"
+        },
+        "JsonValue": {},
+        "KpiValue": {
+          "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+          "properties": {
+            "caption": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Caption",
+              "type": "string"
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta"
+            },
+            "delta_basis": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta Basis"
+            },
+            "delta_dir": {
+              "default": "flat",
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "alert"
+              ],
+              "title": "Delta Dir",
+              "type": "string"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "key": {
+              "enum": [
+                "expected",
+                "vs_expected",
+                "return_on_media",
+                "in_range_spend",
+                "accuracy",
+                "index"
+              ],
+              "title": "Key",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "unit": {
+              "enum": [
+                "count",
+                "currency",
+                "ratio",
+                "percent",
+                "index"
+              ],
+              "title": "Unit",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "required": [
+            "key",
+            "label",
+            "unit"
+          ],
+          "title": "KpiValue",
+          "type": "object"
+        },
+        "Problem": {
+          "additionalProperties": false,
+          "description": "RFC 7807 problem document with mapi extensions (``code``, ``errors``, ``untrusted_text``).",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Detail"
+            },
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/Issue"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "instance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Instance"
+            },
+            "status": {
+              "maximum": 599,
+              "minimum": 100,
+              "title": "Status",
+              "type": "integer"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "trace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Trace Id"
+            },
+            "type": {
+              "default": "about:blank",
+              "title": "Type",
+              "type": "string"
+            },
+            "untrusted_text": {
+              "anyOf": [
+                {
+                  "maxLength": 65536,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Untrusted Text"
+            }
+          },
+          "required": [
+            "title",
+            "status",
+            "code"
+          ],
+          "title": "Problem",
+          "type": "object"
+        },
+        "ReadoutSnapshot": {
+          "description": "What a readout shows, built server-side and capped at :data:`MAX_READOUT_BYTES`.\n\n``lead`` is one plain sentence; ``notes_plain`` are at most :data:`MAX_NOTES` plain notes;\n``technical`` is shown behind the \"Show technical notes\" toggle. Raw arrays, plots and\nsummaries are never copied in: ``source_run_ids`` keep the provenance.",
+          "properties": {
+            "accuracy": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActualsAccuracy"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "channels": {
+              "items": {
+                "$ref": "#/$defs/ChannelReadout"
+              },
+              "maxItems": 40,
+              "title": "Channels",
+              "type": "array"
+            },
+            "conditioning": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ForecastConditioning"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "input_fingerprint": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Input Fingerprint"
+            },
+            "lead": {
+              "maxLength": 400,
+              "title": "Lead",
+              "type": "string"
+            },
+            "notes_plain": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "title": "Notes Plain",
+              "type": "array"
+            },
+            "scenario": {
+              "anyOf": [
+                {
+                  "patternProperties": {
+                    "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Scenario"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/Series"
+              },
+              "maxItems": 42,
+              "title": "Series",
+              "type": "array"
+            },
+            "source_run_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 16,
+              "title": "Source Run Ids",
+              "type": "array"
+            },
+            "technical": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxProperties": 64,
+              "title": "Technical",
+              "type": "object"
+            },
+            "tiles": {
+              "items": {
+                "$ref": "#/$defs/KpiValue"
+              },
+              "maxItems": 6,
+              "title": "Tiles",
+              "type": "array"
+            }
+          },
+          "required": [
+            "lead"
+          ],
+          "title": "ReadoutSnapshot",
+          "type": "object"
+        },
+        "Series": {
+          "properties": {
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 128,
+              "title": "Name",
+              "type": "string"
+            },
+            "points": {
+              "items": {
+                "$ref": "#/$defs/SeriesPoint"
+              },
+              "maxItems": 520,
+              "title": "Points",
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "Series",
+          "type": "object"
+        },
+        "SeriesConditioning": {
+          "description": "What one series' forecast was conditioned on.\n\n``series`` holds the series' labels on the target's other dims (empty for a single\nseries). ``origin`` is the last period the forecast starts from: the last actual, or the\nend of the fitted history when the series has none.",
+          "examples": [
+            {
+              "actuals_through": "1961-03-01",
+              "first_actual": "1961-01-01",
+              "forecast_from": "1961-04-01",
+              "forecast_to": "1961-11-01",
+              "missing": 0,
+              "n_actuals": 3,
+              "n_forecast": 8,
+              "origin": "1961-03-01",
+              "revised": 0,
+              "series": {}
+            }
+          ],
+          "properties": {
+            "actuals_through": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The last supplied actual",
+              "title": "Actuals Through"
+            },
+            "first_actual": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "First Actual"
+            },
+            "forecast_from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast From"
+            },
+            "forecast_to": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Forecast To"
+            },
+            "missing": {
+              "default": 0,
+              "description": "Empty periods between the fitted history and the last actual, filtered as missing observations (only models that accept missing targets)",
+              "minimum": 0,
+              "title": "Missing",
+              "type": "integer"
+            },
+            "n_actuals": {
+              "description": "Periods with a supplied actual",
+              "minimum": 0,
+              "title": "N Actuals",
+              "type": "integer"
+            },
+            "n_forecast": {
+              "default": 0,
+              "minimum": 0,
+              "title": "N Forecast",
+              "type": "integer"
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "title": "Origin"
+            },
+            "revised": {
+              "default": 0,
+              "description": "Actuals inside the fitted range: they replaced the fitted values",
+              "minimum": 0,
+              "title": "Revised",
+              "type": "integer"
+            },
+            "series": {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                }
+              },
+              "title": "Series",
+              "type": "object"
+            }
+          },
+          "required": [
+            "n_actuals",
+            "origin"
+          ],
+          "title": "SeriesConditioning",
+          "type": "object"
+        },
+        "SeriesPoint": {
+          "properties": {
+            "actual": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Actual"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "mean": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mean"
+            },
+            "t": {
+              "description": "The period (ISO date)",
+              "maxLength": 32,
+              "title": "T",
+              "type": "string"
+            }
+          },
+          "required": [
+            "t"
+          ],
+          "title": "SeriesPoint",
+          "type": "object"
+        },
+        "Severity": {
+          "description": "How bad an :class:`Issue` is. Only ``error`` blocks submission.",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "description": "A readout with its snapshot (``None`` until ``ready``) or the problem that stopped it.",
+      "examples": [
+        {
+          "created_at": "2026-10-15T09:30:00Z",
+          "kind": "refresh",
+          "model_ref": "model://growth/eu-geo-mmm@v3",
+          "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+          "period": [
+            "2026-10-12",
+            "2026-10-18"
+          ],
+          "ready_at": "2026-10-15T09:30:00Z",
+          "seq": 12,
+          "snapshot": {
+            "channels": [
+              {
+                "contribution": 2300.0,
+                "label": "TV",
+                "mroi": 0.9,
+                "name": "tv",
+                "roi": 1.86,
+                "roi_high": 2.5,
+                "roi_low": 1.2,
+                "share": 0.55,
+                "spend": 52000.0,
+                "zone": "over"
+              },
+              {
+                "contribution": 1910.0,
+                "label": "Paid search",
+                "mroi": 3.1,
+                "name": "search",
+                "roi": 4.46,
+                "share": 0.45,
+                "spend": 18000.0,
+                "zone": "headroom"
+              }
+            ],
+            "lead": "Media brought 4,210 orders this week. This is 3% more than the model expects.",
+            "notes_plain": [
+              "The model was fitted on data to 18/10/2026."
+            ],
+            "series": [
+              {
+                "label": "Orders",
+                "name": "orders",
+                "points": [
+                  {
+                    "actual": 4150.0,
+                    "high": 4400.0,
+                    "low": 3800.0,
+                    "mean": 4100.0,
+                    "t": "2026-10-11"
+                  },
+                  {
+                    "actual": 4210.0,
+                    "high": 4390.0,
+                    "low": 3790.0,
+                    "mean": 4090.0,
+                    "t": "2026-10-18"
+                  }
+                ]
+              }
+            ],
+            "source_run_ids": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "technical": {
+              "draws": 300,
+              "model_ref": "model://growth/eu-geo-mmm@v3"
+            },
+            "tiles": [
+              {
+                "caption": "Likely range 3,890 to 4,530",
+                "delta": 0.03,
+                "delta_basis": "the model's expectation",
+                "delta_dir": "up",
+                "high": 4530.0,
+                "key": "expected",
+                "label": "Orders from media",
+                "low": 3890.0,
+                "unit": "count",
+                "value": 4210.0
+              },
+              {
+                "caption": "Each 1 EUR of media brought 2.40 EUR",
+                "delta_dir": "flat",
+                "key": "return_on_media",
+                "label": "Return on media",
+                "unit": "ratio",
+                "value": 2.4
+              }
+            ]
+          },
+          "status": "ready",
+          "title": "Week ending 18/10/2026",
+          "trigger": "workflow",
+          "visibility": "published"
+        }
+      ],
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "endpoint_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endpoint Revision"
+        },
+        "kind": {
+          "enum": [
+            "baseline",
+            "refresh",
+            "scenario",
+            "actuals"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "model_ref": {
+          "maxLength": 512,
+          "title": "Model Ref",
+          "type": "string"
+        },
+        "model_version_id": {
+          "maxLength": 128,
+          "title": "Model Version Id",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "format": "date",
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Problem"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ready_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ready At"
+        },
+        "refit_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "open",
+                "approved",
+                "rejected",
+                "superseded",
+                "failed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refit Status"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadoutSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "materialising",
+            "ready",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "publish",
+            "manual",
+            "whatif",
+            "actuals",
+            "workflow",
+            "endpoint"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "published",
+            "private",
+            "pending_review",
+            "hidden"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "trigger",
+        "visibility",
+        "status",
+        "title",
+        "model_version_id",
+        "model_ref",
+        "created_at"
+      ],
+      "title": "Readout",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Compare two readouts: the change of each tile and channel from a_seq to b_seq.",
+    "name": "compare_readouts",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "Two readouts to compare: ``b`` against ``a`` (usually the older one).",
+      "properties": {
+        "a_seq": {
+          "minimum": 1,
+          "title": "A Seq",
+          "type": "integer"
+        },
+        "b_seq": {
+          "minimum": 1,
+          "title": "B Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "a_seq",
+        "b_seq"
+      ],
+      "title": "CompareArgs",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ChannelDelta": {
+          "properties": {
+            "contribution_a": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution A"
+            },
+            "contribution_b": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution B"
+            },
+            "label": {
+              "maxLength": 60,
+              "title": "Label",
+              "type": "string"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "roi_a": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi A"
+            },
+            "roi_b": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi B"
+            },
+            "spend_a": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend A"
+            },
+            "spend_b": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend B"
+            },
+            "zone_a": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone A"
+            },
+            "zone_b": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone B"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelDelta",
+          "type": "object"
+        },
+        "ReadoutHeader": {
+          "description": "A readout without its snapshot (lists, ``202`` answers while it is being built).\n\n``refit_status`` is the state of the refit request made with an actuals upload (§10.4),\nshown to the uploader and the analysts.",
+          "examples": [
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "refresh",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "period": [
+                "2026-10-12",
+                "2026-10-18"
+              ],
+              "ready_at": "2026-10-15T09:30:00Z",
+              "seq": 12,
+              "status": "ready",
+              "title": "Week ending 18/10/2026",
+              "trigger": "workflow",
+              "visibility": "published"
+            },
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "kind": "scenario",
+              "model_ref": "model://growth/eu-geo-mmm@v3",
+              "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+              "seq": 13,
+              "status": "running",
+              "title": "TV −20 %, search +30 %",
+              "trigger": "whatif",
+              "visibility": "private"
+            }
+          ],
+          "properties": {
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "endpoint_revision": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Endpoint Revision"
+            },
+            "kind": {
+              "enum": [
+                "baseline",
+                "refresh",
+                "scenario",
+                "actuals"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 512,
+              "title": "Model Ref",
+              "type": "string"
+            },
+            "model_version_id": {
+              "maxLength": 128,
+              "title": "Model Version Id",
+              "type": "string"
+            },
+            "period": {
+              "anyOf": [
+                {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "format": "date",
+                      "type": "string"
+                    }
+                  ],
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Period"
+            },
+            "ready_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Ready At"
+            },
+            "refit_status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "approved",
+                    "rejected",
+                    "superseded",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Refit Status"
+            },
+            "seq": {
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "materialising",
+                "ready",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "trigger": {
+              "enum": [
+                "publish",
+                "manual",
+                "whatif",
+                "actuals",
+                "workflow",
+                "endpoint"
+              ],
+              "title": "Trigger",
+              "type": "string"
+            },
+            "visibility": {
+              "enum": [
+                "published",
+                "private",
+                "pending_review",
+                "hidden"
+              ],
+              "title": "Visibility",
+              "type": "string"
+            }
+          },
+          "required": [
+            "seq",
+            "kind",
+            "trigger",
+            "visibility",
+            "status",
+            "title",
+            "model_version_id",
+            "model_ref",
+            "created_at"
+          ],
+          "title": "ReadoutHeader",
+          "type": "object"
+        },
+        "TileDelta": {
+          "properties": {
+            "a": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "A"
+            },
+            "b": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "B"
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "b - a",
+              "title": "Delta"
+            },
+            "key": {
+              "enum": [
+                "expected",
+                "vs_expected",
+                "return_on_media",
+                "in_range_spend",
+                "accuracy",
+                "index"
+              ],
+              "title": "Key",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "label"
+          ],
+          "title": "TileDelta",
+          "type": "object"
+        }
+      },
+      "description": "Tile and channel changes between two readouts. ``same_model`` is false when the\nreadouts used different model versions (the numbers are then less comparable).",
+      "examples": [
+        {
+          "a": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "kind": "refresh",
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "period": [
+              "2026-10-12",
+              "2026-10-18"
+            ],
+            "ready_at": "2026-10-15T09:30:00Z",
+            "seq": 11,
+            "status": "ready",
+            "title": "Week ending 18/10/2026",
+            "trigger": "workflow",
+            "visibility": "published"
+          },
+          "b": {
+            "created_at": "2026-10-15T09:30:00Z",
+            "kind": "refresh",
+            "model_ref": "model://growth/eu-geo-mmm@v3",
+            "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+            "period": [
+              "2026-10-12",
+              "2026-10-18"
+            ],
+            "ready_at": "2026-10-15T09:30:00Z",
+            "seq": 12,
+            "status": "ready",
+            "title": "Week ending 18/10/2026",
+            "trigger": "workflow",
+            "visibility": "published"
+          },
+          "channels": [
+            {
+              "label": "TV",
+              "name": "tv",
+              "roi_a": 1.9,
+              "roi_b": 1.86
+            }
+          ],
+          "lead": "Media brought 120 more orders than in the readout before.",
+          "same_model": true,
+          "tiles": [
+            {
+              "a": 4090.0,
+              "b": 4210.0,
+              "delta": 120.0,
+              "key": "expected",
+              "label": "Orders from media"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/ReadoutHeader"
+        },
+        "b": {
+          "$ref": "#/$defs/ReadoutHeader"
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelDelta"
+          },
+          "maxItems": 40,
+          "title": "Channels",
+          "type": "array"
+        },
+        "lead": {
+          "maxLength": 400,
+          "title": "Lead",
+          "type": "string"
+        },
+        "same_model": {
+          "title": "Same Model",
+          "type": "boolean"
+        },
+        "tiles": {
+          "items": {
+            "$ref": "#/$defs/TileDelta"
+          },
+          "maxItems": 6,
+          "title": "Tiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "same_model",
+        "lead"
+      ],
+      "title": "ReadoutComparison",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Get one channel over the last published readouts: spend, contribution, return and zone.",
+    "name": "get_channel",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "One channel over the last ``last_n`` published readouts.",
+      "properties": {
+        "last_n": {
+          "default": 13,
+          "maximum": 26,
+          "minimum": 1,
+          "title": "Last N",
+          "type": "integer"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ChannelArgs",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ChannelPoint": {
+          "properties": {
+            "contribution": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "model_version_id": {
+              "maxLength": 128,
+              "title": "Model Version Id",
+              "type": "string"
+            },
+            "mroi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mroi"
+            },
+            "roi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi"
+            },
+            "seq": {
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            },
+            "spend": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
+            }
+          },
+          "required": [
+            "seq",
+            "created_at",
+            "model_version_id"
+          ],
+          "title": "ChannelPoint",
+          "type": "object"
+        }
+      },
+      "description": "One channel over published readouts, oldest first.",
+      "examples": [
+        {
+          "label": "TV",
+          "name": "tv",
+          "points": [
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "model_version_id": "mv_01",
+              "roi": 1.9,
+              "seq": 11
+            },
+            {
+              "created_at": "2026-10-15T09:30:00Z",
+              "model_version_id": "mv_01",
+              "roi": 1.86,
+              "seq": 12,
+              "zone": "over"
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "label": {
+          "maxLength": 60,
+          "title": "Label",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ChannelPoint"
+          },
+          "maxItems": 26,
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ChannelHistory",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Explain a word or a metric of the dashboard in plain language.",
+    "name": "explain_metric",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "enum": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "marginal_return",
+            "contribution",
+            "share",
+            "range",
+            "zones",
+            "headroom",
+            "optimal",
+            "over",
+            "no_payback",
+            "in_range_spend",
+            "accuracy",
+            "bias",
+            "band_hit_rate",
+            "index",
+            "scenario",
+            "compared",
+            "conditioned",
+            "refit"
+          ],
+          "title": "Metric",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric"
+      ],
+      "title": "ExplainArgs",
+      "type": "object"
+    },
+    "result": {
+      "examples": [
+        {
+          "metric": "return_on_media",
+          "text": "The result that each 1 unit of media spend brought. For money results, a value above 1 means that the media paid back."
+        }
+      ],
+      "properties": {
+        "metric": {
+          "enum": [
+            "expected",
+            "vs_expected",
+            "return_on_media",
+            "marginal_return",
+            "contribution",
+            "share",
+            "range",
+            "zones",
+            "headroom",
+            "optimal",
+            "over",
+            "no_payback",
+            "in_range_spend",
+            "accuracy",
+            "bias",
+            "band_hit_rate",
+            "index",
+            "scenario",
+            "compared",
+            "conditioned",
+            "refit"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 600,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric",
+        "text"
+      ],
+      "title": "MetricExplanation",
+      "type": "object"
+    }
+  },
+  {
+    "description": "Calculate the result of a spend plan on the response grid. Give a multiplier per channel (1 is the current plan). This does not start a run and saves nothing.",
+    "name": "evaluate_whatif",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "Spend multipliers per channel (``1`` = the current plan; missing channels stay at 1).",
+      "examples": [
+        {
+          "multipliers": {
+            "search": 1.3,
+            "tv": 0.8
+          }
+        }
+      ],
+      "properties": {
+        "multipliers": {
+          "maxProperties": 40,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+              "type": "number"
+            }
+          },
+          "title": "Multipliers",
+          "type": "object"
+        }
+      },
+      "title": "WhatIfRequest",
+      "type": "object"
+    },
+    "result": {
+      "$defs": {
+        "ChannelReadout": {
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
+          "properties": {
+            "contribution": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Contribution"
+            },
+            "label": {
+              "maxLength": 60,
+              "title": "Label",
+              "type": "string"
+            },
+            "mroi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Mroi"
+            },
+            "name": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Name",
+              "type": "string"
+            },
+            "roi": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi"
+            },
+            "roi_high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi High"
+            },
+            "roi_low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Roi Low"
+            },
+            "share": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of the media contribution, 0-1",
+              "title": "Share"
+            },
+            "spend": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spend"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "headroom",
+                    "optimal",
+                    "over",
+                    "no_payback"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
+            }
+          },
+          "required": [
+            "name",
+            "label"
+          ],
+          "title": "ChannelReadout",
+          "type": "object"
+        },
+        "KpiValue": {
+          "description": "One KPI tile: a value with its plain caption and the change against ``delta_basis``.",
+          "properties": {
+            "caption": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Caption",
+              "type": "string"
+            },
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta"
+            },
+            "delta_basis": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Delta Basis"
+            },
+            "delta_dir": {
+              "default": "flat",
+              "enum": [
+                "up",
+                "down",
+                "flat",
+                "alert"
+              ],
+              "title": "Delta Dir",
+              "type": "string"
+            },
+            "high": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "High"
+            },
+            "key": {
+              "enum": [
+                "expected",
+                "vs_expected",
+                "return_on_media",
+                "in_range_spend",
+                "accuracy",
+                "index"
+              ],
+              "title": "Key",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 80,
+              "title": "Label",
+              "type": "string"
+            },
+            "low": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Low"
+            },
+            "unit": {
+              "enum": [
+                "count",
+                "currency",
+                "ratio",
+                "percent",
+                "index"
+              ],
+              "title": "Unit",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "required": [
+            "key",
+            "label",
+            "unit"
+          ],
+          "title": "KpiValue",
+          "type": "object"
+        }
+      },
+      "description": "A scenario evaluated on the grid: tiles and channel rows as a readout shows them,\n``delta_kpi`` against the current plan and one plain ``lead`` sentence. Every number is\nper readout period (the grid's window totals divided by its ``periods``).",
+      "examples": [
+        {
+          "channels": [
+            {
+              "contribution": 2300.0,
+              "label": "TV",
+              "mroi": 0.9,
+              "name": "tv",
+              "roi": 1.86,
+              "roi_high": 2.5,
+              "roi_low": 1.2,
+              "share": 0.55,
+              "spend": 52000.0,
+              "zone": "over"
+            },
+            {
+              "contribution": 1910.0,
+              "label": "Paid search",
+              "mroi": 3.1,
+              "name": "search",
+              "roi": 4.46,
+              "share": 0.45,
+              "spend": 18000.0,
+              "zone": "headroom"
+            }
+          ],
+          "delta_kpi": 85.0,
+          "lead": "This plan brings about 85 more orders a week than the current plan.",
+          "tiles": [
+            {
+              "caption": "Likely range 3,890 to 4,530",
+              "delta": 0.03,
+              "delta_basis": "the model's expectation",
+              "delta_dir": "up",
+              "high": 4530.0,
+              "key": "expected",
+              "label": "Orders from media",
+              "low": 3890.0,
+              "unit": "count",
+              "value": 4210.0
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ChannelReadout"
+          },
+          "maxItems": 40,
+          "title": "Channels",
+          "type": "array"
+        },
+        "delta_kpi": {
+          "title": "Delta Kpi",
+          "type": "number"
+        },
+        "lead": {
+          "maxLength": 400,
+          "title": "Lead",
+          "type": "string"
+        },
+        "tiles": {
+          "items": {
+            "$ref": "#/$defs/KpiValue"
+          },
+          "maxItems": 6,
+          "title": "Tiles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "delta_kpi",
+        "lead"
+      ],
+      "title": "WhatIfResult",
+      "type": "object"
+    }
+  }
+]

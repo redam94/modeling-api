@@ -67,7 +67,7 @@ function IssueChips({ issues, onIssue }: { issues: Issue[]; onIssue?: ((i: Issue
           type="button"
           onClick={() => onIssue?.(i)}
           className={cn(
-            "rounded border px-1.5 py-0.5 text-left text-[11px]",
+            "rounded border px-1.5 py-0.5 text-left text-xs",
             (i.severity ?? "error") === "error" ? "border-destructive/40 text-destructive" : "border-warning/40 text-warning",
           )}
         >
@@ -124,7 +124,7 @@ function StepCardView({ card, onIssue }: { card: StepCard; onIssue?: ((i: Issue)
         ) : null}
         {card.delta &&
         (card.delta.addedDims.length || card.delta.removedDims.length || card.delta.changedDims.length || card.delta.addedVars.length || card.delta.removedVars.length) ? (
-          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px]">
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs">
             {card.delta.addedVars.map((v) => <span key={`+v${v}`} className="text-success">+{v}</span>)}
             {card.delta.removedVars.map((v) => <span key={`-v${v}`} className="text-destructive">−{v}</span>)}
             {card.delta.addedDims.map((d) => <span key={`+d${d}`} className="text-success">+dim {d}</span>)}

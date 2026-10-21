@@ -38,7 +38,13 @@ __all__ = [
 ]
 
 
-async def finish_run(ctx: ServerContext, run_id: str, *, mode: str = "ok") -> m.Run:
+async def finish_run(
+    ctx: ServerContext,
+    run_id: str,
+    *,
+    mode: str = "ok",
+    add: dict[str, tuple[bytes, str]] | None = None,
+) -> m.Run:
     """Dispatch a QUEUED run on a fake executor, simulate its outputs and finalize it."""
     await Dispatcher(ctx, FakeExecutor()).dispatch_once()
     async with ctx.db.session() as s:
@@ -47,7 +53,7 @@ async def finish_run(ctx: ServerContext, run_id: str, *, mode: str = "ok") -> m.
         await apply_transition(s, run, RunTrigger.COMPLETE, Actor.RECONCILER)
         att = await s.get(m.RunAttempt, (run.id, run.attempt))
         assert att is not None
-    await simulate_outputs(ctx, run, att, mode=mode)
+    await simulate_outputs(ctx, run, att, mode=mode, add=add)
     await Finalizer(ctx).finalize(run.id, run.attempt)
     async with ctx.db.session() as s:
         return await load_run(s, None, run_id)
@@ -59,13 +65,16 @@ async def fitted_version(ctx: ServerContext, *, yaml: str = TREND_SPEC) -> m.Mod
     return await _output(ctx, run)
 
 
-async def refit_version(ctx: ServerContext, mv: m.ModelVersion) -> m.ModelVersion:
-    """Another version of ``mv``'s model: a second fit of the same spec revision."""
+async def refit_version(
+    ctx: ServerContext, mv: m.ModelVersion, *, add: dict[str, tuple[bytes, str]] | None = None
+) -> m.ModelVersion:
+    """Another version of ``mv``'s model: a second fit of the same spec revision (``add``:
+    extra bundle objects, e.g. a response grid)."""
     async with ctx.db.session() as s:
         fit = await s.get(m.Run, mv.run_id)
         assert fit is not None and fit.spec_id is not None
         spec_id = fit.spec_id
-    run = await finish_run(ctx, await submit_fit(ctx, spec_id))
+    run = await finish_run(ctx, await submit_fit(ctx, spec_id), add=add)
     return await _output(ctx, run)
 
 

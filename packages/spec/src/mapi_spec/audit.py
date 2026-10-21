@@ -166,6 +166,24 @@ class AuditAction(StrEnum):
     RUN_VIEW_SAVE = "run_view.save"
     """A saved run view was created or updated."""
     RUN_VIEW_DELETE = "run_view.delete"
+    # --- v0.16 (additive) --------------------------------------------------------------------
+    DASHBOARD_CREATE = "dashboard.create"
+    DASHBOARD_PUBLISH = "dashboard.publish"
+    """A new published revision (details ``{"revision": seq, "model_version_id": ...}``)."""
+    DASHBOARD_ARCHIVE = "dashboard.archive"
+    DASHBOARD_GRANT = "dashboard.grant"
+    DASHBOARD_UNGRANT = "dashboard.ungrant"
+    DASHBOARD_SHARE_CREATE = "dashboard.share_create"
+    DASHBOARD_SHARE_REVOKE = "dashboard.share_revoke"
+    DASHBOARD_SHARE_UNLOCK_FAILED = "dashboard.share_unlock_failed"
+    """A wrong share-link passcode (bounded: at most one row per link per lockout window)."""
+    DASHBOARD_ACTUALS_SUBMIT = "dashboard.actuals_submit"
+    DASHBOARD_READOUT_REVIEW = "dashboard.readout_review"
+    """An editor published or hid a readout that waited for review."""
+    DASHBOARD_REFIT_REQUEST = "dashboard.refit_request"
+    """An actuals upload asked the analyst for a refit (a client, a share link or a member)."""
+    DASHBOARD_REFIT_DECIDE = "dashboard.refit_decide"
+    """An editor approved (and started the refit workflow) or rejected a refit request."""
 
 
 class AuditEvent(ResponseModel):

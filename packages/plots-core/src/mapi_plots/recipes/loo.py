@@ -23,7 +23,7 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field
 
-from mapi_plots.palette import ALERT, BAND, ESTIMATE, OK, REFERENCE, SCENARIO
+from mapi_plots.palette import ALERT, BAND, BAND_OPACITY, ESTIMATE, OK, REFERENCE, SCENARIO
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -173,7 +173,7 @@ def loo_pit(inp: RecipeInput, s: LooPitSettings) -> Figure:
         base = alt.Chart(named("ecdf"))
         charts.append(
             alt.layer(
-                base.mark_area(color=BAND, opacity=0.18).encode(
+                base.mark_area(color=BAND, opacity=BAND_OPACITY).encode(
                     x=alt.X("z:Q", title="LOO-PIT value", scale=alt.Scale(domain=[0, 1])),
                     y=alt.Y("lo:Q", title="ECDF − uniform"),
                     y2="hi:Q",

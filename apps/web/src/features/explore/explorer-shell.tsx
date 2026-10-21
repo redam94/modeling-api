@@ -66,7 +66,7 @@ export function ExplorerNav({
     <nav aria-label={label} className="grid content-start gap-4 lg:sticky lg:top-4">
       {groups.map((g) => (
         <div key={g} className="grid gap-0.5">
-          <h2 className="px-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{g}</h2>
+          <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g}</h2>
           <ul className="flex flex-wrap gap-1 lg:grid lg:gap-0.5">
             {entries
               .filter((e) => e.group === g)
@@ -81,7 +81,7 @@ export function ExplorerNav({
                       aria-current={current === e.id ? "page" : undefined}
                       title={meta ? `${e.title}: ${meta.label}` : e.title}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-[13px] hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
+                        "flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
                         current === e.id && "border-border bg-accent font-medium text-accent-foreground",
                         e.state?.status === "skipped" && "text-muted-foreground",
                       )}
@@ -140,14 +140,14 @@ export function RunBanner({ exploration, error, title }: { exploration: { done: 
     return run.problem ? (
       <ProblemNotice problem={run.problem} title={`${title} did not finish`} />
     ) : (
-      <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-3 text-[13px]">
+      <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-3 text-sm">
         <AlertTriangle className="size-4 text-destructive" /> {title} ended as {run.state}.
       </div>
     );
   }
   return (
     <div className="grid gap-2 rounded-lg border bg-card p-4" aria-live="polite" data-testid="explore-run">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <span className="flex items-center gap-2 font-medium">
           <Loader2 aria-hidden className="size-4 animate-spin text-primary" /> {title}…
         </span>
@@ -172,7 +172,7 @@ export function SectionGate({ state, isPending, error, notComputed, children }: 
   if (!state || state.status === "missing") return <>{notComputed}</>;
   if (state.status === "skipped") {
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-dashed p-5 text-[13px] text-muted-foreground" data-testid="section-skipped">
+      <div className="flex items-start gap-2 rounded-lg border border-dashed p-5 text-sm text-muted-foreground" data-testid="section-skipped">
         <MinusCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
         <p>{state.message ?? "This view does not apply here."}</p>
       </div>
@@ -180,7 +180,7 @@ export function SectionGate({ state, isPending, error, notComputed, children }: 
   }
   if (state.status === "error") {
     return (
-      <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-5 text-[13px]">
+      <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-5 text-sm">
         <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
         <p>{state.message ?? "The sandbox could not compute this view."} For the technical details, look at the warnings of the run.</p>
       </div>
@@ -209,7 +209,7 @@ export function RecipePlots({ target, state, runId, expert }: { target: Explorer
   if (!expert || !state?.hasPlots) return null;
   return (
     <details className="group rounded-lg border" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium select-none hover:bg-accent/40">All series (platform plots, export-ready)</summary>
+      <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium select-none hover:bg-accent/40">All series (platform plots, export-ready)</summary>
       {open ? (
         <div className="grid gap-4 border-t p-4">
           {plots.isError ? <ErrorNotice error={plots.error} title="The app could not load the plots" /> : null}

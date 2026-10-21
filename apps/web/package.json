@@ -1,7 +1,7 @@
 {
   "name": "@mapi/web",
   "private": true,
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "modeling-api web app (Expert and Guided modes)",
   "license": "AGPL-3.0-only OR LicenseRef-mapi-commercial",
   "type": "module",
@@ -22,7 +22,7 @@
     "openapi:check": "openapi-typescript openapi.json -o src/api/schema.d.ts --default-non-nullable false --check"
   },
   "dependencies": {
-    "@fontsource-variable/hanken-grotesk": "5.2.8",
+    "@fontsource-variable/inter": "5.2.8",
     "@fontsource-variable/jetbrains-mono": "5.2.8",
     "@mapi/plot-sandbox": "workspace:*",
     "@tanstack/react-query": "5.103.3",

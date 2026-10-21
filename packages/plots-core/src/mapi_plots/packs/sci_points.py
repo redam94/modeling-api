@@ -34,7 +34,7 @@ from mapi_plots.packs.sci import (
     block_mean,
     grid_decl,
 )
-from mapi_plots.palette import BAND, ESTIMATE, OBSERVED, SURFACE
+from mapi_plots.palette import ESTIMATE, OBSERVED, SURFACE
 from mapi_plots.recipes._base import Figure, RecipeDataError, RecipeInput, RecipeSettings, recipe
 from mapi_plots.recipes._util import SAMPLE, fmt, pct, sample_dims, stack_samples, summary_bands
 
@@ -504,7 +504,7 @@ def point_pattern(inp: RecipeInput, s: PointPatternSettings) -> Figure:
                     "mode": "lines",
                     "x": {"$ref": "ellipses.x"},
                     "y": {"$ref": "ellipses.y"},
-                    "line": {"color": SURFACE if field is not None else BAND, "width": 1},
+                    "line": {"color": SURFACE if field is not None else ESTIMATE, "width": 1},
                     "opacity": 0.75,
                     "hoverinfo": "skip",
                     "showlegend": False,

@@ -55,7 +55,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-start gap-2 rounded-lg border border-dashed p-8", className)}>
+    <div className={cn("flex flex-col items-start gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8", className)}>
       {icon ? <div className="text-muted-foreground [&_svg]:size-5">{icon}</div> : null}
       <h3 className="font-semibold">{title}</h3>
       {children ? <div className="max-w-[60ch] text-muted-foreground">{children}</div> : null}
@@ -169,14 +169,14 @@ function AdviceActions({ advice, onRetry }: { advice: Advice; onRetry?: (() => v
 export function AdviceNotice({ advice, problem, onRetry }: { advice: Advice; problem: Problem; onRetry?: (() => void) | undefined }) {
   const tone = advice.kind === "unauthenticated" ? "border-info/35 bg-info/6" : "border-warning/40 bg-warning/8";
   return (
-    <div role="alert" data-advice={advice.kind} className={cn("grid gap-2 rounded-lg border p-4", tone)}>
+    <div role="alert" data-advice={advice.kind} className={cn("grid gap-2 rounded-xl border p-4", tone)}>
       <div className="flex items-start gap-2">
         {ADVICE_ICON[advice.kind]}
         <div className="grid min-w-0 gap-1">
           <p className="font-semibold">{advice.title}</p>
           <p className="text-muted-foreground">{advice.message}</p>
           {advice.steps.length ? (
-            <ul className="list-disc pl-5 text-[13px] text-muted-foreground">
+            <ul className="list-disc pl-5 text-sm text-muted-foreground">
               {advice.steps.map((s) => (
                 <li key={s}>{s}</li>
               ))}
@@ -216,7 +216,7 @@ export function ProblemNotice({
   });
   if (advice) return <AdviceNotice advice={advice} problem={problem} onRetry={onRetry} />;
   return (
-    <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4">
+    <div role="alert" className="grid gap-2 rounded-xl border border-destructive/35 bg-destructive/6 p-4">
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
         <div className="min-w-0">
@@ -241,7 +241,7 @@ export function ErrorNotice({ error, title, onRetry }: { error: unknown; title?:
     return <ProblemNotice problem={error.problem} retryAfter={error.retryAfter} onRetry={onRetry} {...(title ? { title } : {})} />;
   }
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4">
+    <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/35 bg-destructive/6 p-4">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
       <div>
         {title ? <p className="font-semibold">{title}</p> : null}
@@ -264,10 +264,10 @@ export function IssueList({ issues, onSelect }: { issues: readonly Issue[]; onSe
         const sev = issue.severity ?? "error";
         const body = (
           <>
-            <span className={cn("font-mono text-[11px] font-semibold", SEVERITY_CLASS[sev])}>{issue.code}</span>
+            <span className={cn("font-mono text-xs font-semibold", SEVERITY_CLASS[sev])}>{issue.code}</span>
             <span className="min-w-0 flex-1">
               {issue.message}
-              {issue.pointer ? <span className="ml-2 font-mono text-[11px] text-muted-foreground">{issue.pointer}</span> : null}
+              {issue.pointer ? <span className="ml-2 font-mono text-xs text-muted-foreground">{issue.pointer}</span> : null}
               {issue.suggested_action ? <span className="block text-xs text-muted-foreground">{issue.suggested_action}</span> : null}
             </span>
           </>
@@ -278,12 +278,12 @@ export function IssueList({ issues, onSelect }: { issues: readonly Issue[]; onSe
               <button
                 type="button"
                 onClick={() => onSelect(issue)}
-                className="flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-accent"
+                className="focus-ring flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-surface-hover"
               >
                 {body}
               </button>
             ) : (
-              <div className="flex items-start gap-2 px-2 py-1 text-[13px]">{body}</div>
+              <div className="flex items-start gap-2 px-2 py-1 text-sm">{body}</div>
             )}
           </li>
         );
@@ -349,7 +349,7 @@ export function CopyButton({ value, label = "Copy", onCopied }: { value: string;
 
 export function Mono({ children, className, title }: { children: ReactNode; className?: string; title?: string }) {
   return (
-    <span className={cn("font-mono text-[12px] tracking-tight", className)} title={title}>
+    <span className={cn("font-mono text-xs tracking-tight", className)} title={title}>
       {children}
     </span>
   );
@@ -357,7 +357,7 @@ export function Mono({ children, className, title }: { children: ReactNode; clas
 
 export function KeyValues({ items, className }: { items: [ReactNode, ReactNode][]; className?: string }) {
   return (
-    <dl className={cn("grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-6 gap-y-2 text-[13px]", className)}>
+    <dl className={cn("grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-6 gap-y-2 text-sm", className)}>
       {items.map(([k, v], i) => (
         <div key={i} className="contents">
           <dt className="text-muted-foreground">{k}</dt>

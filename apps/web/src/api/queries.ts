@@ -173,6 +173,9 @@ export const qk = {
   tokens: (p: string) => ["p", p, "tokens"] as const,
   tokenList: (p: string, f: TokenFilters) => ["p", p, "tokens", f] as const,
   usage: (p: string, q: UsageQuery) => ["p", p, "usage", q] as const,
+  // v0.16: client dashboards (the full factory is `features/dashboards/keys.ts`, under these).
+  dashboards: (p: string) => ["p", p, "dashboards"] as const,
+  dashboard: (p: string, id: string) => ["p", p, "dashboards", id] as const,
   // path-scoped (tenant routes)
   tenantProjects: (t: string) => ["tenants", t, "projects"] as const,
   members: (t: string, p: string | null) => (p ? (["tenants", t, "projects", p, "members"] as const) : (["tenants", t, "members"] as const)),

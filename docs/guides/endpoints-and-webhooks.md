@@ -352,6 +352,7 @@ Mapi-Delivery-Id: whd_01jaf3m1n2p3q4r5s6t7v8w9x0
 | `endpoint.promoted` | `alias`, `ref`, `revision`, `model_version_id`, `overridden`, `action` (`promote` or `rollback`) |
 | `score.completed` | `run_id`, `model_version_id`, `outputs` (names), and `endpoint` (`alias`, `ref`, `revision`) if the score came through an endpoint |
 | `tenant.deletion.completed` | `deletion_id`, `requested_at`, `completed_at` |
+| `dashboard.readout.published` (v0.16) | `dashboard_id`, `seq`, `kind`, `trigger`, `model_version_id`, `model_ref`. A readout of a [client dashboard](client-dashboards.md) became ready and published |
 
 The server records each event in the same database transaction as its cause. Thus the server
 sends an event only if the event occurred, and always if it occurred. Delivery is *at least

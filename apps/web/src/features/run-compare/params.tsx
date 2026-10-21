@@ -27,7 +27,7 @@ export function ParamsSection({ data, labels }: { data: RunCompare; labels: read
   const differing = params.filter((p) => p.differs).length;
 
   if (!params.length) {
-    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-[13px] text-muted-foreground">The runs did not log params.</p>;
+    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">The runs did not log params.</p>;
   }
   return (
     <section className="grid gap-4" aria-label="Params">
@@ -85,7 +85,7 @@ export function ParamsSection({ data, labels }: { data: RunCompare; labels: read
               ))}
             </TBody>
           </Table>
-          {!rows.length ? <p className="p-4 text-[13px] text-muted-foreground">{onlyDiffs ? "All the runs have the same values for these params." : "No params match."}</p> : null}
+          {!rows.length ? <p className="p-4 text-sm text-muted-foreground">{onlyDiffs ? "All the runs have the same values for these params." : "No params match."}</p> : null}
         </CardContent>
       </Card>
       {rows.length > shown.length ? (

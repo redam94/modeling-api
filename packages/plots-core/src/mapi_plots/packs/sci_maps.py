@@ -56,7 +56,7 @@ from mapi_plots.packs.sci import (
     _select,
     _thin,
 )
-from mapi_plots.palette import BAND, EMPTY, ESTIMATE, OBSERVED, REFERENCE, STRONG, SURFACE
+from mapi_plots.palette import EMPTY, ESTIMATE, OBSERVED, REFERENCE, STRONG, SURFACE
 from mapi_plots.recipes._base import (
     Figure,
     Recipe,
@@ -1013,7 +1013,7 @@ def phylogeny(inp: RecipeInput, s: PhylogenySettings) -> Figure:
                 "symmetric": False,
                 "array": {"$ref": "tips.plus"},
                 "arrayminus": {"$ref": "tips.minus"},
-                "color": BAND,
+                "color": ESTIMATE,
                 "thickness": 1.5,
                 "width": 0,
             },
@@ -1431,10 +1431,10 @@ def rose(inp: RecipeInput, s: RoseSettings) -> Figure:
     # radial bars per sector for the rose, the two limits for a curve
     band: list[tuple[str, str, dict[str, Any]]] = []
     if band_name == "steps":
-        band.append(("whiskers", "r", {"line": {"width": 5, "color": BAND}}))
+        band.append(("whiskers", "r", {"line": {"width": 5, "color": ESTIMATE}}))
     elif band_name == "curve":
         for key in ("lo", "hi"):
-            band.append(("curve", key, {"line": {"width": 1.2, "color": BAND, "dash": "dot"}}))
+            band.append(("curve", key, {"line": {"width": 1.2, "color": ESTIMATE, "dash": "dot"}}))
     if band_name:
         band.append((band_name, "med", {"line": {"width": 2, "color": ESTIMATE}}))
     for j, (table, key, extra) in enumerate(band):

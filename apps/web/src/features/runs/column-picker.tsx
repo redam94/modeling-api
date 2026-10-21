@@ -71,7 +71,7 @@ function KeyList({
                   <span className="font-mono [overflow-wrap:anywhere]">{k.key}</span>
                   {labels ? <span className="ml-1 text-muted-foreground [overflow-wrap:anywhere]">{`{${labels}}`}</span> : null}
                 </Label>
-                <span className="text-[11px] whitespace-nowrap text-muted-foreground tabular">
+                <span className="text-xs whitespace-nowrap text-muted-foreground tabular">
                   {k.runs} {k.runs === 1 ? "run" : "runs"}
                 </span>
               </li>

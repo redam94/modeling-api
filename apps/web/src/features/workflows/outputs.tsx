@@ -38,7 +38,7 @@ export function TestVerdict({ result }: { result: Obj }) {
   const perSeries = Array.isArray(result.per_series) ? result.per_series : [];
   return (
     <div className="grid gap-2" data-testid="test-verdict">
-      {verdict ? <p className="text-[14px] font-medium">{verdict}</p> : null}
+      {verdict ? <p className="text-sm font-medium">{verdict}</p> : null}
       {typeof result.null_plain === "string" ? <p className="text-xs text-muted-foreground">The question that the test asks: {result.null_plain}</p> : null}
       <KeyValues
         items={[
@@ -72,7 +72,7 @@ function TablePayload({ value }: { value: Obj }) {
   const shaped = rows.map((r) => Object.fromEntries((columns.length ? columns : Object.keys(r)).map((c) => [c, r[c]])));
   return (
     <div className="grid gap-1">
-      {typeof value.title === "string" && value.title ? <p className="text-[13px] font-medium">{value.title}</p> : null}
+      {typeof value.title === "string" && value.title ? <p className="text-sm font-medium">{value.title}</p> : null}
       <InlineTable value={shaped} />
     </div>
   );
@@ -94,7 +94,7 @@ function SplitPlanPayload({ value }: { value: Obj }) {
   const folds = Array.isArray(value.folds) ? value.folds : [];
   return (
     <div className="grid gap-1">
-      <p className="text-[13px]">
+      <p className="text-sm">
         {folds.length} fold{folds.length === 1 ? "" : "s"}
         {typeof value.n === "number" ? ` over ${value.n} periods` : ""}
         {typeof value.dim === "string" ? ` along ${value.dim}` : ""}.
@@ -109,17 +109,17 @@ function ReportPayload({ value }: { value: Obj }) {
   return (
     <article className="grid gap-3" data-testid="workflow-report">
       <header>
-        <h4 className="text-[15px] font-semibold">{typeof value.title === "string" ? value.title : "Report"}</h4>
-        {typeof value.summary_plain === "string" ? <p className="text-[13px]">{value.summary_plain}</p> : null}
+        <h4 className="text-lg font-semibold">{typeof value.title === "string" ? value.title : "Report"}</h4>
+        {typeof value.summary_plain === "string" ? <p className="text-sm">{value.summary_plain}</p> : null}
       </header>
       <ol className="grid gap-2">
         {sections.map((s, i) => (
           <li key={`${String(s.node_id)}-${i}`} className="grid gap-1 rounded-md border p-2">
-            <p className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
               {String(s.title)}
               {typeof s.status === "string" ? <Badge variant="outline">{s.status.replace(/_/g, " ")}</Badge> : null}
             </p>
-            {typeof s.text === "string" && s.text ? <p className="text-[13px] text-muted-foreground">{s.text}</p> : null}
+            {typeof s.text === "string" && s.text ? <p className="text-sm text-muted-foreground">{s.text}</p> : null}
             {obj(s.table) ? <TablePayload value={obj(s.table)!} /> : null}
             {obj(s.plot) ? <PlotPayload value={obj(s.plot)!} title={String(s.title)} caption={false} /> : null}
           </li>
@@ -134,7 +134,7 @@ function EvidencePayload({ value }: { value: Obj }) {
   const results = Array.isArray(value.results) ? (value.results as unknown as CheckResult[]) : [];
   return (
     <div className="grid gap-2">
-      {typeof value.message_plain === "string" ? <p className="text-[13px] font-medium">{value.message_plain}</p> : null}
+      {typeof value.message_plain === "string" ? <p className="text-sm font-medium">{value.message_plain}</p> : null}
       <CheckResultList results={results} checks={checks.map} />
     </div>
   );
@@ -148,9 +148,9 @@ function PlotPayload({ value, title, caption = true }: { value: Obj; title: stri
       return { plot: null, error: e instanceof Error ? e.message : String(e) };
     }
   }, [value]);
-  if (decoded.error) return <p className="text-[13px] text-destructive">The chart data cannot be read: {decoded.error}</p>;
+  if (decoded.error) return <p className="text-sm text-destructive">The chart data cannot be read: {decoded.error}</p>;
   const plot = decoded.plot;
-  if (!plot) return <p className="text-[13px] text-muted-foreground">The data for this chart is in a file. Click Download to get the file.</p>;
+  if (!plot) return <p className="text-sm text-muted-foreground">The data for this chart is in a file. Click Download to get the file.</p>;
   return (
     <figure className="grid gap-1" data-testid="workflow-plot">
       <PlotFrame kind={plot.kind} spec={plot.spec} datasets={plot.datasets} title={title} height={260} />
@@ -219,7 +219,7 @@ export function OutputView({ runId, nodeId, port, out }: { runId: string; nodeId
         ) : null}
       </header>
       {out.ref ? (
-        <p className="text-[13px]">
+        <p className="text-sm">
           <FileJson className="mr-1 inline size-3.5 text-muted-foreground" aria-hidden />
           <Mono>{out.ref}</Mono>
         </p>

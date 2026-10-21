@@ -193,6 +193,7 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
             "project",
             "workflow",  # M3.5
             "policy",  # M3.5
+            "dashboard",  # v0.16
         )
     },
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},
@@ -277,6 +278,15 @@ def test_no_scope_lets_a_token_override_a_promotion_gate() -> None:
         assert not scope_allows([scope], "manage", "endpoint"), scope
     assert scope_allows(["endpoints:promote"], "promote", "endpoint")
     assert ("endpoint", "manage") in TOKEN_NEVER and ("token", "create") in TOKEN_NEVER
+
+
+def test_no_scope_lets_a_token_grant_a_dashboard_or_mint_a_share_link() -> None:
+    """v0.16: granting a dashboard or minting a share link hands access to people outside
+    the token's audit trail, so both need a signed-in session."""
+    for scope in [*SCOPE_EXPECTED, "admin", "score:*"]:
+        assert not scope_allows([scope], "create", "dashboard_grant"), scope
+        assert not scope_allows([scope], "create", "dashboard_share"), scope
+    assert scope_allows(["models:read"], "read", "dashboard")
 
 
 # -------------------------------------------------------------------------------------- DTOs

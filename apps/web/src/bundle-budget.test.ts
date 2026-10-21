@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkEntryBudget, type ChunkInfo } from "../bundle-budget";
+import { checkChunkBudgets, checkEntryBudget, loadedBefore, type ChunkBudget, type ChunkInfo } from "../bundle-budget";
 
 const chunk = (fileName: string, over: Partial<ChunkInfo> = {}): ChunkInfo => ({
   fileName,
@@ -47,5 +47,71 @@ describe("checkEntryBudget", () => {
 
   it("reports a build with no entry chunk", () => {
     expect(checkEntryBudget([chunk("a.js")], opts)).toEqual(["no entry chunk was produced"]);
+  });
+});
+
+describe("checkChunkBudgets", () => {
+  const router = "/x/node_modules/.pnpm/@tanstack+react-router@1.0.0/node_modules/@tanstack/react-router/dist/esm/index.js";
+  const share: ChunkBudget = {
+    match: /share-app-[^/]*\.js$/,
+    maxBytes: 3000,
+    forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?@tanstack\/react-router\//, /\/src\/api\/queries\.ts$/],
+  };
+  const app = (over: { entry?: Partial<ChunkInfo>; share?: Partial<ChunkInfo>; extra?: ChunkInfo[] } = {}): ChunkInfo[] => [
+    chunk("index.js", { isEntry: true, size: 50_000, dynamicImports: ["share-app-a1.js", "signed-in.js"], moduleIds: ["/src/app.tsx"], ...over.entry }),
+    chunk("share-app-a1.js", { imports: ["index.js", "ui.js"], size: 1000, ...over.share }),
+    chunk("ui.js", { size: 1500 }),
+    chunk("signed-in.js", { imports: ["index.js", "ui.js"], moduleIds: [router, "/w/src/api/queries.ts"], size: 9000 }),
+    ...(over.extra ?? []),
+  ];
+
+  it("counts what the chunk adds beyond the entry, and passes a lean share app", () => {
+    // 1000 + 1500 added; the 50 000-byte entry has its own budget.
+    expect(checkChunkBudgets(app(), [share])).toEqual([]);
+  });
+
+  it("fails when the added bytes go over the budget", () => {
+    const problems = checkChunkBudgets(app({ share: { size: 2000 } }), [share]);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("share-app-a1.js");
+    expect(problems[0]).toContain("3500");
+  });
+
+  it("finds a forbidden module anywhere in the static closure, the entry included", () => {
+    const inEntry = checkChunkBudgets(app({ entry: { moduleIds: ["/src/app.tsx", router] } }), [share]);
+    expect(inEntry.some((p) => p.includes("index.js") && p.includes("react-router"))).toBe(true);
+    const inShared = checkChunkBudgets(
+      app({ share: { imports: ["index.js", "ui.js", "q.js"] }, extra: [chunk("q.js", { moduleIds: ["/w/src/api/queries.ts"], size: 10 })] }),
+      [share],
+    );
+    expect(inShared.some((p) => p.includes("q.js") && p.includes("queries.ts"))).toBe(true);
+  });
+
+  it("ignores what the chunk only loads with import()", () => {
+    const chunks = app({ share: { dynamicImports: ["signed-in.js"] } });
+    expect(checkChunkBudgets(chunks, [share])).toEqual([]);
+  });
+
+  it("subtracts what every dynamic importer already loaded (a portal loaded from the gate)", () => {
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["gate.js"] }),
+      chunk("gate.js", { imports: ["index.js", "big.js"], dynamicImports: ["client-app-b2.js"], size: 5000 }),
+      chunk("big.js", { size: 100_000 }),
+      chunk("client-app-b2.js", { imports: ["gate.js", "big.js", "own.js"], size: 800 }),
+      chunk("own.js", { size: 700 }),
+    ];
+    expect([...loadedBefore(chunks, "client-app-b2.js")].sort()).toEqual(["big.js", "gate.js", "index.js"]);
+    expect(checkChunkBudgets(chunks, [{ match: /client-app-/, maxBytes: 1500, forbidden: [] }])).toEqual([]);
+    expect(checkChunkBudgets(chunks, [{ match: /client-app-/, maxBytes: 1499, forbidden: [] }])[0]).toContain("1500");
+  });
+
+  it("reports a budget whose chunk is missing", () => {
+    expect(checkChunkBudgets([chunk("index.js", { isEntry: true })], [share])[0]).toMatch(/no chunk matches/);
+  });
+
+  it("runs from checkEntryBudget with the entry checks", () => {
+    const problems = checkEntryBudget(app({ share: { size: 9000 } }), { maxEntryBytes: 60_000, forbidden: [], chunkBudgets: [share] });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("share-app-a1.js");
   });
 });

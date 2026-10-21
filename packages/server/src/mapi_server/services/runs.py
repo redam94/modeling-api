@@ -284,6 +284,12 @@ async def apply_transition(
             from mapi_server.services.governance import governance_run_finished
 
             await governance_run_finished(session, run, rule.target)
+        if (run.labels or {}).get("mapi.dashboard"):
+            # v0.16: the dashboard readout waiting for this run (its own call: run_finished
+            # returns early when the project has no webhooks); no storage read here
+            from mapi_server.services.dashboards.readouts import run_terminal
+
+            await run_terminal(session, run, rule.target)
     await session.flush()
     if rule.target.terminal or rule.new_attempt or rule.target is RunState.FINALIZING:
         # an attempt's execution is over: meter it into the cost ledger (idempotent)

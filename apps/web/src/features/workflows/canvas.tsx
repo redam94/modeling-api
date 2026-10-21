@@ -75,7 +75,7 @@ function PortRow({ side, id, name, type, required, multiple }: { side: "in" | "o
   const color = meta?.color ?? "var(--muted-foreground)";
   const desc = `${side === "in" ? "Input" : "Output"} ${name}: ${meta?.label ?? type}${multiple ? ", takes several" : ""}${required === false ? ", optional" : ""}`;
   return (
-    <div className={cn("relative flex h-5 items-center text-[11px] text-muted-foreground", side === "out" ? "justify-end pr-1" : "pl-1")} title={desc}>
+    <div className={cn("relative flex h-5 items-center text-xs text-muted-foreground", side === "out" ? "justify-end pr-1" : "pl-1")} title={desc}>
       <Handle
         type={side === "in" ? "target" : "source"}
         position={side === "in" ? Position.Left : Position.Right}
@@ -119,29 +119,29 @@ const WorkflowNodeBox = memo(function WorkflowNodeBox({ data, selected }: NodePr
       <Handle type="source" position={Position.Right} id={REF_OUT} isConnectable={false} className="!pointer-events-none !opacity-0" />
       <Handle type="target" position={Position.Left} id={REF_IN} isConnectable={false} className="!pointer-events-none !opacity-0" />
       <div className="flex items-center justify-between gap-2 border-b px-2 py-1" style={{ boxShadow: kind ? `inset 3px 0 0 ${KIND_COLOR[kind]}` : undefined }}>
-        <span className="truncate text-[11px] font-medium text-muted-foreground">{kind ? KIND_LABEL[kind] : "Unknown"}</span>
+        <span className="truncate text-xs font-medium text-muted-foreground">{kind ? KIND_LABEL[kind] : "Unknown"}</span>
         <span className="flex items-center gap-1">
           {errors ? (
-            <span className="inline-flex items-center gap-0.5 rounded bg-destructive/12 px-1 text-[11px] font-semibold text-destructive" aria-label={`${errors} problem${errors === 1 ? "" : "s"}`}>
+            <span className="inline-flex items-center gap-0.5 rounded bg-destructive/12 px-1 text-xs font-semibold text-destructive" aria-label={`${errors} problem${errors === 1 ? "" : "s"}`}>
               <AlertTriangle className="size-3" aria-hidden /> {errors}
             </span>
           ) : warnings ? (
-            <span className="inline-flex items-center gap-0.5 rounded bg-warning/14 px-1 text-[11px] font-semibold text-warning" aria-label={`${warnings} warning${warnings === 1 ? "" : "s"}`}>
+            <span className="inline-flex items-center gap-0.5 rounded bg-warning/14 px-1 text-xs font-semibold text-warning" aria-label={`${warnings} warning${warnings === 1 ? "" : "s"}`}>
               <AlertTriangle className="size-3" aria-hidden /> {warnings}
             </span>
           ) : null}
-          {status ? <span className={cn("rounded px-1 text-[11px] font-semibold", status.tone === "danger" ? "text-destructive" : status.tone === "success" ? "text-success" : status.tone === "active" ? "text-info" : "text-muted-foreground")}>{status.label}</span> : null}
+          {status ? <span className={cn("rounded px-1 text-xs font-semibold", status.tone === "danger" ? "text-destructive" : status.tone === "success" ? "text-success" : status.tone === "active" ? "text-info" : "text-muted-foreground")}>{status.label}</span> : null}
         </span>
       </div>
       <div className="px-2 pt-1.5">
-        <p className="truncate text-[13px] leading-5 font-semibold" title={data.label ?? data.nodeId}>
+        <p className="truncate text-sm leading-5 font-semibold" title={data.label ?? data.nodeId}>
           {data.label ?? data.title}
         </p>
-        <p className="truncate font-mono text-[11px] text-muted-foreground">
+        <p className="truncate font-mono text-xs text-muted-foreground">
           {data.nodeId} · {data.implId}
         </p>
         {data.gatedBy ? (
-          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <GitBranch className="size-3" aria-hidden /> only if {data.gatedBy.branch} → {data.gatedBy.arm}
           </p>
         ) : null}
@@ -155,11 +155,11 @@ const WorkflowNodeBox = memo(function WorkflowNodeBox({ data, selected }: NodePr
         <div className="min-w-0">
           {data.isBranch ? (
             <>
-              <div className="relative flex h-5 items-center justify-end pr-1 text-[11px] font-medium text-success">
+              <div className="relative flex h-5 items-center justify-end pr-1 text-xs font-medium text-success">
                 then
                 <Handle type="source" position={Position.Right} id="arm:then" aria-label={`${data.nodeId} then arm`} className={cn(handleClass, "!bg-success")} />
               </div>
-              <div className="relative flex h-5 items-center justify-end pr-1 text-[11px] font-medium text-muted-foreground">
+              <div className="relative flex h-5 items-center justify-end pr-1 text-xs font-medium text-muted-foreground">
                 else
                 <Handle type="source" position={Position.Right} id="arm:else" aria-label={`${data.nodeId} else arm`} className={cn(handleClass, "!bg-muted-foreground")} />
               </div>

@@ -8,7 +8,8 @@ Model Explorer views and budget optimisation; and the v0.11 run tracking contrac
 param and tag keys, tracking budgets and the run-search grammar; and the v0.14 contracts:
 run media, experiments, saved run views, run comparison, image-folder ingest and the
 column and stratified splits; and the v0.15 contracts: image collections, safetensors
-weights, the GPU resource class and model side tables).
+weights, the GPU resource class and model side tables; and the v0.16 contracts: client
+dashboards, readouts, share links, the client role and the read-only dashboard tools).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -109,6 +110,19 @@ from mapi_spec.cost import (
     PriceTable,
     RunCost,
     estimate_cost,
+)
+from mapi_spec.dashboard_tools import DASHBOARD_TOOLS, ToolDecl, tools_json_schema
+from mapi_spec.dashboards import (
+    ClientDashboard,
+    Dashboard,
+    DashboardRevision,
+    DashboardShare,
+    DashboardSpec,
+    Readout,
+    ReadoutSnapshot,
+    generate_share_token,
+    metrics_of,
+    zone_of,
 )
 from mapi_spec.effects import (
     ContextNeed,
@@ -369,7 +383,7 @@ from mapi_spec.xrjson import XrJsonDataset
 try:
     __version__ = _metadata.version("mapi-spec")
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.15.1"
+    __version__ = "0.16.0"
 
 __all__ = [
     "API_VERSION",
@@ -381,6 +395,7 @@ __all__ = [
     "COLLECTION_MEMBERS",
     "CONTRACT_VERSION",
     "CPU_CLASSES",
+    "DASHBOARD_TOOLS",
     "DEFAULT_PART_BYTES",
     "DEFAULT_PRICE_TABLE",
     "ERROR_INFO",
@@ -438,6 +453,7 @@ __all__ = [
     "ChooserAnswer",
     "ChooserResult",
     "ClassCount",
+    "ClientDashboard",
     "CollectionInfo",
     "CollectionIngest",
     "CollectionOptions",
@@ -450,6 +466,10 @@ __all__ = [
     "ContextNeed",
     "CoordSummary",
     "CostLedgerEntry",
+    "Dashboard",
+    "DashboardRevision",
+    "DashboardShare",
+    "DashboardSpec",
     "DataBlock",
     "DataLayout",
     "DataRef",
@@ -547,6 +567,8 @@ __all__ = [
     "QuotaPolicy",
     "QuotaScope",
     "RaggedSpec",
+    "Readout",
+    "ReadoutSnapshot",
     "Representation",
     "ResolvedSpec",
     "ResourceClass",
@@ -586,6 +608,7 @@ __all__ = [
     "Tenant",
     "TenantDeletion",
     "TenantStatus",
+    "ToolDecl",
     "TrackingLimits",
     "TreeSchema",
     "TrustTier",
@@ -641,6 +664,7 @@ __all__ = [
     "evaluate_scenario",
     "example_score_call",
     "export_schemas",
+    "generate_share_token",
     "generate_token",
     "http_status",
     "info_input",
@@ -653,6 +677,7 @@ __all__ = [
     "load_score_request",
     "load_workflow",
     "media_name",
+    "metrics_of",
     "node_ancestors",
     "node_depth",
     "node_join",
@@ -691,6 +716,7 @@ __all__ = [
     "split_for_events",
     "suggest_roles",
     "summary_allowed",
+    "tools_json_schema",
     "topological_order",
     "transition",
     "upgrade",
@@ -699,4 +725,5 @@ __all__ = [
     "validate_spec",
     "validate_workflow",
     "verify_signature",
+    "zone_of",
 ]

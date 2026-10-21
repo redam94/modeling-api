@@ -149,7 +149,7 @@ function ChannelRow({ row, mode, onChange, error }: { row: ChannelBeliefForm; mo
           </div>
         </>
       ) : (
-        <p className="text-[13px] text-muted-foreground md:col-span-2">You have no view on this channel. The model learns it from the data only. To give a range, select the channel.</p>
+        <p className="text-sm text-muted-foreground md:col-span-2">You have no view on this channel. The model learns it from the data only. To give a range, select the channel.</p>
       )}
       {error ? (
         <p role="alert" className="text-xs font-medium text-destructive md:col-span-3">
@@ -201,7 +201,7 @@ function LiftRow({
   return (
     <li className="grid gap-3 rounded-lg border p-4" aria-label={`Experiment ${n}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[13px] font-semibold">Experiment {n}</p>
+        <p className="text-sm font-semibold">Experiment {n}</p>
         <Button variant="ghost" size="sm" onClick={onRemove} aria-label={`Remove experiment ${n}`}>
           <Trash2 /> Remove
         </Button>
@@ -251,15 +251,15 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
   return (
     <section aria-labelledby="preview-h" className="grid gap-4">
       <div className="grid gap-1">
-        <h2 id="preview-h" className="text-[15px] font-semibold tracking-tight">
+        <h2 id="preview-h" className="text-lg font-semibold tracking-tight">
           What your beliefs mean before the model sees the data
         </h2>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           The charts show the channels that you have a view on. The shaded bar is the range that you gave. The line shows where 90% of the belief of the model is. The thick
           part shows the middle half.
         </p>
       </div>
-      <ul className="grid gap-1 text-[13px]">
+      <ul className="grid gap-1 text-sm">
         {form.channels
           .filter((c) => c.enabled)
           .map((c) => {
@@ -282,13 +282,13 @@ function PreviewPanel({ result, form }: { result: PriorTranslationResult; form: 
         ) : null}
       </div>
       {unstated.length ? (
-        <p className="text-[13px] text-muted-foreground" data-testid="unstated-channels">
+        <p className="text-sm text-muted-foreground" data-testid="unstated-channels">
           You have no view on {listWords(unstated)}. The model starts from a wide default for {unstated.length === 1 ? "it" : "them"} and learns{" "}
           {unstated.length === 1 ? "it" : "them"} from the data. These charts do not show {unstated.length === 1 ? "it" : "them"}.
         </p>
       ) : null}
       {preview.baseline_share ? (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Results without any media: {baselineSentence(band(preview.baseline_share.quantiles), preview.baseline_share.mean)}
         </p>
       ) : null}
@@ -303,7 +303,7 @@ export function PriorsStep({ session }: { session: GuidedSession }) {
     return (
       <div className="grid gap-5">
         <IngestStatus version={session.datasetVersion} />
-        {session.datasetVersion?.status === "ready" ? <p className="text-[13px] text-muted-foreground">This dataset has no channels that you can give beliefs about.</p> : null}
+        {session.datasetVersion?.status === "ready" ? <p className="text-sm text-muted-foreground">This dataset has no channels that you can give beliefs about.</p> : null}
       </div>
     );
   }
@@ -399,7 +399,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-1.5">
-              <span className="text-[13px] font-medium">Describe each channel by</span>
+              <span className="text-sm font-medium">Describe each channel by</span>
               <SegmentedControl<BeliefMode>
                 label="Describe each channel by"
                 value={form.mode}
@@ -417,7 +417,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
               ))}
             </ul>
             <details className="rounded-lg border px-4 py-3" open={form.baseline.enabled}>
-              <summary className="cursor-pointer text-[13px] font-medium">Results without any media (optional)</summary>
+              <summary className="cursor-pointer text-sm font-medium">Results without any media (optional)</summary>
               <div className="grid gap-3 pt-3">
                 <div className="flex items-center gap-2">
                   <Checkbox id="baseline-on" checked={form.baseline.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, baseline: { ...f.baseline, enabled: v === true } }))} />
@@ -439,7 +439,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
               </div>
             </details>
             {problems.filter((p) => p.where === "").map((p) => (
-              <p key={p.message} role="alert" className="text-[13px] font-medium text-destructive">
+              <p key={p.message} role="alert" className="text-sm font-medium text-destructive">
                 {p.message}
               </p>
             ))}
@@ -489,7 +489,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
         <Card>
           <CardContent className="grid gap-4 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="max-w-[60ch] text-[13px] text-muted-foreground">
+              <p className="max-w-[60ch] text-sm text-muted-foreground">
                 See what your beliefs mean before the fit. A quick, secure simulation shows the results that they predict.
               </p>
               <Button variant="outline" onClick={() => void preview()} disabled={!bp || blocking || start.isPending || !canPreview}>
@@ -497,7 +497,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
               </Button>
             </div>
             {translation.data && !translation.data.done ? (
-              <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
+              <p className="flex items-center gap-2 text-sm" aria-live="polite">
                 <Spinner /> The app simulates the results of your beliefs…
               </p>
             ) : null}
@@ -516,7 +516,7 @@ function BeliefsEditor({ session, channels, geos }: { session: GuidedSession; ch
       ) : null}
 
       {error ? (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

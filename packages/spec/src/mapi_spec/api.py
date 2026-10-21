@@ -17,7 +17,8 @@ integrations, v0.4), :data:`M35_ENDPOINTS` (workflows, governance, explorers,
 optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
 :data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
 comparison, experiments and saved views, v0.14) and :data:`V015_ENDPOINTS` (resumable uploads and
-image collections, v0.15) are the machine-readable endpoint tables;
+image collections, v0.15) and :data:`V016_ENDPOINTS` (client dashboards and share links, v0.16)
+are the machine-readable endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -93,6 +94,33 @@ from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEn
 from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
+from mapi_spec.dashboards import (
+    SHARE_SESSION_HEADER,
+    ActualsSubmit,
+    ActualsTemplate,
+    ClientDashboard,
+    Dashboard,
+    DashboardCreate,
+    DashboardDraftUpdate,
+    DashboardGrant,
+    DashboardGrid,
+    DashboardRefitRequest,
+    DashboardRevision,
+    DashboardShare,
+    DashboardShareCreate,
+    DashboardShareCreated,
+    DashboardSummary,
+    DashboardValidation,
+    Readout,
+    ReadoutHeader,
+    ReadoutList,
+    RefitRequestDecision,
+    ScenarioSave,
+    ShareSession,
+    ShareSessionCreate,
+    WhatIfRequest,
+    WhatIfResult,
+)
 from mapi_spec.endpoints import (
     Endpoint,
     EndpointPromote,
@@ -266,6 +294,7 @@ __all__ = [
     "ALL_ENDPOINTS",
     "API_PREFIX",
     "ARTIFACT_LINK_TTL",
+    "CLIENT_OPERATIONS",
     "DEFAULT_PROJECT_ID",
     "DEFAULT_TENANT_ID",
     "ENDPOINTS",
@@ -296,10 +325,13 @@ __all__ = [
     "V011_ENDPOINTS",
     "V014_ENDPOINTS",
     "V015_ENDPOINTS",
+    "V016_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
     "AboutKind",
+    "ActualsSubmit",
+    "ActualsTemplate",
     "AdminUsageReport",
     "ApiToken",
     "ApprovalCreate",
@@ -313,6 +345,8 @@ __all__ = [
     "CheckResult",
     "ChooserQuestionnaire",
     "ChooserResult",
+    "ClientDashboard",
+    "ClientTenant",
     "ColumnProfile",
     "CompareMedia",
     "CompareMetric",
@@ -320,6 +354,18 @@ __all__ = [
     "CompareSeries",
     "CompareSummary",
     "CostTotals",
+    "Dashboard",
+    "DashboardCreate",
+    "DashboardDraftUpdate",
+    "DashboardGrant",
+    "DashboardGrid",
+    "DashboardRefitRequest",
+    "DashboardRevision",
+    "DashboardShare",
+    "DashboardShareCreate",
+    "DashboardShareCreated",
+    "DashboardSummary",
+    "DashboardValidation",
     "DataExploreRequest",
     "Dataset",
     "DatasetAbout",
@@ -425,6 +471,10 @@ __all__ = [
     "QuotaLimitStatus",
     "QuotaPolicy",
     "QuotaPolicyUpsert",
+    "Readout",
+    "ReadoutHeader",
+    "ReadoutList",
+    "RefitRequestDecision",
     "RoleSuggestions",
     "RouteAccess",
     "RouteScope",
@@ -445,6 +495,7 @@ __all__ = [
     "RunViewQuery",
     "SavedPlot",
     "SavedPlotCreate",
+    "ScenarioSave",
     "ScheduleCreate",
     "ScheduleUpdate",
     "ScoreCall",
@@ -455,6 +506,8 @@ __all__ = [
     "Scorecard",
     "ScorecardItem",
     "SessionInfo",
+    "ShareSession",
+    "ShareSessionCreate",
     "SignupAccepted",
     "SignupRequest",
     "SignupReview",
@@ -496,6 +549,8 @@ __all__ = [
     "WebhookDelivery",
     "WebhookEnvelope",
     "WebhookUpdate",
+    "WhatIfRequest",
+    "WhatIfResult",
     "WideVarMapping",
     "Workflow",
     "WorkflowCreate",
@@ -2176,11 +2231,24 @@ class MeProject(_Response):
     )
 
 
+class ClientTenant(_Response):
+    """The tenant as a caller whose every grant there is the ``client`` role sees it (v0.16):
+    its id, name and status only. The trust tier, residency and the operator's status
+    reason are the tenant's own business."""
+
+    id: TenantId
+    name: str = Field(..., min_length=1, max_length=200)
+    status: TenantStatus = TenantStatus.ACTIVE
+
+    model_config = _examples({"id": "acme", "name": "Acme Retail", "status": "active"})
+
+
 class MeTenant(_Response):
     """A tenant the caller belongs to; ``role`` is the tenant-wide role (``None`` when the
-    caller only has project memberships)."""
+    caller only has project memberships). ``tenant`` is a :class:`ClientTenant` when every
+    grant of the caller in the tenant is the ``client`` role."""
 
-    tenant: Tenant
+    tenant: Tenant | ClientTenant
     role: ProjectRole | None = None
     projects: list[MeProject] = Field(default_factory=list)
 
@@ -4428,14 +4496,258 @@ V015_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The v0.15 endpoint table (resumable uploads, image collections; part of
 :data:`ENDPOINTS`)."""
 
+# ======================================================== v0.16: client dashboards, share links
+#
+# The DTOs live in mapi_spec.dashboards (re-exported here). Project routes act in the
+# X-Mapi-Project project and name the dashboard with {dashboard_id}; /v1/share-sessions and
+# /v1/shared/... are public routes authorised by a share session (X-Mapi-Share) instead.
+
+_DSH = "/v1/dashboards/{dashboard_id}"
+_SH = (SHARE_SESSION_HEADER,)
+_IF_MATCH = "If-Match"
+_DASH_RUN_ERRORS = (
+    _E.DASHBOARD_INPUT_DISABLED,
+    _E.DASHBOARD_LIVE_PAUSED,
+    _E.DASHBOARD_RUN_LIMIT,
+    _E.QUOTA_EXCEEDED,
+    _E.IDEMPOTENCY_CONFLICT,
+)
+_SHARE_ERRORS = (_E.UNAUTHENTICATED, _E.LINK_EXPIRED, _E.RATE_LIMITED)
+_RQ = ("kind", "before_seq", "limit")
+
+V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # analyst: dashboards, revisions, grants, share links (clients list and read too)
+    EndpointDecl(
+        "GET", "/v1/dashboards", "list_dashboards",
+        "Dashboards of the project (a client sees only the published ones granted to them)",
+        "Page[DashboardSummary]", 200, headers=_PH, paginated=True, query=(*_PAGE, "status"),
+    ),
+    EndpointDecl(
+        "POST", "/v1/dashboards", "create_dashboard", "Create a dashboard draft", "Dashboard",
+        201, request="DashboardCreate", errors=(*_BODY, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _DSH, "get_dashboard",
+        "A dashboard (viewers and up: Dashboard; a client: ClientDashboard)", "Dashboard", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PUT", _DSH + "/draft", "update_dashboard_draft",
+        "Replace the draft spec (If-Match: the draft_etag)", "Dashboard", 200,
+        request="DashboardDraftUpdate",
+        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":validate", "validate_dashboard",
+        "Check whether the draft can be published", "DashboardValidation", 200, errors=_NF,
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":publish", "publish_dashboard",
+        "Publish the draft as a new revision (needs runner; queues a baseline readout)",
+        "Dashboard", 200,
+        errors=(*_NF, *_FB, _E.SCHEMA_INVALID, _E.NOT_READY, _E.CONFLICT,
+                _E.DASHBOARD_SPEC_STALE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":archive", "archive_dashboard",
+        "Archive a dashboard (revokes its share links)", "Dashboard", 200, errors=_NF,
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/revisions", "list_dashboard_revisions",
+        "Published revisions (newest first)", "Page[DashboardRevision]", 200, errors=_NF,
+        headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/grants", "list_dashboard_grants", "Client users who see the dashboard",
+        "Page[DashboardGrant]", 200, errors=_NF, headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "PUT", _DSH + "/grants/{user_id}", "put_dashboard_grant",
+        "Grant the dashboard to a member of the project (idempotent)", "DashboardGrant", 200,
+        errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _DSH + "/grants/{user_id}", "delete_dashboard_grant",
+        "Take the dashboard away from a user (idempotent)", None, 204, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/shares", "list_dashboard_shares", "Share links (never their tokens)",
+        "Page[DashboardShare]", 200, errors=_NF, headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/shares", "create_dashboard_share",
+        "Create a share link (its token is shown once)", "DashboardShareCreated", 201,
+        request="DashboardShareCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.DASHBOARD_NOT_PUBLISHED), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/shares/{share_id}:revoke", "revoke_dashboard_share",
+        "Revoke a share link (idempotent; the next request with it fails)", "DashboardShare",
+        200, errors=_NF, headers=_PH,
+    ),
+    # inputs (clients too): the grid, what-ifs, scenarios, actuals
+    EndpointDecl(
+        "GET", _DSH + "/grid", "get_dashboard_grid",
+        "The response grid of the pinned version, clipped to the dashboard's channels",
+        "DashboardGrid", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/whatif:evaluate", "evaluate_dashboard_whatif",
+        "Evaluate a spend plan on the grid (no run, nothing saved)", "WhatIfResult", 200,
+        request="WhatIfRequest",
+        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, _E.DASHBOARD_INPUT_DISABLED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/scenarios", "save_dashboard_scenario",
+        "Save a scenario as a private readout (exact: a score run; Prefer: wait=N -> 200 "
+        "with the readout if done, else 202 with its header)", "Readout", 200,
+        request="ScenarioSave",
+        errors=(*_BODY, *_NF, _E.SCENARIO_OUT_OF_RANGE, *_DASH_RUN_ERRORS),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/actuals/template", "get_dashboard_actuals_template",
+        "The table an actuals upload fills in, and what happens to the numbers",
+        "ActualsTemplate", 200, errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/actuals", "submit_dashboard_actuals",
+        "Send new actuals: a readout compares (or conditions) the model on them; optionally "
+        "ask the analyst for a refit", "ReadoutHeader", 202, request="ActualsSubmit",
+        errors=(*_BODY, *_NF, _E.ACTUALS_INVALID, _E.ACTUALS_NOT_SUPPORTED,
+                _E.PAYLOAD_TOO_LARGE, *_DASH_RUN_ERRORS),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+    ),
+    # readouts
+    EndpointDecl(
+        "GET", _DSH + "/readouts", "list_dashboard_readouts",
+        "Readouts newest first (published, plus the caller's private ones; analysts: all)",
+        "ReadoutList", 200, errors=_NF, headers=_PH, query=(*_RQ, "visibility"),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/readouts/{seq}", "get_dashboard_readout",
+        "One readout with its snapshot (poll it while it is being built)", "Readout", 200,
+        errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/readouts/{seq}:publish", "publish_dashboard_readout",
+        "Publish a readout that waits for review into the history", "ReadoutHeader", 200,
+        errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/readouts/{seq}:hide", "hide_dashboard_readout",
+        "Hide a readout from clients (kept for audit)", "ReadoutHeader", 200,
+        errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":refresh", "refresh_dashboard",
+        "Queue a refresh readout of the published revision", "ReadoutHeader", 202,
+        errors=(*_NF, _E.DASHBOARD_NOT_PUBLISHED, *_DASH_RUN_ERRORS),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+    ),
+    # refit requests made with actuals uploads (editors decide; approval needs runner)
+    EndpointDecl(
+        "GET", _DSH + "/refit-requests", "list_dashboard_refit_requests",
+        "Refit requests (newest first)", "Page[DashboardRefitRequest]", 200, errors=_NF,
+        headers=_PH, paginated=True, query=(*_PAGE, "status"),
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/refit-requests/{request_id}:approve",
+        "approve_dashboard_refit_request",
+        "Approve a refit request: publish its readout, ingest the numbers as a dataset version "
+        "and start the refit workflow as you", "DashboardRefitRequest", 200,
+        request="RefitRequestDecision",
+        errors=(*_NF, *_FB, _E.CONFLICT, _E.WORKFLOW_NOT_RUNNABLE, _E.QUOTA_EXCEEDED,
+                _E.IDEMPOTENCY_CONFLICT),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER),
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/refit-requests/{request_id}:reject", "reject_dashboard_refit_request",
+        "Reject a refit request (nothing runs)", "DashboardRefitRequest", 200,
+        request="RefitRequestDecision", errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    # share links (public; the session in X-Mapi-Share authorises)
+    EndpointDecl(
+        "POST", "/v1/share-sessions", "create_share_session",
+        "Public: exchange a share token (and its passcode) for a short-lived session",
+        "ShareSession", 200, request="ShareSessionCreate",
+        errors=(*_BODY, *_NF, _E.LINK_EXPIRED, _E.SHARE_PASSCODE_REQUIRED,
+                _E.SHARE_PASSCODE_INVALID, _E.SHARE_LOCKED, _E.RATE_LIMITED),
+    ),
+    EndpointDecl(
+        "POST", "/v1/share-sessions:refresh", "refresh_share_session",
+        "Public: a fresh session while the link is valid", "ShareSession", 200,
+        errors=_SHARE_ERRORS, headers=_SH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/dashboard", "get_shared_dashboard",
+        "Public: the shared dashboard (published revision)", "ClientDashboard", 200,
+        errors=_SHARE_ERRORS, headers=_SH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/readouts", "list_shared_readouts",
+        "Public: published readouts and this link's private ones", "ReadoutList", 200,
+        errors=_SHARE_ERRORS, headers=_SH, query=_RQ,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/readouts/{seq}", "get_shared_readout", "Public: one readout",
+        "Readout", 200, errors=(*_NF, *_SHARE_ERRORS), headers=_SH,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/grid", "get_shared_grid",
+        "Public: the response grid (the link must allow what-ifs)", "DashboardGrid", 200,
+        errors=(*_SHARE_ERRORS, _E.DASHBOARD_INPUT_DISABLED), headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/whatif:evaluate", "evaluate_shared_whatif",
+        "Public: evaluate a spend plan on the grid (no run)", "WhatIfResult", 200,
+        request="WhatIfRequest",
+        errors=(*_BODY, *_SHARE_ERRORS, _E.SCENARIO_OUT_OF_RANGE, _E.DASHBOARD_INPUT_DISABLED),
+        headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/scenarios", "save_shared_scenario",
+        "Public: save a scenario as this link's private readout (Prefer: wait=N)", "Readout",
+        200, request="ScenarioSave",
+        errors=(*_BODY, *_SHARE_ERRORS, _E.SCENARIO_OUT_OF_RANGE, *_DASH_RUN_ERRORS),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/actuals/template", "get_shared_actuals_template",
+        "Public: the actuals template (the link must allow uploads)", "ActualsTemplate", 200,
+        errors=(*_SHARE_ERRORS, _E.DASHBOARD_INPUT_DISABLED), headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/actuals", "submit_shared_actuals",
+        "Public: send new actuals (the readout waits for the analyst's review)",
+        "ReadoutHeader", 202, request="ActualsSubmit",
+        errors=(*_BODY, *_SHARE_ERRORS, _E.ACTUALS_INVALID, _E.ACTUALS_NOT_SUPPORTED,
+                _E.PAYLOAD_TOO_LARGE, *_DASH_RUN_ERRORS),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER),
+    ),
+)  # fmt: skip
+"""The v0.16 endpoint table (client dashboards, readouts, refit requests and share links;
+part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
 ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
-    V04_ENDPOINTS + M35_ENDPOINTS + M4_ENDPOINTS + V011_ENDPOINTS + V014_ENDPOINTS + V015_ENDPOINTS
+    V04_ENDPOINTS
+    + M35_ENDPOINTS
+    + M4_ENDPOINTS
+    + V011_ENDPOINTS
+    + V014_ENDPOINTS
+    + V015_ENDPOINTS
+    + V016_ENDPOINTS
 )
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15); the server
-serves every row."""
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16); the
+server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -4586,6 +4898,66 @@ _V015_ACCESS: Final[dict[str, RouteAccess]] = {
 }
 """Access rules of :data:`V015_ENDPOINTS`: ``find_missing_images`` as ``get_dataset``;
 ``get_upload`` and ``renew_upload`` as ``create_upload`` (both return a signed PUT URL)."""
+
+
+def _dash(
+    action: Action,
+    *also: tuple[ResourceKind, Action],
+    resource: ResourceKind = ResourceKind.DASHBOARD,
+) -> RouteAccess:
+    """A dashboard operation; ``{dashboard_id}`` names the dashboard."""
+    return RouteAccess(RouteScope.PROJECT, resource, action, tuple(also), "dashboard_id")
+
+
+_V016_ACCESS: Final[dict[str, RouteAccess]] = {
+    "list_dashboards": _p(_RK.DASHBOARD, _AC.READ),
+    "create_dashboard": _p(_RK.DASHBOARD, _AC.CREATE),
+    "get_dashboard": _dash(_AC.READ),
+    "update_dashboard_draft": _dash(_AC.UPDATE),
+    "validate_dashboard": _dash(_AC.UPDATE),
+    "publish_dashboard": _dash(_AC.UPDATE),
+    "archive_dashboard": _dash(_AC.DELETE),
+    "list_dashboard_revisions": _dash(_AC.READ),
+    "list_dashboard_grants": _dash(_AC.READ, resource=_RK.DASHBOARD_GRANT),
+    "put_dashboard_grant": _dash(_AC.CREATE, resource=_RK.DASHBOARD_GRANT),
+    "delete_dashboard_grant": _dash(_AC.DELETE, resource=_RK.DASHBOARD_GRANT),
+    "list_dashboard_shares": _dash(_AC.READ, resource=_RK.DASHBOARD_SHARE),
+    "create_dashboard_share": _dash(_AC.CREATE, resource=_RK.DASHBOARD_SHARE),
+    "revoke_dashboard_share": _dash(_AC.DELETE, resource=_RK.DASHBOARD_SHARE),
+    "get_dashboard_grid": _dash(_AC.RUN),
+    "evaluate_dashboard_whatif": _dash(_AC.RUN),
+    "save_dashboard_scenario": _dash(_AC.RUN),
+    "get_dashboard_actuals_template": _dash(_AC.RUN),
+    "submit_dashboard_actuals": _dash(_AC.RUN),
+    "list_dashboard_readouts": _dash(_AC.READ),
+    "get_dashboard_readout": _dash(_AC.READ),
+    "publish_dashboard_readout": _dash(_AC.UPDATE),
+    "hide_dashboard_readout": _dash(_AC.UPDATE),
+    "refresh_dashboard": _dash(_AC.UPDATE),
+    "list_dashboard_refit_requests": _dash(_AC.UPDATE),
+    # approving starts the refit workflow as the approver: the runner role
+    "approve_dashboard_refit_request": _dash(
+        _AC.UPDATE, (_RK.WORKFLOW, _AC.RUN), (_RK.RUN, _AC.CREATE)
+    ),
+    "reject_dashboard_refit_request": _dash(_AC.UPDATE),
+    # share links: public routes; the share session (X-Mapi-Share) is checked by the handler
+    "create_share_session": _PUBLIC,
+    "refresh_share_session": _PUBLIC,
+    "get_shared_dashboard": _PUBLIC,
+    "list_shared_readouts": _PUBLIC,
+    "get_shared_readout": _PUBLIC,
+    "get_shared_grid": _PUBLIC,
+    "evaluate_shared_whatif": _PUBLIC,
+    "save_shared_scenario": _PUBLIC,
+    "get_shared_actuals_template": _PUBLIC,
+    "submit_shared_actuals": _PUBLIC,
+}
+"""Access rules of :data:`V016_ENDPOINTS`. Reads and inputs need ``read``/``run`` on
+``dashboard`` (the ``client`` role and up); the handler also requires, for a client, a
+published dashboard granted to them (else ``404``), and an input the published spec enables.
+Drafts, publishing, review, refresh and refit requests need an editor; publishing, and share
+links with inputs, also need the runner role (handler checks: they spend the publisher's
+compute). Refit approval needs the runner role (``also``)."""
 
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
@@ -4745,6 +5117,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_V014_ACCESS,
     # v0.15 resumable uploads, image collections
     **_V015_ACCESS,
+    # v0.16 client dashboards, readouts, refit requests, share links
+    **_V016_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).
@@ -4765,6 +5139,34 @@ A token is bound to one project of one tenant, so tenant administration (members
 create/delete, tenant audit and billing) needs a signed-in session, whatever the token's
 scopes and its owner's tenant role.
 """
+
+
+CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
+    {
+        # dashboards granted to the client (published revisions only)
+        "list_dashboards",
+        "get_dashboard",
+        "get_dashboard_grid",
+        "evaluate_dashboard_whatif",
+        "save_dashboard_scenario",
+        "get_dashboard_actuals_template",
+        "submit_dashboard_actuals",
+        "list_dashboard_readouts",
+        "get_dashboard_readout",
+        # the caller and the browser session (the portal's project switcher reads /v1/me)
+        "get_me",
+        "auth_login",
+        "auth_callback",
+        "auth_logout",
+        "auth_session",
+    }
+)
+"""Every operation a ``client`` may reach (v0.16; fail closed). The server refuses any other
+project-scoped operation (``404``) when the caller's effective role in the project is
+``client``, and any other signed-in or tenant operation when every membership of the
+caller is ``client``. Refit-request decisions, drafts, grants and share-link management are
+not in the set; neither are the catalog, guided, workflow, governance, project and tenant
+listings."""
 
 
 def route_access(operation_id: str) -> RouteAccess:

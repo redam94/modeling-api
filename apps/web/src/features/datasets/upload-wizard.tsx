@@ -381,12 +381,12 @@ export function UploadWizard({ datasetId, onDone }: { datasetId: string; onDone:
 
       {phase === "uploading" ? (
         <div className="grid gap-2">
-          <p className="text-[13px]">{single ? "The file uploads to quarantine storage…" : `File ${(progress?.index ?? 0) + 1} of ${sources.length} uploads to quarantine storage…`}</p>
+          <p className="text-sm">{single ? "The file uploads to quarantine storage…" : `File ${(progress?.index ?? 0) + 1} of ${sources.length} uploads to quarantine storage…`}</p>
           <Progress label="Upload progress" value={progress?.p ? progress.p.loaded / Math.max(1, progress.p.total) : null} />
         </div>
       ) : null}
-      {phase === "ingesting" ? <p className="text-[13px]">{single ? "The upload is complete. The sandboxed ingest run starts…" : "The uploads are complete. The sandboxed ingest run starts and combines the files…"}</p> : null}
-      {error && !busy ? <p role="alert" className="text-[13px] text-destructive">{error}</p> : null}
+      {phase === "ingesting" ? <p className="text-sm">{single ? "The upload is complete. The sandboxed ingest run starts…" : "The uploads are complete. The sandboxed ingest run starts and combines the files…"}</p> : null}
+      {error && !busy ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -398,7 +398,7 @@ function CombineSummary({ sources }: { sources: Source[] }) {
   const byNode = new Map<string, Source[]>();
   for (const s of sources) byNode.set(s.placement.node, [...(byNode.get(s.placement.node) ?? []), s]);
   return (
-    <ul aria-label="Nodes of the version" className="grid gap-1 text-[13px]">
+    <ul aria-label="Nodes of the version" className="grid gap-1 text-sm">
       {[...byNode.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([node, group]) => (
@@ -482,7 +482,7 @@ function SourceCard({ datasetId, source: s, single, editable, expert, problems, 
       {showPlacement && editable ? <PlacementFields source={s} expert={expert} problems={placementProblems} onPatch={onPatch} /> : null}
       {single && editable ? (
         <details className="rounded-lg border px-3 py-2" open={s.placement.node !== "/" || s.placement.combine !== "node" || placementProblems.length > 0}>
-          <summary className="cursor-pointer text-[13px] font-medium">Put this file in a node of a tree (optional)</summary>
+          <summary className="cursor-pointer text-sm font-medium">Put this file in a node of a tree (optional)</summary>
           <div className="pt-3">
             <PlacementFields source={s} expert={expert} problems={placementProblems} onPatch={onPatch} />
           </div>
@@ -620,12 +620,12 @@ function InspectSection({
         </p>
       ) : null}
       {polling ? (
-        <p role="status" className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner /> The sandbox lists the arrays of {name}…
         </p>
       ) : null}
       {inspection.isError ? (
-        <div role="alert" className="grid gap-1 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px]">
+        <div role="alert" className="grid gap-1 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
           <span className="font-medium">The sandbox could not list the arrays of {name}.</span>
           <span className="break-words text-muted-foreground">{errorMessage(inspection.error)}</span>
         </div>
@@ -719,7 +719,7 @@ function ColumnMappingTable({
       </div>
       {format === "parquet" ? <p className="text-xs text-muted-foreground">Only the sandboxed ingest run can read Parquet files. Type the column names yourself.</p> : null}
       <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs text-muted-foreground">
               <th className="px-2 py-2 text-left font-medium">Column</th>

@@ -103,6 +103,9 @@ class WebhookEventType(StrEnum):
     DATASET_VERSION_CREATED = "dataset.version.created"
     """A dataset version finished ingesting (also what workflow triggers listen to)."""
     OPTIMIZE_COMPLETED = "optimize.completed"
+    # --- v0.16 (additive) --------------------------------------------------------------------
+    DASHBOARD_READOUT_PUBLISHED = "dashboard.readout.published"
+    """A dashboard readout became ready and published (it joined the client history)."""
 
 
 # ========================================================================================= DTOs

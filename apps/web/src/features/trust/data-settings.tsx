@@ -62,12 +62,12 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <fieldset className="grid gap-2 sm:grid-cols-2">
-          <legend className="mb-1 text-[13px] font-medium">Include</legend>
+          <legend className="mb-1 text-sm font-medium">Include</legend>
           {PARTS.map((p) => (
             <label key={p.id} htmlFor={`exp-${p.id}`} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
               <Checkbox id={`exp-${p.id}`} className="mt-0.5" checked={parts.includes(p.id)} onCheckedChange={(v) => setParts(v === true ? [...parts, p.id] : parts.filter((x) => x !== p.id))} />
               <span className="grid gap-0.5">
-                <span className="text-[13px] font-medium">{p.label}</span>
+                <span className="text-sm font-medium">{p.label}</span>
                 <span className="text-xs text-muted-foreground">{p.description}</span>
               </span>
             </label>
@@ -94,7 +94,7 @@ export function ExportCard({ tenant }: { tenant: Tenant }) {
         </div>
         {create.isError ? <ErrorNotice error={create.error} title="The export was not requested" /> : null}
         {exp ? (
-          <div className="grid gap-2 rounded-lg border p-3 text-[13px]" aria-live="polite" data-testid="export-status">
+          <div className="grid gap-2 rounded-lg border p-3 text-sm" aria-live="polite" data-testid="export-status">
             <p className="flex flex-wrap items-center gap-2">
               <Badge variant={EXPORT_VARIANT[exp.state]}>{exp.state}</Badge>
               <Mono className="text-muted-foreground">{exp.id}</Mono>
@@ -152,7 +152,7 @@ function DeleteTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () =
           This deletes the full organisation: all projects, datasets, models, endpoints, webhooks, tokens and members. The app cancels runs. The organisation becomes read-only immediately.
         </DialogDescription>
         <form className="grid gap-4" onSubmit={submit} noValidate>
-          <ul className="grid list-disc gap-1 pl-5 text-[13px]">
+          <ul className="grid list-disc gap-1 pl-5 text-sm">
             <li>You have {DELETION_GRACE_DAYS} days to change your decision. You can cancel here until the purge starts.</li>
             <li>Then the app removes the data from all stores. You cannot get it back. If you need your data, export it first.</li>
             <li>The app keeps the audit log (pseudonymised) and the cost ledger (amounts only) for the legal retention period.</li>
@@ -163,7 +163,7 @@ function DeleteTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose: () =
           <Field label="Reason (optional)" htmlFor="del-reason">
             <Textarea id="del-reason" maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
-          <label className="flex items-start gap-2 text-[13px]">
+          <label className="flex items-start gap-2 text-sm">
             <Checkbox className="mt-0.5" checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} />I understand that I cannot undo this after {DELETION_GRACE_DAYS} days.
           </label>
           {request.isError ? <ErrorNotice error={request.error} title="The deletion was not scheduled" /> : null}
@@ -225,7 +225,7 @@ export function DeletionCard({ tenant }: { tenant: Tenant }) {
               </div>
             ) : null}
             {d?.state === "failed" ? (
-              <p className="flex items-start gap-2 text-[13px] text-destructive">
+              <p className="flex items-start gap-2 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> The purge stopped because of an error. The app tries the purge again automatically. The operators got a notification.
               </p>
             ) : null}

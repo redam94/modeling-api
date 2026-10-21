@@ -42,6 +42,7 @@ from mapi_spec.jobs import (
     INPUT_BUNDLE,
     INPUT_BUNDLE_MANIFEST,
     INPUT_DATASET,
+    INPUT_EXTEND_BASE,
     INPUT_HISTORY,
     INPUT_PLOTS,
     INPUT_SCENARIO,
@@ -738,13 +739,22 @@ async def submit_ingest(
     uploads: list[tuple[m.Upload, int]],
     mapping: dict[str, Any] | None = None,
     assembly: IngestAssembly | None = None,
+    extend: tuple[m.DatasetVersion, str] | None = None,
 ) -> m.Run:
     """One ``ingest`` run for a new dataset version: a single upload with its ``mapping``
     (input ``upload``) or, M4, the uploads of an ``assembly`` in source order (inputs
-    ``upload.<i>``). ``uploads`` pairs each upload with the generation it is pinned to."""
+    ``upload.<i>``). ``uploads`` pairs each upload with the generation it is pinned to.
+
+    v0.16 ``extend = (base version, dim)``: the new version is the base version's data
+    (input ``base``) plus the upload's labels along ``dim``, with the base's schema."""
     if (mapping is None) == (assembly is None) or not uploads:
         raise ValueError("give a mapping (one upload) or an assembly")
+    if extend is not None and (mapping is None or extend[0].layout != "dataset"):
+        raise ValueError("only a plain dataset version is extended, with one mapped upload")
     total = sum(upload.size_bytes for upload, _ in uploads)
+    if extend is not None:  # the base version is decoded in the same scratch
+        base_obj = extend[0].objects.get(data_object_name(extend[0])) or {}
+        total += int(base_obj.get("size") or 0)
     # plan §8.5: the smallest class whose dataset cap holds the upload(s) (the API caps the
     # total at class L's limit, so one always fits)
     resource_class = class_for_size(total) or ResourceClass.L
@@ -772,9 +782,12 @@ async def submit_ingest(
                 content_type=upload.content_type,
                 size_bytes=upload.size_bytes,
             ),
+            extend_dim=extend[1] if extend is not None else None,
             **caps,
         )
         inputs = {INPUT_UPLOAD: StoredRef(upload.bucket, upload.object_name, generation)}
+        if extend is not None:
+            inputs[INPUT_EXTEND_BASE] = data_ref(extend[0])
     payload = job.model_dump(mode="json", by_alias=True, exclude_none=True)
     snapshot = await ctx.catalogs.get(session)
     run = await create_run(

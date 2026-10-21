@@ -88,8 +88,8 @@ export function CronEditor({ cron, timezone, onCron, onTimezone }: { cron: strin
       </div>
       {preview.length ? (
         <div className="rounded-md border bg-muted/30 p-3" aria-live="polite" data-testid="cron-preview">
-          <p className="text-[13px] font-medium">{describeCron(cron)} ({timezone}). Next runs:</p>
-          <ol className="mt-1 grid gap-0.5 text-[13px] tabular">
+          <p className="text-sm font-medium">{describeCron(cron)} ({timezone}). Next runs:</p>
+          <ol className="mt-1 grid gap-0.5 text-sm tabular">
             {preview.map((t) => (
               <li key={t}>{fmtIn(t, timezone)}</li>
             ))}
@@ -158,7 +158,7 @@ function NewTrigger({ workflowId, doc, onDone }: { workflowId: string; doc: Work
         },
       });
   };
-  if (!dataInputs.length) return <p className="text-[13px] text-muted-foreground">This workflow has no dataset input. Thus a new dataset version cannot start it.</p>;
+  if (!dataInputs.length) return <p className="text-sm text-muted-foreground">This workflow has no dataset input. Thus a new dataset version cannot start it.</p>;
   return (
     <form className="grid gap-4 rounded-lg border p-4" onSubmit={submit} aria-label="New trigger">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -229,7 +229,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
                   {page.items.map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3" data-schedule={s.id}>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium">
+                        <p className="text-sm font-medium">
                           {describeCron(s.cron)} <span className="text-muted-foreground">({s.timezone})</span>
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -289,7 +289,7 @@ export function AutomationPanel({ workflowId, doc }: { workflowId: string; doc: 
                   {page.items.map((t) => (
                     <li key={t.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium">
+                        <p className="text-sm font-medium">
                           New version of <Mono>{t.dataset}</Mono> → inputs.{t.input}
                         </p>
                         <p className="text-xs text-muted-foreground">

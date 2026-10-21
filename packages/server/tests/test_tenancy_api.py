@@ -353,3 +353,22 @@ async def test_operators_see_cost_by_tenant_and_spend_against_the_global_cap(
     await grant_role(ctx, u, "acme", None, "admin")
     ana = await session_caller(ctx, client, u)
     assert (await ana.get("/v1/admin/usage")).status_code == 403
+
+
+async def test_an_operator_with_a_client_membership_keeps_the_platform_routes(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    """The client gate is for members: an operator's platform and tenant rights come from
+    the configuration, so a client grant (to try the portal) never locks them out."""
+    op = await make_user(ctx, "ops@platform.test", operator=True)
+    await grant_role(ctx, op, "default", "default", "client")
+    ops = await session_caller(ctx, client, op)
+    r = await ops.get("/v1/admin/tenants")
+    assert r.status_code == 200, r.text
+    r = await ops.get("/v1/admin/kill-switches")
+    assert r.status_code == 200, r.text
+    r = await ops.get("/v1/tenants/default")
+    assert r.status_code == 200, r.text
+    # in the project itself the client role still decides
+    r = await ops.get("/v1/runs", headers={"X-Mapi-Project": "default/default"})
+    assert r.status_code == 404, r.text

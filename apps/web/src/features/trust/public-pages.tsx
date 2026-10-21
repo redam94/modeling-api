@@ -111,7 +111,7 @@ function DevOutboxHint({ email }: { email: string }) {
   }, [email]);
   if (!link) return null;
   return (
-    <p className="rounded-md border border-dashed p-3 text-[13px]">
+    <p className="rounded-md border border-dashed p-3 text-sm">
       Development server: the e-mail is in the outbox.{" "}
       <a href={link} className="font-medium text-primary hover:underline">
         Open the verification link
@@ -168,7 +168,7 @@ export function SignupPage() {
           <p className="text-muted-foreground">
             If <span className="font-medium text-foreground">{sent.email}</span> can sign up, we send a link to confirm the address. The link works one time, for {sent.hours} hours. It creates your workspace.
           </p>
-          <ul className="list-disc pl-5 text-[13px] text-muted-foreground">
+          <ul className="list-disc pl-5 text-sm text-muted-foreground">
             <li>If the e-mail did not arrive, look in the spam folder or send the link again. Only the newest link works.</li>
             <li>You can open the link on a different device. Then sign in on that device or on this one.</li>
           </ul>
@@ -197,7 +197,7 @@ export function SignupPage() {
     <PublicFrame>
       <div className="grid gap-1.5">
         <h1 className="text-[22px] leading-tight font-semibold tracking-tight">Create your workspace</h1>
-        <p className="text-[13px] text-muted-foreground">Free workspaces run the built-in models and declarative specs on your data. We send you an e-mail with a link to confirm the address.</p>
+        <p className="text-sm text-muted-foreground">Free workspaces run the built-in models and declarative specs on your data. We send you an e-mail with a link to confirm the address.</p>
       </div>
       <form className="grid gap-4" onSubmit={(e) => void submit(e)} noValidate>
         <Field label="Work e-mail" htmlFor="su-email" error={shown.email}>
@@ -210,7 +210,7 @@ export function SignupPage() {
           <Input id="su-org" autoComplete="organization" maxLength={200} value={form.organisation} onChange={(e) => set("organisation", e.target.value)} />
         </Field>
         <div className="grid gap-1.5">
-          <label className="flex items-start gap-2 text-[13px]" htmlFor="su-terms">
+          <label className="flex items-start gap-2 text-sm" htmlFor="su-terms">
             <Checkbox id="su-terms" className="mt-0.5" checked={form.terms} onCheckedChange={(v) => set("terms", v === true)} aria-invalid={shown.terms ? true : undefined} aria-describedby={shown.terms ? "su-terms-error" : undefined} />
             <span>
               I accept the{" "}
@@ -235,7 +235,7 @@ export function SignupPage() {
           {busy ? <Spinner /> : <ArrowRight />} Create workspace
         </Button>
       </form>
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Do you have an account?{" "}
         <button type="button" className="font-medium text-primary hover:underline" onClick={() => signIn("/")}>
           Sign in
@@ -275,7 +275,7 @@ export function VerifyEmailPage() {
           <p className="text-muted-foreground">
             <span className="font-medium text-foreground">{result.email}</span> is confirmed. Workspace <Mono>{result.tenant_id}</Mono> has a <Mono>{result.project_id}</Mono> project. You are its admin.
           </p>
-          <p className="text-[13px] text-muted-foreground">Free workspaces run the built-in models and declarative specs. To upload your own model code, you must verify your identity.</p>
+          <p className="text-sm text-muted-foreground">Free workspaces run the built-in models and declarative specs. To upload your own model code, you must verify your identity.</p>
           <Button size="lg" onClick={() => signIn(SIGNED_UP_LANDING, { login_url: result.login_url ?? "/auth/login" })}>
             <LogIn /> Sign in
           </Button>
@@ -358,12 +358,12 @@ function DocumentPage({ title, children }: { title: string; children: ReactNode 
         </a>
         <div className="grid gap-1.5">
           <h1 className="text-[26px] leading-tight font-semibold tracking-tight">{title}</h1>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Version <Mono>{TERMS_VERSION}</Mono>. The organisation that operates this service can publish its own, longer version. Then the sign-up page links to that version.
           </p>
         </div>
-        <div className="grid gap-4 text-[14px] leading-relaxed [&_h2]:text-[16px] [&_h2]:font-semibold [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-1.5 [&_ul]:pl-5">{children}</div>
-        <p className="border-t pt-4 text-[13px]">
+        <div className="grid gap-4 text-sm leading-relaxed [&_h2]:text-[16px] [&_h2]:font-semibold [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-1.5 [&_ul]:pl-5">{children}</div>
+        <p className="border-t pt-4 text-sm">
           <a href="/signup" className="font-medium text-primary hover:underline">
             Back to sign-up
           </a>

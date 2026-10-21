@@ -17,6 +17,7 @@ from mapi_client import _calls_m35 as m35
 from mapi_client import _calls_tracking as tr
 from mapi_client import _calls_v014 as v14
 from mapi_client import _calls_v015 as v15
+from mapi_client import _calls_v016 as v16
 from mapi_client._http import Call
 from mapi_spec.api import (
     ALL_ENDPOINTS,
@@ -24,8 +25,13 @@ from mapi_spec.api import (
     IDEMPOTENCY_KEY_HEADER,
     PREFER_HEADER,
     ROUTE_ACCESS,
+    V016_ENDPOINTS,
+    ActualsSubmit,
     ApprovalCreate,
     BlobQuery,
+    DashboardCreate,
+    DashboardDraftUpdate,
+    DashboardShareCreate,
     DataExploreRequest,
     DatasetAboutUpdate,
     DatasetCreate,
@@ -62,15 +68,18 @@ from mapi_spec.api import (
     ProjectCreate,
     ProjectUpdate,
     QuotaPolicyUpsert,
+    RefitRequestDecision,
     RouteScope,
     RunCreate,
     RunRetry,
     RunViewCreate,
     RunViewPatch,
     SavedPlotCreate,
+    ScenarioSave,
     ScheduleCreate,
     ScheduleUpdate,
     ScoreCall,
+    ShareSessionCreate,
     SignupRequest,
     SignupReviewDecision,
     SpecCreate,
@@ -88,6 +97,7 @@ from mapi_spec.api import (
     VerificationUpdate,
     WebhookCreate,
     WebhookUpdate,
+    WhatIfRequest,
     WorkflowCreate,
     WorkflowRevisionCreate,
     WorkflowRunCreate,
@@ -118,6 +128,8 @@ _WF = "wfl_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _POL = "pol_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _VAL = "val_01jaf3h1j2k3m4n5p6q7r8s9t0"
 _EXP = "exp_01jaf3f1g2h3j4k5m6n7p8q9r0"
+_DSH = "dsh_01jaf3h1j2k3m4n5p6q7r8s9t0"
+_MPS = "mps_" + "a" * 16 + "." + "b" * 43
 
 NOT_FOR_PROGRAMS = frozenset(
     {
@@ -424,6 +436,58 @@ BUILDERS: dict[str, Callable[[], Call[Any]]] = {
     "get_upload": lambda: v15.get_upload("ds_1", "upl_1"),
     "renew_upload": lambda: v15.renew_upload("ds_1", "upl_1"),
     "find_missing_images": lambda: v15.find_missing_images("ds_1", _ex(BlobQuery)),
+    # v0.16: client dashboards and share links
+    "list_dashboards": lambda: v16.list_dashboards(5, None, status="published"),
+    "create_dashboard": lambda: v16.create_dashboard(_ex(DashboardCreate)),
+    "get_dashboard": lambda: v16.get_dashboard(_DSH),
+    "update_dashboard_draft": lambda: v16.update_dashboard_draft(
+        _DSH, _ex(DashboardDraftUpdate), '"r3"'
+    ),
+    "validate_dashboard": lambda: v16.validate_dashboard(_DSH),
+    "publish_dashboard": lambda: v16.publish_dashboard(_DSH),
+    "archive_dashboard": lambda: v16.archive_dashboard(_DSH),
+    "list_dashboard_revisions": lambda: v16.list_dashboard_revisions(_DSH, None, None),
+    "list_dashboard_grants": lambda: v16.list_dashboard_grants(_DSH, None, None),
+    "put_dashboard_grant": lambda: v16.put_dashboard_grant(_DSH, _USR),
+    "delete_dashboard_grant": lambda: v16.delete_dashboard_grant(_DSH, _USR),
+    "list_dashboard_shares": lambda: v16.list_dashboard_shares(_DSH, None, None),
+    "create_dashboard_share": lambda: v16.create_dashboard_share(_DSH, _ex(DashboardShareCreate)),
+    "revoke_dashboard_share": lambda: v16.revoke_dashboard_share(_DSH, "dss_1"),
+    "get_dashboard_grid": lambda: v16.get_dashboard_grid(_DSH),
+    "evaluate_dashboard_whatif": lambda: v16.evaluate_dashboard_whatif(_DSH, _ex(WhatIfRequest)),
+    "save_dashboard_scenario": lambda: v16.save_dashboard_scenario(
+        _DSH, _ex(ScenarioSave), wait=30, idempotency_key="k"
+    ),
+    "get_dashboard_actuals_template": lambda: v16.get_dashboard_actuals_template(_DSH),
+    "submit_dashboard_actuals": lambda: v16.submit_dashboard_actuals(_DSH, _ex(ActualsSubmit)),
+    "list_dashboard_readouts": lambda: v16.list_dashboard_readouts(
+        _DSH, kind="actuals", before_seq=9, limit=10, visibility="pending_review"
+    ),
+    "get_dashboard_readout": lambda: v16.get_dashboard_readout(_DSH, 3),
+    "publish_dashboard_readout": lambda: v16.publish_dashboard_readout(_DSH, 3),
+    "hide_dashboard_readout": lambda: v16.hide_dashboard_readout(_DSH, 3),
+    "refresh_dashboard": lambda: v16.refresh_dashboard(_DSH),
+    "list_dashboard_refit_requests": lambda: v16.list_dashboard_refit_requests(
+        _DSH, None, None, status="open"
+    ),
+    "approve_dashboard_refit_request": lambda: v16.approve_dashboard_refit_request(
+        _DSH, "drr_1", _ex(RefitRequestDecision)
+    ),
+    "reject_dashboard_refit_request": lambda: v16.reject_dashboard_refit_request(
+        _DSH, "drr_1", _ex(RefitRequestDecision)
+    ),
+    "create_share_session": lambda: v16.create_share_session(_ex(ShareSessionCreate)),
+    "refresh_share_session": lambda: v16.refresh_share_session(_MPS),
+    "get_shared_dashboard": lambda: v16.get_shared_dashboard(_MPS),
+    "list_shared_readouts": lambda: v16.list_shared_readouts(_MPS, kind="baseline", limit=5),
+    "get_shared_readout": lambda: v16.get_shared_readout(_MPS, 3),
+    "get_shared_grid": lambda: v16.get_shared_grid(_MPS),
+    "evaluate_shared_whatif": lambda: v16.evaluate_shared_whatif(_MPS, _ex(WhatIfRequest)),
+    "save_shared_scenario": lambda: v16.save_shared_scenario(
+        _MPS, _ex(ScenarioSave), wait=30, idempotency_key="k"
+    ),
+    "get_shared_actuals_template": lambda: v16.get_shared_actuals_template(_MPS),
+    "submit_shared_actuals": lambda: v16.submit_shared_actuals(_MPS, _ex(ActualsSubmit)),
 }
 
 CLIENT_ENDPOINTS = ALL_ENDPOINTS
@@ -562,6 +626,12 @@ def test_prefer_and_idempotency_headers_follow_the_contract(decl: EndpointDecl) 
 
 def test_m3_public_routes_carry_no_credentials() -> None:
     public = {"signup", "verify_email", "get_embed"}
+    # v0.16 share links: authorised by X-Mapi-Share, never by the client's credentials
+    public |= {
+        d.operation_id
+        for d in V016_ENDPOINTS
+        if ROUTE_ACCESS[d.operation_id].scope is RouteScope.PUBLIC
+    }
     for op, make in BUILDERS.items():
         assert make().public is (op in public), op
 
@@ -761,3 +831,24 @@ def test_v014_patches_are_merge_patches() -> None:
         v14.experiment_patch()
     assert tr.update_run("run_1", tr.run_patch(experiment_id=None)).json == {"experiment_id": None}
     assert v14.update_run_view("rv_1", RunViewPatch(name="best")).json == {"name": "best"}
+
+
+def test_v016_share_routes_carry_the_session_and_validate_inputs() -> None:
+    call = v16.get_shared_dashboard(_MPS)
+    assert call.headers == {"X-Mapi-Share": _MPS} and call.public and not call.scoped
+    with pytest.raises(ValueError, match="share session"):
+        v16.get_shared_dashboard("not-a-session")
+    assert not v16.create_dashboard_share(_DSH, _ex(DashboardShareCreate)).idempotent
+    assert v16.update_dashboard_draft(_DSH, _ex(DashboardDraftUpdate), '"r3"').headers == {
+        "If-Match": '"r3"'
+    }
+    call = v16.list_dashboard_readouts(_DSH, kind="actuals", visibility="private")
+    assert call.params == {"kind": "actuals", "visibility": "private"}
+    with pytest.raises(ValueError):
+        v16.list_dashboard_readouts(_DSH, kind="forecast")
+    with pytest.raises(ValueError):
+        v16.list_dashboard_readouts(_DSH, limit=51)
+    with pytest.raises(ValueError):
+        v16.list_dashboards(None, None, status="deleted")
+    with pytest.raises(ValueError):
+        v16.save_dashboard_scenario(_DSH, _ex(ScenarioSave), wait=61)

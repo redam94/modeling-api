@@ -11,14 +11,46 @@ import { DEV_PREBUNDLE } from "./dev-prebundle";
 const HOST = "127.0.0.1";
 const PORT = 5173;
 
+const PNPM = String.raw`node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?`;
+const pkg = (names: string) => new RegExp(`${PNPM}(?:${names})\\/`);
+
+/**
+ * v0.16: what a share link (`/s#…`) and the client portal download. Each budget covers the lazy
+ * chunk and everything it imports statically (the entry included), and lists what must never be
+ * in that closure: the expert app's router, tables, editors, Arrow and the workflow canvas, and
+ * the signed-in session middleware (share links send no cookie, CSRF or project header).
+ */
+const SHARE_FORBIDDEN = [
+  pkg("@tanstack\\/react-router"),
+  pkg("@tanstack\\/react-table"),
+  /\/src\/api\/queries\.ts$/,
+  /\/src\/api\/client\.ts$/,
+  /\/src\/components\/shell\//,
+  pkg("monaco-editor|monaco-yaml"),
+  pkg("apache-arrow"),
+  pkg("@xyflow"),
+];
+
 /**
  * What every page may download before first paint: the entry chunk and its static imports.
  * Monaco, monaco-yaml and Arrow load only on the pages that use them (lazy routes + import()).
+ * The entry only picks the surface (share link, public pages, signed-in app) and loads it lazily.
  */
 const ENTRY_BUDGET = {
   maxEntryBytes: 640 * 1024,
   // M3.5: React Flow (the workflow canvas) loads only with the workflow editor and run graph.
   forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//],
+  chunkBudgets: [
+    // The readout page, the dashboards client and the shared radix/tailwind-merge chunk; 263 KiB at v0.16.
+    { match: /(?:^|\/)share-app-[^/]*\.js$/, maxBytes: 288 * 1024, forbidden: SHARE_FORBIDDEN },
+    // The portal brings its own small router; it loads from the workspace gate, which already
+    // holds the session client and `api/queries.ts` (so neither is forbidden here).
+    {
+      match: /(?:^|\/)client-app-[^/]*\.js$/,
+      maxBytes: 260 * 1024,
+      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow")],
+    },
+  ],
 };
 
 function cspMeta(opts: AppCspOptions): Plugin {

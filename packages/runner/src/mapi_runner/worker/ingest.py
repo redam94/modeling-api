@@ -83,7 +83,7 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
-from mapi_spec.jobs import DATATREE_OUTPUT, TREE_SCHEMA_OUTPUT, upload_input
+from mapi_spec.jobs import DATATREE_OUTPUT, INPUT_EXTEND_BASE, TREE_SCHEMA_OUTPUT, upload_input
 from mapi_spec.run import INPUT_DATASET, RunnerPhase
 from mapi_spec.schema import DataSchema, DimPolicy, DimSpec, Role
 from mapi_spec.tree import ROOT, TreeSchema
@@ -1307,6 +1307,45 @@ def _assembly_upload(ctx: WorkerContext, job: IngestJob, limits: IngestLimits) -
     return assemble(job.assembly, uploads, limits)
 
 
+def _extended(ctx: WorkerContext, dim: str, up: Upload, limits: IngestLimits) -> Upload:
+    """The ``base`` input (an earlier version's data) extended with the upload along
+    ``dim``, with the base's schema (see :mod:`mapi_runner.worker.extend_ingest`)."""
+    from mapi_runner.worker.data import load_dataset
+    from mapi_runner.worker.extend_ingest import extend_dataset
+
+    ctx.state(RunnerPhase.LOAD_INPUTS, "downloading the dataset the upload extends")
+    base = load_dataset(ctx, INPUT_EXTEND_BASE)
+    if not isinstance(base, xr.Dataset) or not isinstance(up.data, xr.Dataset):
+        raise _schema_error("only a plain dataset can be extended with new periods", "/extend_dim")
+    stored = base.attrs.pop(SCHEMA_ATTR, None)
+    schema = DataSchema.model_validate_json(stored) if isinstance(stored, str) else up.schema
+    ctx.state(RunnerPhase.VALIDATE, "adding the uploaded periods to the dataset")
+    data = extend_dataset(base, up.data, dim, limits)
+    if isinstance(schema, DataSchema):
+        data, schema = _keep_integer_dtypes(data, schema)
+    return Upload(data, schema, None, up.warnings, up.notes, up.size)
+
+
+def _keep_integer_dtypes(ds: xr.Dataset, schema: DataSchema) -> tuple[xr.Dataset, DataSchema]:
+    """An integer variable of the base that the extension made float: back to its dtype
+    when nothing is missing, else read as ``float64`` (so the schema's missing policy, not
+    a dtype mismatch, decides whether the gap is allowed)."""
+    widened = {}
+    for name, spec in schema.vars.items():
+        if spec.dtype not in ("int64", "int32") or name not in ds.data_vars:
+            continue
+        da = ds[name]
+        if not np.issubdtype(da.dtype, np.floating):
+            continue
+        if bool(da.isnull().any()):
+            widened[name] = spec.model_copy(update={"dtype": "float64"})
+        else:
+            ds[name] = da.astype(spec.dtype)
+    if widened:
+        schema = schema.model_copy(update={"vars": {**schema.vars, **widened}})
+    return ds, schema
+
+
 def _note_issues(ctx: WorkerContext, notes: list[dict[str, str]]) -> list[Issue]:
     issues: list[Issue] = []
     for note in notes:
@@ -1348,6 +1387,8 @@ def run_ingest(ctx: WorkerContext, job: IngestJob) -> DataSchema:
         assert path is not None
         ctx.state(RunnerPhase.VALIDATE, "parsing and validating the upload")
         up = build_upload(path, _job_mapping(job), limits)
+        if job.extend_dim is not None:  # v0.16: the base dataset plus the upload's periods
+            up = _extended(ctx, job.extend_dim, up, limits)
     ctx.cancel.check()
     for message, untrusted in up.warnings[:100]:
         ctx.warning("INGEST_WARNING", message, untrusted)

@@ -69,11 +69,11 @@ export function StatusTimeline({ validation }: { validation: ModelValidation }) 
           </li>
         ) : null}
       </ol>
-      <p className="text-[13px] text-muted-foreground">{VALIDATION_META[status].plain}</p>
+      <p className="text-sm text-muted-foreground">{VALIDATION_META[status].plain}</p>
       {(validation.history ?? []).length ? (
         <ol className="grid gap-1.5 border-l pl-4" aria-label="History">
           {[...(validation.history ?? [])].reverse().map((h, i) => (
-            <li key={`${h.at}-${i}`} className="relative text-[13px]">
+            <li key={`${h.at}-${i}`} className="relative text-sm">
               <span aria-hidden className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-border" />
               <span className="font-medium">{EVENT_LABEL[h.event]}</span>
               <span className="text-muted-foreground">
@@ -129,7 +129,7 @@ function DecisionPanel({ validation }: { validation: ModelValidation }) {
         {approvals.length ? (
           <ul className="grid gap-2">
             {approvals.map((a) => (
-              <li key={a.id} className="flex items-start gap-2 text-[13px]">
+              <li key={a.id} className="flex items-start gap-2 text-sm">
                 {a.decision === "approve" ? <ThumbsUp className="mt-0.5 size-4 text-success" aria-hidden /> : <ThumbsDown className="mt-0.5 size-4 text-destructive" aria-hidden />}
                 <span>
                   <span className="font-medium">{a.decision === "approve" ? "Approved" : "Rejected"}</span> by {a.approver_id === reviewer.userId ? "you" : <PersonName id={a.approver_id} />} · {relativeTime(a.decided_at)}
@@ -139,12 +139,12 @@ function DecisionPanel({ validation }: { validation: ModelValidation }) {
             ))}
           </ul>
         ) : (
-          <p className="text-[13px] text-muted-foreground">No decision yet.</p>
+          <p className="text-sm text-muted-foreground">No decision yet.</p>
         )}
         {reviewer.isReviewer && canDecide ? (
           <div className="grid gap-3 rounded-md border p-3" data-testid="decision-form">
             {isSubmitter ? (
-              <p role="note" className="text-[13px] text-muted-foreground">
+              <p role="note" className="text-sm text-muted-foreground">
                 You submitted this validation. Another person must review it.
               </p>
             ) : null}
@@ -331,7 +331,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
         <section className="grid content-start gap-3" aria-label="Check results">
           <h2 className="text-base font-semibold">Checks</h2>
           {v.status === "checks_running" ? (
-            <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner /> The checks run in the sandbox now{v.workflow_run_id ? (
                 <>
                   {" "}
@@ -347,14 +347,14 @@ export function ValidationView({ validationId }: { validationId: string }) {
           ) : null}
           {results.length ? (
             <>
-              <p className="text-[13px]">
+              <p className="text-sm">
                 {counts.pass ?? 0} passed · {counts.warn ?? 0} warned · {(counts.fail ?? 0) + (counts.error ?? 0)} failed · {counts.skipped ?? 0} did not apply
                 {v.failing_checks?.length ? <span className="text-destructive"> · blocking: {v.failing_checks.join(", ")}</span> : null}
               </p>
               <CheckResultList results={results} checks={checks.map} />
             </>
           ) : v.status !== "checks_running" ? (
-            <p className="text-[13px] text-muted-foreground">No results yet.</p>
+            <p className="text-sm text-muted-foreground">No results yet.</p>
           ) : null}
         </section>
         <aside className="grid content-start gap-5">
@@ -364,7 +364,7 @@ export function ValidationView({ validationId }: { validationId: string }) {
               <CardTitle>Evidence pack</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
-              <p className="text-[13px] text-muted-foreground">One file with all the data that an auditor needs: the results, approvals, history, policies, lineage and a digest.</p>
+              <p className="text-sm text-muted-foreground">One file with all the data that an auditor needs: the results, approvals, history, policies, lineage and a digest.</p>
               <ExportPack validation={v} />
             </CardContent>
           </Card>

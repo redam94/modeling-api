@@ -32,7 +32,7 @@ export function DeletionProgress({ deletion }: { deletion: TenantDeletion }) {
   const meta = DELETION_META[deletion.state];
   return (
     <div className="grid gap-3">
-      <p className="flex flex-wrap items-center gap-2 text-[13px]">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant={meta.variant}>{meta.label}</Badge>
         <span className="text-muted-foreground">
           Requested {relativeTime(deletion.requested_at)}
@@ -45,7 +45,7 @@ export function DeletionProgress({ deletion }: { deletion: TenantDeletion }) {
         <ul className="grid gap-2" aria-label="Deletion progress">
           {deletion.stores.map((s) => (
             <li key={s.store} className="grid gap-1">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span>{STORE_LABEL[s.store]}</span>
                 <Badge variant={STORE_STATE[s.state]}>{s.state}</Badge>
               </div>
@@ -56,7 +56,7 @@ export function DeletionProgress({ deletion }: { deletion: TenantDeletion }) {
         </ul>
       ) : null}
       {deletion.retained && Object.keys(deletion.retained).length ? (
-        <details className="text-[13px]">
+        <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">What the app keeps, and why</summary>
           <ul className="mt-1 list-disc pl-5 text-muted-foreground">
             {Object.entries(deletion.retained).map(([k, v]) => (

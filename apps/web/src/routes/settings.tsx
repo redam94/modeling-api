@@ -41,7 +41,7 @@ function GuidedLockSwitch({ locked }: { locked: boolean }) {
         }
       />
       <div className="grid gap-0.5">
-        <label htmlFor="guided-lock" className="text-[13px] font-medium">
+        <label htmlFor="guided-lock" className="text-sm font-medium">
           Lock {current.project.name} to Guided mode
         </label>
         <p id="guided-lock-hint" className="text-xs text-muted-foreground">
@@ -131,7 +131,7 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent>
             {lock.locked ? (
-              <p className="text-[13px] text-muted-foreground">A project admin locked this project to Guided mode.</p>
+              <p className="text-sm text-muted-foreground">A project admin locked this project to Guided mode.</p>
             ) : (
               <SegmentedControl<Persona>
                 label="Mode"
@@ -177,7 +177,7 @@ export function SettingsPage() {
             />
           </CardContent>
         </Card>
-        {ws.mode === "session" && ws.current?.tenantRole === "admin" ? <DataSettings tenant={ws.current.tenant} /> : null}
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant ? <DataSettings tenant={ws.current.tenant} /> : null}
       </div>
     </>
   );

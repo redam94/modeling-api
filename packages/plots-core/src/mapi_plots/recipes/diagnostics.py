@@ -11,7 +11,19 @@ import xarray as xr
 from mapi_spec.capabilities import Representation
 from pydantic import Field, field_validator
 
-from mapi_plots.palette import ALERT, BAND, BASELINE, EMPTY, MUTED, OBSERVED, OK, REFERENCE, SURFACE
+from mapi_plots.palette import (
+    ALERT,
+    BAND,
+    BASELINE,
+    EMPTY,
+    ESTIMATE,
+    MUTED,
+    OBSERVED,
+    OK,
+    REFERENCE,
+    SURFACE,
+    band_opacity,
+)
 from mapi_plots.recipes import _stats
 from mapi_plots.recipes._base import (
     Figure,
@@ -98,7 +110,7 @@ def _density_frame(
 
 def _density_chart(name: str, label: str, var: str, s: RecipeSettings) -> Any:
     colors = alt.Scale(
-        domain=[label, f"{label} (all)", "observed"], range=[BASELINE, BAND, OBSERVED]
+        domain=[label, f"{label} (all)", "observed"], range=[BASELINE, ESTIMATE, OBSERVED]
     )
     return (
         alt.Chart(named(name))
@@ -202,13 +214,14 @@ def _fan_chart(
 ) -> Any:
     base = alt.Chart(named(name))
     layers: list[Any] = []
-    for i, (_, lo_c, hi_c) in enumerate(interval_columns(levels)):
+    bands = interval_columns(levels)
+    for i, (_, lo_c, hi_c) in enumerate(bands):
         layers.append(
-            base.mark_area(opacity=0.18 + 0.12 * i, color=BAND).encode(
+            base.mark_area(opacity=band_opacity(i, len(bands)), color=BAND).encode(
                 x=alt.X("x:T", title=t), y=alt.Y(f"{lo_c}:Q", title=var), y2=f"{hi_c}:Q"
             )
         )
-    layers.append(base.mark_line(color=BAND).encode(x="x:T", y="point:Q"))
+    layers.append(base.mark_line(color=ESTIMATE).encode(x="x:T", y="point:Q"))
     if with_obs:
         layers.append(base.mark_circle(size=14, color=OBSERVED).encode(x="x:T", y="observed:Q"))
     title = f"Prior predictive {var} over {t}"

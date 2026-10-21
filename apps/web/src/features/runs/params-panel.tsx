@@ -79,7 +79,7 @@ export function ParamsPanel({ run }: { run: Run }) {
                   ))}
                 </TBody>
               </Table>
-              {!rows.length ? <p className="pt-3 text-[13px] text-muted-foreground">No parameters match the filter.</p> : null}
+              {!rows.length ? <p className="pt-3 text-sm text-muted-foreground">No parameters match the filter.</p> : null}
               {params.data.more ? <p className="pt-3 text-xs text-muted-foreground">The run has more parameters than the page shows.</p> : null}
             </>
           )}

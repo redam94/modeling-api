@@ -494,7 +494,7 @@ function SpecWorkbench({ specId, revision, starter = STARTER_SPEC }: { specId: s
 
 function RevisionBanner({ text, action, onAction }: { text: string; action: string; onAction: () => void }) {
   return (
-    <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-[13px]">
+    <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-sm">
       <History className="size-4 shrink-0 text-warning" aria-hidden />
       <span className="min-w-0 flex-1">{text}</span>
       <Button size="sm" variant="outline" onClick={onAction}>
@@ -527,7 +527,7 @@ function RevisionList({
               type="button"
               onClick={() => onOpen(r.revision)}
               aria-current={r.revision === current ? "true" : undefined}
-              className="grid w-full grid-cols-[3rem_1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent aria-[current=true]:bg-accent"
+              className="grid w-full grid-cols-[3rem_1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-[current=true]:bg-accent"
             >
               <Mono className="font-semibold">r{r.revision}</Mono>
               <span className="truncate">{r.message ?? <span className="text-muted-foreground">No message</span>}</span>
@@ -563,7 +563,7 @@ function RevisionDiff({ specId, a, b, onClose }: { specId: string; a: number; b:
   const rb = useSpecRevision(specId, b);
   return (
     <div className="grid gap-2">
-      <div className="flex items-center gap-2 text-[13px]">
+      <div className="flex items-center gap-2 text-sm">
         <GitCompare className="size-4 text-muted-foreground" />
         Comparing <Mono>r{a}</Mono> to <Mono>r{b}</Mono>
         {ra.data && rb.data ? <span className="text-xs text-muted-foreground">hashes {shortId(ra.data.hash)} → {shortId(rb.data.hash)}</span> : null}

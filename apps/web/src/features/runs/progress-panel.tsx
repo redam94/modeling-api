@@ -70,7 +70,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
               />
             </div>
             <span className="flex flex-wrap items-center justify-end gap-x-2 tabular text-muted-foreground">
-              {c.tuning ? <span className="text-[11px]">tuning</span> : null}
+              {c.tuning ? <span className="text-xs">tuning</span> : null}
               {c.draws_done.toLocaleString("en")}/{c.draws_total.toLocaleString("en")}
               <span
                 className={cn("inline-flex min-w-16 items-center gap-1", divergences > 0 ? "font-medium text-destructive" : "text-muted-foreground/70")}
@@ -80,7 +80,7 @@ export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
                 {divergences} div.
               </span>
               {typeof stepSize === "number" ? (
-                <span className="text-[11px]" title="Step size of the sampler">
+                <span className="text-xs" title="Step size of the sampler">
                   step size {formatStepSize(stepSize)}
                 </span>
               ) : null}
@@ -99,7 +99,7 @@ export function ProgressPanel({ run, progress }: { run: Run; progress: ProgressS
     <div className="grid gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="text-[15px] font-semibold">{p ? phaseLabel(p.phase) : "No progress report yet"}</p>
+          <p className="text-base font-semibold">{p ? phaseLabel(p.phase) : "No progress report yet"}</p>
           {p?.message ? <p className="text-muted-foreground">{p.message}</p> : null}
         </div>
         <div className="flex gap-4 text-xs text-muted-foreground tabular">

@@ -122,7 +122,7 @@ function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: Work
               <TD>
                 <Badge variant={TONE_BADGE[meta.tone]}>{meta.label}</Badge>
               </TD>
-              <TD className={cn("text-[13px]", n.status === "failed" && "text-destructive")}>{nodeSummary(n, ctx)}</TD>
+              <TD className={cn("text-sm", n.status === "failed" && "text-destructive")}>{nodeSummary(n, ctx)}</TD>
               <TD className="tabular text-muted-foreground">{n.status === "cached" ? "reused" : formatDuration(elapsedSeconds(n.started_at, n.finished_at))}</TD>
             </TR>
           );
@@ -133,11 +133,11 @@ function StepsTable({ run, doc, catalog, onOpen }: { run: WorkflowRun; doc: Work
 }
 
 function EventLog({ events }: { events: { id: number; type: string; node_id?: string | null; ts: string; data?: Record<string, unknown> }[] }) {
-  if (!events.length) return <p className="text-[13px] text-muted-foreground">No events received yet.</p>;
+  if (!events.length) return <p className="text-sm text-muted-foreground">No events received yet.</p>;
   return (
     <ol className="grid max-h-96 gap-0.5 overflow-y-auto" aria-label="Events" aria-live="polite">
       {events.map((e) => (
-        <li key={e.id} className="grid grid-cols-[1rem_1fr_auto] items-start gap-2 py-0.5 text-[13px]">
+        <li key={e.id} className="grid grid-cols-[1rem_1fr_auto] items-start gap-2 py-0.5 text-sm">
           <CircleDot className="mt-1 size-3 text-muted-foreground" aria-hidden />
           <span>
             <Mono>{e.type.replace("workflow.", "")}</Mono>
@@ -243,7 +243,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
       />
       {cancel.isError ? <ErrorNotice error={cancel.error} title="The run was not cancelled" /> : null}
       {run.error ? (
-        <div role="alert" className="rounded-lg border border-destructive/35 bg-destructive/6 p-3 text-[13px]">
+        <div role="alert" className="rounded-lg border border-destructive/35 bg-destructive/6 p-3 text-sm">
           <p className="font-medium text-destructive">
             {run.error.code}: {run.error.message}
           </p>
@@ -253,7 +253,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
       <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
           <CardContent className="grid gap-2 pt-4">
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-center justify-between text-sm">
               <span>
                 {done} of {nodes.length} steps finished
               </span>
@@ -261,7 +261,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
             </div>
             <Progress value={nodes.length ? done / nodes.length : null} label="Steps finished" />
             {report?.inline && typeof (report.inline as { summary_plain?: unknown }).summary_plain === "string" ? (
-              <p className="text-[13px]" data-testid="run-summary">
+              <p className="text-sm" data-testid="run-summary">
                 {(report.inline as { summary_plain: string }).summary_plain}
               </p>
             ) : null}
@@ -334,7 +334,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
               ))}
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground">There is no decision yet.</p>
+            <p className="text-sm text-muted-foreground">There is no decision yet.</p>
           )}
         </TabsContent>
         <TabsContent value="outputs">
@@ -353,7 +353,7 @@ export function WorkflowRunMonitor({ runId, plain = false }: { runId: string; pl
               )}
             </div>
           ) : (
-            <p className="text-[13px] text-muted-foreground">{terminal ? "This run gave no outputs." : "The outputs show when the run finishes."}</p>
+            <p className="text-sm text-muted-foreground">{terminal ? "This run gave no outputs." : "The outputs show when the run finishes."}</p>
           )}
         </TabsContent>
         <TabsContent value="events">

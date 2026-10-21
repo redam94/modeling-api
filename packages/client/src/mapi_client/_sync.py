@@ -150,6 +150,7 @@ from mapi_client._m35 import (
 from mapi_client._tracking import RunTracker
 from mapi_client._v014 import Experiments, RunsV014Mixin, RunViews
 from mapi_client._v015 import DatasetsV015Mixin
+from mapi_client._v016 import Dashboards
 from mapi_client.auth import default_auth
 from mapi_client.config import ClientConfig, check_project, load_config
 from mapi_client.errors import TransportError, raise_for_response, unexpected
@@ -246,6 +247,7 @@ class Client:
         self.explorations = Explorations(self)
         self.experiments = Experiments(self)
         self.run_views = RunViews(self)
+        self.dashboards = Dashboards(self)
 
     # ---------------------------------------------------------------------- lifecycle
     def close(self) -> None:

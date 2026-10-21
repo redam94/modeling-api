@@ -52,7 +52,7 @@ export function ScoreShapeViews({ summary, outputs, runId }: { summary?: ScoreSu
     <section aria-label="Results by output" className="grid gap-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <ChartSpline className="size-4 text-primary" aria-hidden />
-        <h3 className="text-[13px] font-semibold">Results by output</h3>
+        <h3 className="text-sm font-semibold">Results by output</h3>
       </div>
       {shapes.length > 1 ? (
         <Field label="Output" htmlFor="shape-output">
@@ -91,7 +91,7 @@ function GridView({ fields, view }: { fields: FieldEntry[]; view: FieldsView | u
   return (
     <div className="grid gap-3">
       {fields.length > 1 ? <Picker label="Facet" value={String(pick)} options={fields.map((f, i) => ({ value: String(i), label: facetLabel(f.facet) }))} onChange={(v) => setPick(Number(v))} /> : null}
-      {field.description ? <p className="text-[13px] text-muted-foreground">{field.description}</p> : null}
+      {field.description ? <p className="text-sm text-muted-foreground">{field.description}</p> : null}
       <FieldViewer key={`${pick}:${facetLabel(field.facet)}`} field={field} />
       <ViewNotes warnings={view?.warnings_plain} />
     </div>
@@ -113,7 +113,7 @@ function RunPlotsView({ ids, runId, outputs }: { ids: readonly string[]; runId: 
         return plot ? (
           <RunPlot key={id} runId={runId ?? ""} plot={plot} resolveLink={resolveLink} linksKey={linksKey} />
         ) : (
-          <p key={id} className="text-[13px] text-muted-foreground">
+          <p key={id} className="text-sm text-muted-foreground">
             <Mono>{id}</Mono>: The run did not make this plot.
           </p>
         );
@@ -141,7 +141,7 @@ function TimeView({ table, time, series }: { table: Table; time: string; series?
     const shown = facets.length ? rows.filter((r) => facetOf(r) === facet) : rows;
     return quickChart(shown, { x: time, y: center, lower: band?.lower, upper: band?.upper, color: series }, isDateDim(table, time));
   }, [rows, facets, facetOf, facet, center, band, time, series, table]);
-  if (!plot) return <p className="text-[13px] text-muted-foreground">The summary has no mean, median or point value to draw.</p>;
+  if (!plot) return <p className="text-sm text-muted-foreground">The summary has no mean, median or point value to draw.</p>;
   return (
     <div className="grid gap-3">
       {facets.length ? <Picker label={facets.join(" · ")} value={facet} options={options.map((o) => ({ value: o, label: o }))} onChange={setFacet} /> : null}
@@ -155,7 +155,7 @@ function TimeView({ table, time, series }: { table: Table; time: string; series?
 function IntervalsView({ table, dims }: { table: Table; dims: string[] }) {
   const rows = useMemo(() => intervalRows(table, dims), [table, dims]);
   const plot = useMemo(() => (rows.some((r) => r.mean !== null) ? forestPlot(rows.slice(0, MAX_INTERVALS), { title: table.variable }) : null), [rows, table.variable]);
-  if (!plot) return <p className="text-[13px] text-muted-foreground">The summary has no mean, median or point value to draw.</p>;
+  if (!plot) return <p className="text-sm text-muted-foreground">The summary has no mean, median or point value to draw.</p>;
   return (
     <ExplorerPlot
       plot={plot}
@@ -180,7 +180,7 @@ function ScalarView({ table }: { table: Table }) {
       {tiles.map(([label, value]) => (
         <div key={label} className="grid gap-0.5 rounded-md border bg-muted/30 px-3 py-2">
           <dt className="text-xs text-muted-foreground">{label}</dt>
-          <dd className="text-[15px] font-semibold tabular">{value}</dd>
+          <dd className="text-base font-semibold tabular">{value}</dd>
         </div>
       ))}
     </dl>

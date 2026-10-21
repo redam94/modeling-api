@@ -252,7 +252,7 @@ export function WorkflowEditor({
       </div>
 
       {refusal ? (
-        <p role="alert" className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-[13px]">
+        <p role="alert" className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/8 px-3 py-2 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <span>
             <span className="font-medium">That connection is not possible. </span>
@@ -302,7 +302,7 @@ export function WorkflowEditor({
                 ariaLabel={`Workflow document (${view.toUpperCase()})`}
               />
               {textError ? (
-                <p role="alert" className="text-[13px] text-destructive">
+                <p role="alert" className="text-sm text-destructive">
                   The text has an error: {textError}. Correct the text. Until then, the canvas shows the last correct version.
                 </p>
               ) : null}
@@ -358,7 +358,7 @@ export function WorkflowEditor({
             </Field>
             {saveError ? (
               saveError instanceof ApiError && saveError.code === "CONFLICT" ? (
-                <p role="alert" className="text-[13px] text-warning">
+                <p role="alert" className="text-sm text-warning">
                   Another person saved a newer revision. The app keeps your draft. Open the Revisions tab to compare the revisions. Then save again on the latest revision.
                 </p>
               ) : (

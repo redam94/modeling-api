@@ -30,7 +30,7 @@ import { evaluateScenario, sliderRange, WhatIfError, type ResponseGrid, type Wha
 
 function RunningNote({ text }: { text: string }) {
   return (
-    <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
+    <p className="flex items-center gap-2 text-sm" aria-live="polite">
       <Spinner /> {text}
     </p>
   );
@@ -98,7 +98,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                   <span className="font-semibold" id={`wi-${ch}`}>
                     {ch}
                   </span>
-                  <span className="text-[13px] tabular text-muted-foreground">
+                  <span className="text-sm tabular text-muted-foreground">
                     <span className="font-medium text-foreground">{multiplierText(m)}</span> · {amount(spend, grid.spend_units)}
                   </span>
                 </div>
@@ -117,7 +117,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
         </ul>
         <div className="grid content-start gap-4 rounded-lg border bg-muted/30 p-4" aria-live="polite" data-testid="whatif-result">
           {result instanceof WhatIfError ? (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               {result.message}
             </p>
           ) : (
@@ -138,7 +138,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                 exact={exactView ? cfBand(exactView) : null}
                 label={`Change in results ${deltaSentence(result.kpi_delta.quantiles[0]!, result.kpi_delta.mean, result.kpi_delta.quantiles[2]!, units)}${exactView ? `; exact run ${deltaSentence(cfBand(exactView).lo, cfBand(exactView).mid, cfBand(exactView).hi, units)}` : ""}`}
               />
-              <dl className="grid grid-cols-2 gap-3 text-[13px]">
+              <dl className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Change in spend</dt>
                   <dd className="font-medium tabular">{signedAmount(result.spend_delta, grid.spend_units)}</dd>
@@ -332,7 +332,7 @@ function Forecast({ mv, session }: { mv: ModelVersion; session: GuidedSession })
         {view && plot ? (
           <div className="grid gap-2" data-testid="forecast-result">
             {view.total ? (
-              <p className="text-[13px]">
+              <p className="text-sm">
                 Over the next {periodWords(unit, asked)}: <span className="font-semibold tabular">{amount(view.total.mean, view.units)}</span>
                 {total ? <span className="text-muted-foreground"> (90% likely between {amount(total[0], view.units)} and {amount(total[1], view.units)})</span> : null}
               </p>
@@ -351,7 +351,7 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
   const mv = session.modelVersion;
   const grid = useResponseGrid(mv);
   if (!session.lastGoodFit) {
-    return <p className="text-[13px] text-muted-foreground">This analysis has no fitted model. Fit the model to use scenarios.</p>;
+    return <p className="text-sm text-muted-foreground">This analysis has no fitted model. Fit the model to use scenarios.</p>;
   }
   if (!mv || grid.isPending) return <Skeleton className="h-72" />;
   const whatif = hasTask(session.template, "whatif");
@@ -362,7 +362,7 @@ export function ExploreStep({ session }: { session: GuidedSession }) {
       {whatif && grid.data ? <WhatIf grid={grid.data} mv={mv} session={session} /> : null}
       {/* M3.5: what-if -> optimise my budget (mmm-framework planning). */}
       {whatif ? <OptimiseBudgetCard mv={mv} specId={session.spec.id} /> : null}
-      {whatif && grid.isSuccess && !grid.data ? <p className="text-[13px] text-muted-foreground">The instant sliders are not available because this model did not save response curves. You can still use the scenarios below.</p> : null}
+      {whatif && grid.isSuccess && !grid.data ? <p className="text-sm text-muted-foreground">The instant sliders are not available because this model did not save response curves. You can still use the scenarios below.</p> : null}
       {hasTask(session.template, "counterfactual") && channels.length ? <Presets mv={mv} session={session} channels={channels} /> : null}
       {hasTask(session.template, "forecast") ? <Forecast mv={mv} session={session} /> : null}
       <p className="text-xs text-muted-foreground">

@@ -66,7 +66,7 @@ export function IntegrationsPage() {
 
 function BackToHub({ tab }: { tab: HubTab }) {
   return (
-    <Link to="/integrations" search={{ tab }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+    <Link to="/integrations" search={{ tab }} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <ChevronLeft className="size-4" /> Integrations
     </Link>
   );
@@ -109,10 +109,10 @@ function HistoryTable({ endpoint, onRollback }: { endpoint: Endpoint; onRollback
                 <TD>
                   <GateBadge outcome={r.gate.outcome} overridden={Boolean(r.overridden)} />
                 </TD>
-                <TD className="max-w-72 text-[13px] text-muted-foreground">{r.reason ?? "—"}</TD>
+                <TD className="max-w-72 text-sm text-muted-foreground">{r.reason ?? "—"}</TD>
                 <TD>
                   <span title={absoluteTime(r.created_at)}>{relativeTime(r.created_at)}</span>
-                  {r.actor_id ? <PersonName id={r.actor_id} className="block text-[11px] text-muted-foreground" /> : null}
+                  {r.actor_id ? <PersonName id={r.actor_id} className="block text-xs text-muted-foreground" /> : null}
                 </TD>
                 <TD className="text-right">
                   {r.revision < endpoint.revision ? (

@@ -44,7 +44,7 @@ function ParamRow({ name, decl, onChange, onRemove }: { name: string; decl: Work
   return (
     <li className="grid gap-2 rounded-md border p-2" data-param={name}>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium">params.{name}</code>
+        <code className="min-w-0 flex-1 truncate font-mono text-sm font-medium">params.{name}</code>
         <NativeSelect aria-label={`Type of ${name}`} className="h-8 w-28" value={decl.type} onChange={(e) => onChange({ ...decl, type: e.target.value as WorkflowParamDecl["type"] })}>
           {PARAM_TYPES.map((t) => (
             <option key={t}>{t}</option>
@@ -171,7 +171,7 @@ export function WorkflowSettings({
         <ul className="grid gap-2">
           {Object.entries(inputs).map(([name, decl]) => (
             <li key={name} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-              <code className="min-w-0 flex-1 font-mono text-[13px]">inputs.{name}</code>
+              <code className="min-w-0 flex-1 font-mono text-sm">inputs.{name}</code>
               <NativeSelect aria-label={`Type of input ${name}`} className="h-8 w-36" value={decl.type} onChange={(e) => update({ inputs: { ...inputs, [name]: { ...decl, type: e.target.value as PortType } } })}>
                 {PORT_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -209,7 +209,7 @@ export function WorkflowSettings({
         <ul className="grid gap-2">
           {Object.entries(outputs).map(([name, b]) => (
             <li key={name} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-              <code className="font-mono text-[13px]">{name}</code>
+              <code className="font-mono text-sm">{name}</code>
               <NativeSelect aria-label={`Source of output ${name}`} className="h-8 min-w-0 flex-1" value={b} onChange={(e) => onChange(setOutputs(doc, { ...outputs, [name]: e.target.value }))}>
                 {allOutputs.some((o) => o.binding === b) ? null : <option value={b}>{b}</option>}
                 {allOutputs.map((o) => (

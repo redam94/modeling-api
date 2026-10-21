@@ -45,12 +45,12 @@ export function BarsSection({ data, labels }: { data: RunCompare; labels: readon
     [series, summaries, data.runs, agg],
   );
   if (!series.length) {
-    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-[13px] text-muted-foreground">The runs did not log metrics.</p>;
+    return <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">The runs did not log metrics.</p>;
   }
   return (
     <section className="grid gap-4" aria-label="Metric bars">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           The best run has the smallest value for metrics such as loss, error and RMSE. For other metrics it has the largest value.
         </p>
         <NativeSelect aria-label="Value of each metric" value={agg} onChange={(e) => setAgg(e.target.value as typeof agg)} className="ml-auto h-8 w-auto text-xs">
@@ -109,7 +109,7 @@ export function BarsSection({ data, labels }: { data: RunCompare; labels: readon
             <Card key={`${s.key}|${s.id}`} data-compare-bars={seriesName(s)}>
               <CardHeader>
                 <CardTitle>
-                  <Mono className="text-[13px] [overflow-wrap:anywhere]">{seriesName(s)}</Mono>
+                  <Mono className="text-sm [overflow-wrap:anywhere]">{seriesName(s)}</Mono>
                 </CardTitle>
                 <span className="text-xs text-muted-foreground">{lowerIsBetter(s.key) ? "Smaller is better" : "Larger is better"}</span>
               </CardHeader>

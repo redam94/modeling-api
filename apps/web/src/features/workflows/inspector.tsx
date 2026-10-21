@@ -124,7 +124,7 @@ export function NodeInspector({
       {impl ? (
         <AboutCard framed about={impl.about} compact headingLevel={3} heading={<span className="text-sm">What it does</span>} />
       ) : (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           “{implId(node.use)}” is not in the node catalog. Select a different implementation in the YAML view, or remove the node.
         </p>
       )}
@@ -147,7 +147,7 @@ export function NodeInspector({
           <h3 id={`${idBase}-in`} className="text-sm font-semibold">
             Inputs
           </h3>
-          {Object.keys(ports).length === 0 ? <p className="text-[13px] text-muted-foreground">Select the workflow first. Its inputs become the inputs of this node.</p> : null}
+          {Object.keys(ports).length === 0 ? <p className="text-sm text-muted-foreground">Select the workflow first. Its inputs become the inputs of this node.</p> : null}
           {Object.entries(ports).map(([port, spec]) => {
             const bound = bindingList(node.inputs?.[port]);
             const sources = compatibleSources(doc, catalog, { node: node.id, port }, subs).filter((s) => !bound.includes(s.binding));
@@ -155,7 +155,7 @@ export function NodeInspector({
             return (
               <div key={port} className="grid gap-1.5 rounded-md border p-2" data-port={port}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[13px] font-medium">{port}</span>
+                  <span className="font-mono text-sm font-medium">{port}</span>
                   <Badge variant="outline">
                     <span aria-hidden className="size-2 rounded-full" style={{ background: PORT_TYPE_META[spec.type].color }} />
                     {PORT_TYPE_META[spec.type].plain}
@@ -289,7 +289,7 @@ export function NodeInspector({
                 <option value="continue">Continue as if the node was skipped</option>
               </NativeSelect>
             </Field>
-            <label className="flex items-center gap-2 text-[13px]">
+            <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={node.cache !== false} onCheckedChange={(c) => onChange(setNodeFields(doc, node.id, { cache: c === true }))} />
               Use an identical earlier result again
             </label>

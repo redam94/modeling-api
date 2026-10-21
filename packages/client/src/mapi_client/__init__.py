@@ -53,6 +53,9 @@ from mapi_client._m4_common import AssemblyFile, InspectedUpload
 from mapi_client._sync import Client
 from mapi_client._tracking import AsyncRunTracker, RunTracker
 from mapi_client._v014_common import media_file_name
+from mapi_client._v016 import SharedDashboard
+from mapi_client._v016_async import AsyncSharedDashboard
+from mapi_client._v016_common import share_token
 from mapi_client._version import __version__
 from mapi_client.auth import BearerAuth, TokenProvider, default_auth
 from mapi_client.config import ClientConfig, ConfigError, load_config
@@ -87,6 +90,7 @@ __all__ = [
     "AsyncPaginator",
     "AsyncRemoteEndpoint",
     "AsyncRunTracker",
+    "AsyncSharedDashboard",
     "BearerAuth",
     "Call",
     "Client",
@@ -110,6 +114,7 @@ __all__ = [
     "RunTracker",
     "RunTrackingFrame",
     "ScoreResult",
+    "SharedDashboard",
     "TokenProvider",
     "TransportError",
     "UnexpectedResponse",
@@ -125,4 +130,5 @@ __all__ = [
     "media_file_name",
     "problem_of",
     "retry_after_of",
+    "share_token",
 ]

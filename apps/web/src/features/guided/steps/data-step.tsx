@@ -168,7 +168,7 @@ function ColumnsQuestion({
   };
   return (
     <fieldset className="grid gap-2" data-question={q.id} aria-describedby={error ? `${id}-error` : undefined}>
-      <legend className="text-[13px] leading-none font-medium">
+      <legend className="text-sm leading-none font-medium">
         {q.prompt_plain}
         {q.required === false ? <span className="font-normal text-muted-foreground"> (optional)</span> : null}
       </legend>
@@ -224,7 +224,7 @@ function OtherQuestion({ q, value, onChange, error }: { q: GuidedQuestion; value
     const choices = q.choices ?? [];
     return (
       <div className="grid gap-1.5" data-question={q.id}>
-        <span className="text-[13px] leading-none font-medium" id={id}>
+        <span className="text-sm leading-none font-medium" id={id}>
           {q.prompt_plain}
         </span>
         <SegmentedControl<string>
@@ -268,7 +268,7 @@ function DataPreview({ table, template, answers }: { table: LocalTable; template
   return (
     <div className="grid gap-4">
       <div className="grid gap-2">
-        <h3 className="text-[13px] font-semibold">Your file</h3>
+        <h3 className="text-sm font-semibold">Your file</h3>
         <div className="max-h-72 overflow-auto rounded-lg border [contain:inline-size]">
           <table className="w-full text-xs">
             <caption className="sr-only">The first rows of your file. Your browser read these rows.</caption>
@@ -305,7 +305,7 @@ function DataPreview({ table, template, answers }: { table: LocalTable; template
       </div>
       {series.length ? (
         <div className="grid gap-2">
-          <h3 className="text-[13px] font-semibold">The series that you selected{dateCol ? ", added for each date" : ""}</h3>
+          <h3 className="text-sm font-semibold">The series that you selected{dateCol ? ", added for each date" : ""}</h3>
           <ul className="grid gap-1.5">
             {series.map((s) => {
               const values = seriesFor(table, s.column, dateCol);
@@ -530,7 +530,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               <UploadCloud aria-hidden className="size-7 text-muted-foreground" />
               <div className="grid gap-1">
                 <p className="font-medium">Drop your spreadsheet here</p>
-                <p className="max-w-[52ch] text-[13px] text-muted-foreground">
+                <p className="max-w-[52ch] text-sm text-muted-foreground">
                   {dataShapePlain(template)} The app shows a preview of your file here first. It uploads the file only when you click Upload and continue.
                 </p>
               </div>
@@ -578,7 +578,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               />
             </div>
           )}
-          {file && !format ? <p role="alert" className="text-[13px] text-destructive">Guided mode cannot read this file. Save your spreadsheet as a CSV file and select it again.</p> : null}
+          {file && !format ? <p role="alert" className="text-sm text-destructive">Guided mode cannot read this file. Save your spreadsheet as a CSV file and select it again.</p> : null}
           {format === "parquet" ? (
             <Field
               label="Which columns does the file have?"
@@ -589,7 +589,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
             </Field>
           ) : null}
           {problems.length ? (
-            <ul role="alert" className="grid gap-1 text-[13px] text-destructive">
+            <ul role="alert" className="grid gap-1 text-sm text-destructive">
               {problems.map((p) => (
                 <li key={p} className="flex gap-2">
                   <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -605,10 +605,10 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <section aria-labelledby="questions-h" className="grid gap-5">
             <div className="grid gap-1">
-              <h2 id="questions-h" className="text-[15px] font-semibold tracking-tight">
+              <h2 id="questions-h" className="text-lg font-semibold tracking-tight">
                 A few questions about your columns
               </h2>
-              <p className="text-[13px] text-muted-foreground">{detect.isPending ? "The app examines your columns…" : "The app filled in its best guesses. Examine each answer. Change the answers that are not correct."}</p>
+              <p className="text-sm text-muted-foreground">{detect.isPending ? "The app examines your columns…" : "The app filled in its best guesses. Examine each answer. Change the answers that are not correct."}</p>
             </div>
             {columnQs.map((q) =>
               q.kind === "column" ? (
@@ -622,7 +622,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
             ))}
             {advancedOther.length ? (
               <details className="group rounded-lg border px-4 py-3">
-                <summary className="cursor-pointer text-[13px] font-medium">More options</summary>
+                <summary className="cursor-pointer text-sm font-medium">More options</summary>
                 <div className="grid gap-4 pt-4">
                   {advancedOther.map((q) => (
                     <OtherQuestion key={q.id} q={q} value={answers[q.id] ?? q.default} onChange={(v) => set(q.id, v)} error={errorFor(q.id)} />
@@ -635,24 +635,24 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
             {table ? <DataPreview table={table} template={template} answers={answers} /> : null}
             <div className="grid gap-2 rounded-lg border bg-muted/30 p-4" aria-live="polite">
               {missing.length ? (
-                <p className="flex gap-2 text-[13px]">
+                <p className="flex gap-2 text-sm">
                   <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <span>
                     Answer these questions: {missing.map((q) => q.prompt_plain.replace(/\?$/, "")).join("; ")}.
                   </span>
                 </p>
               ) : draftError ? (
-                <p className="flex gap-2 text-[13px] text-destructive">
+                <p className="flex gap-2 text-sm text-destructive">
                   <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />
                   <span>{draftError.problem?.errors?.[0]?.message ?? errorMessage(draftError)}</span>
                 </p>
               ) : draft.data ? (
-                <p className="flex gap-2 text-[13px]">
+                <p className="flex gap-2 text-sm">
                   <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
                   <span>You answered all the questions that the model needs.</span>
                 </p>
               ) : (
-                <p className="text-[13px] text-muted-foreground">The app does a check of your answers…</p>
+                <p className="text-sm text-muted-foreground">The app does a check of your answers…</p>
               )}
               {warnings.length ? (
                 <ul className="grid gap-1 text-xs text-muted-foreground">
@@ -671,14 +671,14 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
 
       {phase.kind === "uploading" ? (
         <div className="grid gap-2" aria-live="polite">
-          <p className="text-[13px]">The app uploads your file…</p>
+          <p className="text-sm">The app uploads your file…</p>
           <Progress label="Upload progress" value={phase.progress ? phase.progress.loaded / Math.max(1, phase.progress.total) : null} />
         </div>
       ) : null}
-      {phase.kind === "ingesting" ? <p aria-live="polite" className="text-[13px]">The upload is complete. The sandbox starts a check of your data…</p> : null}
-      {phase.kind === "saving" ? <p aria-live="polite" className="text-[13px]">The app saves your analysis…</p> : null}
+      {phase.kind === "ingesting" ? <p aria-live="polite" className="text-sm">The upload is complete. The sandbox starts a check of your data…</p> : null}
+      {phase.kind === "saving" ? <p aria-live="polite" className="text-sm">The app saves your analysis…</p> : null}
       {phase.kind === "error" ? (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           The upload did not complete. {phase.message}
         </p>
       ) : null}

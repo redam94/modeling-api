@@ -57,7 +57,7 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
     body = (
       <div className="grid gap-4">
         {m.about ? <AboutCard about={m.about} kind="model" id={m.id} actions={<StartButton kind="model" id={m.id} />} /> : null}
-        <h3 className="text-[13px] font-semibold">Technical details</h3>
+        <h3 className="text-sm font-semibold">Technical details</h3>
         <KeyValues
           items={[
             ["Inference", m.capabilities.inference],
@@ -68,9 +68,9 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
             ["Resource classes", <span key="rc" className="inline-flex items-center gap-1.5">{`${m.resources?.min_class ?? "S"} or larger, default ${m.resources?.default_class ?? "S"}`}<GpuBadge manifest={m} /></span>],
           ]}
         />
-        <h3 className="text-[13px] font-semibold">Settings schema</h3>
+        <h3 className="text-sm font-semibold">Settings schema</h3>
         <JsonBlock value={m.settings_schema} maxHeight="18rem" />
-        <h3 className="text-[13px] font-semibold">Fit schema</h3>
+        <h3 className="text-sm font-semibold">Fit schema</h3>
         <JsonBlock value={m.fit_schema} maxHeight="14rem" />
       </div>
     );
@@ -80,11 +80,11 @@ function Detail({ selected, onClose }: { selected: Selected | null; onClose: () 
     body = (
       <div className="grid gap-4">
         {s.about ? <AboutCard about={s.about} kind="step" id={s.id} /> : s.summary ? <p>{s.summary}</p> : null}
-        {s.about ? <h3 className="text-[13px] font-semibold">Technical details</h3> : null}
+        {s.about ? <h3 className="text-sm font-semibold">Technical details</h3> : null}
         <KeyValues items={[["Kind", s.kind], ["Stateful", s.stateful ? "yes" : "no"], ["Invertible", s.invertible ? "yes" : "no"], ["Context", s.context ? JSON.stringify(s.context) : "—"]]} />
-        <h3 className="text-[13px] font-semibold">Schema effect</h3>
+        <h3 className="text-sm font-semibold">Schema effect</h3>
         <JsonBlock value={s.effect} maxHeight="14rem" />
-        <h3 className="text-[13px] font-semibold">Settings schema</h3>
+        <h3 className="text-sm font-semibold">Settings schema</h3>
         <JsonBlock value={s.settings_schema} maxHeight="18rem" />
       </div>
     );

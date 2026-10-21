@@ -34,9 +34,9 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
     <section aria-label="What this model needs" className="grid gap-3 rounded-lg border bg-muted/30 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Target className="size-4 text-primary" aria-hidden />
-        <h3 className="text-[13px] font-semibold">What this model needs</h3>
+        <h3 className="text-sm font-semibold">What this model needs</h3>
       </div>
-      <p className="text-[13px]">
+      <p className="text-sm">
         It predicts{" "}
         {targets.length ? (
           targets.map((t, i) => (
@@ -76,7 +76,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
           <span className="text-xs font-medium text-muted-foreground">Inputs it reads</span>
           <ul className="grid gap-1">
             {others.map((v) => (
-              <li key={v.name} className="flex flex-wrap items-center gap-2 text-[13px]">
+              <li key={v.name} className="flex flex-wrap items-center gap-2 text-sm">
                 <Mono>{v.name}</Mono>
                 {(ROLE_LABEL[v.role] ?? v.role) !== v.name ? <Badge variant="outline">{ROLE_LABEL[v.role] ?? v.role}</Badge> : null}
                 {v.future ? (
@@ -99,7 +99,7 @@ export function ModelInputsPanel({ inputs }: { inputs: ModelInputSchema }) {
       {dims.length ? (
         <div className="grid gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">What it was fitted on</span>
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[13px]">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
             {dims.map(([d, spec]) => (
               <div key={d} className="contents">
                 <dt>

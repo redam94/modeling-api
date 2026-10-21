@@ -51,7 +51,7 @@ export function DataExplorerPage() {
         title={
           <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             Explore {dataset.data?.name ?? "the data"}
-            <Mono className="text-[15px] text-muted-foreground">v{v}</Mono>
+            <Mono className="text-base text-muted-foreground">v{v}</Mono>
           </span>
         }
         description={expert ? "All the views of the data, with their statistics. The sandbox calculates the views. The control plane does not read your data." : "This page tells you, in plain words, what is in your data and what to correct before you make a model. Open “Show the statistics” to see the numbers."}

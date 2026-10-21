@@ -64,7 +64,7 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
         <div className="grid gap-0.5">
           <p className="font-semibold tracking-tight">Not sure where to start?</p>
-          <p className="text-[13px] text-muted-foreground">Answer some questions about your goal and your data. The app then shows suggestions in order of fit.</p>
+          <p className="text-sm text-muted-foreground">Answer some questions about your goal and your data. The app then shows suggestions in order of fit.</p>
         </div>
         <Button asChild>
           <Link to="/choose">

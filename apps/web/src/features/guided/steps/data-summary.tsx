@@ -19,17 +19,17 @@ function coordText(c: NonNullable<NonNullable<DatasetVersion["summary"]>["coords
 
 /** Waiting for, or explaining the failure of, the sandboxed check of the upload. */
 export function IngestStatus({ version, compact = false }: { version: DatasetVersion | null; compact?: boolean }) {
-  if (!version) return <p className="text-[13px] text-muted-foreground">The app looks for your data…</p>;
+  if (!version) return <p className="text-sm text-muted-foreground">The app looks for your data…</p>;
   if (version.status === "ingesting") {
     return (
-      <p className="flex items-center gap-2 text-[13px]" aria-live="polite">
+      <p className="flex items-center gap-2 text-sm" aria-live="polite">
         <Spinner /> A secure sandbox does a check of your data. This usually takes less than 1 minute.{compact ? "" : " You can continue to work during the check."}
       </p>
     );
   }
   if (version.status === "failed") {
     return (
-      <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-[13px]">
+      <div role="alert" className="grid gap-2 rounded-lg border border-destructive/35 bg-destructive/6 p-4 text-sm">
         <p className="flex items-center gap-2 font-medium">
           <AlertTriangle aria-hidden className="size-4 text-destructive" /> The app could not read your file
         </p>
@@ -45,7 +45,7 @@ export function IngestStatus({ version, compact = false }: { version: DatasetVer
     );
   }
   return (
-    <p className="flex items-center gap-2 text-[13px]">
+    <p className="flex items-center gap-2 text-sm">
       <CheckCircle2 aria-hidden className="size-4 text-success" /> Your data passed the checks.
     </p>
   );
@@ -61,7 +61,7 @@ export function DataSummaryStep({ session }: { session: GuidedSession }) {
         <CardContent className="grid gap-4 pt-5">
           <IngestStatus version={v} />
           {v?.status === "ready" ? (
-            <dl className="grid gap-x-6 gap-y-3 text-[13px] sm:grid-cols-[minmax(10rem,auto)_1fr]">
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr]">
               {Object.entries(coords).map(([dim, c]) => (
                 <div key={dim} className="contents">
                   <dt className="text-muted-foreground capitalize">{dim === "time" || c.kind === "time" ? "Time" : dim}</dt>
@@ -78,7 +78,7 @@ export function DataSummaryStep({ session }: { session: GuidedSession }) {
           ) : null}
         </CardContent>
       </Card>
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         To use a different file or to change the meaning of the columns, start a new analysis from the same template. This analysis keeps its results.{" "}
         <Button asChild variant="link" size="sm" className="h-auto px-0">
           <Link to="/guided/new/$templateId" params={{ templateId: session.template.id }}>

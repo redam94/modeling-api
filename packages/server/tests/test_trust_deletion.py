@@ -282,6 +282,7 @@ async def test_full_purge_leaves_other_tenants_untouched(
         ).scalars()
     assert start.details["revoked"] == {
         "tokens": 1, "sessions": 1, "runs": 0, "exports": 0, "embeds": 1, "webhooks": 1, "probe": 3,
+        "dashboard_shares": 0,
     }  # fmt: skip
     # a second pass is a no-op
     assert (await TenantPurger(ctx).run(deletion_id)).value == "purged"
