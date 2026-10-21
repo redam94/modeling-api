@@ -145,12 +145,12 @@ _spec = util.spec_from_file_location("dashboards_v017_loader", _p)
 golden = sys.modules.setdefault(_spec.name, util.module_from_spec(_spec))
 _spec.loader.exec_module(golden)
 
-m = golden.load_case("classifier_binary")      # Material (validated models)
-m.scores["baseline"].summary                    # ScoreSummary
+m = golden.load_case("classifier_binary")  # Material (validated models)
+m.scores["baseline"].summary  # ScoreSummary
 m.scores["baseline"].table("y_hat").rows
 m.scalar_metrics()["auc"]
-m.actuals_submit("week 41")                     # ActualsSubmit body
-golden.raw_case("causal_did")                   # plain JSON copy, safe to mutate
+m.actuals_submit("week 41")  # ActualsSubmit body
+golden.raw_case("causal_did")  # plain JSON copy, safe to mutate
 golden.load_capture("ts.sarimax", "probe.json")
 ```
 

@@ -162,6 +162,11 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_DASHBOARD_CACHE_TTL_S` | `86400` | How long a ready exact readout answers the same scenario or the same actuals again, in place of a new run. `0` turns the cache off |
 | `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios and exact what-ifs) |
 | `MAPI_DASHBOARD_REFRESH_DEBOUNCE_S` | `60` | The minimum time between two refresh readouts of one dashboard |
+| `MAPI_SHARE_BATCH_PER_DAY` | `2` | The batch scores (an uploaded file of cases) that one share link can start in each 24 hours. `0` stops batch scoring from share links |
+| `MAPI_CLIENT_BATCH_PER_DAY` | `4` | The batch scores that one client user can start in each 24 hours on one dashboard |
+| `MAPI_BATCH_ROWS_PER_DAY` | `20000` | The rows of all batch scores of one dashboard in each 24 hours, for all callers together |
+| `MAPI_DASHBOARD_AUTO_UPGRADE` | `true` | Move every layout 1 dashboard to layout 2 once when a worker starts. The pass is idempotent and runs under a Postgres advisory lock. A dashboard that needs review keeps its layout 1 revision |
+| `MAPI_DASHBOARD_LAYOUT1_CREATE` | `true` | Accept new layout 1 (media planner only) dashboard specs on create and on draft save. `false` refuses them with `422 DASHBOARD_LAYOUT_RETIRED` |
 
 **Object storage**
 
