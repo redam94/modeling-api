@@ -9,7 +9,9 @@ Only an editor with runner rights decides (``…/refit-requests/{id}:approve`` /
 
 * :func:`approve` publishes the linked readout, then ingests the uploaded numbers (the
   stored inline input, re-validated by a sandboxed ingest run with the same limits as any
-  upload) as a new version of the dataset the pinned version was fitted on;
+  upload) as a new version of the dataset the pinned version was fitted on: that version's
+  data plus the uploaded periods along the time dim (an uploaded period replaces the
+  stored one), validated with its schema, so the variables' own missing policies apply;
 * :func:`advance` (the dashboard loop) starts ``refit_workflow_id`` as the approver once
   that version is ready - with its dataset input set to the new version, through the usual
   workflow admission (the approver's rights now, governance, active-run and cost caps) - or
@@ -300,6 +302,8 @@ def _mapping(
                 column=n,
                 role=schema.vars[n].role if n in schema.vars else Role.COVARIATE,
                 units=schema.vars[n].units if n in schema.vars else None,
+                # parsing only: the extended version is validated with the fitted
+                # version's schema, so each variable's own missing policy decides
                 missing="allow",
             )
             for n in payload.data_vars
@@ -352,6 +356,11 @@ async def approve(
     mv = await session.get(m.ModelVersion, readout.model_version_id)
     assert mv is not None
     fit = await fit_dataset_version(session, mv)
+    time_dim = readout.input_ref.get("time_dim")
+    if fit.layout != "dataset" or fit.status != "ready":
+        raise Conflict("the model was fitted on a dataset a refit request cannot extend")
+    if not isinstance(time_dim, str) or not time_dim:
+        raise Conflict("the model's inputs have no time dimension to add the numbers to")
     ds = await session.get(m.Dataset, fit.dataset_id, with_for_update=True)
     assert ds is not None
     ref = readout.input_ref
@@ -412,7 +421,10 @@ async def approve(
         upload_id=upload_id,
         sources=[upload_id],
         mapping=mapping.model_dump(mode="json"),
-        message=f"Numbers from dashboard {dash.name} (readout {req.readout_seq})"[:2000],
+        message=(
+            f"Version {fit.version} plus the numbers from dashboard {dash.name} "
+            f"(readout {req.readout_seq})"
+        )[:2000],
         objects={},
         issues=[],
         created_at=ts,
@@ -426,6 +438,7 @@ async def approve(
         version=version,
         uploads=[(upload, meta.generation)],
         mapping=mapping.model_dump(mode="json"),
+        extend=(fit, time_dim),  # the fitted history plus the uploaded periods
     )
     dv.ingest_run_id = run.id
     req.status = "approved"

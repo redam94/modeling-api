@@ -466,6 +466,11 @@ async def test_approval_ingests_the_numbers_then_starts_the_workflow_as_the_appr
         assert dv is not None and dv.status == "ingesting" and dv.ingest_run_id
         ingest = await s.get(m.Run, dv.ingest_run_id)
         assert ingest is not None and ingest.kind == "ingest"
+        # the new version is the fitted version's data plus the uploaded periods
+        fitted = await s.get(m.DatasetVersion, (ds.id, 1))
+        assert fitted is not None
+        assert ingest.payload["extend_dim"] == "t"
+        assert ingest.inputs["base"]["name"] == fitted.objects["data.zarr.zip"]["name"]
         upload = await s.get(m.Upload, dv.upload_id)
         assert upload is not None
         csv = (await ctx.store.get(upload.bucket, upload.object_name)).decode()
