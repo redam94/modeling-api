@@ -1,6 +1,6 @@
 {
  "catalog": {
-  "digest": "sha256:81f286bbc7d30abc714cf7e1282cd633b700f0787bceb1614c1e406118f4d222",
+  "digest": "sha256:f073f525e69ac0962f88406b564e3c9adc74a57bcc53248287ec40658edb0c88",
   "generated_at": "2026-10-14T09:00:00Z",
   "models": [
    {
@@ -356,6 +356,7 @@
        "dims": [
         "time"
        ],
+       "meaning": "effect",
        "units_of": "y"
       },
       "y_hat": {
@@ -937,12 +938,14 @@
      "id": "choice.multinomial_logit",
      "outputs": {
       "y_hat": {
+       "classes_dim": "product",
        "description": "Choice probability of each product per household and trip (predictive: one sampled choice, one-hot)",
        "dims": [
         "hh",
         "trip",
         "product"
        ],
+       "meaning": "class_probability",
        "units": "probability"
       }
      },
@@ -1172,11 +1175,13 @@
      "id": "dl.cnn_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -1836,11 +1841,13 @@
      "id": "dl.finetune_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -11567,11 +11574,13 @@
      "id": "sklearn.multiclass_classifier",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "y",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -16292,6 +16301,7 @@
        "description": "Probability that the target equals the positive class",
        "dims": [],
        "dims_of": "y",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -25906,11 +25916,13 @@
      "id": "tabular.image_logistic",
      "outputs": {
       "y_hat": {
+       "classes_dim": "class",
        "description": "Probability of each class per image (sums to 1 over class)",
        "dims": [
         "class"
        ],
        "dims_of": "label",
+       "meaning": "class_probability",
        "units": "1"
       }
      },
@@ -29028,12 +29040,14 @@
      "id": "ts.gaussian_hmm",
      "outputs": {
       "state_prob": {
+       "classes_dim": "state",
        "description": "Hidden-state probabilities (predicted, or filtered in filter mode)",
        "dims": [
         "animal",
         "step",
         "state"
        ],
+       "meaning": "state_probability",
        "units": "probability"
       },
       "y_hat": {

@@ -788,6 +788,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Asset
+         * @description A picture of the dashboard (PNG, at most 512 KiB). Anyone who may read the
+         *     dashboard (a client: a published one granted to them) may read its pictures.
+         */
+        get: operations["get_dashboard_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Dashboard Batch
+         * @description Score a file of new cases (inline XrJSON, one row per id) as the publisher: a
+         *     private batch readout with a summary and a predictions download (``202``). ``409
+         *     DASHBOARD_BATCH_TOO_LARGE`` over the row cap or the result budget; ``429`` over a daily
+         *     batch cap.
+         */
+        post: operations["submit_dashboard_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/batch/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Batch Template
+         * @description The columns of a batch file (the id, then the drivers with their ranges), an
+         *     example CSV and the row cap (``409 DASHBOARD_INPUT_DISABLED`` without batch scoring).
+         */
+        get: operations["get_dashboard_batch_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/draft": {
         parameters: {
             query?: never;
@@ -876,6 +941,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Dashboard Predictions
+         * @description Score scenario rows ("Try a case"): every value is checked against the published
+         *     revision (``422 DASHBOARD_INPUT_INVALID`` with ``/rows/<i>/<name>`` pointers; never
+         *     clipped), then scored as the publisher - a private prediction readout (``202``; a
+         *     repeated request answers with the earlier result).
+         */
+        post: operations["submit_dashboard_predictions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/readouts": {
         parameters: {
             query?: never;
@@ -911,6 +999,28 @@ export interface paths {
          *     The ``get_readout`` tool.
          */
         get: operations["get_dashboard_readout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/readouts/{seq}/predictions.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Dashboard Predictions
+         * @description The predictions of a batch readout as CSV, rendered from the run's results (its own
+         *     caller, or an editor). ``404`` for anybody else; ``410 DASHBOARD_DOWNLOAD_GONE`` once
+         *     the readout or the run's results expired. Charged to egress and audited.
+         */
+        get: operations["download_dashboard_predictions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1111,6 +1221,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Sources
+         * @description What the draft's model version offers to panels and inputs: outputs (summary names,
+         *     dims, representation, what each allows), fit metrics, scorecard checks, pictures and
+         *     inputs (cached per model version).
+         */
+        get: operations["get_dashboard_sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/whatif:evaluate": {
         parameters: {
             query?: never;
@@ -1196,6 +1328,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}:upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upgrade Dashboard
+         * @description Convert the layout 1 draft to layout 2 and save it as the draft (``If-Match``: the
+         *     ``draft_etag``). ``issues`` say what to fix before publishing, ``notes`` what changed.
+         *     Publish it as usual. Audited.
+         */
+        post: operations["upgrade_dashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}:validate": {
         parameters: {
             query?: never;
@@ -1210,6 +1364,29 @@ export interface paths {
          * @description Whether the draft can be published now, and what to fix (JSON pointers into it).
          */
         post: operations["validate_dashboard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards:presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Presets
+         * @description The presets that fit a model version (``model_id`` and optional ``version``: the
+         *     latest ready one) or the version an endpoint ``alias`` serves, best first, with plain
+         *     reasons and the inputs each cannot offer; and the compiled layout 2 spec of the first
+         *     (a starting draft: nothing is saved).
+         */
+        get: operations["list_dashboard_presets"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3076,6 +3253,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Asset
+         * @description Public: a picture of the shared dashboard's published revision (PNG, at most
+         *     512 KiB; ``nosniff`` and ``private, no-store`` like every share response).
+         */
+        get: operations["get_shared_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Shared Batch
+         * @description Public: score a file of new cases as this link's private readout (within the
+         *     link's daily batch cap).
+         */
+        post: operations["submit_shared_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/batch/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Batch Template
+         * @description Public: the batch file template (the link must allow batch scoring).
+         */
+        get: operations["get_shared_batch_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shared/dashboard": {
         parameters: {
             query?: never;
@@ -3116,6 +3355,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shared/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Shared Predictions
+         * @description Public: score scenario rows as this link's private readout (the link must allow
+         *     them; it spends the publisher's compute, within the link's hourly cap).
+         */
+        post: operations["submit_shared_predictions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shared/readouts": {
         parameters: {
             query?: never;
@@ -3149,6 +3409,27 @@ export interface paths {
          * @description Public: one readout (``404`` for another link's private one).
          */
         get: operations["get_shared_readout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/readouts/{seq}/predictions.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Shared Predictions
+         * @description Public: the predictions CSV of this link's own batch readout (``404`` for any
+         *     other readout, ``410`` once it expired).
+         */
+        get: operations["download_shared_predictions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4448,6 +4729,49 @@ export interface components {
             url?: string | null;
         };
         /**
+         * AccuracyPoint
+         * @description One published actuals readout in the accuracy history.
+         */
+        AccuracyPoint: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** Period */
+            period?: [
+                string,
+                string
+            ] | null;
+            /** Seq */
+            seq: number;
+            /** Values */
+            values?: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * AccuracySource
+         * @description An accuracy metric of the readout's actuals (or its history over readouts).
+         */
+        AccuracySource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "accuracy";
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "n" | "mae" | "rmse" | "mape" | "wape" | "smape" | "bias" | "r2" | "band_hit_rate" | "accuracy" | "brier" | "log_score" | "auc" | "effect_total" | "effect_relative";
+        };
+        /**
          * ActualsAccuracy
          * @description How close the model's predictions were to uploaded actuals (:func:`metrics_of`).
          *
@@ -4459,6 +4783,8 @@ export interface components {
             band_hit_rate?: number | null;
             /** Bias */
             bias?: number | null;
+            /** Mae */
+            mae?: number | null;
             /** Mape */
             mape?: number | null;
             /**
@@ -4466,6 +4792,14 @@ export interface components {
              * @default 0
              */
             n?: number;
+            /** R2 */
+            r2?: number | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Smape */
+            smape?: number | null;
+            /** Wape */
+            wape?: number | null;
         };
         /**
          * ActualsInputs
@@ -4493,6 +4827,48 @@ export interface components {
             publish?: "auto" | "review";
             /** Refit Workflow Id */
             refit_workflow_id?: string | null;
+        };
+        /**
+         * ActualsInputsV2
+         * @description Actuals for any model type. ``match="time"``: per period, as layout 1;
+         *     ``match="row"``: per case, joined on ``id_column`` (the outcome is ``label_column`` or
+         *     the target). ``threshold``: the probability above which a classifier says "positive"
+         *     (the analyst sets it; clients cannot change it).
+         */
+        ActualsInputsV2: {
+            /**
+             * Allow Refit Requests
+             * @default false
+             */
+            allow_refit_requests?: boolean;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /** Id Column */
+            id_column?: string | null;
+            /** Label Column */
+            label_column?: string | null;
+            /**
+             * Match
+             * @default time
+             * @enum {string}
+             */
+            match?: "time" | "row";
+            /**
+             * Publish
+             * @default review
+             * @enum {string}
+             */
+            publish?: "auto" | "review";
+            /** Refit Workflow Id */
+            refit_workflow_id?: string | null;
+            /**
+             * Threshold
+             * @default 0.5
+             */
+            threshold?: number;
         };
         /**
          * ActualsSubmit
@@ -4591,9 +4967,19 @@ export interface components {
         ActualsTemplate: {
             /** Example Csv */
             example_csv: string;
+            /** Id Column */
+            id_column?: string | null;
             input_table: components["schemas"]["InputTable"];
             /** Kpi Column */
             kpi_column: string;
+            /** Label Column */
+            label_column?: string | null;
+            /**
+             * Match
+             * @default time
+             * @enum {string}
+             */
+            match?: "time" | "row";
             /**
              * Max Rows
              * @default 520
@@ -4956,7 +5342,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.batch_download";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -5052,6 +5438,274 @@ export interface components {
          * @enum {string}
          */
         AuditOutcome: "success" | "denied" | "error";
+        /** BarRow */
+        BarRow: {
+            /** High */
+            high?: number | null;
+            /** Label */
+            label: string;
+            /** Low */
+            low?: number | null;
+            /** Tag */
+            tag?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** BarsBlock */
+        BarsBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @default bars
+             * @enum {string}
+             */
+            intent?: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "bars";
+            /** Panel Id */
+            panel_id: string;
+            /** Rows */
+            rows?: components["schemas"]["BarRow"][];
+            /** Title */
+            title: string;
+        };
+        /** BatchClassCount */
+        BatchClassCount: {
+            /** Count */
+            count: number;
+            /** Label */
+            label: string;
+        };
+        /**
+         * BatchColumn
+         * @description One column of a batch file (``input`` names the scenario input that checks it).
+         */
+        BatchColumn: {
+            /** Choices */
+            choices?: string[];
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Required
+             * @default true
+             */
+            required?: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "id" | "driver";
+            /**
+             * Type
+             * @default number
+             * @enum {string}
+             */
+            type?: "number" | "integer" | "choice" | "date" | "toggle" | "text";
+        };
+        /**
+         * BatchDef
+         * @description Batch scoring: a CSV of up to ``max_rows`` new cases (one ``id_column`` plus the
+         *     driver columns); with ``enforce_ranges`` every cell is checked like a scenario row.
+         */
+        BatchDef: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /**
+             * Enforce Ranges
+             * @default true
+             */
+            enforce_ranges?: boolean;
+            /** Id Column */
+            id_column: string;
+            /**
+             * Max Rows
+             * @default 2000
+             */
+            max_rows?: number;
+            /** Outputs */
+            outputs: string[];
+        };
+        /**
+         * BatchDownload
+         * @description Whether ``…/readouts/{seq}/predictions.csv`` can be downloaded (by its owner).
+         */
+        BatchDownload: {
+            /**
+             * Available
+             * @default false
+             */
+            available?: boolean;
+            /**
+             * Bytes Estimate
+             * @default 0
+             */
+            bytes_estimate?: number;
+            /**
+             * Rows
+             * @default 0
+             */
+            rows?: number;
+        };
+        /**
+         * BatchForm
+         * @description The "Score a file" form: the columns a file needs and its row cap.
+         */
+        BatchForm: {
+            /** Columns */
+            columns?: string[];
+            /** Id Column */
+            id_column: string;
+            /** Max Rows */
+            max_rows: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * BatchStats
+         * @description The spread of the row centres of one output (never an interval).
+         */
+        BatchStats: {
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Min */
+            min?: number | null;
+            /** P10 */
+            p10?: number | null;
+            /** P50 */
+            p50?: number | null;
+            /** P90 */
+            p90?: number | null;
+        };
+        /**
+         * BatchSubmit
+         * @description ``POST …/batch``: the file as inline XrJSON (parsed in the browser from CSV), one row
+         *     per case along the id column.
+         * @example {
+         *       "inputs": {
+         *         "coords": {
+         *           "case_id": {
+         *             "data": [
+         *               "c1",
+         *               "c2"
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           }
+         *         },
+         *         "data_vars": {
+         *           "plan": {
+         *             "data": [
+         *               "basic",
+         *               "plus"
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           },
+         *           "tenure": {
+         *             "data": [
+         *               12,
+         *               40
+         *             ],
+         *             "dims": [
+         *               "case_id"
+         *             ]
+         *           }
+         *         }
+         *       },
+         *       "label": "October leads"
+         *     }
+         */
+        BatchSubmit: {
+            inputs: components["schemas"]["XrJsonDataset"];
+            /** Label */
+            label?: string | null;
+        };
+        /** BatchSummary */
+        BatchSummary: {
+            /** Class Counts */
+            class_counts?: components["schemas"]["BatchClassCount"][];
+            download?: components["schemas"]["BatchDownload"];
+            /** Histogram */
+            histogram?: components["schemas"]["HistogramBin"][];
+            /** N Rows */
+            n_rows: number;
+            /** N Scored */
+            n_scored: number;
+            /** Outputs */
+            outputs?: string[];
+            /** Preview */
+            preview?: {
+                [key: string]: boolean | number | string | null;
+            }[];
+            /** Share Positive */
+            share_positive?: number | null;
+            /** Stats */
+            stats?: {
+                [key: string]: components["schemas"]["BatchStats"];
+            };
+        };
+        /**
+         * BatchTemplate
+         * @description ``GET …/batch/template``: the columns of a batch file, an example CSV and the cap.
+         * @example {
+         *       "columns": [
+         *         {
+         *           "name": "case_id",
+         *           "role": "id",
+         *           "type": "text"
+         *         },
+         *         {
+         *           "max": 120,
+         *           "min": 0,
+         *           "name": "tenure",
+         *           "role": "driver",
+         *           "type": "number"
+         *         },
+         *         {
+         *           "choices": [
+         *             "basic",
+         *             "plus"
+         *           ],
+         *           "name": "plan",
+         *           "role": "driver",
+         *           "type": "choice"
+         *         }
+         *       ],
+         *       "example_csv": "case_id,tenure,plan\nc1,12,basic\nc2,40,plus\n",
+         *       "id_column": "case_id",
+         *       "max_rows": 2000
+         *     }
+         */
+        BatchTemplate: {
+            /** Columns */
+            columns: components["schemas"]["BatchColumn"][];
+            /** Example Csv */
+            example_csv: string;
+            /** Id Column */
+            id_column: string;
+            /** Max Rows */
+            max_rows: number;
+        };
         /**
          * Binding
          * @description Canonical name → dataset name, for dims and variables (``geo: market``).
@@ -5390,6 +6044,36 @@ export interface components {
              */
             spend_units?: string | null;
         };
+        /** CalibrationBin */
+        CalibrationBin: {
+            /** N */
+            n: number;
+            /** Observed */
+            observed: number;
+            /** P Mean */
+            p_mean: number;
+        };
+        /** CalibrationBlock */
+        CalibrationBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Bins */
+            bins?: components["schemas"]["CalibrationBin"][];
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "calibration";
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+        };
         /**
          * Capabilities
          * @description What a model plugin can do (declared in its manifest).
@@ -5527,6 +6211,117 @@ export interface components {
             /** Id */
             id: string;
             kind: components["schemas"]["AboutKind"];
+        };
+        /**
+         * CatalogInput
+         * @description An input a scenario row or batch column can bind (a variable or a dim), with its
+         *     declared bounds and the fit data's range (``profile_min``/``profile_max``: defaults
+         *     that the analyst must confirm).
+         */
+        CatalogInput: {
+            /** Bound Max */
+            bound_max?: number | null;
+            /** Bound Min */
+            bound_min?: number | null;
+            /** Date Max */
+            date_max?: string | null;
+            /** Date Min */
+            date_min?: string | null;
+            /** Dim */
+            dim?: string | null;
+            /** Dtype */
+            dtype?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "number" | "integer" | "choice" | "date" | "toggle" | "text";
+            /** Levels */
+            levels?: string[];
+            policy?: components["schemas"]["DimPolicy"] | null;
+            /** Profile Max */
+            profile_max?: number | null;
+            /** Profile Min */
+            profile_min?: number | null;
+            /** Var */
+            var?: string | null;
+        };
+        /**
+         * CatalogMetric
+         * @description A metric logged by the fit run (``labels`` ``{}`` is the scalar value).
+         */
+        CatalogMetric: {
+            /** Key */
+            key: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Last */
+            last?: number | null;
+        };
+        /**
+         * CatalogOutput
+         * @description One output a panel can bind: its summary table ``name`` (the score summary names it
+         *     as the manifest does; only the dim columns take the dataset names), dims, shape and
+         *     representation, and what may be asked of it.
+         *
+         *     ``centre`` is the centre column the readout selector gives (draws ``mean``, quantiles
+         *     ``median``, interval ``point``, point ``mean``); ``predictive_ok`` is false when a
+         *     predictive score would not give an outcome range (point outputs, which refuse
+         *     ``kind: predictive``, and outputs that ignore it, e.g. ``sci.lgcp_grid`` ``total``):
+         *     the panel then falls back to the ``mean`` band with a caption.
+         */
+        CatalogOutput: {
+            /**
+             * Centre
+             * @default mean
+             * @enum {string}
+             */
+            centre?: "mean" | "median" | "q50" | "p50" | "point";
+            /** Classes */
+            classes?: string[];
+            /** Dims */
+            dims?: string[];
+            /** Intents */
+            intents?: ("fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence")[];
+            /** Manifest Name */
+            manifest_name: string;
+            /** Meaning */
+            meaning?: ("value" | "class_probability" | "state_probability" | "rate" | "effect") | null;
+            /** Name */
+            name: string;
+            /**
+             * Predictive Ok
+             * @default false
+             */
+            predictive_ok?: boolean;
+            /** Reduces */
+            reduces?: ("none" | "select" | "last" | "next" | "mean" | "sum" | "share_above" | "top_class")[];
+            representation: components["schemas"]["Representation"];
+            /**
+             * Shape
+             * @enum {string}
+             */
+            shape: "grid" | "areal" | "classification" | "time" | "categorical" | "scalar";
+            /** Stats */
+            stats?: ("centre" | "low" | "high" | "value")[];
+            /** Time Dim */
+            time_dim?: string | null;
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * CatalogPicture
+         * @description An embeddable plot of the model version (platform recipe provenance only).
+         */
+        CatalogPicture: {
+            /** Plot Id */
+            plot_id: string;
+            /** Recipe */
+            recipe: string;
+            /** Title */
+            title: string;
         };
         /**
          * CatalogResponse
@@ -5771,6 +6566,44 @@ export interface components {
             zone?: ("headroom" | "optimal" | "over" | "no_payback") | null;
         };
         /**
+         * ChartPanel
+         * @description A native chart (``intent``) of an output or of the accuracy history.
+         */
+        ChartPanel: {
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Caption */
+            caption?: string | null;
+            /** Facet */
+            facet?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "chart";
+            /**
+             * Max Items
+             * @default 20
+             */
+            max_items?: number;
+            reduce?: components["schemas"]["Reduce"];
+            /** Source */
+            source: components["schemas"]["OutputSource"] | components["schemas"]["AccuracySource"];
+            /** Title */
+            title: string;
+        };
+        /**
          * CheckDirection
          * @enum {string}
          */
@@ -5985,6 +6818,42 @@ export interface components {
             /** Unanswered */
             unanswered?: string[];
         };
+        /**
+         * ClassAccuracy
+         * @description How right a classifier was (``threshold`` and ``positive`` for a binary one;
+         *     ``rate_pred``/``rate_obs`` the predicted and observed share of ``positive``).
+         */
+        ClassAccuracy: {
+            /** Accuracy */
+            accuracy?: number | null;
+            /** Auc */
+            auc?: number | null;
+            /** Bins */
+            bins?: components["schemas"]["CalibrationBin"][];
+            /** Brier */
+            brier?: number | null;
+            confusion?: components["schemas"]["ConfusionMatrix"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "classification";
+            /** Log Score */
+            log_score?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** Positive */
+            positive?: string | null;
+            /** Rate Obs */
+            rate_obs?: number | null;
+            /** Rate Pred */
+            rate_pred?: number | null;
+            /** Threshold */
+            threshold?: number | null;
+        };
         /** ClassCount */
         ClassCount: {
             /** Count */
@@ -5996,6 +6865,10 @@ export interface components {
          * ClientDashboard
          * @description What a client user or a share link sees: the published revision only, with no ids of
          *     people and no model internals. ``ends_at`` is the share link's expiry (share views).
+         *
+         *     Layout 2 (v0.17) adds ``preset``, ``subject`` (``kpi`` is derived from it), the panels to
+         *     lay out, the forms of the inputs and ``sections``; ``upgrade_note`` is the one-time
+         *     plain note after the automatic upgrade (the page lets each viewer dismiss it).
          * @example {
          *       "channels": [
          *         {
@@ -6142,6 +7015,7 @@ export interface components {
          *     }
          */
         ClientDashboard: {
+            batch_form?: components["schemas"]["BatchForm"] | null;
             /** Channels */
             channels?: components["schemas"]["ChannelDef"][];
             /** Client Name */
@@ -6157,6 +7031,11 @@ export interface components {
             kpi: components["schemas"]["KpiDef"];
             latest_readout?: components["schemas"]["Readout"] | null;
             /**
+             * Layout Version
+             * @default 1
+             */
+            layout_version?: number;
+            /**
              * Live Inputs
              * @default ok
              * @enum {string}
@@ -6164,25 +7043,35 @@ export interface components {
             live_inputs?: "ok" | "paused";
             /** Note */
             note?: string | null;
+            /** Panels Meta */
+            panels_meta?: components["schemas"]["PanelMeta"][];
             /**
              * Period Label
              * @default week
              * @enum {string}
              */
-            period_label?: "week" | "month" | "period";
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
+            /** Preset */
+            preset?: ("mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic") | null;
+            scenario_form?: components["schemas"]["ScenarioForm"] | null;
+            /** Sections */
+            sections?: ("overview" | "try" | "accuracy" | "batch" | "history")[];
             /**
              * Show Technical
              * @default false
              */
             show_technical?: boolean;
+            subject?: components["schemas"]["SubjectDef"] | null;
             /** Summary */
             summary?: string | null;
             /** Tabs */
             tabs?: ("this_period" | "trends" | "scenarios" | "update" | "history")[];
             /** Tiles */
-            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index")[];
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
             /** Title */
             title: string;
+            /** Upgrade Note */
+            upgrade_note?: string | null;
         };
         /**
          * ClientTenant
@@ -6848,6 +7737,39 @@ export interface components {
              */
             remote_control_api?: boolean;
         };
+        /** ConfusionBlock */
+        ConfusionBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /** Counts */
+            counts?: number[][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "confusion";
+            /** Labels */
+            labels?: string[];
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ConfusionMatrix
+         * @description ``counts[i][j]``: cases of actual class ``labels[i]`` predicted as ``labels[j]``.
+         */
+        ConfusionMatrix: {
+            /** Counts */
+            counts?: number[][];
+            /** Labels */
+            labels?: string[];
+        };
         /**
          * ContextNeed
          * @description Per-group tail a step needs at score time: ``n`` rows along ``along`` within groups.
@@ -6971,7 +7893,9 @@ export interface components {
          * @description The analyst's view of a dashboard (``GET /v1/dashboards/{dashboard_id}`` for viewers
          *     and up; a client gets :class:`ClientDashboard`). ``run_as`` is the publisher whose
          *     compute the live inputs use; ``live_inputs`` is ``paused`` when that user lost the runner
-         *     role. ``problem`` is a short machine word for the analyst (``new_version_available``).
+         *     role. ``problem`` is a short machine word for the analyst (:data:`DashboardProblem`:
+         *     ``new_version_available``, ``upgrade_needs_review``); ``upgrade_issues`` are the issues
+         *     that stopped the automatic layout 2 upgrade (shown in the builder's banner).
          * @example {
          *       "created_at": "2026-10-15T09:30:00Z",
          *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
@@ -7141,7 +8065,8 @@ export interface components {
             created_by: string;
             /** Draft Etag */
             draft_etag: string;
-            draft_spec: components["schemas"]["DashboardSpec"];
+            /** Draft Spec */
+            draft_spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
             /**
              * Id
              * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
@@ -7171,10 +8096,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Upgrade Issues */
+            upgrade_issues?: components["schemas"]["Issue"][];
         };
         /**
          * DashboardCreate
-         * @description ``POST /v1/dashboards``: a new draft (unique ``name`` per project).
+         * @description ``POST /v1/dashboards``: a new draft (unique ``name`` per project). From v0.17 a new
+         *     dashboard is layout 2: the server refuses a layout 1 spec with
+         *     ``DASHBOARD_LAYOUT_RETIRED``.
          * @example {
          *       "name": "acme-weekly",
          *       "spec": {
@@ -7243,7 +8172,8 @@ export interface components {
         DashboardCreate: {
             /** Name */
             name: string;
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
         };
         /**
          * DashboardDraftUpdate
@@ -7313,7 +8243,8 @@ export interface components {
          *     }
          */
         DashboardDraftUpdate: {
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
         };
         /**
          * DashboardGrant
@@ -7456,6 +8387,158 @@ export interface components {
              */
             exact_runs_per_day?: number;
         };
+        /** DashboardLimitsV2 */
+        DashboardLimitsV2: {
+            /**
+             * Batch Runs Per Day
+             * @default 3
+             */
+            batch_runs_per_day?: number;
+            /**
+             * Exact Runs Per Day
+             * @default 20
+             */
+            exact_runs_per_day?: number;
+        };
+        /**
+         * DashboardPresets
+         * @description ``GET /v1/dashboards:presets``: compatible presets, best first, and the compiled
+         *     spec of the first (a starting draft; nothing is saved).
+         * @example {
+         *       "spec": {
+         *         "actuals": {
+         *           "enabled": true,
+         *           "publish": "auto"
+         *         },
+         *         "client_name": "Northwind Outdoor",
+         *         "layout_version": 2,
+         *         "limits": {
+         *           "exact_runs_per_day": 20
+         *         },
+         *         "panels": [
+         *           {
+         *             "id": "next",
+         *             "kind": "kpi",
+         *             "reduce": {
+         *               "how": "next"
+         *             },
+         *             "source": {
+         *               "kind": "output",
+         *               "variable": "y_hat"
+         *             },
+         *             "title": "Sales next month"
+         *           },
+         *           {
+         *             "good": "down",
+         *             "id": "typical_error",
+         *             "kind": "kpi",
+         *             "source": {
+         *               "kind": "accuracy",
+         *               "metric": "mae"
+         *             },
+         *             "stat": "value",
+         *             "title": "Typical error"
+         *           },
+         *           {
+         *             "id": "fan",
+         *             "intent": "fan",
+         *             "kind": "chart",
+         *             "source": {
+         *               "kind": "output",
+         *               "variable": "y_hat"
+         *             },
+         *             "title": "Sales and forecast"
+         *           },
+         *           {
+         *             "id": "history",
+         *             "intent": "accuracy_history",
+         *             "kind": "chart",
+         *             "source": {
+         *               "kind": "accuracy",
+         *               "metric": "mape"
+         *             },
+         *             "title": "Accuracy over time"
+         *           },
+         *           {
+         *             "id": "about",
+         *             "kind": "note",
+         *             "text": "The forecast starts from the newest month that you sent.",
+         *             "title": "About these numbers"
+         *           }
+         *         ],
+         *         "period_label": "month",
+         *         "preset": "forecast",
+         *         "refresh": {
+         *           "follow_endpoint": true,
+         *           "horizon": 6
+         *         },
+         *         "scenario_rows": {
+         *           "enabled": true,
+         *           "horizon": {
+         *             "default": 6,
+         *             "dim": "date",
+         *             "max": 12,
+         *             "min": 1
+         *           },
+         *           "inputs": [
+         *             {
+         *               "applies": "horizon",
+         *               "bind": {
+         *                 "var": "price"
+         *               },
+         *               "default": 19.5,
+         *               "label": "Average price",
+         *               "max": 30,
+         *               "min": 10,
+         *               "name": "price",
+         *               "step": 0.5,
+         *               "type": "number"
+         *             }
+         *           ],
+         *           "max_rows": 3,
+         *           "outputs": [
+         *             "y_hat"
+         *           ]
+         *         },
+         *         "source": {
+         *           "alias": "sales-forecast",
+         *           "kind": "endpoint"
+         *         },
+         *         "subject": {
+         *           "currency": "EUR",
+         *           "label": "Sales",
+         *           "unit": "currency",
+         *           "variable": "y_hat"
+         *         },
+         *         "summary": "The sales that we expect for the next months.",
+         *         "title": "Monthly sales forecast"
+         *       },
+         *       "suggestions": [
+         *         {
+         *           "preset": "forecast",
+         *           "reasons": [
+         *             "The model forecasts a time output."
+         *           ]
+         *         },
+         *         {
+         *           "blocked_inputs": [
+         *             "batch: the model has no row dim"
+         *           ],
+         *           "preset": "generic",
+         *           "reasons": [
+         *             "Any model."
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        DashboardPresets: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            spec?: components["schemas"]["DashboardSpecV2"] | null;
+            /** Suggestions */
+            suggestions?: components["schemas"]["PresetSuggestion"][];
+        };
         /**
          * DashboardRefitRequest
          * @description A request, made with an actuals upload, that the analyst refits the model with those
@@ -7532,7 +8615,8 @@ export interface components {
         };
         /**
          * DashboardRevision
-         * @description An immutable published revision: the spec and the model version it pins.
+         * @description An immutable published revision: the spec (either layout) and the model version it
+         *     pins.
          * @example {
          *       "created_at": "2026-10-15T09:30:00Z",
          *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
@@ -7627,7 +8711,8 @@ export interface components {
             model_version_id: string;
             /** Seq */
             seq: number;
-            spec: components["schemas"]["DashboardSpec"];
+            /** Spec */
+            spec: components["schemas"]["DashboardSpec"] | components["schemas"]["DashboardSpecV2"];
             /** Spec Hash */
             spec_hash: string;
         };
@@ -7650,7 +8735,7 @@ export interface components {
          */
         DashboardShare: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Created At
              * Format: date-time
@@ -7713,7 +8798,7 @@ export interface components {
          */
         DashboardShareCreate: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Expires In Days
              * @default 30
@@ -7747,7 +8832,7 @@ export interface components {
          */
         DashboardShareCreated: {
             /** Allowed Inputs */
-            allowed_inputs?: ("whatif" | "actuals")[];
+            allowed_inputs?: ("whatif" | "actuals" | "scenario_rows" | "batch")[];
             /**
              * Created At
              * Format: date-time
@@ -7927,10 +9012,169 @@ export interface components {
             /** Tabs */
             tabs?: ("this_period" | "trends" | "scenarios" | "update" | "history")[];
             /** Tiles */
-            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index")[];
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
             /** Title */
             title: string;
             whatif?: components["schemas"]["WhatIfInputs"];
+        };
+        /**
+         * DashboardSpecV2
+         * @description What a layout 2 dashboard shows (the stored draft and each published revision).
+         *
+         *     ``layout_version`` is required (never a default: the hash rule). Panels are at most
+         *     :data:`MAX_PANELS` (at most :data:`MAX_KPI_PANELS` KPI tiles) with unique ids, of the
+         *     kinds and intents the preset allows (:data:`PRESET_RULES`); ``mmm`` is given exactly for
+         *     the ``mmm_planner`` preset. Text fields are plain text. The serialised spec holds at most
+         *     :data:`~mapi_spec.dashboards.MAX_SPEC_BYTES`.
+         * @example {
+         *       "actuals": {
+         *         "enabled": true,
+         *         "publish": "auto"
+         *       },
+         *       "client_name": "Northwind Outdoor",
+         *       "layout_version": 2,
+         *       "limits": {
+         *         "exact_runs_per_day": 20
+         *       },
+         *       "panels": [
+         *         {
+         *           "id": "next",
+         *           "kind": "kpi",
+         *           "reduce": {
+         *             "how": "next"
+         *           },
+         *           "source": {
+         *             "kind": "output",
+         *             "variable": "y_hat"
+         *           },
+         *           "title": "Sales next month"
+         *         },
+         *         {
+         *           "good": "down",
+         *           "id": "typical_error",
+         *           "kind": "kpi",
+         *           "source": {
+         *             "kind": "accuracy",
+         *             "metric": "mae"
+         *           },
+         *           "stat": "value",
+         *           "title": "Typical error"
+         *         },
+         *         {
+         *           "id": "fan",
+         *           "intent": "fan",
+         *           "kind": "chart",
+         *           "source": {
+         *             "kind": "output",
+         *             "variable": "y_hat"
+         *           },
+         *           "title": "Sales and forecast"
+         *         },
+         *         {
+         *           "id": "history",
+         *           "intent": "accuracy_history",
+         *           "kind": "chart",
+         *           "source": {
+         *             "kind": "accuracy",
+         *             "metric": "mape"
+         *           },
+         *           "title": "Accuracy over time"
+         *         },
+         *         {
+         *           "id": "about",
+         *           "kind": "note",
+         *           "text": "The forecast starts from the newest month that you sent.",
+         *           "title": "About these numbers"
+         *         }
+         *       ],
+         *       "period_label": "month",
+         *       "preset": "forecast",
+         *       "refresh": {
+         *         "follow_endpoint": true,
+         *         "horizon": 6
+         *       },
+         *       "scenario_rows": {
+         *         "enabled": true,
+         *         "horizon": {
+         *           "default": 6,
+         *           "dim": "date",
+         *           "max": 12,
+         *           "min": 1
+         *         },
+         *         "inputs": [
+         *           {
+         *             "applies": "horizon",
+         *             "bind": {
+         *               "var": "price"
+         *             },
+         *             "default": 19.5,
+         *             "label": "Average price",
+         *             "max": 30,
+         *             "min": 10,
+         *             "name": "price",
+         *             "step": 0.5,
+         *             "type": "number"
+         *           }
+         *         ],
+         *         "max_rows": 3,
+         *         "outputs": [
+         *           "y_hat"
+         *         ]
+         *       },
+         *       "source": {
+         *         "alias": "sales-forecast",
+         *         "kind": "endpoint"
+         *       },
+         *       "subject": {
+         *         "currency": "EUR",
+         *         "label": "Sales",
+         *         "unit": "currency",
+         *         "variable": "y_hat"
+         *       },
+         *       "summary": "The sales that we expect for the next months.",
+         *       "title": "Monthly sales forecast"
+         *     }
+         */
+        DashboardSpecV2: {
+            actuals?: components["schemas"]["ActualsInputsV2"];
+            batch?: components["schemas"]["BatchDef"] | null;
+            /** Client Name */
+            client_name?: string | null;
+            /**
+             * Layout Version
+             * @constant
+             */
+            layout_version: 2;
+            limits?: components["schemas"]["DashboardLimitsV2"];
+            mmm?: components["schemas"]["MmmPlanner"] | null;
+            /** Note */
+            note?: string | null;
+            /** Panels */
+            panels: (components["schemas"]["KpiPanel"] | components["schemas"]["ChartPanel"] | components["schemas"]["TablePanel"] | components["schemas"]["NotePanel"] | components["schemas"]["RecipePanel"] | components["schemas"]["MmmPanel"])[];
+            /**
+             * Period Label
+             * @default period
+             * @enum {string}
+             */
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic";
+            refresh?: components["schemas"]["RefreshPolicy"];
+            scenario_rows?: components["schemas"]["ScenarioRowsDef"];
+            /**
+             * Show Technical
+             * @default false
+             */
+            show_technical?: boolean;
+            source: components["schemas"]["DashboardSource"];
+            subject: components["schemas"]["SubjectDef"];
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title: string;
         };
         /**
          * DashboardSummary
@@ -7984,7 +9228,7 @@ export interface components {
              * @default week
              * @enum {string}
              */
-            period_label?: "week" | "month" | "period";
+            period_label?: "week" | "month" | "quarter" | "year" | "day" | "period" | "case";
             /**
              * Status
              * @enum {string}
@@ -7997,6 +9241,158 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * DashboardUpgrade
+         * @description ``POST …:upgrade``: the draft converted to layout 2 (saved; publish it as usual),
+         *     what to fix (``issues``) and what changed (``notes``).
+         * @example {
+         *       "dashboard": {
+         *         "created_at": "2026-10-15T09:30:00Z",
+         *         "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "draft_etag": "\"3\"",
+         *         "draft_spec": {
+         *           "actuals": {
+         *             "enabled": true,
+         *             "publish": "auto"
+         *           },
+         *           "client_name": "Northwind Outdoor",
+         *           "layout_version": 2,
+         *           "limits": {
+         *             "exact_runs_per_day": 20
+         *           },
+         *           "panels": [
+         *             {
+         *               "id": "next",
+         *               "kind": "kpi",
+         *               "reduce": {
+         *                 "how": "next"
+         *               },
+         *               "source": {
+         *                 "kind": "output",
+         *                 "variable": "y_hat"
+         *               },
+         *               "title": "Sales next month"
+         *             },
+         *             {
+         *               "good": "down",
+         *               "id": "typical_error",
+         *               "kind": "kpi",
+         *               "source": {
+         *                 "kind": "accuracy",
+         *                 "metric": "mae"
+         *               },
+         *               "stat": "value",
+         *               "title": "Typical error"
+         *             },
+         *             {
+         *               "id": "fan",
+         *               "intent": "fan",
+         *               "kind": "chart",
+         *               "source": {
+         *                 "kind": "output",
+         *                 "variable": "y_hat"
+         *               },
+         *               "title": "Sales and forecast"
+         *             },
+         *             {
+         *               "id": "history",
+         *               "intent": "accuracy_history",
+         *               "kind": "chart",
+         *               "source": {
+         *                 "kind": "accuracy",
+         *                 "metric": "mape"
+         *               },
+         *               "title": "Accuracy over time"
+         *             },
+         *             {
+         *               "id": "about",
+         *               "kind": "note",
+         *               "text": "The forecast starts from the newest month that you sent.",
+         *               "title": "About these numbers"
+         *             }
+         *           ],
+         *           "period_label": "month",
+         *           "preset": "forecast",
+         *           "refresh": {
+         *             "follow_endpoint": true,
+         *             "horizon": 6
+         *           },
+         *           "scenario_rows": {
+         *             "enabled": true,
+         *             "horizon": {
+         *               "default": 6,
+         *               "dim": "date",
+         *               "max": 12,
+         *               "min": 1
+         *             },
+         *             "inputs": [
+         *               {
+         *                 "applies": "horizon",
+         *                 "bind": {
+         *                   "var": "price"
+         *                 },
+         *                 "default": 19.5,
+         *                 "label": "Average price",
+         *                 "max": 30,
+         *                 "min": 10,
+         *                 "name": "price",
+         *                 "step": 0.5,
+         *                 "type": "number"
+         *               }
+         *             ],
+         *             "max_rows": 3,
+         *             "outputs": [
+         *               "y_hat"
+         *             ]
+         *           },
+         *           "source": {
+         *             "alias": "sales-forecast",
+         *             "kind": "endpoint"
+         *           },
+         *           "subject": {
+         *             "currency": "EUR",
+         *             "label": "Sales",
+         *             "unit": "currency",
+         *             "variable": "y_hat"
+         *           },
+         *           "summary": "The sales that we expect for the next months.",
+         *           "title": "Monthly sales forecast"
+         *         },
+         *         "id": "dsh_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *         "latest_readout": {
+         *           "created_at": "2026-10-15T09:30:00Z",
+         *           "kind": "refresh",
+         *           "model_ref": "model://growth/eu-geo-mmm@v3",
+         *           "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+         *           "period": [
+         *             "2026-10-12",
+         *             "2026-10-18"
+         *           ],
+         *           "ready_at": "2026-10-15T09:30:00Z",
+         *           "seq": 12,
+         *           "status": "ready",
+         *           "title": "Week ending 18/10/2026",
+         *           "trigger": "workflow",
+         *           "visibility": "published"
+         *         },
+         *         "live_inputs": "ok",
+         *         "name": "acme-weekly",
+         *         "run_as": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "status": "draft",
+         *         "updated_at": "2026-10-15T09:30:00Z"
+         *       },
+         *       "notes": [
+         *         "The channel 'price' was a placeholder: the forecast preset shows the sales forecast without channels."
+         *       ]
+         *     }
+         */
+        DashboardUpgrade: {
+            dashboard: components["schemas"]["Dashboard"];
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Notes */
+            notes?: string[];
         };
         /**
          * DashboardValidation
@@ -8828,6 +10224,14 @@ export interface components {
          */
         Difficulty: "beginner" | "intermediate" | "expert";
         /**
+         * DimBind
+         * @description The input picks a coordinate of a dim (a store, a period).
+         */
+        DimBind: {
+            /** Dim */
+            dim: string;
+        };
+        /**
          * DimMapping
          * @description A dim of the dataset, read from one column of a tabular upload.
          * @example {
@@ -8912,11 +10316,39 @@ export interface components {
             units?: string | null;
         };
         /**
+         * EffectAccuracy
+         * @description The updated effect of a causal model: Σ actual − the counterfactual, with its range.
+         */
+        EffectAccuracy: {
+            /** High */
+            high?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "effect";
+            /** Low */
+            low?: number | null;
+            /**
+             * N Periods
+             * @default 0
+             */
+            n_periods?: number;
+            /** Note */
+            note?: string | null;
+            /** Relative */
+            relative?: number | null;
+            /** Total */
+            total?: number | null;
+        };
+        /**
          * EffectiveInputs
          * @description What the viewer may do: the published spec's inputs, narrowed by a share link's
          *     ``allowed_inputs``. ``refit_requests``: an upload may ask for a refit.
          */
         EffectiveInputs: {
+            /** Accuracy Kind */
+            accuracy_kind?: ("error" | "classification" | "effect") | null;
             /**
              * Actuals
              * @default false
@@ -8924,6 +10356,11 @@ export interface components {
             actuals?: boolean;
             /** Actuals Mode */
             actuals_mode?: ("conditioned" | "compared") | null;
+            /**
+             * Batch
+             * @default false
+             */
+            batch?: boolean;
             /**
              * Exact
              * @default false
@@ -8934,6 +10371,11 @@ export interface components {
              * @default false
              */
             refit_requests?: boolean;
+            /**
+             * Scenario Rows
+             * @default false
+             */
+            scenario_rows?: boolean;
             /**
              * Whatif
              * @default false
@@ -9716,11 +11158,44 @@ export interface components {
             valid: boolean;
         };
         /**
+         * ErrorAccuracy
+         * @description Errors of numeric predictions (``mape``, ``wape``, ``smape`` and ``band_hit_rate`` in
+         *     percent; ``bias`` = mean of predicted − actual).
+         */
+        ErrorAccuracy: {
+            /** Band Hit Rate */
+            band_hit_rate?: number | null;
+            /** Bias */
+            bias?: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "error";
+            /** Mae */
+            mae?: number | null;
+            /** Mape */
+            mape?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n?: number;
+            /** R2 */
+            r2?: number | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Smape */
+            smape?: number | null;
+            /** Wape */
+            wape?: number | null;
+        };
+        /**
          * ErrorCode
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -10803,6 +12278,66 @@ export interface components {
             units?: string | null;
             /** Values */
             values: (number | null)[][];
+        };
+        /**
+         * FieldBlock
+         * @description A 2-D field map (at most 64 × 64 cells, 8 frames). Code ``c`` maps to
+         *     ``vmin + c / 255 * (vmax - vmin)`` (on log10 when ``log``).
+         */
+        FieldBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Colormap
+             * @default viridis
+             * @enum {string}
+             */
+            colormap?: "viridis" | "magma" | "cividis" | "gray" | "diverging";
+            /** Frames */
+            frames: components["schemas"]["FieldFrame"][];
+            /** Height */
+            height: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "field";
+            /**
+             * Log
+             * @default false
+             */
+            log?: boolean;
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+            /** Units */
+            units?: string | null;
+            /** Vmax */
+            vmax: number;
+            /** Vmin */
+            vmin: number;
+            /** Width */
+            width: number;
+            /** X Label */
+            x_label?: string | null;
+            /** Y Label */
+            y_label?: string | null;
+        };
+        /**
+         * FieldFrame
+         * @description One frame of a field: ``width * height`` uint8 codes (row-major), base64 encoded.
+         */
+        FieldFrame: {
+            /** Codes B64 */
+            codes_b64: string;
+            /** Label */
+            label: string;
         };
         /**
          * FitMode
@@ -12098,6 +13633,15 @@ export interface components {
              */
             status: "ok" | "degraded" | "fail";
         };
+        /** HistogramBin */
+        HistogramBin: {
+            /** Count */
+            count: number;
+            /** Hi */
+            hi: number;
+            /** Lo */
+            lo: number;
+        };
         /**
          * HoldoutPlan
          * @description One fold: the existing train/holdout split.
@@ -12122,6 +13666,23 @@ export interface components {
             dim: string;
             /** Periods */
             periods: number;
+        };
+        /**
+         * HorizonDef
+         * @description How many periods ahead a forecast scenario row reaches.
+         */
+        HorizonDef: {
+            /** Default */
+            default: number;
+            /** Dim */
+            dim: string;
+            /** Max */
+            max: number;
+            /**
+             * Min
+             * @default 1
+             */
+            min?: number;
         };
         /**
          * ImageFolderOptions
@@ -12771,6 +14332,26 @@ export interface components {
             /** Updated By */
             updated_by?: string | null;
         };
+        /** KpiBlock */
+        KpiBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi";
+            /** Panel Id */
+            panel_id: string;
+            tile: components["schemas"]["KpiValue"];
+            /** Title */
+            title: string;
+        };
         /**
          * KpiDef
          * @description The business result the dashboard reports (a model output variable).
@@ -12814,10 +14395,63 @@ export interface components {
             variable: string;
         };
         /**
+         * KpiPanel
+         * @description A KPI tile. ``stat``: the centre or a bound of an output (``value`` for metrics,
+         *     checks and accuracy); ``band``: ``outcome`` (the range of one new result, scored as
+         *     predictive), ``mean`` (the range of the average) or ``none``; ``compare``: the change
+         *     against the previous published readout; ``good``: which direction is good news.
+         */
+        KpiPanel: {
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Compare
+             * @default previous
+             * @enum {string}
+             */
+            compare?: "previous" | "none";
+            /**
+             * Good
+             * @default up
+             * @enum {string}
+             */
+            good?: "up" | "down" | "none";
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "kpi";
+            reduce?: components["schemas"]["Reduce"];
+            /** Source */
+            source: components["schemas"]["OutputSource"] | components["schemas"]["MetricSource"] | components["schemas"]["ScorecardSource"] | components["schemas"]["ViewSource"] | components["schemas"]["AccuracySource"];
+            /**
+             * Stat
+             * @default centre
+             * @enum {string}
+             */
+            stat?: "centre" | "low" | "high" | "value";
+            /** Title */
+            title: string;
+        };
+        /**
          * KpiValue
          * @description One KPI tile: a value with its plain caption and the change against ``delta_basis``.
          */
         KpiValue: {
+            /**
+             * Approximate
+             * @description Layout 2: the value is a sum or mean of point predictions
+             * @default false
+             */
+            approximate?: boolean;
             /**
              * Caption
              * @default
@@ -12839,16 +14473,21 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index";
+            key: "expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel";
             /** Label */
             label: string;
             /** Low */
             low?: number | null;
             /**
+             * Panel Id
+             * @description Layout 2: the KPI panel
+             */
+            panel_id?: string | null;
+            /**
              * Unit
              * @enum {string}
              */
-            unit: "count" | "currency" | "ratio" | "percent" | "index";
+            unit: "count" | "currency" | "ratio" | "percent" | "index" | "probability" | "number" | "label" | "rate";
             /** Value */
             value?: number | null;
         };
@@ -13809,6 +15448,30 @@ export interface components {
             min: number;
         };
         /**
+         * MetricSource
+         * @description A metric logged by the fit run (``labels`` pick one row, e.g. ``{"unit": "s1"}``;
+         *     the empty labels are the run's scalar value).
+         */
+        MetricSource: {
+            /** Key */
+            key: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "metric";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Run
+             * @default fit
+             * @constant
+             */
+            run?: "fit";
+        };
+        /**
          * MetricsWrite
          * @description ``POST /v1/runs/{run_id}/metrics``: log metric points to a run (any state).
          * @example {
@@ -13942,6 +15605,42 @@ export interface components {
              * @default VariableName
              */
             variable_column?: string;
+        };
+        /**
+         * MmmPanel
+         * @description A part of the media planner (``mmm_planner`` preset only): the layout 1 tiles, the
+         *     channel scorecard, the changes against the expectation, the return trend or the saved
+         *     scenarios.
+         */
+        MmmPanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "mmm";
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "tiles" | "scorecard" | "changes" | "roi_trend" | "scenarios";
+            /** Title */
+            title: string;
+        };
+        /**
+         * MmmPlanner
+         * @description The media planner part of the ``mmm_planner`` preset (layout 1's channels, what-ifs
+         *     and tiles).
+         */
+        MmmPlanner: {
+            /** Channels */
+            channels: components["schemas"]["ChannelDef"][];
+            /** Tiles */
+            tiles?: ("expected" | "vs_expected" | "return_on_media" | "in_range_spend" | "accuracy" | "index" | "panel")[];
+            whatif?: components["schemas"]["WhatIfInputs"];
         };
         /**
          * Model
@@ -14794,6 +16493,46 @@ export interface components {
          * @enum {string}
          */
         NodeRunStatus: "pending" | "queued" | "running" | "succeeded" | "cached" | "skipped" | "failed" | "cancelled";
+        /** NoteBlock */
+        NoteBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "note";
+            /** Panel Id */
+            panel_id: string;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * NotePanel
+         * @description Plain text from the analyst (rendered as text, never HTML or markdown).
+         */
+        NotePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "note";
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+        };
         /**
          * ObjectRef
          * @description A stored object exposed through ``…/artifacts/{name}`` (fetch it as an ArtifactLink).
@@ -15152,6 +16891,11 @@ export interface components {
              * @default false
              */
             circular?: boolean;
+            /**
+             * Classes Dim
+             * @description The dim that holds the classes (or states) of a probability output, e.g. 'class'
+             */
+            classes_dim?: string | null;
             /** Description */
             description?: string | null;
             /** Dims */
@@ -15163,6 +16907,11 @@ export interface components {
             dims_of?: string | null;
             /** @description Draw the output as a 2-D field (Model Explorer 'fields' section) */
             grid?: components["schemas"]["GridDecl"] | null;
+            /**
+             * Meaning
+             * @description What the numbers are (v0.17): a value, a class or state probability, a rate or an effect. Unset: dashboards guess it from the dims and plots
+             */
+            meaning?: ("value" | "class_probability" | "state_probability" | "rate" | "effect") | null;
             /** Units */
             units?: string | null;
             /**
@@ -15213,6 +16962,24 @@ export interface components {
             units?: "original" | "model";
             /** Vars */
             vars?: string[];
+        };
+        /**
+         * OutputSource
+         * @description A model output (its score summary table; names as the dataset names them).
+         *     ``select`` fixes coordinates (``{"store": "s1"}``) before any reduction.
+         */
+        OutputSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "output";
+            /** Select */
+            select?: {
+                [key: string]: string | number;
+            };
+            /** Variable */
+            variable: string;
         };
         /**
          * PackInfo
@@ -15971,6 +17738,25 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * PanelMeta
+         * @description A panel as a client page lays it out (no sources, no model internals).
+         */
+        PanelMeta: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /** Intent */
+            intent?: ("fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence") | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "kpi" | "chart" | "table" | "note" | "recipe" | "mmm";
+            /** Title */
+            title: string;
+        };
+        /**
          * ParamsWrite
          * @description ``POST /v1/runs/{run_id}/params``: params are write-once (a different value is a 409).
          * @example {
@@ -15999,6 +17785,36 @@ export interface components {
             accepted: number;
             /** Unchanged */
             unchanged: number;
+        };
+        /**
+         * PictureBlock
+         * @description A revision asset (PNG) served same-origin: ``…/assets/{asset_id}``.
+         */
+        PictureBlock: {
+            /** Alt */
+            alt: string;
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Asset Id */
+            asset_id: string;
+            /** Caption */
+            caption?: string | null;
+            /** Height */
+            height: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "picture";
+            /** Panel Id */
+            panel_id: string;
+            /** Title */
+            title: string;
+            /** Width */
+            width: number;
         };
         /**
          * PlotBindings
@@ -16515,6 +18331,69 @@ export interface components {
          * @enum {string}
          */
         PortType: "dataset" | "test_result" | "split_plan" | "model_version" | "metrics" | "table" | "plot" | "report" | "evidence";
+        /**
+         * PredictionResult
+         * @description The result of scenario rows. ``band``: the kind of range (``outcome``: one new result;
+         *     ``mean``: the average; ``none``).
+         */
+        PredictionResult: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /**
+             * Band
+             * @default outcome
+             * @enum {string}
+             */
+            band?: "outcome" | "mean" | "none";
+            /** Rows */
+            rows?: components["schemas"]["PredictionRow"][];
+        };
+        /** PredictionRow */
+        PredictionRow: {
+            /** Inputs */
+            inputs?: {
+                [key: string]: boolean | number | string | null;
+            };
+            /** Outputs */
+            outputs?: {
+                [key: string]: components["schemas"]["PredictionValue"];
+            };
+        };
+        /**
+         * PredictionValue
+         * @description One output of one scenario row: its centre and range (``label``/``probability``:
+         *     the most probable class of a classifier).
+         */
+        PredictionValue: {
+            /** Centre */
+            centre?: number | null;
+            /** High */
+            high?: number | null;
+            /** Label */
+            label?: string | null;
+            /** Low */
+            low?: number | null;
+            /** Probability */
+            probability?: number | null;
+        };
+        /**
+         * PresetSuggestion
+         * @description A preset that fits the model version, why, and which inputs it cannot offer.
+         */
+        PresetSuggestion: {
+            /** Blocked Inputs */
+            blocked_inputs?: string[];
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic";
+            /** Reasons */
+            reasons?: string[];
+        };
         /**
          * PrincipalKind
          * @enum {string}
@@ -17435,7 +19314,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "baseline" | "refresh" | "scenario" | "actuals";
+            kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -17464,7 +19343,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint";
+            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint" | "scenario_rows" | "batch";
             /**
              * Visibility
              * @enum {string}
@@ -17517,7 +19396,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "baseline" | "refresh" | "scenario" | "actuals";
+            kind: "baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch";
             /** Model Ref */
             model_ref: string;
             /** Model Version Id */
@@ -17544,7 +19423,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint";
+            trigger: "publish" | "manual" | "whatif" | "actuals" | "workflow" | "endpoint" | "scenario_rows" | "batch";
             /**
              * Visibility
              * @enum {string}
@@ -17592,19 +19471,38 @@ export interface components {
          */
         ReadoutSnapshot: {
             accuracy?: components["schemas"]["ActualsAccuracy"] | null;
+            /** Accuracy Detail */
+            accuracy_detail?: (components["schemas"]["ErrorAccuracy"] | components["schemas"]["ClassAccuracy"] | components["schemas"]["EffectAccuracy"]) | null;
+            /** Accuracy History */
+            accuracy_history?: components["schemas"]["AccuracyPoint"][];
+            batch?: components["schemas"]["BatchSummary"] | null;
             /** Channels */
             channels?: components["schemas"]["ChannelReadout"][];
             conditioning?: components["schemas"]["ForecastConditioning"] | null;
             /** Input Fingerprint */
             input_fingerprint?: string | null;
+            /** Inputs Echo */
+            inputs_echo?: {
+                [key: string]: string | number | boolean | null;
+            }[];
             /** Lead */
             lead: string;
             /** Notes Plain */
             notes_plain?: string[];
+            /** Panels */
+            panels?: (components["schemas"]["KpiBlock"] | components["schemas"]["SeriesBlock"] | components["schemas"]["BarsBlock"] | components["schemas"]["ScatterBlock"] | components["schemas"]["CalibrationBlock"] | components["schemas"]["ConfusionBlock"] | components["schemas"]["FieldBlock"] | components["schemas"]["TableBlock"] | components["schemas"]["NoteBlock"] | components["schemas"]["PictureBlock"] | components["schemas"]["UnavailableBlock"])[];
+            prediction?: components["schemas"]["PredictionResult"] | null;
+            /** Preset */
+            preset?: ("mmm_planner" | "forecast" | "regression" | "classifier" | "causal_impact" | "field_map" | "image" | "generic") | null;
             /** Scenario */
             scenario?: {
                 [key: string]: number;
             } | null;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version?: number;
             /** Series */
             series?: components["schemas"]["Series"][];
             /** Source Run Ids */
@@ -17615,6 +19513,30 @@ export interface components {
             };
             /** Tiles */
             tiles?: components["schemas"]["KpiValue"][];
+        };
+        /**
+         * RecipePanel
+         * @description A platform plot recipe: drawn natively when the recipe is in :data:`RECIPE_INTENTS`,
+         *     else a **picture** of the model version's plot ``plot_id`` (rendered once at publish).
+         */
+        RecipePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "recipe";
+            /** Output */
+            output?: string | null;
+            /** Plot Id */
+            plot_id?: string | null;
+            /** Recipe */
+            recipe: string;
+            /** Title */
+            title: string;
         };
         /**
          * Recommendation
@@ -17637,6 +19559,28 @@ export interface components {
             /** Title */
             title: string;
             typical_runtime: components["schemas"]["TypicalRuntime"];
+        };
+        /**
+         * Reduce
+         * @description How an output becomes the panel's numbers.
+         *
+         *     ``select``: the cells of ``source.select``; ``last``/``next``: the last fitted or the
+         *     next forecast period; ``mean``/``sum`` over dims ``over`` (draws only, asked from the
+         *     score run so the range is the range of the aggregate; point outputs are allowed and
+         *     flagged ``approximate``); ``share_above``: the share of cells above ``threshold``;
+         *     ``top_class``: the most probable class. The server never adds interval bounds.
+         */
+        Reduce: {
+            /**
+             * How
+             * @default none
+             * @enum {string}
+             */
+            how?: "none" | "select" | "last" | "next" | "mean" | "sum" | "share_above" | "top_class";
+            /** Over */
+            over?: string[];
+            /** Threshold */
+            threshold?: number | null;
         };
         /**
          * RefitRequestDecision
@@ -17662,6 +19606,8 @@ export interface components {
              * @default false
              */
             follow_endpoint?: boolean;
+            /** Horizon */
+            horizon?: number | null;
             /** Workflow Id */
             workflow_id?: string | null;
         };
@@ -18965,6 +20911,160 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ScatterBlock */
+        ScatterBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @default scatter
+             * @enum {string}
+             */
+            intent?: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "scatter";
+            /** Panel Id */
+            panel_id: string;
+            /** Points */
+            points?: components["schemas"]["ScatterPoint"][];
+            /** Title */
+            title: string;
+            /** X Label */
+            x_label?: string | null;
+            /** Y Label */
+            y_label?: string | null;
+        };
+        /** ScatterPoint */
+        ScatterPoint: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /**
+         * ScenarioForm
+         * @description The "Try a case" form a client fills in (the revision's scenario input defs).
+         */
+        ScenarioForm: {
+            horizon?: components["schemas"]["HorizonDef"] | null;
+            /** Inputs */
+            inputs?: components["schemas"]["ScenarioInputDef"][];
+            /** Max Rows */
+            max_rows: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * ScenarioInputDef
+         * @description One value a client may edit in a scenario row (or a batch column, when ranges are
+         *     enforced). ``number``/``integer`` need ``min`` < ``max`` (and at most
+         *     :data:`MAX_SCENARIO_STEPS` steps); ``choice`` needs ``choices``; ``date`` needs
+         *     ``date_min``/``date_max``. ``applies``: per row, or for the forecast horizon.
+         */
+        ScenarioInputDef: {
+            /**
+             * Applies
+             * @default row
+             * @enum {string}
+             */
+            applies?: "row" | "horizon";
+            /** Bind */
+            bind: components["schemas"]["VarBind"] | components["schemas"]["DimBind"];
+            /** Choices */
+            choices?: string[];
+            /** Date Max */
+            date_max?: string | null;
+            /** Date Min */
+            date_min?: string | null;
+            /** Default */
+            default: boolean | number | string;
+            /** Help */
+            help?: string | null;
+            /** Label */
+            label: string;
+            /** Max */
+            max?: number | null;
+            /** Min */
+            min?: number | null;
+            /** Name */
+            name: string;
+            /** Step */
+            step?: number | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "number" | "integer" | "choice" | "date" | "toggle";
+        };
+        /**
+         * ScenarioRowsDef
+         * @description Scenario rows ("Try a case"): clients edit ``inputs`` (at most ``max_rows`` rows per
+         *     request); ``fixed`` values are sent with every row and never shown; the model scores
+         *     ``outputs`` with their uncertainty.
+         */
+        ScenarioRowsDef: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /** Fixed */
+            fixed?: {
+                [key: string]: boolean | number | string;
+            };
+            horizon?: components["schemas"]["HorizonDef"] | null;
+            /** Inputs */
+            inputs?: components["schemas"]["ScenarioInputDef"][];
+            /**
+             * Max Rows
+             * @default 5
+             */
+            max_rows?: number;
+            /** Outputs */
+            outputs?: string[];
+        };
+        /**
+         * ScenarioRowsRequest
+         * @description ``POST …/predictions``: up to 20 rows of the scenario inputs (names as the form's
+         *     ``inputs``; missing values take the defaults). The server checks every value against
+         *     the published revision's defs and refuses (never clips) a value out of range.
+         * @example {
+         *       "label": "Two prices",
+         *       "rows": [
+         *         {
+         *           "price": 18
+         *         },
+         *         {
+         *           "price": 22.5
+         *         }
+         *       ]
+         *     }
+         * @example {
+         *       "rows": [
+         *         {
+         *           "promo": true,
+         *           "store": "s_new",
+         *           "week": "2026-11-01"
+         *         }
+         *       ]
+         *     }
+         */
+        ScenarioRowsRequest: {
+            /** Label */
+            label?: string | null;
+            /** Rows */
+            rows: {
+                [key: string]: boolean | number | string | null;
+            }[];
+        };
         /**
          * ScenarioSave
          * @description ``POST …/scenarios``: keep a scenario as a private readout (grid result, ready at
@@ -19542,6 +21642,19 @@ export interface components {
             value?: number | null;
         };
         /**
+         * ScorecardSource
+         * @description One check of the model version's scorecard.
+         */
+        ScorecardSource: {
+            /** Check */
+            check: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "scorecard";
+        };
+        /**
          * SecurityProbeRow
          * @description One probe of a security-suite run (``mapi-security --json``).
          * @example {
@@ -19623,6 +21736,43 @@ export interface components {
             name: string;
             /** Points */
             points?: components["schemas"]["SeriesPoint"][];
+        };
+        /**
+         * SeriesBlock
+         * @description Lines or fans over time or categories (``split_at``: where the forecast starts).
+         */
+        SeriesBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "fan" | "line" | "bars" | "range" | "diverging" | "scatter" | "residuals" | "calibration" | "confusion" | "probability_bars" | "field" | "area_bars" | "effect" | "accuracy_history" | "decomposition" | "state_sequence";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "series";
+            /** Panel Id */
+            panel_id: string;
+            /** Series */
+            series?: components["schemas"]["Series"][];
+            /** Split At */
+            split_at?: string | null;
+            /** Title */
+            title: string;
+            /**
+             * X Kind
+             * @default time
+             * @enum {string}
+             */
+            x_kind?: "time" | "category";
         };
         /**
          * SeriesConditioning
@@ -20209,6 +22359,115 @@ export interface components {
             items?: components["schemas"]["Snippet"][];
         };
         /**
+         * SourceCatalog
+         * @description ``GET …/sources``: what the draft's model version offers to panels and inputs
+         *     (cached per model version). ``row_policy`` is the policy of ``row_dim`` (``fixed``
+         *     rows: no scenario rows or batch except horizon-only); ``views``: the guided views the
+         *     version's runs write.
+         * @example {
+         *       "inputs": [
+         *         {
+         *           "dim": "geo",
+         *           "kind": "choice",
+         *           "levels": [
+         *             "north",
+         *             "south"
+         *           ],
+         *           "policy": "fixed"
+         *         }
+         *       ],
+         *       "metrics": [
+         *         {
+         *           "key": "mape",
+         *           "last": 6.2
+         *         },
+         *         {
+         *           "key": "coverage_90",
+         *           "last": 0.88
+         *         }
+         *       ],
+         *       "namespace": "ts",
+         *       "outputs": [
+         *         {
+         *           "centre": "median",
+         *           "dims": [
+         *             "geo",
+         *             "date"
+         *           ],
+         *           "intents": [
+         *             "fan",
+         *             "line",
+         *             "range"
+         *           ],
+         *           "manifest_name": "y_hat",
+         *           "name": "y_hat",
+         *           "predictive_ok": true,
+         *           "reduces": [
+         *             "none",
+         *             "select",
+         *             "last",
+         *             "next"
+         *           ],
+         *           "representation": "quantiles",
+         *           "shape": "time",
+         *           "stats": [
+         *             "centre",
+         *             "low",
+         *             "high"
+         *           ],
+         *           "time_dim": "date"
+         *         }
+         *       ],
+         *       "score_modes": [
+         *         "predict",
+         *         "forecast"
+         *       ],
+         *       "time_dim": "date",
+         *       "views": []
+         *     }
+         */
+        SourceCatalog: {
+            /**
+             * Conditions On Actuals
+             * @default false
+             */
+            conditions_on_actuals?: boolean;
+            /** Family */
+            family?: string | null;
+            /**
+             * Has Grid
+             * @default false
+             */
+            has_grid?: boolean;
+            /**
+             * Input Kind
+             * @default dataset
+             * @enum {string}
+             */
+            input_kind?: "dataset" | "tree" | "collection";
+            /** Inputs */
+            inputs?: components["schemas"]["CatalogInput"][];
+            /** Metrics */
+            metrics?: components["schemas"]["CatalogMetric"][];
+            /** Namespace */
+            namespace?: string | null;
+            /** Outputs */
+            outputs?: components["schemas"]["CatalogOutput"][];
+            /** Pictures */
+            pictures?: components["schemas"]["CatalogPicture"][];
+            /** Row Dim */
+            row_dim?: string | null;
+            row_policy?: components["schemas"]["DimPolicy"] | null;
+            /** Score Modes */
+            score_modes?: ("predict" | "forecast" | "counterfactual" | "simulate" | "filter" | "evaluate")[];
+            /** Scorecard */
+            scorecard?: string[];
+            /** Time Dim */
+            time_dim?: string | null;
+            /** Views */
+            views?: ("forecast" | "fields" | "counterfactual")[];
+        };
+        /**
          * SpecCreate
          * @description Create a spec document with its first revision (YAML 1.2 or JSON text).
          * @example {
@@ -20596,6 +22855,98 @@ export interface components {
             x_dim?: string | null;
             /** Y Dim */
             y_dim?: string | null;
+        };
+        /**
+         * SubjectDef
+         * @description What the dashboard is about (the main output and how to show its numbers).
+         *
+         *     ``positive_label`` is the class a classifier reports the chance of; ``value_per_unit``
+         *     (currency per unit of a count) is for the MMM planner only.
+         * @example {
+         *       "currency": "EUR",
+         *       "label": "Sales",
+         *       "unit": "currency",
+         *       "variable": "y_hat"
+         *     }
+         * @example {
+         *       "label": "Chance of churn",
+         *       "positive_label": "churned",
+         *       "unit": "probability",
+         *       "variable": "y_hat"
+         *     }
+         */
+        SubjectDef: {
+            /**
+             * Currency
+             * @description ISO 4217 code
+             */
+            currency?: string | null;
+            /**
+             * Decimals
+             * @default 0
+             */
+            decimals?: number;
+            /** Label */
+            label: string;
+            /** Positive Label */
+            positive_label?: string | null;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "currency" | "ratio" | "percent" | "index" | "probability" | "number" | "label" | "rate";
+            /** Value Per Unit */
+            value_per_unit?: number | null;
+            /** Variable */
+            variable: string;
+        };
+        /** TableBlock */
+        TableBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /** Columns */
+            columns?: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "table";
+            /** Panel Id */
+            panel_id: string;
+            /** Rows */
+            rows?: (string | number | null)[][];
+            /** Title */
+            title: string;
+        };
+        /**
+         * TablePanel
+         * @description A table of an output (``columns``: dims and stats, in order).
+         */
+        TablePanel: {
+            /** Caption */
+            caption?: string | null;
+            /** Columns */
+            columns?: string[];
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "table";
+            /**
+             * Max Rows
+             * @default 20
+             */
+            max_rows?: number;
+            source: components["schemas"]["OutputSource"];
+            /** Title */
+            title: string;
         };
         /**
          * TemplateCase
@@ -21084,6 +23435,30 @@ export interface components {
          */
         TypicalRuntime: "instant" | "seconds" | "minutes" | "long";
         /**
+         * UnavailableBlock
+         * @description A panel whose source was missing at materialise (one panel never fails a readout).
+         */
+        UnavailableBlock: {
+            /**
+             * Approximate
+             * @default false
+             */
+            approximate?: boolean;
+            /** Caption */
+            caption?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "unavailable";
+            /** Panel Id */
+            panel_id: string;
+            /** Reason */
+            reason: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * UploadCreate
          * @description Ask for a signed PUT URL into the quarantine bucket for one file.
          * @example {
@@ -21511,6 +23886,14 @@ export interface components {
             to_status: components["schemas"]["ValidationStatus"];
         };
         /**
+         * VarBind
+         * @description The input sets an input variable (a driver column).
+         */
+        VarBind: {
+            /** Var */
+            var: string;
+        };
+        /**
          * VarMapping
          * @description A data variable read from one column (dtype is inferred during ingest).
          * @example {
@@ -21658,6 +24041,23 @@ export interface components {
             method: components["schemas"]["VerificationMethod"];
             /** Reason */
             reason: string;
+        };
+        /**
+         * ViewSource
+         * @description A guided view of the readout's run: the forecast total over the horizon, the
+         *     counterfactual delta, or the conditioning of a forecast on actuals.
+         */
+        ViewSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "view";
+            /**
+             * View
+             * @enum {string}
+             */
+            view: "forecast_total" | "counterfactual_delta" | "conditioning";
         };
         /**
          * WarningPayload
@@ -24817,7 +27217,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: SCHEMA_INVALID */
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_LAYOUT_RETIRED */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -25013,6 +27413,242 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActualsTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_dashboard_batch: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT, DASHBOARD_BATCH_TOO_LARGE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_batch_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchTemplate"];
                 };
             };
             /** @description Problem: UNAUTHENTICATED */
@@ -25442,10 +28078,102 @@ export interface operations {
             };
         };
     };
+    submit_dashboard_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioRowsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_dashboard_readouts: {
         parameters: {
             query?: {
-                kind?: ("baseline" | "refresh" | "scenario" | "actuals") | null;
+                kind?: ("baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch") | null;
                 visibility?: ("published" | "private" | "pending_review" | "hidden") | null;
                 before_seq?: number | null;
                 limit?: number;
@@ -25555,6 +28283,83 @@ export interface operations {
             };
             /** @description Problem: NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_dashboard_predictions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_DOWNLOAD_GONE */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26342,6 +29147,73 @@ export interface operations {
             };
         };
     };
+    get_dashboard_sources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCatalog"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     evaluate_dashboard_whatif: {
         parameters: {
             query?: never;
@@ -26654,6 +29526,93 @@ export interface operations {
             };
         };
     };
+    upgrade_dashboard: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardUpgrade"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_SPEC_STALE */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     validate_dashboard: {
         parameters: {
             query?: never;
@@ -26708,6 +29667,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_presets: {
+        parameters: {
+            query?: {
+                model_id?: string | null;
+                version?: number | null;
+                alias?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardPresets"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem: RATE_LIMITED */
@@ -32024,6 +35052,269 @@ export interface operations {
             };
         };
     };
+    get_shared_asset: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    submit_shared_batch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT, DASHBOARD_BATCH_TOO_LARGE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_shared_batch_template: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchTemplate"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_shared_dashboard: {
         parameters: {
             query?: never;
@@ -32185,10 +35476,110 @@ export interface operations {
             };
         };
     };
+    submit_shared_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+                Prefer?: string | null;
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioRowsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readout"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_INPUT_DISABLED, DASHBOARD_LIVE_PAUSED, IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, DASHBOARD_INPUT_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_shared_readouts: {
         parameters: {
             query?: {
-                kind?: ("baseline" | "refresh" | "scenario" | "actuals") | null;
+                kind?: ("baseline" | "refresh" | "scenario" | "actuals" | "prediction" | "batch") | null;
                 before_seq?: number | null;
                 limit?: number;
             };
@@ -32315,6 +35706,84 @@ export interface operations {
                 };
             };
             /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    download_shared_predictions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path: {
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED, DASHBOARD_DOWNLOAD_GONE */
             410: {
                 headers: {
                     [name: string]: unknown;
