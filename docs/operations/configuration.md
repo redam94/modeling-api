@@ -144,6 +144,25 @@ Refer to [Sharing plots](../guides/sharing-plots.md).
 | `MAPI_EMBED_CACHE_S` | `60` | How long an API instance uses the resolved plot of an embed again. The server still does a check of expiry and revocation on each request. Responses are `Cache-Control: private, no-cache`. Thus a revoked link stops on the next load |
 | `MAPI_EMBED_IMAGE_URL_TTL_S` | `900` | The life of the signed URL of the PNG fallback of an embed |
 
+**Client dashboards and share links (v0.16)**
+
+Refer to [Client dashboards](../guides/client-dashboards.md) and
+[Share dashboards securely](../guides/sharing-dashboards-securely.md).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAPI_SHARE_IP_RATE_PER_MINUTE` | `30` | The public share-link requests in each minute from one client address, valid or not valid. The server counts the request before it looks at the token. This makes token guesses slower |
+| `MAPI_SHARE_RATE_PER_MINUTE` | `120` | The public requests in each minute for one share link. More requests get `429 RATE_LIMITED` |
+| `MAPI_SHARE_RUN_RATE_PER_HOUR` | `6` | The exact results (score runs) that one share link can start in each hour. `0` stops all exact results from share links |
+| `MAPI_CLIENT_RUN_RATE_PER_HOUR` | `12` | The exact results (score runs) that one client user can start in each hour on one dashboard |
+| `MAPI_SHARE_SESSION_TTL_S` | `1800` | The life of a share session (`mps_…`). The share page gets a new session before this time while the link is valid |
+| `MAPI_SHARE_PASSCODE_MAX_FAILURES` | `5` | The number of wrong passcodes before the server locks a share link (`429 SHARE_LOCKED`) |
+| `MAPI_SHARE_LOCKOUT_S` | `900` | How long a share link stays locked after too many wrong passcodes |
+| `MAPI_DASHBOARD_GRID_MAX_BYTES` | `4000000` | The largest response grid (`ui/grids/response_curves.json`) that a dashboard reads for its what-if sliders |
+| `MAPI_DASHBOARD_CACHE_TTL_S` | `86400` | How long a ready exact readout answers the same scenario or the same actuals again, in place of a new run. `0` turns the cache off |
+| `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` | `30` | The days that the server keeps private readouts (saved scenarios and exact what-ifs) |
+| `MAPI_DASHBOARD_REFRESH_DEBOUNCE_S` | `60` | The minimum time between two refresh readouts of one dashboard |
+
 **Object storage**
 
 | Variable | Default | Meaning |

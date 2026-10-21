@@ -107,6 +107,12 @@ arrays and runs plugins in notebooks and in the sandboxed runner. The
     Tenants, projects and roles. API tokens and their scopes. Sign-in from the browser. How
     the platform authorizes each request.
 
+-   **[Client dashboards](client-dashboards.md)** <span class="mapi-badge">v0.16</span>
+
+    Dashboards for persons outside the team: drafts and published revisions, the `client`
+    role, share links, inputs that never refit, continuous readouts, refit requests and a
+    read-only tool surface.
+
 -   **[Quotas and cost](quotas-and-cost.md)** <span class="mapi-badge">v0.3</span>
 
     Quotas in vCPU-seconds for each token, each tenant and the full platform. Priority for

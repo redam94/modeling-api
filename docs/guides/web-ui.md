@@ -23,11 +23,11 @@ This page shows each page in the sequence of the navigation. The screenshots com
 | Element | What it does |
 |---|---|
 | Project switcher | Shows the tenant and the project for all the actions on the page, and your role there. You can switch to a different project, make a project (tenant admins) or open its members. See [Authentication](authentication.md#browser-sign-in). |
-| Sidebar | Home, Guided, Datasets, Build, Runs, Experiments (v0.14), Models, Score, Workflows, Governance, Integrations, Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under **Project**: Usage, Members and Tokens. Under **Platform**: Admin (operators only). Settings is at the bottom. **Collapse** (++cmd+b++) makes the sidebar narrow, with only icons. |
+| Sidebar | Home, Guided, Datasets, Build, Runs, Experiments (v0.14), Models, Score, Workflows, Governance, Integrations, Dashboards (v0.16), Catalog and Help me choose. In Guided mode, Guided, **Help me choose** and **Recipes** (the workflow gallery as ready-made recipes) come first, and Home does not show. A project that is locked to Guided mode shows those three items and Integrations. Under **Project**: Usage, Members and Tokens. Under **Platform**: Admin (operators only). Settings is at the bottom. **Collapse** (++cmd+b++) makes the sidebar narrow, with only icons. |
 | **Jump to…** (++cmd+k++ or ++slash++) | A command palette. Go to a page, start a new spec, change the theme, or paste an id (`run_…`, `mdl_…`, `ds_…`, `spc_…`) to open it. |
 | **API connected** | Polls `GET /readyz`. It is green when PostgreSQL, the object store and the catalog are ready. Otherwise, it is amber (*API degraded*) or red (*API unreachable*). It links to **Settings**, which shows each check. |
 | **Guided / Expert** | The persona switch. This browser remembers it for each user. Until you make a selection, a self-service (`public` tier) workspace starts in Guided mode. All other workspaces (and platform operators) start in Expert mode. In Guided mode, `/` opens the Guided start page. If a project is locked to Guided mode, members below admin do not see the switch. |
-| Display icon | Light, dark or system theme. |
+| Display icon | Light, dark or system theme. From v0.16, the app uses the MEI / ODS look in the two themes, with the Inter font (see [Theme](../reference/web-app.md#theme)). |
 | ++question++ | The keyboard shortcuts. Single keys work when no text field has focus: ++g++ then ++h++ Home, ++g++ Guided, ++d++ Datasets, ++b++ Build, ++r++ Runs, ++e++ Experiments, ++m++ Models, ++s++ Score, ++w++ Workflows, ++v++ Governance, ++i++ Integrations, ++c++ Catalog, ++o++ Help me choose, ++comma++ Settings. |
 
 The app always shows text from a run or a plugin as plain text. This text includes log lines,
@@ -621,6 +621,15 @@ These pages help you operate the platform for many persons and organisations. Th
 | **Members** | All members. Changes need an admin. | [Who has which role](administration.md#projects-and-members), invitations |
 | **Tokens** | All members (their own tokens). Admins see the tokens of all members. | [API tokens](administration.md#api-tokens): create, list, revoke. `?preset=score:<alias>` opens a token for one endpoint. |
 | **Admin** | Platform operators | [Tenants](administration.md#tenants), [quotas](administration.md#quotas), [kill switches](administration.md#kill-switches), [executors](administration.md#executors) and the [audit log](administration.md#audit-log). v0.4 adds the [sign-up review queue and tenant trust](integrations-hub.md#admin-console-additions). |
+
+## Dashboards <span class="mapi-badge">v0.16</span>
+
+**Dashboards** lists the client dashboards of the project. Open one to edit its draft on the
+tabs **Setup**, **Inputs**, **Access**, **History** and **Preview**, and to publish it.
+[Build a client dashboard](client-dashboards.md) gives the steps. A user with the `client`
+role does not see this app: they see the client portal ([For clients](for-clients.md)).
+
+![The Dashboards page: the dashboards of the project with their status and latest readout](../assets/screenshots/dashboards-list.png){ .mapi-shot }
 
 ## Where next
 

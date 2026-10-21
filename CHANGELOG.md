@@ -5,6 +5,95 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Client dashboards and a new look
+
+You can now show model results to your clients. An analyst makes a dashboard from a fitted
+model or an endpoint and publishes it. Client users sign in and see only the dashboards that
+an editor gives them. Other persons open a share link that has an expiry and an optional
+passcode. Each dashboard keeps a history of readouts. Clients can try other spend, send new
+numbers and ask for a refit. The model changes only when an analyst approves. The web app
+also has a new look in light and dark.
+
+#### Added
+- Client dashboards (`mapi_spec.dashboards`): an editable draft (`DashboardSpec`, a fixed
+  planner layout with up to 4 tiles, up to 40 channels and the tabs this period, trends, plan
+  scenarios, update numbers and history) and immutable published revisions that pin the
+  model version (and the endpoint revision). Publishing needs the `runner` role. The person
+  who publishes becomes the run-as owner of all the compute of the dashboard. If that person
+  loses the role, the live inputs stop (`DASHBOARD_LIVE_PAUSED`).
+- The project role `client`, below `viewer`. A client reads only the published dashboards
+  that a grant names, and uses their inputs. A second gate, `mapi_spec.api.CLIENT_OPERATIONS`,
+  answers `404` to a client for all other operations (audited). A client membership is
+  always for one project (`INVALID_ROLE_SCOPE`). Editors and admins give grants. Only admins
+  invite clients.
+- Share links: `mpd_` + 40 Crockford base32 characters, kept as an HMAC, shown one time.
+  The link is `/s#mpd_…`. The page removes the token from the address bar and exchanges it
+  in a POST for a signed session (`mps_…`, 30 minutes, held in memory, header
+  `X-Mapi-Share`). Each request looks up the link again, so revocation and expiry stop the
+  next request (`410 LINK_EXPIRED`). New links are read-only. Optional passcodes have 8 to
+  128 characters (scrypt). After 5 wrong passcodes a link locks for 15 minutes
+  (`429 SHARE_LOCKED`). Share routes ignore cookies and `Authorization`, and answer with
+  `no-store` and `no-referrer`.
+- Inputs that never refit: what-if sliders on the response grid in the browser (free, no
+  run) and `whatif:evaluate` on the server; saved scenarios as private readouts; exact results
+  as a score run; uploads of new actuals (CSV or paste), validated against an actuals template
+  and scored as the run-as owner. Marketing-mix models compare the uploaded numbers with
+  their prediction. Models with `conditions_on_actuals` use them in the forecast. Accuracy
+  (MAPE, bias, band hit rate) comes from `metrics_of`, a port of the web comparison with the
+  same golden values.
+- Refit requests: when the analyst sets a refit workflow, an uploader can ask for a refit.
+  An editor with the `runner` role approves it: the server publishes the readout, adds the
+  numbers as a new dataset version and starts the workflow as the approver. A dashboard has a
+  maximum of one open request.
+- Continuous readouts: an append-only history of capped JSON snapshots (256 KiB) built by
+  the worker after the run ends. Visibility `published`, `private` (30 days),
+  `pending_review` (uploads, by default) or `hidden`. Refresh from a linked workflow run (no
+  new run), from an endpoint promotion (`follow_endpoint`) or with **Refresh now**. The
+  webhook event `dashboard.readout.published`.
+- Cost limits: exact runs for each dashboard each day (default 20), for each share link each
+  hour (6) and for each client user each hour (12) (`429 DASHBOARD_RUN_LIMIT`), and a 24-hour
+  result cache.
+- A read-only tool surface for v0.17 (`mapi_spec.dashboard_tools`): eight tools from
+  `get_dashboard` to `evaluate_whatif`, with JSON Schemas from `tools_json_schema()`. The
+  member, client and share routes call the same functions.
+- 37 routes under `/v1/dashboards`, `/v1/share-sessions` and `/v1/shared/`, and migration
+  `0018_client_dashboards` (five tables with row-level security).
+- Web app: **Dashboards** (a builder with Setup, Inputs, Access, History and Preview), the
+  client portal at `/c` (loaded in place of the full app for the `client` role), and the
+  share page at `/s`, each with a size budget for its chunk.
+- Python client: `client.dashboards` (sync and async) and `open_share()`.
+- Settings `MAPI_SHARE_IP_RATE_PER_MINUTE`, `MAPI_SHARE_RATE_PER_MINUTE`,
+  `MAPI_SHARE_RUN_RATE_PER_HOUR`, `MAPI_CLIENT_RUN_RATE_PER_HOUR`, `MAPI_SHARE_SESSION_TTL_S`,
+  `MAPI_SHARE_PASSCODE_MAX_FAILURES`, `MAPI_SHARE_LOCKOUT_S`, `MAPI_DASHBOARD_GRID_MAX_BYTES`,
+  `MAPI_DASHBOARD_CACHE_TTL_S`, `MAPI_DASHBOARD_PRIVATE_TTL_DAYS` and
+  `MAPI_DASHBOARD_REFRESH_DEBOUNCE_S`.
+- Docs: "What's new in 0.16", the concept page and guides for analysts, for share links and
+  for clients, the v0.16 HTTP API section, the client role and screenshots of the builder,
+  the portal and the share page.
+
+#### Changed
+- A new look: the MEI / ODS theme tokens in light and a derived dark theme, raw ramps, chart
+  and zone tokens, ODS components (stat tiles, tag words, inline messages, legends, summary
+  strips, a file drop) and dependency-free SVG readout charts (zone bars, range bars, band
+  lines, diverging bars, sparklines). The light focus ring is `#2954FF` in place of the ODS `#85A3FF`, which does not
+  pass WCAG 1.4.11.
+- Inter (self-hosted) replaces Hanken Grotesk. The type scale changes: the body text is
+  14/22 px and the old 13, 11 and 15 px sizes map to `text-sm`, `text-xs` and `text-base`.
+- The plot sandbox and `mapi_plots.palette` use the new series colours.
+- The project roles are now `client`, `viewer`, `editor`, `runner` and `admin`. All rules
+  before v0.16 deny `client`.
+- The docs screenshots are captured again in the new look.
+
+#### Known gaps
+- Marketing-mix models compare uploaded actuals. They do not condition on them. A refit
+  needs a refit request and an analyst.
+- You cannot embed a dashboard in an iframe (`frame-ancestors 'none'` stays).
+- The plot sandbox renders in the system font, not in Inter.
+- There is no scheduled re-optimisation and no optimise input on a dashboard.
+- You cannot change the passcode of a share link. Revoke it and make a new link.
+- Not tested: real GCS, Cloud Run cold starts for exact results, the Docker images, and the
+  client copy with human testers.
+
 ## [0.15.1] — Docs refresh for 0.10 to 0.15 — 2026-10-20
 
 This release updates the documentation for v0.10.0 to v0.15.0. It has no code changes.

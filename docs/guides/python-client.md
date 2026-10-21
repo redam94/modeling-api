@@ -683,6 +683,48 @@ weights = api.datasets.upload(
 `write_parts(plan, missing, out_dir, part_bytes)` and `client_manifest_csv(plan)`. The parts
 are zip files with no compression. The same images always give the same bytes.
 
+## Client dashboards <span class="mapi-badge">v0.16</span> { #client-dashboards }
+
+`api.dashboards` has the analyst routes and the client routes of
+[client dashboards](client-dashboards.md). `open_share()` opens a share link as an anonymous
+viewer: the requests carry only the share session, never your token or your project.
+
+```python
+dash = api.dashboards.create("weekly-media", spec)  # a DashboardSpec or a dict
+print(api.dashboards.validate(dash.id).issues)
+dash = api.dashboards.publish(dash.id)  # needs the runner role; queues the baseline readout
+
+api.dashboards.grant(dash.id, "usr_01jaf3c1l2i3e4n5t6a7b8c9d0")  # a client user of the project
+link = api.dashboards.create_share(dash.id, label="Board pack", expires_in_days=30)
+print(link.token)  # shown one time only
+
+result = api.dashboards.whatif(dash.id, {"tv": 0.8, "search": 1.2})  # no run
+print(result.delta_kpi, result.lead)
+
+header = api.dashboards.submit_actuals(dash.id, actuals_ds, request_refit=True)
+readout = api.dashboards.wait_readout(dash.id, header.seq, timeout=300)
+print(readout.snapshot.accuracy)
+
+for request in api.dashboards.refit_requests(dash.id, status="open"):
+    api.dashboards.approve_refit(dash.id, request.id, note="Numbers checked")
+
+shared = api.dashboards.open_share(f"https://app.example.com/s#{link.token}")
+print(shared.get().title, [r.seq for r in shared.readouts()])
+```
+
+| Call | What it does |
+|---|---|
+| `dashboards.list(status=None)`, `get(id)` | `DashboardSummary` items. `get` gives a `Dashboard` to members and a `ClientDashboard` to a client user |
+| `create(name, spec)`, `update_draft(id, spec, *, etag)`, `validate(id)`, `publish(id)`, `archive(id)`, `revisions(id)` | The draft and its revisions |
+| `grants(id)`, `grant(id, user_id)`, `revoke_grant(id, user_id)` | Client users with access |
+| `shares(id)`, `create_share(id, *, label, expires_in_days=30, passcode=None, allowed_inputs=())`, `revoke_share(id, share_id)` | Share links. `allowed_inputs` takes `whatif` and `actuals` |
+| `grid(id)`, `whatif(id, multipliers)`, `save_scenario(id, multipliers, *, exact=False, label=None, wait=None)` | Plan scenarios |
+| `actuals_template(id)`, `submit_actuals(id, inputs, *, label=None, request_refit=False)` | Uploads. `inputs` is an `xr.Dataset` or XrJSON |
+| `readouts(id)`, `readout_page(id, ...)`, `readout(id, seq)`, `wait_readout(id, seq, *, timeout=None)` | The history |
+| `publish_readout(id, seq)`, `hide_readout(id, seq)`, `refresh(id)` | Review and refresh |
+| `refit_requests(id, *, status=None)`, `approve_refit(id, request_id, *, note=None)`, `reject_refit(id, request_id, *, note=None)` | Refit requests |
+| `open_share(link, *, passcode=None)` | A `SharedDashboard` with `get`, `readouts`, `readout`, `wait_readout`, `grid`, `whatif`, `save_scenario`, `actuals_template` and `submit_actuals`. It gets a new session before the old one expires |
+
 ## Async
 
 `AsyncClient` has the same resources and arguments. Use `await` for the calls. Use
