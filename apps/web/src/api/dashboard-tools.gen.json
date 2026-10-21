@@ -110,7 +110,7 @@
           "type": "object"
         },
         "ChannelReadout": {
-          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).",
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
           "properties": {
             "contribution": {
               "anyOf": [
@@ -1933,7 +1933,7 @@
           "type": "object"
         },
         "ChannelReadout": {
-          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).",
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
           "properties": {
             "contribution": {
               "anyOf": [
@@ -3623,7 +3623,7 @@
           "type": "object"
         },
         "ChannelReadout": {
-          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).",
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
           "properties": {
             "contribution": {
               "anyOf": [
@@ -5752,7 +5752,7 @@
     "result": {
       "$defs": {
         "ChannelReadout": {
-          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).",
+          "description": "One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).\n\n``spend`` and ``contribution`` are per readout period (the response grid's window totals\ndivided by its ``periods``), like the KPI tiles.",
           "properties": {
             "contribution": {
               "anyOf": [
@@ -5994,7 +5994,7 @@
           "type": "object"
         }
       },
-      "description": "A scenario evaluated on the grid: tiles and channel rows as a readout shows them,\n``delta_kpi`` against the current plan and one plain ``lead`` sentence.",
+      "description": "A scenario evaluated on the grid: tiles and channel rows as a readout shows them,\n``delta_kpi`` against the current plan and one plain ``lead`` sentence. Every number is\nper readout period (the grid's window totals divided by its ``periods``).",
       "examples": [
         {
           "channels": [
@@ -6022,7 +6022,7 @@
             }
           ],
           "delta_kpi": 85.0,
-          "lead": "This plan brings about 85 more orders than the current plan.",
+          "lead": "This plan brings about 85 more orders a week than the current plan.",
           "tiles": [
             {
               "caption": "Likely range 3,890 to 4,530",

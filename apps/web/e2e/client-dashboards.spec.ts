@@ -153,7 +153,7 @@ test("a client sees only the portal, plans with a slider and sends numbers with 
   await slider.focus();
   for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowRight");
   await expect(slider).toHaveAttribute("aria-valuetext", /^\+30% spend/);
-  await expect(lead).toHaveText(/^This plan brings [\d,]+ more revenue than the current plan, for [\d,]+ more spend\.$/);
+  await expect(lead).toHaveText(/^This plan brings [\d,]+ more revenue a week than the current plan, for [\d,]+ more spend\.$/);
   await expect(page.getByRole("img", { name: /^Change in revenue by channel: .*Paid search \+[\d,]+/ })).toBeVisible();
   expect(whatifCalls).toEqual([]);
 

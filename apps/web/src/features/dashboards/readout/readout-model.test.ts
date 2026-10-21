@@ -303,6 +303,27 @@ describe("live zones and slider steps", () => {
     expect(top.zoneWord).not.toBe("No zone");
   });
 
+  it("shows one period of the grid's window totals, commensurate with the KPI of a period", () => {
+    // 60 weeks: the window holds 60 × 2,000 = 120,000 of TV and 60 × 5,000 = 300,000 of KPI
+    const g60 = parseResponseGrid({
+      format: "mapi.response-grid/v1", kpi: "revenue", periods: 60, channels: ["tv"], multipliers: [0.5, 1, 1.5], draws: 2,
+      contribution: [[[84_000, 120_000, 132_000]], [[84_000, 120_000, 132_000]]], spend: [[30_000, 60_000, 90_000]], current_spend: [60_000], baseline: [180_000, 180_000],
+    });
+    const cur = scenarioModel(g60, { ...d, period_label: "week" }, {});
+    expect(cur.periods).toBe(60);
+    expect(cur.channels[0]!.contribution).toBeCloseTo(120_000 / 60); // 2,000 a week
+    expect(cur.channels[0]!.spend).toBeCloseTo(60_000 / 60);
+    expect(cur.kpi!.mean).toBeCloseTo(300_000 / 60); // 5,000 a week
+    expect(cur.channels[0]!.contribution).toBeLessThan(cur.kpi!.mean);
+    const up = scenarioModel(g60, { ...d, period_label: "week" }, { tv: 1.5 });
+    expect(up.kpiDelta).toBeCloseTo(12_000 / 60);
+    expect(up.spendDelta).toBeCloseTo(30_000 / 60);
+    expect(up.channels[0]!.delta).toBeCloseTo(12_000 / 60);
+    // returns are ratios: the same per period as over the window
+    expect(gridSlope(g60, 0, 1)).toBeCloseTo(12_000 / 30_000);
+    expect(up.lead).toBe("This plan brings 200 more revenue a week than the current plan, for 500 more spend.");
+  });
+
   it("starts the steps so that the current plan (1) is one of them", () => {
     expect(sliderBounds({ min_mult: 0.75, max_mult: 1.5, step: 0.1 }, grid)).toEqual({ min: 0.8, max: 1.5, step: 0.1 });
     expect(sliderBounds({ min_mult: 0.5, max_mult: 1.5, step: 0.05 }, grid).min).toBe(0.5);
@@ -328,10 +349,13 @@ describe("scenario numbers equal the what-if golden cases", () => {
       const m = scenarioModel(grid, d, c.scenario.multipliers ?? {});
       const want = c.result!;
       const close = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(1e-9 * Math.max(1, Math.abs(b)));
-      close(m.kpiDelta, want.kpi_delta.mean);
-      close(m.spendDelta, want.spend_delta);
-      if (want.kpi) close(m.kpi!.mean, want.kpi.mean);
-      for (const ch of m.channels) close(ch.contribution, want.channels[ch.name]!.contribution.mean);
+      // the golden results are window totals; the scenario shows one period of them
+      const n = grid.periods;
+      expect(m.periods).toBe(n);
+      close(m.kpiDelta, want.kpi_delta.mean / n);
+      close(m.spendDelta, want.spend_delta / n);
+      if (want.kpi) close(m.kpi!.mean, want.kpi.mean / n);
+      for (const ch of m.channels) close(ch.contribution, want.channels[ch.name]!.contribution.mean / n);
       for (const ch of m.channels) {
         const b = sliderBounds(d.channels.find((x) => x.name === ch.name)!, grid);
         expect(ch.multiplier).toBeGreaterThanOrEqual(b.min);

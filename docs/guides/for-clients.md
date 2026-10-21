@@ -48,7 +48,8 @@ The first tab shows the latest results.
       **Past its best** (the next unit of spend brings less than it costs) or **Not paying
       back**.
     - **Return on media**, with its likely range. The thin mark is break-even.
-    - **Expected result** and **Share** of the media result.
+    - **Expected result** and **Share** of the media result. The expected result and the
+      spend are for one week: the average week of the period that the model learned from.
 - **How near the model was** tells how often your actual numbers were in the likely range.
 
 The likely range is the range where the model is 90% sure that the true value is.
@@ -71,7 +72,8 @@ On **Plan scenarios**, you can try a different spend for each channel.
 
 1. Move the slider of a channel. 1× is the current plan.
 2. Read the result at the top and the change for each channel. The result shows at once.
-   Nothing runs on the server.
+   Nothing runs on the server. The numbers are for one week: the average week of the period
+   that the model learned from.
 3. To keep the plan, select **Save scenario**. Only you and your analysts see saved
    scenarios.
 4. If you see **Get exact result**, select it for a full calculation. This can take up to two

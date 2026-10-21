@@ -5741,6 +5741,9 @@ export interface components {
         /**
          * ChannelReadout
          * @description One channel row of the scorecard (``roi`` per unit of spend, ``mroi`` at the margin).
+         *
+         *     ``spend`` and ``contribution`` are per readout period (the response grid's window totals
+         *     divided by its ``periods``), like the KPI tiles.
          */
         ChannelReadout: {
             /** Contribution */
@@ -21987,7 +21990,8 @@ export interface components {
         /**
          * WhatIfResult
          * @description A scenario evaluated on the grid: tiles and channel rows as a readout shows them,
-         *     ``delta_kpi`` against the current plan and one plain ``lead`` sentence.
+         *     ``delta_kpi`` against the current plan and one plain ``lead`` sentence. Every number is
+         *     per readout period (the grid's window totals divided by its ``periods``).
          * @example {
          *       "channels": [
          *         {
@@ -22014,7 +22018,7 @@ export interface components {
          *         }
          *       ],
          *       "delta_kpi": 85,
-         *       "lead": "This plan brings about 85 more orders than the current plan.",
+         *       "lead": "This plan brings about 85 more orders a week than the current plan.",
          *       "tiles": [
          *         {
          *           "caption": "Likely range 3,890 to 4,530",

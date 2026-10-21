@@ -103,6 +103,11 @@ No input refits the model.
 | Update numbers | An upload of new actuals. The server validates it against the actuals template and starts a score run | One score run |
 | Refresh | A readout from a linked workflow run, an endpoint promotion or **Refresh now** | Free for a workflow run. One score run for the other two |
 
+The response grid holds totals over the fit window (`periods` periods). A readout shows one
+period: the channel spend and contribution of the scorecard, the what-if result and its
+sentence are the grid totals divided by `periods` (the average period of the window). Return
+and marginal return are ratios, so they are the same for one period and for the window.
+
 The mode of an upload is `compared` or `conditioned`. Marketing-mix models predict over the
 uploaded periods and compare the prediction with the uploaded KPI (`compared`). Models that
 declare `conditions_on_actuals` (statsmodels) use the actuals in the forecast

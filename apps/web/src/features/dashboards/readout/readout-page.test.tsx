@@ -97,7 +97,7 @@ describe("ReadoutPage", () => {
     const { fireEvent } = await import("@testing-library/react");
     fireEvent.change(slider, { target: { value: "1.5" } });
     expect(slider).toHaveAttribute("aria-valuetext", expect.stringMatching(/^\+50% spend/));
-    expect(screen.getByText(/^This plan brings [\d,]+ more revenue than the current plan, for [\d,]+ more spend\.$/)).toBeInTheDocument();
+    expect(screen.getByText(/^This plan brings [\d,]+ more revenue a week than the current plan, for [\d,]+ more spend\.$/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /^Change in revenue by channel: .*Paid search \+[\d,]+/ })).toBeInTheDocument();
     // Answered in the browser: no request for the slider move.
     expect(seen.slice(before).filter((r) => r.url.includes("whatif"))).toHaveLength(0);

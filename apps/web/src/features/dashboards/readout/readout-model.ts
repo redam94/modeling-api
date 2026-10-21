@@ -481,11 +481,14 @@ export function clampMultiplier(m: number, b: { min: number; max: number }): num
   return Math.round(Math.min(b.max, Math.max(b.min, m)) * 1e4) / 1e4;
 }
 
+/** Every number of a scenario is per readout period: the grid's window total / `grid.periods`. */
 export interface ScenarioChannel {
   name: string;
   label: string;
   multiplier: number;
+  /** Spend per period. */
   spend: number;
+  /** Contribution per period. */
   contribution: number;
   /** Contribution change against the current plan. */
   delta: number;
@@ -495,21 +498,23 @@ export interface ScenarioChannel {
 
 export interface ScenarioModel {
   channels: ScenarioChannel[];
-  /** The expected KPI with this plan (needs the grid's baseline), with its likely range. */
+  /** The expected KPI of a period with this plan (needs the grid's baseline), with its likely range. */
   kpi: { mean: number; low: number | null; high: number | null } | null;
   kpiDelta: number;
   spendDelta: number;
+  /** The periods of the grid's fit window that the numbers average over. */
+  periods: number;
   /** `true` when every multiplier is 1. */
   current: boolean;
   lead: string;
 }
 
-/** The plan's sentence: "This plan brings 4,100 more revenue than the current plan, for 2,000 more spend." */
-export function scenarioLead(kpiDelta: number, spendDelta: number, d: Pick<ClientDashboard, "kpi">): string {
+/** The plan's sentence (per period): "This plan brings 4,100 more revenue a week than the current plan, for 2,000 more spend." */
+export function scenarioLead(kpiDelta: number, spendDelta: number, d: Pick<ClientDashboard, "kpi" | "period_label">): string {
   const noun = kpiWord(d.kpi);
   const decimals = d.kpi.decimals ?? 0;
   if (Math.abs(kpiDelta) < 0.5 && Math.abs(spendDelta) < 0.5) return "This plan brings the same result as the current plan.";
-  const k = `${grouped(Math.abs(kpiDelta), decimals)} ${kpiDelta >= 0 ? "more" : "less"} ${noun}`;
+  const k = `${grouped(Math.abs(kpiDelta), decimals)} ${kpiDelta >= 0 ? "more" : "less"} ${noun} a ${periodOf(d)}`;
   const s = `${grouped(Math.abs(spendDelta), 0)} ${spendDelta >= 0 ? "more" : "less"} spend`;
   return `This plan brings ${k} than the current plan, for ${s}.`;
 }
@@ -545,13 +550,19 @@ export function gridSlope(grid: Pick<ResponseGrid, "multipliers" | "contribution
  * Evaluate the sliders on the grid (instant, in the browser): channel results with their live
  * zone words, the KPI change and the plan's sentence. Throws `WhatIfError` when a multiplier is
  * outside the grid (the sliders clamp, so only a stale grid can do that).
+ *
+ * `evaluateScenario` answers over the grid's whole fit window (`grid.periods` periods); every
+ * number here is per period (window / periods), as the readout's tiles and scorecard show them
+ * (the server's `whatif_result`). Returns are ratios, so the window cancels in them.
  */
-export function scenarioModel(grid: ResponseGrid, d: Pick<ClientDashboard, "kpi" | "channels">, multipliers: Readonly<Record<string, number>>): ScenarioModel {
+export function scenarioModel(grid: ResponseGrid, d: Pick<ClientDashboard, "kpi" | "channels" | "period_label">, multipliers: Readonly<Record<string, number>>): ScenarioModel {
   const names = (d.channels ?? []).map((c) => c.name).filter((n) => grid.channels.includes(n));
   const m = Object.fromEntries(names.map((n) => [n, multipliers[n] ?? 1]));
   const res = evaluateScenario(grid, { multipliers: m });
   const cur = evaluateScenario(grid, {});
   const be = breakevenOf(d.kpi);
+  const periods = grid.periods > 0 ? grid.periods : 1;
+  const per = (v: number) => v / periods;
   const channels: ScenarioChannel[] = [];
   for (const def of d.channels ?? []) {
     const out = res.channels[def.name];
@@ -565,21 +576,23 @@ export function scenarioModel(grid: ResponseGrid, d: Pick<ClientDashboard, "kpi"
       name: def.name,
       label: def.label,
       multiplier: at,
-      spend: out.spend,
-      contribution: out.contribution.mean,
-      delta: out.contribution.mean - base.contribution.mean,
+      spend: per(out.spend),
+      contribution: per(out.contribution.mean),
+      delta: per(out.contribution.mean - base.contribution.mean),
       zone,
       zoneWord: zoneWord(zone),
     });
   }
-  const kpi = res.kpi ? { mean: res.kpi.mean, low: res.kpi.quantiles[0] ?? null, high: res.kpi.quantiles[res.kpi.quantiles.length - 1] ?? null } : null;
-  const kpiDelta = res.kpi_delta.mean;
-  const spendDelta = res.spend_delta;
+  const q = (v: number | undefined) => (v === undefined ? null : per(v));
+  const kpi = res.kpi ? { mean: per(res.kpi.mean), low: q(res.kpi.quantiles[0]), high: q(res.kpi.quantiles[res.kpi.quantiles.length - 1]) } : null;
+  const kpiDelta = per(res.kpi_delta.mean);
+  const spendDelta = per(res.spend_delta);
   return {
     channels,
     kpi,
     kpiDelta,
     spendDelta,
+    periods,
     current: Object.values(m).every((v) => Math.abs(v - 1) < 1e-9),
     lead: scenarioLead(kpiDelta, spendDelta, d),
   };

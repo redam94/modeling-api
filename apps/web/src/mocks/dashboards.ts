@@ -306,12 +306,15 @@ const MMM_SPEC: DashboardSpec = {
   note: "Spend in this readout is net media spend. Agency fees are not included.",
 };
 
+/** Weeks of the fit window: the grid holds totals over them, the readout shows one week. */
+const MMM_WEEKS = 52;
+
 const MMM_GRID: ResponseGrid = synthGrid({
   channels: MMM_CHANNELS.map((c) => c.name),
   geos: null,
-  spend: [42_000, 18_000, 12_000, 8_000],
-  kpiTotal: 410_000,
-  kpiSeries: Array.from({ length: 1 }, () => ({ t: "2026-10-18", y: 410_000 })),
+  spend: [42_000, 18_000, 12_000, 8_000].map((s) => s * MMM_WEEKS),
+  kpiTotal: 410_000 * MMM_WEEKS,
+  kpiSeries: Array.from({ length: MMM_WEEKS }, (_, k) => ({ t: day(Date.parse("2025-10-26T00:00:00Z") + k * 7 * DAY), y: 410_000 })),
   statedRoi: { tv: 1.9, search: 2.7, social: 1.25, display: 0.85 },
   kpiUnits: "EUR",
 });
@@ -323,10 +326,14 @@ function gridAt(grid: ResponseGrid, multipliers: Record<string, number>) {
   return evaluateScenario(grid, { multipliers }, [0.05, 0.5, 0.95]);
 }
 
-/** Channel rows of the grid at `multipliers`, scaled by `scale` (a week's level). */
-function channelRows(spec: DashboardSpec, grid: ResponseGrid, multipliers: Record<string, number>, scale = 1): ChannelReadout[] {
+/**
+ * Channel rows of the grid at `multipliers`, per week (the grid's window totals / its periods,
+ * as the server's `grid_facts`), scaled by `scale` (a week's level).
+ */
+function channelRows(spec: DashboardSpec, grid: ResponseGrid, multipliers: Record<string, number>, level = 1): ChannelReadout[] {
   const be = breakevenOf(spec);
   const res = gridAt(grid, multipliers);
+  const scale = level / grid.periods;
   const total = Object.values(res.channels).reduce((a, c) => a + c.contribution.mean * scale, 0);
   return spec.channels.map((ch) => {
     const out = res.channels[ch.name];
@@ -382,7 +389,7 @@ function mmmSnapshot(spec: DashboardSpec, grid: ResponseGrid, w: number): Readou
   const level = (k: number) => 1 + 0.07 * Math.sin((k + 3) / 2.3) + 0.02 * Math.cos(k * 1.7);
   const rand = seeded(9001 + w);
   const base = gridAt(grid, {});
-  const expectedAt = (k: number) => (base.kpi?.mean ?? 400_000) * level(k);
+  const expectedAt = (k: number) => (base.kpi ? base.kpi.mean / grid.periods : 400_000) * level(k);
   const points = Array.from({ length: 26 }, (_, i) => {
     const k = w + 25 - i;
     const m = expectedAt(k);
@@ -426,31 +433,34 @@ export function whatIfOf(spec: DashboardSpec, grid: ResponseGrid, multipliers: R
   const cur = gridAt(grid, {});
   const channels = channelRows(spec, grid, multipliers);
   const d = spec.kpi.decimals ?? 0;
-  const deltaKpi = res.kpi_delta.mean;
-  const baseKpi = cur.kpi?.mean ?? null;
-  const lo = res.kpi?.quantiles[0] ?? null;
-  const hi = res.kpi?.quantiles[2] ?? null;
+  // per week, as the server's `whatif_result`: the grid answers over its whole window
+  const per = (v: number | null | undefined) => (v == null ? null : v / grid.periods);
+  const week = spec.period_label ?? "week";
+  const deltaKpi = res.kpi_delta.mean / grid.periods;
+  const baseKpi = per(cur.kpi?.mean);
+  const lo = per(res.kpi?.quantiles[0]);
+  const hi = per(res.kpi?.quantiles[2]);
   const n = noun(spec);
   const tiles: Partial<Record<KpiValue["key"], KpiValue>> = {
     ...mediaTiles(spec, channels),
     expected: {
       key: "expected",
       label: `Expected ${n}`,
-      value: res.kpi?.mean ?? null,
+      value: per(res.kpi?.mean),
       unit: spec.kpi.unit,
       delta: baseKpi ? deltaKpi / baseKpi : null,
       delta_basis: "the current plan",
       delta_dir: dir(baseKpi ? deltaKpi / baseKpi : null),
       low: lo,
       high: hi,
-      caption: `Over ${grid.periods} ${spec.period_label ?? "week"}s. Likely range ${fmt(lo ?? 0, d)} to ${fmt(hi ?? 0, d)}`,
+      caption: `A ${week} on average over ${grid.periods} ${week}s. Likely range ${fmt(lo ?? 0, d)} to ${fmt(hi ?? 0, d)}`,
     },
   };
-  const spendDelta = res.spend_delta;
+  const spendDelta = res.spend_delta / grid.periods;
   const lead =
     Math.abs(deltaKpi) < 0.5
       ? "This plan brings the same result as the current plan."
-      : `This plan brings ${fmt(Math.abs(deltaKpi), d)} ${deltaKpi > 0 ? "more" : "less"} ${n} than the current plan, for ${fmt(Math.abs(spendDelta), d)} ${spendDelta >= 0 ? "more" : "less"} spend.`;
+      : `This plan brings ${fmt(Math.abs(deltaKpi), d)} ${deltaKpi > 0 ? "more" : "less"} ${n} a ${week} than the current plan, for ${fmt(Math.abs(spendDelta), d)} ${spendDelta >= 0 ? "more" : "less"} spend.`;
   return { tiles: pick(spec, tiles), channels, delta_kpi: deltaKpi, lead };
 }
 

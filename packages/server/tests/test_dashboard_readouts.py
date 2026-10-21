@@ -19,13 +19,22 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dashboards.inputs import clear_grid_cache
 from mapi_server.services.dashboards.loop import DashboardLoop
-from mapi_server.services.dashboards.readouts import ChannelFacts, build_snapshot, kpi_series
+from mapi_server.services.dashboards.readouts import (
+    ChannelFacts,
+    build_snapshot,
+    grid_facts,
+    kpi_series,
+    merge_facts,
+    whatif_result,
+)
 from mapi_server.services.runs import apply_transition, now
 from mapi_server.settings import Profile, Settings
 from mapi_server_testkit.plots import complete_run
 from mapi_spec.api import ScoreSummary
 from mapi_spec.dashboards import DashboardSpec, ReadoutSnapshot
 from mapi_spec.run import Actor, RunTrigger
+from mapi_spec.views import ResponseGridView
+from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from pydantic import ValidationError
 from sqlalchemy import func, select, update
 from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
@@ -117,8 +126,10 @@ async def test_the_baseline_runs_finishes_and_materialises_without_webhooks(
     assert tiles["expected"].value == 405.0 and tiles["expected"].low == 385.0
     assert "return_on_media" in tiles and "in_range_spend" in tiles
     tv = next(c for c in snap.channels if c.name == "tv")
-    # spend from the grid (52 000), the return from the fit metrics; 1/40 is the breakeven
-    assert tv.spend == 52000.0 and tv.roi == 0.04 and tv.zone == "headroom"
+    # spend from the grid per week (52 000 over 52 weeks), the return from the fit metrics;
+    # 1/40 is the breakeven
+    assert tv.spend == 1000.0 and tv.roi == 0.04 and tv.zone == "headroom"
+    assert tv.contribution == pytest.approx(975.0 / 52)  # the grid's mean total, per week
     assert snap.series[0].points[-1].t == "2024-06-01" and snap.source_run_ids == ready.run_ids
     assert ready.period_end is not None and ready.period_end.isoformat() == "2024-06-01"
     # clients see it as the latest readout
@@ -498,3 +509,66 @@ def test_channel_zones_use_the_breakeven_of_the_kpi() -> None:
     assert tiles["in_range_spend"].value == 0.0
     assert tiles["return_on_media"].value == pytest.approx(0.03)
     assert snap.lead == "This readout has no result for the latest week."
+
+
+# 60 weeks: the grid holds window totals, the readout shows one week
+GRID_60: dict[str, Any] = {
+    "format": "mapi.response-grid/v1",
+    "kpi": "y",
+    "periods": 60,
+    "channels": ["tv", "search"],
+    "multipliers": [0.5, 1.0, 1.5],
+    "draws": 2,
+    "contribution": [[[6000.0, 9000.0, 10800.0], [1800.0, 3000.0, 3600.0]],
+                     [[5400.0, 8400.0, 10200.0], [2400.0, 3600.0, 4200.0]]],
+    "spend": [[60000.0, 120000.0, 180000.0], [12000.0, 24000.0, 36000.0]],
+    "current_spend": [120000.0, 24000.0],
+    "baseline": [12000.0, 12600.0],
+}  # fmt: skip
+
+
+def test_grid_facts_are_per_period_and_commensurate_with_the_kpi() -> None:
+    grid = ResponseGridView.model_validate(GRID_60)
+    facts = grid_facts(grid)
+    # per week = window total / 60; the return is a ratio, so the window cancels
+    assert facts["tv"].contribution == pytest.approx(8700.0 / 60)
+    assert facts["tv"].spend == pytest.approx(120000.0 / 60)
+    assert facts["search"].contribution == pytest.approx(3300.0 / 60)
+    assert facts["tv"].roi == pytest.approx(8700.0 / 120000.0)
+    assert facts["tv"].roi_low == pytest.approx(8400.0 / 120000.0)
+    assert facts["tv"].mroi == pytest.approx((10500.0 - 8700.0) / 60000.0)
+    # the KPI of one week is the model's per-week expectation: the channels fit inside it
+    kpi_week = (12300.0 + 8700.0 + 3300.0) / 60  # mean baseline + contributions, per week
+    points = kpi_series(
+        ScoreSummary.model_validate(
+            {"tables": [{"variable": "y", "columns": ["t", "mean"], "dims": ["t"],
+                         "rows": [["2024-01-01", kpi_week]]}]}
+        ),
+        "y",
+    )  # fmt: skip
+    snap = build_snapshot(_spec(), kind="refresh", points=points, facts=merge_facts({}, facts))
+    total = sum(c.contribution or 0.0 for c in snap.channels)
+    assert 0 < total < kpi_week
+    tiles = {t.key: t for t in snap.tiles}
+    assert tiles["return_on_media"].value == pytest.approx(12000.0 / 144000.0)
+    # the fit's return times the grid's spend is per week too
+    merged = merge_facts({"tv": ChannelFacts(roi=0.05)}, {"tv": ChannelFacts(spend=2000.0)})
+    assert merged["tv"].contribution == pytest.approx(100.0)
+
+
+def test_grid_whatifs_answer_per_period() -> None:
+    grid = ResponseGridView.model_validate(GRID_60)
+    plan = {"tv": 1.5, "search": 0.5}
+    res = whatif_result(_spec(), grid, plan)
+    window = evaluate_scenario(grid, WhatIfScenario(multipliers=plan))
+    assert res.delta_kpi == pytest.approx(window.kpi_delta.mean / 60)
+    tiles = {t.key: t for t in res.tiles}
+    assert window.kpi is not None
+    assert tiles["expected"].value == pytest.approx(window.kpi.mean / 60)
+    assert tiles["expected"].caption is not None and "A week on average over 60 weeks" in (
+        tiles["expected"].caption
+    )
+    tv = next(c for c in res.channels if c.name == "tv")
+    assert tv.contribution == pytest.approx(window.channels["tv"].contribution.mean / 60)
+    assert tv.spend == pytest.approx(180000.0 / 60)
+    assert res.lead.endswith("a week than the current plan.")

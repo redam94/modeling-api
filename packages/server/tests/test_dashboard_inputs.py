@@ -116,7 +116,8 @@ async def test_grid_and_whatifs_answer_without_a_run(
     r = await cleo.post(f"/v1/dashboards/{dash_id}/whatif:evaluate", json=plan)
     assert r.status_code == 200, r.text
     want = evaluate_scenario(ResponseGridView.model_validate(GRID), WhatIfScenario(**plan))
-    assert r.json()["delta_kpi"] == pytest.approx(want.kpi_delta.mean)
+    # per week: the grid's window total over its 52 weeks
+    assert r.json()["delta_kpi"] == pytest.approx(want.kpi_delta.mean / GRID["periods"])
     assert "than the current plan" in r.json()["lead"]
     assert {c["name"] for c in r.json()["channels"]} == {"tv", "search"}
     # outside a slider's range (1.5 is the default max) or an unknown channel: 422

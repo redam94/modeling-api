@@ -34,6 +34,7 @@ function ChannelSlider({
   value,
   outcome,
   unitWord,
+  period,
   onChange,
 }: {
   def: ChannelDef;
@@ -41,6 +42,7 @@ function ChannelSlider({
   value: number;
   outcome: ScenarioChannel | undefined;
   unitWord: string;
+  period: string;
   onChange: (m: number) => void;
 }) {
   const id = useId();
@@ -68,7 +70,7 @@ function ChannelSlider({
       />
       {outcome ? (
         <p className="text-xs text-hint tabular">
-          {Math.abs(outcome.delta) < 0.5 ? `No change in ${unitWord}` : `${signedGrouped(outcome.delta, 0)} ${unitWord}`}
+          {Math.abs(outcome.delta) < 0.5 ? `No change in ${unitWord}` : `${signedGrouped(outcome.delta, 0)} ${unitWord} a ${period}`}
         </p>
       ) : null}
     </div>
@@ -137,7 +139,7 @@ export function Scenarios({ client, dashboard, preview = false }: { client: Dash
   return (
     <div className="grid min-w-0 gap-6" data-tab="scenarios">
       <p className="max-w-[68ch] text-sm text-muted-foreground">
-        Move a slider to change the spend on a channel. The numbers change at once. The plan uses {ready.periods} {plural(period, ready.periods)} of spend. The model does not change.
+        Move a slider to change the spend on a channel. The numbers change at once. The numbers are for one {period}: the average of the {ready.periods} {plural(period, ready.periods)} the model learned from. The model does not change.
       </p>
       <div className="grid min-w-0 gap-6 lg:grid-cols-12">
         <Section className="lg:col-span-5" title="Spend by channel" action={<Button variant="action" size="sm" onClick={reset} disabled={current}><RotateCcw /> Reset to current plan</Button>}>
@@ -150,6 +152,7 @@ export function Scenarios({ client, dashboard, preview = false }: { client: Dash
                 value={multipliers[c.name] ?? 1}
                 outcome={byName.get(c.name)}
                 unitWord={noun}
+                period={period}
                 onChange={(m) => {
                   setSaved(null);
                   setMultipliers((prev) => ({ ...prev, [c.name]: m }));
@@ -168,17 +171,17 @@ export function Scenarios({ client, dashboard, preview = false }: { client: Dash
               value={model.kpi ? formatValue(model.kpi.mean, kpiUnit, dashboard.kpi) : signedGrouped(model.kpiDelta, 0)}
               delta={Math.abs(model.kpiDelta) < 0.5 ? null : `${grouped(Math.abs(model.kpiDelta), dashboard.kpi.decimals ?? 0)} ${model.kpiDelta > 0 ? "more" : "less"} than the current plan`}
               deltaDir={Math.abs(model.kpiDelta) < 0.5 ? "flat" : model.kpiDelta > 0 ? "up" : "down"}
-              caption={model.kpi && model.kpi.low !== null && model.kpi.high !== null ? `Likely range ${formatValue(model.kpi.low, kpiUnit, dashboard.kpi)} to ${formatValue(model.kpi.high, kpiUnit, dashboard.kpi)}` : "The change against the current plan"}
+              caption={model.kpi && model.kpi.low !== null && model.kpi.high !== null ? `A ${period} on average. Likely range ${formatValue(model.kpi.low, kpiUnit, dashboard.kpi)} to ${formatValue(model.kpi.high, kpiUnit, dashboard.kpi)}` : `The change in a ${period} against the current plan`}
             />
             <StatTile
               label="Media spend"
               value={formatValue(model.channels.reduce((a, c) => a + c.spend, 0), "currency", { currency: dashboard.kpi.unit === "currency" ? (dashboard.kpi.currency ?? null) : null, decimals: 0 })}
               delta={Math.abs(model.spendDelta) < 0.5 ? null : `${grouped(Math.abs(model.spendDelta), 0)} ${model.spendDelta > 0 ? "more" : "less"} than the current plan`}
               deltaDir="flat"
-              caption={`Over ${ready.periods} ${plural(period, ready.periods)}`}
+              caption={`A ${period} on average over ${ready.periods} ${plural(period, ready.periods)}`}
             />
           </StatGrid>
-          <Section title="Why the result differs from the plan" description={`The change of each channel's ${noun} against the current plan.`} data-readout="plan-diff">
+          <Section title="Why the result differs from the plan" description={`The change of each channel's ${noun} in a ${period} against the current plan.`} data-readout="plan-diff">
             {current ? (
               <p className="text-sm text-muted-foreground">Move a slider to compare a plan with the current plan.</p>
             ) : (

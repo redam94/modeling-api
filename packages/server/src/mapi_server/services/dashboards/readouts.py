@@ -686,7 +686,11 @@ def _new_id(prefix: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ChannelFacts:
-    """What is known about one channel over the fit window (spend units and KPI units)."""
+    """What is known about one channel, per readout period (spend units and KPI units).
+
+    ``spend`` and ``contribution`` are averages per period (the grid's window totals divided
+    by ``ResponseGridView.periods``), so they sit next to the KPI tiles, which describe one
+    period. ``roi`` and ``mroi`` are ratios and the same either way."""
 
     spend: float | None = None
     contribution: float | None = None
@@ -1082,26 +1086,31 @@ def grid_facts(
     grid: ResponseGridView, multipliers: Mapping[str, float] | None = None
 ) -> dict[str, ChannelFacts]:
     """Spend, mean contribution, return (5-95 % over draws) and marginal return per channel
-    at ``multipliers`` (default: the current plan), from the response grid."""
+    at ``multipliers`` (default: the current plan), from the response grid.
+
+    The grid holds totals over its ``periods``-period fit window; spend and contribution come
+    out per period (total / ``periods``), as the readout shows them next to the KPI of one
+    period. Return and marginal return are ratios, so the window cancels."""
     xs = grid.multipliers
+    per = float(grid.periods)
     out: dict[str, ChannelFacts] = {}
     for c, ch in enumerate(grid.channels):
         x = (multipliers or {}).get(ch, 1.0)
-        spend = _interp(xs, grid.spend[c], x)
+        total_spend = _interp(xs, grid.spend[c], x)
         per_draw = sorted(_interp(xs, grid.contribution[d][c], x) for d in range(grid.draws))
         mean_curve = [
             math.fsum(grid.contribution[d][c][k] for d in range(grid.draws)) / grid.draws
             for k in range(len(xs))
         ]
-        contrib = math.fsum(per_draw) / len(per_draw)
+        total = math.fsum(per_draw) / len(per_draw)
         lo = per_draw[int(0.05 * (len(per_draw) - 1))]
         hi = per_draw[math.ceil(0.95 * (len(per_draw) - 1))]
         out[ch] = ChannelFacts(
-            spend=spend,
-            contribution=contrib,
-            roi=contrib / spend if spend else None,
-            roi_low=lo / spend if spend else None,
-            roi_high=hi / spend if spend else None,
+            spend=total_spend / per,
+            contribution=total / per,
+            roi=total / total_spend if total_spend else None,
+            roi_low=lo / total_spend if total_spend else None,
+            roi_high=hi / total_spend if total_spend else None,
             mroi=_slope(xs, mean_curve, grid.spend[c], x),
         )
     return out
@@ -1132,7 +1141,11 @@ def whatif_result(
     spec: DashboardSpec, grid: ResponseGridView, multipliers: Mapping[str, float]
 ) -> WhatIfResult:
     """A spend plan evaluated on the (clipped) grid: :func:`mapi_spec.whatif.evaluate_scenario`
-    for the KPI, the channel rows at the plan and one plain sentence. No run, no write."""
+    for the KPI, the channel rows at the plan and one plain sentence. No run, no write.
+
+    :func:`~mapi_spec.whatif.evaluate_scenario` answers over the grid's whole fit window;
+    every number here is per period (window / ``periods``), like the readout's tiles and
+    channel rows, and the words say so."""
     check_scenario(spec, multipliers)
     res = evaluate_scenario(grid, WhatIfScenario(multipliers=dict(multipliers)))
     facts = grid_facts(grid, multipliers)
@@ -1140,28 +1153,34 @@ def whatif_result(
     tiles = _media_tiles(spec, channels)
     d = spec.kpi.decimals
     noun = kpi_noun(spec)
-    delta = res.kpi_delta.mean
+    period = spec.period_label
+    per = float(grid.periods)
+    delta = res.kpi_delta.mean / per
     if res.kpi is not None:
-        base = res.kpi.mean - delta
-        lo, hi = res.kpi.quantiles[0], res.kpi.quantiles[-1]
+        mean = res.kpi.mean / per
+        base = mean - delta
+        lo, hi = res.kpi.quantiles[0] / per, res.kpi.quantiles[-1] / per
         tiles["expected"] = KpiValue(
             key="expected",
             label=f"Expected {noun}"[:80],
-            value=res.kpi.mean,
+            value=mean,
             unit=spec.kpi.unit,
             delta=delta / base if base else None,
             delta_basis="the current plan",
             delta_dir=_dir(delta / base if base else None),
             low=lo,
             high=hi,
-            caption=f"Over {grid.periods} {spec.period_label}s. Likely range {fmt(lo, d)} to "
-            f"{fmt(hi, d)}"[:200],
+            caption=f"A {period} on average over {grid.periods} {period}s. Likely range "
+            f"{fmt(lo, d)} to {fmt(hi, d)}"[:200],
         )
     if abs(delta) < 0.5 * 10**-d:
         lead = "This plan brings the same result as the current plan."
     else:
         word = "more" if delta > 0 else "fewer" if spec.kpi.unit == "count" else "less"
-        lead = f"This plan brings about {fmt(abs(delta), d)} {word} {noun} than the current plan."
+        lead = (
+            f"This plan brings about {fmt(abs(delta), d)} {word} {noun} a {period} than the "
+            "current plan."
+        )
     return WhatIfResult(
         tiles=[tiles[k] for k in spec.tiles if k in tiles],
         channels=channels,
