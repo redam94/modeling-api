@@ -12,6 +12,7 @@ from mapi_spec.executor import Executor
 
 from mapi_server.context import ServerContext
 from mapi_server.executors import placement_warnings
+from mapi_server.services.dashboards.loop import DashboardLoop
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.events import EventIngestor
 from mapi_server.services.finalizer import Finalizer
@@ -72,6 +73,7 @@ class Orchestrator:
         )
         self.lifecycle = LifecycleScheduler(ctx, jobs)
         self.workflows = WorkflowLoop(ctx)
+        self.dashboards = DashboardLoop(ctx)
         self.stop = asyncio.Event()
 
     async def ensure_catalog(self) -> None:
@@ -108,6 +110,7 @@ class Orchestrator:
             asyncio.create_task(self.webhooks.run_forever(self.stop), name="webhooks"),
             asyncio.create_task(self.lifecycle.run_forever(self.stop), name="lifecycle"),
             asyncio.create_task(self.workflows.run_forever(self.stop), name="workflows"),
+            asyncio.create_task(self.dashboards.run_forever(self.stop), name="dashboards"),
         ]
         if self.procrastinate is not None:
             tasks.append(
