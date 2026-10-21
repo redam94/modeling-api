@@ -40,6 +40,12 @@ from mapi_spec.api import (
     ScoreSummaryTable,
 )
 from mapi_spec.audit import AuditAction
+from mapi_spec.dashboard_v2 import (
+    DashboardSpecV2,
+    EffectAccuracy,
+    RecipePanel,
+    parse_dashboard_spec,
+)
 from mapi_spec.dashboards import (
     MAX_CHANNELS,
     MAX_SERIES_POINTS,
@@ -62,7 +68,7 @@ from mapi_spec.dashboards import (
     metrics_of,
     zone_of,
 )
-from mapi_spec.errors import ERROR_INFO, ErrorCode, MapiError, Problem
+from mapi_spec.errors import ERROR_INFO, ErrorCode, MapiError, Problem, Severity
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import ResourceKind
 from mapi_spec.views import ResponseGridView
@@ -411,7 +417,7 @@ async def review(
 # ================================================================================== refreshes
 
 
-def _period_title(spec: DashboardSpec, prefix: str) -> str:
+def _period_title(spec: DashboardSpec | DashboardSpecV2, prefix: str) -> str:
     return f"{prefix} on {now():%d/%m/%Y}"
 
 
@@ -525,7 +531,7 @@ async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> 
             from mapi_server.services.endpoints import model_ref_of
 
             ref = await model_ref_of(session, mv)
-        spec = DashboardSpec.model_validate(rev.spec)
+        spec = parse_dashboard_spec(rev.spec)
         await new_readout(
             session,
             dash,
@@ -610,7 +616,7 @@ async def on_endpoint_promoted(
     ):
         if rev.endpoint_alias != endpoint.alias or rev.model_version_id == version.id:
             continue
-        spec = DashboardSpec.model_validate(rev.spec)
+        spec = parse_dashboard_spec(rev.spec)
         locked = await _lock_dashboard(session, dash.id)
         ts = now()
         if not spec.refresh.follow_endpoint or ran_uploaded_code(version):
@@ -620,7 +626,13 @@ async def on_endpoint_promoted(
             continue
         if ctx is not None:
             issues: list[Any] = []
-            await _check_version(ctx, spec, version, issues)
+            if isinstance(spec, DashboardSpecV2):  # layout 2: the checks against the catalog
+                from mapi_server.services.dashboards.sources import check_version_v2
+
+                found = await check_version_v2(ctx, session, spec, version)
+                issues = [i for i in found if i.severity is Severity.ERROR]
+            else:
+                await _check_version(ctx, spec, version, issues)
             if issues:
                 log.info(
                     "dashboard %s does not follow %s to %s: %s",
@@ -748,7 +760,9 @@ def _add(a: float | None, b: float | None) -> float | None:
     return b if a is None else a + b
 
 
-_MEAN_COLS: Final = ("mean", "median", "q50", "p50")
+_MEAN_COLS: Final = ("mean", "median", "q50", "p50", "point")
+"""``point`` (v0.17, plan §10.4): the centre of a point-prediction model, last, so it only
+changes readouts that had no centre."""
 _LOW_COLS: Final = ("q5", "q05", "p05", "p5", "lower")
 _HIGH_COLS: Final = ("q95", "p95", "upper")
 
@@ -803,10 +817,15 @@ def kpi_series(
     summary: ScoreSummary | None,
     variable: str,
     actuals: Mapping[str, float] | None = None,
+    *,
+    summed_bounds: bool = True,
 ) -> list[SeriesPoint]:
     """The KPI per period (summed over the other dims), oldest first: the score's mean and
     interval, and the actual where one is known (the summary's ``actuals`` tables, then
-    ``actuals`` by period label)."""
+    ``actuals`` by period label).
+
+    ``summed_bounds=False`` (layout 2): a period made of several cells keeps its summed
+    centre but no interval, since the sum of interval bounds is not the interval of the sum."""
     acc: dict[str, _Acc] = {}
     table = _pick(summary.tables, variable) if summary is not None else None
     if table is not None:
@@ -834,7 +853,13 @@ def kpi_series(
         if a.actual is None:
             a.actual = v
     return [
-        SeriesPoint(t=t[:32], mean=a.mean, low=a.low, high=a.high, actual=a.actual)
+        SeriesPoint(
+            t=t[:32],
+            mean=a.mean,
+            low=a.low if summed_bounds or a.parts <= 1 else None,
+            high=a.high if summed_bounds or a.parts <= 1 else None,
+            actual=a.actual,
+        )
         for t, a in sorted(acc.items())
     ]
 
@@ -1228,28 +1253,45 @@ async def _summary_of(
     """The score run's ``summary.json`` (size- and depth-capped, validated; ``None`` when
     missing or malformed), as ``GET …:score`` reads it. A transient storage error raises
     :class:`TransientReadoutError` (the readout is retried, never failed for it)."""
+    found = await _run_json(
+        ctx, session, run_id, SCORE_SUMMARY_OUTPUT, ScoreSummary, SCORE_SUMMARY_MAX_BYTES
+    )
+    return found if isinstance(found, ScoreSummary) else None
+
+
+async def _run_json(
+    ctx: ServerContext,
+    session: AsyncSession,
+    run_id: str,
+    name: str,
+    model: Any,
+    max_bytes: int,
+) -> Any:
+    """The output ``name`` of a succeeded run validated as ``model`` (size- and
+    depth-capped JSON; ``None`` when missing, too large or malformed). A transient storage
+    error raises :class:`TransientReadoutError`."""
     run = await session.get(m.Run, run_id)
     if run is None or run.state != RunState.SUCCEEDED.value:
         return None
     att = await session.get(m.RunAttempt, (run.id, run.attempt))
-    meta = (att.outputs or {}).get(SCORE_SUMMARY_OUTPUT) if att is not None else None
-    if not isinstance(meta, dict) or int(meta.get("size") or 0) > SCORE_SUMMARY_MAX_BYTES:
+    meta = (att.outputs or {}).get(name) if att is not None else None
+    if not isinstance(meta, dict) or int(meta.get("size") or 0) > max_bytes:
         return None
     try:
         raw = await ctx.store.get(
             meta["bucket"],
             meta["name"],
             generation=int(meta["generation"]),
-            max_bytes=SCORE_SUMMARY_MAX_BYTES,
+            max_bytes=max_bytes,
         )
-        return ScoreSummary.model_validate(loads_limited(raw))
+        return model.model_validate(loads_limited(raw))
     except MapiError as exc:
         if _transient(exc):
-            raise TransientReadoutError(f"score run {run_id}: {exc.code.value}") from exc
-        log.warning("the summary of score run %s could not be read", run_id)
+            raise TransientReadoutError(f"run {run_id} {name}: {exc.code.value}") from exc
+        log.warning("%s of run %s could not be read", name, run_id)
         return None
     except (ValidationError, ValueError, KeyError, TypeError):
-        log.warning("the summary of score run %s could not be read", run_id)
+        log.warning("%s of run %s could not be read", name, run_id)
         return None
 
 
@@ -1383,7 +1425,7 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
     rev = await session.get(m.DashboardRevision, row.revision_id)
     if rev is None:  # pragma: no cover - cascade
         return _Material(problem=Problem.from_code(ErrorCode.NOT_FOUND, "the revision is gone"))
-    spec = DashboardSpec.model_validate(rev.spec)
+    any_spec = parse_dashboard_spec(rev.spec)
     mv = await session.get(m.ModelVersion, row.model_version_id)
     from mapi_server.services.sharing import ran_uploaded_code
 
@@ -1395,6 +1437,9 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
                 "fitted with platform plugins",
             )
         )
+    if isinstance(any_spec, DashboardSpecV2):
+        return await _build_v2(ctx, session, row, rev, any_spec, mv)
+    spec = any_spec
     summary = await _summary_of(ctx, session, row.run_ids[0]) if row.run_ids else None
     if row.run_ids and summary is None:
         return _Material(
@@ -1464,6 +1509,398 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
             )
         )
     return _Material(snapshot=snapshot, period=_period_of(points))
+
+
+# ================================================================== materialising (layout 2)
+
+VIEW_MAX_BYTES: Final = 4 * 1024 * 1024
+"""Cap on a guided view (forecast, counterfactual) read for a layout 2 readout."""
+FIELDS_MAX_BYTES: Final = 8 * 1024 * 1024
+"""Cap on the ``ui/fields.json`` of a run read for a layout 2 readout."""
+HISTORY_POINTS: Final = 104
+_CONDITIONED_NOTE: Final = (
+    "The model uses your numbers to update its forecast. The model parameters do not change."
+)
+_COMPARED_NOTE: Final = (
+    "We compare your numbers with what the model expected. The model does not change."
+)
+_REFIT_NOTE: Final = (
+    "The estimate of the effect updates after your analyst fits the model again with your numbers."
+)
+
+
+def _invert(binding: Mapping[str, str] | None) -> dict[str, str]:
+    """Dataset name → canonical name (the binding maps canonical → dataset)."""
+    return {v: k for k, v in (binding or {}).items()}
+
+
+def _upload_names(mv: m.ModelVersion | None, ref: Mapping[str, Any]) -> dict[str, str]:
+    """How the summary's dims (dataset names) are named in an upload (canonical names):
+    the upload's own ``names``, else the version's binding reversed."""
+    given = ref.get("names")
+    if isinstance(given, dict):
+        return {str(k): str(v) for k, v in given.items()}
+    if mv is None or mv.score_meta is None:
+        return {}
+    from mapi_spec.validate import ScoreMetadata
+
+    try:
+        meta = ScoreMetadata.model_validate(mv.score_meta)
+    except ValidationError:
+        return {}
+    return _invert(meta.resolved.binding.dims) if meta.resolved.binding is not None else {}
+
+
+def _upload_column(spec: DashboardSpecV2, ref: Mapping[str, Any], ds: XrJsonDataset) -> str | None:
+    """The column of an upload that holds the observed outcome."""
+    for name in (
+        ref.get("kpi_column"),
+        ref.get("label_column"),
+        spec.actuals.label_column,
+        spec.subject.variable,
+        "y",
+    ):
+        if isinstance(name, str) and name in ds.data_vars:
+            return name
+    return None
+
+
+async def _read_upload(ctx: ServerContext, ref: Mapping[str, Any]) -> XrJsonDataset | None:
+    """A stored upload (``None`` when it cannot be read; transient errors raise)."""
+    try:
+        raw = await ctx.store.get(
+            str(ref["bucket"]),
+            str(ref["name"]),
+            generation=int(ref["generation"]),
+            max_bytes=MAX_XRJSON_BYTES,
+        )
+        return XrJsonDataset.model_validate(loads_limited(raw))
+    except MapiError as exc:
+        if _transient(exc):
+            raise TransientReadoutError(f"upload {ref.get('name')}: {exc.code.value}") from exc
+        return None
+    except (ValidationError, ValueError, KeyError, TypeError):
+        return None
+
+
+async def _metric_values(session: AsyncSession, mv: m.ModelVersion) -> list[Any]:
+    from mapi_server.services.dashboards.panels import MetricValue
+
+    rows = (
+        await session.execute(
+            select(m.RunMetricSummary)
+            .where(m.RunMetricSummary.run_id == mv.run_id)
+            .order_by(m.RunMetricSummary.key, m.RunMetricSummary.labels_key)
+            .limit(1000)
+        )
+    ).scalars()
+    return [
+        MetricValue(r.key, {str(k): str(v) for k, v in (r.labels or {}).items()}, _f(r.last))
+        for r in rows
+    ]
+
+
+def _scorecard_of(mv: m.ModelVersion) -> Any:
+    from mapi_spec.scorecard import Scorecard
+
+    if not mv.scorecard:
+        return None
+    try:
+        return Scorecard.model_validate(mv.scorecard)
+    except ValidationError:
+        return None
+
+
+async def _catalog_of(ctx: ServerContext, session: AsyncSession, mv: m.ModelVersion) -> Any:
+    """The version's source catalog (``None`` when it cannot be read: the panels then fall
+    back on what the summary tables say)."""
+    from mapi_server.services.dashboards.sources import source_catalog
+
+    try:
+        return await source_catalog(ctx, session, mv)
+    except (MapiError, ValidationError, ValueError):
+        log.info("model version %s: no source catalog for the readout", mv.id)
+        return None
+
+
+def _dates_of(ts: Sequence[str | None]) -> tuple[date, date] | None:
+    days = sorted(d for d in (_as_date(t) for t in ts if t) if d is not None)
+    return (days[0], days[-1]) if days else None
+
+
+async def _history(
+    session: AsyncSession, row: m.DashboardReadout, current: Any, period: Any
+) -> list[Any]:
+    """The accuracy history: the last :data:`HISTORY_POINTS` **published**, ready actuals
+    readouts of the dashboard (their stored snapshots, validated), oldest first, then this
+    readout when it enters the history itself. Private and pending rows never mix in."""
+    from mapi_server.services.dashboards.panels import accuracy_point, history_point
+
+    rows = list(
+        (
+            await session.execute(
+                select(m.DashboardReadout)
+                .where(
+                    m.DashboardReadout.dashboard_id == row.dashboard_id,
+                    m.DashboardReadout.kind == "actuals",
+                    m.DashboardReadout.visibility == "published",
+                    m.DashboardReadout.status == "ready",
+                    m.DashboardReadout.seq < row.seq,
+                )
+                .order_by(m.DashboardReadout.seq.desc())
+                .limit(HISTORY_POINTS)
+            )
+        ).scalars()
+    )
+    out: list[Any] = []
+    for r in reversed(rows):
+        try:
+            snap = ReadoutSnapshot.model_validate(r.snapshot)
+        except (ValidationError, ValueError):
+            continue
+        span = (r.period_start, r.period_end) if r.period_start and r.period_end else None
+        point = history_point(r.seq, r.created_at, span, snap)
+        if point is not None:
+            out.append(point)
+    if row.kind == "actuals" and row.visibility == "published" and current is not None:
+        point = accuracy_point(row.seq, row.created_at, period, current)
+        if point is not None:
+            out.append(point)
+    return out[-HISTORY_POINTS:]
+
+
+async def _previous(session: AsyncSession, row: m.DashboardReadout) -> dict[str, float]:
+    """The KPI panel values of the previous published, ready layout 2 readout."""
+    prev = (
+        await session.execute(
+            select(m.DashboardReadout.snapshot)
+            .where(
+                m.DashboardReadout.dashboard_id == row.dashboard_id,
+                m.DashboardReadout.visibility == "published",
+                m.DashboardReadout.status == "ready",
+                m.DashboardReadout.seq < row.seq,
+            )
+            .order_by(m.DashboardReadout.seq.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    out: dict[str, float] = {}
+    panels = prev.get("panels") if isinstance(prev, dict) else None
+    for block in panels if isinstance(panels, list) else []:
+        tile = block.get("tile") if isinstance(block, dict) and block.get("kind") == "kpi" else None
+        value = _f(tile.get("value")) if isinstance(tile, dict) else None
+        if value is not None and isinstance(block.get("panel_id"), str):
+            out[block["panel_id"]] = value
+    return out
+
+
+async def _assets_of(ctx: ServerContext, session: AsyncSession, rev_id: str) -> dict[str, Any]:
+    from mapi_server.services.dashboards.assets import revision_assets
+    from mapi_server.services.dashboards.panels import AssetInfo
+
+    try:
+        found = await revision_assets(ctx, session, rev_id)
+    except MapiError as exc:
+        if _transient(exc):
+            raise TransientReadoutError(f"assets of {rev_id}: {exc.code.value}") from exc
+        return {}
+    return {
+        plot_id: AssetInfo(a.id, a.status, a.width, a.height, a.problem)
+        for plot_id, a in found.items()
+    }
+
+
+async def _planner_snapshot(
+    ctx: ServerContext,
+    row: m.DashboardReadout,
+    spec: DashboardSpecV2,
+    mv: m.ModelVersion | None,
+    session: AsyncSession,
+    summary: ScoreSummary | None,
+    notes: Sequence[str],
+) -> tuple[ReadoutSnapshot, list[SeriesPoint]]:
+    """The media planner part of an ``mmm_planner`` readout: exactly the layout 1 snapshot
+    (tiles, channel rows, the KPI series and lead), except that a period summed over several
+    cells has no interval (the layout 2 rule)."""
+    from mapi_spec.dashboard_v2 import kpi_of_subject
+
+    assert spec.mmm is not None
+    v1 = DashboardSpec.model_construct(
+        title=spec.title,
+        period_label=spec.period_label,  # type: ignore[arg-type]  # text only
+        source=spec.source,
+        kpi=kpi_of_subject(spec.subject),
+        channels=list(spec.mmm.channels),
+        tiles=list(spec.mmm.tiles),
+    )
+    fit: dict[str, ChannelFacts] = {}
+    grid: dict[str, ChannelFacts] = {}
+    if mv is not None:
+        fit = await fit_facts(session, mv)
+        from mapi_server.services.dashboards.crud import read_grid
+
+        try:
+            view = await read_grid(ctx, mv)
+        except MapiError:
+            view = None
+        if view is not None:
+            grid = grid_facts(view, row.scenario if row.kind == "scenario" else None)
+    actuals: dict[str, float] = {}
+    if row.input_ref and row.kind == "actuals":
+        kpi_column = str(row.input_ref.get("kpi_column") or spec.subject.variable)
+        time_dim = row.input_ref.get("time_dim")
+        if not isinstance(time_dim, str) or not time_dim:
+            table = _pick(summary.tables, spec.subject.variable) if summary else None
+            time_dim = table.time_dim if table is not None else None
+        found = await uploaded_actuals(ctx, row.input_ref, kpi_column, time_dim)
+        actuals = found or {}
+    points = kpi_series(summary, spec.subject.variable, actuals, summed_bounds=False)
+    snap = build_snapshot(
+        v1,
+        kind=row.kind,  # type: ignore[arg-type]
+        points=points,
+        facts=merge_facts(fit, grid),
+        scenario=row.scenario,
+        notes=notes,
+    )
+    return snap, points
+
+
+async def _build_v2(
+    ctx: ServerContext,
+    session: AsyncSession,
+    row: m.DashboardReadout,
+    rev: m.DashboardRevision,
+    spec: DashboardSpecV2,
+    mv: m.ModelVersion | None,
+) -> _Material:
+    """The layout 2 snapshot of one readout (plan I-3, I-6): reads the run's summary and
+    guided views, the version's fit metrics, scorecard and catalog, the uploaded actuals,
+    the accuracy history and the revision's pictures, then resolves every panel
+    (:mod:`mapi_server.services.dashboards.panels`)."""
+    from mapi_spec.views import (
+        COUNTERFACTUAL_VIEW,
+        FORECAST_VIEW,
+        SCORE_FIELDS_VIEW,
+        CounterfactualView,
+        FieldsView,
+        ForecastView,
+    )
+
+    from mapi_server.services.dashboards import panels as pn
+
+    run_id = row.run_ids[0] if row.run_ids else None
+    summary = await _summary_of(ctx, session, run_id) if run_id else None
+    if run_id and summary is None:
+        return _Material(
+            problem=Problem.from_code(
+                ErrorCode.INTERNAL_ERROR, "the score run wrote no readable summary"
+            )
+        )
+    if row.kind == "batch" and summary is not None and summary.truncated:
+        return _Material(
+            problem=Problem.from_code(
+                ErrorCode.DASHBOARD_BATCH_TOO_LARGE,
+                "the file gave more results than a readout can hold; send fewer rows",
+            )
+        )
+    run = await session.get(m.Run, run_id) if run_id else None
+    request = (run.payload or {}).get("request") if run is not None else None
+    request = request if isinstance(request, dict) else {}
+    output = request.get("output") if isinstance(request.get("output"), dict) else None
+    material = pn.Material(
+        kind=row.kind,
+        mode=str(request.get("mode")) if request.get("mode") else None,
+        summary=summary,
+        band=pn.run_band(output, _representation_of(mv)),
+    )
+    if run_id:
+        material.forecast = await _run_json(
+            ctx, session, run_id, FORECAST_VIEW, ForecastView, VIEW_MAX_BYTES
+        )
+        material.counterfactual = await _run_json(
+            ctx, session, run_id, COUNTERFACTUAL_VIEW, CounterfactualView, VIEW_MAX_BYTES
+        )
+        if any(getattr(p, "intent", None) == "field" for p in spec.panels):
+            material.fields = await _run_json(
+                ctx, session, run_id, SCORE_FIELDS_VIEW, FieldsView, FIELDS_MAX_BYTES
+            )
+    if mv is not None:
+        material.metrics = await _metric_values(session, mv)
+        material.scorecard = _scorecard_of(mv)
+        material.catalog = await _catalog_of(ctx, session, mv)
+    notes: list[str] = []
+    if row.kind == "actuals" and row.input_ref:
+        ds = await _read_upload(ctx, row.input_ref)
+        column = _upload_column(spec, row.input_ref, ds) if ds is not None else None
+        if ds is None or column is None:  # never a ready comparison without its numbers
+            return _Material(
+                problem=Problem.from_code(
+                    ErrorCode.NOT_FOUND, "the uploaded numbers can no longer be read"
+                )
+            )
+        detail, pairs, more = pn.accuracy_of(
+            spec, material, pn.actual_cells(ds, column), names=_upload_names(mv, row.input_ref)
+        )
+        material.accuracy, material.pairs = detail, pairs
+        notes += more
+        conditioned = summary is not None and summary.conditioning is not None
+        notes.append(_CONDITIONED_NOTE if conditioned else _COMPARED_NOTE)
+        if spec.preset == "causal_impact" and not isinstance(detail, EffectAccuracy):
+            notes.append(_REFIT_NOTE)
+    elif summary is not None and summary.actuals:  # a conditioned forecast echoes actuals
+        detail, pairs, _ = pn.accuracy_of(spec, material, [])
+        material.accuracy, material.pairs = detail, pairs
+    period = _dates_of([p.t for p in material.pairs])
+    material.history = await _history(session, row, material.accuracy, period)
+    material.previous = await _previous(session, row)
+    if any(isinstance(p, RecipePanel) and p.is_picture for p in spec.panels):
+        material.assets = await _assets_of(ctx, session, rev.id)
+    legacy: ReadoutSnapshot | None = None
+    points: list[SeriesPoint] = []
+    if spec.preset == "mmm_planner" and spec.mmm is not None:
+        legacy, points = await _planner_snapshot(ctx, row, spec, mv, session, summary, notes)
+        notes = []
+    ref = row.input_ref if isinstance(row.input_ref, dict) else {}
+    echo = [r for r in ref.get("rows") or [] if isinstance(r, dict)][:20]
+    prediction = batch = None
+    if row.kind == "prediction":
+        labels = [str(x) for x in ref.get("row_labels") or []]
+        dim = ref.get("row_dim") if isinstance(ref.get("row_dim"), str) else None
+        prediction = pn.prediction_result(spec, material, echo, row_dim=dim, row_labels=labels)
+    elif row.kind == "batch":
+        n_rows = ref.get("n_rows") if isinstance(ref.get("n_rows"), int) else None
+        id_dim = spec.batch.id_column if spec.batch is not None else None
+        batch = pn.batch_summary(spec, material, n_rows=n_rows, id_dim=id_dim)
+    try:
+        snapshot = pn.build_snapshot_v2(
+            spec,
+            material,
+            legacy=legacy,
+            prediction=prediction,
+            batch=batch,
+            inputs_echo=echo,
+            source_run_ids=row.run_ids,
+            input_fingerprint=row.input_fingerprint,
+            technical={"model_ref": row.model_ref, "spec_hash": row.spec_hash},
+            notes=notes,
+        )
+    except (ValueError, ValidationError) as exc:
+        return _Material(
+            problem=Problem.from_code(
+                ErrorCode.PAYLOAD_TOO_LARGE,
+                "the readout is too large to show",
+                untrusted_text=str(exc)[:2000],
+            )
+        )
+    if not points and snapshot.series:
+        points = list(snapshot.series[0].points)
+    return _Material(snapshot=snapshot, period=_period_of(points) or period)
+
+
+def _representation_of(mv: m.ModelVersion | None) -> str | None:
+    rep = (mv.capabilities or {}).get("representation") if mv is not None else None
+    return rep if isinstance(rep, str) else None
 
 
 async def record_failed_attempt(
