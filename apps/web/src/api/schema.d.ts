@@ -1165,7 +1165,8 @@ export interface paths {
         /**
          * Publish Dashboard
          * @description Publish the draft as a new revision pinned to its model version. Needs the runner
-         *     role: the live inputs run as you. Queues the baseline readout. Audited.
+         *     role: the live inputs run as you. Queues the baseline readout. Audited. ``If-Match``
+         *     (the ``draft_etag`` you checked) publishes only that draft (``412`` when it moved).
          */
         post: operations["publish_dashboard"];
         delete?: never;
@@ -26487,7 +26488,9 @@ export interface operations {
     publish_dashboard: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
             path: {
                 dashboard_id: string;
             };
@@ -26533,6 +26536,15 @@ export interface operations {
             };
             /** @description Problem: NOT_READY, CONFLICT */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_SPEC_STALE */
+            412: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -43740,7 +43740,7 @@
     },
     "/v1/dashboards/{dashboard_id}:publish": {
       "post": {
-        "description": "Publish the draft as a new revision pinned to its model version. Needs the runner\nrole: the live inputs run as you. Queues the baseline readout. Audited.",
+        "description": "Publish the draft as a new revision pinned to its model version. Needs the runner\nrole: the live inputs run as you. Queues the baseline readout. Audited. ``If-Match``\n(the ``draft_etag`` you checked) publishes only that draft (``412`` when it moved).",
         "operationId": "publish_dashboard",
         "parameters": [
           {
@@ -43751,6 +43751,23 @@
               "pattern": "^dsh_[0-9a-z]{26}$",
               "title": "Dashboard Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 130,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
             }
           }
         ],
@@ -43867,6 +43884,29 @@
               }
             },
             "description": "Problem: NOT_READY, CONFLICT"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "DASHBOARD_SPEC_STALE": {
+                    "summary": "The dashboard draft changed since you read it",
+                    "value": {
+                      "code": "DASHBOARD_SPEC_STALE",
+                      "detail": "The dashboard draft changed since you read it",
+                      "errors": [],
+                      "status": 412,
+                      "title": "The dashboard draft changed since you read it",
+                      "type": "urn:mapi:error:DASHBOARD_SPEC_STALE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: DASHBOARD_SPEC_STALE"
           },
           "422": {
             "content": {

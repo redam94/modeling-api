@@ -1353,6 +1353,8 @@ export function createDashboardHandlers(state: DashboardsState): HttpHandler[] {
       const denied = need(s.role, "runner", "Publishing a dashboard (live inputs run as you)");
       if (denied) return denied;
       const x = s.x!;
+      const checked = request.headers.get("If-Match");
+      if (checked && checked !== x.d.draft_etag) return problem(412, "DASHBOARD_SPEC_STALE", "The dashboard draft changed since you read it", "the draft changed since you checked it: look at the new draft, then publish");
       const check = validate(x);
       if (!check.ok) return problem(422, "SCHEMA_INVALID", "The dashboard cannot be published", check.issues?.[0]?.message, { errors: check.issues ?? [] });
       await delay(150);

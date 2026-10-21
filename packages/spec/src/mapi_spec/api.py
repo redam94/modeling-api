@@ -4547,7 +4547,9 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "POST", _DSH + ":publish", "publish_dashboard",
         "Publish the draft as a new revision (needs runner; queues a baseline readout)",
         "Dashboard", 200,
-        errors=(*_NF, *_FB, _E.SCHEMA_INVALID, _E.NOT_READY, _E.CONFLICT), headers=_PH,
+        errors=(*_NF, *_FB, _E.SCHEMA_INVALID, _E.NOT_READY, _E.CONFLICT,
+                _E.DASHBOARD_SPEC_STALE),
+        headers=_PH,
     ),
     EndpointDecl(
         "POST", _DSH + ":archive", "archive_dashboard",

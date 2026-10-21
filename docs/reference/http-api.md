@@ -1298,7 +1298,7 @@ of each route is in the [permissions reference](generated/permissions.md):
 | `GET /v1/dashboards/{dashboard_id}` | A dashboard (viewers and up: Dashboard; a client: ClientDashboard) | — | `Dashboard` | 200 | `NOT_FOUND` |
 | `PUT /v1/dashboards/{dashboard_id}/draft` | Replace the draft spec (If-Match: the draft_etag) | `DashboardDraftUpdate` | `Dashboard` | 200 | `SCHEMA_INVALID`, `NOT_FOUND`, `DASHBOARD_SPEC_STALE`, `PRECONDITION_FAILED` |
 | `POST /v1/dashboards/{dashboard_id}:validate` | Check whether the draft can be published | — | `DashboardValidation` | 200 | `NOT_FOUND` |
-| `POST /v1/dashboards/{dashboard_id}:publish` | Publish the draft as a new revision (needs runner; queues a baseline readout) | — | `Dashboard` | 200 | `NOT_FOUND`, `FORBIDDEN`, `SCHEMA_INVALID`, `NOT_READY`, `CONFLICT` |
+| `POST /v1/dashboards/{dashboard_id}:publish` | Publish the draft as a new revision (needs runner; queues a baseline readout). Optional `If-Match`: the `draft_etag` you checked | — | `Dashboard` | 200 | `NOT_FOUND`, `FORBIDDEN`, `SCHEMA_INVALID`, `NOT_READY`, `CONFLICT`, `DASHBOARD_SPEC_STALE` |
 | `POST /v1/dashboards/{dashboard_id}:archive` | Archive a dashboard (revokes its share links) | — | `Dashboard` | 200 | `NOT_FOUND` |
 | `GET /v1/dashboards/{dashboard_id}/revisions` | Published revisions (newest first) | — | `Page[DashboardRevision]` | 200 | `NOT_FOUND` |
 | `GET /v1/dashboards/{dashboard_id}/grants` | Client users who see the dashboard | — | `Page[DashboardGrant]` | 200 | `NOT_FOUND` |

@@ -7,7 +7,7 @@
  * (`keys.ts`) and every request names the same project in `X-Mapi-Project`. The readout page
  * does not use this module (it reads through a `DashboardClient`, see `client.ts`).
  */
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { api, ApiError, newIdempotencyKey, unwrap, unwrapVoid } from "@/api/client";
@@ -38,6 +38,15 @@ export function useMemberClient(dashboardId: string, opts: MemberClientOptions =
 
 // ------------------------------------------------------------------------------ dashboards
 
+/**
+ * The previous page of the same project while a filter changes; never another project's
+ * (the client portal stays mounted across a project switch, so its cards would show under
+ * the new project's header).
+ */
+export function sameProject(prevKey: readonly unknown[] | undefined, projectKey: string): boolean {
+  return prevKey?.[1] === projectKey;
+}
+
 /** The dashboards of the project (a client user: the published ones granted to them). */
 export function useDashboards(f: DashboardListFilters = {}) {
   const s = useProjectScope();
@@ -45,8 +54,22 @@ export function useDashboards(f: DashboardListFilters = {}) {
     queryKey: dk.list(s.key, f),
     queryFn: ({ signal }) =>
       unwrap(api.GET("/v1/dashboards", { params: { query: { limit: LIMIT, ...(f.status ? { status: f.status } : {}) } }, headers: s.headers, signal })),
-    placeholderData: keepPreviousData,
+    placeholderData: (prev, prevQuery) => (sameProject(prevQuery?.queryKey, s.key) ? prev : undefined),
   });
+}
+
+/** Re-read one dashboard now (after a 412: the draft moved) and answer the fresh copy. */
+export function useRefetchDashboard(id: string) {
+  const s = useProjectScope();
+  const qc = useQueryClient();
+  return async (): Promise<Dashboard | undefined> => {
+    await qc.refetchQueries({ queryKey: dk.one(s.key, id), exact: true });
+    return qc.getQueryData<Dashboard>(dk.one(s.key, id));
+  };
+}
+
+function isStale(e: unknown): boolean {
+  return e instanceof ApiError && (e.status === 412 || e.code === "DASHBOARD_SPEC_STALE");
 }
 
 /** The analyst's view of one dashboard (with the draft and its `draft_etag`). */
@@ -91,6 +114,8 @@ export function useUpdateDraft(id: string) {
     mutationFn: ({ spec, etag }: { spec: DashboardSpec; etag: string }) =>
       unwrap(api.PUT("/v1/dashboards/{dashboard_id}/draft", { params: { path: { dashboard_id: id } }, headers: { ...s.headers, "If-Match": etag }, body: { spec } })),
     onSuccess: (d) => invalidate(id, d),
+    // the draft moved: read the new one, so "Load the new draft" loads it
+    onError: (e) => (isStale(e) ? invalidate(id) : undefined),
   });
 }
 
@@ -104,12 +129,15 @@ export function useValidateDashboard(id: string, etag: string | null) {
   });
 }
 
+/** Publish the draft of `etag` (the one the dialog checked; 412 when another editor saved since). */
 export function usePublishDashboard(id: string) {
   const s = useProjectScope();
   const invalidate = useInvalidateDashboard(s);
   return useMutation({
-    mutationFn: () => unwrap(api.POST("/v1/dashboards/{dashboard_id}:publish", { params: { path: { dashboard_id: id } }, headers: s.headers })),
+    mutationFn: (etag: string) =>
+      unwrap(api.POST("/v1/dashboards/{dashboard_id}:publish", { params: { path: { dashboard_id: id } }, headers: { ...s.headers, "If-Match": etag } })),
     onSuccess: (d) => invalidate(id, d),
+    onError: (e) => (isStale(e) ? invalidate(id) : undefined),
   });
 }
 

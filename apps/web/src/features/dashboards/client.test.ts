@@ -6,6 +6,7 @@ import { FORECAST_DASHBOARD_ID, MMM_DASHBOARD_ID, MOCK_SHARE_PASSCODE, MOCK_SHAR
 import { MOCK_SESSION_KEY, mockCsrfToken, PERSONAS } from "@/mocks/tenancy";
 import { useAuth } from "@/stores/auth";
 
+import { sameProject } from "./api";
 import { effectiveInputs, memberClient, openShareSession, problemOf, refreshShareSession, shareClient, ShareApiError, toClientDashboard, visibleTabs } from "./client";
 import { dashboardProblemText, isFullReadout, READOUT_POLL_MAX_MS, READOUT_POLL_MS, readoutPollMs, SHARE_SESSION_RE, type Dashboard, type DashboardSpec, type Readout, type ShareSessionHandle } from "./types";
 
@@ -264,5 +265,13 @@ describe("dashboardProblemText", () => {
     expect(dashboardProblemText("new_version_incompatible")).toMatch(/does not fit/);
     expect(dashboardProblemText("workflow_version_refused")).toMatch(/Nothing was published/);
     expect(dashboardProblemText("something_new")).toContain("something_new");
+  });
+});
+
+describe("sameProject (the dashboards list placeholder)", () => {
+  it("keeps the previous page only within the same project", () => {
+    expect(sameProject(["p", "acme/growth", "dashboards", "list", {}], "acme/growth")).toBe(true);
+    expect(sameProject(["p", "acme/growth", "dashboards", "list", {}], "other/media")).toBe(false);
+    expect(sameProject(undefined, "acme/growth")).toBe(false);
   });
 });

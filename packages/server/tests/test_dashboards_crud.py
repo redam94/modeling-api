@@ -348,3 +348,22 @@ async def test_grants_end_with_the_client_membership(
     assert ungrants == sorted(
         [(dash_id, "member_removed"), (other, "member_removed"), (dash_id, "role_changed")]
     )
+
+
+async def test_publish_with_if_match_publishes_only_the_checked_draft(kit: dict[str, Any]) -> None:
+    ana: Caller = kit["ana"]
+    r = await ana.post("/v1/dashboards", json={"name": "acme", "spec": dashboard_spec()})
+    dash_id, checked = r.json()["id"], r.json()["draft_etag"]
+    # another editor saves while the publish dialog is open
+    r = await kit["eve"].put(
+        f"/v1/dashboards/{dash_id}/draft",
+        json={"spec": dashboard_spec(title="Changed by Eve")},
+        headers={"If-Match": checked},
+    )
+    assert r.status_code == 200, r.text
+    r = await ana.post(f"/v1/dashboards/{dash_id}:publish", headers={"If-Match": checked})
+    assert r.status_code == 412 and r.json()["code"] == "DASHBOARD_SPEC_STALE", r.text
+    assert (await ana.get(f"/v1/dashboards/{dash_id}")).json()["status"] == "draft"
+    fresh = (await ana.get(f"/v1/dashboards/{dash_id}")).json()["draft_etag"]
+    r = await ana.post(f"/v1/dashboards/{dash_id}:publish", headers={"If-Match": fresh})
+    assert r.status_code == 200, r.text

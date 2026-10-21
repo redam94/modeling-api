@@ -217,7 +217,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
         actions={
           <>
             {draft.dirty ? (
-              <Button variant="ghost" onClick={draft.reset} disabled={draft.saving}>
+              <Button variant="ghost" onClick={() => void draft.reset()} disabled={draft.saving}>
                 <RotateCcw /> Discard
               </Button>
             ) : null}
@@ -250,7 +250,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
           <InlineMessage
             tone="warning"
             action={
-              <Button size="sm" variant="secondary" onClick={draft.reset}>
+              <Button size="sm" variant="secondary" onClick={() => void draft.reset()}>
                 Load the new draft
               </Button>
             }

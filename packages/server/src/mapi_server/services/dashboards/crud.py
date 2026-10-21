@@ -410,13 +410,22 @@ async def _next_seq(
     return int(top.scalar_one()) + 1
 
 
-async def publish(session: AsyncSession, ctx: ServerContext, dashboard_id: str) -> m.Dashboard:
+async def publish(
+    session: AsyncSession, ctx: ServerContext, dashboard_id: str, if_match: str | None = None
+) -> m.Dashboard:
     """``POST …:publish``: validate the draft, pin its model version in a new revision, make
-    the caller ``run_as`` and queue a ``baseline`` readout. Needs the runner role."""
+    the caller ``run_as`` and queue a ``baseline`` readout. Needs the runner role. With
+    ``If-Match``, only the draft of that etag is published (``DASHBOARD_SPEC_STALE`` when
+    another editor saved one since: the publisher never makes an unseen spec live)."""
     _refuse_without_runner(ctx, "publishing a dashboard")
     row = await load_dashboard(session, ctx, dashboard_id, for_update=True)
     if row.status == "archived":
         raise Conflict("the dashboard is archived")
+    if if_match and if_match.strip() not in (row.draft_etag, "W/" + row.draft_etag):
+        raise MapiError(
+            "the draft changed since you checked it: look at the new draft, then publish",
+            code=ErrorCode.DASHBOARD_SPEC_STALE,
+        )
     spec = DashboardSpec.model_validate(row.draft_spec)
     result, binding = await validate_draft(session, ctx, spec)
     if not result.ok or binding is None:

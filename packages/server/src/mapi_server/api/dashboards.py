@@ -205,11 +205,16 @@ async def validate_dashboard(
 
 @router.post("/{dashboard_id}:publish", response_model=Dashboard, **_op("publish_dashboard"))
 async def publish_dashboard(
-    ctx: Ctx, session: Session, dashboard_id: DashboardId, response: Response
+    ctx: Ctx,
+    session: Session,
+    dashboard_id: DashboardId,
+    response: Response,
+    if_match: IfMatch = None,
 ) -> Dashboard:
     """Publish the draft as a new revision pinned to its model version. Needs the runner
-    role: the live inputs run as you. Queues the baseline readout. Audited."""
-    row = await crud.publish(session, ctx, dashboard_id)
+    role: the live inputs run as you. Queues the baseline readout. Audited. ``If-Match``
+    (the ``draft_etag`` you checked) publishes only that draft (``412`` when it moved)."""
+    row = await crud.publish(session, ctx, dashboard_id, if_match)
     return await _analyst_dto(session, row, response)
 
 

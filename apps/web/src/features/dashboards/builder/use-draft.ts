@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError } from "@/api/client";
 
-import { useUpdateDraft } from "../api";
+import { useRefetchDashboard, useUpdateDraft } from "../api";
 import type { Dashboard, DashboardSpec } from "../types";
 import { cleanSpec, sameSpec } from "./spec-form";
 
@@ -23,12 +23,13 @@ export interface Draft {
   saveError: unknown;
   set: (next: DashboardSpec | ((s: DashboardSpec) => DashboardSpec)) => void;
   save: () => Promise<Dashboard | null>;
-  /** Drop the changes and take the server's draft. */
-  reset: () => void;
+  /** Drop the changes and take the server's draft (read again first: the cached copy may be the old one). */
+  reset: () => Promise<void>;
 }
 
 export function useDraft(d: Dashboard): Draft {
   const update = useUpdateDraft(d.id);
+  const refetch = useRefetchDashboard(d.id);
   const [spec, setSpec] = useState<DashboardSpec>(d.draft_spec);
   // the server draft the working copy started from, and its etag
   const [base, setBase] = useState<{ spec: DashboardSpec; etag: string }>({ spec: d.draft_spec, etag: d.draft_etag });
@@ -63,9 +64,10 @@ export function useDraft(d: Dashboard): Draft {
     }
   };
 
-  const reset = () => {
-    setSpec(d.draft_spec);
-    setBase({ spec: d.draft_spec, etag: d.draft_etag });
+  const reset = async () => {
+    const fresh = (await refetch()) ?? d;
+    setSpec(fresh.draft_spec);
+    setBase({ spec: fresh.draft_spec, etag: fresh.draft_etag });
     setStale(false);
     update.reset();
   };

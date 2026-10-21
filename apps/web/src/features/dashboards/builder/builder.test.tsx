@@ -5,8 +5,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { EXPERT_NAV, GUIDED_MODE_NAV, LOCKED_NAV } from "@/components/shell/nav";
 import { DRAFT_DASHBOARD_ID, MMM_DASHBOARD_ID } from "@/mocks/dashboards";
+import { mockCsrfToken, PERSONAS } from "@/mocks/tenancy";
 import { createHandlers } from "@/mocks/handlers";
 import { renderApp } from "@/test/render-app";
+
+import type { Dashboard } from "../types";
 
 const server = setupServer(...createHandlers());
 const seen: Request[] = [];
@@ -130,6 +133,42 @@ describe("builder › publish", () => {
     await user.click(within(dialog).getByRole("button", { name: /^Publish$/ }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), T);
     expect(await screen.findByText(/Revision 1 published/, {}, T)).toBeTruthy();
+  });
+
+  it("publishes only the draft it checked (If-Match)", async () => {
+    const user = userEvent.setup();
+    renderApp(`/dashboards/${DRAFT_DASHBOARD_ID}`);
+    await screen.findByRole("heading", { name: "Spring promotion plan" }, T);
+    await user.click(screen.getByRole("button", { name: /^Publish$/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Publish “Spring promotion plan”/ });
+    expect(await within(dialog).findByText("The draft is ready to publish.", {}, T)).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: /^Publish$/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), T);
+    const post = seen.find((r) => r.method === "POST" && r.url.endsWith(":publish"));
+    expect(post?.headers.get("If-Match")).toMatch(/^"/);
+  });
+
+  it("after a 412, \"Load the new draft\" loads the other person's draft, and the next save works", async () => {
+    const user = userEvent.setup();
+    renderApp(`/dashboards/${DRAFT_DASHBOARD_ID}`);
+    const title = await screen.findByLabelText<HTMLInputElement>("Title", {}, T);
+    // another editor saves first (the cached copy still has the old etag)
+    const read = seen.find((r) => r.method === "GET" && r.url.endsWith(`/v1/dashboards/${DRAFT_DASHBOARD_ID}`));
+    const headers = { ...Object.fromEntries([...(read?.headers.entries() ?? [])]), "X-CSRF-Token": mockCsrfToken(PERSONAS.ana!) };
+    const current = (await (await fetch(read!.url, { headers })).json()) as Dashboard;
+    const theirs = { ...current.draft_spec, title: "Their title" };
+    const saved = await fetch(`${read!.url}/draft`, { method: "PUT", headers: { ...headers, "Content-Type": "application/json", "If-Match": current.draft_etag }, body: JSON.stringify({ spec: theirs }) });
+    expect(saved.status).toBe(200);
+    await user.clear(title);
+    await user.type(title, "My title");
+    await user.click(screen.getByRole("button", { name: /Save draft/ }));
+    const load = await screen.findByRole("button", { name: "Load the new draft" }, T);
+    await user.click(load);
+    await waitFor(() => expect(screen.getByLabelText<HTMLInputElement>("Title").value).toBe("Their title"), T);
+    await user.clear(screen.getByLabelText("Title"));
+    await user.type(screen.getByLabelText("Title"), "Mine again");
+    await user.click(screen.getByRole("button", { name: /Save draft/ }));
+    expect(await screen.findByText("Draft saved", {}, T)).toBeTruthy();
   });
 
   it("asks to save unsaved changes before publishing", async () => {

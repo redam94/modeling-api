@@ -5,6 +5,7 @@
  */
 import { Send } from "lucide-react";
 
+import { ApiError } from "@/api/client";
 import type { Issue } from "@/api/types";
 import { ErrorNotice, IssueList, Spinner } from "@/components/common";
 import { InlineMessage } from "@/components/ods";
@@ -16,6 +17,10 @@ import { toast } from "@/stores/toast";
 import { usePublishDashboard, useValidateDashboard } from "../api";
 import type { Dashboard } from "../types";
 import { publishPermission } from "./spec-form";
+
+function publishStale(e: unknown): boolean {
+  return e instanceof ApiError && (e.status === 412 || e.code === "DASHBOARD_SPEC_STALE");
+}
 
 /** The sentence the publisher accepts (plan §3.6.3). */
 export const PUBLISH_COST = "Live inputs run as you and use your project's compute.";
@@ -74,7 +79,12 @@ export function PublishDialog({ dashboard, onClose, onIssue }: { dashboard: Dash
             {perm.reason}
           </InlineMessage>
         ) : null}
-        {publish.isError ? <ErrorNotice error={publish.error} title="The dashboard was not published" /> : null}
+        {publish.isError ? (
+          <ErrorNotice
+            error={publish.error}
+            title={publishStale(publish.error) ? "Another person changed the draft" : "The dashboard was not published"}
+          />
+        ) : null}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cancel
@@ -82,7 +92,7 @@ export function PublishDialog({ dashboard, onClose, onIssue }: { dashboard: Dash
           <Button
             disabled={!perm.allowed || !ok || publish.isPending}
             onClick={() =>
-              publish.mutate(undefined, {
+              publish.mutate(dashboard.draft_etag, {
                 onSuccess: (d) => {
                   toast.success(again ? "Changes published" : "Dashboard published", `Revision ${d.published_revision?.seq ?? 1} is live. The new readout appears on the History tab when it is ready.`);
                   onClose();
