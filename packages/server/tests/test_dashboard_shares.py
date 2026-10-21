@@ -22,7 +22,7 @@ from mapi_server.services.dashboards.shares import (
 from mapi_server.services.runs import now
 from mapi_server.settings import Profile, Settings
 from mapi_spec.dashboards import DASHBOARD_SHARE_TOKEN_RE, SHARE_SESSION_HEADER, SHARE_SESSION_RE
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from test_dashboards_crud import create_published, dashboard_kit, dashboard_spec
 
 pytestmark = pytest.mark.integration
@@ -234,20 +234,25 @@ async def test_wrong_passcodes_lock_the_link(
     listed = (await kit["ana"].get(f"/v1/dashboards/{kit['dash_id']}/shares")).json()["items"]
     assert listed[0]["locked_until"] is not None
     async with ctx.db.session() as s:
-        audited = (
-            await s.execute(
-                select(func.count()).where(
-                    m.AuditEvent.action == "dashboard.share_unlock_failed",
-                    m.AuditEvent.resource_id == created["id"],
+        audited = [
+            bool((e.details or {}).get("locked"))
+            for e in (
+                await s.execute(
+                    select(m.AuditEvent).where(
+                        m.AuditEvent.action == "dashboard.share_unlock_failed",
+                        m.AuditEvent.resource_id == created["id"],
+                    )
                 )
-            )
-        ).scalar_one()
+            ).scalars()
+        ]
         await s.execute(
             update(m.DashboardShare)
             .where(m.DashboardShare.id == created["id"])
             .values(locked_until=now() - timedelta(seconds=1))
         )
-    assert audited == 1  # bounded: anyone with the link can cause these
+    # bounded (anyone with the link can cause these): one wrong-passcode row a minute, and
+    # the lockout itself always (its own budget)
+    assert sorted(audited) == [False, True]
     r = await _session(client, created["token"], "correct horse")
     assert r.status_code == 200, r.text
     async with ctx.db.session() as s:

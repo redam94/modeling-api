@@ -451,8 +451,11 @@ async def _unlock_failed_audit(
         client_ip=client_ip,
         details={"dashboard_id": share.dashboard_id, "locked": locked},
     )
-    # anyone with the link can cause these: at most one row per link and minute
-    await write_failure_audit(ctx.db, [ev], f"sharefail:{share.id}", now=at, limit=1)
+    # anyone with the link can cause these: at most one row per link and minute. The
+    # transition to locked has a budget of its own, so a burst of wrong passcodes that
+    # spent the minute's row still leaves the lockout in the audit log
+    subject = f"sharelock:{share.id}" if locked else f"sharefail:{share.id}"
+    await write_failure_audit(ctx.db, [ev], subject, now=at, limit=1)
 
 
 async def open_session(
