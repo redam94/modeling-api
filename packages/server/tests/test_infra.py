@@ -63,7 +63,7 @@ def test_migrations_round_trip_and_match_the_models(scratch_db: str) -> None:
 
 M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010_trust_lifecycle")
 M35_CHAIN = ("0011_workflows", "0012_governance")
-V016_CHAIN = ("0018_client_dashboards",)
+V016_CHAIN = ("0018_client_dashboards", "0019_dashboard_hardening")
 CHAIN = (
     *M3_CHAIN,
     *M35_CHAIN,

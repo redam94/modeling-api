@@ -1793,6 +1793,8 @@ class Dashboard(_Scoped, Base):
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     updated_at: Mapped[datetime] = mapped_column(server_default=_now())
     archived_at: Mapped[datetime | None] = mapped_column()
+    # the next readout ``seq`` (0019): never lowered, so a pruned readout's seq is not reused
+    next_readout_seq: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
     __table_args__ = (
         _scope_fk(),
@@ -1897,6 +1899,8 @@ class DashboardReadout(_Scoped, Base):
     expires_at: Mapped[datetime | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     ready_at: Mapped[datetime | None] = mapped_column()
+    # materialisation passes that failed with a transient error (0019; capped, then failed)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     __table_args__ = (
         _scope_fk(),
@@ -1992,7 +1996,7 @@ class DashboardRefitRequest(_Scoped, Base):
     decided_by: Mapped[str | None] = mapped_column(String(128))
     decided_at: Mapped[datetime | None] = mapped_column()
     workflow_run_id: Mapped[str | None] = mapped_column(String(64))
-    dataset_version_id: Mapped[str | None] = mapped_column(String(128))
+    dataset_version_id: Mapped[str | None] = mapped_column(String(256))
     problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (

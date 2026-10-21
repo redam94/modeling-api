@@ -62,7 +62,7 @@ from mapi_spec.dashboards import (
     metrics_of,
     zone_of,
 )
-from mapi_spec.errors import ErrorCode, MapiError, Problem
+from mapi_spec.errors import ERROR_INFO, ErrorCode, MapiError, Problem
 from mapi_spec.run import RunState
 from mapi_spec.tenancy import ResourceKind
 from mapi_spec.views import ResponseGridView
@@ -187,14 +187,17 @@ async def new_readout(
     expires_at: datetime | None = None,
 ) -> m.DashboardReadout:
     """Append a readout. The next ``seq`` is taken under ``SELECT … FOR UPDATE`` on the
-    dashboard row, so concurrent writers never pick the same one."""
-    await _lock_dashboard(session, dashboard.id)
+    dashboard row, so concurrent writers never pick the same one, and from the dashboard's
+    ``next_readout_seq`` counter (never lowered), so a pruned readout's seq never comes back.
+    """
+    locked = await _lock_dashboard(session, dashboard.id)
     top = await session.execute(
         select(func.coalesce(func.max(m.DashboardReadout.seq), 0)).where(
             m.DashboardReadout.dashboard_id == dashboard.id
         )
     )
-    seq = int(top.scalar_one()) + 1
+    seq = max(int(top.scalar_one()) + 1, locked.next_readout_seq or 1)
+    locked.next_readout_seq = seq + 1
     ts = now()
     row = m.DashboardReadout(
         tenant_id=dashboard.tenant_id,
@@ -220,7 +223,7 @@ async def new_readout(
         input_fingerprint=input_fingerprint,
         scenario=dict(scenario) if scenario is not None else None,
         cache_key=cache_key,
-        snapshot=snapshot.model_dump(mode="json") if snapshot is not None else None,
+        snapshot=snapshot_json(snapshot) if snapshot is not None else None,
         expires_at=expires_at,
         created_at=ts,
         ready_at=ts if status == "ready" else None,
@@ -710,6 +713,31 @@ def _f(v: object) -> float | None:
     return x if math.isfinite(x) else None
 
 
+def _cell(row: Sequence[Any], i: int | None) -> float | None:
+    """A number of a summary row (``None`` for a ragged row that has no such column)."""
+    return _f(row[i]) if i is not None and i < len(row) else None
+
+
+def finite_json(value: Any) -> Any:
+    """``value`` (JSON-shaped) with every non-finite float as ``None``. Sums and ratios of
+    finite inputs can still overflow (two cells of 1e308); JSONB refuses ``Infinity``, so a
+    snapshot with one would fail its commit on every pass of the loop."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: finite_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [finite_json(v) for v in value]
+    return value
+
+
+def snapshot_json(snapshot: ReadoutSnapshot) -> dict[str, Any]:
+    """What ``dashboard_readouts.snapshot`` stores: the JSON dump, finite numbers only."""
+    out = finite_json(snapshot.model_dump(mode="json"))
+    assert isinstance(out, dict)
+    return out
+
+
 def _add(a: float | None, b: float | None) -> float | None:
     if b is None:
         return a
@@ -784,12 +812,9 @@ def kpi_series(
             t = str(r[time_i]) if time_i is not None and time_i < len(r) else "all"
             a = acc.setdefault(t, _Acc())
             a.parts += 1
-            if mean_i is not None:
-                a.mean = _add(a.mean, _f(r[mean_i]))
-            if low_i is not None:
-                a.low = _add(a.low, _f(r[low_i]))
-            if high_i is not None:
-                a.high = _add(a.high, _f(r[high_i]))
+            a.mean = _add(a.mean, _cell(r, mean_i))
+            a.low = _add(a.low, _cell(r, low_i))
+            a.high = _add(a.high, _cell(r, high_i))
     if summary is not None and summary.actuals:
         at = _pick(summary.actuals, variable)
         if at is not None and "actual" in at.columns:
@@ -799,7 +824,7 @@ def kpi_series(
             for r in at.rows:
                 t = str(r[ti]) if ti is not None and ti < len(r) else "all"
                 a = acc.setdefault(t, _Acc())
-                a.actual = _add(a.actual, _f(r[ai]))
+                a.actual = _add(a.actual, _cell(r, ai))
     for t, v in (actuals or {}).items():
         a = acc.setdefault(str(t), _Acc())
         if a.actual is None:
@@ -1162,11 +1187,28 @@ def scenario_snapshot(
 # ============================================================================== materialising
 
 
+class TransientReadoutError(Exception):
+    """A materialisation input could not be read for now (a storage timeout or 5xx): the
+    loop retries the readout, up to :data:`MAX_MATERIALISE_ATTEMPTS` passes."""
+
+
+MAX_MATERIALISE_ATTEMPTS: Final = 5
+"""Passes a ``materialising`` readout may fail (transient errors, or anything unexpected)
+before it is failed for good; the loop takes the readouts with fewer attempts first."""
+
+
+def _transient(exc: MapiError) -> bool:
+    """A retryable failure (infrastructure, rate limits, timeouts), not a missing, invalid
+    or oversized object (those stay as they are)."""
+    return ERROR_INFO[exc.code].retryable and exc.code is not ErrorCode.NOT_READY
+
+
 async def _summary_of(
     ctx: ServerContext, session: AsyncSession, run_id: str
 ) -> ScoreSummary | None:
     """The score run's ``summary.json`` (size- and depth-capped, validated; ``None`` when
-    missing or malformed), as ``GET …:score`` reads it."""
+    missing or malformed), as ``GET …:score`` reads it. A transient storage error raises
+    :class:`TransientReadoutError` (the readout is retried, never failed for it)."""
     run = await session.get(m.Run, run_id)
     if run is None or run.state != RunState.SUCCEEDED.value:
         return None
@@ -1182,7 +1224,12 @@ async def _summary_of(
             max_bytes=SCORE_SUMMARY_MAX_BYTES,
         )
         return ScoreSummary.model_validate(loads_limited(raw))
-    except (MapiError, ValidationError, ValueError, KeyError, TypeError):
+    except MapiError as exc:
+        if _transient(exc):
+            raise TransientReadoutError(f"score run {run_id}: {exc.code.value}") from exc
+        log.warning("the summary of score run %s could not be read", run_id)
+        return None
+    except (ValidationError, ValueError, KeyError, TypeError):
         log.warning("the summary of score run %s could not be read", run_id)
         return None
 
@@ -1268,8 +1315,9 @@ def _sum_by_dim(ds: XrJsonDataset, var: str, dim: str) -> dict[str, float]:
 
 async def uploaded_actuals(
     ctx: ServerContext, ref: Mapping[str, Any], kpi_column: str, time_dim: str | None
-) -> dict[str, float]:
-    """The KPI actuals of a stored upload, per period (empty when unreadable)."""
+) -> dict[str, float] | None:
+    """The KPI actuals of a stored upload, per period (``None`` when the upload cannot be
+    read; a transient storage error raises :class:`TransientReadoutError`)."""
     try:
         raw = await ctx.store.get(
             str(ref["bucket"]),
@@ -1278,8 +1326,12 @@ async def uploaded_actuals(
             max_bytes=MAX_XRJSON_BYTES,
         )
         ds = XrJsonDataset.model_validate(loads_limited(raw))
-    except (MapiError, ValidationError, ValueError, KeyError, TypeError):
-        return {}
+    except MapiError as exc:
+        if _transient(exc):
+            raise TransientReadoutError(f"upload {ref.get('name')}: {exc.code.value}") from exc
+        return None
+    except (ValidationError, ValueError, KeyError, TypeError):
+        return None
     var = ds.data_vars.get(kpi_column)
     if var is None or not var.dims:
         return {}
@@ -1335,13 +1387,23 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
             grid = grid_facts(view, row.scenario if row.kind == "scenario" else None)
     actuals: dict[str, float] = {}
     if row.input_ref:
-        table = summary.tables[0] if summary is not None and summary.tables else None
-        actuals = await uploaded_actuals(
-            ctx,
-            row.input_ref,
-            str(row.input_ref.get("kpi_column") or spec.kpi.variable),
-            table.time_dim if table is not None else None,
-        )
+        kpi_column = str(row.input_ref.get("kpi_column") or spec.kpi.variable)
+        time_dim = row.input_ref.get("time_dim")  # the input contract's, stored at upload
+        if not isinstance(time_dim, str) or not time_dim:
+            table = (
+                _pick(summary.tables, spec.kpi.variable)
+                if summary is not None and summary.tables
+                else None
+            )
+            time_dim = table.time_dim if table is not None else None
+        found = await uploaded_actuals(ctx, row.input_ref, kpi_column, time_dim)
+        if found is None:  # never a ready comparison without the numbers it compares
+            return _Material(
+                problem=Problem.from_code(
+                    ErrorCode.NOT_FOUND, "the uploaded numbers can no longer be read"
+                )
+            )
+        actuals = found
     points = kpi_series(summary, spec.kpi.variable, actuals)
     notes = []
     if row.kind == "actuals":
@@ -1373,6 +1435,43 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
             )
         )
     return _Material(snapshot=snapshot, period=_period_of(points))
+
+
+async def record_failed_attempt(
+    ctx: ServerContext, dashboard_id: str, seq: int, exc: BaseException
+) -> str | None:
+    """A materialisation pass of the readout raised (a transient storage error, or anything
+    unexpected such as a commit the database refused): count it, and fail the readout once
+    it reached :data:`MAX_MATERIALISE_ATTEMPTS` so it can neither loop nor starve the others.
+    Returns ``"failed"`` when it did."""
+    async with ctx.db.session() as s:
+        row = (
+            await s.execute(
+                select(m.DashboardReadout)
+                .where(
+                    m.DashboardReadout.dashboard_id == dashboard_id,
+                    m.DashboardReadout.seq == seq,
+                )
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if row is None or row.status != "materialising":
+            return None
+        row.attempts = (row.attempts or 0) + 1
+        if row.attempts < MAX_MATERIALISE_ATTEMPTS:
+            return None
+        detail = (
+            "the readout's inputs could not be read; refresh to try again"
+            if isinstance(exc, TransientReadoutError)
+            else "the readout could not be built"
+        )
+        row.status = "failed"
+        row.problem = Problem.from_code(
+            ErrorCode.INFRA_ERROR if isinstance(exc, TransientReadoutError)
+            else ErrorCode.INTERNAL_ERROR,
+            detail,
+        ).model_dump(mode="json", exclude_none=True)  # fmt: skip
+        return "failed"
 
 
 async def materialise(ctx: ServerContext, dashboard_id: str, seq: int) -> str | None:
@@ -1412,7 +1511,7 @@ async def materialise(ctx: ServerContext, dashboard_id: str, seq: int) -> str | 
                 built.problem or Problem.from_code(ErrorCode.INTERNAL_ERROR, "the readout failed")
             ).model_dump(mode="json", exclude_none=True)
             return "failed"
-        row.snapshot = built.snapshot.model_dump(mode="json")
+        row.snapshot = snapshot_json(built.snapshot)
         row.status = "ready"
         row.ready_at = now()
         if built.period is not None:

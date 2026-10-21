@@ -4,7 +4,10 @@ One pass (:meth:`DashboardLoop.once`):
 
 1. submits ``queued`` readouts (baselines, refreshes) as each dashboard's publisher;
 2. materialises ``materialising`` readouts (their run finished): reads the score summary,
-   the fit metrics and the grid, builds the capped snapshot and sets ``ready``;
+   the fit metrics and the grid, builds the capped snapshot and sets ``ready``. A pass that
+   raises (a transient storage error, anything unexpected) counts an attempt; after
+   :data:`~mapi_server.services.dashboards.readouts.MAX_MATERIALISE_ATTEMPTS` the readout
+   fails, and readouts with fewer attempts go first;
 3. starts the refit workflow of approved refit requests whose dataset version is ready;
 4. deletes private readouts past their ``expires_at`` (saved scenarios: 30 days).
 
@@ -25,7 +28,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.services.dashboards import refits
 from mapi_server.services.dashboards.inputs import submit_queued
-from mapi_server.services.dashboards.readouts import materialise
+from mapi_server.services.dashboards.readouts import materialise, record_failed_attempt
 from mapi_server.services.runs import now
 
 __all__ = ["BATCH", "DashboardLoop"]
@@ -66,7 +69,8 @@ class DashboardLoop:
                     await s.execute(
                         select(m.DashboardReadout.dashboard_id, m.DashboardReadout.seq)
                         .where(m.DashboardReadout.status == "materialising")
-                        .order_by(m.DashboardReadout.created_at)
+                        # rows that keep failing go last, so they never starve new ones
+                        .order_by(m.DashboardReadout.attempts, m.DashboardReadout.created_at)
                         .limit(BATCH)
                     )
                 ).all()
@@ -78,8 +82,14 @@ class DashboardLoop:
                     done += 1
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception as exc:
                 log.exception("readout %s/%s could not be materialised", dashboard_id, seq)
+                try:
+                    await record_failed_attempt(self.ctx, dashboard_id, seq, exc)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception("readout %s/%s: the attempt was not recorded", dashboard_id, seq)
         return done
 
     async def prune(self) -> int:

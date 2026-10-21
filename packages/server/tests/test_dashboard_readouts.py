@@ -126,6 +126,148 @@ async def test_the_baseline_runs_finishes_and_materialises_without_webhooks(
     assert body["latest_readout"]["seq"] == 1 and body["latest_readout"]["snapshot"]["lead"]
 
 
+async def _baseline_done(kit: dict[str, Any], ctx: ServerContext, summary: Any) -> str:
+    """The baseline readout's run finished with ``summary``; returns its run id."""
+    loop = DashboardLoop(ctx)
+    assert await loop.submit_queued() == 1
+    running = await _readout(ctx, kit["dash_id"], 1)
+    await complete_run(
+        ctx,
+        running.run_ids[0],
+        add={"summary.json": (json.dumps(summary).encode(), "application/json")},
+    )
+    assert (await _readout(ctx, kit["dash_id"], 1)).status == "materialising"
+    return running.run_ids[0]
+
+
+async def test_a_transient_storage_error_is_retried_not_failed(
+    kit: dict[str, Any], ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards.readouts import MAX_MATERIALISE_ATTEMPTS
+    from mapi_spec.storage import StorageError
+
+    await _baseline_done(kit, ctx, SUMMARY)
+    real_get = ctx.store.get
+    calls = {"n": 0}
+
+    async def flaky(bucket: str, name: str, **kw: Any) -> bytes:
+        if name.endswith("summary.json"):
+            calls["n"] += 1
+            raise StorageError("503 from the object store", bucket=bucket, name=name)
+        return await real_get(bucket, name, **kw)
+
+    monkeypatch.setattr(ctx.store, "get", flaky)
+    loop = DashboardLoop(ctx)
+    for k in range(1, MAX_MATERIALISE_ATTEMPTS):
+        assert await loop.materialise() == 0
+        row = await _readout(ctx, kit["dash_id"], 1)
+        assert row.status == "materialising" and row.attempts == k  # never failed for it
+    # it recovers when the store does
+    monkeypatch.setattr(ctx.store, "get", real_get)
+    assert await loop.materialise() == 1
+    assert (await _readout(ctx, kit["dash_id"], 1)).status == "ready"
+    assert calls["n"] == MAX_MATERIALISE_ATTEMPTS - 1
+
+
+async def test_a_readout_that_keeps_raising_fails_after_the_cap(
+    kit: dict[str, Any], ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_server.services.dashboards import readouts
+    from mapi_server.services.dashboards.readouts import MAX_MATERIALISE_ATTEMPTS
+
+    await _baseline_done(kit, ctx, SUMMARY)
+
+    def boom(*a: Any, **kw: Any) -> Any:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(readouts, "build_snapshot", boom)
+    loop = DashboardLoop(ctx)
+    for _ in range(MAX_MATERIALISE_ATTEMPTS):
+        await loop.materialise()
+    row = await _readout(ctx, kit["dash_id"], 1)
+    assert row.status == "failed" and row.problem is not None
+    assert row.problem["code"] == "INTERNAL_ERROR"
+
+
+async def test_overflowing_and_ragged_summaries_still_materialise(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """Two cells of 1e308 overflow to inf when summed (JSONB refuses ``Infinity``, so the
+    commit failed on every pass); a ragged row has no mean column. Both store as nulls."""
+    summary = {
+        "tables": [
+            {
+                "variable": "y",
+                "columns": ["t", "geo", "mean", "hdi_90_lower", "hdi_90_upper"],
+                "dims": ["t", "geo"],
+                "time_dim": "t",
+                "rows": [
+                    ["2024-01-01", "de", 1e308, 1e308, 1e308],
+                    ["2024-01-01", "fr", 1e308, 1e308, 1e308],
+                    ["2024-02-01", "de", 400.0, 380.0, 420.0],
+                    ["2024-02-01", "fr"],
+                ],
+            }
+        ]
+    }
+    await _baseline_done(kit, ctx, summary)
+    assert await DashboardLoop(ctx).materialise() == 1
+    ready = await _readout(ctx, kit["dash_id"], 1)
+    assert ready.status == "ready", ready.problem
+    assert "Infinity" not in json.dumps(ready.snapshot)
+    snap = ReadoutSnapshot.model_validate(ready.snapshot)
+    first = snap.series[0].points[0]
+    assert first.t == "2024-01-01" and first.mean is None
+
+
+async def test_uploaded_actuals_use_the_stored_time_dim(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    """The KPI is (geo, t) and the summary names no time dim: the actuals are still keyed
+    by period (the contract's time dim, stored with the upload), never by geo."""
+    summary = {"tables": [{**SUMMARY["tables"][0], "time_dim": None}]}
+    await _baseline_done(kit, ctx, summary)
+    upload = {
+        "coords": {"geo": {"dims": ["geo"], "data": ["de", "fr"]},
+                   "t": {"dims": ["t"], "data": ["2024-05-01", "2024-06-01"]}},
+        "data_vars": {"y": {"dims": ["geo", "t"], "data": [[200.0, 210.0], [220.0, 215.25]]}},
+    }  # fmt: skip
+    meta = await ctx.store.put(
+        ctx.buckets.quarantine, "t/default/inline/actuals.json", json.dumps(upload).encode()
+    )
+    ref = {"bucket": ctx.buckets.quarantine, "name": "t/default/inline/actuals.json",
+           "generation": meta.generation, "kpi_column": "y", "time_dim": "t"}  # fmt: skip
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == kit["dash_id"], m.DashboardReadout.seq == 1)
+            .values(kind="actuals", trigger="actuals", input_ref=ref)
+        )
+    assert await DashboardLoop(ctx).materialise() == 1
+    ready = await _readout(ctx, kit["dash_id"], 1)
+    snap = ReadoutSnapshot.model_validate(ready.snapshot)
+    points = {p.t: p.actual for p in snap.series[0].points}
+    assert points["2024-05-01"] == 420.0 and points["2024-06-01"] == 425.25
+    assert "de" not in points and "fr" not in points
+
+
+async def test_an_unreadable_upload_never_becomes_a_ready_comparison(
+    kit: dict[str, Any], ctx: ServerContext
+) -> None:
+    await _baseline_done(kit, ctx, SUMMARY)
+    ref = {"bucket": ctx.buckets.quarantine, "name": "t/default/inline/gone.json",
+           "generation": 1, "kpi_column": "y", "time_dim": "t"}  # fmt: skip
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.DashboardReadout)
+            .where(m.DashboardReadout.dashboard_id == kit["dash_id"], m.DashboardReadout.seq == 1)
+            .values(kind="actuals", trigger="actuals", input_ref=ref)
+        )
+    await DashboardLoop(ctx).materialise()
+    row = await _readout(ctx, kit["dash_id"], 1)
+    assert row.status == "failed" and row.problem is not None
+
+
 async def test_a_failed_run_fails_its_readout_only_analysts_see(
     kit: dict[str, Any], ctx: ServerContext
 ) -> None:
@@ -285,6 +427,11 @@ async def test_private_readouts_expire(kit: dict[str, Any], ctx: ServerContext) 
     assert await DashboardLoop(ctx).prune() == 1
     async with ctx.db.session() as s:
         assert await s.get(m.DashboardReadout, (kit["dash_id"], seq)) is None
+    # the pruned readout was the newest: its seq is never handed out again
+    r = await kit["cleo"].post(
+        f"/v1/dashboards/{kit['dash_id']}/scenarios", json={"multipliers": {"tv": 0.9}}
+    )
+    assert r.json()["seq"] == seq + 1
 
 
 # ============================================================================== pure builders
