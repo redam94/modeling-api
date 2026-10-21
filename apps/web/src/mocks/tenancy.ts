@@ -7,6 +7,10 @@
  * The signed-in persona survives page loads (localStorage `mapi.mock.session`); everything
  * else lives in memory per page. With no stored value the persona is Ana, an organisation
  * admin and platform operator, so v0.2 smoke tests keep working unchanged.
+ *
+ * v0.16: Cleo is a client user (role `client` in two projects of Acme, one dashboard granted).
+ * A client may use only the client operations (`mapi_spec.api.CLIENT_OPERATIONS`); the public
+ * share-link routes (`/v1/shared/…`, `/v1/share-sessions`) need no session at all.
  */
 import { http, HttpResponse, type HttpHandler } from "msw";
 
@@ -33,7 +37,7 @@ import { PRICE_VERSION, T0 } from "./fixtures";
 const API = env.apiBase;
 const AUTH = env.authBase;
 export const MOCK_SESSION_KEY = "mapi.mock.session";
-const ROLES: ProjectRole[] = ["viewer", "editor", "runner", "admin"];
+const ROLES: ProjectRole[] = ["client", "viewer", "editor", "runner", "admin"];
 
 // ---------------------------------------------------------------------------- personas
 
@@ -75,6 +79,14 @@ export const PERSONAS: Record<string, Persona> = {
     operator: false,
     tenants: { acme: null },
     projects: { "acme/growth": "viewer" },
+  },
+  cleo: {
+    id: "usr_01jaf3e9f8g7h6j5k4m3n2c1e0",
+    name: "Cleo Client",
+    email: "cleo@northwind.example",
+    operator: false,
+    tenants: { acme: null },
+    projects: { "acme/growth": "client", "acme/retail": "client" },
   },
 };
 
@@ -123,6 +135,41 @@ export function mockCsrfToken(p: Pick<Persona, "id">): string {
 function persona(): Persona | null {
   const id = mockPersonaId();
   return id ? (PERSONAS[id] ?? null) : null;
+}
+
+/** The signed-in persona (for the other mock modules), or `null` when signed out. */
+export function mockPersona(): Pick<Persona, "id" | "name" | "email" | "operator"> | null {
+  return persona();
+}
+
+/** The signed-in persona's effective role in `tenant/project` (max of tenant and project grants). */
+export function mockProjectRole(key: string): ProjectRole | null {
+  const p = persona();
+  return p ? projectRole(p, key) : null;
+}
+
+/** Public share-link routes: no session, no project, no CSRF (the share session is the credential). */
+export const SHARE_ROUTE = /^\/v1\/(?:shared(?:[/:]|$)|share-sessions(?:[/:]|$))/;
+
+/** `mapi_spec.api.CLIENT_OPERATIONS` (the `/v1` part): what a client user may call. */
+const CLIENT_ROUTES: readonly (readonly [string, RegExp])[] = [
+  ["GET", /^\/v1\/me$/],
+  ["GET", /^\/v1\/dashboards$/],
+  ["GET", /^\/v1\/dashboards\/[^/:]+$/],
+  ["GET", /^\/v1\/dashboards\/[^/:]+\/(?:grid|readouts|readouts\/\d+|actuals\/template)$/],
+  ["POST", /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/],
+];
+
+/** Dashboard input routes (`DASHBOARD:RUN`, rank client): open to viewers too. */
+const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals)$/;
+
+export function isClientRoute(method: string, pathname: string): boolean {
+  return CLIENT_ROUTES.some(([m, re]) => m === method.toUpperCase() && re.test(pathname));
+}
+
+function onlyClient(p: Persona): boolean {
+  const roles = [...Object.values(p.projects), ...Object.values(p.tenants).filter((r): r is ProjectRole => r !== null)];
+  return roles.length > 0 && roles.every((r) => r === "client");
 }
 
 function rank(r: ProjectRole | null | undefined): number {
@@ -220,6 +267,8 @@ export function createTenancyState(): TenancyState {
       membership(ana, "acme", null, "admin"),
       membership(rui, "acme", "growth", "runner"),
       membership(vic, "acme", "growth", "viewer"),
+      membership(PERSONAS.cleo!, "acme", "growth", "client"),
+      membership(PERSONAS.cleo!, "acme", "retail", "client"),
       { tenant_id: "acme", project_id: "growth", principal_id: "sa_01jaf3d9e8f7g6h5j4k3m2n1p0", principal_kind: "service_account", role: "runner", email: null, display_name: "nightly-refit", created_at: T0 },
       membership(ana, "globex", "sandbox", "runner"),
     ],
@@ -555,10 +604,17 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
 
     // ------------------------------------------------------------------ the v0.3 checks on every /v1 route
     http.all(`${API}/v1/*`, ({ request }) => {
+      const url = new URL(request.url);
+      // Share links are public: mocks/dashboards.ts checks the share session.
+      if (SHARE_ROUTE.test(url.pathname)) return undefined;
       const p = persona();
       if (!p) return UNAUTH();
-      const url = new URL(request.url);
       const header = request.headers.get("X-Mapi-Project");
+      // A client user reaches only the client operations (the server's D4 rule).
+      const clientCall = header ? projectRole(p, header) === "client" : onlyClient(p);
+      if (clientCall && !isClientRoute(request.method, url.pathname)) {
+        return problem(403, "FORBIDDEN", "Not allowed", "client users can only open the dashboards that are shared with them");
+      }
       if (!header || !PROJECT_SCOPED.test(url.pathname)) return undefined;
       // A v0.3 client sends the CSRF header on every mutation.
       if (request.method !== "GET" && request.headers.get("X-CSRF-Token") !== mockCsrfToken(p)) {
@@ -570,7 +626,7 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
         return problem(403, "FORBIDDEN", "Not allowed", "the tenant is suspended");
       }
       const tokenRoute = url.pathname.startsWith("/v1/tokens");
-      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname)) {
+      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname) && !DASHBOARD_RUN.test(url.pathname)) {
         return problem(403, "FORBIDDEN", "Not allowed", "the viewer role cannot change or run anything here");
       }
       if (EMPTY_PROJECTS.has(header) && request.method === "GET" && LIST_RE.test(url.pathname)) return page([]);

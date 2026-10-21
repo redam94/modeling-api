@@ -11,6 +11,7 @@ import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSe
 import { env } from "@/env";
 
 import { collectionDataset, createCollectionHandlers, createCollectionState } from "./collections";
+import { createDashboardHandlers, createDashboardsState } from "./dashboards";
 import { addDlMedia, createDlHandlers, DL_RUN_ID, dlRun, dlTracking } from "./dl";
 import editorGen from "./editor.gen.json";
 import * as fx from "./fixtures";
@@ -60,6 +61,8 @@ interface MockState {
   media: ReturnType<typeof createMediaState>;
   /** v0.15: the image collection dataset and its uploads. */
   collections: ReturnType<typeof createCollectionState>;
+  /** v0.16: client dashboards, readouts, share links and share sessions, refit requests. */
+  dashboards: ReturnType<typeof createDashboardsState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -82,8 +85,9 @@ export function createState(): MockState {
     ["profile.json", { bytes: json(fx.profileView), type: "application/json" }],
     ["preview.json", { bytes: json(fx.previewView), type: "application/json" }],
   ]);
+  const tenancy = createTenancyState();
   return {
-    tenancy: createTenancyState(),
+    tenancy,
     integrations: createIntegrationsState(),
     trust: createTrustState(),
     explore: createExploreState(),
@@ -95,6 +99,7 @@ export function createState(): MockState {
     experiments: createExperimentsState(),
     media: withDlMedia(createMediaState(artifacts), artifacts),
     collections: createCollectionState(),
+    dashboards: createDashboardsState(() => tenancy.members),
     runs: new Map([...fx.runs, ...SHAPE_RUNS, dlRun].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -208,6 +213,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       const body = (await request.clone().json()) as { model_version_id?: string | null };
       return (body.model_version_id && notValidatedProblem(state.governance, body.model_version_id)) || undefined;
     }),
+    // v0.16: client dashboards and the public share-link routes (mocks/dashboards.ts).
+    ...createDashboardHandlers(state.dashboards),
     // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),
