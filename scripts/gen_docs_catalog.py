@@ -339,6 +339,12 @@ def plots_page() -> str:
         image = images / (p.id.replace(".", "_") + ".png")
         if image.exists():
             lines.append(f"![{_cell(p.title)}: an example](../../assets/plots/{image.name})\n")
+        if p.settings_schema:
+            lines.append(
+                "**Settings** (the **Try it** playground, `plot.render` and `mapi_plots` take "
+                "them; `outputs.plots` uses the defaults)\n"
+            )
+            lines.append(properties_table(p.settings_schema))
         if a is None:
             continue
         lines.append(f"**How to read it.** {a.example}\n")

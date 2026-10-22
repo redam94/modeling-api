@@ -289,7 +289,7 @@ def scope_allows(
     =====================  =======================================================
     ``admin``              everything the owner's role allows
     ``models:read``        ``read`` on catalog, dataset, spec, run, model, endpoint,
-                           plot, usage, project
+                           plot, usage, project, workflow, policy, dashboard, library
     ``runs:create``        ``models:read`` + ``create``/``cancel`` run, ``run``
                            model, endpoint, plot
     ``score:<target>``     ``read`` + ``run`` on that endpoint and ``run`` (score)
@@ -354,7 +354,7 @@ hand access to people outside the token's audit trail)."""
 
 _READABLE = (
     "catalog", "dataset", "spec", "run", "model", "endpoint", "plot", "usage", "project",
-    "workflow", "policy", "dashboard",
+    "workflow", "policy", "dashboard", "library",
 )  # fmt: skip
 _READ = frozenset((r, "read") for r in _READABLE)
 _SCOPE_GRANTS: dict[ScopeName, frozenset[tuple[str, str]]] = {

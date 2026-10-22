@@ -12,9 +12,11 @@ and side-table versions a run would read must fit the resource class's dataset c
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from mapi_spec.api import new_id
 from mapi_spec.capabilities import Capabilities
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import (
@@ -35,12 +37,14 @@ from mapi_spec.spec import ModelSpec, ScoreRequest
 from mapi_spec.tree import ROOT, DataLayout, TreeSchema
 from mapi_spec.validate import ResolvedSpec, ScoreMetadata, validate_score_request, validate_spec
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError as DBIntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.db import models as m
+from mapi_server.errors import Conflict
 from mapi_server.services.calibration import check_spec_calibration
 from mapi_server.services.catalog import CatalogService, CatalogSnapshot
-from mapi_server.services.runs import Scope
+from mapi_server.services.runs import Scope, now
 
 __all__ = [
     "COLLECTION_REFUSED",
@@ -48,6 +52,7 @@ __all__ = [
     "Validation",
     "check_score_request",
     "class_for_size",
+    "create_spec_row",
     "data_cap_issue",
     "first_error",
     "layout_of",
@@ -58,6 +63,8 @@ __all__ = [
     "resolve_model_version",
     "score_draw_cap",
     "side_table_node_issue",
+    "spec_name_and_kind",
+    "spec_revision_row",
     "tree_schema_of",
     "validate_document",
 ]
@@ -523,3 +530,96 @@ def pin_document(document: dict[str, Any], v: Validation) -> dict[str, Any]:
 
 def first_error(issues: list[Issue]) -> Issue | None:
     return next((i for i in issues if i.severity is Severity.ERROR), None)
+
+
+# ================================================================================ stored specs
+
+_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$")
+
+
+def spec_name_and_kind(v: Validation) -> tuple[str, str]:
+    """The ``metadata.name`` and kind a stored spec takes from its document (422
+    ``SCHEMA_INVALID`` at ``/kind`` or ``/metadata/name`` otherwise)."""
+    meta = v.document.get("metadata")
+    name = meta.get("name") if isinstance(meta, dict) else None
+    if v.kind is None:
+        raise MapiError(
+            "the document has no valid kind",
+            code=ErrorCode.SCHEMA_INVALID,
+            issues=[Issue(code=ErrorCode.SCHEMA_INVALID, pointer="/kind", message="unknown kind")],
+        )
+    if not isinstance(name, str) or not _SLUG.match(name):
+        raise MapiError(
+            "stored specs need metadata.name (a slug)",
+            code=ErrorCode.SCHEMA_INVALID,
+            issues=[
+                Issue(
+                    code=ErrorCode.SCHEMA_INVALID,
+                    pointer="/metadata/name",
+                    message="metadata.name is required to store a spec",
+                )
+            ],
+        )
+    return name, v.kind
+
+
+def spec_revision_row(
+    spec: m.Spec, revision: int, yaml: str, v: Validation, parent: int | None, message: str | None
+) -> m.SpecRevision:
+    """The row of revision ``revision`` of ``spec`` (its validation verdict included)."""
+    return m.SpecRevision(
+        spec_id=spec.id,
+        revision=revision,
+        tenant_id=spec.tenant_id,
+        project_id=spec.project_id,
+        kind=v.kind or spec.kind,
+        hash=v.hash or "",
+        yaml=yaml,
+        document=v.document,
+        valid=v.valid,
+        issues=[i.model_dump(mode="json") for i in v.issues],
+        resolved=v.resolved.model_dump(mode="json") if v.resolved else None,
+        catalog_digest=v.catalog.digest if v.catalog else None,
+        dataset_id=v.dataset.dataset_id if v.dataset else None,
+        dataset_version=v.dataset.version if v.dataset else None,
+        parent_revision=parent,
+        message=message,
+        created_at=now(),
+    )
+
+
+async def create_spec_row(
+    session: AsyncSession,
+    scope: Scope,
+    v: Validation,
+    *,
+    yaml: str,
+    message: str | None = None,
+) -> tuple[m.Spec, m.SpecRevision]:
+    """Store ``v`` (the validation of ``yaml`` in ``scope``) as revision 1 of a new spec.
+    Invalid documents are stored too, with ``valid: false``. ``CONFLICT`` when the project
+    already has a spec of that name (the caller's transaction stays usable).
+
+    The route (``POST /v1/specs``) adds the request's own checks first (retired kinds, the
+    Guided lock); the sample loop stores its Guided draft through here (v0.18)."""
+    name, kind = spec_name_and_kind(v)
+    ts = now()
+    spec = m.Spec(
+        id=new_id("spc"),
+        tenant_id=scope.tenant_id,
+        project_id=scope.project_id,
+        name=name,
+        kind=kind,
+        latest_revision=1,
+        created_at=ts,
+        updated_at=ts,
+    )
+    try:
+        async with session.begin_nested():
+            session.add(spec)
+    except DBIntegrityError:
+        raise Conflict(f"a spec named {name!r} already exists; add a revision instead") from None
+    rev = spec_revision_row(spec, 1, yaml, v, None, message)
+    session.add(rev)
+    await session.flush()
+    return spec, rev

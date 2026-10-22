@@ -13,6 +13,12 @@ repository, `apps/web/e2e/fixtures/guided-geo-mmm.csv`. The sample has 40 weeks,
 spend for TV, search and social, and an average price. The screenshots come from the web app
 in mock mode (`pnpm --filter @mapi/web dev:mock`). Thus the numbers are only examples.
 
+!!! tip "New in v0.18: a sample project and tours"
+    Want to see a finished analysis first? On Home, **Start here** offers a one-click sample
+    project: a real fit on two years of example data, with a report and what-if sliders.
+    The **Take the 2-minute tour** entry in your user menu shows where everything lives. See
+    [Start here](start-here.md).
+
 !!! tip "Every step has its own address"
     The app saves an analysis immediately when you upload its data. Each step has its own URL
     (`/guided/<analysis>/<step>`). Thus you can bookmark the step or send it to a colleague. You

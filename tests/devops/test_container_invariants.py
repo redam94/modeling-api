@@ -495,6 +495,98 @@ def test_xla_settings_only_in_base_dl() -> None:
     assert "UNVERIFIED" in header
 
 
+# ===================================================================== extension image (v0.18)
+
+EXTEND = "extend"
+EXTENSIONS_LOCK = "/opt/mapi/extensions.lock"
+
+
+class TestExtendImage:
+    """images/extend: operator wheels on top of a platform image (D14 (c)). Not one of the
+    built images (``BASE`` is the operator's), so it is checked here and not in ALL_IMAGES."""
+
+    def _runs(self) -> list[str]:
+        return [i.args for i in stage(EXTEND) if i.keyword == "RUN"]
+
+    def _install(self) -> str:
+        found = [r for r in self._runs() if "uv pip install" in r]
+        assert len(found) == 1, found
+        return found[0]
+
+    def test_base_is_an_argument_without_default_and_uv_is_pinned_like_the_bases(self) -> None:
+        args = [i.args for i in dockerfile(EXTEND) if i.keyword == "ARG" and i.stage == -1]
+        assert "BASE" in args, "BASE must be required (no default)"
+        assert stage_names(EXTEND) == ["uv", "runtime"]
+        froms = [i.args.split()[0] for i in dockerfile(EXTEND) if i.keyword == "FROM"]
+        assert froms == ["${UV_IMAGE}", "${BASE}"]
+        assert arg_default(EXTEND, "UV_IMAGE") == arg_default("base-bayes", "UV_IMAGE")
+        pins = pins_mod()
+        found = pins.find_pins(ROOT / "images" / EXTEND / "Dockerfile")
+        assert [p.name for p in found] == ["syntax", "UV_IMAGE"] and pins.check(found) == []
+        syntax = (ROOT / "images/base-bayes/Dockerfile").read_text(encoding="utf-8").split("\n")[0]
+        text = (ROOT / "images" / EXTEND / "Dockerfile").read_text(encoding="utf-8")
+        assert text.split("\n")[0] == syntax
+
+    def test_wheels_are_hash_pinned_and_installed_without_resolution(self) -> None:
+        install = self._install()
+        for flag in ("--require-hashes", "--no-deps", "--no-build", "-r /ext/requirements.txt"):
+            assert flag in install, flag
+        assert "--mount=type=bind,source=.,target=/ext,readonly" in install
+        # a wheel may only add: anything of the base that changed fails the build
+        assert "comm -23 /tmp/before.txt /tmp/after.txt" in install
+        assert "assert_dists.py --present" in install
+
+    def test_no_network_at_build_or_run_time(self) -> None:
+        install = self._install()
+        assert "--no-index" in install and "--offline" in install
+        text = " ".join(self._runs())
+        # the one installer is the offline uv call above: no other fetcher, no plain pip
+        assert not re.search(r"\b(curl|wget|apt-get)\b|(?<!uv )\bpip install|https?://", text)
+        env = env_vars(stage(EXTEND))
+        assert not {k for k in env if "INDEX" in k or k.endswith(("_URL", "_PROXY"))}
+        # uv is bind-mounted for the install only: it is not in the image
+        copies = [i.args for i in stage(EXTEND) if i.keyword == "COPY"]
+        assert copies == [] and "from=uv,source=/uv" in install
+
+    def test_the_lock_is_kept_and_the_control_plane_is_pointed_at_it(self) -> None:
+        assert f"install -m 0644 /ext/requirements.txt {EXTENSIONS_LOCK}" in self._install()
+        assert env_vars(stage(EXTEND))["MAPI_EXTENSIONS_LOCK_PATH"] == EXTENSIONS_LOCK
+        labels = " ".join(i.args for i in stage(EXTEND) if i.keyword == "LABEL")
+        assert f'io.mapi.extensions.lock="{EXTENSIONS_LOCK}"' in labels
+        readme = (ROOT / "images" / EXTEND / "README.md").read_text(encoding="utf-8")
+        assert "MAPI_EXTENSIONS_LOCK_PATH" in readme and EXTENSIONS_LOCK in readme
+
+    def test_no_literal_image_digest(self) -> None:
+        text = (ROOT / "images" / EXTEND / "Dockerfile").read_text(encoding="utf-8")
+        for instr in dockerfile(EXTEND):
+            if instr.keyword in ("ENV", "LABEL", "RUN") or (
+                instr.keyword == "ARG" and not instr.args.startswith("UV_IMAGE=")
+            ):
+                assert "sha256:" not in instr.args, f"extend:{instr.line}"
+        assert not re.search(r"^\s*(ENV|ARG)\s+MAPI_IMAGE_DIGEST\b", text, re.M)
+        assert "MAPI_IMAGE_DIGEST=" not in text
+
+    def test_catalog_is_exported_again_and_fails_on_diagnostics(self) -> None:
+        warm = [r for r in self._runs() if "warm.py" in r]
+        assert len(warm) == 1 and "--fail-on-diagnostics" in warm[0]
+        assert "--out /opt/mapi" in warm[0] and "chmod -R a+rX,go-w /opt/mapi" in warm[0]
+
+    def test_image_hygiene(self) -> None:
+        final = stage(EXTEND)
+        users = [i.args for i in final if i.keyword == "USER"]
+        assert users[-1] == "10001:10001"
+        labels = " ".join(i.args for i in final if i.keyword == "LABEL")
+        for key in OCI_LABELS:
+            assert f"org.opencontainers.image.{key}=" in labels, key
+        for instr in dockerfile(EXTEND):
+            assert instr.keyword != "ADD" and ":latest" not in instr.args
+            if instr.keyword in ("ENV", "ARG"):
+                for key in re.findall(r"([A-Za-z_][A-Za-z0-9_]*)=", instr.args) or [
+                    instr.args.split("=")[0]
+                ]:
+                    assert not SECRET_NAME.search(key), f"extend:{instr.line}: {key}"
+
+
 # ================================================================================ web image
 
 

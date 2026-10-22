@@ -149,7 +149,7 @@ export function AboutCard({
     <article
       aria-labelledby={titleId}
       data-testid="about-card"
-      className={cn(compact ? "grid gap-3" : "grid gap-4", framed && "rounded-lg border bg-card p-4", className)}
+      className={cn(compact ? "grid gap-3" : "grid gap-4", framed && "rounded-2xl border bg-card p-5", className)}
       data-about={id}
     >
       <header className="grid gap-2">
@@ -226,29 +226,84 @@ export function AboutCard({
   );
 }
 
-/** A compact tile: title, one-line summary and the badges (lists, pickers). */
-export function AboutTile({ about, kind, id, onOpen, selected, children }: { about: About; kind?: AboutKind; id?: string; onOpen?: () => void; selected?: boolean; children?: ReactNode }) {
+/** "Beginner" (lime), "Some experience", "For experts": the Studio chip of a difficulty. */
+export function DifficultyChip({ difficulty, onBlock = false }: { difficulty: About["difficulty"]; onBlock?: boolean }) {
+  const meta = DIFFICULTY_META[difficulty];
+  return (
+    <span
+      title={meta.description}
+      data-difficulty={difficulty}
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+        onBlock ? "bg-block-raised text-block-foreground" : difficulty === "beginner" ? "bg-highlight-soft text-highlight-ink" : difficulty === "expert" ? "bg-attention-soft text-attention" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+/** How long it usually takes, as a quiet chip. */
+export function RuntimeChip({ runtime, onBlock = false }: { runtime: About["typical_runtime"]; onBlock?: boolean }) {
+  const meta = RUNTIME_META[runtime];
+  return (
+    <span title={`Typical runtime: ${meta.description}`} className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", onBlock ? "bg-block-raised text-block-foreground" : "bg-muted text-muted-foreground")}>
+      <Clock aria-hidden className="size-3" /> {meta.label}
+    </span>
+  );
+}
+
+/**
+ * A compact tile (the Catalog grid, lists, pickers): kind, title, the plain summary, what it is
+ * good for and the difficulty and runtime chips. `glyph` is the kind's drawing (passed in, so
+ * this module never imports the illustrations).
+ */
+export function AboutTile({
+  about,
+  kind,
+  id,
+  onOpen,
+  selected,
+  glyph,
+  children,
+}: {
+  about: About;
+  kind?: AboutKind;
+  id?: string;
+  onOpen?: () => void;
+  selected?: boolean;
+  glyph?: ReactNode;
+  children?: ReactNode;
+}) {
+  const goodFor = about.use_when[0];
   const body = (
     <>
-      <span className="flex flex-wrap items-start justify-between gap-2">
-        <span className="min-w-0">
-          {kind ? <span className="block text-xs font-medium text-muted-foreground">{KIND_META[kind].label}</span> : null}
-          <span className="block font-semibold tracking-tight">{about.title}</span>
+      {kind || glyph ? (
+        <span className="flex items-center gap-2.5 text-xs font-semibold text-muted-foreground">
+          {glyph}
+          {kind ? KIND_META[kind].label : null}
         </span>
-        <DifficultyBadge difficulty={about.difficulty} />
-      </span>
+      ) : null}
+      <span className="block font-display text-xl leading-tight font-bold tracking-[-0.02em] [overflow-wrap:anywhere]">{about.title}</span>
       <span className="line-clamp-3 text-sm text-muted-foreground">{about.summary_plain}</span>
+      {goodFor ? (
+        <span className="line-clamp-2 text-sm">
+          <span className="font-semibold">Good for: </span>
+          {goodFor}
+        </span>
+      ) : null}
       <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
-        <RuntimeBadge runtime={about.typical_runtime} />
-        {id ? <span className="truncate font-mono text-xs text-muted-foreground">{id}</span> : null}
+        <DifficultyChip difficulty={about.difficulty} />
+        <RuntimeChip runtime={about.typical_runtime} />
+        {id ? <span className="min-w-0 truncate font-mono text-xs text-hint">{id}</span> : null}
       </span>
       {children}
     </>
   );
   const cls = cn(
-    "flex h-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
-    onOpen && "hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-    selected && "border-primary/60 bg-accent/50",
+    "flex h-full w-full flex-col gap-3 rounded-2xl border bg-card p-5 text-left transition-colors sm:p-[22px]",
+    onOpen && "focus-ring hover:border-primary",
+    selected && "border-primary bg-accent/50",
   );
   return onOpen ? (
     <button type="button" className={cls} onClick={onOpen} aria-pressed={selected} aria-label={`${about.title}: ${about.summary_plain}`}>

@@ -21,6 +21,7 @@ import { Badge, Card, CardContent, Field, Input, Label, NativeSelect, Progress, 
 import { useGrants } from "@/features/auth/workspace";
 import { useDebounced } from "@/hooks/use-debounced";
 import { formatBytes } from "@/lib/format";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { cn } from "@/lib/utils";
 
 import { useDetectRoles, useGuidedDraft } from "../api";
@@ -478,6 +479,8 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
           headers: scope.headers,
         }),
       );
+      // v0.18 D25: an uploaded dataset ticks "Bring your own data".
+      emitOnboarding("dataset_uploaded", { dataset: ds.id, source: "guided" });
       setPhase({ kind: "saving" });
       const spec = await unwrap(
         api.POST("/v1/specs", { body: { yaml: final.yaml, message: `${GUIDED_MESSAGE} drafted from the ${template.title} template (data ${version.ref})` }, headers: scope.headers }),
@@ -525,6 +528,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               }}
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
+              data-tour="guided.data.upload"
               className={cn("flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-10", dragging && "border-primary bg-accent")}
             >
               <UploadCloud aria-hidden className="size-7 text-muted-foreground" />
@@ -550,7 +554,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
               />
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3" data-tour="guided.data.upload">
               <FileSpreadsheet aria-hidden className="size-4 text-muted-foreground" />
               <Mono className="min-w-0 break-all">{file.name}</Mono>
               <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
@@ -603,7 +607,7 @@ export function NewDataStep({ template, onYaml }: { template: GuidedTemplate; on
 
       {profiles?.length ? (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          <section aria-labelledby="questions-h" className="grid gap-5">
+          <section aria-labelledby="questions-h" className="grid gap-5" data-tour="guided.data.mapping">
             <div className="grid gap-1">
               <h2 id="questions-h" className="text-lg font-semibold tracking-tight">
                 A few questions about your columns

@@ -8,7 +8,7 @@
  *   `explore`, `share`), rebuilt from server state so every step is resumable and linkable.
  */
 import { getRouteApi, Link, Navigate } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 
 import { EmptyState, ErrorNotice, LoadingRows, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ import { SessionList, TemplatePicker } from "@/features/guided/steps/template-st
 import { useGuidedSession, type GuidedSession } from "@/features/guided/use-session";
 import { isTerminal } from "@/lib/run-state";
 
+/** v0.18 (D22): the first steps and the sample card, from the lazy `start-here-*` chunk. */
+const StartHereStrip = lazy(() => import("@/features/onboarding/start-here").then((m) => ({ default: m.StartHereStrip })));
+
 const newRoute = getRouteApi("/guided/new/$templateId");
 const resumeRoute = getRouteApi("/guided/$specId");
 const stepRoute = getRouteApi("/guided/$specId/$step");
@@ -40,6 +43,9 @@ export function GuidedPage() {
         title="What do you want to learn?"
         description="Select the question that is nearest to your question. The app asks you some simple questions about your spreadsheet. Then it fits a model in a secure sandbox and tells you what the model found. You do not need to know statistics."
       />
+      <Suspense fallback={null}>
+        <StartHereStrip />
+      </Suspense>
       <ChooserTeaser title="Which one is best for you? Help me choose" />
       <TemplatePicker />
       <section aria-labelledby="sessions-h" className="grid gap-3">

@@ -17,12 +17,15 @@ export interface UiState {
   /** Guided or Expert, per user id. */
   personas: Record<string, Persona>;
   sidebarCollapsed: boolean;
+  /** v0.18 (D23): Guided mode's "More" group in the sidebar is open. */
+  navMoreOpen: boolean;
   paletteOpen: boolean;
   shortcutsOpen: boolean;
   setTheme: (theme: ThemePreference) => void;
   /** Remember `persona` (for `userId` when given). */
   setPersona: (persona: Persona, userId?: string | null) => void;
   toggleSidebar: () => void;
+  setNavMoreOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
 }
@@ -36,6 +39,7 @@ export const useUi = create<UiState>()(
       persona: null,
       personas: {},
       sidebarCollapsed: false,
+      navMoreOpen: false,
       paletteOpen: false,
       shortcutsOpen: false,
       setTheme: (theme) => set({ theme }),
@@ -46,19 +50,20 @@ export const useUi = create<UiState>()(
           return { persona, personas: { ...Object.fromEntries(rest), [userId]: persona } };
         }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setNavMoreOpen: (navMoreOpen) => set({ navMoreOpen }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     }),
     {
       name: "mapi.ui",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ theme: s.theme, persona: s.persona, personas: s.personas, sidebarCollapsed: s.sidebarCollapsed }),
+      partialize: (s) => ({ theme: s.theme, persona: s.persona, personas: s.personas, sidebarCollapsed: s.sidebarCollapsed, navMoreOpen: s.navMoreOpen }),
       migrate: (persisted, version) => {
         const v = (persisted ?? {}) as Partial<UiState>;
         // Before v3 `persona` started as "expert", so a stored "expert" may never have been
-        // chosen; the per-user choices (`personas`) always were.
-        return { ...v, persona: version < 3 ? null : (v.persona ?? null), personas: v.personas ?? {} };
+        // chosen; the per-user choices (`personas`) always were. v4 adds `navMoreOpen` (closed).
+        return { ...v, persona: version < 3 ? null : (v.persona ?? null), personas: v.personas ?? {}, navMoreOpen: version < 4 ? false : Boolean(v.navMoreOpen) };
       },
     },
   ),

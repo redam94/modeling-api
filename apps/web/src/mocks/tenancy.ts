@@ -162,6 +162,8 @@ const CLIENT_ROUTES: readonly (readonly [string, RegExp])[] = [
 
 /** Dashboard input routes (`DASHBOARD:RUN`, rank client): open to viewers too. */
 const DASHBOARD_RUN = /^\/v1\/dashboards\/[^/:]+\/(?:whatif:evaluate|scenarios|actuals|predictions|batch|readouts\/\d+:keep)$/;
+/** v0.18 library reads that are POSTs (`:use`, `charts:preview`): open to viewers. */
+const LIBRARY_READ_POST = /^\/v1\/library(?:\/[^/:]+:use|\/charts:preview)$/;
 
 export function isClientRoute(method: string, pathname: string): boolean {
   return CLIENT_ROUTES.some(([m, re]) => m === method.toUpperCase() && re.test(pathname));
@@ -626,7 +628,7 @@ export function createTenancyHandlers(state: TenancyState = createTenancyState()
         return problem(403, "FORBIDDEN", "Not allowed", "the tenant is suspended");
       }
       const tokenRoute = url.pathname.startsWith("/v1/tokens");
-      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname) && !DASHBOARD_RUN.test(url.pathname)) {
+      if (request.method !== "GET" && !tokenRoute && role === "viewer" && !/:validate$/.test(url.pathname) && !DASHBOARD_RUN.test(url.pathname) && !LIBRARY_READ_POST.test(url.pathname)) {
         return problem(403, "FORBIDDEN", "Not allowed", "the viewer role cannot change or run anything here");
       }
       if (EMPTY_PROJECTS.has(header) && request.method === "GET" && LIST_RE.test(url.pathname)) return page([]);

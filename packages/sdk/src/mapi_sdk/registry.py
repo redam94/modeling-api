@@ -7,6 +7,11 @@ tests and notebooks. :meth:`Registry.catalog` exports the static JSON
 
 An entry point may load a step class, a model class, a plot recipe, an iterable of those, or
 a zero-argument callable returning one of those.
+
+Who may register what comes from :mod:`mapi_spec.namespaces` (v0.18): only the built-in
+distributions use the built-in namespaces, and nobody uses the platform-reserved ones. What an
+entry point could not register is kept as :attr:`Registry.diagnostics` (and, as plain text,
+in :attr:`Registry.load_errors`); entries from other distributions carry their ``provider``.
 """
 
 from __future__ import annotations
@@ -15,11 +20,27 @@ import importlib.metadata
 import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, TypeVar, runtime_checkable
 
 import xarray as xr
-from mapi_spec.catalog import Catalog, ModelCatalogEntry, PlotCatalogEntry
+from mapi_spec.catalog import (
+    Catalog,
+    CatalogDiagnostic,
+    DiagnosticCode,
+    ModelCatalogEntry,
+    PlotCatalogEntry,
+    StepCatalogEntry,
+)
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.namespaces import (
+    BUILTIN_DISTRIBUTIONS,
+    BUILTIN_NAMESPACES,
+    PLATFORM_RESERVED,
+    check_namespace,
+    is_builtin_distribution,
+    namespace_of,
+    reserved_namespace,
+)
 from mapi_spec.plots import PlotExamples, PlotSpec
 from mapi_spec.refs import UseRef, Version
 
@@ -27,33 +48,46 @@ from mapi_sdk.models import ModelPlugin
 from mapi_sdk.steps import Step
 
 __all__ = [
+    "BUILTIN_DISTRIBUTIONS",
+    "BUILTIN_NAMESPACES",
     "ENTRY_POINT_GROUPS",
+    "PLATFORM_RESERVED",
     "PlotRecipe",
     "Registry",
+    "RegistryKind",
     "default_registry",
 ]
 
 ENTRY_POINT_GROUPS = ("mapi.steps", "mapi.models", "mapi.plots")
 
-BUILTIN_NAMESPACES: frozenset[str] = frozenset(
-    {"core", "mmm", "ml", "sklearn", "ts", "tabular", "choice", "causal"}
-)
-"""Id namespaces of the built-in (T0) plugins; other distributions never register in them."""
-BUILTIN_DISTRIBUTIONS: frozenset[str] = frozenset(
-    {
-        "mapi-sdk",
-        "mapi-steps",
-        "mapi-plots",
-        "mapi-pymc",
-        "mapi-sklearn",
-        "mapi-plugin-mmm",
-        "mapi-plugin-ts",
-        "mapi-plugin-tabular",
-        "mapi-plugin-statsmodels",
-        "mapi-plugin-causal",
-        "mapi-conformance",
-    }
-)
+RegistryKind = Literal["step", "model", "plot"]
+_E = TypeVar("_E", StepCatalogEntry, ModelCatalogEntry, PlotCatalogEntry)
+
+# BUILTIN_NAMESPACES, BUILTIN_DISTRIBUTIONS and PLATFORM_RESERVED are re-exported from
+# mapi_spec.namespaces: one list for the SDK, the CLI, the node loaders and the server.
+
+_TRUSTED_MESSAGE: dict[DiagnosticCode, str] = {
+    "load_error": "The entry point could not be loaded.",
+    "id_collision": "This id and version are already registered. The first registration is kept.",
+}
+
+
+class ReservedNamespaceError(ValueError):
+    """An entry point exported an id in a namespace that its distribution may not use."""
+
+    def __init__(self, message: str, *, namespace: str) -> None:
+        super().__init__(message)
+        self.namespace = namespace
+
+
+class IdCollisionError(ValueError):
+    """An ``id@version`` is already registered with another object."""
+
+
+def _clip(text: str | None, limit: int) -> str | None:
+    if text is None or len(text) <= limit:
+        return text
+    return text[: limit - 1] + "…"
 
 
 def _flatten(obj: Any) -> list[Any]:
@@ -76,6 +110,14 @@ def _plugin_id(obj: Any) -> str | None:
     return None
 
 
+def _safe_plugin_id(obj: Any) -> str | None:
+    """:func:`_plugin_id` for a diagnostic: plugin code that fails here gives no id."""
+    try:
+        return _plugin_id(obj)
+    except Exception:  # plugin code; the registration error is reported instead
+        return None
+
+
 @runtime_checkable
 class PlotRecipe(Protocol):
     """A plot recipe: static catalog metadata plus a renderer producing a PlotSpec."""
@@ -89,13 +131,22 @@ class PlotRecipe(Protocol):
 @dataclass(slots=True)
 class _Kind:
     items: dict[str, dict[Version, Any]] = field(default_factory=dict)
+    # (id, version) -> distribution, only for entries from non-built-in distributions
+    providers: dict[tuple[str, Version], str] = field(default_factory=dict)
 
-    def add(self, id_: str, version: str, obj: Any, *, replace: bool) -> None:
+    def add(
+        self, id_: str, version: str, obj: Any, *, replace: bool, provider: str | None = None
+    ) -> None:
         v = Version.parse(version)
         bucket = self.items.setdefault(id_, {})
-        if v in bucket and bucket[v] is not obj and not replace:
-            raise ValueError(f"{id_}@{version} is already registered")
-        bucket[v] = obj
+        current = bucket.get(v)
+        if current is not None and current is not obj and not replace:
+            raise IdCollisionError(f"{id_}@{version} is already registered")
+        if current is not obj:
+            bucket[v] = obj
+            self.providers.pop((id_, v), None)
+        if provider is not None:
+            self.providers.setdefault((id_, v), provider)
 
     def resolve(self, ref: str | UseRef, what: str) -> Any:
         r = UseRef.parse(ref) if isinstance(ref, str) else ref
@@ -110,59 +161,93 @@ class _Kind:
             )
         return bucket[best]
 
+    def provider(self, id_: str) -> str | None:
+        """The provider of ``id`` (its highest version) or of ``id@version`` (exactly)."""
+        name, _, version = id_.partition("@")
+        bucket = self.items.get(name)
+        if not bucket:
+            return None
+        v = Version.parse(version) if version else max(bucket)
+        return self.providers.get((name, v))
+
     def all(self) -> list[Any]:
         return [obj for _, b in sorted(self.items.items()) for _, obj in sorted(b.items())]
 
+    def copy(self) -> _Kind:
+        return _Kind(
+            items={k: dict(v) for k, v in self.items.items()}, providers=dict(self.providers)
+        )
+
 
 class Registry:
-    """Steps, models and plot recipes by id and semver version."""
+    """Steps, models and plot recipes by id and semver version.
+
+    ``diagnostics`` lists what :meth:`load_entry_points` could not register, with a code
+    (``load_error``, ``namespace_reserved``, ``id_collision``); ``load_errors`` keeps the same
+    rows as plain text for older callers.
+    """
 
     def __init__(self) -> None:
         self._steps = _Kind()
         self._models = _Kind()
         self._plots = _Kind()
         self.load_errors: list[str] = []
+        self.diagnostics: list[CatalogDiagnostic] = []
 
     # -------------------------------------------------------------- registration
     def register_step(
         self, cls: type[Step[Any, Any]], *, replace: bool = False
     ) -> type[Step[Any, Any]]:
         """Register a step class (usable as a decorator)."""
-        if not (isinstance(cls, type) and issubclass(cls, Step)):
-            raise TypeError(f"{cls!r} is not a Step subclass")
-        cls.catalog_entry()  # validates the static metadata eagerly
-        self._steps.add(cls.id, cls.version, cls, replace=replace)
-        return cls
+        return self._add_step(cls, replace=replace, provider=None)
 
     def register_model(self, cls: type[Any], *, replace: bool = False) -> type[Any]:
         """Register a model plugin class (usable as a decorator)."""
+        return self._add_model(cls, replace=replace, provider=None)
+
+    def register_plot(self, recipe: Any, *, replace: bool = False) -> Any:
+        """Register a plot recipe (anything with ``catalog_entry()`` and ``render``)."""
+        return self._add_plot(recipe, replace=replace, provider=None)
+
+    def register(self, obj: Any, *, replace: bool = False) -> None:
+        """Register a step, model or plot recipe (or an iterable of them)."""
+        self._add(obj, replace=replace, provider=None)
+
+    def _add_step(
+        self, cls: type[Step[Any, Any]], *, replace: bool, provider: str | None
+    ) -> type[Step[Any, Any]]:
+        if not (isinstance(cls, type) and issubclass(cls, Step)):
+            raise TypeError(f"{cls!r} is not a Step subclass")
+        cls.catalog_entry()  # validates the static metadata eagerly
+        self._steps.add(cls.id, cls.version, cls, replace=replace, provider=provider)
+        return cls
+
+    def _add_model(self, cls: type[Any], *, replace: bool, provider: str | None) -> type[Any]:
         if not isinstance(cls, type) or not all(
             hasattr(cls, a) for a in ("id", "version", "manifest", "fit", "score")
         ):
             raise TypeError(f"{cls!r} is not a model plugin class")
         cls.manifest()
-        self._models.add(cls.id, cls.version, cls, replace=replace)
+        self._models.add(cls.id, cls.version, cls, replace=replace, provider=provider)
         return cls
 
-    def register_plot(self, recipe: Any, *, replace: bool = False) -> Any:
-        """Register a plot recipe (anything with ``catalog_entry()`` and ``render``)."""
+    def _add_plot(self, recipe: Any, *, replace: bool, provider: str | None) -> Any:
         entry = recipe.catalog_entry()
         if not isinstance(entry, PlotCatalogEntry):
             raise TypeError(f"{recipe!r}.catalog_entry() must return a PlotCatalogEntry")
-        self._plots.add(entry.id, entry.version, recipe, replace=replace)
+        self._plots.add(entry.id, entry.version, recipe, replace=replace, provider=provider)
         return recipe
 
-    def register(self, obj: Any, *, replace: bool = False) -> None:
-        """Register a step, model or plot recipe (or an iterable of them)."""
+    def _add(self, obj: Any, *, replace: bool, provider: str | None) -> None:
         if isinstance(obj, type) and issubclass(obj, Step):
-            self.register_step(obj, replace=replace)
+            self._add_step(obj, replace=replace, provider=provider)
         elif isinstance(obj, type) and hasattr(obj, "manifest") and hasattr(obj, "score"):
-            self.register_model(obj, replace=replace)
+            self._add_model(obj, replace=replace, provider=provider)
         elif hasattr(obj, "catalog_entry") and hasattr(obj, "render"):
-            self.register_plot(obj, replace=replace)
+            self._add_plot(obj, replace=replace, provider=provider)
         elif isinstance(obj, Iterable) and not isinstance(obj, str | bytes):
             for item in obj:
-                self.register(item, replace=replace)
+                self._add(item, replace=replace, provider=provider)
         else:
             raise TypeError(f"cannot register {obj!r}: not a step, model or plot recipe")
 
@@ -173,10 +258,15 @@ class Registry:
         """Load and register every entry point in ``groups``; return the errors.
 
         Nothing an entry point exports may replace what is already registered (the first
-        registration wins, whatever the iteration order of installed distributions), and
-        ids in the built-in namespaces (:data:`BUILTIN_NAMESPACES`) are only accepted from
-        the built-in distributions. Collisions are reported in ``load_errors`` (raised
-        with ``strict``).
+        registration wins, whatever the iteration order of installed distributions); ids in
+        the built-in namespaces (:data:`BUILTIN_NAMESPACES`) are only accepted from the
+        built-in distributions, and ids in a platform-reserved namespace from nobody
+        (:func:`mapi_spec.namespaces.check_namespace`). Every refusal is one row in
+        ``diagnostics`` and in ``load_errors`` (raised with ``strict``); one bad export
+        never hides the others of the same entry point.
+
+        This guard covers entry points only: :meth:`register` (tests, notebooks, docs
+        snippets) registers in any namespace.
         """
         errors: list[str] = []
         for group in groups:
@@ -186,25 +276,65 @@ class Registry:
                     obj = ep.load()
                     if callable(obj) and not isinstance(obj, type):
                         obj = obj()
-                    for item in _flatten(obj):
-                        self._register_entry(item, dist)
+                    items = _flatten(obj)
                 except Exception as exc:  # report and keep going: one bad plugin
-                    msg = f"{group}:{ep.name}: {type(exc).__name__}: {exc}"
-                    if strict:
-                        raise RuntimeError(msg) from exc
-                    errors.append(msg)
+                    errors.append(self._refused(group, ep.name, dist, None, exc, strict=strict))
+                    continue
+                for item in items:
+                    try:
+                        self._register_entry(item, dist)
+                    except Exception as exc:  # report and keep going: one bad export
+                        pid = _safe_plugin_id(item)
+                        errors.append(self._refused(group, ep.name, dist, pid, exc, strict=strict))
         self.load_errors += errors
         return errors
 
     def _register_entry(self, obj: Any, dist: str | None) -> None:
         pid = _plugin_id(obj)
-        namespace = pid.split(".", 1)[0] if pid and "." in pid else None
-        if namespace in BUILTIN_NAMESPACES and dist not in BUILTIN_DISTRIBUTIONS:
-            raise ValueError(
-                f"{pid!r} is in the reserved {namespace!r} namespace of the built-in plugins "
-                f"(exported by {dist or 'an unknown distribution'!r})"
+        if pid is not None:
+            reason = check_namespace(pid, dist)
+            if reason is not None:
+                raise ReservedNamespaceError(
+                    f"reserved namespace: {reason}", namespace=namespace_of(pid) or ""
+                )
+        provider = None if dist is None or is_builtin_distribution(dist) else dist
+        self._add(obj, replace=False, provider=_clip(provider, 128))
+
+    def _refused(
+        self,
+        group: str,
+        entry_point: str,
+        dist: str | None,
+        id_: str | None,
+        exc: Exception,
+        *,
+        strict: bool,
+    ) -> str:
+        """Record one refused entry point (or export) and return its ``load_errors`` text."""
+        msg = f"{group}:{entry_point}: {type(exc).__name__}: {exc}"
+        if strict:
+            raise RuntimeError(msg) from exc
+        code: DiagnosticCode
+        if isinstance(exc, ReservedNamespaceError):
+            code = "namespace_reserved"
+            # platform text: it names only a namespace from the fixed reserved sets or a prefix
+            message = reserved_namespace(exc.namespace) or _TRUSTED_MESSAGE["load_error"]
+        elif isinstance(exc, IdCollisionError):
+            code, message = "id_collision", _TRUSTED_MESSAGE["id_collision"]
+        else:
+            code, message = "load_error", _TRUSTED_MESSAGE["load_error"]
+        self.diagnostics.append(
+            CatalogDiagnostic(
+                code=code,
+                group=_clip(group, 64) or "",
+                entry_point=_clip(entry_point, 128),
+                distribution=_clip(dist, 128),
+                id=_clip(id_, 128),
+                message=message,
+                untrusted_text=_clip(f"{type(exc).__name__}: {exc}", 500),
             )
-        self.register(obj, replace=False)
+        )
+        return msg
 
     # ------------------------------------------------------------------- lookup
     def step(self, ref: str | UseRef) -> type[Step[Any, Any]]:
@@ -227,24 +357,55 @@ class Registry:
     def plots(self) -> list[Any]:
         return self._plots.all()
 
+    def provider_of(self, kind: RegistryKind, id_: str) -> str | None:
+        """The distribution that registered ``id_`` (``"acme.x"`` = its highest version, or
+        ``"acme.x@1.2.0"`` exactly) if it is not a built-in one, else ``None``.
+
+        Entries registered in memory (:meth:`register`) and entries from the built-in
+        distributions have no provider.
+        """
+        store = {"step": self._steps, "model": self._models, "plot": self._plots}[kind]
+        return store.provider(id_)
+
     def copy(self) -> Registry:
         new = Registry()
-        for kind_from, kind_to in (
-            (self._steps, new._steps),
-            (self._models, new._models),
-            (self._plots, new._plots),
-        ):
-            kind_to.items = {k: dict(v) for k, v in kind_from.items.items()}
+        new._steps, new._models, new._plots = (
+            self._steps.copy(),
+            self._models.copy(),
+            self._plots.copy(),
+        )
         return new
 
     # ------------------------------------------------------------------- export
     def catalog(self) -> Catalog:
-        """Static catalog JSON for the control plane (no code, no data)."""
+        """Static catalog JSON for the control plane (no code, no data).
+
+        Entries from non-built-in distributions carry ``provider``; built-in entries do not,
+        so a catalog of built-ins only keeps its digest. ``diagnostics`` are not included:
+        the runner's catalog export merges them with the workflow node and template rows.
+        """
         return Catalog(
-            steps=[s.catalog_entry() for s in self.steps()],
-            models=[ModelCatalogEntry(manifest=m.manifest()) for m in self.models()],
-            plots=[p.catalog_entry() for p in self.plots()],
+            steps=[
+                self._provided(s.catalog_entry(), self._steps, s.id, s.version)
+                for s in self.steps()
+            ],
+            models=[
+                self._provided(
+                    ModelCatalogEntry(manifest=m.manifest()), self._models, m.id, m.version
+                )
+                for m in self.models()
+            ],
+            plots=[self._plot_entry(p) for p in self.plots()],
         )
+
+    def _plot_entry(self, recipe: Any) -> PlotCatalogEntry:
+        entry: PlotCatalogEntry = recipe.catalog_entry()
+        return self._provided(entry, self._plots, entry.id, entry.version)
+
+    @staticmethod
+    def _provided(entry: _E, store: _Kind, id_: str, version: str) -> _E:
+        provider = store.providers.get((id_, Version.parse(version)))
+        return entry if provider is None else entry.model_copy(update={"provider": provider})
 
     def plot_examples(
         self, *, on_error: Callable[[str, Exception], None] | None = None

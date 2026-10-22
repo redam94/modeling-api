@@ -9,7 +9,7 @@
  * experiment. Names, tags, column values and experiment names are untrusted text.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Activity, ArrowDown, ArrowUp, ArrowUpDown, FlaskConical, GitCompareArrows, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, FlaskConical, GitCompareArrows, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { can } from "@/api/access";
@@ -19,6 +19,7 @@ import { useExperiments, useRunPages } from "@/api/queries";
 import { runName, runTags } from "@/api/tracking";
 import type { Experiment, Run, RunKind, RunState } from "@/api/types";
 import { EmptyState, ErrorNotice, LoadingRows, Mono, StateBadge } from "@/components/common";
+import { EmptyRunsArt } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
 import { Input, NativeSelect, Table, TBody, TD, TH, THead, TR } from "@/components/ui/primitives";
@@ -204,19 +205,24 @@ export function RunsTable({
       <FilterBar filters={search.f ?? []} onChange={(f) => set({ f })} serverError={problem} />
 
       <div className="flex flex-wrap items-center gap-2" aria-live="polite">
-        <span className="text-xs text-muted-foreground">
+        <span
+          className={cn(
+            "text-xs",
+            selected.length ? "rounded-full bg-highlight-soft px-3 py-1 font-semibold text-highlight-ink tabular" : "text-muted-foreground",
+          )}
+        >
           {selected.length ? `${selected.length} ${selected.length === 1 ? "run" : "runs"} selected` : "Select runs to compare them or to add them to an experiment."}
         </span>
-        <Button size="sm" disabled={!canCompare} onClick={() => void navigate({ to: "/runs/compare", search: { runs: selected } })} title={canCompare ? undefined : `Select ${MIN_COMPARE_RUNS} to ${MAX_COMPARE_RUNS} runs`}>
+        <Button size="sm" className="rounded-full" disabled={!canCompare} onClick={() => void navigate({ to: "/runs/compare", search: { runs: selected } })} title={canCompare ? undefined : `Select ${MIN_COMPARE_RUNS} to ${MAX_COMPARE_RUNS} runs`}>
           <GitCompareArrows /> Compare{selected.length ? ` (${selected.length})` : ""}
         </Button>
         {canUpdate ? (
-          <Button size="sm" variant="outline" disabled={!selected.length} onClick={() => setAdding(true)}>
+          <Button size="sm" variant="outline" className="rounded-full" disabled={!selected.length} onClick={() => setAdding(true)}>
             <FlaskConical /> Add to experiment
           </Button>
         ) : null}
         {selected.length ? (
-          <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setSelected([])}>
             <X /> Clear the selection
           </Button>
         ) : null}
@@ -229,13 +235,26 @@ export function RunsTable({
         problem ? null : <ErrorNotice error={runs.error} title="The app could not load the runs" />
       ) : !items.length && !filtered ? (
         (emptyState ?? (
-          <EmptyState icon={<Activity />} title="No runs yet">
-            Fit a spec on the Build page. Or upload a dataset to start an ingest run.
+          <EmptyState
+            title="No runs yet"
+            illustration={<EmptyRunsArt />}
+            primaryAction={
+              <Button asChild className="rounded-full">
+                <Link to="/build">Fit a spec</Link>
+              </Button>
+            }
+            action={
+              <Button asChild variant="outline" className="rounded-full">
+                <Link to="/datasets">Upload a dataset</Link>
+              </Button>
+            }
+          >
+            Every fit, ingest and score you start shows up here, live. Fit a spec on the Build page, or upload a dataset to start an ingest run.
           </EmptyState>
         ))
       ) : (
         <div className="grid min-w-0 gap-3">
-          <div className="rounded-lg border bg-card">
+          <div className="overflow-hidden rounded-2xl border bg-card">
             <Table aria-label="Runs">
               <THead>
                 <TR>
@@ -274,11 +293,11 @@ export function RunsTable({
                 ))}
               </TBody>
             </Table>
-            {!items.length ? <p className="p-6 text-muted-foreground">No runs match these filters. Change the filters.</p> : null}
+            {!items.length ? <p className="px-6 py-8 text-muted-foreground">No runs match these filters. Change the filters.</p> : null}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {runs.hasNextPage ? (
-              <Button variant="outline" size="sm" disabled={runs.isFetchingNextPage} onClick={() => void runs.fetchNextPage()}>
+              <Button variant="outline" size="sm" className="rounded-full" disabled={runs.isFetchingNextPage} onClick={() => void runs.fetchNextPage()}>
                 {runs.isFetchingNextPage ? "Loading…" : "Load more runs"}
               </Button>
             ) : null}

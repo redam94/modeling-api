@@ -57,11 +57,11 @@ export function DataSummaryStep({ session }: { session: GuidedSession }) {
   const vars = v?.data_schema?.vars ?? {};
   return (
     <div className="grid gap-5">
-      <Card>
+      <Card data-tour="guided.data.upload">
         <CardContent className="grid gap-4 pt-5">
           <IngestStatus version={v} />
           {v?.status === "ready" ? (
-            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr]">
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(10rem,auto)_1fr]" data-tour="guided.data.mapping">
               {Object.entries(coords).map(([dim, c]) => (
                 <div key={dim} className="contents">
                   <dt className="text-muted-foreground capitalize">{dim === "time" || c.kind === "time" ? "Time" : dim}</dt>

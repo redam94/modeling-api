@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
-import { bundleBudget } from "./bundle-budget";
+import { bundleBudget, MOTION_PATTERNS, SIGNED_IN_ONLY } from "./bundle-budget";
 import { canonicalHost } from "./canonical-host";
 import { buildAppCsp, type AppCspOptions } from "./csp";
 import { DEV_PREBUNDLE } from "./dev-prebundle";
@@ -13,6 +13,13 @@ const PORT = 5173;
 
 const PNPM = String.raw`node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?`;
 const pkg = (names: string) => new RegExp(`${PNPM}(?:${names})\\/`);
+
+// v0.18 (plan D27, I-8): `MOTION_PATTERNS` (the animation library and lib/motion.tsx) stay out
+// of the entry; `SIGNED_IN_ONLY` (those plus the onboarding, library and extension features,
+// the interactive controls and the illustrations) stay out of share links and the portal.
+
+/** What no lazy signed-in chunk may pull in statically (they have their own lazy chunks). */
+const HEAVY = [pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow")];
 
 /**
  * v0.16: what a share link (`/s#…`) and the client portal download. Each budget covers the lazy
@@ -29,6 +36,7 @@ const SHARE_FORBIDDEN = [
   pkg("monaco-editor|monaco-yaml"),
   pkg("apache-arrow"),
   pkg("@xyflow"),
+  ...SIGNED_IN_ONLY,
 ];
 
 /**
@@ -39,7 +47,8 @@ const SHARE_FORBIDDEN = [
 const ENTRY_BUDGET = {
   maxEntryBytes: 640 * 1024,
   // M3.5: React Flow (the workflow canvas) loads only with the workflow editor and run graph.
-  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//],
+  // v0.18 (critic, D27): the animation library is in lazy signed-in chunks only.
+  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//, ...MOTION_PATTERNS],
   chunkBudgets: [
     // The readout page, the dashboards client and the shared radix/tailwind-merge chunk; 263 KiB at v0.16.
     { match: /(?:^|\/)share-app-[^/]*\.js$/, maxBytes: 288 * 1024, forbidden: SHARE_FORBIDDEN },
@@ -48,7 +57,7 @@ const ENTRY_BUDGET = {
     {
       match: /(?:^|\/)client-app-[^/]*\.js$/,
       maxBytes: 260 * 1024,
-      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow")],
+      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow"), ...SIGNED_IN_ONLY],
     },
     // v0.17: the lazy parts of the layout 2 readout (plan D18): the heavy panels and the
     // results of the inputs, then each input section with what it adds (the shared charts
@@ -57,6 +66,27 @@ const ENTRY_BUDGET = {
     { match: /(?:^|\/)try-a-case-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
     { match: /(?:^|\/)check-accuracy-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
     { match: /(?:^|\/)score-file-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
+    // v0.18 (I-8): the lazy signed-in chunks. Each budget applies once its module is in the
+    // build (a feature mounted later in the wave); from then on the chunk must exist under
+    // its name, so the module cannot slip into the entry. Motion lives in the tour host.
+    { match: /(?:^|\/)tour-host-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/features\/onboarding\/tour-host\.tsx$/ },
+    {
+      match: /(?:^|\/)(?:start-here|checklist)-[^/]*\.js$/,
+      maxBytes: 48 * 1024,
+      forbidden: HEAVY,
+      requiredWhen: /\/src\/features\/onboarding\/(?:start-here|checklist)\.tsx$/,
+    },
+    // 72 KiB in the plan; 84 KiB after the Catalog mount (demo grid 40 KiB + sliders 14 KiB), E1.
+    { match: /(?:^|\/)playground-[^/]*\.js$/, maxBytes: 84 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/features\/onboarding\/playground\.tsx$/ },
+    {
+      match: /(?:^|\/)recipe-playground-[^/]*\.js$/,
+      maxBytes: 32 * 1024,
+      // plot-data (Arrow) comes with the Catalog page that opens the playground (usePlotExample).
+      forbidden: [pkg("monaco-editor|monaco-yaml"), pkg("@xyflow")],
+      requiredWhen: /\/src\/features\/plots\/recipe-playground\.tsx$/,
+    },
+    // Make your own: Monaco stays its own lazy chunk (the YAML tab loads it with import()).
+    { match: /(?:^|\/)library-[^/]*\.js$/, maxBytes: 160 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/routes\/library\.tsx$/ },
   ],
 };
 

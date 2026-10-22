@@ -132,6 +132,13 @@ class ErrorCode(StrEnum):
     DASHBOARD_BATCH_TOO_LARGE = "DASHBOARD_BATCH_TOO_LARGE"
     DASHBOARD_DOWNLOAD_GONE = "DASHBOARD_DOWNLOAD_GONE"
     DASHBOARD_LAYOUT_RETIRED = "DASHBOARD_LAYOUT_RETIRED"
+    # --- v0.18: extensions, the library, samples and recipe previews ----------------------
+    LIBRARY_INVALID = "LIBRARY_INVALID"
+    LIBRARY_DATA_SHAPE = "LIBRARY_DATA_SHAPE"
+    SCHEMA_UNSAFE = "SCHEMA_UNSAFE"
+    EXTENSION_UNAVAILABLE = "EXTENSION_UNAVAILABLE"
+    SAMPLES_DISABLED = "SAMPLES_DISABLED"
+    PREVIEW_DISABLED = "PREVIEW_DISABLED"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -291,6 +298,19 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ErrorCode.DASHBOARD_LAYOUT_RETIRED: ErrorInfo(
         422, "New dashboards use layout 2: layout 1 can no longer be created", "spec"
     ),
+    # v0.18: extensions, the library, samples and recipe previews
+    ErrorCode.LIBRARY_INVALID: ErrorInfo(422, "The library document is not valid", "spec"),
+    ErrorCode.LIBRARY_DATA_SHAPE: ErrorInfo(
+        422, "The dataset does not have the shape that the library item needs", "spec"
+    ),
+    ErrorCode.SCHEMA_UNSAFE: ErrorInfo(
+        422, "The JSON Schema uses a feature that is not safe", "spec"
+    ),
+    ErrorCode.EXTENSION_UNAVAILABLE: ErrorInfo(
+        409, "An extension that the item needs is not in the current catalog", "api"
+    ),
+    ErrorCode.SAMPLES_DISABLED: ErrorInfo(404, "Sample projects are turned off", "api"),
+    ErrorCode.PREVIEW_DISABLED: ErrorInfo(409, "Live chart previews are turned off", "api"),
 }
 
 

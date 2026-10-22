@@ -496,6 +496,19 @@
     "contributions"
    ]
   },
+  "tabular.declarative_glm": {
+   "presets": [
+    "regression",
+    "generic"
+   ],
+   "blocked": {},
+   "panels": [
+    "predicted",
+    "by_case",
+    "fit",
+    "residuals"
+   ]
+  },
   "tabular.hierarchical_glm": {
    "presets": [
     "regression",

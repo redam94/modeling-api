@@ -253,6 +253,14 @@ The plot sandbox applies the theme to polar plots (`barpolar` and `scatterpolar`
 
 ## Bring your own chart
 
+!!! tip "Two more ways since v0.18"
+    - **No code:** a [chart template](../extend/chart-templates.md) restyles the data of a
+      platform chart with your own Vega-Lite spec, made in **Make your own › Charts** with a
+      live preview. It shows on run and model pages under "Your charts".
+    - **A recipe in a plugin:** `mapi plugin init acme --kind recipe` scaffolds a recipe with
+      a settings form, a catalog example and the `check_recipe` kit. See
+      [Develop a plot recipe](../extend/develop/plot-recipes.md).
+
 Make the chart with Altair or Plotly as usual. Then put it in an envelope:
 
 ```python

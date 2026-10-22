@@ -1,0 +1,53 @@
+"""Contract-kit tests for {{model_id}} (run them with ``mapi plugin test``).
+
+The kit samples the model on a short weekly series, then checks bundle round trips (no
+pickle), forecasts, typed errors for every dim policy, context-window equivalence,
+evaluate == score path, output units, seed determinism and the About card. MCMC takes a
+minute: keep the draws small here and realistic in your specs.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+import xarray as xr
+from mapi_sdk.registry import Registry
+from mapi_sdk.testing import ModelFixture, check_model
+
+from {{module}}.model import MODELS, TREND_SCHEMA, TrendModel
+
+SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: contract-kit, project: test}
+data:
+  dataset: dataset://test/trend@latest
+  split: {kind: time_holdout, dim: time, last: 6}
+model:
+  use: {{model_id}}@^0.1
+  fit: {mode: evaluate_then_refit, seed: 5, tune: 150, draws: 150, chains: 2, engine: pymc}
+evaluate: {metrics: [rmse, mape]}
+"""
+
+
+def weekly_series(weeks: int = 60, seed: int = 0) -> xr.Dataset:
+    """``y = 2 + 1.5 * years + noise`` on a W-SUN axis."""
+    rng = np.random.default_rng(seed)
+    time = pd.date_range("2023-01-01", periods=weeks, freq="W-SUN").as_unit("ns")
+    y = 2.0 + 1.5 * np.arange(weeks) / 52.0 + 0.1 * rng.standard_normal(weeks)
+    return xr.Dataset({"y": (("time",), y, {"units": "units"})}, coords={"time": time})
+
+
+def test_the_model_is_exported() -> None:
+    assert TrendModel in MODELS
+    assert TrendModel.catalog_entry().ref == "{{model_id}}@0.1.0"
+
+
+@pytest.mark.mapi_contract
+def test_contract_kit() -> None:
+    fixture = ModelFixture(
+        spec=SPEC, data=weekly_series(), raw_schema=TREND_SCHEMA, registry=Registry()
+    )
+    report = check_model(TrendModel, fixture, raise_on_failure=False, require_about=True)
+    assert report.ok, report.summary()

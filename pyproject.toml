@@ -94,7 +94,7 @@ forbidden_modules = [
   "mapi_sdk", "mapi_runner", "mapi_pymc", "mapi_sklearn", "mapi_steps",
   "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular", "mapi_plugin_statsmodels",
   "mapi_plugin_science", "mapi_plugin_causal", "mapi_plots.recipes", "mapi_plots.packs",
-  "mapi_workflows.runtime", "mapi_workflows.testing",
+  "mapi_workflows.runtime", "mapi_workflows.testing", "mapi_workflows.kit",
   "numpy", "xarray", "pandas", "pyarrow", "zarr", "scipy", "statsmodels", "pymc_extras",
   "PIL", "lightgbm", "catboost", "mapi_jax", "jax", "flax", "optax",
 ]
@@ -106,10 +106,32 @@ source_modules = ["mapi_spec"]
 forbidden_modules = ["numpy", "xarray", "pandas"]
 
 [[tool.importlinter.contracts]]
+name = "v0.18 extension contracts are JSON-only (namespaces, schema safety, library, onboarding)"
+type = "forbidden"
+source_modules = [
+  "mapi_spec.namespaces", "mapi_spec.schema_safety", "mapi_spec.node_authoring",
+  "mapi_spec.library_workflows", "mapi_spec.library", "mapi_spec.model_recipes",
+  "mapi_spec.prep_presets", "mapi_spec.onboarding", "mapi_spec.samples",
+]
+forbidden_modules = [
+  "numpy", "xarray", "pandas", "pyarrow", "scipy", "mapi_plots", "mapi_sdk",
+  "mapi_runner", "mapi_workflows", "mapi_server",
+]
+
+[[tool.importlinter.contracts]]
 name = "Plot sanitizer and templates are JSON-only (control-plane safe)"
 type = "forbidden"
-source_modules = ["mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing", "mapi_plots.explorer"]
+source_modules = [
+  "mapi_plots.sanitize", "mapi_plots.templates", "mapi_plots._testing", "mapi_plots.explorer",
+  "mapi_plots.chart_templates",
+]
 forbidden_modules = ["numpy", "xarray", "pandas", "altair", "plotly", "pyarrow", "mapi_sdk"]
+
+[[tool.importlinter.contracts]]
+name = "Chart templates never import the plot recipes (control-plane safe)"
+type = "forbidden"
+source_modules = ["mapi_plots.chart_templates"]
+forbidden_modules = ["mapi_plots.recipes", "mapi_plots.packs", "mapi_plots.convert"]
 
 [[tool.importlinter.contracts]]
 name = "Runner supervisor never imports plugin code, the SDK or array libraries"
@@ -120,7 +142,7 @@ source_modules = [
   "mapi_runner.sandbox", "mapi_runner.transfer", "mapi_runner._text", "mapi_runner.obslog",
 ]
 forbidden_modules = [
-  "mapi_runner.worker", "mapi_runner.testing", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
+  "mapi_runner.worker", "mapi_runner.testing", "mapi_runner.catalog_export", "mapi_sdk", "mapi_pymc", "mapi_sklearn",
   "mapi_steps", "mapi_plots", "mapi_plugin_mmm", "mapi_plugin_ts", "mapi_plugin_tabular",
   "mapi_plugin_statsmodels", "mapi_plugin_science", "mapi_plugin_causal", "statsmodels",
   "mapi_workflows", "pymc_extras", "numpy", "xarray", "pandas", "PIL",

@@ -1,9 +1,9 @@
 :root {
   color-scheme: light;
-  --text: #121619;
-  --muted: #4d5358;
+  --text: #18152f;
+  --muted: #48455f;
   --tip-bg: #ffffff;
-  --tip-border: #e7eaee;
+  --tip-border: #e0deec;
 }
 
 :root[data-theme="dark"] {
@@ -75,12 +75,12 @@ body[data-standalone="true"] #plot::before {
 
 :root {
   --page-bg: #ffffff;
-  --error: #c20021;
+  --error: #c0182f;
 }
 
 :root[data-theme="dark"] {
-  --page-bg: #121619;
-  --error: #ff8597;
+  --page-bg: #110e2e;
+  --error: #ff8a9a;
 }
 
 body.embed {

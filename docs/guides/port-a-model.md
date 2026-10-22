@@ -242,6 +242,11 @@ acme = "acme_models.steps:STEPS"          # STEPS = (ScaleStep,)
 
 `mapi_sdk.default_registry()` then finds them. The runner images of the platform also find them.
 
+Since v0.18, `mapi plugin init acme --kind model` writes this package for you, with the entry
+point, an About card and the contract-kit test, and `mapi plugin validate` checks it. To get
+it onto a stack (the platform checkout, an editable install on `make dev`, or a custom runner
+image), see [Run your plugin on your stack](../extend/develop/run-on-your-stack.md).
+
 !!! success "Checklist"
     - [x] `schema_template` in canonical names, with correct dim policies
     - [x] `capabilities`: representation, score modes, contribution scale

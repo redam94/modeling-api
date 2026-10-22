@@ -1,6 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Database, Plus, Telescope, Upload } from "lucide-react";
+import { Plus, Telescope, Upload } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { errorMessage } from "@/api/client";
@@ -8,6 +8,7 @@ import { useCreateDataset, useDataset, useDatasets, useDatasetVersion, useDatase
 import type { Dataset, DatasetVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, IssueList, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { EmptyDatasetsArt } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Textarea } from "@/components/ui/primitives";
@@ -35,6 +36,13 @@ const columns: ColumnDef<Dataset, unknown>[] = [
   { accessorKey: "latest_version", header: "Latest", cell: ({ getValue }) => (getValue() == null ? "—" : <Mono>v{String(getValue())}</Mono>) },
   { accessorKey: "description", header: "Description", cell: ({ getValue }) => <span className="line-clamp-1 text-muted-foreground">{(getValue() as string | null) ?? ""}</span> },
   { accessorKey: "updated_at", header: "Updated", cell: ({ row }) => relativeTime(row.original.updated_at) },
+];
+
+/** The three hint cards under the empty Datasets page (Studio empty state). */
+const DATASET_HINTS: [string, string][] = [
+  ["Map it once", "Tell us which columns are dates, markets and channels. The ingest keeps that map."],
+  ["Versions stay put", "Each upload makes a new version. Fits always say which version they used."],
+  ["Look before you fit", "Explore each version: schema, gaps and a preview of the rows."],
 ];
 
 function CreateDatasetDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -88,15 +96,16 @@ export function DatasetsPage() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <PageHeader
-        title="Datasets"
-        description="Labelled data with a schema. Only a sandboxed ingest run reads the files."
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus /> New dataset
-          </Button>
-        }
-      />
+      <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-8">
+        <div className="grid min-w-0 gap-3">
+          <p className="eyebrow">Your data</p>
+          <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Datasets</h1>
+          <p className="max-w-[60ch] text-lg text-muted-foreground">Labelled data with a schema. Only a sandboxed ingest run reads the files.</p>
+        </div>
+        <Button className="rounded-full" onClick={() => setOpen(true)}>
+          <Plus /> New dataset
+        </Button>
+      </header>
       <QueryView query={datasets}>
         {(page) =>
           page.items.length ? (
@@ -109,9 +118,27 @@ export function DatasetsPage() {
               onRowClick={(d) => void navigate({ to: "/datasets/$datasetId", params: { datasetId: d.id } })}
             />
           ) : (
-            <EmptyState icon={<Database />} title="No datasets yet" action={<Button onClick={() => setOpen(true)}><Plus /> New dataset</Button>}>
-              Create a dataset. Then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
-            </EmptyState>
+            <div className="grid gap-4">
+              <EmptyState
+                title="No datasets yet"
+                illustration={<EmptyDatasetsArt />}
+                primaryAction={
+                  <Button className="rounded-full" onClick={() => setOpen(true)}>
+                    <Plus /> New dataset
+                  </Button>
+                }
+              >
+                Bring your sales and spend in. Create a dataset, then upload a CSV, Parquet, zarr zip, netCDF or HDF5 file (or several files), or a folder of images, as its first version.
+              </EmptyState>
+              <ul className="grid gap-4 md:grid-cols-3">
+                {DATASET_HINTS.map(([title, body]) => (
+                  <li key={title} className="rounded-2xl border bg-card p-5">
+                    <p className="font-display text-lg font-bold tracking-[-0.02em]">{title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )
         }
       </QueryView>

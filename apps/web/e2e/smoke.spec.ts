@@ -395,11 +395,16 @@ test.describe("phone layout (375 px)", () => {
     });
   }
 
-  test("the compact nav shows every destination, Settings included", async ({ page }) => {
+  test("the compact nav reaches every destination, Settings included, in one short row", async ({ page }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Primary (compact)" });
+    // v0.18 review: a wrapping chip cloud made the sticky header ~a fifth of the screen;
+    // it is one row now that scrolls sideways
+    const header = await page.locator("header.sticky").boundingBox();
+    expect(header!.height).toBeLessThan(120);
     for (const label of ["Home", "Datasets", "Build", "Runs", "Models", "Score", "Catalog", "Settings"]) {
       const link = nav.getByRole("link", { name: label, exact: true });
+      await link.scrollIntoViewIfNeeded();
       await expect(link).toBeVisible();
       const box = await link.boundingBox();
       expect(box, label).not.toBeNull();

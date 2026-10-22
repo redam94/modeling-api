@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
+from mapi_spec.catalog import CatalogDiagnostic, DiagnosticCode
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.governance import (
     GOVERNANCE_CHECKS,
@@ -95,19 +96,80 @@ class GovernanceServices:
     """Also use the installed check runners (``mapi.governance_checks``); ``runners`` win."""
 
 
-def load_check_runners() -> dict[str, CheckRunner]:
-    """Check runners exported by installed distributions (``mapi.governance_checks``)."""
+_CHECK_LOAD_ERROR: Final = (
+    "The governance check entry point could not be loaded. Its checks are not available."
+)
+_CHECK_INVALID: Final = (
+    "The governance check entry point exports something that is not a check runner. It is "
+    "not available."
+)
+_CHECK_COLLISION: Final = (
+    "Another entry point already has a runner for this check. The first one is kept."
+)
+
+
+def _check_diagnostic(
+    ep: importlib.metadata.EntryPoint,
+    code: DiagnosticCode,
+    message: str,
+    *,
+    id_: str | None = None,
+    untrusted: str | None = None,
+) -> CatalogDiagnostic:
+    dist = getattr(getattr(ep, "dist", None), "name", None)
+    return CatalogDiagnostic(
+        code=code,
+        group=CHECK_ENTRY_POINT_GROUP,
+        entry_point=ep.name[:128],
+        distribution=dist[:128] if dist else None,
+        id=id_[:128] if id_ else None,
+        message=message,
+        untrusted_text=untrusted[:500] if untrusted else None,
+    )
+
+
+def load_check_runners(
+    *, diagnostics: list[CatalogDiagnostic] | None = None
+) -> dict[str, CheckRunner]:
+    """Check runners exported by installed distributions (``mapi.governance_checks``).
+
+    What cannot be used (an entry point that fails to load, an export that is not a mapping
+    of check ids to callables, a second runner for a check) is skipped as before and, v0.18,
+    appended to ``diagnostics`` when given (the runner's catalog export reports them)."""
     out: dict[str, CheckRunner] = {}
+    diags: list[CatalogDiagnostic] = [] if diagnostics is None else diagnostics
     for ep in importlib.metadata.entry_points(group=CHECK_ENTRY_POINT_GROUP):
         try:
             obj = ep.load()
             mapping = obj() if callable(obj) and not isinstance(obj, Mapping) else obj
-        except Exception:
+        except Exception as exc:  # report and keep going: one bad plugin
+            diags.append(
+                _check_diagnostic(
+                    ep, "load_error", _CHECK_LOAD_ERROR, untrusted=f"{type(exc).__name__}: {exc}"
+                )
+            )
             continue
-        if isinstance(mapping, Mapping):
-            for k, v in mapping.items():
-                if isinstance(k, str) and callable(v) and k not in out:
-                    out[k] = v
+        if not isinstance(mapping, Mapping):
+            diags.append(
+                _check_diagnostic(
+                    ep,
+                    "load_error",
+                    _CHECK_INVALID,
+                    untrusted=f"exported {type(mapping).__name__}, not a mapping",
+                )
+            )
+            continue
+        for k, v in mapping.items():
+            if not isinstance(k, str) or not callable(v):
+                diags.append(
+                    _check_diagnostic(
+                        ep, "load_error", _CHECK_INVALID, untrusted=f"{k!r} -> {type(v).__name__}"
+                    )
+                )
+            elif k in out:
+                diags.append(_check_diagnostic(ep, "id_collision", _CHECK_COLLISION, id_=k))
+            else:
+                out[k] = v
     return out
 
 

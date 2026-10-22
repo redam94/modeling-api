@@ -1,0 +1,42 @@
+# The compiled output of data.RECIPE (mapi_spec.model_recipes.compile_model_recipe) plus the
+# fit and evaluate blocks; expectations.check_fit compiles the recipe again and compares.
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata:
+  name: store-sales-declarative
+  project: retail
+  labels: {corpus: declarative_glm, mapi.library/model: lib_01jbq3w0v8d5k2m7n9p4r6s8t0-r1}
+data:
+  dataset: dataset://retail/store_sales@latest
+  bind:
+    dims: {obs: row}
+    vars: {y: sales}
+pipeline:
+  - id: t0_standardize
+    use: core.standardize@^1
+    with: {vars: [price], over: [obs]}
+model:
+  use: tabular.declarative_glm@^1
+  settings:
+    family: normal
+    covariates: [price, promo, temp]
+    groups: [store]
+    terms:
+      price: {dist: normal, mu: 0.0, sigma: 0.5, sign: negative}
+      promo: {dist: normal, mu: 0.0, sigma: 1.0, sign: positive, varies_by: store}
+      temp: {dist: student_t, mu: 0.0, sigma: 0.5, sign: any}
+    interactions: []
+    intercept: {dist: normal, mu: 0.0, sigma: 2.0}
+    group_sigma:
+      store: {dist: half_normal, mu: 0.0, sigma: 1.0}
+    noise: {dist: half_normal, mu: 0.0, sigma: 1.0}
+  fit:
+    mode: train_only
+    seed: 7
+    tune: 1000
+    draws: 1000
+    chains: 4
+    engine: pymc
+    keep: {log_likelihood: true}
+evaluate: {metrics: [elpd_loo, rmse, coverage_90]}
+outputs: {plots: [core.convergence, core.posterior_forest]}

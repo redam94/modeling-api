@@ -6,7 +6,7 @@
  */
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Calculator, LineChart, RotateCcw, Zap } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { can } from "@/api/access";
 import type { ModelVersion } from "@/api/types";
@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input
 import { useGrants } from "@/features/auth/workspace";
 import { OptimiseBudgetCard } from "@/features/optimize/guided-entry";
 import { PlotFrame } from "@/features/plots/plot-frame";
+import { emitOnboarding } from "@/lib/onboarding-events";
 
 import { useResponseGrid } from "../api";
 import { StepActions } from "../frame";
@@ -54,6 +55,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
   const grants = useGrants();
   const exact = useScoreJob(mv, "counterfactual");
   const [exactFor, setExactFor] = useState<string | null>(null);
+  const moved = useRef(false);
   const key = JSON.stringify(mult);
   const result = useMemo((): WhatIfResult | WhatIfError => {
     try {
@@ -88,7 +90,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
         </Button>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-        <ul className="grid content-start gap-5" aria-label="Spend per channel">
+        <ul className="grid content-start gap-5" aria-label="Spend per channel" data-tour="guided.explore.sliders">
           {grid.channels.map((ch, c) => {
             const m = mult[ch] ?? 1;
             const spend = (grid.current_spend[c] ?? 0) * m;
@@ -109,13 +111,20 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                   min={range.min}
                   max={range.max}
                   step={range.step}
-                  onValueChange={(v) => setMult((x) => ({ ...x, [ch]: Math.round(v * 100) / 100 }))}
+                  onValueChange={(v) => {
+                    setMult((x) => ({ ...x, [ch]: Math.round(v * 100) / 100 }));
+                    // v0.18 D25: the first move ticks "Move a budget slider" (once per card).
+                    if (!moved.current) {
+                      moved.current = true;
+                      emitOnboarding("whatif_moved", { source: "guided", model_version: mv.id });
+                    }
+                  }}
                 />
               </li>
             );
           })}
         </ul>
-        <div className="grid content-start gap-4 rounded-lg border bg-muted/30 p-4" aria-live="polite" data-testid="whatif-result">
+        <div className="grid content-start gap-4 rounded-lg border bg-muted/30 p-4" aria-live="polite" data-testid="whatif-result" data-tour="guided.explore.result">
           {result instanceof WhatIfError ? (
             <p role="alert" className="text-sm text-destructive">
               {result.message}
@@ -149,7 +158,7 @@ function WhatIf({ grid, mv, session }: { grid: ResponseGrid; mv: ModelVersion; s
                 </div>
               </dl>
               <div className="grid gap-2 border-t pt-3">
-                <Button variant="outline" size="sm" className="justify-self-start" onClick={runExact} disabled={!changed || exact.job.status === "running" || !can(grants, "run", "model")}>
+                <Button variant="outline" size="sm" className="justify-self-start" onClick={runExact} data-tour="guided.explore.exact" disabled={!changed || exact.job.status === "running" || !can(grants, "run", "model")}>
                   {exact.job.status === "running" ? <Spinner /> : <Calculator />} Run exact
                 </Button>
                 <p className="text-xs text-muted-foreground">The instant estimate uses precomputed curves. "Run exact" uses the full model. This takes more time.</p>

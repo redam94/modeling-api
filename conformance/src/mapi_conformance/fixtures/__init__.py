@@ -55,6 +55,7 @@ FIXTURES: list[str] = [
     "causal_impact",
     "geo_lift",
     "did_event_study",
+    "declarative_glm",
 ]
 
 DEFERRED: dict[str, str] = {

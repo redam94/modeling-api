@@ -1,0 +1,29 @@
+[project]
+name = "{{dist}}"
+version = "0.1.0"
+description = "{{description}}"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+{{dependencies}}
+]
+
+[project.optional-dependencies]
+test = [
+{{test_dependencies}}
+]
+
+# The runner discovers extensions through these entry-point groups. Each entry point names
+# one module, so a broken model never hides your plots or workflow nodes.
+{{entry_points}}
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{module}}"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["mapi_contract: mapi contract-kit checks"]

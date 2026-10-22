@@ -56,11 +56,14 @@ __all__ = [
     "Experiment",
     "GovernancePolicyRow",
     "IdempotencyKey",
+    "LibraryItem",
+    "LibraryItemRevision",
     "LoginTransactionRow",
     "Membership",
     "Model",
     "ModelValidation",
     "ModelVersion",
+    "OnboardingProgress",
     "PlatformSetting",
     "Plot",
     "PlotEmbed",
@@ -85,6 +88,7 @@ __all__ = [
     "Tenant",
     "TenantDeletion",
     "TenantExport",
+    "TenantSample",
     "TenantVerification",
     "Upload",
     "User",
@@ -164,6 +168,11 @@ TENANT_TABLES: tuple[str, ...] = (
     "dashboard_refit_requests",
     # v0.17 layout 2 dashboards (0020_any_model_dashboards)
     "dashboard_assets",
+    # v0.18 library, onboarding and samples (0021_v018_library_onboarding)
+    "library_items",
+    "library_item_revisions",
+    "onboarding_progress",
+    "tenant_samples",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -206,6 +215,15 @@ class Base(DeclarativeBase):
 
 def _now() -> Any:
     return func.now()
+
+
+def _in(values: tuple[str, ...]) -> str:
+    return ",".join(f"'{v}'" for v in values)
+
+
+PROJECT_KINDS: tuple[str, ...] = ("standard", "sample", "sample_retired")
+"""``projects.kind`` (0021): a tenant's sample project (:mod:`mapi_spec.samples`) is
+``sample`` while installed and ``sample_retired`` once a tenant admin retires it."""
 
 
 class _Scoped:
@@ -252,8 +270,13 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=_now())
     # M3 persona lock (0007_guided): non-admins see and write Guided specs only
     guided_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # v0.18 (0021): a tenant's sample project is ``sample`` until a tenant admin retires it
+    kind: Mapped[str] = mapped_column(String(16), default="standard", server_default="standard")
 
-    __table_args__ = (CheckConstraint("project_id = id", name="project_id_is_id"),)
+    __table_args__ = (
+        CheckConstraint("project_id = id", name="project_id_is_id"),
+        CheckConstraint(f"kind in ({_in(PROJECT_KINDS)})", name="kind"),
+    )
 
 
 class User(Base):
@@ -577,6 +600,12 @@ class Run(_Scoped, Base):
         Index("ix_runs_spec", "spec_id"),
         Index("ix_runs_tenant_state", "tenant_id", "state"),
         Index("ix_runs_experiment", "tenant_id", "project_id", "experiment_id", "id"),
+        # v0.18 (0021): the recipe playground's cached previews (one render run per key)
+        Index(
+            "ix_runs_preview_key",
+            text("(labels ->> 'mapi.preview')"),
+            postgresql_where=text("kind = 'render'"),
+        ),
         CheckConstraint("priority in ('interactive','batch')", name="priority"),
         CheckConstraint("task_count >= 1", name="task_count"),
     )
@@ -2081,4 +2110,177 @@ class DashboardAsset(_Scoped, Base):
         ),
         Index("ix_dashboard_assets_dashboard", "tenant_id", "dashboard_id"),
         Index("ix_dashboard_assets_queued", "run_id", postgresql_where=text("status = 'queued'")),
+    )
+
+
+# ============================================================ library, onboarding, samples (v0.18)
+
+LIBRARY_KINDS: tuple[str, ...] = (
+    "model_recipe",
+    "prep_preset",
+    "chart_template",
+    "workflow_template",
+)
+"""``mapi_spec.library.LibraryKind``."""
+LIBRARY_REVISION_MAX_BYTES = 300_000
+"""The database's cap on a revision's ``document`` as text. The contract's own cap
+(``mapi_spec.library.LIBRARY_DOC_MAX_BYTES``, 262 144 bytes of compact JSON) is lower."""
+ONBOARDING_STATE_MAX_BYTES = 8192
+"""``mapi_spec.onboarding.MAX_ONBOARDING_BYTES``: the cap on ``onboarding_progress.state``."""
+SAMPLE_STATES: tuple[str, ...] = (
+    "provisioning", "ingesting", "fitting", "ready", "failed", "retired"
+)  # fmt: skip
+"""``mapi_spec.samples.SampleState``."""
+
+
+class LibraryItem(Base):
+    """A library item (:class:`mapi_spec.library.LibraryItem`): an analyst-authored model
+    recipe, prep preset, chart template or workflow template, as JSON documents in immutable
+    :class:`LibraryItemRevision` rows. ``project_id`` is NULL exactly for ``tenant`` scope
+    (every project of the tenant may read it). Names are unique per tenant, project scope
+    and kind. Items are archived, never deleted by the request path."""
+
+    __tablename__ = "library_items"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    scope: Mapped[str] = mapped_column(String(16))
+    kind: Mapped[str] = mapped_column(String(32))
+    name: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(120))
+    summary: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    tags: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    latest_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint("scope in ('project','tenant')", name="scope"),
+        CheckConstraint("(scope = 'tenant') = (project_id IS NULL)", name="scope_project"),
+        CheckConstraint(f"kind in ({_in(LIBRARY_KINDS)})", name="kind"),
+        CheckConstraint("latest_revision >= 1", name="latest_revision"),
+        CheckConstraint("jsonb_typeof(tags) = 'array'", name="tags_array"),
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        # the target of the revisions' tenant-pinned foreign key
+        UniqueConstraint("tenant_id", "id"),
+        Index(
+            "uq_library_items_name",
+            "tenant_id",
+            text("coalesce(project_id, '')"),
+            "kind",
+            "name",
+            unique=True,
+        ),
+        Index("ix_library_items_scope", "tenant_id", "project_id", "kind"),
+    )
+
+
+class LibraryItemRevision(Base):
+    """One immutable revision of a library item (:class:`mapi_spec.library.LibraryRevision`):
+    the document as written, its hash, whether it compiled against the catalog of the time
+    (``catalog_digest``), the issues and the compiled output. The foreign key carries the
+    tenant, so a revision can only belong to an item of its own tenant."""
+
+    __tablename__ = "library_item_revisions"
+
+    item_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    document: Mapped[dict[str, Any]] = mapped_column()
+    compiled: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    doc_hash: Mapped[str] = mapped_column(String(71))
+    valid: Mapped[bool] = mapped_column(Boolean)
+    issues: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    catalog_digest: Mapped[str | None] = mapped_column(String(71))
+    message: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "item_id"],
+            ["library_items.tenant_id", "library_items.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("revision >= 1", name="revision"),
+        CheckConstraint(
+            f"octet_length(document::text) <= {LIBRARY_REVISION_MAX_BYTES}", name="document_size"
+        ),
+    )
+
+
+class OnboardingProgress(Base):
+    """One member's onboarding progress in one tenant (:class:`mapi_spec.onboarding
+    .OnboardingState` as ``state``; ``version`` backs the ETag). UX state, not a security
+    control; a reset rewrites the row rather than deleting it."""
+
+    __tablename__ = "onboarding_progress"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    principal_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    state: Mapped[dict[str, Any]] = mapped_column(default=dict, server_default=text("'{}'"))
+    version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint("jsonb_typeof(state) = 'object'", name="state_object"),
+        CheckConstraint(
+            f"pg_column_size(state) <= {ONBOARDING_STATE_MAX_BYTES}", name="state_size"
+        ),
+        CheckConstraint("version >= 0", name="version"),
+    )
+
+
+class TenantSample(Base):
+    """A sample project installed in a tenant (:mod:`mapi_spec.samples`): one row per tenant
+    and sample, advanced by the sample loop from ``provisioning`` through ``ingesting`` and
+    ``fitting`` to ``ready`` (or ``failed``, retried at most a few times). ``project_id`` is
+    set once the sample's project exists. Retired by a tenant admin, never deleted by the
+    request path."""
+
+    __tablename__ = "tenant_samples"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    sample_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(
+        String(16), default="provisioning", server_default="provisioning"
+    )
+    dataset_id: Mapped[str | None] = mapped_column(String(64))
+    dataset_version: Mapped[int | None] = mapped_column(Integer)
+    spec_id: Mapped[str | None] = mapped_column(String(64))
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    model_id: Mapped[str | None] = mapped_column(String(64))
+    model_version: Mapped[int | None] = mapped_column(Integer)
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_by: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "project_id"],
+            ["projects.tenant_id", "projects.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(f"state in ({_in(SAMPLE_STATES)})", name="state"),
+        CheckConstraint("attempts >= 0", name="attempts"),
+        Index(
+            "ix_tenant_samples_pending",
+            "state",
+            postgresql_where=text("state in ('provisioning','ingesting','fitting')"),
+        ),
     )

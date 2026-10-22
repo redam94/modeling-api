@@ -3,203 +3,266 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens: the MEI / ODS look. A cold grey canvas, white sheets, one brand blue for intent
- * (primary actions, links, selection, the index line). Status colours read at a glance; zone and
- * chart colours always come with a tag word, never colour alone.
+ * Design tokens: the Studio look. Light is paper (a violet-grey page, white cards) with one
+ * confident ink block per page, one lime highlighter for the single call to action, and coral for
+ * what needs a look. Dark is an ink canvas with raised indigo blocks. Analyst working surfaces
+ * (tables, forms, plots) stay calm: the block and the highlighter mark hierarchy, not decoration.
+ * Zone and chart colours always come with a tag word, never colour alone.
  *
  * Both blocks hold 6-digit hex only (theme-contrast.test.ts and theme-tokens.test.ts parse them).
  * Semantic tokens repeat their ramp value instead of var(): theme-tokens.test.ts keeps them equal.
- * Status text inks are darker than the ODS 500 hues so they pass AA on their 12-14 % badge tints;
- * the ODS hues stay as fills through the chart tokens. The light focus ring is #2954ff, not the
- * ODS #85a3ff, which fails 3:1 (WCAG 1.4.11) on white.
+ * Status text inks are dark enough to pass AA on their 12-14 % badge tints. Every token name of
+ * the v0.16 look is kept (the readout, share and client markup reach the new look through them);
+ * the highlight, block, attention and illus roles are additive.
  */
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
-  /* Raw ramps. */
-  --brand-100: #e0ebff;
-  --brand-200: #c2d4ff;
-  --brand-300: #85a3ff;
-  --brand-400: #0a2fff;
-  --brand-500: #0014cc;
-  --brand-600: #00078f;
-  --brand-700: #000050;
-  --brand-800: #000333;
+  /* Raw ramps: ink indigo, violet grey, the lime highlighter and the coral attention ink. */
+  --brand-100: #efedff;
+  --brand-200: #dcd8ff;
+  --brand-300: #aaa3ff;
+  --brand-400: #5a4af5;
+  --brand-500: #3a2bd6;
+  --brand-600: #2a1ea8;
+  --brand-700: #1d1678;
+  --brand-800: #15104f;
+  --brand-900: #0d0a33;
   --grey-000: #ffffff;
-  --grey-100: #f8f9fb;
-  --grey-200: #f4f5f7;
-  --grey-300: #e7eaee;
-  --grey-400: #c1c7cd;
-  --grey-500: #a2a9b0;
-  --grey-600: #8b919a;
-  --grey-700: #697077;
-  --grey-800: #4d5358;
-  --grey-900: #343a3f;
-  --grey-1000: #121619;
+  --grey-100: #f6f5fb;
+  --grey-200: #eeedf6;
+  --grey-300: #e0deec;
+  --grey-400: #c3c0d5;
+  --grey-500: #a19eb7;
+  --grey-600: #84819b;
+  --grey-700: #625f79;
+  --grey-800: #48455f;
+  --grey-900: #2d2a45;
+  --grey-1000: #18152f;
+  --lime-100: #f4fdd9;
+  --lime-200: #e6faa3;
+  --lime-300: #d4f55e;
+  --lime-400: #b8e022;
+  --lime-600: #4c6600;
+  --lime-700: #384b00;
+  --coral-100: #ffebe5;
+  --coral-300: #ff9d84;
+  --coral-500: #f0553b;
+  --coral-700: #b02e18;
 
-  --background: #f8f9fb;
-  --foreground: #121619;
+  --background: #f6f5fb;
+  --foreground: #18152f;
   --card: #ffffff;
-  --card-foreground: #121619;
+  --card-foreground: #18152f;
   --popover: #ffffff;
-  --popover-foreground: #121619;
-  --primary: #0014cc;
+  --popover-foreground: #18152f;
+  --primary: #3a2bd6;
   --primary-foreground: #ffffff;
-  --primary-hover: #0a2fff;
-  --primary-active: #00078f;
-  --secondary: #f4f5f7;
-  --secondary-foreground: #121619;
-  --muted: #f4f5f7;
-  --muted-foreground: #4d5358;
+  --primary-hover: #5a4af5;
+  --primary-active: #2a1ea8;
+  --secondary: #eeedf6;
+  --secondary-foreground: #18152f;
+  --muted: #eeedf6;
+  --muted-foreground: #48455f;
   /* Placeholder-strength text: captions, eyebrows, axis labels (4.5:1 on muted). */
-  --hint: #697077;
-  --accent: #e0ebff;
-  --accent-foreground: #00078f;
-  --destructive: #c20021;
+  --hint: #625f79;
+  --accent: #efedff;
+  --accent-foreground: #2a1ea8;
+  --destructive: #c0182f;
   --destructive-foreground: #ffffff;
-  --border: #e7eaee;
-  --border-strong: #c1c7cd;
+  --border: #e0deec;
+  --border-strong: #c3c0d5;
   /* Form field borders: 3:1 against muted, card and page (WCAG 1.4.11). */
-  --input: #878d96;
-  --ring: #2954ff;
-  --sidebar: #ffffff;
-  --surface-hover: #f4f5f7;
+  --input: #84819b;
+  --ring: #3a2bd6;
+  /* The rail sits on the page colour, with a right border. */
+  --sidebar: #f6f5fb;
+  --surface-hover: #eeedf6;
   /* Tooltips and toasts. */
-  --tooltip: #343a3f;
+  --tooltip: #15104f;
   --tooltip-foreground: #ffffff;
   /* Dialog scrim; the alpha is applied in the class (bg-overlay/60). */
-  --overlay: #4d5358;
+  --overlay: #48455f;
 
   /* Status colours double as text (12px badges on their own tint): 4.5:1 or better. */
-  --success: #036e1b;
-  --warning: #a63d00;
-  --info: #00078f;
+  --success: #0b6b3a;
+  --warning: #9a4200;
+  --info: #2a1ea8;
 
-  --series-1: #2954ff;
-  --series-2: #0068ad;
-  --series-3: #12871c;
-  --series-4: #cc4b00;
-  --series-5: #b41880;
-  --series-6: #832eea;
-  --series-7: #646c72;
-  --series-8: #0e8a6a;
+  --series-1: #3a2bd6;
+  --series-2: #e0452b;
+  --series-3: #0a8768;
+  --series-4: #b56a00;
+  --series-5: #c0287f;
+  --series-6: #0a7fb5;
+  --series-7: #5f7f00;
+  --series-8: #6e6a8a;
 
   /* Readout charts. */
-  --chart-index: #0014cc;
-  --chart-band: #c7dbff;
-  --chart-band-50: #85a3ff;
-  --chart-grid: #e7eaee;
-  --chart-base: #c1c7cd;
-  --chart-ref: #697077;
-  --chart-gain: #06a228;
-  --chart-loss: #ff526f;
-  --chart-net: #343a3f;
-  --chart-now: #fa5d05;
-  --chart-plain: #8b919a;
+  --chart-index: #3a2bd6;
+  --chart-band: #dcd8ff;
+  --chart-band-50: #aaa3ff;
+  --chart-grid: #e0deec;
+  --chart-base: #c3c0d5;
+  --chart-ref: #625f79;
+  --chart-gain: #0a8768;
+  --chart-loss: #f0553b;
+  --chart-net: #2d2a45;
+  --chart-now: #f0553b;
+  --chart-plain: #84819b;
 
   /* Response-curve zones: strong for bars and legends, tint for cells and bands. */
-  --zone-headroom: #c7dbff;
-  --zone-headroom-tint: #e0ebff;
-  --zone-optimal: #abfcbd;
-  --zone-optimal-tint: #d8fee0;
-  --zone-over: #ffc7d0;
-  --zone-over-tint: #ffe5ea;
-  --zone-nopay: #d9dcde;
-  --zone-nopay-tint: #f4f5f7;
+  --zone-headroom: #dcd8ff;
+  --zone-headroom-tint: #efedff;
+  --zone-optimal: #d4f55e;
+  --zone-optimal-tint: #f4fdd9;
+  --zone-over: #ffc4b5;
+  --zone-over-tint: #ffebe5;
+  --zone-nopay: #c3c0d5;
+  --zone-nopay-tint: #eeedf6;
+
+  /* The lime highlighter: a fill only (1.23:1 as text on a card). Lime words use highlight-ink. */
+  --highlight: #d4f55e;
+  --highlight-foreground: #15104f;
+  --highlight-soft: #f4fdd9;
+  --highlight-ink: #4c6600;
+  /* The one ink block per page; block-raised for tiles and chips inside it. */
+  --block: #15104f;
+  --block-foreground: #ffffff;
+  --block-muted: #c9c5f2;
+  --block-raised: #221b6b;
+  /* Coral: attention is the text ink, attention-fill the stroke and dot colour (never text). */
+  --attention: #b02e18;
+  --attention-soft: #ffebe5;
+  --attention-fill: #f0553b;
+  /* Illustration roles: main bars, second bars, the sun, the response curve. */
+  --illus-1: #5a4af5;
+  --illus-2: #aaa3ff;
+  --illus-3: #d4f55e;
+  --illus-4: #f0553b;
 
   color-scheme: light;
 }
 
-/* A derived dark theme: the same hues lifted for a near-black canvas. The card stays #1b212d. */
+/* Dark: an ink canvas with raised indigo blocks. The highlighter keeps its lime. */
 .dark {
-  --brand-100: #e0ebff;
-  --brand-200: #c2d4ff;
-  --brand-300: #85a3ff;
-  --brand-400: #0a2fff;
-  --brand-500: #0014cc;
-  --brand-600: #00078f;
-  --brand-700: #000050;
-  --brand-800: #000333;
+  --brand-100: #efedff;
+  --brand-200: #dcd8ff;
+  --brand-300: #aaa3ff;
+  --brand-400: #5a4af5;
+  --brand-500: #3a2bd6;
+  --brand-600: #2a1ea8;
+  --brand-700: #1d1678;
+  --brand-800: #15104f;
+  --brand-900: #0d0a33;
   --grey-000: #ffffff;
-  --grey-100: #f8f9fb;
-  --grey-200: #f4f5f7;
-  --grey-300: #e7eaee;
-  --grey-400: #c1c7cd;
-  --grey-500: #a2a9b0;
-  --grey-600: #8b919a;
-  --grey-700: #697077;
-  --grey-800: #4d5358;
-  --grey-900: #343a3f;
-  --grey-1000: #121619;
+  --grey-100: #f6f5fb;
+  --grey-200: #eeedf6;
+  --grey-300: #e0deec;
+  --grey-400: #c3c0d5;
+  --grey-500: #a19eb7;
+  --grey-600: #84819b;
+  --grey-700: #625f79;
+  --grey-800: #48455f;
+  --grey-900: #2d2a45;
+  --grey-1000: #18152f;
+  --lime-100: #f4fdd9;
+  --lime-200: #e6faa3;
+  --lime-300: #d4f55e;
+  --lime-400: #b8e022;
+  --lime-600: #4c6600;
+  --lime-700: #384b00;
+  --coral-100: #ffebe5;
+  --coral-300: #ff9d84;
+  --coral-500: #f0553b;
+  --coral-700: #b02e18;
 
-  --background: #121619;
-  --foreground: #f4f5f7;
-  --card: #1b212d;
-  --card-foreground: #f4f5f7;
-  --popover: #232a36;
-  --popover-foreground: #f4f5f7;
-  --primary: #85a3ff;
-  --primary-foreground: #000333;
-  --primary-hover: #a3bbff;
-  --primary-active: #c2d4ff;
-  --secondary: #262d3a;
-  --secondary-foreground: #f4f5f7;
-  --muted: #222936;
-  --muted-foreground: #a2a9b0;
-  --hint: #959ba3;
-  --accent: #1a2550;
-  --accent-foreground: #c2d4ff;
-  --destructive: #ff8597;
-  --destructive-foreground: #1b0b09;
-  --border: #2c3440;
-  --border-strong: #3c4552;
-  --input: #77808a;
-  --ring: #85a3ff;
-  --sidebar: #161b22;
-  --surface-hover: #262d3a;
-  --tooltip: #e7eaee;
-  --tooltip-foreground: #121619;
+  --background: #110e2e;
+  --foreground: #f2f1fa;
+  --card: #1a1642;
+  --card-foreground: #f2f1fa;
+  --popover: #231e55;
+  --popover-foreground: #f2f1fa;
+  --primary: #aaa3ff;
+  --primary-foreground: #15104f;
+  --primary-hover: #c4bfff;
+  --primary-active: #dcd8ff;
+  --secondary: #262058;
+  --secondary-foreground: #f2f1fa;
+  --muted: #1f1a4c;
+  --muted-foreground: #b6b3d2;
+  --hint: #9d9abf;
+  --accent: #2a2370;
+  --accent-foreground: #dcd8ff;
+  --destructive: #ff8a9a;
+  --destructive-foreground: #1d0610;
+  --border: #2e2866;
+  --border-strong: #433c86;
+  --input: #8a86b3;
+  --ring: #aaa3ff;
+  --sidebar: #110e2e;
+  --surface-hover: #262058;
+  --tooltip: #f2f1fa;
+  --tooltip-foreground: #15104f;
   --overlay: #000000;
 
-  --success: #4fd26b;
-  --warning: #ff9e66;
-  --info: #94b4ff;
+  --success: #5fdc8f;
+  --warning: #ffb36b;
+  --info: #b9b3ff;
 
-  --series-1: #85a3ff;
-  --series-2: #7ab6ff;
-  --series-3: #6ce07b;
-  --series-4: #ff9e66;
-  --series-5: #ed78c6;
-  --series-6: #b794ff;
-  --series-7: #a2a9b0;
-  --series-8: #45e4b6;
+  --series-1: #aaa3ff;
+  --series-2: #ff8a70;
+  --series-3: #3fd6aa;
+  --series-4: #ffb84d;
+  --series-5: #ff7ac0;
+  --series-6: #5cc4f5;
+  --series-7: #c8ef4f;
+  --series-8: #aeabc8;
 
-  --chart-index: #85a3ff;
-  --chart-band: #24346b;
-  --chart-band-50: #3a55a8;
-  --chart-grid: #2c3440;
-  --chart-base: #3c4552;
-  --chart-ref: #a2a9b0;
-  --chart-gain: #4fd26b;
-  --chart-loss: #ff7a8f;
-  --chart-net: #e7eaee;
-  --chart-now: #ff9e66;
-  --chart-plain: #77808a;
+  --chart-index: #aaa3ff;
+  --chart-band: #2f2878;
+  --chart-band-50: #4d44a8;
+  --chart-grid: #2e2866;
+  --chart-base: #433c86;
+  --chart-ref: #b6b3d2;
+  --chart-gain: #3fd6aa;
+  --chart-loss: #ff8a70;
+  --chart-net: #f2f1fa;
+  --chart-now: #ff8a70;
+  --chart-plain: #8a86b3;
 
-  --zone-headroom: #2a3d78;
-  --zone-headroom-tint: #1a2550;
-  --zone-optimal: #1f5a2e;
-  --zone-optimal-tint: #173a22;
-  --zone-over: #6b2633;
-  --zone-over-tint: #3d1a22;
-  --zone-nopay: #3c4552;
-  --zone-nopay-tint: #262d3a;
+  --zone-headroom: #2f2878;
+  --zone-headroom-tint: #2a2370;
+  --zone-optimal: #4c6600;
+  --zone-optimal-tint: #283016;
+  --zone-over: #6b2a2a;
+  --zone-over-tint: #3a1c2a;
+  --zone-nopay: #433c86;
+  --zone-nopay-tint: #262058;
+
+  --highlight: #d4f55e;
+  --highlight-foreground: #15104f;
+  --highlight-soft: #283016;
+  --highlight-ink: #d4f55e;
+  --block: #2b2478;
+  --block-foreground: #ffffff;
+  --block-muted: #cfcbf5;
+  --block-raised: #3a3192;
+  --attention: #ff9d84;
+  --attention-soft: #3a1c2a;
+  --attention-fill: #ff7a5e;
+  --illus-1: #5a4af5;
+  --illus-2: #aaa3ff;
+  --illus-3: #d4f55e;
+  --illus-4: #ff7a5e;
 
   color-scheme: dark;
 }
 
 @theme inline {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Page titles, section heads, big numbers and card titles. Never tables, forms, code or plots. */
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
   --color-brand-100: var(--brand-100);
@@ -210,6 +273,7 @@
   --color-brand-600: var(--brand-600);
   --color-brand-700: var(--brand-700);
   --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
   --color-grey-000: var(--grey-000);
   --color-grey-100: var(--grey-100);
   --color-grey-200: var(--grey-200);
@@ -221,6 +285,16 @@
   --color-grey-800: var(--grey-800);
   --color-grey-900: var(--grey-900);
   --color-grey-1000: var(--grey-1000);
+  --color-lime-100: var(--lime-100);
+  --color-lime-200: var(--lime-200);
+  --color-lime-300: var(--lime-300);
+  --color-lime-400: var(--lime-400);
+  --color-lime-600: var(--lime-600);
+  --color-lime-700: var(--lime-700);
+  --color-coral-100: var(--coral-100);
+  --color-coral-300: var(--coral-300);
+  --color-coral-500: var(--coral-500);
+  --color-coral-700: var(--coral-700);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -279,14 +353,33 @@
   --color-zone-over-tint: var(--zone-over-tint);
   --color-zone-nopay: var(--zone-nopay);
   --color-zone-nopay-tint: var(--zone-nopay-tint);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-highlight-ink: var(--highlight-ink);
+  --color-block: var(--block);
+  --color-block-foreground: var(--block-foreground);
+  --color-block-muted: var(--block-muted);
+  --color-block-raised: var(--block-raised);
+  --color-attention: var(--attention);
+  --color-attention-soft: var(--attention-soft);
+  --color-attention-fill: var(--attention-fill);
+  --color-illus-1: var(--illus-1);
+  --color-illus-2: var(--illus-2);
+  --color-illus-3: var(--illus-3);
+  --color-illus-4: var(--illus-4);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Radius tiers: sm chips and swatches, lg nav items, rows and tiles, 2xl cards and panels, 3xl
+     the hero, the report headline and empty states. Buttons and chips are pills (rounded-full). */
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: 16px;
   --radius-2xl: 20px;
+  --radius-3xl: 28px;
 
-  /* Type scale (ODS): xs 12/20, sm 14/22 (the body), base 16/24, lg 18/28, xl 20/28, 2xl 24/32. */
+  /* Type scale: xs 12/20, sm 14/22 (the body), base 16/24, lg 18/28, xl 21/28, 2xl 24/32; the
+     display sizes 3xl 36, 4xl 48 and 5xl 72 set tight (1.05 / 1.02 / 0.98). */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
   --text-xs: 0.75rem;
@@ -297,18 +390,31 @@
   --text-base--line-height: 1.5rem;
   --text-lg: 1.125rem;
   --text-lg--line-height: 1.75rem;
-  --text-xl: 1.25rem;
+  --text-xl: 1.3125rem;
   --text-xl--line-height: 1.75rem;
   --text-2xl: 1.5rem;
   --text-2xl--line-height: 2rem;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.05;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 1.02;
+  --text-5xl: 4.5rem;
+  --text-5xl--line-height: 0.98;
 }
 
-/* Grey shadows (ODS); kept out of the parsed blocks, which hold hex only. */
+/* Ink-tinted shadows (brand-900), for overlays only: cards have none at rest. Kept out of the parsed
+   blocks, which hold hex only. */
 @theme {
-  --shadow-xs: 0 1px 2px rgb(52 58 63 / 0.1);
-  --shadow-sm: 0 1px 4px rgb(52 58 63 / 0.12);
-  --shadow-md: 0 4px 12px rgb(52 58 63 / 0.12);
-  --shadow-lg: 0 8px 28px rgb(52 58 63 / 0.16);
+  --shadow-xs: 0 1px 2px rgb(13 10 51 / 0.08);
+  --shadow-sm: 0 1px 4px rgb(13 10 51 / 0.1);
+  --shadow-md: 0 4px 12px rgb(13 10 51 / 0.12);
+  --shadow-lg: 0 18px 50px rgb(13 10 51 / 0.2);
+
+  /* Studio motion. Ambient motion is CSS only (no JS bytes); the reduced motion override below
+     ends every one of these at its final frame. */
+  --animate-pop: mapi-pop 360ms cubic-bezier(0.3, 1.6, 0.5, 1);
+  --animate-coach-in: mapi-coach-in 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --animate-beacon: mapi-beacon 1.8s ease-out 3;
 }
 
 @layer base {
@@ -320,6 +426,16 @@
   }
   body {
     @apply bg-background text-foreground font-sans text-sm;
+    /* Inter's single-storey a and open digits, as in the Studio mockup. */
+    font-feature-settings: "cv11", "ss01";
+  }
+  /* The display face for headings. Tables, forms, code and plots keep Inter. */
+  h1,
+  h2,
+  h3,
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
   /* The fallback ring for anything without the focus-ring utility (Radix items, plain links). */
   :focus-visible {
@@ -346,6 +462,16 @@
   }
 }
 
+/* The Studio filter pill (direction §9, Catalog filters): 1.5px border-strong on the card;
+   pressed (a toggle-group item that is on, or aria-pressed) = foreground fill. */
+@utility filter-pill {
+  @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-3.5 text-xs font-semibold whitespace-nowrap text-foreground transition-colors hover:border-primary [&_svg]:size-3.5;
+  &[data-state="on"],
+  &[aria-pressed="true"] {
+    @apply border-foreground bg-foreground text-background;
+  }
+}
+
 /* The ODS 2xs eyebrow: 10px/20px bold uppercase, in the hint ink. */
 @utility eyebrow {
   font-size: 0.625rem;
@@ -356,17 +482,129 @@
   color: var(--hint);
 }
 
+/* A checklist tick lands with a small overshoot. */
+@keyframes mapi-pop {
+  from {
+    transform: scale(0.2);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+/* A coach-mark (or a popover in its style) rises into place. */
+@keyframes mapi-coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* The tour target pulses three times, then stays still. */
+@keyframes mapi-beacon {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--highlight) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 18px transparent;
+  }
+}
+@keyframes mapi-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes mapi-draw {
+  from {
+    stroke-dashoffset: 520;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes mapi-rise {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* The display weight of a page title or a headline claim: heavy and tight. */
+@utility display-title {
+  font-family: var(--font-display);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+/* The hero illustration "assembles" once per page load: bars grow from their base in a short
+   stagger, the response curve draws (give its path pathLength="520"), the sun rises
+   with an overshoot. Empty-state art stays static. */
+@utility assemble-bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: mapi-grow 700ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  &:nth-of-type(2) {
+    animation-delay: 90ms;
+  }
+  &:nth-of-type(3) {
+    animation-delay: 180ms;
+  }
+  &:nth-of-type(4) {
+    animation-delay: 270ms;
+  }
+}
+@utility assemble-draw {
+  stroke-dasharray: 520;
+  animation: mapi-draw 1100ms 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@utility assemble-sun {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mapi-rise 800ms 500ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+/* The element a tour step points at: a lime ring inside an ink ring, and a beacon that pulses
+   three times. --tour-radius is the target's own corner radius (cards by default). */
+@utility tour-target {
+  position: relative;
+  box-shadow:
+    0 0 0 3px var(--highlight),
+    0 0 0 6px var(--block);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: calc(var(--tour-radius, 20px) + 6px);
+    pointer-events: none;
+    box-shadow: 0 0 0 0 var(--highlight);
+    animation: mapi-beacon 1.8s ease-out 3;
+  }
+}
+
+/* Delays go to zero as well, or a staggered entrance would sit invisible for its delay. Nothing
+   loops forever except the stall indicator, which ends after one cycle here. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .tour-target::after {
+    animation: none;
+  }
 }
 
-/* The STALLED indicator: the only ambient animation in the app. */
+/* The STALLED indicator: the only animation that loops forever. */
 @keyframes mapi-stall {
   0%,
   100% {

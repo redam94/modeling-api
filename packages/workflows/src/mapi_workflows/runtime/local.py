@@ -39,7 +39,7 @@ from mapi_spec.workflow import (
 from mapi_spec.workflow_nodes import SUBWORKFLOW_NODE, PortSpec, PortType
 from mapi_workflows.engine import Action, CacheHit, EngineEvent, WorkflowEngine, input_identity
 from mapi_workflows.runtime.governance import GovernanceServices
-from mapi_workflows.runtime.nodes import node_registry
+from mapi_workflows.runtime.nodes import all_node_contracts, node_registry
 from mapi_workflows.runtime.values import (
     DatasetValue,
     ModelValue,
@@ -131,6 +131,8 @@ class LocalRunner:
     ) -> None:
         self.registry = registry
         self.nodes = node_registry(nodes)
+        # built-in contracts merged with the installed plugin contracts (v0.18)
+        self.contracts = all_node_contracts()
         self.governance = governance or GovernanceServices()
         self.subworkflows = subworkflows
         self.on_event = on_event
@@ -169,7 +171,9 @@ class LocalRunner:
         cancel: CancelToken | None,
     ) -> LocalRunResult:
         spec = self._spec(workflow)
-        validation = validate_workflow(spec, resolve_subworkflow=self.subworkflows)
+        validation = validate_workflow(
+            spec, nodes=self.contracts, resolve_subworkflow=self.subworkflows
+        )
         if not validation.valid:
             raise MapiError(
                 "the workflow is not valid",
@@ -200,6 +204,7 @@ class LocalRunner:
         cancel = cancel or CancelToken()
         engine = WorkflowEngine(
             spec,
+            registry=self.contracts,
             params=resolved_params,
             inputs=refs,
             input_identities=identities,

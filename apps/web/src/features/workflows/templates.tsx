@@ -5,16 +5,18 @@
  */
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Play, Sparkles, Wand2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { can } from "@/api/access";
 import { ApiError, newIdempotencyKey } from "@/api/client";
 import { EmptyState, ErrorNotice, LoadingRows, QueryView, Spinner } from "@/components/common";
+import { AddYourOwn } from "@/components/extend/add-your-own";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, Field, Input } from "@/components/ui/primitives";
 import { AboutCard } from "@/features/about/about-card";
 import { useWorkspace } from "@/features/auth/workspace";
+import { TeamTemplateCards, useTeamTemplates } from "@/features/extend/team-templates";
 import type { JsonObject } from "@/features/forms/json-schema-form";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
@@ -27,62 +29,100 @@ const NAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 
 export function TemplateGallery({ guided }: { guided: boolean }) {
   const templates = useWorkflowTemplates();
+  const team = useTeamTemplates();
   const ws = useWorkspace();
   const mayCreate = can(ws.grants, "create", "workflow");
   const mayRun = can(ws.grants, "run", "workflow");
+  const card = (t: WorkflowTemplate) => (
+    <AboutCard
+      framed
+      key={t.id}
+      about={t.about}
+      headingLevel={3}
+      heading={
+        <span className="flex flex-wrap items-center gap-2">
+          {t.about.title}
+          {(t.tags ?? []).slice(0, 3).map((tag) => (
+            <Badge key={tag} variant="outline" className="font-normal">
+              {tag}
+            </Badge>
+          ))}
+        </span>
+      }
+      actions={
+        <>
+          {mayRun ? (
+            <Button size="sm" asChild>
+              <Link to="/workflows/recipe" search={{ template: t.id }}>
+                <Play /> Run on my data
+              </Link>
+            </Button>
+          ) : (
+            <Button size="sm" disabled title="You need the runner role to run a workflow.">
+              <Play /> Run on my data
+            </Button>
+          )}
+          {guided || !mayCreate ? null : (
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/workflows/new" search={{ template: t.id }}>
+                <Wand2 /> Use this template
+              </Link>
+            </Button>
+          )}
+        </>
+      }
+    />
+  );
   return (
     <QueryView query={templates}>
-      {(page) =>
-        page.items.length ? (
-          <div className="grid gap-4 lg:grid-cols-2" data-testid="template-gallery">
-            {[...page.items]
-              .sort((a, b) => (guided ? difficultyRank(a) - difficultyRank(b) : 0))
-              .map((t) => (
-                <AboutCard
-                  framed
-                  key={t.id}
-                  about={t.about}
-                  headingLevel={2}
-                  heading={
-                    <span className="flex flex-wrap items-center gap-2">
-                      {t.about.title}
-                      {(t.tags ?? []).slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="outline" className="font-normal">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </span>
-                  }
-                  actions={
-                    <>
-                      {mayRun ? (
-                        <Button size="sm" asChild>
-                          <Link to="/workflows/recipe" search={{ template: t.id }}>
-                            <Play /> Run on my data
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button size="sm" disabled title="You need the runner role to run a workflow.">
-                          <Play /> Run on my data
-                        </Button>
-                      )}
-                      {guided || !mayCreate ? null : (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to="/workflows/new" search={{ template: t.id }}>
-                            <Wand2 /> Use this template
-                          </Link>
-                        </Button>
-                      )}
-                    </>
-                  }
-                />
-              ))}
+      {(page) => {
+        const sorted = [...page.items].sort((a, b) => (guided ? difficultyRank(a) - difficultyRank(b) : 0));
+        const builtIn = sorted.filter((t) => (t.source ?? "builtin") !== "plugin");
+        const installed = sorted.filter((t) => t.source === "plugin");
+        if (!page.items.length && !team.items.length) {
+          return (
+            <div className="grid gap-8">
+              <EmptyState title="No templates">The server has no workflow templates to show.</EmptyState>
+              {guided ? null : <AddYourOwn kind="workflow_template" />}
+            </div>
+          );
+        }
+        return (
+          <div className="grid gap-10" data-testid="template-gallery">
+            {builtIn.length ? (
+              <GallerySection id="gallery-builtin" title="Built in" hint="Made and tested by the platform team.">
+                <div className="grid gap-4 lg:grid-cols-2">{builtIn.map(card)}</div>
+              </GallerySection>
+            ) : null}
+            {team.items.length ? (
+              <GallerySection id="gallery-team" title="From your team" hint="Saved from a working workflow by someone in your project or tenant.">
+                <TeamTemplateCards items={team.items} mayCreate={mayCreate} />
+              </GallerySection>
+            ) : null}
+            {installed.length ? (
+              <GallerySection id="gallery-installed" title="Installed" hint="Added by a plugin your operators installed on this stack.">
+                <div className="grid gap-4 lg:grid-cols-2">{installed.map(card)}</div>
+              </GallerySection>
+            ) : null}
+            {guided ? null : <AddYourOwn kind="workflow_template" />}
           </div>
-        ) : (
-          <EmptyState title="No templates">The server has no workflow templates to show.</EmptyState>
-        )
-      }
+        );
+      }}
     </QueryView>
+  );
+}
+
+function GallerySection({ id, title, hint, children }: { id: string; title: string; hint: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="grid gap-4">
+      <div className="grid gap-1">
+        <h2 id={id} className="text-2xl leading-tight font-bold">
+          {title}
+        </h2>
+        <p className="max-w-[62ch] text-sm text-muted-foreground">{hint}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 

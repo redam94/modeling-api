@@ -1,0 +1,17 @@
+# Part 1 of docs/tutorials/your-first-extensions.md: a prep preset with a slot and a
+# formula step, on the sample project's data. `make docs-test` applies it.
+apiVersion: mapi/v1
+kind: PrepPreset
+metadata:
+  name: total-media-spend
+  title: "Fill spend gaps, then total media spend"
+  summary: "Missing spend becomes 0. Then one column adds up the spend of every channel."
+slots:
+  spend: {kind: var_list, label: "Spend columns", role: spend}
+steps:
+  - id: fill
+    use: core.impute@^1
+    with: {vars: ["$slot:spend"], method: constant, value: 0}
+  - id: total
+    use: core.formula@^1
+    with: {out: total_spend, expr: "sum(spend, 'channel')", role: spend}

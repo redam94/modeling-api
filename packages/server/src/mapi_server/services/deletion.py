@@ -20,7 +20,9 @@ tenant are ended, unfinished runs are cancelled again, and every registered
    bootstrap objects;
 2. ``database``: every table with a ``tenant_id`` column (discovered from the catalog, so
    tables added later are covered), children before parents, in batches, through the
-   tenant's own row-level-security session where the request-path role may delete. Kept:
+   tenant's own row-level-security session where the request-path role may delete (v0.18:
+   the library items and revisions, onboarding progress and sample rows, which that role
+   may not delete, go through the platform session). Kept:
    ``audit_events``, ``cost_ledger``, this deletion's record and the tenant row itself as a
    tombstone (:data:`mapi_spec.trust.RETAINED_RECORDS`). People who belonged only to this
    tenant are deleted too; sign-up records keep only their keyed client digests (the Sybil

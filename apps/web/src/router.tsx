@@ -39,6 +39,8 @@ const page = {
   // M3.5: workflows (the canvas loads with the editor) and governance.
   workflows: () => import("@/routes/workflows"),
   governance: () => import("@/routes/governance"),
+  // v0.18: Make your own (the no-code library; its chunk is `library-*`).
+  library: () => import("@/routes/library"),
 };
 
 export interface RouterContext {
@@ -200,7 +202,7 @@ const scoreRoute = createRoute({
   }),
 });
 
-export const CATALOG_TABS = ["models", "steps", "plots"] as const;
+export const CATALOG_TABS = ["yours", "models", "steps", "plots"] as const;
 
 const catalogRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -460,11 +462,59 @@ const modelValidationsRoute = createRoute({
 export const DASHBOARD_TABS = ["setup", "inputs", "access", "history", "preview"] as const;
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
+export interface DashboardsSearch {
+  status?: "draft" | "published" | "archived" | undefined;
+  /** v0.18: open the New dashboard dialog (the checklist and the dashboard tour)… */
+  new?: true | undefined;
+  /** …with this model picked as the source. */
+  model?: string | undefined;
+}
+
 const dashboardsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboards",
   component: lazyRouteComponent(page.dashboards, "DashboardsPage"),
-  validateSearch: (s: Record<string, unknown>): { status?: "draft" | "published" | "archived" | undefined } => ({ status: oneOf(s.status, ["draft", "published", "archived"] as const) }),
+  validateSearch: (s: Record<string, unknown>): DashboardsSearch => ({
+    status: oneOf(s.status, ["draft", "published", "archived"] as const),
+    new: s.new === true || s.new === "true" || s.new === 1 || s.new === "1" ? true : undefined,
+    model: idParam(s.model),
+  }),
+});
+
+// ----------------------------------------------------------------------------- v0.18
+
+export const LIBRARY_TAB_IDS = ["models", "prep", "charts", "workflows"] as const;
+export const LIBRARY_NEW_IDS = ["model", "preset", "prep", "chart"] as const;
+
+/**
+ * The search of Make your own. A copy of `features/library/search.ts validateLibrarySearch`
+ * (the page validates again with it): the router is in the entry chunk, which must not import
+ * `features/library` (share links and the client portal load the entry).
+ */
+export interface LibraryRouteSearch {
+  tab?: (typeof LIBRARY_TAB_IDS)[number] | undefined;
+  item?: string | undefined;
+  new?: (typeof LIBRARY_NEW_IDS)[number] | undefined;
+  source?: string | undefined;
+  base?: string | undefined;
+}
+
+function dottedCatalogId(v: unknown): string | undefined {
+  const id = catalogId(v);
+  return id && id.includes(".") ? id : undefined;
+}
+
+const libraryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library",
+  component: lazyRouteComponent(page.library, "LibraryPage"),
+  validateSearch: (s: Record<string, unknown>): LibraryRouteSearch => ({
+    tab: oneOf(s.tab, LIBRARY_TAB_IDS),
+    item: typeof s.item === "string" && /^lib_[0-9a-z]{26}$/.test(s.item) ? s.item : undefined,
+    new: oneOf(s.new, LIBRARY_NEW_IDS),
+    source: dottedCatalogId(s.source),
+    base: dottedCatalogId(s.base),
+  }),
 });
 
 const dashboardRoute = createRoute({
@@ -521,6 +571,7 @@ export const routeTree = rootRoute.addChildren([
   modelValidationsRoute,
   dashboardsRoute,
   dashboardRoute,
+  libraryRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

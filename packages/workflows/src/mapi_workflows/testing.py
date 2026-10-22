@@ -10,6 +10,10 @@ with ``--registry mapi_workflows.testing:test_registry``. ``test_registry(scienc
 plugin is then needed too). The data helpers simulate small weekly series with known
 structure.
 
+The contract kits :func:`~mapi_workflows.kit.check_node` and
+:func:`~mapi_workflows.kit.check_template` are re-exported here; plugin tests import them
+from :mod:`mapi_workflows.kit`, which needs the ``runtime`` extra only.
+
 Requires the ``runtime`` and ``testing`` extras.
 """
 
@@ -21,7 +25,16 @@ import xarray as xr
 from mapi_sdk.registry import Registry
 from mapi_spec.schema import DataSchema
 
-__all__ = ["multi_series", "science_registry", "test_registry", "weekly_series"]
+from mapi_workflows.kit import check_node, check_template
+
+__all__ = [
+    "check_node",
+    "check_template",
+    "multi_series",
+    "science_registry",
+    "test_registry",
+    "weekly_series",
+]
 
 _TIME = "time"
 

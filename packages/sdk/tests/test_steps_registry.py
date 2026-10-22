@@ -199,9 +199,12 @@ def test_registry_plots_and_entry_points(monkeypatch: pytest.MonkeyPatch) -> Non
     with pytest.raises(TypeError):
         reg.register_plot(_BadPlot())
 
+    class _Dist:
+        name = "mapi-sdk"  # the toy steps and models ship with the SDK (a built-in namespace)
+
     class EP:
         def __init__(self, name: str, obj: Any) -> None:
-            self.name, self._obj = name, obj
+            self.name, self._obj, self.dist = name, obj, _Dist()
 
         def load(self) -> Any:
             if isinstance(self._obj, Exception):
@@ -248,8 +251,11 @@ def test_entry_points_never_shadow_registered_or_builtin_ids(
         def load(self) -> Any:
             return self._obj
 
-    class _Shadow(toy.ScaleStep):
-        """Claims toy.scale@1.0.0 from another distribution."""
+    class _Own(toy.LagStep):
+        id = "acme.lag"
+
+    class _Shadow(_Own):
+        """Claims acme.lag@1.0.0 from another distribution."""
 
     class _CoreShadow(toy.ScaleStep):
         id = "core.mean_scale"
@@ -258,16 +264,16 @@ def test_entry_points_never_shadow_registered_or_builtin_ids(
         "mapi.steps": [
             EP("scale", toy.ScaleStep, "mapi-sdk"),
             EP("again", toy.ScaleStep, "mapi-sdk"),  # the same class twice is fine
+            EP("own", _Own, "tenant-dist"),
             EP("shadow", _Shadow, "evil-dist"),
             EP("core", _CoreShadow, "evil-dist"),
-            EP("own", toy.LagStep, "tenant-dist"),
         ],
     }
     monkeypatch.setattr(importlib.metadata, "entry_points", lambda group: eps.get(group, []))
     reg = Registry()
     errors = reg.load_entry_points()
     assert reg.step("toy.scale@^1") is toy.ScaleStep
-    assert reg.step("toy.lag@^1") is toy.LagStep
+    assert reg.step("acme.lag@^1") is _Own
     with pytest.raises(MapiError):
         reg.step("core.mean_scale@^1")
     assert len(errors) == 2 and errors == reg.load_errors

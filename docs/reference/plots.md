@@ -195,7 +195,11 @@ report.to_json()      # plots.json sidecar body
 ```
 
 To write your own recipe, use the decorator. The result works with `Registry.register` and
-the `mapi.plots` entry-point group:
+the `mapi.plots` entry-point group. For a complete recipe package (settings form, catalog
+example, About card, the `check_recipe` kit and the entry point), run
+`mapi plugin init acme --kind recipe` and see
+[Develop a plot recipe](../extend/develop/plot-recipes.md). To restyle a platform chart with no
+code, see [Chart templates](../extend/chart-templates.md).
 
 ```python
 import altair as alt

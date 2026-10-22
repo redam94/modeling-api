@@ -8,11 +8,16 @@
  * expression computed from upstream results (`{$expr: "..."}`), which the server parses.
  * With `nested`, an object with declared properties is a fieldset of its own fields instead
  * of a JSON field; `suggest` offers names (columns, dims) for string and list fields.
+ *
+ * v0.18: the schema goes through `sanitizeSchema` (`schema-sanitize.ts`) before any field is
+ * built from it, and no `pattern` is ever compiled here.
  */
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Checkbox, SegmentedControl } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect, Textarea } from "@/components/ui/primitives";
+
+import { safeSchema } from "./schema-sanitize";
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 export type JsonObject = { [key: string]: Json };
@@ -409,7 +414,9 @@ export function SchemaForm({
   nested?: boolean | undefined;
 }) {
   const idPrefix = useId().replace(/:/g, "");
-  const fields = fieldsOf(schema, nested).filter((f) => !skip.includes(f.key));
+  // v0.18 D11: the form renders only from the keyword allow-list (defence in depth; the
+  // server already stripped or refused anything unsafe).
+  const fields = fieldsOf(safeSchema(schema), nested).filter((f) => !skip.includes(f.key));
   const unknown = Object.keys(value).filter((k) => !fields.some((f) => f.key === k) && !skip.includes(k));
   if (!fields.length && !unknown.length) return empty ? <p className="text-sm text-muted-foreground">{empty}</p> : null;
   const set = (key: string, v: Json | undefined) => {

@@ -65,6 +65,7 @@ M3_CHAIN = ("0007_guided", "0008_endpoints_webhooks", "0009_plots_embeds", "0010
 M35_CHAIN = ("0011_workflows", "0012_governance")
 V016_CHAIN = ("0018_client_dashboards", "0019_dashboard_hardening")
 V017_CHAIN = ("0020_any_model_dashboards",)
+V018_CHAIN = ("0021_v018_library_onboarding",)
 CHAIN = (
     *M3_CHAIN,
     *M35_CHAIN,
@@ -75,6 +76,7 @@ CHAIN = (
     "0017_collections",
     *V016_CHAIN,
     *V017_CHAIN,
+    *V018_CHAIN,
 )
 
 
@@ -106,6 +108,10 @@ def test_m3_migrations_are_linear_and_step_down_and_up(scratch_db: str) -> None:
         "dashboard_shares",
         "dashboard_refit_requests",
         "dashboard_assets",
+        "library_items",
+        "library_item_revisions",
+        "onboarding_progress",
+        "tenant_samples",
     }
     assert new_tables <= _tables(scratch_db)
     for target in reversed(("0006_executor_disable", *CHAIN[:-1])):

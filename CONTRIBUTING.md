@@ -30,6 +30,11 @@ Write all text for users in ASD-STE100 Simplified Technical English: documentati
 the web app, and the messages that the server sends for the app to show. The rules are in
 [Writing style](docs/project/writing-style.md).
 
+Onboarding, empty states, tours, the checklist, "Make your own", tutorials and marketing-ish UI
+copy can use the warm voice: a friendly second person with the same length limits. Errors,
+validation issues, API messages and reference text always stay in STE. See
+[The warm voice](docs/project/writing-style.md#the-warm-voice).
+
 ## Commit messages
 
 Use conventional commits: `feat(sdk): …`, `fix(server): …`, `docs: …`, `test: …`, `chore: …`,

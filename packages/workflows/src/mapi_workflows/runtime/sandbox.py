@@ -27,6 +27,11 @@ come out of a ``workflow_node`` run: nodes that make one (``model.fit``) run as 
 
 Driver context the control plane resolved travels in reserved, underscore-prefixed
 parameters: ``_policies`` (the governance policies in force for ``governance.policy``).
+
+Contracts (v0.18) are the built-in ones plus those of the installed plugin nodes
+(:func:`~mapi_workflows.runtime.nodes.plugin_node_contracts`). The control plane resolved
+``job.use`` against the catalog it holds; a plugin node whose installed contract has another
+version is refused (``NODE_UNKNOWN``): the catalog and this image disagree.
 """
 
 from __future__ import annotations
@@ -51,10 +56,10 @@ from mapi_spec.workflow import (
     NodeResultSidecar,
     WorkflowNodeJob,
 )
-from mapi_spec.workflow_nodes import PortType, get_node
+from mapi_spec.workflow_nodes import NodeImplementation, PortType, get_node
 from mapi_workflows.runtime.data import schema_of, with_schema
 from mapi_workflows.runtime.governance import GovernanceServices
-from mapi_workflows.runtime.nodes import node_registry
+from mapi_workflows.runtime.nodes import load_node_exports, node_registry
 from mapi_workflows.runtime.values import (
     DatasetValue,
     ModelValue,
@@ -74,6 +79,7 @@ __all__ = [
     "input_name",
     "output_files",
     "parse_input_name",
+    "resolve_contract",
 ]
 
 MAX_INLINE_OUTPUT: Final = 64 * 1024
@@ -108,6 +114,28 @@ class OutputFile:
     data: bytes
 
 
+def resolve_contract(use: str) -> NodeImplementation:
+    """The contract of ``use`` (``id`` or ``id@version``): a built-in node, else an installed
+    plugin node. Raises ``NODE_UNKNOWN`` when neither has it, or when a plugin contract's
+    version is not the one the control plane resolved."""
+    impl = get_node(use)
+    if impl is not None:
+        return impl
+    node_id, _, version = use.partition("@")
+    exports, _ = load_node_exports()
+    export = exports.get(node_id)
+    if export is None:
+        raise MapiError(f"unknown node implementation {use!r}", code=ErrorCode.NODE_UNKNOWN)
+    contract = export.contract
+    if version and version != contract.version:
+        raise MapiError(
+            f"the workflow uses {node_id} version {version}, but this runner has version "
+            f"{contract.version}. Refresh the catalog, then run the workflow again.",
+            code=ErrorCode.NODE_UNKNOWN,
+        )
+    return contract
+
+
 def _policies(params: Mapping[str, JsonValue]) -> list[GovernancePolicy]:
     raw = params.get("_policies")
     if not isinstance(raw, list):
@@ -137,9 +165,7 @@ def execute_job(
 
     ``tracker`` receives what the node logs (``NodeContext.tracker``).
     """
-    impl = get_node(job.use)
-    if impl is None:
-        raise MapiError(f"unknown node implementation {job.use!r}", code=ErrorCode.NODE_UNKNOWN)
+    impl = resolve_contract(job.use)
     table = node_registry(nodes)
     fn = table.get(impl.id)
     if fn is None:
@@ -188,11 +214,11 @@ def _dataset_files(port: str, value: DatasetValue) -> list[OutputFile]:
 
 
 def output_files(
-    job: WorkflowNodeJob, outcome: NodeOutcome
+    job: WorkflowNodeJob, outcome: NodeOutcome, *, contract: NodeImplementation | None = None
 ) -> tuple[NodeResultSidecar, list[OutputFile]]:
-    """The ``node_result.json`` sidecar and the objects of a finished node."""
-    impl = get_node(job.use)
-    assert impl is not None
+    """The ``node_result.json`` sidecar and the objects of a finished node (``contract``:
+    the node's contract when it is not installed, as in the contract kit)."""
+    impl = contract if contract is not None else resolve_contract(job.use)
     files: list[OutputFile] = []
     outputs: dict[str, NodeOutputRef] = {}
     deferred: list[str] = []

@@ -7,7 +7,9 @@ produces a report; ``validation.json`` says whether the spec is valid.
 
 ``describe`` exports what the control plane needs for static validation of specs against
 this image: model manifests (schema templates, settings JSON Schemas, capabilities), step
-catalog entries (settings schemas and ``SchemaEffect`` JSON) and plot recipes.
+catalog entries (settings schemas and ``SchemaEffect`` JSON) and plot recipes; v0.18 also the
+plugin workflow nodes and templates and the load diagnostics
+(:func:`mapi_runner.catalog_export.full_catalog`, the same export as the image build's).
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from mapi_spec.jobs import PLOT_EXAMPLES_OUTPUT
 from mapi_spec.run import RunnerPhase, catalog_digest
 from mapi_spec.spec import ModelSpec
 
+from mapi_runner.catalog_export import extension_versions, full_catalog
 from mapi_runner.worker.context import WorkerContext
 from mapi_runner.worker.data import (
     load_dataset,
@@ -38,13 +41,24 @@ from mapi_runner.worker.data import (
 __all__ = ["run_describe", "run_validate"]
 
 _DISTS = ("mapi-sdk", "mapi-steps", "mapi-plots", "mapi-pymc", "mapi-sklearn", "mapi-runner")
+_DIAGNOSTIC_WARNINGS = 20
+"""At most this many diagnostics are also sent as run warnings (all are in the catalog)."""
 
 
 def run_describe(ctx: WorkerContext) -> dict[str, Any]:
     ctx.state(RunnerPhase.VALIDATE, "exporting the catalog")
-    catalog = ctx.registry.catalog()
+    catalog = full_catalog(ctx.registry)
     digest = catalog_digest(catalog)
     ctx.write_output("catalog.json", catalog.model_dump_json(indent=2).encode())
+    for d in catalog.diagnostics[:_DIAGNOSTIC_WARNINGS]:
+        ctx.warning(
+            "CATALOG_DIAGNOSTIC",
+            f"{d.code} in {d.group}: {d.message}",
+            untrusted_text=" ".join(
+                x for x in (d.distribution, d.entry_point, d.id, d.untrusted_text) if x
+            )
+            or None,
+        )
     ctx.state(RunnerPhase.VALIDATE, "rendering the plot examples")
     examples = ctx.registry.plot_examples(
         on_error=lambda ref, exc: ctx.warning(
@@ -68,6 +82,15 @@ def run_describe(ctx: WorkerContext) -> dict[str, Any]:
         "plot_examples": len(examples.plots),
         "distributions": versions,
     }
+    # v0.18 extras: only present when the image has extensions, so a built-in image's
+    # describe.json is unchanged
+    extras: dict[str, Any] = {
+        "workflow_nodes": len(catalog.workflow_nodes),
+        "workflow_templates": len(catalog.workflow_templates),
+        "diagnostics": len(catalog.diagnostics),
+        "extensions": extension_versions(catalog),
+    }
+    info.update({k: v for k, v in extras.items() if v})
     ctx.write_json("describe.json", info)
     ctx.progress(1.0, "catalog exported", force=True)
     return info
@@ -85,7 +108,7 @@ def run_validate(ctx: WorkerContext, spec: ModelSpec) -> ValidateResponse:
     tables = load_side_tables(ctx, spec)
     ctx.state(RunnerPhase.VALIDATE, "validating the spec against the data")
     registry = ctx.registry
-    catalog = registry.catalog()
+    catalog = full_catalog(registry)  # the digest describe reports for this image
     issues: list[Issue] = []
     stages: list[StageSchema] = []
     resolved = None

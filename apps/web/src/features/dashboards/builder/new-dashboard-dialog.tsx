@@ -16,9 +16,10 @@ import { InlineMessage, TagWord } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect } from "@/components/ui/primitives";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { cn } from "@/lib/utils";
 
-import { useCreateDashboard, useDashboardPresets } from "../api";
+import { useCreateDashboard, useDashboardPresets, useDashboards } from "../api";
 import type { Dashboard, DashboardSource, DashboardSpecV2, PresetKey } from "../types";
 import { presetRefOf } from "./setup-v2";
 import { useSourceGrid } from "./source";
@@ -26,15 +27,41 @@ import { issueAt, MAX_TITLE, nameFromTitle, NAME_RE, specIssues } from "./spec-f
 import { PRESET_WORDS, presetSwitchReason, switchPreset } from "./spec-form-v2";
 import { PlainIssues } from "./upgrade-banner";
 
-export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (d: Dashboard) => void }) {
+/**
+ * `initialModel` (v0.18, `/dashboards?new=1&model=`) starts the dialog on that model's latest
+ * version, so the dashboard tour can open it prefilled with the sample's model.
+ */
+/** The title a prefilled dialog (`/dashboards?new=1&model=`) starts with. */
+export const FIRST_DASHBOARD_TITLE = "My first dashboard";
+
+/**
+ * The prefilled title whose name is still free in the project: "My first dashboard", then
+ * "My first dashboard 2", 3, … (v0.18 live: a second run of the dashboard tour got a 409
+ * because `my-first-dashboard` was taken).
+ */
+export function firstDashboardTitle(taken: Iterable<string>): string {
+  const names = new Set(taken);
+  if (!names.has(nameFromTitle(FIRST_DASHBOARD_TITLE))) return FIRST_DASHBOARD_TITLE;
+  for (let n = 2; ; n++) {
+    const t = `${FIRST_DASHBOARD_TITLE} ${n}`;
+    if (!names.has(nameFromTitle(t))) return t;
+  }
+}
+
+export function NewDashboardDialog({ onClose, onCreated, initialModel }: { onClose: () => void; onCreated: (d: Dashboard) => void; initialModel?: string }) {
   const create = useCreateDashboard();
   const endpoints = useEndpoints();
   const models = useModels();
-  const [title, setTitle] = useState("");
+  // v0.18 live: opened prefilled (the checklist, the dashboard tour, whose coach-mark sits
+  // over this field and says "then press Create"), it starts with a title that works
+  // (one whose name is not taken yet: the project's dashboards, every status)
+  const existing = useDashboards({});
+  const [typed, setTitle] = useState<string | null>(initialModel ? null : "");
+  const title = typed ?? firstDashboardTitle(existing.data?.items.map((d) => d.name) ?? []);
   const [name, setName] = useState<string | null>(null);
-  const [kind, setKind] = useState<DashboardSource["kind"]>("endpoint");
+  const [kind, setKind] = useState<DashboardSource["kind"]>(initialModel ? "model_version" : "endpoint");
   const [alias, setAlias] = useState<string | null>(null);
-  const [modelId, setModelId] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(initialModel ?? null);
   const [version, setVersion] = useState<number | null>(null);
   const [picked, setPicked] = useState<{ ref: string; preset: PresetKey } | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -65,7 +92,16 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
     e.preventDefault();
     setSubmitted(true);
     if (!spec || issues.length || nameError || !title.trim()) return;
-    create.mutate({ name: effName, spec }, { onSuccess: onCreated });
+    create.mutate(
+      { name: effName, spec },
+      {
+        onSuccess: (d) => {
+          // v0.18 D25: a new dashboard ticks "Make a dashboard".
+          emitOnboarding("dashboard_created", { dashboard: d.id });
+          onCreated(d);
+        },
+      },
+    );
   };
 
   return (
@@ -132,7 +168,7 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
             )}
           </div>
 
-          <fieldset className="grid min-w-0 gap-2">
+          <fieldset className="grid min-w-0 gap-2" data-tour="dashboards.new.presets">
             <legend className="mb-1 text-sm font-semibold">Layout</legend>
             {ref === null ? (
               <p className="text-sm text-muted-foreground">Choose a source first.</p>

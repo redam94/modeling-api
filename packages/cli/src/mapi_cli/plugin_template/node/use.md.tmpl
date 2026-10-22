@@ -1,0 +1,6 @@
+The node in a workflow (branch conditions can read `share`, `reject` and `verdict_plain`):
+
+```yaml
+nodes:
+  - {id: zeros, use: {{node_id}}, with: {var: sales, threshold: 0.1}, inputs: {data: inputs.data}}
+```

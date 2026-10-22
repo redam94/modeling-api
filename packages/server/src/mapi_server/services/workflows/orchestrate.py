@@ -23,6 +23,12 @@ can be scored, explored, validated and promoted); ``search.grid`` runs its backt
 starts a child workflow run; ``report.evidence_pack`` is built here from the evidence and the
 model version's lineage; every other node is a ``workflow_node`` child run with its own
 resource class and timeout, in which statsmodels fits (backtests, forecasts) run in process.
+
+**Plugin nodes (v0.18).** The engine plans over the built-in node contracts plus those of the
+catalog's plugins (:mod:`mapi_server.services.workflows.node_catalog`); a plugin node is
+always a ``workflow_node`` child run, and its job carries the plugin's namespace
+(:data:`~mapi_server.services.workflows.node_catalog.NODE_PLUGIN_PARAM`) so the run goes to
+the image that ships the plugin.
 """
 
 from __future__ import annotations
@@ -112,6 +118,7 @@ from mapi_server.services.submit import (
 from mapi_server.services.webhooks.outbox import emit_event
 from mapi_server.services.workflows.events import append_events
 from mapi_server.services.workflows.hooks import governance_hooks
+from mapi_server.services.workflows.node_catalog import NODE_PLUGIN_PARAM, node_contracts
 from mapi_server.services.workflows.runs import (
     ACTIVE_STATUSES,
     clean_plot,
@@ -367,6 +374,8 @@ class WorkflowOrchestrator:
                 salt=self.ctx.catalogs.image_digest,
                 run_meta={"attempt": run.attempt, "trigger": wr.trigger, "id": run_id},
                 subworkflow_ports=await self._sub_ports(s, scope, spec),
+                # built-ins plus the catalog's plugin nodes (the default is built-ins only)
+                registry=await node_contracts(self.ctx, s),
             )
             env = _Env(s, scope, wr, run, wf, spec, rows, engine)
             if run.state == RunState.CANCELLING.value and not wr.cancel_requested:
@@ -706,6 +715,8 @@ class WorkflowOrchestrator:
             params["_refs"] = refs
         if action.impl.id == "governance.policy":
             params["_policies"] = await self._policies(env, action, models)
+        if action.impl.plugin is not None:
+            params[NODE_PLUGIN_PARAM] = action.impl.plugin
         job = WorkflowNodeJob(
             workflow_run_id=env.wr.run_id,
             node_id=action.node_id,

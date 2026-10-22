@@ -47,7 +47,7 @@ export function formatStepSize(v: number): string {
 export function ChainLanes({ chains }: { chains: ChainProgress[] }) {
   if (!chains.length) return null;
   return (
-    <div className="grid gap-2" role="list" aria-label="Chains">
+    <div className="grid gap-2" role="list" aria-label="Chains" data-tour="guided.run.chains">
       {chains.map((c) => {
         const frac = c.draws_total > 0 ? Math.min(1, c.draws_done / c.draws_total) : 0;
         const color = CHAIN_COLORS[c.chain % CHAIN_COLORS.length];

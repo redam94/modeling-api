@@ -2,13 +2,15 @@
 
 A workflow (``workflow://project/name``) is a name plus revisions. Every revision stores the
 document, its hash and the result of :func:`mapi_spec.workflow.validate_workflow` against the
-cached catalog (model refs) and the project's saved workflows (sub-workflows): revisions
-with errors are stored but cannot run (``WORKFLOW_NOT_RUNNABLE``).
+cached catalog (model refs and, v0.18, the node contracts of installed plugins) and the
+project's saved workflows (sub-workflows): revisions with errors are stored but cannot run
+(``WORKFLOW_NOT_RUNNABLE``).
 """
 
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from typing import Any
 
 from mapi_spec.api import new_id
@@ -24,7 +26,7 @@ from mapi_spec.workflow import (
     workflow_hash,
 )
 from mapi_spec.workflow_nodes import SUBWORKFLOW_NODE
-from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES
+from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +35,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 from mapi_server.services.catalog import CatalogService
 from mapi_server.services.runs import Scope, now
+from mapi_server.services.workflows.node_catalog import contracts_for
 
 __all__ = [
     "document_of",
@@ -84,12 +87,17 @@ def revision_dto(wf: m.Workflow, rev: m.WorkflowRevisionRow) -> WorkflowRevision
 
 
 def document_of(
-    *, document: dict[str, JsonValue] | None, text: str | None, template: str | None = None
+    *,
+    document: dict[str, JsonValue] | None,
+    text: str | None,
+    template: str | None = None,
+    templates: Mapping[str, WorkflowTemplate] | None = None,
 ) -> tuple[dict[str, Any], str | None]:
     """The JSON document of a create/revision/validate request (``SPEC_PARSE_ERROR`` for
-    unreadable text, ``NOT_FOUND`` for an unknown template)."""
+    unreadable text, ``NOT_FOUND`` for an unknown template). ``templates`` is the gallery in
+    effect (v0.18: built-in plus plugin templates; default: the built-in ones)."""
     if template is not None:
-        t = WORKFLOW_TEMPLATES.get(template)
+        t = (WORKFLOW_TEMPLATES if templates is None else templates).get(template)
         if t is None:
             raise NotFoundError("workflow template", template)
         return copy.deepcopy(dict(t.document)), t.id
@@ -158,12 +166,14 @@ async def resolve_workflow_ref(
 async def validate_document(
     session: AsyncSession, scope: Scope, catalogs: CatalogService, doc: dict[str, Any]
 ) -> WorkflowValidation:
-    """Static checks of a workflow document in a project (pure apart from the lookups)."""
+    """Static checks of a workflow document in a project (pure apart from the lookups)
+    against the built-in node contracts plus those of the catalog's plugins."""
     snapshot = await catalogs.get(session)
     subs = await _subworkflows(session, scope, doc)
     result = validate_workflow(
         doc,
         catalog=snapshot.catalog if snapshot is not None else None,
+        nodes=contracts_for(snapshot),
         resolve_subworkflow=lambda ref: subs.get(str(ref)),
     )
     issues = list(result.issues)

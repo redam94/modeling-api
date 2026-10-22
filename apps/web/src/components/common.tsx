@@ -23,17 +23,22 @@ export function PageHeader({
   description,
   actions,
   meta,
+  eyebrow,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   meta?: ReactNode;
+  /** A small label above the title (the Studio list-page eyebrow). */
+  eyebrow?: ReactNode;
 }) {
   return (
     <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6">
       <div className="min-w-0">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.015em] text-balance">{title}</h1>
-        {description ? <p className="mt-1.5 max-w-[68ch] text-muted-foreground">{description}</p> : null}
+        {eyebrow ? <p className="eyebrow mb-3">{eyebrow}</p> : null}
+        {/* the Studio page title (direction §4): 48px display, as on the list pages */}
+        <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">{title}</h1>
+        {description ? <p className="mt-2 max-w-[68ch] text-lg text-muted-foreground">{description}</p> : null}
         {meta ? <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{meta}</div> : null}
       </div>
       {actions ? <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -41,25 +46,65 @@ export function PageHeader({
   );
 }
 
+/**
+ * What a list or page shows before it has anything in it. Without `illustration` it is the plain
+ * dashed card (icon, title, text, action). With one (an art component from
+ * `components/illustrations`, passed in so this module never imports it) it becomes the Studio
+ * empty state: a large dashed card with the words and the calls to action on the left and the art
+ * on the right (above the words on a phone). `primaryAction` comes first in the action row, before
+ * `action`.
+ */
 export function EmptyState({
   icon,
   title,
   children,
   action,
+  primaryAction,
+  illustration,
   className,
 }: {
   icon?: ReactNode;
   title: string;
   children?: ReactNode;
   action?: ReactNode;
+  /** The main call to action (a filled button); `action` then holds the quieter ones. */
+  primaryAction?: ReactNode;
+  /** Decorative art (`aria-hidden`) or labelled art; switches to the two-column layout. */
+  illustration?: ReactNode;
   className?: string;
 }) {
+  const actions =
+    primaryAction || action ? (
+      <div className={cn("flex flex-wrap items-center gap-2", illustration ? "pt-4" : "pt-2")}>
+        {primaryAction}
+        {action}
+      </div>
+    ) : null;
+  if (illustration) {
+    return (
+      <div
+        data-slot="empty-state"
+        className={cn(
+          "grid items-center gap-8 rounded-3xl border-[1.5px] border-dashed border-border-strong bg-card p-[clamp(1.75rem,5vw,4rem)] md:grid-cols-2 md:gap-10",
+          className,
+        )}
+      >
+        <div className="grid min-w-0 justify-items-start gap-3 max-md:order-2">
+          {icon ? <div className="text-muted-foreground [&_svg]:size-5">{icon}</div> : null}
+          <h3 className="display-title text-[clamp(1.75rem,4vw,2.25rem)] leading-[1.05] text-balance">{title}</h3>
+          {children ? <div className="max-w-[46ch] text-base text-muted-foreground">{children}</div> : null}
+          {actions}
+        </div>
+        <div className="mx-auto w-full max-w-[420px] min-w-0 max-md:order-1 max-md:max-w-[260px]">{illustration}</div>
+      </div>
+    );
+  }
   return (
     <div className={cn("flex flex-col items-start gap-2 rounded-xl border border-dashed border-border-strong bg-card p-8", className)}>
       {icon ? <div className="text-muted-foreground [&_svg]:size-5">{icon}</div> : null}
       <h3 className="font-semibold">{title}</h3>
       {children ? <div className="max-w-[60ch] text-muted-foreground">{children}</div> : null}
-      {action ? <div className="pt-2">{action}</div> : null}
+      {primaryAction ? actions : action ? <div className="pt-2">{action}</div> : null}
     </div>
   );
 }

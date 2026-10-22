@@ -813,7 +813,7 @@ def test_feature_importance_needs_a_known_group() -> None:
 # ------------------------------------------------------------------------------ colours
 
 _COLOUR = re.compile(r"^(#[0-9a-fA-F]{3,8}|white|black|red|blue|green|gray|grey|orange)$")
-_LIGHT_CARD, _DARK_CARD = "#ffffff", "#1b212d"
+_LIGHT_CARD, _DARK_CARD = "#ffffff", "#1a1642"  # --card in the light and dark theme
 
 
 _SCALE_COLOUR = re.compile(r"^rgba?\([0-9., ]+\)$")
@@ -899,6 +899,18 @@ def test_the_plot_sandbox_mirrors_the_dark_variants() -> None:
         pytest.skip("the plot sandbox sources are not in this checkout")
     pairs = dict(re.findall(r'"(#[0-9a-f]{6})":\s*"(#[0-9a-f]{6})"', ts.read_text()))
     assert pairs == dark_variants()
+
+
+def test_the_card_the_palette_is_checked_on_is_the_web_card() -> None:
+    """The 3:1 checks above use the app's ``--card`` in each theme; ``surface`` draws it."""
+    from mapi_plots.palette import PALETTE
+
+    css = Path(__file__).parents[3] / "apps" / "web" / "src" / "app.css"
+    if not css.is_file():
+        pytest.skip("the web app sources are not in this checkout")
+    cards = re.findall(r"^\s*--card:\s*(#[0-9a-f]{6});", css.read_text(), re.MULTILINE)
+    assert cards == [_LIGHT_CARD, _DARK_CARD]  # the `:root {` block, then the `.dark {` block
+    assert (PALETTE["surface"].light, PALETTE["surface"].dark) == (_LIGHT_CARD, _DARK_CARD)
 
 
 def _blend(fg: str, alpha: float, bg: str) -> str:

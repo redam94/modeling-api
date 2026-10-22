@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Database, FileCode2, Library, Plus, Sparkles } from "lucide-react";
+import { Database, FileCode2, Library, Plus, Sparkles, WandSparkles } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { useModels, useReady, useRuns } from "@/api/queries";
 import type { Run } from "@/api/types";
@@ -11,6 +12,12 @@ import { phaseLabel } from "@/features/runs/progress-panel";
 import { relativeTime, shortId } from "@/lib/format";
 import { isTerminal, runSubject } from "@/lib/run-state";
 
+/*
+ * v0.18 (D22): "Start here" (the hero, the sample card, the checklist and the what-if
+ * playground) is a lazy chunk, `start-here-*`: Home is in the entry, which share links and the
+ * client portal also load, so it never imports `features/onboarding` statically.
+ */
+const StartHere = lazy(() => import("@/features/onboarding/start-here"));
 
 function ActiveRun({ run }: { run: Run }) {
   const p = run.progress;
@@ -43,14 +50,18 @@ export function HomePage() {
   const recent = items.filter((r) => isTerminal(r.state)).slice(0, 8);
 
   return (
-    <div className="grid gap-8">
-      <section aria-labelledby="active-heading" className="grid gap-3">
+    <div className="mx-auto grid w-full max-w-[1180px] gap-10">
+      <h1 className="sr-only">Home</h1>
+      <Suspense fallback={null}>
+        <StartHere />
+      </Suspense>
+      <section aria-labelledby="active-heading" className="grid gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 id="active-heading" className="text-[26px] leading-tight font-semibold tracking-[-0.015em]">
+          <div className="grid gap-1.5">
+            <h2 id="active-heading" className="text-2xl leading-tight font-bold">
               {active.length ? `${active.length} run${active.length === 1 ? "" : "s"} in flight` : "Nothing running"}
-            </h1>
-            <p className="text-muted-foreground">
+            </h2>
+            <p className="max-w-[60ch] text-muted-foreground">
               {ready.isError
                 ? "The app cannot connect to the API. Start the server, then reload the page."
                 : active.length
@@ -59,10 +70,10 @@ export function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="rounded-full">
               <Link to="/datasets"><Database /> Upload data</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="rounded-full">
               <Link to="/build/new"><Plus /> New spec</Link>
             </Button>
           </div>
@@ -72,7 +83,7 @@ export function HomePage() {
         ) : runs.isError ? (
           <ErrorNotice error={runs.error} title="The app could not load the runs" />
         ) : active.length ? (
-          <div className="grid divide-y rounded-lg border bg-card p-1">{active.map((r) => <ActiveRun key={r.id} run={r} />)}</div>
+          <div className="grid divide-y rounded-2xl border bg-card p-1.5">{active.map((r) => <ActiveRun key={r.id} run={r} />)}</div>
         ) : null}
       </section>
 
@@ -172,6 +183,10 @@ export function HomePage() {
             <Link to="/catalog" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
               <Library className="mt-0.5 size-4 text-primary" />
               <span><span className="font-medium">Browse the catalog</span><span className="block text-muted-foreground">Models, preprocessing steps and plot recipes.</span></span>
+            </Link>
+            <Link to="/library" className="flex items-start gap-3 rounded-md p-2 hover:bg-accent/60">
+              <WandSparkles className="mt-0.5 size-4 text-primary" />
+              <span><span className="font-medium">Make your own</span><span className="block text-muted-foreground">Save a model recipe, a prep preset or a chart style for your team. No code needed.</span></span>
             </Link>
           </CardContent>
         </Card>

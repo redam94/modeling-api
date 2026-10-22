@@ -1,0 +1,87 @@
+"""{{model_id}}: a Bayesian trend model scaffolded by ``mapi plugin init --base pymc``.
+
+``TrendModel`` fits ``y ~ Normal(a + b * t, sigma)`` over a weekly time axis. A
+:class:`~mapi_pymc.PyMCModel` only writes ``build()``: the base samples the posterior,
+saves it without pickle, and scores, forecasts and evaluates through the same graph.
+Replace ``build`` with your model, update the About card and keep ``mapi plugin test``
+(the contract kit) green.
+"""
+
+from __future__ import annotations
+
+from typing import Any, ClassVar
+
+import pymc as pm
+import xarray as xr
+from mapi_pymc import BuildContext, PyMCModel
+from mapi_sdk.models import ModelSettings
+from mapi_spec import Capabilities, Representation
+from mapi_spec.about import About
+from mapi_spec.schema import DataSchema
+from pydantic import Field
+
+__all__ = ["MODELS", "TREND_SCHEMA", "TrendModel", "TrendSettings"]
+
+TREND_SCHEMA = DataSchema.model_validate(
+    {
+        "dims": {
+            "time": {"kind": "time", "policy": "extend", "freq": "W-SUN", "max_extension": 52},
+        },
+        "vars": {"y": {"dims": ["time"], "dtype": "float64", "role": "target", "units": "units"}},
+    }
+)
+"""The data the model accepts: one weekly time axis that forecasts may extend, a target."""
+
+
+class TrendSettings(ModelSettings):
+    """Prior scales; exported as JSON Schema for the editor and the API."""
+
+    slope_sigma: float = Field(2.0, gt=0, description="Prior scale of the yearly slope")
+    noise_sigma: float = Field(1.0, gt=0, description="Prior scale of the noise")
+
+
+class TrendModel(PyMCModel[TrendSettings]):
+    """``y ~ Normal(a + b * t, sigma)`` with ``t`` in years from ``ctx.position``."""
+
+    id = "{{model_id}}"
+    version = "0.1.0"
+    Settings = TrendSettings
+    capabilities = Capabilities(
+        inference="mcmc",
+        representation=Representation.DRAWS,
+        score_modes=frozenset({"predict", "forecast", "evaluate"}),
+        deterministic_given_seed=True,
+    )
+    # The catalog card analysts read (Catalog, Help me choose, the model page).
+    about: ClassVar[About | None] = About(
+        title="Straight-line trend",
+        summary_plain="Fits a straight line through a weekly series and shows how sure it "
+        "is. Use it to see the direction of a series and to extend it a few weeks.",
+        use_when=["You want the long-run direction of one weekly series"],
+        avoid_when=["The series has strong seasons or sudden breaks"],
+        data_needs=["One numeric value per week"],
+        assumptions=["The series grows or falls at a steady rate"],
+        outputs=["The fitted line, a forecast and its uncertainty band"],
+        difficulty="beginner",
+        typical_runtime="minutes",
+        example="Weekly sales that grow by about 1.5 a year are forecast to keep growing.",
+    )
+    schema_template = TREND_SCHEMA
+    outputs: ClassVar[dict[str, Any]] = {"y": {"dims": ["time"], "units_of": "y"}}
+    expected: ClassVar[dict[str, str]] = {"y": "mu"}  # output -> Deterministic for E[y]
+    default_engine = "pymc"
+
+    def build(self, ds: xr.Dataset, s: TrendSettings, ctx: BuildContext) -> pm.Model:
+        t = ctx.position("time")  # the same time axis at fit and at forecast time
+        with pm.Model(coords=ctx.coords()) as model:
+            tt = ctx.data("t", t, dims=["time"])
+            a = pm.Normal("a", 0.0, 5.0)
+            b = pm.Normal("b", 0.0, s.slope_sigma)
+            mu = pm.Deterministic("mu", a + b * tt / 52.0, dims="time")
+            sigma = pm.HalfNormal("sigma", s.noise_sigma)
+            pm.Normal("y", mu, sigma, observed=ctx.observed("y", dims=["time"]), dims="time")
+        return model
+
+
+MODELS = [TrendModel]
+"""The ``mapi.models`` entry point: every model class listed here is registered."""

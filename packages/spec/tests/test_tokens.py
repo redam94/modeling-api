@@ -194,6 +194,7 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
             "workflow",  # M3.5
             "policy",  # M3.5
             "dashboard",  # v0.16
+            "library",  # v0.18
         )
     },
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},

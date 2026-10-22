@@ -5,6 +5,74 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Make it yours (v0.18)
+
+You can now add your own models, preprocessing steps, charts and workflows. Analysts make
+them in the app with no code (Make your own). Developers write them as Python plugins and run
+them on a stack that they operate. New users learn the app with tours, a checklist, a sample
+project and playgrounds. The app has a bolder look (Studio). Nothing in this release accepts
+code from a tenant: plugin upload is planned for v0.19.
+
+#### Added
+- The library (`mapi_spec.library`): four kinds of items that every analyst can make, as JSON
+  documents with revisions, in a project or (tenant admins) in the tenant. A model recipe
+  (`ModelRecipe`) is a declarative model or a preset over a catalog model. A prep preset
+  (`PrepPreset`) is a list of steps with `$slot:` placeholders. A chart template
+  (`ChartTemplate`) restyles the data of a platform plot. A team workflow template
+  (`WorkflowTemplate`) is a validated workflow document. Pure code compiles each item; what
+  it makes carries a `mapi.library/*` label. Routes: `/v1/library`, `:validate`, `:use`,
+  `:promote`, `:archive`, `charts:preview`.
+- `tabular.declarative_glm@1.0.0`: the trusted built-in model that declarative model recipes
+  compile to (ten families, priors from a closed list with signs, varying slopes, up to three
+  crossed group intercepts, two-way interactions).
+- The web app: Make your own (`/library`) with builders for each kind and a YAML tab; Catalog
+  as a card grid with a "Yours" tab (From your team, Installed by your team, Problems); "Add
+  your own" panels; "Your charts" on run and model pages; "Save as team template" in the
+  workflow editor; "From your team" in the Build palette.
+- Developer track: `mapi plugin init NAME --kind model|step|recipe|node|template`,
+  `mapi plugin validate` and `mapi plugin doctor`. New public contract kits:
+  `mapi_plots.testing.check_recipe`, `mapi_workflows.kit.check_node` and `check_template`.
+- Plugin workflow nodes (`NodeExport` in `mapi.workflow_nodes`) and plugin workflow templates
+  (`mapi.workflow_templates`) reach the editor palette and the gallery.
+- Catalog diagnostics (`Catalog.diagnostics`, `GET /v1/catalog/diagnostics`) and `provider`
+  on catalog entries. JSON Schema safety (`mapi_spec.schema_safety`) for every settings and
+  parameter schema.
+- `make plugin-new`, `plugin-dev`, `plugin-undev`, `plugin-doctor`, `plugin-image` and
+  `catalog-refresh`; `images/extend/Dockerfile` for a custom runner image; the operator route
+  `POST /v1/admin/catalog:describe`; `MAPI_EXTENSIONS_LOCK_PATH`.
+- Onboarding: a welcome card, seven tours (`?tour=<id>`), a first-steps checklist stored per
+  user (`/v1/tenants/{t}/me/onboarding`), a one-click sample project for each tenant
+  (`/v1/tenants/{t}/samples`) and playgrounds (a what-if slider on example data; "Try it" for
+  plot recipes with `POST /v1/catalog/plots/{id}/{version}:preview`).
+- Plot recipes publish `settings_schema`, `tags` and `pack_label` in the catalog.
+- Docs: the Extend section, the tutorial "Your first extensions", "Start here", the generated
+  extension points reference and "What's new in 0.18".
+- Settings: `MAPI_SAMPLES_ENABLED`, `MAPI_SAMPLE_MAX_ATTEMPTS`, `MAPI_PLOT_PREVIEW_ENABLED`,
+  `MAPI_PLOT_PREVIEW_PER_MINUTE`, `MAPI_PLOT_PREVIEW_PER_DAY`, `MAPI_PLOT_PREVIEW_WAIT_S` and
+  the library limits (`MAPI_LIBRARY_*`).
+
+#### Changed
+- **Breaking for plugin authors:** a third-party plugin can no longer register ids in the
+  built-in namespaces (`core`, `mmm`, `ml`, `sklearn`, `ts`, `tabular`, `choice`, `causal`,
+  `sci`, `dl`, `net`, `toy`, `demo`, `examples`) or in the platform namespaces (`mapi`,
+  `platform`, `builtin`, `team`, `library`, `lib`, `plugin`, `t`, `tenant`, `t_*`,
+  `tenant_*`). The loader refuses them with the diagnostic `namespace_reserved`.
+- The look: the Studio palette, a display font, illustrations and motion in signed-in pages.
+  The plot palette follows the new tokens. Share links and client portals use the new colours.
+- Navigation in Guided mode puts less-used items behind "More". Expert mode groups the items.
+- The digest of a source checkout also hashes the plugins in `.local/extra-plugins.txt`, and
+  an extended image folds its `extensions.lock` into the digest.
+- A legacy `{id: fn}` export of `mapi.workflow_nodes` still works, with a `deprecated`
+  diagnostic.
+
+#### Known gaps
+- Under the Docker and Cloud Run executors, the describe run uses the default runner image
+  only. A custom image must be the default image as well as the image of its namespace.
+- Live recipe previews take about 10 seconds on a local stack and are off by default with
+  the Cloud Run executor.
+
+### Client dashboards for any model type (v0.17)
+
 Client dashboards now work for any model type, not only for marketing-mix models. Each
 model family gets a preset: forecast, regression, classifier, effect of a change, map,
 image model or the media planner. Analysts can add, remove and move the panels. Clients

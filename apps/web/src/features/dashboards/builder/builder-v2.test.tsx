@@ -5,6 +5,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DRAFT_DASHBOARD_ID, V2_DASHBOARD_IDS } from "@/mocks/dashboards";
+import { MODEL_ID } from "@/mocks/fixtures";
 import { createHandlers } from "@/mocks/handlers";
 import { renderApp } from "@/test/render-app";
 
@@ -210,6 +211,30 @@ describe("builder › the move to the new layout", () => {
 });
 
 describe("new dashboard", () => {
+  it("opened prefilled for a model (the dashboard tour) starts with a title", async () => {
+    // v0.18 live: the tour's coach-mark sits over the Title field and says "then press
+    // Create"; with an empty title Create only answered "Title: Type a title."
+    renderApp(`/dashboards?new=1&model=${MODEL_ID}`);
+    const dialog = await screen.findByRole("dialog", { name: "New client dashboard" }, T);
+    expect(within(dialog).getByLabelText<HTMLInputElement>("Title").value).toBe("My first dashboard");
+    expect(within(dialog).getByLabelText<HTMLInputElement>("Name").value).toBe("my-first-dashboard");
+  });
+
+  it("opened prefilled again (a second dashboard tour) picks a title whose name is free", async () => {
+    // v0.18 live: the second run of the dashboard tour got a plain 409 for `my-first-dashboard`
+    server.use(
+      http.get("*/v1/dashboards", async ({ request }) => {
+        const real = await getResponse(createHandlers(), request.clone());
+        const page = (await real!.json()) as { items: { name: string }[] };
+        return HttpResponse.json({ ...page, items: [...page.items, { ...page.items[0]!, id: "dsh_taken1", name: "my-first-dashboard" }, { ...page.items[0]!, id: "dsh_taken2", name: "my-first-dashboard-2" }] });
+      }),
+    );
+    renderApp(`/dashboards?new=1&model=${MODEL_ID}`);
+    const dialog = await screen.findByRole("dialog", { name: "New client dashboard" }, T);
+    await waitFor(() => expect(within(dialog).getByLabelText<HTMLInputElement>("Title").value).toBe("My first dashboard 3"), T);
+    expect(within(dialog).getByLabelText<HTMLInputElement>("Name").value).toBe("my-first-dashboard-3");
+  });
+
   it("starts from the suggested layout and never asks for channels outside the planner", async () => {
     const user = userEvent.setup();
     renderApp("/dashboards");

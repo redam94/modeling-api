@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import copy
 from datetime import timedelta
-from typing import Any
+from typing import Any, Final
 
 from mapi_spec._types import Duration
 from mapi_spec.api import RunCreate, RunRetry
@@ -58,6 +58,7 @@ from mapi_spec.jobs import (
     side_table_input,
     upload_input,
 )
+from mapi_spec.library import LABEL_MODEL, LABEL_PREP, LABEL_TEMPLATE
 from mapi_spec.loader import spec_hash
 from mapi_spec.quotas import QuotaDemand, default_priority
 from mapi_spec.refs import DatasetRef
@@ -98,11 +99,13 @@ from mapi_server.services.verification import require_uploaded_code_allowed
 __all__ = [
     "COLLECTION_REFUSED",
     "DEFAULT_TIMEOUT_S",
+    "LINEAGE_LABELS",
     "admit",
     "collection_ingest_timeout_s",
     "data_object_name",
     "data_ref",
     "dataset_inputs",
+    "lineage_labels",
     "refuse_collection",
     "submit_collection_ingest",
     "submit_describe",
@@ -350,6 +353,14 @@ async def load_revision(
     return spec, rev
 
 
+LINEAGE_LABELS: Final = (LABEL_MODEL, LABEL_PREP, LABEL_TEMPLATE)
+
+
+def lineage_labels(spec: ModelSpec) -> dict[str, str]:
+    """The library lineage labels (:data:`LINEAGE_LABELS`) of a spec's ``metadata.labels``."""
+    return {k: v for k, v in spec.metadata.labels.items() if k in LINEAGE_LABELS}
+
+
 async def submit_spec_run(
     session: AsyncSession,
     ctx: ServerContext,
@@ -361,7 +372,11 @@ async def submit_spec_run(
     timeout: Duration | None = None,
     labels: dict[str, str] | None = None,
 ) -> m.Run:
-    """``fit`` or ``validate`` (dry-run) from a stored revision, re-validated now."""
+    """``fit`` or ``validate`` (dry-run) from a stored revision, re-validated now.
+
+    The revision's library lineage labels (``mapi.library/*`` in ``metadata.labels``, put
+    there by "Use in Build") go on the run too, under the caller's own ``labels``, so a fit
+    started from Build is labelled like one from "Fit now"."""
     scope = ctx.scope
     _, rev = await load_revision(session, scope, spec_id, revision)
     v: Validation = await validate_document(
@@ -378,6 +393,7 @@ async def submit_spec_run(
     if not v.valid or v.resolved is None or v.dataset is None:
         raise ValidationFailed(v.issues)
     spec = v.typed
+    labels = {**lineage_labels(spec), **(labels or {})}
     caps: Capabilities = v.resolved.model.capabilities
     payload = pin_document(rev.document, v)
     if isinstance(payload.get("model"), dict):

@@ -1,0 +1,24 @@
+# Declarative GLM: label-encoded groups (shuffles, unseen stores) and signed effects.
+- name: predict_in_sample
+  request: {mode: predict}
+  payload: fit_data
+  expect: {vars: [y_hat]}
+- name: shuffled_rows
+  request: {mode: predict}
+  payload: shuffled
+  expect: {vars: [y_hat]}
+- name: new_store_from_group_spread
+  request: {mode: predict, output: {kind: expected, draws: 40}}
+  payload: new_store
+  expect: {groups: [summary, draws], sizes: {row: 6}}
+- name: counterfactual_promo
+  request: {mode: counterfactual, interventions: [{var: promo, set: 1.0}], output: {kind: expected}}
+  payload: new_store
+  expect: {groups: [summary, baseline/summary, delta/summary]}
+- name: forecast_unsupported
+  request: {mode: forecast, horizon: {dim: row, periods: 3}}
+  expect_error: MODE_NOT_SUPPORTED
+- name: missing_term
+  request: {mode: predict}
+  payload: new_store_without_temp
+  expect_error: MISSING_FUTURE_COVARIATE

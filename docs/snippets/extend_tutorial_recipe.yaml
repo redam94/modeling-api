@@ -1,0 +1,19 @@
+# Part 1 of docs/tutorials/your-first-extensions.md: the model recipe you build in
+# Make your own > Models, on the sample project's data. `make docs-test` compiles it.
+apiVersion: mapi/v1
+kind: ModelRecipe
+metadata:
+  name: revenue-and-price-robust
+  title: "Revenue and price, robust to odd weeks"
+  summary: "Revenue goes down when price goes up. A few odd weeks do not pull the fit."
+base: declarative
+declarative:
+  outcome: {var: revenue_gbp, family: student_t}
+  terms:
+    - var: avg_price
+      label: Average price
+      transform: [{use: standardize}]
+      prior: {dist: normal, sigma: 0.5}
+      sign: negative
+  groups: [{dim: region}]
+plots: [core.posterior_forest, core.fit_vs_actual]

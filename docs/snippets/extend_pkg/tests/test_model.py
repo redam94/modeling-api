@@ -1,0 +1,47 @@
+"""Contract-kit tests for acme.group_mean (run them with ``mapi plugin test``).
+
+The kit fits the model on a small daily panel (resampled to weeks by a toy step), then
+checks bundle round trips (no pickle), shuffled/subset/new-level scoring, typed errors for
+every dim policy, context-window equivalence, evaluate == score path, output units,
+aggregation legality, seed determinism and the About card. Every check must pass before you
+share the plugin.
+"""
+
+from __future__ import annotations
+
+import pytest
+from mapi_sdk.testing import ModelFixture, check_model, toy
+
+from acme.model import MODELS, GroupMeanModel
+
+SPEC = """
+apiVersion: mapi/v1
+kind: ModelSpec
+metadata: {name: contract-kit, project: test}
+data:
+  dataset: dataset://test/panel@latest
+  bind:
+    dims: {geo: market, time: date}
+    vars: {y: revenue_local}
+  split: {kind: time_holdout, dim: time, last: 4, after_step: weekly}
+pipeline:
+  - {id: weekly, use: toy.resample@^1, with: {dim: time, freq: W-SUN}}
+model:
+  use: acme.group_mean@^0.1
+  settings: {shrinkage: 0.1}
+  fit: {mode: evaluate_then_refit, seed: 7}
+evaluate: {metrics: [rmse, mape]}
+"""
+
+
+def test_the_model_is_exported() -> None:
+    assert GroupMeanModel in MODELS
+    assert GroupMeanModel.catalog_entry().ref == "acme.group_mean@0.1.0"
+
+
+@pytest.mark.mapi_contract
+def test_contract_kit() -> None:
+    data, _ = toy.panel_dataset(days=7 * 24)
+    fixture = ModelFixture(spec=SPEC, data=data[["revenue_local"]], registry=toy.toy_registry())
+    report = check_model(GroupMeanModel, fixture, raise_on_failure=False, require_about=True)
+    assert report.ok, report.summary()

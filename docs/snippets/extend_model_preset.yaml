@@ -1,0 +1,16 @@
+# A preset over a catalog model (docs/extend/your-model.md): fixed settings plus the two
+# keys the person who uses it may change. `make docs-test` compiles it.
+apiVersion: mapi/v1
+kind: ModelRecipe
+metadata:
+  name: weekly-ets
+  title: "Weekly sales forecast (damped trend)"
+  summary: "Exponential smoothing with a damped trend and a yearly season."
+  tags: [forecast, weekly]
+base: ts.ets@^1
+settings:
+  trend: add
+  damped_trend: true
+  seasonal: add
+  seasonal_periods: 52
+exposed: [seasonal_periods, damped_trend]

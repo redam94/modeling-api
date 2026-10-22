@@ -1,0 +1,18 @@
+# A prep preset with a slot and a formula step (docs/extend/prep-presets.md).
+# `make docs-test` fills the slot and checks every step against the catalog.
+apiVersion: mapi/v1
+kind: PrepPreset
+metadata:
+  name: promo-price
+  title: "Fill gaps, then the promo price"
+  summary: "Fills missing values with 0, then adds the price in promo weeks only."
+  tags: [retail]
+slots:
+  gaps: {kind: var_list, label: "Columns with gaps"}
+steps:
+  - id: fill
+    use: core.impute@^1
+    with: {vars: ["$slot:gaps"], method: constant, value: 0}
+  - id: promo_price
+    use: core.formula@^1
+    with: {out: promo_price, expr: "where(promo > 0, price, 0)"}

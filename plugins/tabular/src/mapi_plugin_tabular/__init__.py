@@ -2,6 +2,9 @@
 
 * :class:`~mapi_plugin_tabular.glm.HierarchicalGLM` (``tabular.hierarchical_glm``) - a
   partially pooled GLM in long layout with hyperprior new levels (E02 radon style);
+* :class:`~mapi_plugin_tabular.declarative.DeclarativeGLM` (``tabular.declarative_glm``) - the
+  GLM behind declarative model recipes (v0.18): per-term priors and signs, crossed group
+  intercepts, varying slopes and interactions, with group labels encoded at fit;
 * :class:`~mapi_plugin_tabular.regressor.TabularRegressor` (``tabular.regressor``) - a
   quantile regressor over stacked rows with the registry's quantile-capable estimators
   (plan §6.2 store demand);
@@ -18,6 +21,7 @@ All register through the ``mapi.models`` entry point (``tabular = mapi_plugin_ta
 from importlib import metadata as _metadata
 
 from mapi_plugin_tabular.choice import MultinomialLogit, MultinomialLogitSettings
+from mapi_plugin_tabular.declarative import DeclarativeGLM, DeclarativeGLMSettings
 from mapi_plugin_tabular.glm import HierarchicalGLM, HierarchicalGLMSettings
 from mapi_plugin_tabular.image_logistic import ImageLogistic, ImageLogisticSettings
 from mapi_plugin_tabular.regressor import TabularRegressor, TabularRegressorSettings
@@ -27,11 +31,13 @@ try:
 except _metadata.PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.16.0"
 
-PLUGINS = (HierarchicalGLM, TabularRegressor, MultinomialLogit, ImageLogistic)
+PLUGINS = (HierarchicalGLM, DeclarativeGLM, TabularRegressor, MultinomialLogit, ImageLogistic)
 """Every model plugin of this package (loaded by the ``mapi.models`` entry point)."""
 
 __all__ = [
     "PLUGINS",
+    "DeclarativeGLM",
+    "DeclarativeGLMSettings",
     "HierarchicalGLM",
     "HierarchicalGLMSettings",
     "ImageLogistic",

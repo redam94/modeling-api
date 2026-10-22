@@ -1,0 +1,6 @@
+The step in a spec pipeline:
+
+```yaml
+pipeline:
+  - {id: cap, use: {{step_id}}@^0.1, with: {vars: [sales], upper: 0.99}}
+```

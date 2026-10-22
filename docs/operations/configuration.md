@@ -167,6 +167,16 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_BATCH_ROWS_PER_DAY` | `20000` | The rows of all batch scores of one dashboard in each 24 hours, for all callers together |
 | `MAPI_DASHBOARD_AUTO_UPGRADE` | `true` | Move every layout 1 dashboard to layout 2 once when a worker starts. The pass is idempotent and runs under a Postgres advisory lock. A dashboard that needs review keeps its layout 1 revision |
 | `MAPI_DASHBOARD_LAYOUT1_CREATE` | `false` | Accept new layout 1 (media planner only) dashboard specs on create, and on the draft save of a layout 2 dashboard. Off (the default from v0.17), new dashboards are layout 2 and a layout 1 spec is refused with `422 DASHBOARD_LAYOUT_RETIRED`. A layout 1 draft that exists can still be saved |
+| `MAPI_LIBRARY_ITEMS_PER_TENANT` | `500` | v0.18: the library items (archived items included) that one tenant can have. More items get `409` |
+| `MAPI_LIBRARY_REVISIONS_PER_ITEM` | `200` | The revisions that one library item can have |
+| `MAPI_LIBRARY_VALIDATE_PER_MINUTE` | `60` | The library document checks (`POST /v1/library:validate`) that one user can ask for in each minute |
+| `MAPI_LIBRARY_CHART_PREVIEW_PER_MINUTE` | `60` | The chart template previews (`POST /v1/library/charts:preview`) that one user can ask for in each minute |
+| `MAPI_SAMPLES_ENABLED` | `true` | Offer the one-click sample project. Off, the samples list is empty and each sample action gets `404 SAMPLES_DISABLED` |
+| `MAPI_SAMPLE_MAX_ATTEMPTS` | `3` | The attempts that one sample project can take in total, the first install included |
+| `MAPI_PLOT_PREVIEW_ENABLED` | `true` (`false` with `cloudrun-jobs`) | Live recipe previews: a render run on the example data of a recipe. The default is off with the `cloudrun-jobs` executor, because a job start is too slow for a live preview. Off, a preview request gets `409 PREVIEW_DISABLED` |
+| `MAPI_PLOT_PREVIEW_PER_MINUTE` | `20` | The new preview runs that one user can start in each minute. A cached preview does not count. More requests get `429` |
+| `MAPI_PLOT_PREVIEW_PER_DAY` | `200` | The new preview runs that one tenant can start in each 24 hours |
+| `MAPI_PLOT_PREVIEW_WAIT_S` | `15.0` | The longest `Prefer: wait` that a recipe preview request can hold |
 
 **Object storage**
 
@@ -223,6 +233,7 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_CATALOG_PATH` | unset | A catalog JSON that the image build exports. If unset, the worker puts a sandboxed `describe` run in the queue |
 | `MAPI_IMAGE_DIGEST` | `sha256` of `uv.lock` | The digest of the runner image. The catalog cache uses it as the key |
 | `MAPI_UV_LOCK_PATH` | found above the working directory | The `uv.lock` whose hash is the image digest. When it is unset, the digest of a source checkout also hashes `packages/*/src` and `plugins/*/src`, so `make dev` makes a new catalog after a code change |
+| `MAPI_EXTENSIONS_LOCK_PATH` | unset | v0.18: the extensions lock of an image that `images/extend` builds (`/opt/mapi/extensions.lock`). The server adds its bytes to the image digest (never to a literal `MAPI_IMAGE_DIGEST`). Mount the same file into `api` and `worker`. If the file is missing, start-up fails. In a source checkout, the plugins that `.local/extra-plugins.txt` lists are also in the digest |
 | `MAPI_SIGNING_KEY_PATH` | `$MAPI_DATA_DIR/keys/bundle-signing-p256.pem` | The EC P-256 key that signs bundle manifests (in place of Cloud KMS). The worker signs and the API verifies, thus the two must load the same file. `mapi-server migrate` makes it |
 | `MAPI_SIGNING_TRUSTED_KEY_PATHS` | none | Old bundle-signing keys (PEM files, public or private, comma-separated) whose signatures still verify. Thus a key rotation does not break the models that the old key signed (`ops/runbooks/rotating-keys.md`) |
 | `MAPI_SIGNING_KEY_CREATE` | `true` | Make the key at the first use if it is missing. Compose turns it off for `api` and `worker`. Thus, if the key is missing, start-up fails, and the server does not mint a new key |
@@ -466,6 +477,7 @@ Use `docker build --build-arg NAME=value`. The Makefile gives `VERSION`, `VCS_RE
 | `MAPI_APT_PACKAGES` | The system packages of the runtime stage (`tini`, and `g++` for PyTensor) |
 | `MAPI_XLA_PREALLOCATE`, `MAPI_XLA_FLAGS` | v0.15: the values of `XLA_PYTHON_CLIENT_PREALLOCATE` and `XLA_FLAGS` in the image (empty by default). `base-dl` sets `false` (GPU memory on demand) and `--xla_gpu_deterministic_ops=true` (deterministic GPU operations). Not verified on a GPU |
 | `MAPI_ASSERT_PRESENT`, `MAPI_ASSERT_ABSENT` | The distributions that must be installed, and that must not be installed. If not, the build fails |
+| `MAPI_LICENSES` | v0.18, `images/extend`: the `org.opencontainers.image.licenses` label of an extended image |
 | `MAPI_IMAGE_NAME`, `MAPI_DESCRIPTION` | OCI labels, and the name that the catalog export records |
 | `PYTHON_IMAGE` (and the other base images) | Base images, pinned by tag *and* digest (`make docker-pin`) |
 
@@ -497,6 +509,7 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_E2E_KEEP` | `1` keeps the project that the M3.5 journeys make (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`). It also keeps the project of the forecasts-with-actuals journey (`tests/e2e/test_forecast_actuals_stack.py`). Thus you can look at the project in the app ([M3.5 verification](m35-verification.md)) |
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | The location where the webhook receiver of the M3 journey finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` makes the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests again (`make snapshots`) |
+| `MAPI_REGEN_GOLDEN` | `1` makes the golden of the recipe examples (`packages/plots-core/tests/golden/recipe_examples.json`) again after a deliberate change to an example |
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |
 | `MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. The `from_challenges` loaders of `mapi-plugin-science` read the real data files there, and the tests that use them run. If it is not set, these tests are skipped |
 | `MAPI_E21_DRAWS` | The draws for each chain in the real-data sociality fit of `sci.network_latent_space` (`plugins/science/tests/test_network.py`, default 300) |

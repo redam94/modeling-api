@@ -364,6 +364,11 @@ class ResourceKind(StrEnum):
     """Which client users may see a dashboard (v0.16)."""
     DASHBOARD_SHARE = "dashboard_share"
     """Revocable share links of a dashboard (v0.16)."""
+    LIBRARY = "library"
+    """A project's library items: model recipes, prep presets, chart and workflow templates
+    (v0.18)."""
+    TENANT_LIBRARY = "tenant_library"
+    """Tenant-wide library items, readable from every project of the tenant (v0.18)."""
 
 
 class Capability(StrEnum):
@@ -512,6 +517,17 @@ PERMISSIONS: Final[dict[tuple[ResourceKind, Action], Rule]] = {
     (_RK.DASHBOARD_SHARE, _AC.READ): Rule(_E, _P),
     (_RK.DASHBOARD_SHARE, _AC.CREATE): Rule(_E, _P),  # with inputs: the caller must be a runner
     (_RK.DASHBOARD_SHARE, _AC.DELETE): Rule(_E, _P),
+    # v0.18: the library (JSON documents compiled by trusted code: no approval) and the
+    # operator's catalog refresh. Archive is the DELETE action (items are never deleted).
+    (_RK.LIBRARY, _AC.READ): Rule(_V, _P),
+    (_RK.LIBRARY, _AC.CREATE): Rule(_E, _P),
+    (_RK.LIBRARY, _AC.UPDATE): Rule(_E, _P),
+    (_RK.LIBRARY, _AC.DELETE): Rule(_E, _P),
+    (_RK.TENANT_LIBRARY, _AC.READ): Rule(_V, _P),  # from any project the caller can read
+    (_RK.TENANT_LIBRARY, _AC.CREATE): Rule(_A, _T),
+    (_RK.TENANT_LIBRARY, _AC.UPDATE): Rule(_A, _T),
+    (_RK.TENANT_LIBRARY, _AC.DELETE): Rule(_A, _T),
+    (_RK.CATALOG, _AC.UPDATE): _OP,  # queue a catalog describe run
 }
 """The complete matrix. A pair that is not listed is denied to everyone."""
 

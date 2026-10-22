@@ -82,7 +82,8 @@ def responses_for(
 
 
 class JsonBodyLimit:
-    """Pure ASGI middleware: cap and depth-check JSON bodies of matching ``POST`` routes."""
+    """Pure ASGI middleware: cap and depth-check JSON bodies of matching routes (``POST`` by
+    default; ``methods`` names others, such as ``PATCH``)."""
 
     def __init__(
         self,
@@ -91,8 +92,10 @@ class JsonBodyLimit:
         paths: Sequence[str],
         max_bytes: int,
         max_depth: int = 64,
+        methods: Sequence[str] = ("POST",),
     ) -> None:
         self.app = app
+        self.methods = frozenset(methods)
         self.patterns = [re.compile(p) for p in paths]
         self.max_bytes = max_bytes
         self.max_depth = max_depth
@@ -100,7 +103,7 @@ class JsonBodyLimit:
     def _matches(self, scope: Scope) -> bool:
         return (
             scope["type"] == "http"
-            and scope.get("method") == "POST"
+            and scope.get("method") in self.methods
             and any(p.fullmatch(scope.get("path", "")) for p in self.patterns)
         )
 
