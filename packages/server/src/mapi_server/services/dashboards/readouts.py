@@ -21,7 +21,10 @@ endpoint, else a ``new_version_available`` flag for the analyst).
 
 Visibility (D11): ``published`` rows are the history; ``private`` rows (saved scenarios)
 and ``pending_review`` rows (actuals waiting for an editor) are visible to their actor and
-to the analysts; ``hidden`` and ``failed`` rows only to the analysts.
+to the analysts; ``hidden`` and ``failed`` rows only to the analysts. A readout that fails
+(:func:`fail_readout`) leaves the history: a ``published`` or ``pending_review`` row becomes
+``hidden`` (it can never be published, the review refuses it) and its open refit request
+fails; its actor still sees it (with its problem), so an uploader learns the upload failed.
 """
 
 from __future__ import annotations
@@ -77,7 +80,7 @@ from mapi_spec.webhooks import WebhookEventType
 from mapi_spec.whatif import WhatIfScenario, evaluate_scenario
 from mapi_spec.xrjson import MAX_XRJSON_BYTES, XrJsonDataset
 from pydantic import JsonValue, ValidationError
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -262,6 +265,31 @@ async def publish_ready_event(session: AsyncSession, row: m.DashboardReadout) ->
     )
 
 
+async def fail_readout(
+    session: AsyncSession, row: m.DashboardReadout, problem: Mapping[str, Any]
+) -> None:
+    """``row`` failed: set ``failed`` and its problem. A ``published`` or ``pending_review``
+    row becomes ``hidden`` - a failed readout is never a published result in a client's or
+    a share link's history, and never waits for a review it cannot pass (v0.16 D11: failed
+    rows are the analysts'; the actor still sees its own, :func:`visible_to`) - and the open
+    refit request of the readout fails with the same problem."""
+    row.status = "failed"
+    row.problem = dict(problem)
+    if row.visibility in ("published", "pending_review"):
+        row.visibility = "hidden"
+        row.expires_at = None
+    await session.execute(
+        update(m.DashboardRefitRequest)
+        .where(
+            m.DashboardRefitRequest.dashboard_id == row.dashboard_id,
+            m.DashboardRefitRequest.readout_seq == row.seq,
+            m.DashboardRefitRequest.status == "open",
+        )
+        .values(status="failed", problem=dict(problem), decided_at=now())
+        .execution_options(synchronize_session=False)
+    )
+
+
 async def run_terminal(session: AsyncSession, run: m.Run, state: RunState) -> None:
     """A run became terminal (in :func:`~mapi_server.services.runs.apply_transition`'s
     transaction): the readout its labels name goes to ``materialising`` (succeeded) or
@@ -305,10 +333,14 @@ async def run_terminal(session: AsyncSession, run: m.Run, state: RunState) -> No
     if state is RunState.SUCCEEDED:
         row.status = "materialising"
     else:
-        row.status = "failed"
-        row.problem = run.problem or Problem.from_code(
-            ErrorCode.INTERNAL_ERROR, f"the run ended {state.value}"
-        ).model_dump(mode="json", exclude_none=True)
+        await fail_readout(
+            session,
+            row,
+            run.problem
+            or Problem.from_code(
+                ErrorCode.INTERNAL_ERROR, f"the run ended {state.value}"
+            ).model_dump(mode="json", exclude_none=True),
+        )
     await session.flush()
 
 
@@ -320,7 +352,10 @@ def visible_to(dctx: DashboardContext) -> Any:
     if dctx.is_analyst:
         return m.DashboardReadout.dashboard_id == dctx.dashboard_id
     own = and_(
-        m.DashboardReadout.visibility.in_(("private", "pending_review", "published")),
+        or_(
+            m.DashboardReadout.visibility.in_(("private", "pending_review", "published")),
+            m.DashboardReadout.status == "failed",  # a failed upload stays its actor's
+        ),
         m.DashboardReadout.actor_kind == dctx.principal_kind,
         m.DashboardReadout.actor_id == dctx.principal_id,
     )
@@ -1707,11 +1742,14 @@ async def _history(
     return out[-HISTORY_POINTS:]
 
 
-async def _previous(session: AsyncSession, row: m.DashboardReadout) -> dict[str, float]:
-    """The KPI panel values of the previous published, ready layout 2 readout."""
+async def _previous(
+    session: AsyncSession, row: m.DashboardReadout
+) -> tuple[dict[str, float], dict[str, str], bool]:
+    """The KPI panel values of the previous published, ready layout 2 readout, their tile
+    captions (which name the case a KPI picked) and whether it scored the same inputs."""
     prev = (
         await session.execute(
-            select(m.DashboardReadout.snapshot)
+            select(m.DashboardReadout.snapshot, m.DashboardReadout.input_fingerprint)
             .where(
                 m.DashboardReadout.dashboard_id == row.dashboard_id,
                 m.DashboardReadout.visibility == "published",
@@ -1721,15 +1759,20 @@ async def _previous(session: AsyncSession, row: m.DashboardReadout) -> dict[str,
             .order_by(m.DashboardReadout.seq.desc())
             .limit(1)
         )
-    ).scalar_one_or_none()
+    ).one_or_none()
     out: dict[str, float] = {}
-    panels = prev.get("panels") if isinstance(prev, dict) else None
+    captions: dict[str, str] = {}
+    if prev is None:
+        return out, captions, False
+    snap, fingerprint = prev
+    panels = snap.get("panels") if isinstance(snap, dict) else None
     for block in panels if isinstance(panels, list) else []:
         tile = block.get("tile") if isinstance(block, dict) and block.get("kind") == "kpi" else None
         value = _f(tile.get("value")) if isinstance(tile, dict) else None
-        if value is not None and isinstance(block.get("panel_id"), str):
+        if isinstance(tile, dict) and value is not None and isinstance(block.get("panel_id"), str):
             out[block["panel_id"]] = value
-    return out
+            captions[block["panel_id"]] = str(tile.get("caption") or "")
+    return out, captions, fingerprint == row.input_fingerprint
 
 
 async def _assets_of(ctx: ServerContext, session: AsyncSession, rev_id: str) -> dict[str, Any]:
@@ -1882,10 +1925,10 @@ async def _build_v2(
                     ErrorCode.NOT_FOUND, "the uploaded numbers can no longer be read"
                 )
             )
-        detail, pairs, more = pn.accuracy_of(
-            spec, material, pn.actual_cells(ds, column), names=_upload_names(mv, row.input_ref)
-        )
+        sent, names = pn.actual_cells(ds, column), _upload_names(mv, row.input_ref)
+        detail, pairs, more = pn.accuracy_of(spec, material, sent, names=names)
         material.accuracy, material.pairs = detail, pairs
+        material.sent = pn.sent_rows(spec, material, sent, names)
         notes += more
         conditioned = summary is not None and summary.conditioning is not None
         notes.append(_CONDITIONED_NOTE if conditioned else _COMPARED_NOTE)
@@ -1896,7 +1939,9 @@ async def _build_v2(
         material.accuracy, material.pairs = detail, pairs
     period = _dates_of([p.t for p in material.pairs])
     material.history = await _history(session, row, material.accuracy, period)
-    material.previous = await _previous(session, row)
+    material.previous, material.previous_captions, material.previous_same_inputs = await _previous(
+        session, row
+    )
     if any(isinstance(p, RecipePanel) and p.is_picture for p in spec.panels):
         material.assets = await _assets_of(ctx, session, rev.id)
     legacy: ReadoutSnapshot | None = None
@@ -1975,12 +2020,11 @@ async def record_failed_attempt(
             if isinstance(exc, TransientReadoutError)
             else "the readout could not be built"
         )
-        row.status = "failed"
-        row.problem = Problem.from_code(
+        await fail_readout(s, row, Problem.from_code(
             ErrorCode.INFRA_ERROR if isinstance(exc, TransientReadoutError)
             else ErrorCode.INTERNAL_ERROR,
             detail,
-        ).model_dump(mode="json", exclude_none=True)  # fmt: skip
+        ).model_dump(mode="json", exclude_none=True))  # fmt: skip
         return "failed"
 
 
@@ -2016,10 +2060,9 @@ async def materialise(ctx: ServerContext, dashboard_id: str, seq: int) -> str | 
         if row is None or row.status != "materialising":
             return None
         if built.snapshot is None:
-            row.status = "failed"
-            row.problem = (
+            await fail_readout(s, row, (
                 built.problem or Problem.from_code(ErrorCode.INTERNAL_ERROR, "the readout failed")
-            ).model_dump(mode="json", exclude_none=True)
+            ).model_dump(mode="json", exclude_none=True))  # fmt: skip
             return "failed"
         row.snapshot = snapshot_json(built.snapshot)
         row.status = "ready"

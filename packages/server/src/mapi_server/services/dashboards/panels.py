@@ -45,7 +45,7 @@ from mapi_spec.dashboard_metrics import (
     multiclass_metrics_of,
     normalise_label,
 )
-from mapi_spec.dashboard_presets import LEADS
+from mapi_spec.dashboard_presets import GENERIC_NOUNS, LEADS
 from mapi_spec.dashboard_v2 import (
     MAX_PANELS,
     MAX_SERIES_POINTS_V2,
@@ -228,6 +228,13 @@ class Material:
     pairs: Sequence[Pair] = ()
     history: Sequence[AccuracyPoint] = ()
     previous: Mapping[str, float] = field(default_factory=dict)
+    sent: Sequence[Mapping[str, str]] = ()
+    """The coordinates of the rows an actuals upload matched (``sent_rows``): charts and
+    KPIs of an actuals readout show only the cases the client sent, never the whole grid."""
+    previous_captions: Mapping[str, str] = field(default_factory=dict)
+    """The previous readout's KPI tile captions by panel id (they name a picked case)."""
+    previous_same_inputs: bool = True
+    """Whether the previous readout scored the same inputs (its ``input_fingerprint``)."""
     assets: Mapping[str, AssetInfo] = field(default_factory=dict)
 
 
@@ -416,6 +423,9 @@ class _Value:
     approximate: bool = False
     unit: TileUnit = "number"
     banded: bool = False
+    case: bool = False
+    """The value is of one case picked among several (named in the caption): a change is
+    shown only against the same case of the same inputs."""
 
 
 class _Unavailable(Exception):
@@ -507,11 +517,24 @@ def _periods(table: Table, cells: Sequence[Cell]) -> list[str]:
     return sorted({c.coords.get(table.time_dim, "") for c in cells} - {""}, key=period_key)
 
 
+def _only_sent(table: Table, cells: Sequence[Cell], mat: Material) -> list[Cell]:
+    """The cells of the rows the client sent (an actuals readout scores a grid of every id
+    × level: its other cells are cases nobody sent); all of them without an upload."""
+    if not mat.sent:
+        return list(cells)
+    dims = [d for d in mat.sent[0] if d in table.dims]
+    if not dims:
+        return list(cells)
+    want = {tuple(normalise_label(r.get(d, "")) for d in dims) for r in mat.sent}
+    kept = [c for c in cells if tuple(normalise_label(c.coords.get(d, "")) for d in dims) in want]
+    return kept or list(cells)
+
+
 def _output_value(
     spec: DashboardSpecV2, mat: Material, src: OutputSource, reduce: Reduce
 ) -> _Value:
     table = _need_table(mat, src.variable)
-    cells = _select(table.cells, src.select)
+    cells = _only_sent(table, _select(table.cells, src.select), mat)
     if not cells:
         raise _Unavailable("No value matches the chosen coordinates.")
     how = reduce.how
@@ -548,6 +571,7 @@ def _single(table: Table, cells: Sequence[Cell], mat: Material) -> _Value:
     first = cells[0]
     value = _cells_value(table, [first], what="the choice", mat=mat)
     value.caption = f"For {_coords_text(first.coords, _varying(table, cells))}"[:200]
+    value.case = True
     return value
 
 
@@ -624,7 +648,7 @@ def _aggregate(
     caption = f"The {word} over {', '.join(left)} of single predictions (no range)"
     if len(groups) > 1:
         caption += f" for {_coords_text(dict(zip(keep, key, strict=True)), keep)}"
-    return _Value(total, caption=caption[:200], approximate=True)
+    return _Value(total, caption=caption[:200], approximate=True, case=len(groups) > 1)
 
 
 def _share_above(
@@ -652,7 +676,7 @@ def _top_class(table: Table, cells: Sequence[Cell]) -> _Value:
     caption = f"Most likely: {label}"
     if len(groups) > 1:
         caption += f" (for {', '.join(key)})"
-    return _Value(p, caption=caption[:200], unit="probability")
+    return _Value(p, caption=caption[:200], unit="probability", case=len(groups) > 1)
 
 
 def _by_case(table: Table, cells: Sequence[Cell]) -> dict[tuple[str, ...], dict[str, float]]:
@@ -698,10 +722,30 @@ def _metric_value(spec: DashboardSpecV2, mat: Material, src: MetricSource) -> _V
         v * scale,
         lo * scale if lo is not None else None,
         hi * scale if hi is not None else None,
-        caption="From the model fit",
+        caption=_fit_caption(mat, src.key),
         unit=unit,
         banded=lo is not None and hi is not None,
     )
+
+
+FIT_CAPTION: Final = "When the model was built"
+
+
+def _fit_caption(mat: Material, key: str) -> str:
+    """A fit metric's caption: when it was measured, so it never reads as the accuracy on
+    the client's own cases - which, when this readout has it, follows by name."""
+    detail = mat.accuracy
+    raw = getattr(detail, key, None) if not isinstance(detail, EffectAccuracy) else None
+    n = getattr(detail, "n", 0) if detail is not None else 0
+    if not isinstance(raw, int | float) or isinstance(raw, bool) or not n:
+        return FIT_CAPTION
+    unit = _ACCURACY_UNITS.get(key, "number")
+    text = (
+        f"{_pct(float(raw))}%" if unit == "probability"
+        else f"{fmt(float(raw), 1)}%" if unit == "percent"
+        else fmt(float(raw), 2)
+    )  # fmt: skip
+    return f"{FIT_CAPTION}. On the {n} cases you sent: {text}"[:200]
 
 
 def _scorecard_value(mat: Material, src: ScorecardSource) -> _Value:
@@ -762,7 +806,7 @@ def _accuracy_value(mat: Material, metric: AccuracyMetric) -> _Value:
         v,
         lo,
         hi,
-        caption=f"Over {n} results that you sent" if n else None,
+        caption=f"On the {n} cases you sent" if n else None,
         unit=_ACCURACY_UNITS.get(metric, "number"),
         banded=lo is not None and hi is not None,
     )
@@ -780,7 +824,17 @@ def _band_caption(
     ok = o.predictive_ok if o is not None else True
     if band == "outcome" and (mat.band != "outcome" or not ok):
         return AVERAGE_RANGE
-    if band == "mean" and mat.band == "outcome" and ok:
+    if (
+        band == "mean"
+        and mat.band == "outcome"
+        and ok
+        and o is not None
+        and o.meaning not in ("rate", "effect")
+        and variable == spec.subject.variable
+    ):
+        # only the observed subject gets the noise of single results in a predictive
+        # score: a rate, a field total or another latent output keeps the range of its
+        # average, as the analyst asked - no sentence about "one new result" there
         return OUTCOME_RANGE
     return None
 
@@ -824,7 +878,10 @@ def _kpi(p: KpiPanel, spec: DashboardSpecV2, mat: Material) -> KpiBlock:
         # of a causal model) is part of the number, not a band of a score
         low, high = value.low, value.high
     note = _band_caption(p.band, mat, spec, variable, value.banded and low is not None)
+    caption = _join(p.caption or value.caption, note)
     prev = mat.previous.get(p.id) if p.compare == "previous" else None
+    if value.case and not (mat.previous_same_inputs and mat.previous_captions.get(p.id) == caption):
+        prev = None  # a picked case: never compared with a different case or other inputs
     delta = (v - prev) / abs(prev) if v is not None and prev is not None and prev != 0 else None
     tile = KpiValue(
         key="panel",
@@ -836,7 +893,7 @@ def _kpi(p: KpiPanel, spec: DashboardSpecV2, mat: Material) -> KpiBlock:
         delta_dir=_direction(delta),
         low=low,
         high=high,
-        caption=_join(p.caption or value.caption, note),
+        caption=caption,
         panel_id=p.id,
         approximate=value.approximate,
     )
@@ -1036,7 +1093,7 @@ def _history_block(c: _Chart, mat: Material) -> SeriesBlock:
 def _bars_block(c: _Chart, spec: DashboardSpecV2, mat: Material) -> BarsBlock:
     assert isinstance(c.source, OutputSource)
     table = _need_table(mat, c.source.variable)
-    cells = _select(table.cells, c.source.select)
+    cells = _only_sent(table, _select(table.cells, c.source.select), mat)
     if not cells:
         raise _Unavailable("No value matches the chosen coordinates.")
     keep_band = c.band != "none"
@@ -1049,8 +1106,10 @@ def _bars_block(c: _Chart, spec: DashboardSpecV2, mat: Material) -> BarsBlock:
         case = [c2 for c2 in cells if tuple(c2.coords.get(d, "") for d in keep) == first]
         if len(case) < len(cells):
             caption = _join(caption, f"For {_coords_text(case[0].coords, keep)}")
+        classes = [cell.coords.get(cdim, "") for cell in case]
         for cell in case:
-            rows.append(BarRow(label=cell.coords.get(cdim, "")[:64], value=cell.centre,
+            word = class_word(cell.coords.get(cdim, ""), classes)
+            rows.append(BarRow(label=word[:64], value=cell.centre,
                                low=cell.low if keep_band else None,
                                high=cell.high if keep_band else None))  # fmt: skip
     else:
@@ -1175,9 +1234,31 @@ def _table_block(p: TablePanel, spec: DashboardSpecV2, mat: Material) -> TableBl
     caption = p.caption
     if len(cells) > p.max_rows:
         caption = _join(caption, f"The first {p.max_rows} of {len(cells)} rows.")
+    heads = _column_words(cols[:12], table, spec)
     return TableBlock(
-        panel_id=p.id, title=p.title, caption=caption or None, columns=cols[:12], rows=rows
-    )
+        panel_id=p.id, title=p.title, caption=caption or None, columns=heads,
+        rows=[r[:12] for r in rows],
+    )  # fmt: skip
+
+
+_STAT_WORDS: Final[Mapping[str, str]] = {
+    "centre": "Expected", "low": "Likely low", "high": "Likely high",
+}  # fmt: skip
+
+
+def _column_words(cols: Sequence[str], table: Table, spec: DashboardSpecV2) -> list[str]:
+    """Plain column headers ("Month", "Expected", "Likely low"), never the raw ``t``,
+    ``centre``, ``low`` and ``high``; a header that would repeat keeps its raw name."""
+    out: list[str] = []
+    for col in cols:
+        if col in _STAT_WORDS:
+            word = _STAT_WORDS[col]
+        elif col == table.time_dim:
+            word = (spec.period_label or "period").capitalize()
+        else:
+            word = col.replace("_", " ").strip().capitalize() or col
+        out.append(word if word not in out else col)
+    return [w[:64] for w in out]
 
 
 def _unavailable(panel_id: str, title: str, reason: str) -> UnavailableBlock:
@@ -1370,6 +1451,29 @@ def join_actuals(
     return key_dims, preds, actual
 
 
+def sent_rows(
+    spec: DashboardSpecV2,
+    mat: Material,
+    uploaded: Sequence[tuple[Mapping[str, str], float | str]],
+    names: Mapping[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """The table coordinates (on the join dims) of each uploaded row that matched a
+    prediction of the subject, in upload order (for :attr:`Material.sent`)."""
+    table = table_of(mat.summary, spec.subject.variable)
+    if table is None or not uploaded:
+        return []
+    key_dims, preds, _ = join_actuals(table, uploaded, names)
+    out: list[dict[str, str]] = []
+    seen: set[tuple[str, ...]] = set()
+    for coords, _v in uploaded:
+        k = _key(coords, key_dims, dict(names or {}))
+        if k in preds and k not in seen:
+            seen.add(k)
+            first = preds[k][0]
+            out.append({d: first.coords.get(d, "") for d in key_dims})
+    return out
+
+
 AccuracyKind = Literal["error", "classification", "effect"]
 
 
@@ -1407,7 +1511,7 @@ def accuracy_of(
     kind = accuracy_kind(spec, mat, table)
     try:
         if kind == "classification":
-            return _class_accuracy(spec, table, preds, actual), [], notes
+            return _worded(_class_accuracy(spec, table, preds, actual)), [], notes
         pairs = _pairs(table, key_dims, preds, actual)
         if kind == "effect":
             assert mat.forecast is not None and mat.forecast.total is not None
@@ -1492,6 +1596,33 @@ def _class_accuracy(
     if len(classes) == 2 and pos is not None and pos in classes:
         return classification_metrics_of([r.get(pos, 0.0) for r in probs], ys, pos, threshold)
     return multiclass_metrics_of(probs, ys)
+
+
+_YES_NO: Final[Mapping[str, str]] = {"1": "Yes", "0": "No", "true": "Yes", "false": "No"}
+
+
+def class_word(code: str, labels: Iterable[str]) -> str:
+    """A class as the client reads it: the codes of a yes/no outcome (``0``/``1``,
+    ``false``/``true``) as "No"/"Yes"; any other label (the analyst's own words, the
+    classes of a multiclass model) as it is."""
+    codes = {normalise_label(x) for x in labels}
+    if codes and (codes <= {"0", "1"} or codes <= {"false", "true"}):
+        return _YES_NO.get(normalise_label(code), code)
+    return code
+
+
+def _worded(detail: ClassAccuracy) -> ClassAccuracy:
+    """``detail`` with its class labels in words (:func:`class_word`); the numbers stay."""
+    labels = list(detail.confusion.labels) if detail.confusion is not None else []
+    known = [*labels, *([detail.positive] if detail.positive else [])]
+    update: dict[str, Any] = {}
+    if detail.positive:
+        update["positive"] = class_word(detail.positive, known)
+    if detail.confusion is not None:
+        update["confusion"] = detail.confusion.model_copy(
+            update={"labels": [class_word(x, known) for x in labels]}
+        )
+    return detail.model_copy(update=update)
 
 
 def binary_positive(values: Sequence[float | str]) -> str:
@@ -1796,7 +1927,11 @@ def _pct(p: float | None) -> str:
 
 
 def _noun(spec: DashboardSpecV2) -> str:
+    """The subject as a noun in a sentence; empty for a default label that names nothing
+    ("Prediction", "Result": never "176 prediction next period")."""
     label = spec.subject.label
+    if label.strip().lower() in GENERIC_NOUNS:
+        return ""
     return label.lower() if label[1:] == label[1:].lower() else label
 
 
@@ -1842,7 +1977,9 @@ def lead_for(
         if isinstance(acc, ClassAccuracy) and acc.accuracy is not None:
             lead = t["accuracy"].format(n=acc.n, acc=_pct(acc.accuracy))
         elif head is not None and head.unit == "probability":
-            positive = spec.subject.positive_label or "a positive result"
+            pos = spec.subject.positive_label
+            coded = pos is None or normalise_label(pos) in _YES_NO  # a code, not a word
+            positive = "a positive result" if coded or pos is None else pos
             lead = t["chance"].format(p=_pct(head.value), positive_label=positive)
         elif top is not None:
             label = top.caption.removeprefix("Most likely: ").split(" (", 1)[0]
@@ -1869,12 +2006,13 @@ def lead_for(
         lead = t[key].format(centre=fmt(head.value, d), noun=noun, low=fmt(head.low, d),
                              high=fmt(head.high, d))  # fmt: skip
     if not lead:
+        about = f" for {noun}" if noun else ""
         lead = (
-            f"This readout shows the latest results of the model for {noun}."
+            f"This readout shows the latest results of the model{about}."
             if blocks
-            else f"This readout has no results for {noun} yet."
+            else f"This readout has no results{about} yet."
         )
-    return lead[:400]
+    return " ".join(lead.split())[:400]  # an empty noun leaves no double space
 
 
 def _causal_lead(spec: DashboardSpecV2, mat: Material, t: Mapping[str, str], noun: str) -> str:

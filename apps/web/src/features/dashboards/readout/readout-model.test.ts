@@ -19,6 +19,7 @@ import {
   gridSlope,
   formatValue,
   historyRow,
+  isHistoryReadout,
   lastSentAccuracy,
   metaLine,
   pageTabs,
@@ -175,6 +176,13 @@ describe("page words", () => {
     expect(row.kind).toBe("Your numbers");
     expect(row.tags.map((t) => t.label)).toEqual(["Waiting for review", "Refit requested"]);
     expect(historyRow(header({ status: "running" })).tags.map((t) => t.label)).toEqual(["Calculating"]);
+  });
+
+  it("a failed readout (now hidden) is the uploader's note, never a history row with a visibility tag", () => {
+    const row = historyRow(header({ kind: "actuals", visibility: "hidden", status: "failed" }), "UTC");
+    expect(row.tags.map((t) => t.label)).toEqual(["Did not finish"]);
+    expect(row.failed).toBe(true);
+    expect(isHistoryReadout({ kind: "actuals", visibility: "published", status: "failed" })).toBe(false);
   });
 });
 

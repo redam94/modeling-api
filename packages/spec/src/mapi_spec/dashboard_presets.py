@@ -634,6 +634,11 @@ def _value_kpi(pid: str, title: str, o: CatalogOutput, **kw: object) -> KpiPanel
     )
 
 
+GENERIC_NOUNS: Final = frozenset({"prediction", "predictions", "result", "results", "value"})
+"""Default subject labels that say nothing of the thing itself: never a noun in copy
+("Predicted prediction", "We expect 176 prediction next period")."""
+
+
 def _noun(subject: SubjectDef) -> str:
     return subject.label.lower()
 
@@ -734,7 +739,9 @@ def _panels_regression(c: _Ctx) -> list[AnyPanel]:
     out: list[AnyPanel] = []
     if o is None:
         return out
-    out.append(_value_kpi("predicted", f"Predicted {_noun(s)}"[:80], o))
+    noun = _noun(s)
+    title = "Prediction" if noun in GENERIC_NOUNS else f"Predicted {noun}"
+    out.append(_value_kpi("predicted", title[:80], o))
     out += _metric_kpis(c.catalog, ("rmse", "mae", "r2", "coverage_90", "coverage_80"), 3)
     for p in (
         _chart("by_case", f"{s.label} per case"[:80], "range", o),
@@ -1029,7 +1036,12 @@ def _subject(preset: PresetKey, o: CatalogOutput | None) -> SubjectDef:
         return SubjectDef(variable="y_hat", label="Result", unit="number")
     if preset == "classifier" or o.meaning == "class_probability":
         positive = o.classes[-1] if len(o.classes) == 2 else None
-        label = f"Chance of {positive}" if positive else "Chance"
+        coded = positive is not None and positive.strip().lower() in ("1", "true")
+        label = (
+            "Chance of a positive result" if coded
+            else f"Chance of {positive}" if positive
+            else "Chance"
+        )  # fmt: skip
         return SubjectDef(
             variable=o.name,
             label=label[:60],

@@ -13,7 +13,7 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
-import { dm, dmy, fixed, grouped, MISSING } from "@/components/ods/format";
+import { axisDate, dm, dmy, fixed, grouped, MISSING } from "@/components/ods/format";
 import { Legend } from "@/components/ods/legend";
 import { ZONE_FILL, ZONE_WORDS, type Zone } from "@/components/ods/tag-word";
 import { cn } from "@/lib/utils";
@@ -423,6 +423,7 @@ export function BandLine({
   expectedLabel = "Expected",
   actualLabel = "Actual",
   legend = true,
+  dates = "short",
   className,
 }: {
   label: string;
@@ -433,6 +434,8 @@ export function BandLine({
   expectedLabel?: string;
   actualLabel?: string;
   legend?: boolean;
+  /** `short`: DD/MM ticks (the layout 1 readout, unchanged); `auto`: with the year when DD/MM would repeat. */
+  dates?: "short" | "auto";
   className?: string;
 }) {
   const id = useId();
@@ -443,6 +446,7 @@ export function BandLine({
   const B = IDX.B;
   const n = points.length;
   const ts = points.map((p) => p.t);
+  const tick = dates === "auto" ? axisDate(ts) : dm;
   const mean = points.map((p) => p.mean);
   const lov = points.map((p) => (isNum(p.low) ? p.low : null));
   const hiv = points.map((p) => (isNum(p.high) ? p.high : null));
@@ -499,6 +503,19 @@ export function BandLine({
           </g>
         ) : null}
         <path d={linePath(xs, mean.map((v) => (isNum(v) ? y(v) : null)))} className="fill-none stroke-chart-index" strokeWidth={2} strokeLinejoin="round" />
+        {mean.map((v, j) =>
+          // a point with no neighbour draws no line: a dot shows it (with its value when alone)
+          isNum(v) && !isNum(mean[j - 1]) && !isNum(mean[j + 1]) ? (
+            <g key={`m${j}`} data-point="isolated">
+              <circle cx={r2(x(j))} cy={r2(y(v))} r={4} className="fill-chart-index stroke-card" strokeWidth={1.5} />
+              {mean.filter(isNum).length === 1 ? (
+                <text x={r2(x(j))} y={r2(y(v) - 10)} textAnchor="middle" className="tabular fill-foreground text-xs font-semibold">
+                  {format(v)}
+                </text>
+              ) : null}
+            </g>
+          ) : null,
+        )}
         {hasActual ? (
           <>
             <path d={linePath(xs, act.map((v) => (isNum(v) ? y(v) : null)))} className="fill-none stroke-chart-net" strokeWidth={1.5} strokeLinejoin="round" />
@@ -507,7 +524,7 @@ export function BandLine({
         ) : null}
         {labelIndices(n, W - L - R).map((j) => (
           <text key={j} x={r2(x(j))} y={H - 6} textAnchor={j === n - 1 && n > 1 ? "end" : "middle"} className={AXIS_TEXT}>
-            {dm(ts[j] ?? "")}
+            {tick(ts[j] ?? "")}
           </text>
         ))}
       </svg>

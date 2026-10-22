@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { dashboardErrorMessage, problemOf, useDownloadPredictions } from "../../client";
 import type { AccuracyDetail, AccuracyPoint, BatchSummary, ClientDashboard, DashboardClient, PredictionResult, Readout } from "../../types";
 import { asClientV2, plainNumber, unitText } from "../panel-model";
-import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, HISTORY_METRIC_LABEL, historyMetric, predictionLines, predictionsFileName } from "./results-model";
+import { accuracyDetailLines, accuracyMeasures, bandNote, batchLines, classWords, HISTORY_METRIC_LABEL, historyMetric, predictionLines, predictionsFileName } from "./results-model";
 import { Section } from "../parts";
 
 /** Save a downloaded Blob as a file (a same-origin Blob URL; the type stays CSV text). */
@@ -156,7 +156,7 @@ export function AccuracyDetailView({ dashboard, detail }: { dashboard: ClientDas
       ) : null}
       {detail.kind === "classification" && detail.bins?.length ? <Calibration label="Are the probabilities right?" bins={detail.bins} /> : null}
       {detail.kind === "classification" && detail.confusion?.labels?.length ? (
-        <ConfusionGrid label="Actual and predicted results" labels={detail.confusion.labels} counts={detail.confusion.counts ?? []} />
+        <ConfusionGrid label="Actual and predicted results" labels={classWords(detail.confusion.labels)} counts={detail.confusion.counts ?? []} />
       ) : null}
     </div>
   );

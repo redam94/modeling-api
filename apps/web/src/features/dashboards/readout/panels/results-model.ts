@@ -68,7 +68,7 @@ export function outputWords(name: string, d: Pick<ClientDashboard, "kpi" | "subj
 export function batchLines(b: BatchSummary, d: Pick<ClientDashboard, "kpi" | "subject">): string[] {
   const lines = [`The model scored ${grouped(b.n_scored)} of ${grouped(b.n_rows)} ${plural("case", b.n_rows)}.`];
   if (isNum(b.share_positive)) {
-    const pos = d.subject?.positive_label;
+    const pos = d.subject?.positive_label ? classWords([d.subject.positive_label])[0] : undefined;
     lines.push(`${fixed(b.share_positive * 100, 1)}% of the cases are ${pos ? `likely "${pos}"` : "above the threshold"}.`);
   }
   const unit = d.subject?.unit ?? d.kpi.unit;
@@ -112,8 +112,9 @@ export function accuracyDetailLines(a: AccuracyDetail, d: Pick<ClientDashboard, 
     const n = a.n ?? 0;
     const lines = [`We compared ${n} ${plural("case", n)} with the predictions.`];
     if (isNum(a.accuracy)) lines.push(`The model was right ${pct(a.accuracy)} of the time.`);
-    if (isNum(a.rate_pred) && isNum(a.rate_obs)) lines.push(`It predicted ${pct(a.rate_pred)}${a.positive ? ` "${a.positive}"` : ""}; the actual share was ${pct(a.rate_obs)}.`);
-    if (isNum(a.threshold)) lines.push(`A case counts as${a.positive ? ` "${a.positive}"` : " positive"} when its probability is ${pct(a.threshold)} or more.`);
+    const positive = a.positive ? classWords([a.positive])[0] : undefined;
+    if (isNum(a.rate_pred) && isNum(a.rate_obs)) lines.push(`It predicted ${pct(a.rate_pred)}${positive ? ` "${positive}"` : ""}; the actual share was ${pct(a.rate_obs)}.`);
+    if (isNum(a.threshold)) lines.push(`A case counts as${positive ? ` "${positive}"` : " positive"} when its probability is ${pct(a.threshold)} or more.`);
     return lines;
   }
   const lines: string[] = [];
@@ -173,3 +174,16 @@ export const HISTORY_METRIC_LABEL: Record<string, string> = {
   effect_total: "Effect",
   effect_relative: "Relative effect",
 };
+
+const YES_NO: Record<string, string> = { "1": "Yes", "0": "No", true: "Yes", false: "No" };
+
+/**
+ * Class labels as a client reads them: the codes of a yes/no outcome (`0`/`1`, `false`/`true`)
+ * as "No"/"Yes"; other labels (the analyst's words, multiclass classes) unchanged. The server
+ * words new readouts itself; this covers readouts stored before.
+ */
+export function classWords(labels: readonly string[]): string[] {
+  const codes = new Set(labels.map((l) => l.trim().toLowerCase().replace(/\.0+$/, "")));
+  const coded = codes.size > 0 && ([...codes].every((c) => c === "0" || c === "1") || [...codes].every((c) => c === "true" || c === "false"));
+  return coded ? labels.map((l) => YES_NO[l.trim().toLowerCase().replace(/\.0+$/, "")] ?? l) : [...labels];
+}

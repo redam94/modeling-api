@@ -84,6 +84,7 @@ from mapi_server.services.dashboards.crud import read_grid
 from mapi_server.services.dashboards.readouts import (
     Actor,
     _lock_dashboard,
+    fail_readout,
     new_readout,
     readout_labels,
     scenario_snapshot,
@@ -582,8 +583,8 @@ async def submit_queued(ctx: ServerContext, session: AsyncSession, row: m.Dashbo
             request = baseline_request(row.model_ref, data, _representation(mv))
             await _submit(session, octx, row, request)
     except MapiError as exc:
-        row.status = "failed"
-        row.problem = exc.to_problem().model_dump(mode="json", exclude_none=True)
+        problem = exc.to_problem().model_dump(mode="json", exclude_none=True)
+        await fail_readout(session, row, problem)
         await session.flush()
 
 

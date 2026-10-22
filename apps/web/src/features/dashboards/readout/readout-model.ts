@@ -427,7 +427,8 @@ export interface HistoryRow {
 
 export function historyRow(h: ReadoutHeader, timeZone?: string): HistoryRow {
   const tags: Tag[] = [];
-  const vis = visibilityTag(h.visibility);
+  // a failed readout is the uploader's own note, never a history row: no visibility tag
+  const vis = h.status === "failed" ? null : visibilityTag(h.visibility);
   if (vis) tags.push(vis);
   const refit = refitTag(h.refit_status);
   if (refit) tags.push(refit);

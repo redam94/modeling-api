@@ -193,7 +193,7 @@ def test_no_interval_is_a_sum_of_bounds(case: str) -> None:
 def test_the_forecast_lead_and_legacy_series() -> None:
     m = golden.load_case("forecast_bsts")
     snap = pn.build_snapshot_v2(compiled(m), material(m, "predictive"))
-    assert snap.lead.startswith("We expect 1,072.9 prediction next period, likely between")
+    assert snap.lead.startswith("We expect 1,072.9 next period, likely between")
     (series,) = snap.series
     assert series.name == "y_hat" and series.points[-1].t == "2020-12-01"
     fan = blocks_of(snap)["fan"]
@@ -575,7 +575,7 @@ def test_causal_impact_actuals_update_the_effect_with_its_range() -> None:
     assert detail.relative == pytest.approx(want["effect_relative"] * 100, rel=1e-9)
     mat.accuracy = detail
     lead = pn.build_snapshot_v2(spec, mat).lead
-    assert lead.startswith("The change added about 9.9 prediction (likely 0.2 to 23.2)")
+    assert lead.startswith("The change added about 9.9 (likely 0.2 to 23.2)")
 
 
 def test_scatter_and_residuals_show_after_actuals() -> None:
@@ -765,3 +765,103 @@ def test_caption_parts_never_run_two_sentences_together() -> None:
     )
     assert pn._join("Done.", None, "Next") == "Done. Next"
     assert pn._join("Only one") == "Only one"
+
+
+# ============================================================== v0.17 live follow-ups (B3, B13)
+
+
+def _class_grid() -> ScoreSummary:
+    """A classifier scored on the grid of 3 stores × 3 skus for 3 sent rows (a/k0, b/k1,
+    c/k2): the other 6 cells are cases nobody sent (their drivers are gaps)."""
+    sent = {("a", "k0"): 0.1, ("b", "k1"): 0.5, ("c", "k2"): 0.9}
+    rows = [[s, k, sent.get((s, k))] for s in "abc" for k in ("k0", "k1", "k2")]
+    table = {"variable": "y_hat", "dims": ["store", "sku"], "columns": ["store", "sku", "mean"]}
+    return ScoreSummary.model_validate({"tables": [{**table, "rows": rows}]})
+
+
+def test_actuals_charts_show_only_the_rows_the_client_sent() -> None:
+    """B3 follow-up (live): "Chance of each result" listed every store × sku cell of the
+    score grid (most of them a dash); it shows each sent row's own cell only."""
+    m = golden.load_case("classifier_binary")
+    spec = compiled(m)
+    mat = pn.Material(kind="actuals", mode="predict", summary=_class_grid(), band="mean")
+    sent = [({"store": s, "sku": k}, v) for s, k, v in (("a", "k0", 1.0), ("b", "k1", 0.0),
+                                                         ("c", "k2", 1.0))]  # fmt: skip
+    mat.sent = pn.sent_rows(spec, mat, sent)
+    assert mat.sent == [{"store": "a", "sku": "k0"}, {"store": "b", "sku": "k1"},
+                        {"store": "c", "sku": "k2"}]  # fmt: skip
+    bars = blocks_of(pn.build_snapshot_v2(spec, mat))["chances"]
+    assert [r.label for r in bars.rows] == ["a · k0", "b · k1", "c · k2"]
+    assert all(r.value is not None for r in bars.rows)
+    # without an upload, the grid as before
+    mat.sent = ()
+    assert len(blocks_of(pn.build_snapshot_v2(spec, mat))["chances"].rows) == 9
+
+
+def test_a_picked_case_is_compared_only_with_the_same_case() -> None:
+    """B13 (live): "Chance of a positive ▲11% more than the readout before" compared the first
+    cell of two readouts of different cases."""
+    m = golden.load_case("classifier_binary")
+    spec = compiled(m)
+    panel = next(p for p in spec.panels if p.id == "chance")
+    panel = panel.model_copy(update={"compare": "previous"})
+    mat = material(m)
+    first = pn._kpi(panel, spec, mat).tile
+    assert first.caption.startswith("For store s0")
+    mat.previous = {"chance": 0.3}
+    mat.previous_captions = {"chance": first.caption}
+    mat.previous_same_inputs = False  # another upload: other cases
+    assert pn._kpi(panel, spec, mat).tile.delta is None
+    mat.previous_same_inputs = True
+    mat.previous_captions = {"chance": "For store s9, sku k2, week 2024-09-22"}
+    assert pn._kpi(panel, spec, mat).tile.delta is None
+    mat.previous_captions = {"chance": first.caption}
+    tile = pn._kpi(panel, spec, mat).tile
+    assert tile.delta == pytest.approx((first.value - 0.3) / 0.3)
+    assert tile.delta_basis == "the readout before"
+
+
+def test_fit_and_sent_accuracy_are_named_apart_and_classes_are_words() -> None:
+    """B13 (live): "How often the model is right 56.7% - From the model fit" next to "On the
+    40 cases you sent, the model was right 55%"; the confusion grid showed 0/1."""
+    m = golden.load_case("classifier_binary")
+    spec = compiled(m)
+    mat = material(m)
+    fit = blocks_of(pn.build_snapshot_v2(spec, mat))["m_accuracy"].tile
+    assert fit.caption == pn.FIT_CAPTION
+    detail, _, _ = pn.accuracy_of(spec, mat, uploaded(m), names=m.actuals["names"])
+    assert isinstance(detail, ClassAccuracy) and detail.confusion is not None
+    assert detail.confusion.labels == ["No", "Yes"] and detail.positive == "Yes"
+    mat.accuracy = detail
+    fit = blocks_of(pn.build_snapshot_v2(spec, mat))["m_accuracy"].tile
+    assert fit.caption == "When the model was built. On the 45 cases you sent: 78%"
+    assert (
+        pn.class_word("1", ["0", "1"]) == "Yes"
+        and pn.class_word("false", ["true", "false"]) == "No"
+    )
+    assert pn.class_word("mid", ["low", "mid", "high"]) == "mid"
+    assert pn.class_word("churned", ["churned", "stayed"]) == "churned"
+
+
+def test_default_labels_and_raw_columns_never_reach_the_copy() -> None:
+    """B13 (live): "Predicted prediction", "We expect 176.2 prediction next period" and the
+    raw ``t, centre, low, high`` headers of a forecast table."""
+    from mapi_spec.dashboard_v2 import TablePanel
+
+    reg = compiled(golden.load_case("regression_point"))
+    assert reg.subject.label == "Prediction"
+    assert next(p for p in reg.panels if p.id == "predicted").title == "Prediction"
+    m = golden.load_case("forecast_bsts")
+    spec = compiled(m)
+    mat = material(m)
+    variable = spec.subject.variable
+    table = pn.table_of(mat.summary, variable)
+    assert table is not None and table.time_dim is not None
+    source = {"kind": "output", "variable": variable}
+    panel = TablePanel.model_validate(
+        {"kind": "table", "id": "tbl", "title": "Numbers", "source": source}
+    )
+    block = pn._table_block(panel, spec, mat)
+    assert "centre" not in block.columns and "Expected" in block.columns
+    assert block.columns[0] == (spec.period_label or "period").capitalize()
+    assert all(len(r) == len(block.columns) for r in block.rows)

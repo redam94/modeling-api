@@ -15,8 +15,8 @@
  * of the signed-in app. The heavy renderers (`panels/readout-extra`) and the three input
  * sections load lazily. WP13's builder preview renders this component with `preview`.
  */
-import { Download, X } from "lucide-react";
-import { lazy, useState } from "react";
+import { ChevronRight, Download, X } from "lucide-react";
+import { lazy, useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
 
 import { Eyebrow, InlineMessage } from "@/components/ods";
@@ -142,6 +142,44 @@ function PlannerReadout({ client, dashboard, preview, tab, onTabChange }: Pick<P
   );
 }
 
+/**
+ * The section tabs. On a phone they scroll sideways inside their own row (never the page), with a
+ * fade and a "more" arrow on the side that has hidden tabs, and the open tab scrolled into view.
+ */
+function SectionTabs({ open, children }: { open: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({ left: false, right: false });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setMore((m) => (m.left === left && m.right === right ? m : { left, right }));
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    measure();
+    el.querySelector<HTMLElement>('[data-state="active"]')?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [open, measure]);
+  return (
+    <div className="relative min-w-0" data-tabs="sections" data-more-left={more.left || undefined} data-more-right={more.right || undefined}>
+      <TabsList ref={ref} aria-label="Dashboard sections" className="w-full gap-5 sm:gap-8" onScroll={measure}>
+        {children}
+      </TabsList>
+      {more.left ? <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-background to-transparent" /> : null}
+      {more.right ? (
+        <span aria-hidden data-more="right" className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-background via-background/80 to-transparent text-muted-foreground">
+          <ChevronRight className="size-4" />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function PanelReadout({ client, dashboard: given, preview = false, readout, section, onSectionChange, tab, onTabChange }: PanelReadoutProps) {
   const dashboard: ClientDashboard = readout !== undefined ? { ...given, latest_readout: readout } : given;
   const [own, setOwn] = useState<SectionKey>(() => sectionOfTab(tab) ?? "overview");
@@ -175,13 +213,13 @@ export function PanelReadout({ client, dashboard: given, preview = false, readou
       {dashboard.note ? <p className="max-w-[72ch] text-sm whitespace-pre-line text-muted-foreground">{dashboard.note}</p> : null}
       <Tabs value={open} onValueChange={(v) => choose(v as SectionKey)}>
         {sections.length > 1 ? (
-          <TabsList aria-label="Dashboard sections" className="w-full">
+          <SectionTabs open={open}>
             {sections.map((s) => (
               <TabsTrigger key={s} value={s}>
                 {SECTION_LABEL[s]}
               </TabsTrigger>
             ))}
-          </TabsList>
+          </SectionTabs>
         ) : null}
         <TabsContent value="overview">
           <Overview client={client} dashboard={dashboard} readout={latest} />

@@ -12,7 +12,7 @@
  */
 import { useEffect, useId, useRef, useState } from "react";
 
-import { dm, dmy, fixed, grouped, MISSING } from "@/components/ods/format";
+import { axisDate, dmy, fixed, grouped, MISSING } from "@/components/ods/format";
 import { Legend, type LegendColor } from "@/components/ods/legend";
 import { niceDomain, type ChartPeriod } from "@/components/readout-charts";
 import { colormapLut, gradientCss, type ColormapName } from "@/features/explore/fields";
@@ -217,7 +217,9 @@ export function Calibration({ label, bins, className }: { label: string; bins: r
   const id = useId();
   const S = 240;
   const P = 36;
-  const x = scale(0, 1, P, S - 8);
+  // the right margin holds half of the "100%" label centred on the last tick (never clipped)
+  const R = 20;
+  const x = scale(0, 1, P, S - R);
   const y = scale(0, 1, S - P, 8);
   const maxN = Math.max(1, ...bins.map((b) => b.n));
   const pct = (v: number) => `${fixed(v * 100, 0)}%`;
@@ -230,7 +232,7 @@ export function Calibration({ label, bins, className }: { label: string; bins: r
       <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} role="img" aria-label={summary} aria-describedby={`${id}-table`} data-chart="calibration" className="block max-w-full">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
           <g key={t}>
-            <line x1={P} x2={S - 8} y1={r2(y(t))} y2={r2(y(t))} className="stroke-chart-grid" />
+            <line x1={P} x2={S - R} y1={r2(y(t))} y2={r2(y(t))} className="stroke-chart-grid" />
             <text x={P - 6} y={r2(y(t) + 4)} textAnchor="end" className={AXIS_TEXT}>
               {pct(t)}
             </text>
@@ -554,14 +556,16 @@ export function SmallTable({
   className?: string;
 }) {
   const cell = (v: string | number | boolean | null | undefined) => (v === null || v === undefined || v === "" ? MISSING : typeof v === "number" ? format(v) : String(v));
+  // a column of numbers is right-aligned, its header too (so the header sits over its digits)
+  const numeric = columns.map((_, j) => rows.some((r) => typeof r[j] === "number"));
   return (
     <div className={cn("relative max-w-full overflow-x-auto rounded-lg border", className)} data-slot="scroll-x" data-chart="table">
       <table className="w-max min-w-full border-collapse text-sm">
         <caption className="sr-only">{label}</caption>
         <thead>
           <tr className="border-b bg-muted/50 text-left text-xs text-hint">
-            {columns.map((c) => (
-              <th key={c} scope="col" className="px-3 py-2 font-medium">
+            {columns.map((c, j) => (
+              <th key={c} scope="col" data-numeric={numeric[j] ? "" : undefined} className={cn("px-3 py-2 font-medium", numeric[j] && "text-right")}>
                 {c}
               </th>
             ))}
@@ -622,6 +626,7 @@ export function MultiLine({
   const x = (j: number) => L + step * (j + 0.5);
   const y = scale(dom.lo, dom.hi, B, T);
   const every = Math.max(1, Math.ceil((ts.length * 56) / Math.max(1, W - L - 12)));
+  const tick = axisDate(ts);
   const path = (s: LineSeries) => {
     let d = "";
     let pen = false;
@@ -657,7 +662,7 @@ export function MultiLine({
           {ts.map((t, j) =>
             (ts.length - 1 - j) % every === 0 ? (
               <text key={t} x={r2(x(j))} y={H - 6} textAnchor="middle" className={AXIS_TEXT}>
-                {dm(t)}
+                {tick(t)}
               </text>
             ) : null,
           )}

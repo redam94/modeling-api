@@ -120,3 +120,15 @@ describe("tags, legends and strips", () => {
     expect(strip).toHaveTextContent("£42,000");
   });
 });
+
+describe("axisDate", () => {
+  it("keeps DD/MM while the labels differ, and adds the year when they would repeat", async () => {
+    const { axisDate } = await import("./format");
+    expect(axisDate(["2026-01-05", "2026-01-12"])("2026-01-12")).toBe("12/01");
+    const quarters = ["2011-10-01", "2012-10-01", "2013-10-01", "2014-10-01"];
+    expect(quarters.map(axisDate(quarters))).toEqual(["10/2011", "10/2012", "10/2013", "10/2014"]);
+    const days = ["2011-03-05", "2012-03-05"];
+    expect(days.map(axisDate(days))).toEqual(["05/03/11", "05/03/12"]);
+    expect(axisDate(["case 1", "case 2"])("case 2")).toBe("case 2");
+  });
+});

@@ -84,6 +84,22 @@ describe("PanelReadout: Overview", () => {
     expect(card).not.toBeNull();
   });
 
+  it("a history of one upload is a sentence, not an empty chart; the section tabs scroll in their own row", () => {
+    const d = classifierDashboard({
+      latest_readout: readout(5, {
+        snapshot: snapshot({
+          panels: [{ kind: "series", panel_id: "acc", title: "Accuracy over time", intent: "accuracy_history", series: [{ name: "mape", label: "Average error", points: [{ t: "2026-01-05", mean: 4.25 }] }] }],
+        }),
+      }),
+    });
+    view(<PanelReadout client={fakeClient(d)} dashboard={d} />);
+    const one = document.querySelector("[data-history=one-point]");
+    expect(one?.textContent).toBe("Average error: 4.3% on 05/01/2026. The chart shows once there are results from two uploads.");
+    expect(document.querySelector("[data-chart=band-line]")).toBeNull();
+    const row = document.querySelector("[data-tabs=sections]");
+    expect(row?.contains(screen.getByRole("tablist", { name: "Dashboard sections" }))).toBe(true);
+  });
+
   it("hides sections the client cannot use and a readout that is not ready says so", () => {
     const d = classifierDashboard({ sections: ["overview", "history"], latest_readout: readout(4, { status: "running", snapshot: null }) });
     view(<PanelReadout client={fakeClient(d)} dashboard={d} />);

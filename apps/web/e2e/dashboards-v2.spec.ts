@@ -415,10 +415,22 @@ test.describe("a client user", () => {
       await as(page, "cleo");
       await page.goto(`/c/${IDS.classifier}`);
       await expect(page.getByRole("heading", { level: 1, name: "High demand weeks" })).toBeVisible();
+      const row = page.locator("[data-tabs=sections]");
+      // the tabs that do not fit scroll in their own row, with a "more" side shown
+      await expect(row).toHaveAttribute("data-more-right", "true");
       for (const s of ["Overview", "Try a case", "Check accuracy", "Score a file", "History"]) {
         await openSection(page, s);
         await noHorizontalScroll(page);
+        // the open tab is scrolled fully into view, never cut off ("Sc...")
+        const tab = page.getByRole("tablist", { name: "Dashboard sections" }).getByRole("tab", { name: s, exact: true });
+        await expect
+          .poll(async () => {
+            const box = await tab.boundingBox();
+            return box !== null && box.x >= 0 && box.x + box.width <= 360 + 0.5;
+          })
+          .toBe(true);
       }
+      await expect(row).toHaveAttribute("data-more-left", "true");
     });
   });
 });

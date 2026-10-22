@@ -16,6 +16,7 @@ import type { ClientDashboard, DashboardClient, DashboardClientV2, PanelBlock, P
 import { asClientV2, plainNumber, unitText } from "../panel-model";
 import { Working } from "../parts";
 import { periodOf } from "../readout-model";
+import { classWords } from "./results-model";
 
 function PictureImage({ client, block }: { client: DashboardClientV2; block: PictureBlock }) {
   const q = useDashboardAsset(client, block.asset_id);
@@ -66,7 +67,7 @@ export function HeavyBlock({ client, dashboard, block }: { client: DashboardClie
     case "calibration":
       return <Calibration label={block.title} bins={block.bins ?? []} />;
     case "confusion":
-      return <ConfusionGrid label={block.title} labels={block.labels ?? []} counts={block.counts ?? []} />;
+      return <ConfusionGrid label={block.title} labels={classWords(block.labels ?? [])} counts={block.counts ?? []} />;
     case "field":
       return (
         <FieldHeatmap

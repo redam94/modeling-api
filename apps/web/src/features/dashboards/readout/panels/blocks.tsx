@@ -11,6 +11,7 @@ import { lazy } from "react";
 import type * as React from "react";
 
 import { InlineMessage, StatGrid, StatTile } from "@/components/ods";
+import { dmy } from "@/components/ods/format";
 import { BandLine } from "@/components/readout-charts";
 
 import type { ClientDashboard, DashboardClient, KpiBlock, NoteBlock, PanelBlock, ReadoutSnapshot, SeriesBlock, UnavailableBlock } from "../../types";
@@ -88,6 +89,17 @@ function SeriesView({ dashboard, block }: { dashboard: ClientDashboard; block: S
         : line?.format === "number"
           ? (v: number) => v.toFixed(3)
           : subjectFormat;
+  const valued = points.filter((p) => typeof p.mean === "number" && Number.isFinite(p.mean));
+  if (block.intent === "accuracy_history" && valued.length < 2) {
+    // one point is no line: say it in a sentence until a second upload makes a chart
+    const only = valued[0];
+    return (
+      <p className="text-sm text-foreground" data-history="one-point">
+        {only ? `${words.expected}: ${format(only.mean as number)} on ${dmy(only.t)}. ` : ""}
+        The chart shows once there are results from two uploads.
+      </p>
+    );
+  }
   return (
     <BandLine
       label={`${s?.label || block.title} each ${periodOf(dashboard)}`}
@@ -97,6 +109,7 @@ function SeriesView({ dashboard, block }: { dashboard: ClientDashboard; block: S
       nowAt={split >= 0 ? split : undefined}
       expectedLabel={words.expected}
       actualLabel={words.actual}
+      dates="auto"
     />
   );
 }
