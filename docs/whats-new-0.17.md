@@ -162,9 +162,19 @@ still score image collections in the app.
   inputs, a BSTS with a regressor) builds its baseline with the drivers held at their last
   values (`future_covariates: carry_last`), as a forecast row and a conditioned upload do.
 - In a scored file, each row is scored at its own levels: when the rows give another dim
-  too (`sku`), the summary and the CSV hold only each row's own cell, and the size check
-  counts every id × level the model scores, so a file that is too large is refused before
-  a run.
+  too (`sku`), the summary and the CSV hold only each row's own cell. The score asks only
+  for the outputs of the file (and the subject of the dashboard). The size check counts
+  every id × level the model scores for those outputs, so a file that is too large is
+  refused before a run.
+- A kept case that an editor publishes goes into **History** only. The **Overview** and the
+  "more than the readout before" change of a key number use only baselines, refreshes,
+  saved plans and uploads.
+- An upload whose readout does not finish is hidden from the history. The person who sent
+  it still sees it, marked **Did not finish**, and it cannot be published.
+- Validate refuses a number input whose default is not on its step (a client could not send
+  it) and a case id column (of a scored file or of uploads matched by case) that is not a
+  dim of the model. The builder offers the model's dims for the case id column, and a new
+  number input gets a round step (for example 0.1) with bounds and a default on it.
 - A picture panel that was still being drawn when a readout was built shows the picture
   as soon as the render ends.
 - Migration `0020_any_model_dashboards`: new readout kinds and triggers, a larger snapshot

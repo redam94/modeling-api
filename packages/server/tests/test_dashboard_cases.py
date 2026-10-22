@@ -268,6 +268,32 @@ def test_the_cell_estimate_counts_every_output_dim() -> None:
                     dims={"store": "store_id"})  # fmt: skip
     assert n == 100 * 10 * (2 + 3) + 100 * 3 * (2 + 3)
     assert BATCH_CELL_BUDGET == 60_000
+    # R1 (live): only the outputs the score asks for count (not e.g. ``contributions``)
+    only = batch_cells(spec, cat, 100, per_row={"store"}, sizes={"week": 10},
+                       dims={"store": "store_id"}, outputs={"p"})  # fmt: skip
+    assert only == 100 * 3 * (2 + 3)
+
+
+def test_a_2000_row_file_over_3_skus_fits_when_only_the_batch_output_counts() -> None:
+    """R1 (live): a classifier batch of ``max_rows`` 2000 with sku k0/k1/k2 was refused
+    (about 78000 results) because the estimate counted ``contributions`` too."""
+    from mapi_spec.dashboard_v2 import CatalogOutput, SourceCatalog
+
+    cat = SourceCatalog(
+        outputs=[
+            CatalogOutput(name="y_hat", manifest_name="y_hat", dims=["store", "sku"],
+                          shape="categorical", representation="draws"),
+            CatalogOutput(name="contributions", manifest_name="contributions",
+                          dims=["store", "sku", "feature"], shape="categorical",
+                          representation="draws"),
+        ]
+    )  # fmt: skip
+    spec = DashboardSpecV2.model_validate({**_spec_example(), "preset": "generic"})
+    kw: dict[str, Any] = {
+        "per_row": {"store", "sku"}, "sizes": {"sku": 3, "feature": 2}, "dims": {},
+    }  # fmt: skip
+    assert batch_cells(spec, cat, 2000 * 3, **kw) > BATCH_CELL_BUDGET
+    assert batch_cells(spec, cat, 2000 * 3, outputs={"y_hat"}, **kw) <= BATCH_CELL_BUDGET
 
 
 # ============================================================================ scenario rows
@@ -560,7 +586,7 @@ async def test_a_batch_whose_summary_would_not_fit_is_refused(
         ctx, kit, preset="generic", scenario_rows=CASE_ROWS,
         batch={**BATCH, "max_rows": 5000},
     )  # fmt: skip
-    monkeypatch.setattr(cases, "BATCH_CELL_BUDGET", 100)
+    monkeypatch.setattr(cases, "BATCH_CELL_BUDGET", 50)  # under 20 rows of y_hat alone
     ids = [f"c{k}" for k in range(20)]
     r = await kit["cleo"].post(f"/v1/dashboards/{dash_id}/batch", json=batch_file(ids, [12.0] * 20))
     assert r.status_code == 409 and r.json()["code"] == "DASHBOARD_BATCH_TOO_LARGE", r.text
@@ -619,6 +645,8 @@ async def test_a_file_with_a_sku_per_row_keeps_the_file_and_counts_the_whole_gri
     assert r.status_code == 202, r.text
     assert counted == [4 * 3]
     (run,) = seen
+    # R1: the score asks only for the batch's outputs (and the subject), never every output
+    assert run.request["output"]["vars"] == ["y_hat"]
     row = await readout_row(ctx, dash_id, r.json()["seq"])
     ref = row.input_ref
     assert ref is not None and ref["dim_columns"] == {"sku": "sku"}

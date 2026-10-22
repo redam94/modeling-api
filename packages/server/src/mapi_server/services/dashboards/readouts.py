@@ -89,6 +89,7 @@ from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.audit import write_audit
 from mapi_server.services.dashboards.access import (
+    OVERVIEW_KINDS,
     DashboardContext,
     is_mine,
     readout_dto,
@@ -1742,6 +1743,16 @@ async def _history(
     return out[-HISTORY_POINTS:]
 
 
+def accuracy_notes(spec: DashboardSpecV2, detail: object, notes: Sequence[str]) -> list[str]:
+    """The notes of the layout 2 comparison of an upload, for the readout. The media planner
+    compares its uploads the layout 1 way (its legacy snapshot): there the layout 2 join
+    finds no table of the KPI, and its "no values of sales to compare" contradicted the
+    comparison the readout shows (v0.17 R7), so a planner keeps none of them."""
+    if spec.preset == "mmm_planner" and spec.mmm is not None and detail is None:
+        return []
+    return list(notes)
+
+
 async def _previous(
     session: AsyncSession, row: m.DashboardReadout
 ) -> tuple[dict[str, float], dict[str, str], bool]:
@@ -1755,6 +1766,7 @@ async def _previous(
                 m.DashboardReadout.visibility == "published",
                 m.DashboardReadout.status == "ready",
                 m.DashboardReadout.seq < row.seq,
+                m.DashboardReadout.kind.in_(OVERVIEW_KINDS),
             )
             .order_by(m.DashboardReadout.seq.desc())
             .limit(1)
@@ -1929,7 +1941,7 @@ async def _build_v2(
         detail, pairs, more = pn.accuracy_of(spec, material, sent, names=names)
         material.accuracy, material.pairs = detail, pairs
         material.sent = pn.sent_rows(spec, material, sent, names)
-        notes += more
+        notes += accuracy_notes(spec, detail, more)
         conditioned = summary is not None and summary.conditioning is not None
         notes.append(_CONDITIONED_NOTE if conditioned else _COMPARED_NOTE)
         if spec.preset == "causal_impact" and not isinstance(detail, EffectAccuracy):

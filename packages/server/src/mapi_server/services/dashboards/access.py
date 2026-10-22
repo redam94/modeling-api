@@ -67,6 +67,7 @@ from mapi_server.services.endpoints import live_capabilities_snapshot
 from mapi_server.services.runs import now
 
 __all__ = [
+    "OVERVIEW_KINDS",
     "ActualsMode",
     "AnySpec",
     "DashboardContext",
@@ -401,15 +402,24 @@ async def refit_statuses(
     return {int(seq): str(status) for seq, status in rows}
 
 
+OVERVIEW_KINDS: Final = ("baseline", "refresh", "scenario", "actuals")
+"""The readout kinds that lead a client's Overview and give the "readout before" of a KPI
+(v0.17 R6: a published kept case led it, one case compared with the whole baseline)."""
+
+
 async def latest_readout(
     session: AsyncSession, dashboard_id: str, *, published_only: bool
 ) -> m.DashboardReadout | None:
-    """The newest readout: for clients and share links the newest ready, published one (the
-    history they see); for analysts the newest of any state."""
+    """The newest readout: for clients and share links the newest ready, published one of
+    the dashboard's own kinds (:data:`OVERVIEW_KINDS`: a kept case or a scored file the
+    editor published stays in the history, never the Overview); for analysts the newest of
+    any state."""
     stmt = select(m.DashboardReadout).where(m.DashboardReadout.dashboard_id == dashboard_id)
     if published_only:
         stmt = stmt.where(
-            m.DashboardReadout.visibility == "published", m.DashboardReadout.status == "ready"
+            m.DashboardReadout.visibility == "published",
+            m.DashboardReadout.status == "ready",
+            m.DashboardReadout.kind.in_(OVERVIEW_KINDS),
         )
     return (
         await session.execute(stmt.order_by(m.DashboardReadout.seq.desc()).limit(1))

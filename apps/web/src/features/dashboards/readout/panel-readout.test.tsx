@@ -271,13 +271,29 @@ describe("Score a file", () => {
 });
 
 describe("Check accuracy", () => {
+  it("draws two uploads of one day as two points, with unique rows (R5)", async () => {
+    const errors: unknown[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => void errors.push(a));
+    const d = classifierDashboard({
+      latest_readout: readout(3, { snapshot: snapshot({ accuracy_history: [{ seq: 2, created_at: "2026-10-21T15:00:00Z", values: { accuracy: 0.6 } }, { seq: 1, created_at: "2026-10-21T09:00:00Z", values: { accuracy: 0.55 } }] }) }),
+    });
+    view(<PanelReadout client={fakeClient(d)} dashboard={d} section="accuracy" />);
+    const chart = await screen.findByRole("img", { name: /^Right predictions over time, 2 periods to 21\/10\/2026\. Latest right predictions 60\.0% on 21\/10\/2026\./ });
+    const line = chart.querySelector("path.stroke-chart-index")?.getAttribute("d") ?? "";
+    const xs = [...line.matchAll(/[ML]([\d.]+) /g)].map((m) => Number(m[1]));
+    expect(xs).toHaveLength(2);
+    expect(xs[1]! - xs[0]!).toBeGreaterThan(10);
+    expect(errors.filter((e) => String(e).includes("same key"))).toEqual([]);
+    spy.mockRestore();
+  });
+
   it("row match: pasted cases are checked, sent, and the server's accuracy is shown", async () => {
     const d = classifierDashboard({
       latest_readout: readout(3, { snapshot: snapshot({ accuracy_history: [{ seq: 1, created_at: "2026-09-01T00:00:00Z", values: { accuracy: 0.7 } }, { seq: 2, created_at: "2026-10-01T00:00:00Z", values: { accuracy: 0.8 } }] }) }),
     });
     const client = fakeClient(d);
     view(<PanelReadout client={client} dashboard={d} section="accuracy" />);
-    expect(await screen.findByRole("img", { name: /^Right predictions over time: 1 lines over 2/ })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: /^Right predictions over time, 2 periods to 01\/10\/2026\. Latest right predictions 80\.0% on 01\/10\/2026\./ })).toBeInTheDocument();
     await userEvent.click(await screen.findByText("Paste from a spreadsheet"));
     fireEvent.change(screen.getByRole("textbox", { name: "Rows with the column names first" }), { target: { value: "case_id,tenure,churned\nc1,12,yes\nc2,3,no\n" } });
     await userEvent.click(screen.getByRole("button", { name: "Use the pasted rows" }));

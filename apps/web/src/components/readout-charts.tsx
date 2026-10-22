@@ -385,7 +385,7 @@ export function IndexLine({
         </thead>
         <tbody>
           {points.map((p, j) => (
-            <tr key={p.t}>
+            <tr key={`${j}-${p.t}`}>
               <th scope="row">{dmy(p.t)}</th>
               <td>{isNum(p.value) ? format(p.value) : MISSING}</td>
               <td>{isNum(p.low) && isNum(p.high) ? `${format(p.low)} to ${format(p.high)}` : MISSING}</td>
@@ -548,8 +548,8 @@ export function BandLine({
           </tr>
         </thead>
         <tbody>
-          {points.map((p) => (
-            <tr key={p.t}>
+          {points.map((p, j) => (
+            <tr key={`${j}-${p.t}`}>
               <th scope="row">{dmy(p.t)}</th>
               <td>{isNum(p.mean) ? format(p.mean) : MISSING}</td>
               <td>{isNum(p.low) && isNum(p.high) ? `${format(p.low)} to ${format(p.high)}` : MISSING}</td>

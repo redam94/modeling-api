@@ -6,7 +6,9 @@ import type { CatalogInput, DashboardSpecV2, SourceCatalog } from "../types";
 import { cleanSpec, sameSpec, shareInputsOf, specIssues, tabOfIssue } from "./spec-form";
 import {
   addPanelReason,
+  caseDims,
   catalogIssuesV2,
+  defaultCaseDim,
   defaultPanel,
   limitWarnings,
   movePanel,
@@ -183,6 +185,38 @@ describe("inputs", () => {
     expect(s.def).toMatchObject({ type: "integer", min: 1, max: 72, step: 1, default: 37 });
     expect(seedInput({ dim: "store", kind: "choice", levels: ["s1", "s2"] })?.def).toMatchObject({ bind: { dim: "store" }, choices: ["s1", "s2"], default: "s1" });
     expect(seedInput(declared, ["price"])).toBeNull();
+  });
+
+  it("seeds a nice step and a default on its grid, which the checks accept (R3)", () => {
+    // live: min 1.49931, step 0.0630061, default 4.64961 left the client's Calculate disabled
+    const live: CatalogInput = { var: "price", kind: "number", profile_min: 1.49931, profile_max: 7.79992 };
+    const d = seedInput(live)!.def;
+    expect(d).toMatchObject({ min: 1.4, max: 7.8, step: 0.1, default: 4.6 });
+    const k = Math.round((Number(d.default) - d.min!) / d.step!);
+    expect(Math.abs(Number(d.default) - (d.min! + k * d.step!))).toBeLessThan(1e-9);
+    // declared bounds stay inside: the grid starts at the first step multiple at or above min
+    expect(seedInput({ var: "x", kind: "number", bound_min: 0.03, bound_max: 9.97 })!.def).toMatchObject({ min: 0.1, max: 9.9, step: 0.1, default: 5 });
+    for (const c of [live, { var: "y", kind: "number", profile_min: -3.3, profile_max: 1234.5 }, { var: "z", kind: "number", bound_min: 0, bound_max: 1 }] as CatalogInput[]) {
+      const s = clone(CLASSIFIER_V2);
+      s.scenario_rows = { ...s.scenario_rows, enabled: true, inputs: [seedInput(c)!.def] };
+      expect(pointers(s).filter((p) => p.startsWith("/scenario_rows/inputs/0"))).toEqual([]);
+    }
+    const off = clone(CLASSIFIER_V2);
+    off.scenario_rows = { ...off.scenario_rows, enabled: true, inputs: [{ ...d, min: 1.49931, step: 0.0630061, default: 4.64961 }] };
+    expect(pointers(off)).toContain("/scenario_rows/inputs/0/default");
+  });
+
+  it("offers the model's dims as case id columns and flags another name (R4)", () => {
+    const catalog = { row_dim: null, inputs: [{ var: "price", kind: "number" }, { dim: "store", kind: "choice" }, { dim: "sku", kind: "choice" }, { dim: "week", kind: "date" }], outputs: [] } as unknown as SourceCatalog;
+    expect(caseDims(catalog)).toEqual(["store", "sku"]);
+    expect(defaultCaseDim(catalog)).toBe("store");
+    expect(defaultCaseDim({ ...catalog, row_dim: "sku" })).toBe("sku");
+    expect(defaultCaseDim(null)).toBeNull();
+    const s = clone(CLASSIFIER_V2);
+    s.batch = { enabled: true, outputs: [s.subject.variable], id_column: "id" };
+    expect(catalogIssuesV2(s, catalog).map((i) => i.pointer)).toContain("/batch/id_column");
+    s.batch.id_column = "store";
+    expect(catalogIssuesV2(s, catalog).map((i) => i.pointer)).not.toContain("/batch/id_column");
   });
 
   it("never offers batch on an image dashboard's links", () => {

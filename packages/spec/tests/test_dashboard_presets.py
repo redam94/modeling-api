@@ -414,7 +414,10 @@ def test_input_checks() -> None:
     spec = _spec("regression", [_kpi(band="mean")], scenario_rows=_rows(),
                  batch={"enabled": True, "outputs": ["y_hat"], "id_column": "case_id"})  # fmt: skip
     ptrs = [p for _, _, p in _codes(spec, cat)]
-    assert ptrs == ["/scenario_rows/enabled", "/scenario_rows/inputs/0/min", "/batch/enabled"]
+    assert ptrs == [
+        "/scenario_rows/enabled", "/scenario_rows/inputs/0/min", "/batch/enabled",
+        "/batch/id_column",
+    ]  # fmt: skip
     profiled = [CatalogInput(var="price", kind="number", profile_min=1, profile_max=9)]
     ok = _cat(Representation.DRAWS, inputs=profiled, row_dim="store", row_policy="new_levels")
     assert _codes(_spec("regression", [_kpi()], scenario_rows=_rows()), ok) == [
@@ -424,6 +427,35 @@ def test_input_checks() -> None:
     assert [p for _, _, p in _codes(_spec("regression", [_kpi()], scenario_rows=unknown), ok)] == [
         "/scenario_rows/inputs/0/bind"
     ]
+
+
+def test_an_off_step_default_and_an_id_column_that_is_no_dim_are_errors() -> None:
+    """v0.17 R3/R4 (live): the builder seeded min 1.49931, step 0.0630061, default 4.64961
+    (the client's Calculate stayed disabled, the score answered 422) and a batch id column
+    ``id`` that is no dim (the file template answered 409); validate passed both."""
+    cat = _cat(Representation.DRAWS, inputs=[
+        CatalogInput(var="price", kind="number"), CatalogInput(dim="store", kind="choice"),
+        CatalogInput(dim="sku", kind="choice"),
+    ], row_dim=None)  # fmt: skip
+    off = _rows(inputs=[{**_rows()["inputs"][0], "min": 1.49931, "max": 7.79992,
+                         "step": 0.0630061, "default": 4.64961}])  # fmt: skip
+    spec = _spec("classifier", [_kpi()], scenario_rows=off,
+                 batch={"enabled": True, "outputs": ["y_hat"], "id_column": "id"},
+                 actuals={"enabled": True, "match": "row", "id_column": "id",
+                          "label_column": "bought"})  # fmt: skip
+    found = {p: m for p, m in ((i.pointer, i.message) for i in check_spec_v2(spec, cat))}
+    assert "a client could not send it" in found["/scenario_rows/inputs/0/default"]
+    assert found["/batch/id_column"] == "'id' is not a dim of the model (one of: store, sku)"
+    assert "/actuals/id_column" in found and "/actuals/match" not in found
+    on = _rows(inputs=[{**_rows()["inputs"][0], "min": 1.5, "max": 7.8, "step": 0.1,
+                        "default": 4.6}])  # fmt: skip
+    good = _spec("classifier", [_kpi()], scenario_rows=on,
+                 batch={"enabled": True, "outputs": ["y_hat"], "id_column": "store"},
+                 actuals={"enabled": True, "match": "row", "id_column": "store",
+                          "label_column": "bought"})  # fmt: skip
+    ptrs = {i.pointer for i in check_spec_v2(good, cat)}
+    assert not ptrs & {"/scenario_rows/inputs/0/default", "/batch/id_column",
+                       "/actuals/id_column", "/actuals/match"}  # fmt: skip
 
 
 def test_pictures_must_be_shareable_plots_of_the_recipe() -> None:

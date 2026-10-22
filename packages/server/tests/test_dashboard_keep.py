@@ -101,6 +101,12 @@ async def test_a_client_keeps_a_case_and_an_editor_publishes_it(
     r = await kit["eve"].post(f"{base}/readouts/{seq}:publish")
     assert r.status_code == 200 and r.json()["visibility"] == "published"
     assert (await kit["carl"].get(f"{base}/readouts/{seq}")).status_code == 200
+    # R6 (live): a published kept case is in the history, never the clients' Overview
+    for who in ("carl", "cleo"):
+        view = await kit[who].get(base)
+        assert view.status_code == 200, view.text
+        latest = view.json().get("latest_readout")
+        assert latest is None or latest["seq"] != seq, latest
     # keeping a published case answers with it
     r = await kit["cleo"].post(f"{base}/readouts/{seq}:keep")
     assert r.status_code == 200 and r.json()["visibility"] == "published"

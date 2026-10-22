@@ -40,6 +40,7 @@ from mapi_spec.capabilities import (
     OutputMeaning,
     Representation,
 )
+from mapi_spec.dashboard_inputs import STEP_TOLERANCE
 from mapi_spec.dashboard_v2 import (
     PRESET_RULES,
     UPGRADE_NOTE_RANGES,
@@ -65,6 +66,7 @@ from mapi_spec.dashboard_v2 import (
     PresetSuggestion,
     RecipePanel,
     Reduce,
+    ScenarioInputDef,
     ScorecardSource,
     SourceCatalog,
     SubjectDef,
@@ -1452,6 +1454,47 @@ def _check_view(
     return []
 
 
+def _model_dims(cat: SourceCatalog) -> list[str]:
+    """The dims a case column can name: the input contract's (canonical and, through the
+    outputs, the dataset names), else the outputs' dims when the catalog has no inputs."""
+    dims = [c.dim for c in cat.inputs if c.dim is not None]
+    if dims:
+        dims += [d for o in cat.outputs for d in o.dims if d not in dims]
+    else:
+        dims = [d for o in cat.outputs for d in o.dims]
+    return list(dict.fromkeys(d for d in dims if d not in SAMPLE_DIMS and d != "class"))
+
+
+def _not_a_dim(column: str, cat: SourceCatalog) -> str | None:
+    """Why a case id ``column`` cannot work (v0.17 R4: the builder's default ``id`` is not a
+    dim, so the client's file section answered 409), or ``None`` (also when the catalog
+    knows no dims: the check then waits for the submit)."""
+    dims = _model_dims(cat)
+    if not dims or column in dims:
+        return None
+    named = [c.dim for c in cat.inputs if c.dim is not None] or dims  # the input contract's
+    return f"{column!r} is not a dim of the model (one of: {', '.join(named[:12])})"
+
+
+def _off_step(idef: ScenarioInputDef) -> str | None:
+    """Why the default of a number input is not one a client can send (off its step grid,
+    v0.17 R3: the client's Calculate stayed disabled and the score answered 422), or
+    ``None``. The same grid rule as :func:`mapi_spec.dashboard_inputs.check_value`."""
+    if idef.type not in ("number", "integer") or idef.min is None or idef.max is None:
+        return None
+    step = idef.step if idef.step is not None else (1.0 if idef.type == "integer" else None)
+    default = idef.default
+    if step is None or isinstance(default, bool) or not isinstance(default, int | float):
+        return None
+    k = round((float(default) - idef.min) / step)
+    if abs(float(default) - (idef.min + k * step)) <= STEP_TOLERANCE * (idef.max - idef.min):
+        return None
+    return (
+        f"the default {default:g} is not {idef.min:g} plus a multiple of the step {step:g}: "
+        "a client could not send it"
+    )
+
+
 def _check_inputs(spec: DashboardSpecV2, cat: SourceCatalog) -> list[Issue]:
     issues: list[Issue] = []
     rows = spec.scenario_rows
@@ -1488,6 +1531,9 @@ def _check_inputs(spec: DashboardSpecV2, cat: SourceCatalog) -> list[Issue]:
                 issues.append(_err(f"/scenario_rows/outputs/{j}", f"{name!r} is not an output"))
     for j, idef in enumerate(rows.inputs):
         ptr = f"/scenario_rows/inputs/{j}"
+        off = _off_step(idef)
+        if off is not None:
+            issues.append(_err(f"{ptr}/default", off))
         if isinstance(idef.bind, VarBind):
             ci = next((c for c in cat.inputs if c.var == idef.bind.var), None)
         else:
@@ -1550,9 +1596,16 @@ def _check_inputs(spec: DashboardSpecV2, cat: SourceCatalog) -> list[Issue]:
         for j, name in enumerate(batch.outputs):
             if _out(cat, name) is None:
                 issues.append(_err(f"/batch/outputs/{j}", f"{name!r} is not an output"))
+        not_dim = _not_a_dim(batch.id_column, cat)
+        if not_dim is not None:
+            issues.append(_err("/batch/id_column", not_dim))
     act = spec.actuals
-    if act.enabled and act.match == "row" and cat.row_dim is None and cat.outputs:
-        issues.append(_warn("/actuals/match", "the model has no row dim to match cases on"))
+    if act.enabled and act.match == "row":
+        not_dim = _not_a_dim(act.id_column, cat) if act.id_column is not None else None
+        if not_dim is not None:
+            issues.append(_err("/actuals/id_column", not_dim))
+        elif act.id_column is None and cat.row_dim is None and cat.outputs:
+            issues.append(_warn("/actuals/match", "the model has no row dim to match cases on"))
     if (
         act.enabled
         and act.match == "time"

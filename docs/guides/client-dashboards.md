@@ -134,7 +134,8 @@ For a forecast, **Let the client choose how far ahead** adds a **Periods ahead**
 The server checks each value that a client sends. A value outside the range is refused and
 the page marks it at its field. The server never changes a value in silence. A tried case is
 private to the client. The client can **Keep this case**. Then it waits for your review on
-the **History** tab.
+the **History** tab. A kept case that you publish goes into the history only: the
+**Overview** keeps the latest baseline, refresh or upload.
 
 ### Check accuracy (actuals)
 
@@ -142,7 +143,7 @@ Under **Match the numbers**, choose how the sent numbers join the predictions:
 
 - **By period**: one row for each date or period, as in a forecast.
 - **By case**: one row for each case, with the case's id and its actual outcome. Set the
-  **Case id column** and, if necessary, the **Outcome column**.
+  **Case id column** (one of the model's dims) and, if necessary, the **Outcome column**.
 
 The dashboard then shows the accuracy that fits the model:
 
@@ -159,8 +160,8 @@ numbers. The model does not change.
 
 ### Score a file
 
-Set the **Case id column**, the **Outputs in the file** and **Rows at most** (a maximum of
-5000). With **Check every value against the Try a case ranges**, a file with a value out of
+Set the **Case id column** (one of the model's dims: the builder lists them), the
+**Outputs in the file** and **Rows at most** (a maximum of 5000). With **Check every value against the Try a case ranges**, a file with a value out of
 range is refused with the row and the column.
 
 The client downloads the predictions as a CSV file. Only the person or the link that sent

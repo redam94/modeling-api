@@ -54,7 +54,16 @@ function Scored({ client, dashboard, seq }: { client: DashboardClientV2; dashboa
 export function ScoreFile({ client, dashboard, preview = false }: { client: DashboardClientV2; dashboard: ClientDashboard; preview?: boolean }) {
   const tq = useBatchTemplate(client);
   if (tq.isPending) return <Working>Loading the template…</Working>;
-  if (tq.isError) return <InlineMessage tone="error">{dashboardErrorMessage(tq.error)}</InlineMessage>;
+  if (tq.isError) {
+    // a dashboard published before the id column check (v0.17 R4): say so plainly, not as a failure
+    if (problemOf(tq.error)?.code === "DASHBOARD_INPUT_DISABLED")
+      return (
+        <InlineMessage tone="info" data-batch="unavailable">
+          Scoring a file is not available on this dashboard yet. Ask your analyst to check its settings.
+        </InlineMessage>
+      );
+    return <InlineMessage tone="error">{dashboardErrorMessage(tq.error)}</InlineMessage>;
+  }
   return <ScoreForm client={client} dashboard={dashboard} template={tq.data} preview={preview} />;
 }
 

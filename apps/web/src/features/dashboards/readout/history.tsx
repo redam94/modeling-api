@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { dashboardErrorMessage, useKeepReadout, useReadout, useReadoutList } from "../client";
-import { hasPanels, type ClientDashboard, type DashboardClient, type DashboardClientV2, type Readout } from "../types";
+import { hasPanels, isLayout2Dashboard, type ClientDashboard, type DashboardClient, type DashboardClientV2, type Readout } from "../types";
 import { LazyPart } from "./load-boundary";
 import { asClientV2 } from "./panel-model";
 import { PanelBlocks } from "./panels/blocks";
@@ -35,8 +35,10 @@ function HistoryPage({
   onSelect,
   onOlder,
   last,
+  othersWords = false,
 }: {
   client: DashboardClient;
+  othersWords?: boolean;
   beforeSeq: number | undefined;
   selected: number | null;
   onSelect: (seq: number) => void;
@@ -51,7 +53,7 @@ function HistoryPage({
   return (
     <>
       {items.map((h) => {
-        const row = historyRow(h);
+        const row = historyRow(h, undefined, { othersWords });
         const active = selected === h.seq;
         return (
           <li key={h.seq}>
@@ -176,6 +178,7 @@ export function History({
             <HistoryPage
               key={c ?? "first"}
               client={client}
+              othersWords={isLayout2Dashboard(dashboard)}
               beforeSeq={c}
               selected={selected}
               onSelect={choose}

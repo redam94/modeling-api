@@ -44,7 +44,7 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
   const keys = useRowKeys(spec.panels.length);
   const [openKey, setOpen] = useState<string | null>(null);
   const [said, setSaid] = useState("");
-  const focusNext = useRef<{ id: string; dir: "up" | "down" } | null>(null);
+  const focusNext = useRef<{ id: string; dir: "up" | "down" | "remove" } | null>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement | null>());
   const kinds = PANEL_KINDS.filter((k) => PRESET_RULES[spec.preset].kinds.includes(k));
   const kpis = spec.panels.filter((p) => p.kind === "kpi").length;
@@ -54,7 +54,8 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
     if (!f) return;
     focusNext.current = null;
     const el = buttons.current.get(`${f.id}:${f.dir}`);
-    const other = buttons.current.get(`${f.id}:${f.dir === "up" ? "down" : "up"}`);
+    // after a move the other arrow, after a remove the row's own button (the last panel cannot be removed)
+    const other = buttons.current.get(f.dir === "remove" ? `${f.id}:edit` : `${f.id}:${f.dir === "up" ? "down" : "up"}`);
     (el && !el.disabled ? el : other)?.focus();
   });
 
@@ -79,6 +80,10 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
   const remove = (i: number) => {
     const p = spec.panels[i];
     if (!p) return;
+    // the focus moves to the Remove button of the panel that takes its place (else the one before),
+    // never to the page body (v0.17 R7)
+    const next = keys[i + 1] ?? keys[i - 1];
+    focusNext.current = next ? { id: next, dir: "remove" } : null;
     onChange((s) => removePanel(s, i));
     keys.splice(i, 1);
     setSaid(`${p.title || p.id} removed.`);
@@ -107,7 +112,7 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
           return (
             <li key={rowKey} data-panel={p.id} className="rounded-lg border">
               <div className="flex flex-wrap items-center gap-2 p-2">
-                <Button size="sm" variant="ghost" aria-expanded={isOpen} aria-controls={editorId} onClick={() => setOpen(isOpen ? null : rowKey)} className="min-w-0 flex-1 justify-start">
+                <Button size="sm" variant="ghost" ref={(el) => void buttons.current.set(`${rowKey}:edit`, el)} aria-expanded={isOpen} aria-controls={editorId} onClick={() => setOpen(isOpen ? null : rowKey)} className="min-w-0 flex-1 justify-start">
                   {isOpen ? <ChevronDown /> : <ChevronRight />}
                   <span className="text-xs text-muted-foreground tabular-nums">{i + 1}.</span>
                   <span className="truncate font-medium">{who}</span>
@@ -139,6 +144,7 @@ export function PanelsEditor({ spec, onChange, issues, catalog, readOnly = false
                   <Button
                     size="icon-sm"
                     variant="ghost"
+                    ref={(el) => void buttons.current.set(`${rowKey}:remove`, el)}
                     aria-label={`Remove ${who}`}
                     disabled={readOnly || spec.panels.length <= 1}
                     title={spec.panels.length <= 1 ? "A dashboard needs at least one panel." : undefined}

@@ -434,9 +434,23 @@ export interface SeededInput {
   fromProfile: boolean;
 }
 
-const roundNice = (v: number) => Number(v.toPrecision(6));
+/** The smallest of 1, 2, 2.5 and 5 × 10^k that is at least `x` (a step a person reads at a glance). */
+export function niceStep(x: number): number {
+  if (!(x > 0) || !Number.isFinite(x)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(x)));
+  const m = [1, 2, 2.5, 5, 10].find((f) => f * p >= x * (1 - 1e-12)) ?? 10;
+  return Number((m * p).toPrecision(12));
+}
 
-/** A scenario input for catalog input `c`, its range from declared bounds, else the fit data. */
+/** `v` written with the decimals of `step` (so 1.4 + 32 × 0.1 is 4.6, not 4.6000000000000005). */
+function onGrid(v: number, step: number): number {
+  const decimals = Math.max(0, Math.ceil(-Math.log10(step)) + 1);
+  return Number(v.toFixed(Math.min(decimals, 12)));
+}
+
+/** A scenario input for catalog input `c`, its range from declared bounds, else the fit data.
+ * A number input gets a nice step (1, 2, 2.5 or 5 × 10^k, about 100 steps), bounds on that
+ * grid (inside declared bounds) and a default on the grid, so a client can send it (v0.17 R3). */
 export function seedInput(c: CatalogInput, taken: readonly string[] = []): SeededInput | null {
   const name = c.var ?? c.dim ?? "";
   if (!name || taken.includes(name)) return null;
@@ -453,11 +467,23 @@ export function seedInput(c: CatalogInput, taken: readonly string[] = []): Seede
       max = Math.ceil(max);
     }
     if (!(max > min)) max = min + 1;
-    const span = max - min;
-    let step: number | null = c.kind === "integer" ? Math.max(1, Math.ceil(span / MAX_SCENARIO_STEPS)) : roundNice(span / 100);
-    if (step !== null && !(step > 0)) step = null;
-    const mid = c.kind === "integer" ? Math.round((min + max) / 2) : roundNice((min + max) / 2);
-    return { def: { name, label, bind, type: c.kind, min: roundNice(min), max: roundNice(max), step, default: mid, applies: "row" }, fromProfile };
+    if (c.kind === "integer") {
+      const step = Math.max(1, Math.ceil((max - min) / MAX_SCENARIO_STEPS));
+      const mid = min + Math.round((max - min) / 2 / step) * step;
+      return { def: { name, label, bind, type: "integer", min, max, step, default: mid, applies: "row" }, fromProfile };
+    }
+    let step: number | null = niceStep((max - min) / 100);
+    // declared bounds are the model's limits: the grid stays inside them; a fit-data range widens to the grid
+    let gMin = onGrid((c.bound_min != null ? Math.ceil(min / step - 1e-9) : Math.floor(min / step + 1e-9)) * step, step);
+    let gMax = onGrid((c.bound_max != null ? Math.floor(max / step + 1e-9) : Math.ceil(max / step - 1e-9)) * step, step);
+    if (!(gMax > gMin)) {
+      gMin = min;
+      gMax = max;
+      step = null;
+    }
+    const mid = (gMin + gMax) / 2;
+    const def = step === null ? Number(mid.toPrecision(6)) : onGrid(gMin + Math.round((mid - gMin) / step) * step, step);
+    return { def: { name, label, bind, type: "number", min: gMin, max: gMax, step, default: def, applies: "row" }, fromProfile };
   }
   if (c.kind === "choice" || c.kind === "text") {
     const choices = (c.levels ?? []).slice(0, 200);
@@ -469,6 +495,22 @@ export function seedInput(c: CatalogInput, taken: readonly string[] = []): Seede
     return { def: { name, label, bind, type: "date", date_min: c.date_min, date_max: c.date_max, default: c.date_max, applies: "row" }, fromProfile: false };
   }
   return { def: { name, label, bind, type: "toggle", default: false, applies: "row" }, fromProfile: false };
+}
+
+/** The dims of the model a case id column can name (the row dim first, no dates): the
+ * builder offers only these, since another name makes the client's file section fail (v0.17 R4). */
+export function caseDims(catalog: SourceCatalog | null | undefined): string[] {
+  if (!catalog) return [];
+  const fromInputs = (catalog.inputs ?? []).filter((c) => c.dim && c.kind !== "date").map((c) => c.dim!);
+  const fromOutputs = (catalog.outputs ?? []).flatMap((o) => (o.dims ?? []).filter((d) => d !== o.time_dim && d !== "class"));
+  const dims = fromInputs.length ? fromInputs : fromOutputs;
+  const row = catalog.row_dim && dims.includes(catalog.row_dim) ? [catalog.row_dim] : [];
+  return [...new Set([...row, ...dims])];
+}
+
+/** The default case id column: the model's row dim, else its first case dim. */
+export function defaultCaseDim(catalog: SourceCatalog | null | undefined): string | null {
+  return catalog?.row_dim ?? caseDims(catalog)[0] ?? null;
 }
 
 /** Is the range of input `d` the fit data's range of catalog input `c` (to check by hand)? */
@@ -524,6 +566,8 @@ function inputIssues(d: ScenarioInputDef, p: string, add: (pointer: string, mess
     }
     if (!isNum(d.default)) add(`${p}/default`, `Give ${who} a default number.`);
     else if (d.default < lo || d.default > hi) add(`${p}/default`, `The default of ${who} must be from ${lo} to ${hi}.`);
+    else if (step !== null && isNum(step) && step > 0 && Math.abs(d.default - (lo + Math.round((d.default - lo) / step) * step)) > 1e-9 * (hi - lo))
+      add(`${p}/default`, `The default of ${who} must be ${lo} plus a multiple of the step ${step}, or a client cannot send it.`);
     if (d.type === "integer" && [lo, hi, d.step, d.default].some((v) => isNum(v) && !Number.isInteger(v))) add(`${p}/step`, `${who} takes whole numbers: use whole numbers for its range, step and default.`);
   } else if (d.type === "choice") {
     const ch = d.choices ?? [];
@@ -799,5 +843,10 @@ export function catalogIssuesV2(spec: DashboardSpecV2, catalog: SourceCatalog | 
   });
   (spec.scenario_rows?.outputs ?? []).forEach((n) => (known(n) ? null : add("/scenario_rows/outputs", `The model has no output named ${n}.`)));
   (spec.batch?.outputs ?? []).forEach((n) => (known(n) ? null : add("/batch/outputs", `The model has no output named ${n}.`)));
+  // a case id column must be a dim of the model (`check_spec_v2` refuses others too)
+  const dims = caseDims(catalog);
+  const notDim = (c: string | null | undefined) => !!c && dims.length > 0 && !dims.includes(c) && !(catalog.inputs ?? []).some((i) => i.dim === c);
+  if (spec.batch?.enabled && notDim(spec.batch.id_column)) add("/batch/id_column", `${spec.batch.id_column} is not a dim of the model. Choose one of ${dims.join(", ")}.`);
+  if (spec.actuals?.enabled && spec.actuals.match === "row" && notDim(spec.actuals.id_column)) add("/actuals/id_column", `${spec.actuals.id_column} is not a dim of the model. Choose one of ${dims.join(", ")}.`);
   return out;
 }

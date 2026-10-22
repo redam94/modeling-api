@@ -21,6 +21,7 @@ import {
   historyRow,
   isHistoryReadout,
   lastSentAccuracy,
+  localTitle,
   metaLine,
   pageTabs,
   scenarioModel,
@@ -171,9 +172,28 @@ describe("page words", () => {
     expect(metaLine(null, "week")).toMatch(/no results yet/);
   });
 
+  it("writes a server default title with the viewer's day (R7)", () => {
+    // 22/10 in UTC is still 21/10 in New York at 01.30 UTC
+    const h = header({ title: "Published on 22/10/2026", created_at: "2026-10-22T01:30:00Z" });
+    expect(localTitle(h, "America/New_York")).toBe("Published on 21/10/2026");
+    expect(localTitle(h, "UTC")).toBe("Published on 22/10/2026");
+    expect(historyRow(h, "America/New_York").title).toBe("Published on 21/10/2026");
+    // an analyst's own label, or a date that is not the creation day, is kept
+    expect(localTitle({ ...h, title: "Q3 numbers" }, "America/New_York")).toBe("Q3 numbers");
+    expect(localTitle({ ...h, title: "Week ending 18/10/2026" }, "America/New_York")).toBe("Week ending 18/10/2026");
+    expect(localTitle({ ...h, title: "Sent on 01/01/2020" }, "America/New_York")).toBe("Sent on 01/01/2020");
+  });
+
   it("tags uploads that wait for review and their refit request", () => {
     const row = historyRow(header({ kind: "actuals", visibility: "pending_review", refit_status: "open" }), "UTC");
     expect(row.kind).toBe("Your numbers");
+    // R7: an upload someone else made (a share link's, for a signed-in client) is not "yours"
+    const v2 = { othersWords: true };
+    expect(historyRow(header({ kind: "actuals", mine: false }), "UTC", v2).kind).toBe("Numbers sent");
+    expect(historyRow(header({ kind: "actuals", mine: true }), "UTC", v2).kind).toBe("Your numbers");
+    expect(historyRow(header({ kind: "prediction", mine: false }), "UTC", v2).kind).toBe("A tried case");
+    // the layout 1 page keeps its words
+    expect(historyRow(header({ kind: "actuals", mine: false })).kind).toBe("Your numbers");
     expect(row.tags.map((t) => t.label)).toEqual(["Waiting for review", "Refit requested"]);
     expect(historyRow(header({ status: "running" })).tags.map((t) => t.label)).toEqual(["Calculating"]);
   });

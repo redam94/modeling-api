@@ -217,7 +217,7 @@ never clips a value.
 
 The result is a private `prediction` readout. The client can **Keep** it
 (`POST …/readouts/{seq}:keep`): then it does not expire, and an editor decides if it goes
-into the history.
+into the history. A published kept case never leads the Overview.
 
 ### Actuals for any model type <span class="mapi-badge">v0.17</span> { #accuracy }
 

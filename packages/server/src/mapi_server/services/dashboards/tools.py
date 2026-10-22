@@ -72,6 +72,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
 from mapi_server.services.dashboards import inputs, readouts
 from mapi_server.services.dashboards.access import (
+    OVERVIEW_KINDS,
     AnySpec,
     DashboardContext,
     any_revision_spec,
@@ -202,6 +203,8 @@ async def _latest_row(
     )
     if kind is not None:
         stmt = stmt.where(m.DashboardReadout.kind == kind)
+    else:  # the Overview's readout (a published kept case stays in the history)
+        stmt = stmt.where(m.DashboardReadout.kind.in_(OVERVIEW_KINDS))
     return (
         await session.execute(stmt.order_by(m.DashboardReadout.seq.desc()).limit(1))
     ).scalar_one_or_none()

@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Final
@@ -903,13 +903,17 @@ def batch_cells(
     per_row: set[str],
     sizes: Mapping[str, int],
     dims: Mapping[str, str],
+    outputs: Collection[str] | None = None,
 ) -> int:
     """The cells the batch score's summary will hold: per output, rows × the sizes of its
     other dims × (its dims + 3: centre, low, high). ``per_row``: dims each row gives one
-    value of (input contract names); ``sizes``: the fitted sizes of the other dims."""
+    value of (input contract names); ``sizes``: the fitted sizes of the other dims;
+    ``outputs``: the outputs the score asks for (``None``: every catalog output)."""
     back = {v: k for k, v in dims.items()}
     total = 0
     for out in getattr(catalog, "outputs", None) or []:
+        if outputs is not None and out.name not in outputs:
+            continue
         cells = n_rows
         for d in out.dims:
             canon = back.get(d, d)
@@ -1001,7 +1005,15 @@ async def submit_batch(
     grid = n  # the payload is the grid of every id × the levels the rows give
     for d in shape.dim_columns:
         grid *= max(1, len({_cell_key(r.get(d)) for r in rows}))
-    cells = batch_cells(p.spec, catalog, grid, per_row=per_row, sizes=sizes, dims=dims)
+    # the score asks only for what the batch shows (its outputs, and the subject the
+    # readout leads with): other outputs (e.g. ``contributions``) would fill the summary
+    # and refuse a file the published ``max_rows`` allows (v0.17 R1)
+    known = {o.name for o in catalog.outputs}
+    wanted = [o for o in dict.fromkeys([*bdef.outputs, p.spec.subject.variable]) if o in known]
+    cells = batch_cells(
+        p.spec, catalog, grid, per_row=per_row, sizes=sizes, dims=dims,
+        outputs=wanted if wanted else None,
+    )  # fmt: skip
     if cells > BATCH_CELL_BUDGET:
         raise MapiError(
             f"the file would give about {cells} results, more than one batch can hold "
@@ -1015,6 +1027,8 @@ async def submit_batch(
             [_issue("/inputs", str(exc)[:300])], "the file cannot be used"
         ) from None
     output = score_output(p.spec, _representation(snapshot, p.mv))
+    if wanted:
+        output = output.model_copy(update={"vars": wanted})
     call = EndpointScoreCall(mode="predict", data=payload, output=output)
     errors, summary = _schema_errors(call, snapshot, "/inputs")
     if errors:

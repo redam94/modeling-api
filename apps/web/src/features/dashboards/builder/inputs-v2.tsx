@@ -26,8 +26,10 @@ import type { SpecEditorProps } from "./setup";
 import { v2Change } from "./setup-v2";
 import { issueAt, MAX_EXACT_RUNS, type FormIssue } from "./spec-form";
 import {
+  caseDims,
   catalogInputOf,
   catalogIssuesV2,
+  defaultCaseDim,
   inputReason,
   limitWarnings,
   MAX_BATCH_RUNS,
@@ -381,7 +383,7 @@ function Uploads({ spec, onChange, issues, catalog }: PartProps) {
                       name="ds-actuals-match"
                       value={value}
                       checked={match === value}
-                      onChange={() => set(value === "row" ? { match: "row", id_column: a.id_column ?? catalog?.row_dim ?? null } : { match: "time", id_column: null, label_column: null })}
+                      onChange={() => set(value === "row" ? { match: "row", id_column: a.id_column ?? defaultCaseDim(catalog) } : { match: "time", id_column: null, label_column: null })}
                       className="mt-1 accent-[var(--primary)]"
                     />
                     <span className="grid gap-0.5">
@@ -394,8 +396,8 @@ function Uploads({ spec, onChange, issues, catalog }: PartProps) {
             ) : null}
             {match === "row" ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Case id column" htmlFor="ds-actuals-id" error={issueAt(issues, "/actuals/id_column")} hint={catalog?.row_dim ? `The model names cases by ${catalog.row_dim}.` : undefined}>
-                  <Input id="ds-actuals-id" className="font-mono" value={a.id_column ?? ""} onChange={(e) => set({ id_column: e.target.value.trim() || null })} />
+                <Field label="Case id column" htmlFor="ds-actuals-id" error={issueAt(issues, "/actuals/id_column")} hint={catalog?.row_dim ? `The model names cases by ${catalog.row_dim}.` : caseDims(catalog).length ? "One of the model's dims." : undefined}>
+                  <CaseColumn id="ds-actuals-id" catalog={catalog} value={a.id_column ?? ""} onChange={(v) => set({ id_column: v || null })} />
                 </Field>
                 <Field label="Outcome column (optional)" htmlFor="ds-actuals-label" error={issueAt(issues, "/actuals/label_column")} hint="Empty: the model's target.">
                   <Input id="ds-actuals-label" className="font-mono" value={a.label_column ?? ""} onChange={(e) => set({ label_column: e.target.value.trim() || null })} />
@@ -448,6 +450,23 @@ function Uploads({ spec, onChange, issues, catalog }: PartProps) {
 
 // ------------------------------------------------------------------------------ score a file
 
+/** A case id column: a choice of the model's dims when the catalog knows them, else free text. */
+function CaseColumn({ id, catalog, value, onChange }: { id: string; catalog: SourceCatalog | null | undefined; value: string; onChange: (v: string) => void }) {
+  const dims = caseDims(catalog);
+  if (!dims.length) return <Input id={id} className="font-mono" value={value} onChange={(e) => onChange(e.target.value.trim())} />;
+  return (
+    <NativeSelect id={id} className="font-mono" value={value} onChange={(e) => onChange(e.target.value)}>
+      {value && !dims.includes(value) ? <option value={value}>{value} (not a dim of the model)</option> : null}
+      {!value ? <option value="">Choose a dim</option> : null}
+      {dims.map((d) => (
+        <option key={d} value={d}>
+          {d}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+}
+
 function ScoreAFile({ spec, onChange, issues, catalog }: PartProps) {
   const why = inputReason(spec.preset, "batch");
   const b = spec.batch ?? null;
@@ -455,7 +474,7 @@ function ScoreAFile({ spec, onChange, issues, catalog }: PartProps) {
   const set = (patch: Partial<NonNullable<DashboardSpecV2["batch"]>>) =>
     onChange((s) => {
       const first = primaryOutput(s, catalog)?.name ?? s.subject.variable;
-      const base = s.batch ?? { enabled: false, outputs: [first], max_rows: 2000, id_column: catalog?.row_dim ?? "id", enforce_ranges: true };
+      const base = s.batch ?? { enabled: false, outputs: [first], max_rows: 2000, id_column: defaultCaseDim(catalog) ?? "id", enforce_ranges: true };
       return { ...s, batch: { ...base, ...patch } };
     });
   const fixedRows = catalog?.row_policy === "fixed";
@@ -482,8 +501,8 @@ function ScoreAFile({ spec, onChange, issues, catalog }: PartProps) {
             <fieldset className="grid gap-4" disabled={!on}>
               <OutputChecks id="ds-batch-out" legend="Outputs in the file" value={b.outputs} max={MAX_SCENARIO_OUTPUTS} catalog={catalog} onChange={(v) => set({ outputs: v })} error={issueAt(issues, "/batch/outputs")} />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Case id column" htmlFor="ds-batch-id" error={issueAt(issues, "/batch/id_column")} hint="The column that names each case in the file.">
-                  <Input id="ds-batch-id" className="font-mono" value={b.id_column} onChange={(e) => set({ id_column: e.target.value.trim() })} />
+                <Field label="Case id column" htmlFor="ds-batch-id" error={issueAt(issues, "/batch/id_column")} hint={caseDims(catalog).length ? "The column that names each case in the file: one of the model's dims." : "The column that names each case in the file."}>
+                  <CaseColumn id="ds-batch-id" catalog={catalog} value={b.id_column} onChange={(v) => set({ id_column: v })} />
                 </Field>
                 <Field label="Rows at most" htmlFor="ds-batch-max" error={issueAt(issues, "/batch/max_rows")} hint={`1 to ${MAX_BATCH_ROWS}.`}>
                   <Input id="ds-batch-max" type="number" min={1} max={MAX_BATCH_ROWS} step={1} value={b.max_rows ?? 2000} onChange={(e) => set({ max_rows: Number(e.target.value) })} />

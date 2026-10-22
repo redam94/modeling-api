@@ -86,6 +86,9 @@ describe("builder › layout 2", () => {
     const last = within(screen.getByRole("list", { name: "Panels" })).getAllByRole("listitem").at(-1)!;
     await user.click(within(last).getByRole("button", { name: /^Remove / }));
     expect(panelTitles().length).toBe(before.length - 1);
+    // R7: the focus goes to the Remove button of the panel before, never the page body
+    const nowLast = within(screen.getByRole("list", { name: "Panels" })).getAllByRole("listitem").at(-1)!;
+    expect(document.activeElement).toBe(within(nowLast).getByRole("button", { name: /^Remove / }));
 
     await user.click(screen.getByRole("button", { name: /^Note$/ }));
     expect(panelTitles().at(-1)).toBe("note");

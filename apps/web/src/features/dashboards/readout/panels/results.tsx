@@ -8,7 +8,8 @@ import { Download } from "lucide-react";
 
 import { InlineMessage, StatGrid, StatTile } from "@/components/ods";
 import { fixed, grouped, MISSING } from "@/components/ods/format";
-import { Bars, Calibration, ConfusionGrid, MultiLine, SmallTable } from "@/components/readout-charts-extra";
+import { BandLine } from "@/components/readout-charts";
+import { Bars, Calibration, ConfusionGrid, SmallTable } from "@/components/readout-charts-extra";
 import { Button } from "@/components/ui/button";
 
 import { dashboardErrorMessage, problemOf, useDownloadPredictions } from "../../client";
@@ -170,11 +171,17 @@ export function AccuracyHistoryView({ points }: { points: readonly AccuracyPoint
   // The server gives these in percent already; accuracy is a share (0..1).
   const inPercent = ["mape", "wape", "smape", "band_hit_rate", "effect_relative"].includes(metric);
   const share = metric === "accuracy";
+  // one point per upload in readout order: two uploads on one day are two points (a chart keyed
+  // by date drew them on one spot, so no line showed: v0.17 R5)
+  const ordered = [...points].sort((a, b) => a.seq - b.seq);
   return (
-    <MultiLine
+    <BandLine
       label={`${label} over time`}
-      series={[{ label, points: points.map((p) => ({ t: p.created_at.slice(0, 10), mean: p.values?.[metric] ?? null })) }]}
+      points={ordered.map((p) => ({ t: p.created_at.slice(0, 10), mean: p.values?.[metric] ?? null, low: null, high: null, actual: null }))}
+      period="period"
       format={inPercent ? (v) => `${fixed(v, 1)}%` : share ? (v) => `${fixed(v * 100, 1)}%` : plainNumber}
+      expectedLabel={label}
+      dates="auto"
     />
   );
 }

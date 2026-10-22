@@ -1983,7 +1983,8 @@ function storedSpec(x: MockDashboard): AnyDashboardSpec | null {
 
 function latestPublished(x: MockDashboard): Readout | null {
   tick(x);
-  return [...x.readouts].reverse().find((row) => row.r.visibility === "published" && row.r.status === "ready")?.r ?? null;
+  // `access.OVERVIEW_KINDS`: a published kept case or scored file stays in the history only
+  return [...x.readouts].reverse().find((row) => row.r.visibility === "published" && row.r.status === "ready" && row.r.kind !== "prediction" && row.r.kind !== "batch")?.r ?? null;
 }
 
 /**

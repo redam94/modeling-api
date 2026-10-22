@@ -88,6 +88,35 @@ by themselves.
 - Layout 2 snapshots hold up to 384 KiB and 1040 series points. Layout 1 snapshots keep
   256 KiB and 520 points.
 
+#### Fixed
+- The API allows the `If-Match` header across origins. Before, the browser preflight
+  failed, so the builder could not save a draft, publish or use `:upgrade` when the web app
+  and the API had different origins (also in v0.16).
+- A kept case that an editor publishes stays in the history: the client Overview, the
+  `get_latest_readout` tool and the "readout before" of a key number use only `baseline`,
+  `refresh`, `scenario` and `actuals` readouts.
+- A scored file asks the model only for `batch.outputs` (and the subject), and the size
+  check counts only those outputs. A file of `max_rows` rows over a few levels of another
+  dim is no longer refused because of outputs that the file does not show.
+- Validate gives an error for a number input whose default is off its step grid, and for a
+  `batch.id_column` or row-match `actuals.id_column` that is not a dim of the model. The
+  builder seeds number inputs with a round step and a default on it, offers the model's
+  dims as case id columns, and shows "Scoring a file is not available" instead of an error
+  on a dashboard published before this check.
+- The accuracy history draws one point for each upload, also for two uploads on the same
+  day. The history titles that the server dates in UTC ("Published on …") show the
+  viewer's day. An upload made by somebody else is "Numbers sent", not "Your numbers".
+- An upgraded media planner no longer notes "This readout has no values of … to compare"
+  under the comparison it shows.
+- An upload whose readout fails is hidden (its open refit request fails too). Only the
+  person who sent it sees it, marked "Did not finish", and `:publish` refuses it (`409`).
+- A key number that picks one case shows its change from the readout before only when that
+  readout picked the same case from the same inputs. A history with one point is a sentence
+  until a second upload. Yes/no codes (`0`/`1`, `false`/`true`) show as "No"/"Yes".
+- After a keyboard **Remove** in the panels editor, the focus moves to the next panel's
+  Remove button. The builder no longer asks for the response grid of a version that wrote
+  none (a 404 in the console).
+
 #### Known gaps
 - Clients and share links cannot score image files. Analysts score image collections in
   the app.

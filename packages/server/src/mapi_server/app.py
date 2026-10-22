@@ -391,6 +391,9 @@ def create_app(
             PREFER_HEADER,
             PROJECT_HEADER,
             CSRF_HEADER,
+            # the dashboard builder's draft save, publish and :upgrade are optimistic
+            # (If-Match: draft_etag); without it the browser preflight fails
+            "If-Match",
         ],
         expose_headers=["Preference-Applied", "Location", "Retry-After", CSRF_HEADER],
     )

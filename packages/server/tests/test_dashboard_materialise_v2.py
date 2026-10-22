@@ -250,3 +250,18 @@ async def test_old_readouts_stay_layout_1_after_the_upgrade(
         assert old is not None and old.ready_at is not None
         assert old.ready_at <= now() + timedelta(seconds=1)
     assert ReadoutSnapshot.model_validate(old.snapshot) == v1 and v1.schema_version == 1
+
+
+async def test_an_upgraded_planner_keeps_no_contradicting_layout_2_note(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    """R7 (live): an upgraded planner's actuals readout said "This readout has no values of
+    sales to compare." under the comparison it showed (the layout 1 way)."""
+    dash_id = await create_published(kit, whatif={"enabled": True})
+    await auto_upgrade_v1(ctx, catalog_of=_as_mmm)
+    spec = await _published_spec(ctx, dash_id)
+    assert isinstance(spec, DashboardSpecV2) and spec.preset == "mmm_planner"
+    note = ["This readout has no values of sales to compare."]
+    assert readouts.accuracy_notes(spec, None, note) == []
+    other = spec.model_copy(update={"preset": "forecast", "mmm": None})
+    assert readouts.accuracy_notes(other, None, note) == note
