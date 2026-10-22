@@ -13,7 +13,7 @@ import shlex
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 from urllib.parse import urlsplit
 
 from mapi_spec.executor import RunKind
@@ -191,10 +191,15 @@ def _extra_plugin_dirs(root: Path) -> list[str]:
     return sorted(entries)
 
 
+_PLUGIN_METADATA: Final = ("pyproject.toml", "setup.cfg", "setup.py")
+"""The files of an extra plugin that declare its entry points (hashed with its ``src/``)."""
+
+
 def checkout_image_digest(lock_path: Path, extensions_lock: Path | None = None) -> str:
     """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
-    under :data:`CHECKOUT_SOURCES` (path and content), plus the ``src/`` of every plugin
-    listed in :data:`CHECKOUT_EXTRA_LIST` (v0.18), plus ``extensions_lock`` when given.
+    under :data:`CHECKOUT_SOURCES` (path and content), plus the ``src/`` and the
+    :data:`_PLUGIN_METADATA` files (entry points) of every plugin listed in
+    :data:`CHECKOUT_EXTRA_LIST` (v0.18), plus ``extensions_lock`` when given.
 
     A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
     changes the catalog, so it must change the digest too, or the catalog cached under the
@@ -216,6 +221,11 @@ def checkout_image_digest(lock_path: Path, extensions_lock: Path | None = None) 
         # keyed by the entry as listed (not the absolute path): the digest does not depend
         # on where the checkout lives; a listed directory that is gone still counts
         h.update(b"\0extra\0" + entry.encode())
+        for name in _PLUGIN_METADATA:  # entry points live here, outside src/
+            meta = (root / entry / name).resolve()
+            if meta.is_file():
+                h.update(b"\0meta\0" + name.encode() + b"\0")
+                h.update(hashlib.sha256(meta.read_bytes()).digest())
         src = (root / entry / "src").resolve()
         if not src.is_dir():
             h.update(b"\0missing")

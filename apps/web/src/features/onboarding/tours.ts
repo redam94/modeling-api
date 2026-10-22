@@ -20,6 +20,9 @@ export interface TourContext {
   persona: "expert" | "guided";
   /** The tenant's sample project, when it is installed and visible to the user. */
   sample: SampleInfo | null;
+  /** The Start-here hub (Home) and strip (Guided) are open; `false` once they fold away
+   * (their steps then skip: the anchors are gone). Unknown counts as open. */
+  hub?: boolean;
 }
 
 export type TourRoute = string | ((ctx: TourContext) => string | null);
@@ -62,6 +65,9 @@ export interface TourDef {
 
 const expert = (ctx: TourContext) => ctx.persona === "expert";
 const guided = (ctx: TourContext) => ctx.persona === "guided";
+/** The step points into the open Start-here hub or strip. */
+const onHub = (ctx: TourContext) => ctx.hub !== false;
+const expertHub = (ctx: TourContext) => expert(ctx) && onHub(ctx);
 
 /** The page of a Guided step of the sample's session, or `null` while the sample is not ready. */
 export function sampleStepPath(ctx: TourContext, step: "data" | "run" | "report" | "explore"): string | null {
@@ -104,7 +110,7 @@ export const TOURS: Readonly<Record<TourId, TourDef>> = {
         id: "checklist",
         anchor: "home.checklist",
         route: "/",
-        when: expert,
+        when: expertHub,
         side: "left",
         title: "Your first-week checklist",
         body: "Each box ticks itself as you go. No need to do them in order, and you can hide the list whenever you like.",
@@ -113,7 +119,7 @@ export const TOURS: Readonly<Record<TourId, TourDef>> = {
         id: "playground",
         anchor: "home.playground",
         route: "/",
-        when: expert,
+        when: expertHub,
         title: "Have a play",
         body: "Drag a slider to move a channel's spend and watch the result change. It runs on example data, so nothing you do here can break a thing.",
       },
@@ -191,6 +197,7 @@ export const TOURS: Readonly<Record<TourId, TourDef>> = {
         id: "sample",
         anchor: "sample.progress",
         route: startPage,
+        when: onHub,
         title: "The sample is a real fit",
         body: "Your sample project was fitted on our servers, just like your own models will be. This card shows how it went.",
       },

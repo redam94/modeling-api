@@ -3,11 +3,14 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import userEvent from "@testing-library/user-event";
+
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/overlays";
 import { onOnboarding } from "@/lib/onboarding-events";
 
 import { emptyOnboarding, type OnboardingState, type SampleInfo } from "./api";
 import { ANCHOR_WAIT_MS } from "./spotlight";
-import TourHost, { pickSample, TourView, type TourViewProps } from "./tour-host";
+import TourHost, { pickSample, REVEAL_AGAIN_MS, TourView, type TourViewProps } from "./tour-host";
 import { TOURS, type TourDef } from "./tours";
 import { startTour, TOUR_POSITION_KEY, useTourStore } from "./use-onboarding";
 import { WelcomeDialog } from "./welcome-dialog";
@@ -165,6 +168,59 @@ describe("TourView", () => {
     expect(props.onSkip).toHaveBeenCalledWith(0);
   });
 
+  it("ends the tour on Esc only from the coach-mark; elsewhere Esc is the page's", () => {
+    // v0.18 review: Radix hears Esc for the top layer wherever focus is
+    placeAnchor("home.start-here");
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const field = document.createElement("input");
+    const close = document.createElement("button");
+    close.setAttribute("data-dialog-close", "");
+    const closed = vi.fn();
+    close.addEventListener("click", closed);
+    dialog.append(field, close);
+    document.body.append(dialog);
+    const { props } = view();
+    field.focus();
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(props.onSkip).not.toHaveBeenCalled();
+    expect(closed).toHaveBeenCalledTimes(1); // the dialog under the coach-mark closes
+    screen.getByRole("heading", { name: "Welcome! Start right here" }).focus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(props.onSkip).toHaveBeenCalledWith(0);
+  });
+
+  it("does not close a dialog the step points into when the coach-mark is pressed", async () => {
+    // v0.18 review: Next on the coach-mark (outside the modal dialog) closed the playground
+    const onOpenChange = vi.fn();
+    render(
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogTitle>Try it</DialogTitle>
+          <p>settings</p>
+        </DialogContent>
+      </Dialog>,
+    );
+    placeAnchor("home.start-here");
+    const { props } = view();
+    await act(async () => new Promise((r) => setTimeout(r, 10))); // Radix listens a tick after mount
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    await user.click(screen.getByTestId("tour-next"));
+    expect(props.onStep).toHaveBeenCalledWith(1);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Try it" })).toBeInTheDocument();
+  });
+
+  it("waits for the samples list before asking for the sample", () => {
+    // v0.18 review: a deep link flashed "set up the sample first" while the list loaded
+    const pending = view({ tour: TOURS.fit, ctx: { persona: "expert", sample: null }, samplesPending: true });
+    expect(screen.queryByTestId("tour-needs-sample")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Finding the next part of the tour");
+    pending.unmount();
+    view({ tour: TOURS.fit, ctx: { persona: "expert", sample: null }, samplesPending: false });
+    expect(screen.getByTestId("tour-needs-sample")).toBeInTheDocument();
+  });
+
   it("goes back with ← and finishes on the last step", () => {
     placeAnchor("shell.help-menu");
     const { props } = view({ step: 5 });
@@ -287,6 +343,45 @@ describe("TourView", () => {
     view();
     expect(el.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
     expect(screen.getByTestId("tour-popover").className).toContain("animate-coach-in");
+  });
+
+  it("moves on by itself when the step's action brings the next anchor (v0.18 live)", async () => {
+    // the dashboard tour: "press Create" closes the dialog (the presets anchor goes) and opens
+    // the builder (the panels anchor comes): the next step, not "not on screen"
+    const presets = placeAnchor("dashboards.new.presets");
+    const { props } = view({ tour: TOURS.dashboard, ctx: { persona: "expert", sample: ready }, pathname: "/dashboards", search: "?new=1&model=eu-geo-mmm" });
+    expect(screen.getByTestId("tour-popover")).toHaveTextContent("Start from a preset");
+    expect(props.onStep).not.toHaveBeenCalled();
+    act(() => presets.remove());
+    placeAnchor("dashboards.builder.panels");
+    await vi.waitFor(() => expect(props.onStep).toHaveBeenCalledWith(1));
+  });
+
+  it("does not move on for a next anchor that was there all along", async () => {
+    // welcome: leaving Home takes the playground away, but the nav was always on screen
+    const playground = placeAnchor("home.playground");
+    placeAnchor("nav.primary");
+    const { props } = view({ step: 2 });
+    expect(screen.getByTestId("tour-popover")).toHaveTextContent("Have a play");
+    act(() => playground.remove());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(props.onStep).not.toHaveBeenCalled();
+  });
+
+  it("reveals the anchor again once the page has settled (v0.18 live)", () => {
+    vi.useFakeTimers();
+    try {
+      const el = placeAnchor("home.start-here", 1300);
+      view();
+      expect(el.scrollIntoView).toHaveBeenCalledTimes(1);
+      // the router's scroll restoration put the page back at the top: still off screen
+      act(() => {
+        vi.advanceTimersByTime(REVEAL_AGAIN_MS);
+      });
+      expect(el.scrollIntoView).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("is a bottom sheet on a phone, with Esc ending the tour", () => {
@@ -438,6 +533,22 @@ describe("TourHost", () => {
     expect(nav.replace).toHaveBeenCalledWith("/runs");
     expect(nav.push).toHaveBeenCalledWith("/guided/spec_1/explore");
     expect(screen.queryByTestId("welcome-dialog")).toBeNull();
+  });
+
+  it("starts the same tour again from the same link (the menu pushes it twice)", () => {
+    // v0.18 review: the handled link was never forgotten, so a second pick did nothing
+    data.state = { ...emptyOnboarding(), tips_off: true, welcomed_at: "2026-10-01T09:00:00Z" };
+    nav.searchStr = "?tour=welcome";
+    const { rerender } = render(<TourHost />, { wrapper });
+    expect(useTourStore.getState().active).toEqual({ id: "welcome", step: 0 });
+    expect(nav.replace).toHaveBeenCalledWith("/");
+    nav.searchStr = ""; // the param was stripped
+    rerender(<TourHost />);
+    act(() => useTourStore.getState().stop());
+    nav.searchStr = "?tour=welcome"; // picked again from the menu
+    rerender(<TourHost />);
+    expect(useTourStore.getState().active).toEqual({ id: "welcome", step: 0 });
+    expect(nav.replace).toHaveBeenCalledTimes(2);
   });
 
   it("resumes a tour after a reload unless the server finished it", () => {

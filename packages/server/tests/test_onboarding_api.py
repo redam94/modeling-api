@@ -160,6 +160,27 @@ async def test_a_body_over_two_kib_is_413(ctx: ServerContext, client: httpx.Asyn
     assert r.json()["code"] == "PAYLOAD_TOO_LARGE"
 
 
+async def test_a_chunked_body_is_cut_off_before_it_is_read_or_authenticated(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    # v0.18 review: the cap ran after FastAPI had buffered and parsed the whole body (and
+    # before auth); a chunked body without Content-Length now stops in the ASGI layer
+    await _people(ctx, client)
+    sent = 0
+
+    async def chunks() -> Any:
+        nonlocal sent
+        yield b'{"complete": ['
+        for _ in range(1000):
+            sent += 1
+            yield b'"x",' * 256
+
+    r = await client.patch(URL, content=chunks(), headers={"Content-Type": "application/json"})
+    assert r.status_code == 413, r.text  # not 401: no session, refused for size first
+    assert r.json()["code"] == "PAYLOAD_TOO_LARGE"
+    assert sent < 1000
+
+
 async def test_api_tokens_and_clients_are_refused(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:

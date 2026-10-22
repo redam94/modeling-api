@@ -31,11 +31,16 @@ import { PlainIssues } from "./upgrade-banner";
  * `initialModel` (v0.18, `/dashboards?new=1&model=`) starts the dialog on that model's latest
  * version, so the dashboard tour can open it prefilled with the sample's model.
  */
+/** The title a prefilled dialog (`/dashboards?new=1&model=`) starts with. */
+export const FIRST_DASHBOARD_TITLE = "My first dashboard";
+
 export function NewDashboardDialog({ onClose, onCreated, initialModel }: { onClose: () => void; onCreated: (d: Dashboard) => void; initialModel?: string }) {
   const create = useCreateDashboard();
   const endpoints = useEndpoints();
   const models = useModels();
-  const [title, setTitle] = useState("");
+  // v0.18 live: opened prefilled (the checklist, the dashboard tour, whose coach-mark sits
+  // over this field and says "then press Create"), it starts with a title that works
+  const [title, setTitle] = useState(initialModel ? FIRST_DASHBOARD_TITLE : "");
   const [name, setName] = useState<string | null>(null);
   const [kind, setKind] = useState<DashboardSource["kind"]>(initialModel ? "model_version" : "endpoint");
   const [alias, setAlias] = useState<string | null>(null);

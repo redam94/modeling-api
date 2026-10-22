@@ -665,7 +665,20 @@ def _row_labels(ds: xr.Dataset, g: str, phase: str) -> list[str | None]:
             code=code,
             pointer=f"/data/{g}",
         )
-    return [None if pad else str(v) for v, pad in zip(values.tolist(), padding, strict=True)]
+    return [
+        None if pad else _label_text(v) for v, pad in zip(values.tolist(), padding, strict=True)
+    ]
+
+
+def _label_text(value: object) -> str:
+    """A group label as text, the same whatever the column's dtype: a whole-number float is
+    written as an integer (``1.0`` and ``1`` are one store), so a fit on an integer column
+    and a score on a float one (a JSON ``1.0``, a float-typed export) match."""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
 
 
 def _fit_levels(labels: list[str | None]) -> list[str]:

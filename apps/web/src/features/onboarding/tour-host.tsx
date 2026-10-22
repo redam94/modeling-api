@@ -29,8 +29,9 @@ import { emitOnboarding } from "@/lib/onboarding-events";
 import { cn } from "@/lib/utils";
 import { useScope } from "@/stores/scope";
 
-import { useOnboarding, useOnboardingEventSync, useOnboardingTenant, usePatchOnboarding, useSampleAction, useSamples, type SampleInfo } from "./api";
-import { PHONE, REDUCED_MOTION, revealAnchor, Spotlight, useAnchor, useAnchorBox, useMedia } from "./spotlight";
+import { hubFolded, useOnboarding, useOnboardingEventSync, useOnboardingTenant, usePatchOnboarding, useSampleAction, useSamples, type SampleInfo } from "./api";
+import { findAnchor } from "./anchors";
+import { PHONE, REDUCED_MOTION, revealAnchor, Spotlight, stickyTop, useAnchor, useAnchorBox, useMedia } from "./spotlight";
 import { onRoute, stepRoute, tourAvailable, TOURS, tourSteps, type TourContext, type TourDef, type TourStep } from "./tours";
 import {
   noTourFlag,
@@ -70,12 +71,23 @@ export interface TourViewProps {
   onSkip: (step: number) => void;
   /** Close without recording anything (the sample is not ready yet). */
   onLeave: () => void;
+  /** The samples list is still loading: a sample tour waits instead of saying "set it up". */
+  samplesPending?: boolean;
 }
 
 /** One step of a tour on screen: spotlight + coach-mark, or the "not on screen" card. */
 export function TourView(props: TourViewProps) {
   const { tour, ctx } = props;
-  if (!tourAvailable(tour, ctx)) return <NeedsSampleCard {...props} />;
+  if (!tourAvailable(tour, ctx)) {
+    if (tour.needsSample && props.samplesPending) {
+      return (
+        <p role="status" className="sr-only">
+          Finding the next part of the tour…
+        </p>
+      );
+    }
+    return <NeedsSampleCard {...props} />;
+  }
   const steps = tourSteps(tour, ctx);
   if (steps.length === 0) return null;
   const i = Math.max(0, Math.min(props.step, steps.length - 1));
@@ -89,7 +101,10 @@ interface StepViewProps extends TourViewProps {
   current: TourStep;
 }
 
-function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, onStep, onFinish, onSkip }: StepViewProps) {
+/** When a step's anchor is revealed a second time (after a page change has settled). */
+export const REVEAL_AGAIN_MS = 450;
+
+function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, onStep, onFinish, onSkip }: Omit<StepViewProps, "samplesPending">) {
   const stepKey = `${tour.id}:${i}`;
   const route = stepRoute(current, ctx);
   const last = i === steps.length - 1;
@@ -114,10 +129,45 @@ function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, on
   }, [stepKey]);
 
   useEffect(() => {
-    if (anchor.el) revealAnchor(anchor.el, { reduced, phone });
+    const el = anchor.el;
+    if (!el) return;
+    revealAnchor(el, { reduced, phone });
+    // v0.18 live: a step that opens a page (or follows a click that does) can be scrolled
+    // back to the top by the router's scroll restoration just after it revealed its anchor,
+    // leaving the coach-mark below the window. Look again once the page has settled
+    // (revealAnchor does nothing when the anchor is already on screen).
+    const again = window.setTimeout(() => revealAnchor(el, { reduced, phone }), REVEAL_AGAIN_MS);
+    return () => window.clearTimeout(again);
     // reveal once per element, not on every media change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor.el]);
+
+  // v0.18 live: a step whose words ask for an action that takes its anchor away ("then press
+  // Create" closes the dialog and opens the builder) moves on by itself when the next step's
+  // anchor has appeared, instead of showing "not on screen". Only after the anchor was seen,
+  // and only into a step that has no page of its own (it "shows up after the step before").
+  // The next anchor must be new: one that was already there while this step showed (the
+  // nav, say) does not mean the user did what this step asked.
+  const following = last ? undefined : steps[i + 1];
+  const seen = useRef(false);
+  const followingWasThere = useRef(false);
+  if (anchor.el) {
+    seen.current = true;
+    followingWasThere.current ||= Boolean(following && findAnchor(following.anchor));
+  }
+  useEffect(() => {
+    if (anchor.el || !seen.current || followingWasThere.current || !following || following.route !== undefined) return;
+    const advance = () => {
+      if (findAnchor(following.anchor)) {
+        observer.disconnect();
+        onStep(i + 1);
+      }
+    };
+    const observer = new MutationObserver(advance);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-tour", "hidden"] });
+    advance();
+    return () => observer.disconnect();
+  }, [anchor.el, following, i, onStep]);
 
   const next = useCallback(() => {
     if (current.clickOnNext && anchor.el) anchor.el.click();
@@ -250,8 +300,16 @@ function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, on
               // the page stays usable while the tour plays: clicks elsewhere never close it
               onInteractOutside={(e) => e.preventDefault()}
               onEscapeKeyDown={(e) => {
-                e.preventDefault();
-                skip();
+                // Radix hears Esc for the top layer wherever focus is: end the tour only when
+                // the coach-mark (or nothing) has it; elsewhere the key is the page's
+                const t = e.target instanceof Element ? e.target : null;
+                if (!t || t === document.body || t === document.documentElement || coachRef.current?.contains(t)) {
+                  e.preventDefault();
+                  skip();
+                  return;
+                }
+                // an open dialog under the coach-mark is no longer the top layer: close it
+                t.closest<HTMLElement>("[role='dialog']")?.querySelector<HTMLElement>("[data-dialog-close]")?.click();
               }}
             >
               {card("popover")}
@@ -275,7 +333,7 @@ export function visiblePart(el: HTMLElement): { getBoundingClientRect: () => DOM
     getBoundingClientRect: () => {
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      const top = Math.max(r.top, 56); // below the sticky top bar
+      const top = Math.max(r.top, stickyTop()); // below the sticky header (taller on a phone)
       const bottom = Math.min(r.bottom, vh);
       if (bottom - top <= vh * 0.5) return r;
       return new DOMRect(r.left, top, r.width, Math.min(96, Math.max(0, bottom - top)));
@@ -313,10 +371,17 @@ function CoachCard({ refs, ids, variant, reduced, tour, i, total, testId, title,
       ref={refs.coach}
       {...dialog}
       data-testid={testId}
+      data-tour-coach=""
       data-variant={variant}
+      // A step can point into an open dialog while the card sits outside it: a press or focus
+      // here must not reach the dialog's outside-click listener on the document, or it closes
+      // and takes the next step's anchor with it.
+      onPointerDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.stopPropagation()}
       data-tour-step={`${tour.id}:${i}`}
       className={cn(
-        "pointer-events-auto grid gap-3 bg-block p-5 text-block-foreground shadow-lg",
+        // the lime ring keeps the card apart from an ink block it sits on or beside
+        "pointer-events-auto grid gap-3 bg-block p-5 text-block-foreground shadow-lg ring-2 ring-highlight",
         // the Studio entrance (app.css keyframes; ends at its last frame under reduced motion)
         !reduced && "animate-coach-in",
         variant === "sheet" ? "rounded-t-3xl pb-[max(1.25rem,env(safe-area-inset-bottom))]" : "rounded-[20px]",
@@ -444,14 +509,22 @@ function TourHostInner() {
   const showWelcome = !welcomeClosed && shouldWelcome({ state: progress.data, pathname, search, noTour, suppressed, tourActive: active !== null });
   const samples = useSamples({ enabled: showWelcome || Boolean(tour?.needsSample) });
   const sample = pickSample(samples.data);
-  const ctx = useMemo<TourContext>(() => ({ persona, sample }), [persona, sample]);
+  const samplesPending = samples.isLoading;
+  // the Home hub (Expert) and the Start-here strip (Guided) fold away: their steps then skip
+  const hub = !hubFolded(progress.data);
+  const ctx = useMemo<TourContext>(() => ({ persona, sample, hub }), [persona, sample, hub]);
 
   // `?tour=<id>` opens a tour; `?tour=off` keeps everything quiet for this page load.
   const handledLink = useRef<string | null>(null);
   useEffect(() => {
     const p = tourParam(search);
     const link = `${pathname}${search}`;
-    if (p === null || handledLink.current === link) return;
+    if (p === null) {
+      // the param was stripped: the menu may push the very same link again later
+      handledLink.current = null;
+      return;
+    }
+    if (handledLink.current === link) return;
     handledLink.current = link;
     if (p === "off") useTourStore.getState().suppress();
     else startTour(p, 0);
@@ -550,6 +623,7 @@ function TourHostInner() {
           onFinish={onFinish}
           onSkip={onSkip}
           onLeave={onLeave}
+          samplesPending={samplesPending}
         />
       ) : null}
     </>

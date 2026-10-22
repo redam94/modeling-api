@@ -138,6 +138,29 @@ def test_tours_merge_per_tour_and_take_the_server_time() -> None:
     assert "took_tour" not in s.checklist
 
 
+def test_a_repeated_tour_patch_changes_nothing() -> None:
+    # v0.18 review: every tours PATCH bumped the version (updated_at = now), so a second tab
+    # got 412 for a no-op
+    patch = _patch(tours={"fit": _tour(step=2)})
+    s = apply_patch(OnboardingState(), patch, now=T1)
+    assert s.version == 1
+    again = apply_patch(s, patch, now=T2)
+    assert again == s and again.version == 1 and again.tours["fit"].updated_at == T1
+    moved = apply_patch(s, _patch(tours={"fit": _tour(step=3)}), now=T2)
+    assert moved.version == 2 and moved.tours["fit"].updated_at == T2
+
+
+def test_a_completed_tour_is_not_reopened() -> None:
+    done = apply_patch(OnboardingState(), _patch(tours={"welcome": _tour("completed", 5)}), now=T1)
+    for status in ("in_progress", "dismissed"):
+        stale = apply_patch(done, _patch(tours={"welcome": _tour(status, 2)}), now=T2)
+        assert stale.tours["welcome"].status == "completed" and stale.version == done.version
+    # a dismissed tour can be taken again
+    skipped = apply_patch(OnboardingState(), _patch(tours={"fit": _tour("dismissed")}), now=T1)
+    resumed = apply_patch(skipped, _patch(tours={"fit": _tour(step=1)}), now=T2)
+    assert resumed.tours["fit"].status == "in_progress"
+
+
 def test_a_completed_tour_completes_took_tour() -> None:
     s = apply_patch(OnboardingState(), _patch(tours={"whatif": _tour("completed", 4)}), now=T1)
     assert s.checklist == {"took_tour": T1}

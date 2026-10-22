@@ -29,14 +29,16 @@ Then restart the stack.
 
 ```bash
 make plugin-new NAME=acme KIND="model recipe node"
-uv lock
+make install
 make dev
 ```
 
 `make plugin-new` runs `mapi plugin init` with `--dir plugins` (`KIND` takes one or more of
 `model`, `step`, `recipe`, `node`, `template`; `BASE` picks the base class of a model).
-`plugins/*` is a member of the uv workspace, so `uv lock` adds it to the lock file. The
-digest of a source checkout hashes `uv.lock` and every file under `packages/*/src` and
+`plugins/*` is a member of the uv workspace, so `make install` (`uv sync --all-packages`)
+adds it to the lock file and installs it into `.venv`, which is what makes its entry points
+exist. (`uv lock` alone is not enough: `uv run` and `make dev` only install the packages the
+workspace root depends on, and a new member is not one of them.) The digest of a source checkout hashes `uv.lock` and every file under `packages/*/src` and
 `plugins/*/src`, so each change to your code describes the catalog again at the next start.
 
 ## (b) Out of tree, while you develop it

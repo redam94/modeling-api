@@ -40,7 +40,7 @@ export function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="focus-ring absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
+        <DialogPrimitive.Close data-dialog-close="" className="focus-ring absolute top-4 right-4 rounded-sm p-1 text-muted-foreground hover:text-foreground">
           <X className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

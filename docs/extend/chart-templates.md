@@ -16,7 +16,7 @@ them.
 ## Make one
 
 - **Catalog › Plots:** on a recipe card, **Make a chart template**.
-- **Make your own › Charts › New chart template:** pick the source recipe.
+- **Make your own › Charts › Make a chart template:** pick the source recipe.
 
 Then start from a starter layout, pick what goes on each axis, and give it a title and a
 caption. The preview draws your template on the recipe's catalog example a quarter of a second

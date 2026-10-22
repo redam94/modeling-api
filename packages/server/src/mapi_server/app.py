@@ -16,6 +16,7 @@ from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_H
 from mapi_spec.capabilities import Diagnostic
 from mapi_spec.dashboards import ShareSessionCreate
 from mapi_spec.errors import MapiError, Problem
+from mapi_spec.onboarding import MAX_ONBOARDING_PATCH_BYTES
 from mapi_spec.run import (
     CheckpointPayload,
     CompletePayload,
@@ -149,7 +150,13 @@ V018_BODY_LIMITS: tuple[tuple[tuple[str, ...], int], ...] = (
 )
 """JSON body caps of the v0.18 ``POST`` routes, applied with
 :class:`~mapi_server.api.problems.JsonBodyLimit` before FastAPI parses a body (plan I-5).
-The onboarding ``PATCH`` caps its own body (2 KiB) in its handler."""
+The onboarding ``PATCH`` has its own entry (:data:`V018_PATCH_BODY_LIMITS`)."""
+
+V018_PATCH_BODY_LIMITS: tuple[tuple[tuple[str, ...], int], ...] = (
+    ((_TENANT + r"/me/onboarding",), MAX_ONBOARDING_PATCH_BYTES),
+)
+"""JSON body caps of the v0.18 ``PATCH`` routes: cut off in the ASGI layer, before FastAPI
+reads and parses the body (and before authentication)."""
 
 
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
@@ -445,6 +452,8 @@ def create_app(
     # onboarding, samples, recipe previews, the operator's catalog refresh)
     for paths, max_bytes in V018_BODY_LIMITS:
         app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes)
+    for paths, max_bytes in V018_PATCH_BODY_LIMITS:
+        app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes, methods=("PATCH",))
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)

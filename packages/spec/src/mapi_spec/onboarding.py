@@ -211,7 +211,9 @@ def apply_patch(
     * ``complete`` adds steps with the time ``now``; a step already done keeps its first
       time, and no patch removes a step.
     * ``tours`` replaces the named tours (``updated_at`` becomes ``now``); a tour that
-      reaches ``completed`` also completes ``took_tour``.
+      reaches ``completed`` also completes ``took_tour``. A tour already at the same status
+      and step is left as it is (its ``updated_at`` too), and a ``completed`` tour stays
+      completed (a stale tab cannot reopen it; only ``:reset`` starts again).
     * ``hide_samples`` / ``unhide_samples`` edit the hidden list (unhide wins over hide).
     * ``welcomed: true`` records ``welcomed_at`` once; ``false`` changes nothing.
 
@@ -227,6 +229,12 @@ def apply_patch(
         checklist.setdefault(step, now)
     tours = dict(state.tours)
     for tour_id, progress in (patch.tours or {}).items():
+        stored = tours.get(tour_id)
+        if stored is not None and (
+            (stored.status, stored.step) == (progress.status, progress.step)
+            or (stored.status == "completed" and progress.status != "completed")
+        ):
+            continue
         tours[tour_id] = progress.model_copy(update={"updated_at": now})
         if progress.status == "completed":
             checklist.setdefault(_TOUR_DONE_STEP, now)

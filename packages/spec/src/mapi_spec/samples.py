@@ -65,8 +65,11 @@ SampleState = Literal["provisioning", "ingesting", "fitting", "ready", "failed",
 
 SAMPLE_STATES: Final[tuple[SampleState, ...]] = get_args(SampleState)
 
-ACTIVE_SAMPLE_STATES: Final[frozenset[SampleState]] = frozenset({"ingesting", "fitting"})
-"""States the sample loop polls (the table has a partial index on them)."""
+ACTIVE_SAMPLE_STATES: Final[frozenset[SampleState]] = frozenset(
+    {"provisioning", "ingesting", "fitting"}
+)
+"""States the sample loop polls (the table has a partial index on exactly these, so the
+loop's query can use it)."""
 
 SAMPLE_TRANSITIONS: Final[Mapping[SampleState, frozenset[SampleState]]] = MappingProxyType(
     {

@@ -16,7 +16,7 @@ column from an expression, such as `where(promo > 0, price, 0)`.
 
 There are two ways:
 
-- **Make your own › Prep › New prep preset.** Pick the steps from the same palette as in
+- **Make your own › Prep › Make a prep preset.** Pick the steps from the same palette as in
   Build (or with the keyboard), set their settings, and mark a setting as a slot.
 - **Build › Save steps as preset.** In the visual builder, save the steps of the spec that
   you have open.

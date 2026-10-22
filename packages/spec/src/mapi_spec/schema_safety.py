@@ -8,7 +8,9 @@ remote ``$ref`` makes the validator fetch a URL, and a huge or deep schema costs
 
 Rules (every one has a plain reason in the issue it raises):
 
-* size ≤ :data:`SCHEMA_MAX_BYTES` (compact JSON), subschema depth ≤ :data:`SCHEMA_MAX_DEPTH`,
+* size ≤ :data:`SCHEMA_MAX_BYTES` (compact JSON), subschema depth ≤ :data:`SCHEMA_MAX_DEPTH`;
+  with every ``$ref`` expanded, ≤ :data:`SCHEMA_MAX_EXPANDED` subschemas nested ≤
+  :data:`SCHEMA_MAX_EXPANDED_DEPTH` deep;
   ≤ :data:`SCHEMA_MAX_PROPS` property definitions, ``enum`` ≤ :data:`ENUM_MAX_ITEMS` items of
   ≤ :data:`ENUM_ITEM_MAX_CHARS` characters;
 * only the keywords in :data:`ALLOWED_KEYWORDS`; ``$ref`` only to a local ``#/$defs/<name>``
@@ -49,6 +51,8 @@ __all__ = [
     "REGEX_MAX_REPEAT",
     "SCHEMA_MAX_BYTES",
     "SCHEMA_MAX_DEPTH",
+    "SCHEMA_MAX_EXPANDED",
+    "SCHEMA_MAX_EXPANDED_DEPTH",
     "SCHEMA_MAX_PROPS",
     "SETTINGS_SCHEMA_MAX_BYTES",
     "TEXT_MAX_CHARS",
@@ -73,6 +77,12 @@ ENUM_ITEM_MAX_CHARS: Final = 200
 TEXT_MAX_CHARS: Final = 2000
 REGEX_MAX_REPEAT: Final = 1000
 """The largest finite bound of a ``{m,n}`` quantifier."""
+SCHEMA_MAX_EXPANDED: Final = 10_000
+"""The most subschemas a schema may hold once every ``$ref`` is expanded in place (the tree
+the validator walks: a chain of definitions that each use the previous one twice doubles it
+at every step while the text stays small)."""
+SCHEMA_MAX_EXPANDED_DEPTH: Final = 2 * SCHEMA_MAX_DEPTH
+"""The deepest subschema nesting once every ``$ref`` is expanded in place."""
 _JSON_MAX_NESTING: Final = 64
 """Containers nested deeper than this are refused before any recursion (any keyword)."""
 
@@ -201,7 +211,8 @@ def _can_match(items: Sequence[tuple[Any, Any]], ch: str) -> bool:
         elif name == "ANY":
             return True
         elif name == "IN":
-            if _in_set(av, ch) or _in_set(av, ch.swapcase()):
+            other = ch.swapcase()
+            if _in_set(av, ch) or (len(other) == 1 and _in_set(av, other)):
                 return True
         elif name in {"MAX_REPEAT", "MIN_REPEAT", "POSSESSIVE_REPEAT"}:
             if _can_match(av[2], ch):
@@ -231,7 +242,7 @@ def _edge_literal(items: Sequence[tuple[Any, Any]], *, last: bool) -> str | None
 
 
 def _delimited(body: Sequence[tuple[Any, Any]], inner: Sequence[Sequence[tuple[Any, Any]]]) -> bool:
-    """Whether a repeated ``body`` starts or ends with a literal that none of its ``inner``
+    r"""Whether a repeated ``body`` starts or ends with a literal that none of its ``inner``
     variable quantifiers can match: then every repetition splits the input one way only
     (``(\.[a-z]+)+`` and ``(\d+\.)+`` are safe, ``(\w+\s?)+`` is not)."""
     for sep in (_edge_literal(body, last=False), _edge_literal(body, last=True)):
@@ -297,6 +308,158 @@ def _check_regex(items: Sequence[tuple[Any, Any]], *, in_repeat: bool, quantifie
                 _check_regex(body, in_repeat=True, quantified=True)
 
 
+_REPEATS: Final = frozenset({"MAX_REPEAT", "MIN_REPEAT"})
+_SINGLE: Final = frozenset({"LITERAL", "NOT_LITERAL", "ANY", "IN"})
+_PROBE_BASE: Final = "".join(chr(c) for c in range(32, 127)) + "\t\n\r\x0b\x0c éßα中 "
+
+
+def _nullable(items: Sequence[tuple[Any, Any]]) -> bool:
+    """Whether ``items`` can match the empty string (``True`` when unsure)."""
+    for op, av in items:
+        name = str(op)
+        if name == "AT":
+            continue
+        if name in _REPEATS:
+            if av[0] == 0 or _nullable(av[2]):
+                continue
+            return False
+        if name == "SUBPATTERN":
+            if _nullable(av[3]):
+                continue
+            return False
+        if name == "BRANCH":
+            if any(_nullable(alt) for alt in av[1]):
+                continue
+            return False
+        if name in _SINGLE:
+            return False
+    return True
+
+
+def _starts(items: Sequence[tuple[Any, Any]], ch: str) -> bool:
+    """Whether a match of ``items`` can start with ``ch`` (``True`` when unsure)."""
+    for item in items:
+        op, av = item
+        name = str(op)
+        if name in _SINGLE:
+            return _can_match([item], ch)
+        if name in _REPEATS:
+            if _starts(av[2], ch):
+                return True
+        elif name == "SUBPATTERN":
+            if _starts(av[3], ch):
+                return True
+        elif name == "BRANCH":
+            if any(_starts(alt, ch) for alt in av[1]):
+                return True
+        elif name != "AT":
+            return True
+        if not _nullable([item]):
+            return False
+    return False
+
+
+def _probe_chars(items: Sequence[tuple[Any, Any]], into: set[str]) -> None:
+    """Collect the literal characters and range ends of a parsed pattern (overlap probes)."""
+    for op, av in items:
+        name = str(op)
+        if name in {"LITERAL", "NOT_LITERAL"}:
+            into.add(chr(av))
+        elif name == "IN":
+            for sub_op, sub_av in av:
+                if str(sub_op) == "LITERAL":
+                    into.add(chr(sub_av))
+                elif str(sub_op) == "RANGE":
+                    into.update((chr(sub_av[0]), chr(sub_av[1])))
+        elif name in _REPEATS:
+            _probe_chars(av[2], into)
+        elif name == "SUBPATTERN":
+            _probe_chars(av[3], into)
+        elif name == "BRANCH":
+            for alt in av[1]:
+                _probe_chars(alt, into)
+
+
+class _Open:
+    """A variable quantifier whose match may still be running at this point of a sequence.
+
+    ``chars``: the probe characters it can match; ``crossed``: a mandatory character it can
+    also match came after it (it is not directly next to what follows)."""
+
+    __slots__ = ("chars", "crossed")
+
+    def __init__(self, chars: frozenset[str], crossed: bool = False) -> None:
+        self.chars = chars
+        self.crossed = crossed
+
+
+class _Siblings:
+    r"""Sibling quantifiers that can split the same text many ways (``\d*\d*\d*!``, ``.*.*=``):
+    the number of ways grows like ``C(n + k, k)`` for ``k`` of them over ``n`` characters.
+
+    Refused: a variable quantifier that can start with a character an earlier, still running
+    variable quantifier can match, when nothing mandatory comes between them (``\d*\d*``), or
+    when two or more earlier ones can (``.*x.*x.*``). One overlap across a mandatory
+    character (``\S+@\S+``) is allowed: it splits only at that character."""
+
+    def __init__(self, probes: str) -> None:
+        self.probes = probes
+
+    def chars(self, test: Any) -> frozenset[str]:
+        return frozenset(ch for ch in self.probes if test(ch))
+
+    def sequence(self, items: Sequence[tuple[Any, Any]], open_: list[_Open]) -> list[_Open]:
+        for item in items:
+            op, av = item
+            name = str(op)
+            if name in _SINGLE:
+                hit = self.chars(lambda ch, it=item: _can_match([it], ch))
+                open_ = [_Open(o.chars, True) for o in open_ if o.chars & hit]
+            elif name == "SUBPATTERN":
+                open_ = self.sequence(av[3], open_)
+            elif name == "BRANCH":
+                merged: list[_Open] = []
+                for alt in av[1]:
+                    merged.extend(o for o in self.sequence(alt, list(open_)) if o not in merged)
+                open_ = merged
+            elif name in _REPEATS:
+                open_ = self.repeat(av, open_)
+        return open_
+
+    def repeat(self, av: Any, open_: list[_Open]) -> list[_Open]:
+        lo, hi, body = av
+        if lo == hi:  # a fixed count: the body runs in sequence (twice is enough to see)
+            for _ in range(min(lo, 2)):
+                open_ = self.sequence(body, open_)
+            return open_
+        if any(True for _ in _variable_repeats(body)):  # a delimited group: walk its body
+            after = self.sequence(body, list(open_))
+            if lo == 0:
+                after = [*open_, *(o for o in after if o not in open_)]
+            return after
+        first = self.chars(lambda ch: _starts(body, ch))
+        overlap = [o for o in open_ if o.chars & first]
+        if any(not o.crossed for o in overlap):
+            raise _Unsafe(
+                "quantifiers in a row that can match the same characters (such as '\\d*\\d*') "
+                "are not allowed"
+            )
+        if len(overlap) > 1:
+            raise _Unsafe(
+                "more than two quantifiers that can match the same characters (such as "
+                "'.*x.*x.*') are not allowed"
+            )
+        kept = open_ if lo == 0 else overlap
+        return [*kept, _Open(self.chars(lambda ch: _can_match(body, ch)))]
+
+
+def _check_siblings(parsed: Sequence[tuple[Any, Any]]) -> None:
+    extra: set[str] = set()
+    _probe_chars(parsed, extra)
+    probes = _PROBE_BASE + "".join(sorted(extra - set(_PROBE_BASE)))
+    _Siblings(probes).sequence(parsed, [])
+
+
 def is_safe_regex(pattern: str) -> str | None:
     """``None`` if ``pattern`` is safe to run with Python ``re`` on untrusted input, else a
     plain reason.
@@ -305,7 +468,9 @@ def is_safe_regex(pattern: str) -> str | None:
     possessive quantifiers or atomic groups; a star height above 1 (a variable quantifier
     inside a repeated group, unless the group starts or ends with a literal the inner
     quantifiers cannot match); alternation inside a repeated group; ``{m,n}`` bounds above
-    :data:`REGEX_MAX_REPEAT`.
+    :data:`REGEX_MAX_REPEAT`; sibling quantifiers that can match the same characters with
+    nothing mandatory between them (``\\d*\\d*``), or three or more of them (see
+    :class:`_Siblings`).
     """
     if not isinstance(pattern, str):
         return "the pattern is not a string"
@@ -317,6 +482,7 @@ def is_safe_regex(pattern: str) -> str | None:
         return "the pattern is not a valid regular expression"
     try:
         _check_regex(list(parsed), in_repeat=False, quantified=False)
+        _check_siblings(list(parsed))
     except _Unsafe as exc:
         return str(exc)
     except RecursionError:
@@ -404,6 +570,76 @@ def _cyclic_defs(defs: Mapping[str, Any]) -> set[str]:
             seen.add(cur)
             todo.extend(graph.get(cur, ()))
     return cyclic
+
+
+class _TooComplex(Exception):
+    """The schema expands past a budget once its references are followed (the reason)."""
+
+
+def _check_expansion(schema: Mapping[str, Any]) -> None:
+    """Raise :class:`_TooComplex` when ``schema`` with every local ``$ref`` expanded in place
+    holds more than :data:`SCHEMA_MAX_EXPANDED` subschemas or nests deeper than
+    :data:`SCHEMA_MAX_EXPANDED_DEPTH`. Each definition is sized once (memoized), so a
+    doubling chain costs one pass; descent stops at the depth budget (no deep recursion)."""
+    raw = schema.get("$defs")
+    defs: Mapping[str, Any] = raw if isinstance(raw, Mapping) else {}
+    memo: dict[str, tuple[int, int]] = {}
+    active: set[str] = set()
+
+    def too_big(count: int, height: int, level: int) -> None:
+        if count > SCHEMA_MAX_EXPANDED:
+            raise _TooComplex(
+                f"The schema expands to more than {SCHEMA_MAX_EXPANDED} subschemas once its "
+                "'$ref's are followed."
+            )
+        if level + height - 1 > SCHEMA_MAX_EXPANDED_DEPTH:
+            raise _TooComplex(
+                f"The schema is nested deeper than {SCHEMA_MAX_EXPANDED_DEPTH} levels once its "
+                "'$ref's are followed."
+            )
+
+    def ref(name: str, level: int) -> tuple[int, int]:
+        if name not in memo:
+            if name in active:  # a cycle the walker missed: never expand it
+                raise _TooComplex("The '$ref' is part of a reference cycle.")
+            active.add(name)
+            memo[name] = node(defs[name], level)  # height does not depend on level
+            active.discard(name)
+        count, height = memo[name]
+        too_big(count, height, level)
+        return count, height
+
+    def node(n: Any, level: int) -> tuple[int, int]:
+        """(subschemas, height) of ``n`` expanded; ``level`` is its depth from the root."""
+        too_big(1, 1, level)
+        if not isinstance(n, Mapping):
+            return 1, 1
+        count, height = 1, 0
+        for key, value in n.items():
+            if key == "$defs":
+                continue
+            subs: list[Any] = []
+            if key == "$ref":
+                name = _ref_name(value)
+                if name is not None and name in defs:
+                    c, h = ref(name, level + 1)
+                    count += c
+                    height = max(height, h)
+                continue
+            if key in _SCHEMA_MAPS and isinstance(value, Mapping):
+                subs = list(value.values())
+            elif key in _SCHEMA_LISTS and isinstance(value, list):
+                subs = value
+            elif key in _SCHEMA_ONE:
+                subs = [value]
+            for sub in subs:
+                c, h = node(sub, level + 1)
+                count += c
+                height = max(height, h)
+            too_big(count, 1, 1)
+        return count, height + 1
+
+    node(schema, 1)
 
 
 class _Walker:
@@ -622,6 +858,11 @@ def sanitize_schema(
             "The schema is not a valid JSON Schema (2020-12).",
             exc.message,
         )
+        out = {}
+    try:
+        _check_expansion(out)
+    except _TooComplex as exc:
+        walker.flag([], str(exc))
         out = {}
     return out, walker.issues
 

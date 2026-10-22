@@ -248,7 +248,7 @@ def _samples() -> None:
         "ix_tenant_samples_pending",
         "tenant_samples",
         ["state"],
-        postgresql_where=sa.text("state in ('ingesting','fitting')"),
+        postgresql_where=sa.text("state in ('provisioning','ingesting','fitting')"),
     )
 
 

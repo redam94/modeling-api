@@ -227,7 +227,8 @@ def test_data_sha256_matches_the_generator() -> None:
 def test_states_and_transitions() -> None:
     assert get_args(SampleState) == SAMPLE_STATES
     assert set(SAMPLE_TRANSITIONS) == set(SAMPLE_STATES)
-    assert {"ingesting", "fitting"} == ACTIVE_SAMPLE_STATES
+    # v0.18 review: the loop polls provisioning too, and the partial index must cover it
+    assert {"provisioning", "ingesting", "fitting"} == ACTIVE_SAMPLE_STATES
     happy: list[SampleState] = ["provisioning", "ingesting", "fitting", "ready"]
     for a, b in itertools.pairwise(happy):
         assert can_transition(a, b)

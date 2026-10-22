@@ -5,6 +5,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DRAFT_DASHBOARD_ID, V2_DASHBOARD_IDS } from "@/mocks/dashboards";
+import { MODEL_ID } from "@/mocks/fixtures";
 import { createHandlers } from "@/mocks/handlers";
 import { renderApp } from "@/test/render-app";
 
@@ -210,6 +211,15 @@ describe("builder › the move to the new layout", () => {
 });
 
 describe("new dashboard", () => {
+  it("opened prefilled for a model (the dashboard tour) starts with a title", async () => {
+    // v0.18 live: the tour's coach-mark sits over the Title field and says "then press
+    // Create"; with an empty title Create only answered "Title: Type a title."
+    renderApp(`/dashboards?new=1&model=${MODEL_ID}`);
+    const dialog = await screen.findByRole("dialog", { name: "New client dashboard" }, T);
+    expect(within(dialog).getByLabelText<HTMLInputElement>("Title").value).toBe("My first dashboard");
+    expect(within(dialog).getByLabelText<HTMLInputElement>("Name").value).toBe("my-first-dashboard");
+  });
+
   it("starts from the suggested layout and never asks for channels outside the planner", async () => {
     const user = userEvent.setup();
     renderApp("/dashboards");

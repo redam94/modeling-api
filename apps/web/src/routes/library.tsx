@@ -228,6 +228,9 @@ export function LibraryPage() {
   /** Items made in this visit: their builder stays mounted when the URL gets their id. */
   const created = useRef(new Map<string, { kind: LibraryKind; title: string; tab: LibraryTab; initial: LibraryDoc; key: string }>());
   const fresh = useRef<{ key: string; initial: LibraryDoc } | null>(null);
+  // Only for the new → item URL swap right after saving: once the page shows anything else,
+  // the entry goes, so opening the item again loads its latest revision (not the blank start).
+  for (const id of created.current.keys()) if (id !== search.item) created.current.delete(id);
 
   if (search.item && !created.current.has(search.item)) return <ItemEditor key={search.item} id={search.item} onCreated={() => undefined} />;
 

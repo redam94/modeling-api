@@ -286,7 +286,9 @@ function DeclarativeSections({ model, onModel, issues, columns, datasetPicked }:
           <p className="rounded-xl border border-dashed border-border-strong p-4 text-muted-foreground">No drivers yet. Add your first one: price, promo, media spend, the weather…</p>
         )}
         <IssueLines issues={issues} pointer={`${P}/terms`} className="mt-2" />
-        <div className="mt-4 flex flex-wrap items-end gap-2" data-pointer={`${P}/terms`}>
+        {/* v0.18 live: the tour's "prior" step points at the first driver's prior; a new
+            recipe has no driver yet, so it points at adding one instead of "not on screen" */}
+        <div className="mt-4 flex flex-wrap items-end gap-2" data-pointer={`${P}/terms`} data-tour={terms.length ? undefined : "library.prior"}>
           {columns.length ? (
             <Field label="Add a driver" htmlFor={`${id}-add`} className="min-w-48 flex-1 sm:max-w-xs">
               <NativeSelect id={`${id}-add`} value={adding} onChange={(e) => setAdding(e.target.value)}>
@@ -612,7 +614,7 @@ export function ModelBuilder({ itemId, initial, onCreated }: ModelBuilderProps) 
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-        <div className="grid min-w-0 content-start gap-5">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5">
           {view === "yaml" ? (
             <YamlTab kind="model_recipe" doc={doc} issues={issues} onDoc={(d: LibraryDoc) => isModelRecipeDoc(d) && setDoc(d)} />
           ) : (
@@ -652,7 +654,7 @@ export function ModelBuilder({ itemId, initial, onCreated }: ModelBuilderProps) 
             </>
           )}
           {issues?.length ? (
-            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4">
+            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
               <h2 className="mb-2 text-base font-bold">What the check found</h2>
               <IssueList
                 issues={issues}

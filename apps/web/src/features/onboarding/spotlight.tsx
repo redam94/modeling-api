@@ -155,16 +155,29 @@ export function useAnchorBox(el: HTMLElement | null): Box | null {
   return box;
 }
 
-/** Scroll `el` into view when it is (partly) off screen; instant under reduced motion. */
+/** The space the sticky app header takes at the top of the window (its bottom edge; taller on a phone, where the nav wraps). */
+export function stickyTop(): number {
+  const header = typeof document === "undefined" ? null : document.querySelector<HTMLElement>("header.sticky");
+  const bottom = header?.getBoundingClientRect().bottom;
+  return typeof bottom === "number" && Number.isFinite(bottom) && bottom > 0 ? bottom : 56;
+}
+
+/** Scroll `el` into view when it is (partly) off screen or under the sticky header; instant under reduced motion. */
 export function revealAnchor(el: HTMLElement, opts: { reduced: boolean; phone: boolean }): void {
   const r = el.getBoundingClientRect();
   const vh = window.innerHeight || document.documentElement.clientHeight;
+  const top = stickyTop();
   // the phone sheet covers the lower part of the screen: keep the target in the top half
   const bottomLimit = opts.phone ? vh * 0.5 : vh;
-  if (r.top >= 56 && r.bottom <= bottomLimit) return;
-  // a tall anchor (taller than half the window) shows its top: the coach-mark points there
-  const tall = r.height > bottomLimit * 0.5;
-  if (typeof el.scrollIntoView === "function") el.scrollIntoView({ block: opts.phone || tall ? "start" : "center", behavior: opts.reduced ? "auto" : "smooth" });
+  if (r.top >= top && r.bottom <= bottomLimit) return;
+  // a tall anchor (taller than half the room left) shows its top: the coach-mark points there
+  const tall = r.height > (bottomLimit - top) * 0.5;
+  if (typeof el.scrollIntoView !== "function") return;
+  // "start" lines the top up under the sticky header, not under the window's edge
+  const before = el.style.scrollMarginTop;
+  el.style.scrollMarginTop = `${Math.ceil(top) + 16}px`;
+  el.scrollIntoView({ block: opts.phone || tall ? "start" : "center", behavior: opts.reduced ? "auto" : "smooth" });
+  el.style.scrollMarginTop = before;
 }
 
 // ------------------------------------------------------------------------------ spotlight

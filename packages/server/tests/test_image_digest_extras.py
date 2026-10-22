@@ -169,3 +169,23 @@ def test_the_library_and_sample_limits_have_their_defaults() -> None:
         200,
         15.0,
     )
+
+
+def test_an_extra_plugins_entry_points_change_the_digest(tmp_path: Path) -> None:
+    # v0.18 review: only src/ was hashed, so a new entry point in pyproject.toml (pointing at
+    # code already in src/) kept the stale catalog
+    lock = _checkout(tmp_path)
+    plugin = _plugin(tmp_path / "acme")
+    _list(tmp_path, "acme")
+    bare = checkout_image_digest(lock)
+    meta = plugin / "pyproject.toml"
+    meta.write_text('[project.entry-points."mapi.models"]\nacme = "acme:MODELS"\n')
+    first = checkout_image_digest(lock)
+    assert first != bare
+    meta.write_text(
+        '[project.entry-points."mapi.models"]\nacme = "acme:MODELS"\n'
+        '[project.entry-points."mapi.workflow_templates"]\nacme = "acme:TEMPLATES"\n'
+    )
+    assert checkout_image_digest(lock) not in {bare, first}
+    (plugin / "setup.cfg").write_text("[options.entry_points]\n")
+    assert checkout_image_digest(lock) != first

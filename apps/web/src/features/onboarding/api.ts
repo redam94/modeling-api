@@ -87,6 +87,11 @@ export function checklistDone(state: OnboardingState | undefined): boolean {
   return CHECKLIST_STEPS.every((s) => s in done);
 }
 
+/** The Start-here hub (Expert Home) and strip (Guided) fold away: checklist done or hidden, or tips off. */
+export function hubFolded(state: OnboardingState | undefined): boolean {
+  return Boolean(state && (checklistDone(state) || state.tips_off));
+}
+
 /** How many checklist steps are done. */
 export function checklistCount(state: OnboardingState | undefined): number {
   const done = state?.checklist ?? {};

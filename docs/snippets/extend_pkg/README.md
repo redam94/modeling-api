@@ -34,13 +34,16 @@ cannot be loaded.
 ## See it on your stack (3 ways)
 
 1. **In the platform checkout** (a workspace member): copy this folder to `plugins/`, run
-   `uv lock`, then `make dev`. The catalog is described again on the next start.
+   `make install` (`uv sync --all-packages`: it locks the new member and installs it, so its
+   entry points exist), then `make dev`. The catalog is described again on the next start.
 2. **Out of tree, while you develop it:** `make plugin-dev PLUGIN=path/to/acme` installs
    it in editable mode and adds it to the image digest, so `make dev` describes it again
    after every change. `make plugin-undev PLUGIN=...` removes it.
-3. **A custom runner image:** build a wheel (`uv build`), then
-   `make plugin-image BASE=base-bayes NAME=acme WHEELS=dist/*.whl` and route its
-   namespace to the image with `MAPI_DOCKER_IMAGES='{"acme": "<image>"}'`.
+3. **A custom runner image:** build a wheel here (`uv build --wheel`), then, from the
+   modeling-api checkout (`plugin-image` is a target of its Makefile),
+   `make plugin-image BASE=base-bayes NAME=acme WHEELS="path/to/acme/dist/*.whl"`
+   and route its namespace to the image with
+   `MAPI_DOCKER_IMAGES='{"acme": "<image>"}'`.
 
 Then run `mapi plugin doctor --server`: it lists every installed extension, the load
 problems, the image routing and whether the server has described the current code.

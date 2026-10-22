@@ -252,6 +252,36 @@ async def test_a_recipe_brings_its_prep_preset(
     assert r.status_code == 422
 
 
+async def test_a_tenant_recipe_cannot_reference_project_items(
+    ctx: ServerContext, client: httpx.AsyncClient
+) -> None:
+    # v0.18 review: a promoted recipe with a project prep checked valid in its project but
+    # could not be used from any other project
+    who = await _people(ctx, client)
+    prep = await _create(who["editor"], PRESET)
+    doc = copy.deepcopy(RECIPE)
+    doc["metadata"]["name"] = "with-project-prep"
+    doc["prep"] = {"item": prep.id}
+    item = await _create(who["editor"], doc)
+    r = await who["admin"].post(f"{URL}/{item.id}:promote")
+    assert r.status_code == 422 and r.json()["code"] == "LIBRARY_INVALID", r.text
+    assert [e["pointer"] for e in r.json()["errors"]] == ["/prep/item"]
+    r = await who["admin"].post(URL, json={"document": doc, "scope": "tenant"})
+    assert r.status_code == 422 and r.json()["errors"][0]["pointer"] == "/prep/item"
+    # promote the preset first: the tenant recipe then works from another project
+    shared_prep = LibraryItem.model_validate(
+        (await who["admin"].post(f"{URL}/{prep.id}:promote")).json()
+    )
+    doc["prep"] = {"item": shared_prep.id}
+    shared = await _create(who["admin"], doc, scope="tenant")
+    rev = (await who["retail_editor"].get(f"{URL}/{shared.id}/revisions/1")).json()
+    assert rev["valid"] is True, rev["issues"]
+    # a tenant item's revision is held to the same rule
+    doc["prep"] = {"item": prep.id}
+    r = await who["admin"].post(f"{URL}/{shared.id}/revisions", json={"document": doc})
+    assert r.status_code == 422 and r.json()["errors"][0]["pointer"] == "/prep/item"
+
+
 async def test_presets_fill_exposed_settings(ctx: ServerContext, client: httpx.AsyncClient) -> None:
     who = await _people(ctx, client)
     item = await _create(who["editor"], SARIMAX)

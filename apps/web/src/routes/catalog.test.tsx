@@ -5,9 +5,11 @@
  */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { env } from "@/env";
 import { createHandlers } from "@/mocks/handlers";
 import { MOCK_EXTENSIONS_KEY } from "@/mocks/library";
 import { renderApp } from "@/test/render-app";
@@ -66,6 +68,10 @@ describe("Catalog", () => {
     const yours = await screen.findByTestId("catalog-yours", undefined, T);
     const team = await within(yours).findByRole("list", { name: "From your team" }, T);
     expect(within(team).getAllByRole("listitem").length).toBeGreaterThan(0);
+    // v0.18 review: "Use in Build" opens the item (where `:use` runs), never a bare /build/new
+    for (const use of within(team).getAllByRole("link", { name: /^Use .* in Build$/ })) {
+      expect(use.getAttribute("href")).toMatch(/^\/library\?.*item=/);
+    }
     // Markup in a user's summary stays text.
     expect(yours.querySelector("script, b, img")).toBeNull();
     const installed = await within(yours).findByRole("list", { name: "Installed by your team" }, T);
@@ -73,6 +79,17 @@ describe("Catalog", () => {
     expect(installed).toHaveTextContent("Installed from acme-mapi-extras");
     expect(await within(yours).findByTestId("diagnostics-list", undefined, T)).toBeInTheDocument();
     expect(within(yours).getByRole("button", { name: "Describe the catalog again" })).toBeInTheDocument();
+  });
+
+  it("shows a failed load of the team's items with Retry, not the empty state", async () => {
+    // v0.18 review: with nothing installed, the error hid behind "Nothing from your team yet"
+    server.use(http.get(new RegExp(`^${env.apiBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/v1/library$`), () => HttpResponse.json({ code: "INTERNAL", title: "boom", status: 500 }, { status: 500 })));
+    const user = userEvent.setup();
+    renderApp("/catalog", "rui");
+    await user.click(await screen.findByRole("tab", { name: /Yours/ }, T));
+    const yours = await screen.findByTestId("catalog-yours", undefined, T);
+    expect(await within(yours).findByText("The app cannot load your team's items", undefined, T)).toBeInTheDocument();
+    expect(within(yours).queryByText("Nothing from your team yet")).toBeNull();
   });
 
   it("hides the problems from people who are not admins", async () => {

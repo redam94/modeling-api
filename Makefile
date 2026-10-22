@@ -264,7 +264,7 @@ PLUGIN_IMAGE_DIR ?= .local/plugin-image
 plugin-new: ## Scaffold plugins/<NAME> in this checkout (KIND="recipe node": model, step, recipe, node, template; BASE=custom|pymc|sklearn)
 	@test -n "$(NAME)" || { echo "error: set NAME, for example: make plugin-new NAME=acme KIND=recipe" >&2; exit 2; }
 	$(UV) run mapi plugin init $(NAME) $(foreach k,$(or $(KIND),model),--kind $(k)) $(if $(BASE),--base $(BASE)) --dir $(PLUGINS_DIR)
-	@echo "plugin-new: $(PLUGINS_DIR)/$(NAME) is a workspace member. Run 'uv lock' once, then 'make dev'."
+	@echo "plugin-new: $(PLUGINS_DIR)/$(NAME) is a workspace member. Run 'make install' once (uv sync --all-packages locks and installs it), then 'make dev'."
 
 .PHONY: plugin-dev
 plugin-dev: ## Install an out-of-tree plugin in editable mode and fold it into the image digest (PLUGIN=../acme; DEPS=1 also installs its dependencies)
@@ -296,7 +296,7 @@ plugin-doctor: ## Check every installed extension: load problems, routing, diges
 	$(UV) run mapi $(if $(JSON),--json) plugin doctor $(if $(SERVER),--server)
 
 .PHONY: plugin-image
-plugin-image: _docker-check ## Build mapi/<NAME>:<TAG> (TAG=dev): a runner image with your wheels (BASE=base-bayes NAME=acme WHEELS="dist/*.whl" or a directory with a hashed requirements.txt)
+plugin-image: _docker-check ## Build mapi/<NAME>:<TAG> (TAG=dev): a runner image with your wheels (BASE=base-bayes NAME=acme WHEELS="../acme/dist/*.whl" or a directory with a hashed requirements.txt)
 	@test -n "$(BASE)" -a -n "$(NAME)" -a -n "$(WHEELS)" || { \
 		echo "error: set BASE, NAME and WHEELS, for example:" >&2; \
 		echo "       make plugin-image BASE=base-bayes NAME=acme WHEELS=../acme/dist/*.whl" >&2; exit 2; }

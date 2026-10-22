@@ -142,7 +142,28 @@ describe("Make your own: model builder", () => {
     expect(created.document.declarative.groups).toEqual([{ dim: "market" }]);
     // the builder stays on screen (no reload) and now saves revisions
     expect(await screen.findByRole("button", { name: "Saved" })).toBeDisabled();
+
+    // v0.18 review: back to the list, then open it again: its saved revision, not the blank start
+    const id = (router.state.location.search as { item: string }).item;
+    act(() => router.history.push("/library?tab=models"));
+    await screen.findByTestId("library-list", undefined, { timeout: 4000 });
+    act(() => router.history.push(`/library?tab=models&item=${id}`));
+    expect(await screen.findByRole("heading", { name: "Revenue and spend", level: 1 }, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByTestId("model-recipe-summary")).toHaveTextContent("One driver: spend_local");
   }, 20_000);
+
+  it("keeps the tour's prior anchor on screen before and after the first driver", async () => {
+    const user = userEvent.setup();
+    renderPage("/library?tab=models&new=model");
+    const container = document.body;
+    const add = await screen.findByRole("button", { name: /Add a driver/ }, { timeout: 4000 });
+    // v0.18 live: a new recipe has no driver; the "prior" step must still find its anchor
+    expect(container.querySelectorAll('[data-tour="library.prior"]')).toHaveLength(1);
+    await user.click(add);
+    const anchors = container.querySelectorAll('[data-tour="library.prior"]');
+    expect(anchors).toHaveLength(1);
+    expect(within(anchors[0] as HTMLElement).getByLabelText("Spread")).toBeInTheDocument();
+  });
 
   it("shows the check's problems at the field their pointer names", async () => {
     const user = userEvent.setup();

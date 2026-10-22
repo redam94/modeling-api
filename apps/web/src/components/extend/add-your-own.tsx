@@ -126,7 +126,7 @@ function CommandBox({ kind, compact }: { kind: AddYourOwnKind; compact?: boolean
         </div>
       )}
       <div className="flex min-w-0 items-stretch overflow-hidden rounded-xl bg-block text-block-foreground">
-        <code data-testid="plugin-command" className="min-w-0 flex-1 overflow-x-auto px-3 py-2.5 font-mono text-xs leading-5 whitespace-nowrap">
+        <code data-testid="plugin-command" className="min-w-0 flex-1 px-3 py-2.5 font-mono text-xs leading-5 whitespace-pre-wrap [overflow-wrap:anywhere]">
           <span aria-hidden className="text-block-muted select-none">$ </span>
           {command}
         </code>

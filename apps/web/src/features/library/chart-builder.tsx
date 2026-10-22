@@ -175,7 +175,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
         </ToggleChip>
       </div>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]">
-        <div className="grid min-w-0 content-start gap-5">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5">
           {view === "yaml" ? (
             <YamlTab
               kind="chart_template"
@@ -329,7 +329,7 @@ export function ChartBuilder({ itemId, initial, onCreated }: ChartBuilderProps) 
             </>
           )}
           {issues?.length ? (
-            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4">
+            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
               <h2 className="mb-2 text-base font-bold">What the check found</h2>
               <IssueList
                 issues={issues}

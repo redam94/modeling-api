@@ -14,9 +14,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Path, Request, Response
+from fastapi import APIRouter, Header, Path, Response
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.onboarding import MAX_ONBOARDING_PATCH_BYTES, OnboardingPatch, OnboardingState
+from mapi_spec.onboarding import OnboardingPatch, OnboardingState
 from mapi_spec.tenancy import ProjectRole
 
 from mapi_server.api.common import Auth, Session
@@ -60,23 +60,6 @@ def _member(auth: RequestAuth, tenant_id: str) -> str:
     return principal_id
 
 
-async def _patch_size(request: Request) -> None:
-    """Refuse a PATCH body over :data:`MAX_ONBOARDING_PATCH_BYTES` with ``413`` before the
-    body is validated (the app's JSON body limit covers ``POST`` routes only)."""
-    declared = request.headers.get("content-length")
-    if declared is not None and declared.isdigit() and int(declared) > MAX_ONBOARDING_PATCH_BYTES:
-        raise _too_large()
-    if len(await request.body()) > MAX_ONBOARDING_PATCH_BYTES:
-        raise _too_large()
-
-
-def _too_large() -> MapiError:
-    return MapiError(
-        f"the onboarding update is larger than {MAX_ONBOARDING_PATCH_BYTES} bytes",
-        code=ErrorCode.PAYLOAD_TOO_LARGE,
-    )
-
-
 def _with_etag(response: Response, state: OnboardingState) -> OnboardingState:
     response.headers["ETag"] = svc.etag(state)
     return state
@@ -95,7 +78,6 @@ async def get_onboarding(
 @router.patch(
     "",
     response_model=OnboardingState,
-    dependencies=[Depends(_patch_size)],
     **_op("update_onboarding"),
 )
 async def update_onboarding(

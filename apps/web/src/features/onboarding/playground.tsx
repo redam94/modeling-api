@@ -538,8 +538,9 @@ export function Playground({ className, anchor = "home.playground" }: { classNam
             const words = spendWords(s.multiplier);
             return (
               <li key={ch} className="grid gap-1.5" data-channel={ch}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="flex items-center gap-2 font-semibold">
+                {/* label above value on every row: rows keep one height whatever wraps */}
+                <div className="grid gap-0.5">
+                  <span className="flex min-w-0 items-center gap-2 font-semibold">
                     <span aria-hidden className={cn("size-2.5 rounded-[3px]", SWATCH[color])} />
                     {channelLabel(ch)}
                   </span>
@@ -572,7 +573,7 @@ export function Playground({ className, anchor = "home.playground" }: { classNam
             {order.map((ch) => {
               const s = stateOf(ch);
               return (
-                <div key={ch} className="rounded-lg bg-muted px-3 py-2.5 text-xs text-muted-foreground">
+                <div key={ch} className="min-w-0 truncate rounded-lg bg-muted px-3 py-2.5 text-xs text-muted-foreground" title={channelLabel(ch)}>
                   <b className={cn("block font-display text-lg leading-tight font-bold tabular", s.nextPound >= 1 ? "text-highlight-ink" : "text-foreground")}>
                     {pounds(s.nextPound)}
                   </b>

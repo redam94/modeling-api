@@ -82,10 +82,12 @@ function TeamRow({ item, me }: { item: LibraryItem; me: string }) {
             </LibLink>
           </Button>
         ) : (
+          // the item's builder: its dataset picker and "Use in Build" run `:use` (a bare
+          // /build/new would open an empty spec without the item)
           <Button size="sm" className={PILL_SM} asChild>
-            <Link to="/build/new" aria-label={`Use ${item.title} in Build`}>
+            <LibLink search={{ tab, item: item.id }} label={`Use ${item.title} in Build`}>
               Use in Build <ArrowRight />
-            </Link>
+            </LibLink>
           </Button>
         )}
         <Button size="sm" variant="ghost" className={cn(PILL_SM, "bg-muted text-foreground hover:bg-surface-hover")} asChild>
@@ -170,7 +172,8 @@ export function YoursTab() {
     ],
     [installed.items, templates.data],
   );
-  const nothing = !library.isPending && !items.length && !installedRows.length;
+  // a failed load is not "nothing": it shows the error and Retry below
+  const nothing = !library.isPending && !library.isError && !items.length && !installedRows.length;
   return (
     <div className="grid gap-10" data-testid="catalog-yours">
       {nothing ? (

@@ -359,3 +359,21 @@ def test_the_sample_table_ships_with_the_package_and_matches_its_checksum() -> N
     assert sample_bytes("geo_mmm") == path.read_bytes()
     header = path.read_bytes().splitlines()[0].decode()
     assert header.split(",") == [c.name for c in SAMPLE.answers.columns]
+
+
+def test_the_pending_index_covers_exactly_the_loop_states() -> None:
+    # v0.18 review: the partial index left out 'provisioning', so the loop's query (a
+    # superset of its predicate) could never use it
+    from mapi_server.db import models as m
+    from mapi_server.services.samples import LOOP_STATES
+    from mapi_spec.samples import ACTIVE_SAMPLE_STATES
+
+    migration = (
+        Path(__file__).parents[1]
+        / "src/mapi_server/migrations/versions/0021_v018_library_onboarding.py"
+    ).read_text()
+    predicate = "state in (" + ",".join(f"'{s}'" for s in LOOP_STATES) + ")"
+    assert set(LOOP_STATES) == ACTIVE_SAMPLE_STATES
+    assert f'sa.text("{predicate}")' in migration
+    [index] = [i for i in m.TenantSample.__table__.indexes if i.name == "ix_tenant_samples_pending"]
+    assert str(index.dialect_options["postgresql"]["where"]) == predicate

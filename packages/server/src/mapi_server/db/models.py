@@ -2281,6 +2281,6 @@ class TenantSample(Base):
         Index(
             "ix_tenant_samples_pending",
             "state",
-            postgresql_where=text("state in ('ingesting','fitting')"),
+            postgresql_where=text("state in ('provisioning','ingesting','fitting')"),
         ),
     )

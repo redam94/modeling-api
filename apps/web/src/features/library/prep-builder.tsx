@@ -44,13 +44,16 @@ function major(version: string): string {
   return version.split(".")[0] ?? "1";
 }
 
-/** The `with` keys of a step that can be slots: its variable and dim parameters. */
-function slotKeys(entry: StepCatalogEntry | undefined): { key: string; kind: Slot["kind"] }[] {
+/** The `with` keys of a step that can be slots: its variable and dim parameters. `list`: the
+ * setting is an array, so the slot goes in as a one-item list (`["$slot:x"]`): a `dim` slot on
+ * an array setting such as `core.formula`'s `dims` must still give a list. */
+export function slotKeys(entry: Pick<StepCatalogEntry, "settings_schema" | "var_params" | "dim_params"> | undefined): { key: string; kind: Slot["kind"]; list: boolean }[] {
   if (!entry) return [];
   const props = ((safeSchema((entry.settings_schema ?? {}) as FormObject).properties as FormObject | undefined) ?? {}) as Record<string, FormObject>;
-  const out: { key: string; kind: Slot["kind"] }[] = [];
-  for (const key of entry.var_params ?? []) out.push({ key, kind: props[key]?.type === "array" ? "var_list" : "var" });
-  for (const key of entry.dim_params ?? []) if (!out.some((o) => o.key === key)) out.push({ key, kind: "dim" });
+  const isArray = (key: string) => props[key]?.type === "array";
+  const out: { key: string; kind: Slot["kind"]; list: boolean }[] = [];
+  for (const key of entry.var_params ?? []) out.push({ key, kind: isArray(key) ? "var_list" : "var", list: isArray(key) });
+  for (const key of entry.dim_params ?? []) if (!out.some((o) => o.key === key)) out.push({ key, kind: "dim", list: isArray(key) });
   return out;
 }
 
@@ -96,7 +99,7 @@ function StepCard({
   const slotted = Object.entries(w).filter(([, v]) => slotOfValue(v) !== null).map(([k]) => k);
   const schema = useMemo(() => safeSchema((entry?.settings_schema ?? {}) as FormObject), [entry]);
 
-  const toggleSlot = (key: string, kind: Slot["kind"]) => {
+  const toggleSlot = (key: string, kind: Slot["kind"], list: boolean) => {
     const current = slotOfValue(w[key]);
     if (current !== null) {
       const nextWith = { ...w };
@@ -111,7 +114,7 @@ function StepCard({
     let name = identifier(key);
     for (let n = 2; name in slots; n++) name = identifier(`${key}_${n}`);
     const label = kind === "dim" ? `${title}: which dimension (${key})` : kind === "var_list" ? `${title}: which columns (${key})` : `${title}: which column (${key})`;
-    onSlots({ ...slots, [name]: { kind, label: label.slice(0, 80) } }, { ...step, with: { ...w, [key]: slotValue(name, kind === "var_list") } });
+    onSlots({ ...slots, [name]: { kind, label: label.slice(0, 80) } }, { ...step, with: { ...w, [key]: slotValue(name, list) } });
   };
 
   return (
@@ -146,8 +149,8 @@ function StepCard({
           <div className="grid gap-2">
             <span className="text-sm font-medium">Ask for these when the preset is used</span>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Slots of ${title}`}>
-              {slotKeys(entry).map(({ key, kind }) => (
-                <ToggleChip key={key} pressed={slotOfValue(w[key]) !== null} onClick={() => toggleSlot(key, kind)} disabled={slotOfValue(w[key]) === null && Object.keys(slots).length >= MAX_SLOTS}>
+              {slotKeys(entry).map(({ key, kind, list }) => (
+                <ToggleChip key={key} pressed={slotOfValue(w[key]) !== null} onClick={() => toggleSlot(key, kind, list)} disabled={slotOfValue(w[key]) === null && Object.keys(slots).length >= MAX_SLOTS}>
                   <span className="font-mono">{key}</span>
                 </ToggleChip>
               ))}
@@ -334,7 +337,7 @@ export function PrepBuilder({ itemId, initial, onCreated }: PrepBuilderProps) {
     <div ref={root} className="grid gap-6">
       <SegmentedControl label="How to edit" value={view} onValueChange={setView} options={[{ value: "builder", label: "Builder" }, { value: "yaml", label: "YAML" }]} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
-        <div className="grid min-w-0 content-start gap-5">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5">
           {view === "yaml" ? (
             <YamlTab kind="prep_preset" doc={doc} issues={issues} onDoc={(d: LibraryDoc) => isPrepPresetDoc(d) && setDoc(d)} />
           ) : (
@@ -424,7 +427,7 @@ export function PrepBuilder({ itemId, initial, onCreated }: PrepBuilderProps) {
             </>
           )}
           {issues?.length ? (
-            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4">
+            <section aria-label="What the check found" className="rounded-2xl border bg-card p-4 [overflow-wrap:anywhere]">
               <h2 className="mb-2 text-base font-bold">What the check found</h2>
               <IssueList
                 issues={issues}

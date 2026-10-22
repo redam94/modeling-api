@@ -229,3 +229,23 @@ test("with reduced motion the coach-mark and the dialog render their final state
   await page.getByTestId("tour-next").click();
   await expect(card).toHaveAttribute("data-tour-step", "welcome:1");
 });
+
+test("a tour step inside a dialog: Next on the coach-mark keeps the dialog open", async ({ page }) => {
+  // v0.18 review: pressing Next on "Change a setting" closed the recipe playground, so the
+  // YAML step's anchor was gone
+  await freshUser(page);
+  await page.goto("/catalog?tour=make_your_own");
+  const card = page.getByTestId("tour-popover");
+  for (const step of [0, 1, 2, 3]) {
+    await expect(card).toHaveAttribute("data-tour-step", `make_your_own:${step}`, { timeout: 12_000 });
+    await page.getByTestId("tour-next").click();
+  }
+  await expect(card).toHaveAttribute("data-tour-step", "make_your_own:4", { timeout: 12_000 });
+  await expect(page.getByRole("dialog").first()).toBeVisible();
+  await expect(page.locator('[data-tour="catalog.recipe.yaml"]')).toBeVisible();
+  await expect(page.getByTestId("tour-missing")).toHaveCount(0);
+  // Esc with focus in the coach-mark ends the tour; the dialog stays for the user to close
+  await card.locator("h2").focus();
+  await page.keyboard.press("Escape");
+  await expect(coach(page)).toHaveCount(0);
+});

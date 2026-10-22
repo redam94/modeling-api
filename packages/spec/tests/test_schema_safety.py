@@ -191,6 +191,20 @@ def test_reasons_are_specific() -> None:
     assert "1000" in (is_safe_regex(r"a{1001}") or "")
     assert "longer than" in (is_safe_regex("a" * 300) or "")
     assert "not a valid" in (is_safe_regex("(") or "")
+    assert "in a row" in (is_safe_regex(r"\d*\d*!") or "")
+    assert "more than two" in (is_safe_regex(r".*x.*x.*") or "")
+
+
+def test_sibling_quantifiers_cannot_hang_the_validator() -> None:
+    # v0.18 review: '\d*' x 10 + '!' was accepted and took seconds on 25 digits
+    for pattern in [r"\d*" * 10 + "!", r"\d*" * 60 + "!", "a*" * 8 + "b", ".*" * 6 + "="]:
+        assert is_safe_regex(pattern) is not None, pattern
+    # one overlap across a mandatory character splits only there: allowed and fast
+    for pattern in [r"^\S+@\S+$", r".*x.*="]:
+        assert is_safe_regex(pattern) is None, pattern
+        start = time.perf_counter()
+        re.search(pattern, "x" * 300)
+        assert time.perf_counter() - start < 0.5, pattern
 
 
 # ============================================================================== schema rules
@@ -311,6 +325,38 @@ def test_size_depth_and_property_caps() -> None:
     out, issues = sanitize_schema(wide, mode="strip", where="")
     assert len(out["properties"]) == 256  # type: ignore[arg-type]
     assert [i.pointer for i in issues] == [f"/properties/p{i}" for i in range(256, 260)]
+
+
+def _doubling(steps: int, fan: int = 2) -> dict[str, Any]:
+    defs: dict[str, Any] = {"d0": {"type": "integer", "minimum": 5}}
+    for i in range(1, steps + 1):
+        defs[f"d{i}"] = {"allOf": [{"$ref": f"#/$defs/d{i - 1}"}] * fan}
+    return {"type": "object", "$defs": defs, "properties": {"x": {"$ref": f"#/$defs/d{steps}"}}}
+
+
+def test_reference_expansion_is_bounded() -> None:
+    # v0.18 review: a 1.7 KB acyclic doubling chain passed and validation ran for hours
+    for mode in ("refuse", "strip"):
+        start = time.perf_counter()
+        out, issues = sanitize_schema(_doubling(24), mode=mode, where="/s")  # type: ignore[arg-type]
+        assert time.perf_counter() - start < 0.5
+        assert out == {} and [i.pointer for i in issues] == ["/s"]
+        assert "'$ref's are followed" in issues[0].message
+    assert sanitize_settings_schema(_doubling(24)) is None
+    with pytest.raises(MapiError):
+        require_safe_schema(_doubling(24), where="/s")
+    # wide but shallow: the subschema count budget
+    _, issues = sanitize_schema(_doubling(5, fan=8), mode="refuse", where="")
+    assert issues and "subschemas" in issues[0].message
+    # a long single chain is refused without deep recursion
+    defs: dict[str, Any] = {"d0": {"type": "integer"}}
+    for i in range(1, 2000):
+        defs[f"d{i}"] = {"$ref": f"#/$defs/d{i - 1}"}
+    _, issues = sanitize_schema({"$defs": defs, "$ref": "#/$defs/d1999"}, mode="refuse", where="")
+    assert issues
+    # small reuse is fine
+    out, issues = sanitize_schema(_doubling(3), mode="refuse", where="")
+    assert not issues and out == _doubling(3)
 
 
 def test_unparseable_inputs_are_refused_whole_without_recursion() -> None:
@@ -468,3 +514,15 @@ def test_settings_schemas_golden() -> None:
         GOLDEN.write_text(json.dumps(want, indent=2, ensure_ascii=False) + "\n", "utf-8")
     got = json.loads(GOLDEN.read_text("utf-8"))
     assert got == want, "regenerate with MAPI_UPDATE_SNAPSHOTS=1 and update the web mirror"
+
+
+def test_module_source_compiles_with_warnings_as_errors() -> None:
+    # v0.18 review: an invalid escape in a docstring was a SyntaxWarning (an error under -W error)
+    import warnings
+
+    import mapi_spec.schema_safety as module
+
+    source = Path(module.__file__).read_text(encoding="utf-8")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        compile(source, module.__file__, "exec")

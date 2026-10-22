@@ -275,6 +275,29 @@ async def test_failures_the_settings_would_hit_again_are_cached(
     assert len(await _runs(ctx)) == 3
 
 
+async def test_a_worker_refusal_is_cached_too(ctx: ServerContext, people: dict[str, Any]) -> None:
+    """v0.18 live: the supervisor records a worker's SCHEMA_INVALID as USER_CODE_ERROR
+    ("the run failed with SCHEMA_INVALID (as reported by the worker)"). A preview with a
+    bad setting must not start a new run on every repeat."""
+    viewer = people["viewer"]
+    first = _result(await viewer.post(FAN, json={"settings": {"var": "y"}}), 202)
+    refused = Problem.from_code(
+        ErrorCode.USER_CODE_ERROR,
+        "the run failed with SCHEMA_INVALID (as reported by the worker)",
+        errors=(),
+    ).model_dump(mode="json", exclude_none=True)
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Run)
+            .where(m.Run.id == first.run_id)
+            .values(state=RunState.FAILED.value, problem=refused)
+        )
+    hit = _result(await viewer.post(FAN, json={"settings": {"var": "y"}}), 200)
+    assert hit.cached and hit.done and hit.run_id == first.run_id
+    assert hit.problem is not None and hit.problem.code is ErrorCode.USER_CODE_ERROR
+    assert len(await _runs(ctx)) == 1
+
+
 async def test_prefer_wait_holds_then_answers_202(
     ctx: ServerContext, people: dict[str, Any]
 ) -> None:

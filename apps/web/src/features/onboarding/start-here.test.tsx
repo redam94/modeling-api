@@ -116,7 +116,9 @@ describe("Start here on Expert Home", () => {
     renderApp("/", "ana");
     const hub = await screen.findByTestId("start-here", {}, T);
     expect(hub).toHaveAttribute("data-state", "open");
-    expect(hub).toHaveAttribute("data-tour", "home.start-here");
+    // the welcome tour's first step points at the hero's actions, not the whole hub
+    expect(hub).not.toHaveAttribute("data-tour");
+    expect(hub.querySelector('[data-tour="home.start-here"]')).not.toBeNull();
     expect(within(hub).getByRole("heading", { name: /really driving your numbers/ })).toBeInTheDocument();
     expect(within(hub).getByText(/, Ana$/)).toBeInTheDocument();
 

@@ -1,9 +1,9 @@
 """``/v1/tenants/{tenant_id}/samples``: one-click sample projects (v0.18 D20).
 
 Installing needs an editor somewhere in the tenant (it spends compute) and makes the
-``sample`` project (``sample-2`` when that id is taken) with a ``runner`` grant for the
-installer; a second install joins (a project grant of the caller's best role, capped at
-``runner``). Two installs at once make one row. Retry is for the installer or a tenant admin,
+``sample`` project (``sample-2`` when that id is taken) with a grant of the installer's best
+role capped at ``runner`` (an editor stays an editor); a second install joins with the same
+capped grant. Two installs at once make one row. Retry is for the installer or a tenant admin,
 within the attempt limit; retire (tenant admins) removes the sample's grants. Samples turned
 off: an empty list and ``SAMPLES_DISABLED``. Every action is audited.
 """
@@ -139,7 +139,7 @@ async def test_a_viewer_cannot_install(ctx: ServerContext, client: httpx.AsyncCl
     _code(await who["editor"].post(f"{BASE}/no_such:install"), 404, "NOT_FOUND")
 
 
-async def test_install_makes_the_project_and_a_runner_grant_then_others_join(
+async def test_install_makes_the_project_and_a_capped_grant_then_others_join(
     ctx: ServerContext, client: httpx.AsyncClient
 ) -> None:
     who = await _people(ctx, client)
@@ -153,11 +153,12 @@ async def test_install_makes_the_project_and_a_runner_grant_then_others_join(
     row = await _sample_row(ctx)
     assert row is not None and row.created_by == who["editor_user"].id
     grants = await _grants(ctx, "sample")
-    assert grants == {who["editor_user"].id: ("runner", SAMPLE_GRANT_BY)}
+    # v0.18 review: an editor installer must not become a runner (runs need the runner role)
+    assert grants == {who["editor_user"].id: ("editor", SAMPLE_GRANT_BY)}
     [installed] = await _audits(ctx, AuditAction.SAMPLE_INSTALL)
     assert installed.actor_id == who["editor_user"].id and installed.project_id == "sample"
     [added] = await _audits(ctx, AuditAction.MEMBER_ADD)
-    assert added.details["sample"] == "geo_mmm" and added.details["role"] == "runner"
+    assert added.details["sample"] == "geo_mmm" and added.details["role"] == "editor"
 
     # a viewer joins as a viewer (no second install, no second fit)
     joined = _info(await who["viewer"].post(f"{GEO}:install"), 200)
@@ -258,6 +259,8 @@ async def test_retry_is_for_the_installer_or_a_tenant_admin_within_the_limit(
     assert again.state == "provisioning" and again.attempts == 2 and again.problem is None
     [retried] = await _audits(ctx, AuditAction.SAMPLE_RETRY)
     assert retried.details["attempt"] == 2
+    # the retry grant is capped too: the editor is not made a runner
+    assert (await _grants(ctx, "sample"))[who["editor_user"].id] == ("editor", SAMPLE_GRANT_BY)
 
     # a tenant admin may retry too and becomes the installer; the third attempt is the last
     async with ctx.db.session() as s:

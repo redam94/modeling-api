@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache
 from importlib import resources
 from typing import Final
@@ -54,7 +54,9 @@ from mapi_spec.loader import dump_yaml
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import RunState
 from mapi_spec.samples import (
+    ACTIVE_SAMPLE_STATES,
     SAMPLE_PROJECT_ID,
+    SAMPLE_STATES,
     SAMPLES,
     SampleDef,
     SampleInfo,
@@ -104,14 +106,19 @@ SAMPLE_GRANT_BY: Final = "sample"
 :func:`retire` removes exactly these."""
 SAMPLE_OBJECT_PREFIX: Final = "samples"
 """The sample tables live at ``t/{tenant}/samples/{sha256}.csv`` in the quarantine bucket."""
-LOOP_STATES: Final[tuple[SampleState, ...]] = ("provisioning", "ingesting", "fitting")
+LOOP_STATES: Final[tuple[SampleState, ...]] = tuple(
+    s for s in SAMPLE_STATES if s in ACTIVE_SAMPLE_STATES
+)
 """The states :func:`advance` moves on (``ready``, ``failed`` and ``retired`` wait for a
 person)."""
 JOIN_ROLE_CAP: Final = ProjectRole.RUNNER
-"""The highest role a sample grant gives (the installer gets exactly this one)."""
+"""The highest role a sample grant gives: every grant (the installer's too) is the caller's
+best role capped at this one, so an editor never becomes a runner by installing."""
 INSTALL_ROLE: Final = ProjectRole.EDITOR
 """Installing spends compute: the caller needs this role in some project of the tenant."""
 
+_ELEVATED: Final = frozenset(r for r in ProjectRole if INSTALL_ROLE <= r < JOIN_ROLE_CAP)
+"""Project roles that may install but not run: the sample's own runs act as a runner."""
 _PEOPLE: Final = (Credential.SESSION, Credential.LOCAL)
 _PROGRESS: Final[dict[str, float]] = {
     "provisioning": 0.05,
@@ -422,9 +429,14 @@ async def _provision_project(
             details={"sample": sample.id, "attempt": row.attempts},
         )
     ]
-    events += await _grant(ctx, session, sample, row, caller, JOIN_ROLE_CAP)
+    events += await _grant(ctx, session, sample, row, caller, _capped(caller))
     await session.flush()
     await write_audit(ctx.db, events, session=session)
+
+
+def _capped(caller: _Caller) -> ProjectRole:
+    """The role a sample grant gives ``caller``: their best role, at most :data:`JOIN_ROLE_CAP`."""
+    return min(caller.best_role, JOIN_ROLE_CAP)
 
 
 async def _grant(
@@ -481,7 +493,7 @@ async def _join(
     row: m.TenantSample,
     caller: _Caller,
 ) -> None:
-    role = min(caller.best_role, JOIN_ROLE_CAP)
+    role = _capped(caller)
     events = await _grant(ctx, session, sample, row, caller, role)
     if not events:
         return
@@ -534,7 +546,7 @@ async def retry(
     row.problem = None
     row.run_id = None
     row.created_by = caller.user_id
-    events = await _grant(ctx, session, sample, row, caller, JOIN_ROLE_CAP)
+    events = await _grant(ctx, session, sample, row, caller, _capped(caller))
     events.append(
         caller.auth.audit(
             ctx,
@@ -666,9 +678,17 @@ def _plain(exc: MapiError) -> Problem:
 
 async def _installer(ctx: ServerContext, row: m.TenantSample) -> ServerContext:
     """A context acting as the installer in the sample's project, from their grants now
-    (``FORBIDDEN`` when they can no longer start runs there: they left, or lost the role)."""
+    (``FORBIDDEN`` when they can no longer start runs there: they left, or lost the role).
+
+    Installing needs :data:`INSTALL_ROLE` (D20), which cannot start runs by itself: an
+    installer who still holds at least that role in the project gets the runner role in this
+    context only, for the sample's own ingest and fit (their membership stays capped)."""
     assert row.project_id is not None
     auth = await owner_auth(ctx, row.tenant_id, row.project_id, row.created_by)
+    context = auth.context if auth is not None else None
+    held = context.role if context is not None else None
+    if auth is not None and context is not None and held in _ELEVATED:
+        auth = replace(auth, context=context.model_copy(update={"role": JOIN_ROLE_CAP}))
     if auth is None or not (
         auth.allows(Action.CREATE, ResourceKind.RUN) and auth.allows(Action.RUN, ResourceKind.MODEL)
     ):

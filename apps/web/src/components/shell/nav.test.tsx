@@ -9,6 +9,7 @@ import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createHandlers } from "@/mocks/handlers";
+import { useTourStore } from "@/features/onboarding/use-onboarding";
 import { useUi } from "@/stores/ui";
 import { renderApp } from "@/test/render-app";
 
@@ -105,12 +106,27 @@ describe("the sidebar", () => {
     expect(within(nav).queryByRole("link", { name: "Build" })).toBeNull();
   });
 
+  it("keeps a ?tour link when Guided mode moves Home to /guided (v0.18 live)", async () => {
+    useUi.setState({ persona: "guided", personas: {} });
+    const { router } = renderApp("/?tour=results&from=docs", "ana");
+    await screen.findByRole("navigation", { name: "Primary" }, T);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/guided"), T);
+    // the tour host may already have taken `tour` off; the rest of the query must survive
+    await waitFor(() => expect(router.state.location.searchStr).toContain("from=docs"), T);
+    const kept = router.state.location.searchStr.includes("tour=results") || useTourStore.getState().active?.id === "results";
+    expect(kept).toBe(true);
+  });
+
   it("opens More by itself on one of its pages", async () => {
     useUi.setState({ persona: "guided", personas: {} });
     renderApp("/runs", "ana");
     const nav = await screen.findByRole("navigation", { name: "Primary" }, T);
     await waitFor(() => expect(within(nav).getByTestId("nav-more")).toHaveAttribute("aria-expanded", "true"));
     expect(within(nav).getByRole("link", { name: "Runs" })).toHaveAttribute("aria-current", "page");
+    // v0.18 review: it can still be folded there (the button was dead on More pages)
+    await userEvent.setup().click(within(nav).getByTestId("nav-more"));
+    expect(within(nav).getByTestId("nav-more")).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).queryByRole("link", { name: "Runs" })).toBeNull();
   });
 
   it("keeps a Guided-locked project's nav as it was", async () => {

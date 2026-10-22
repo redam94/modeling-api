@@ -19,6 +19,7 @@ registry and the workflow loaders use too.
 from __future__ import annotations
 
 import json
+import keyword
 import os
 import re
 import subprocess
@@ -167,7 +168,9 @@ def plugin_names(
 
     Refuses a name or namespace the platform would refuse later: reserved namespaces (with
     the plain reason from :func:`~mapi_spec.namespaces.reserved_namespace`), a module that
-    would shadow a platform package, and ids that do not fit their patterns.
+    would shadow a platform package or a standard library module, a module that is a Python
+    keyword (``import``, ``class``: no import statement can name it), and ids that do not
+    fit their patterns.
     """
     if not _DIST_RE.match(name):
         raise _invalid(
@@ -179,6 +182,17 @@ def plugin_names(
         raise _invalid(
             f"The module {module!r} would shadow a platform package. Use a name that does not "
             "start with 'mapi-' (or use 'mapi-plugin-<name>')."
+        )
+    if keyword.iskeyword(module) or keyword.issoftkeyword(module):
+        raise _invalid(
+            f"The module {module!r} is a Python keyword, so no import statement can name it. "
+            "Use another name (for example 'acme-" + module + "'), or keep it as the "
+            "namespace with --namespace."
+        )
+    if module in sys.stdlib_module_names:
+        raise _invalid(
+            f"The module {module!r} would shadow the Python standard library module of that "
+            "name. Use another name, or keep it as the namespace with --namespace."
         )
     ns = namespace or module.removeprefix("mapi_plugin_")
     if not _NAMESPACE_RE.match(ns):

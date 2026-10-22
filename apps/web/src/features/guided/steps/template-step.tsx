@@ -71,7 +71,8 @@ export function TemplateCard({ template }: { template: GuidedTemplate }) {
           ))}
         </ul>
       ) : null}
-      <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+      {/* pe-24: the corner where the absolutely placed About button sits */}
+      <div className={cn("mt-auto flex flex-wrap gap-1.5 pt-1", template.about && "pe-24")}>
         {taskBadges(template).map((b) => (
           <Badge key={b} variant="secondary">
             {b}

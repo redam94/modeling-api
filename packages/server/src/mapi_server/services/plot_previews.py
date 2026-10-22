@@ -92,7 +92,15 @@ _RENDER_CLASS: Final = ResourceClass.S
 _DAY: Final = timedelta(days=1)
 _SETTINGS_POINTER: Final = "/settings"
 _STICKY_FAILURES: Final = frozenset(
-    {ErrorCode.SCHEMA_INVALID, ErrorCode.MODE_NOT_SUPPORTED, ErrorCode.PLOT_UNSAFE}
+    {
+        ErrorCode.SCHEMA_INVALID,
+        ErrorCode.MODE_NOT_SUPPORTED,
+        ErrorCode.PLOT_UNSAFE,
+        # what the supervisor records when the worker refuses the settings ("the run failed
+        # with SCHEMA_INVALID (as reported by the worker)"): a preview runs only a platform
+        # recipe on its own example, so the same settings fail the same way again
+        ErrorCode.USER_CODE_ERROR,
+    }
 )
 """Failures the same recipe, settings and catalog would hit again: cached like a success
 (anything else, a timeout or an infrastructure error, is tried again)."""
@@ -333,7 +341,8 @@ async def request_preview(
     entry, digest = await _entry(ctx, plot_id, version)
     ref = f"{plot_id}@{version}"
     settings = dict(body.settings)
-    _check_settings(entry, settings)
+    # off the event loop: the schema comes from an image catalog (schema_safety bounds it)
+    await asyncio.to_thread(_check_settings, entry, settings)
     if not settings:
         example = await _example(ctx, ref)
         return RecipePreviewResult(run_id=None, cached=True, done=True, plot=example)

@@ -136,12 +136,49 @@ def test_make_targets_named_by_the_pages_exist() -> None:
 
 def test_cli_flags_are_where_the_cli_takes_them() -> None:
     """``--json`` is a global option: ``mapi --json plugin validate``, never after it."""
-    for page in [*_pages(), SNIPPETS / "extend_cli.sh"]:
+    for page in [*_pages(), SNIPPETS / "extend_cli.sh", DOCS / "reference" / "cli.md"]:
         text = page.read_text("utf-8")
         bad = re.findall(r"mapi plugin (?:validate|doctor)[^\n`]*--json", text)
         assert not bad, f"{page.relative_to(ROOT)}: {bad}"
         for sub in re.findall(r"\bmapi plugin ([a-z-]+)", text):
             assert sub in {"init", "test", "validate", "doctor"}, f"{page}: mapi plugin {sub}"
+
+
+def test_the_no_code_pages_name_what_the_app_shows() -> None:
+    """v0.18 review: the tutorial named buttons that do not exist ('New model recipe') and
+    left out the required 'Name it' step, so Save was refused."""
+    web = "\n".join(
+        p.read_text("utf-8") for p in (ROOT / "apps/web/src").rglob("*.ts*") if p.is_file()
+    )
+    tutorial = (DOCS / "tutorials" / "your-first-extensions.md").read_text("utf-8")
+    pages = [tutorial] + [(DOCS / "extend" / n).read_text("utf-8")
+                          for n in ("prep-presets.md", "chart-templates.md")]  # fmt: skip
+    for text in pages:
+        for gone in ("New model recipe", "New prep preset", "New chart template"):
+            assert gone not in text
+    for label in ("Describe a model", "Make a prep preset", "Make a chart template",
+                  "Standardise", "Only lowers", "Name it", "Your model, in words",
+                  "Save model", "Save preset", "Fit now", "A number with outliers"):  # fmt: skip
+        assert label in "\n".join(pages), label
+        assert label in web, label
+    assert tutorial.count("**Name it:**") == 2  # the model and the prep preset
+
+
+def test_a_new_workspace_plugin_is_installed_not_only_locked() -> None:
+    """v0.18 review: 'uv lock' then 'make dev' never installed a new workspace member."""
+    page = (DOCS / "extend" / "develop" / "run-on-your-stack.md").read_text("utf-8")
+    assert 'make plugin-new NAME=acme KIND="model recipe node"\nmake install\nmake dev' in page
+    makefile = (ROOT / "Makefile").read_text("utf-8")
+    [echo] = [line for line in makefile.splitlines() if "plugin-new: $(PLUGINS_DIR)" in line]
+    assert "make install" in echo and "uv lock" not in echo
+
+
+def test_the_registry_snippet_shows_its_path_setup() -> None:
+    """v0.18 review: the step-7 code said it loads the package by path but did not show it."""
+    text = (SNIPPETS / "extend_tutorial.py").read_text("utf-8")
+    region = text.split("# --8<-- [start:registry]", 1)[1].split("# --8<-- [end:registry]", 1)[0]
+    assert "import sys" in region and "sys.path.insert(0, SRC)" in region
+    assert region.index("sys.path.insert") < region.index("from acme")
 
 
 # --------------------------------------------------------------------------- the snippets

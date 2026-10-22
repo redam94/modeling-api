@@ -64,6 +64,20 @@ describe("tours", () => {
     expect(g.at(-1)).toBe("shell.help-menu");
   });
 
+  it("skips the hub's steps once the hub or strip has folded away (their anchors are gone)", () => {
+    // v0.18 review: a folded Home or strip left dead steps ("This part isn't on screen")
+    const folded = (ctx: TourContext): TourContext => ({ ...ctx, hub: false });
+    const open = tourSteps(TOURS.welcome, expert).map((s) => s.anchor);
+    const shut = tourSteps(TOURS.welcome, folded(expert)).map((s) => s.anchor);
+    expect(open).toEqual(expect.arrayContaining(["home.checklist", "home.playground"]));
+    expect(shut).not.toContain("home.checklist");
+    expect(shut).not.toContain("home.playground");
+    expect(shut[0]).toBe("home.start-here"); // the folded banner keeps that anchor
+    const withSample = { ...expert, sample: ready };
+    expect(tourSteps(TOURS.fit, withSample)[0]?.anchor).toBe("sample.progress");
+    expect(tourSteps(TOURS.fit, folded(withSample)).map((s) => s.anchor)).not.toContain("sample.progress");
+  });
+
   it("sample tours need a ready sample and open its pages", () => {
     expect(tourAvailable(TOURS.whatif, expert)).toBe(false);
     expect(tourAvailable(TOURS.whatif, { ...expert, sample: { ...ready, state: "fitting" } })).toBe(false);

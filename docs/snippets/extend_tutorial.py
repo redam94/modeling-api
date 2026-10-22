@@ -49,10 +49,12 @@ print([s.id for s in steps])  # ['p_fill', 'p_total']
 # --8<-- [end:part1-prep]
 
 # ------------------------------------------------------------- part 2: your plugin, by path
-SRC = str(HERE / "extend_pkg" / "src")
-sys.path.insert(0, SRC)  # the tutorial installs it with `make plugin-dev`; here, by path
+SRC = str(HERE / "extend_pkg" / "src")  # in the tutorial: "acme/src", next to you
 try:
     # --8<-- [start:registry]
+    import sys
+
+    sys.path.insert(0, SRC)  # SRC = "acme/src": not installed yet (step 8 does that), by path
     from acme.model import MODELS
     from acme.plots import RECIPES
     from acme.steps import STEPS

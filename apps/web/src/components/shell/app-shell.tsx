@@ -102,7 +102,7 @@ function CompactNavLink({ item }: { item: NavItem }) {
       aria-current={active ? "page" : undefined}
       data-tour={NAV_ANCHOR[item.to]}
       className={cn(
-        "focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+        "focus-ring shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground hover:bg-muted hover:text-foreground",
         active && "bg-block text-block-foreground hover:bg-block hover:text-block-foreground",
       )}
     >
@@ -122,7 +122,8 @@ function GroupLabel({ children, collapsed, first = false, hidden = false }: { ch
 
 /**
  * Guided mode's "More" (v0.18 D23): a disclosure over the Expert areas an analyst needs less
- * often. It remembers its state (`useUi.navMoreOpen`) and opens by itself on one of its pages.
+ * often. It remembers its state (`useUi.navMoreOpen`) and opens by itself on entering one of
+ * its pages; the user can still fold it there (the button always does what it says).
  */
 function useNavMore() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -132,7 +133,7 @@ function useNavMore() {
   useEffect(() => {
     if (onMorePage) setOpen(true);
   }, [onMorePage, setOpen]);
-  return { open: open || onMorePage, toggle: () => setOpen(!(open || onMorePage)) };
+  return { open, toggle: () => setOpen(!open) };
 }
 
 function MoreButton({ open, onToggle, controls, collapsed, compact = false }: { open: boolean; onToggle: () => void; controls: string; collapsed?: boolean; compact?: boolean }) {
@@ -146,7 +147,7 @@ function MoreButton({ open, onToggle, controls, collapsed, compact = false }: { 
       onClick={onToggle}
       className={cn(
         "focus-ring flex items-center gap-3 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        compact ? "rounded-full px-2.5 py-1 text-xs" : "min-h-10 w-full rounded-lg px-3 text-sm",
+        compact ? "shrink-0 rounded-full px-2.5 py-1 text-xs whitespace-nowrap" : "min-h-10 w-full rounded-lg px-3 text-sm",
         collapsed && "justify-center px-0",
       )}
     >
@@ -195,13 +196,17 @@ function SidebarNav({ mode, collapsed }: { mode: "locked" | "guided" | "expert";
   ));
 }
 
-/** Phone-width nav: every destination in a wrapping row, never scrolled (Guided: the seven, then More). */
+/** Phone-width nav: one row that scrolls sideways (Guided: the seven, then More), so the sticky header stays short. */
 function CompactNav({ mode, extra }: { mode: "locked" | "guided" | "expert"; extra: NavItem[] }) {
   const more = useNavMore();
   const moreId = useId();
   const main = mode === "locked" ? LOCKED_NAV : mode === "guided" ? GUIDED_PRIMARY_NAV : EXPERT_NAV;
   return (
-    <nav aria-label="Primary (compact)" data-tour="nav.primary" className="flex flex-wrap gap-1 border-t px-3 py-1.5 md:hidden">
+    <nav
+      aria-label="Primary (compact)"
+      data-tour="nav.primary"
+      className="flex flex-nowrap gap-1 overflow-x-auto overscroll-x-contain border-t px-3 py-1.5 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+    >
       {main.map((item) => (
         <CompactNavLink key={item.to} item={item} />
       ))}
@@ -324,9 +329,12 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const navMode = lock.locked ? "locked" : persona === "guided" ? "guided" : "expert";
   // Guided mode has no Expert Home: "/" opens the Guided start page (a new self-service
   // workspace lands there, as does a Guided-locked project).
+  // The query string goes along: a `?tour=<id>` link to Home (the docs, the start-here
+  // guide) must still open its tour after the move (v0.18 live).
+  const searchStr = useRouterState({ select: (s) => s.location.searchStr });
   useEffect(() => {
-    if (persona === "guided" && pathname === "/") void navigate({ to: "/guided", replace: true });
-  }, [persona, pathname, navigate]);
+    if (persona === "guided" && pathname === "/") void navigate({ href: `/guided${searchStr}`, replace: true });
+  }, [persona, pathname, searchStr, navigate]);
   const projectNav = ws.mode === "session" ? PROJECT_NAV : [];
   const adminNav = ws.operator ? [ADMIN_NAV] : [];
   const chords = Object.fromEntries(

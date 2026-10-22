@@ -628,3 +628,23 @@ def test_declarative_glm_passes_the_contract_kit(
         "seed_determinism",
         "plots_sanitize",
     } <= ran
+
+
+def test_group_labels_do_not_depend_on_the_column_dtype() -> None:
+    # v0.18 review: a fit on an int store column and a score on a float one ('1.0') saw every
+    # store as unseen and drew it from the hyperprior
+    from mapi_plugin_tabular.declarative import _row_labels
+
+    ints = xr.Dataset({"store": (("obs",), np.array([1, 2, 10], dtype=np.int64))})
+    floats = xr.Dataset(
+        {"store": (("obs",), np.array([1.0, 2.0, np.nan]))},
+        coords={"obs__requested": (("obs",), np.array([True, True, False]))},
+    )
+    assert _row_labels(ints, "store", "fit") == ["1", "2", "10"]
+    assert _row_labels(floats, "store", "score") == ["1", "2", None]
+    halves = xr.Dataset({"store": (("obs",), np.array([1.5, 2.0]))})
+    assert _row_labels(halves, "store", "score") == ["1.5", "2"]
+    flags = xr.Dataset({"store": (("obs",), np.array([True, False]))})
+    assert _row_labels(flags, "store", "fit") == ["True", "False"]
+    text = xr.Dataset({"store": (("obs",), np.array(["store_1", "1.0"]))})
+    assert _row_labels(text, "store", "fit") == ["store_1", "1.0"]  # text stays text

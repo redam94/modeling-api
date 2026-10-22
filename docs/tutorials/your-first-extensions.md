@@ -35,21 +35,24 @@ You'll build a model that explains weekly revenue with the average price, with i
 for each region. You believe that a higher price never raises revenue, and you'll tell the
 model so.
 
-1. Open **Make your own** in the navigation, then **Models › New model recipe**.
-2. **Data:** pick the sample dataset, `sample-geo-mmm`.
-3. **Outcome:** pick `revenue_gbp`. A few weeks are far off the rest, so pick **A number with
-   outliers**.
-4. **Terms:** add `avg_price`. Turn on the **standardize** transform. For the prior, keep
-   **normal** and set sigma to 0.5: watch the little curve get narrower. Set the sign to
-   **negative**.
-5. **Groups:** add `region`. Each region gets its own level.
-6. **Review:** read the summary in words, then open the **YAML** tab. It looks like this:
+1. Open **Make your own** in the navigation, then **Models › Describe a model**.
+2. **Pick your data:** pick the sample dataset, `sample-geo-mmm`.
+3. **What do you want to explain?** Pick `revenue_gbp`. A few weeks are far off the rest, so
+   pick **A number with outliers**.
+4. **What drives it?** Add `avg_price`. Keep the **Standardise** transform (it is on by
+   default for a new term). For the prior, keep **normal** and set sigma to 0.5: watch the
+   little curve get narrower. Set the sign to **Only lowers** (a negative effect).
+5. **Does it differ by group?** Add `region`. Each region gets its own level.
+6. **Name it:** give it the title "Revenue and price, robust to odd weeks". The name fills
+   itself in (`revenue-and-price-robust`). Keep the scope at your project.
+7. Read **Your model, in words** on the right, then switch **How to edit** to **YAML**. It
+   looks like this:
 
     ```yaml
     --8<-- "extend_tutorial_recipe.yaml"
     ```
 
-7. Pick **Save**, then **Fit now**.
+8. Pick **Save model**, then **Fit now**.
 
 When the fit is done, open its run. The posterior forest shows the effect of price below
 zero: the sign you set is a promise the model keeps. Your recipe is now in **Catalog ›
@@ -73,7 +76,7 @@ Yours** under "From your team", and in the Build palette.
 Next, a column of your own: the total media spend of each week. A **formula step** makes it,
 and a **prep preset** saves it for next time.
 
-1. **Make your own › Prep › New prep preset.**
+1. **Make your own › Prep › Make a prep preset.**
 2. Add the step **Fill gaps** (`core.impute`). Set the method to `constant` and the
    value to 0. Mark its columns as a **slot**: whoever uses the preset picks the columns.
 3. Add the step **New column from a formula** (`core.formula`). Set `out` to `total_spend` and `expr` to
@@ -81,7 +84,9 @@ and a **prep preset** saves it for next time.
 4. Under **Try it on a dataset**, choose `sample-geo-mmm` and pick `spend` for the slot.
    Nothing runs: the server checks each step and shows the data after it, with the new
    `total_spend`.
-5. **Save.**
+5. **Name it:** give it the title "Fill spend gaps, then total media spend" (the name fills
+   itself in: `total-media-spend`).
+6. Pick **Save preset**.
 
 ```yaml
 --8<-- "extend_tutorial_prep.yaml"
@@ -170,9 +175,11 @@ all checks passed
 
 ### 7. Check it against the platform, before you install
 
-You can already see what the platform will make of your plugin. This code loads the package
-by path, registers it next to the built-ins and checks a spec that uses your step, model and
-recipe on the sample's data:
+You can already see what the platform will make of your plugin. This code registers it next
+to the built-ins and checks a spec that uses your step, model and recipe on the sample's
+data. The package is not installed yet (step 8 does that), so the code first puts its `src/`
+on the path: set `SRC = "acme/src"`, the folder `mapi plugin init` wrote. (Or run the code
+with `PYTHONPATH=acme/src`.)
 
 ```python
 --8<-- "extend_tutorial.py:registry"

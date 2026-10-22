@@ -63,6 +63,7 @@ __all__ = [
     "load_revision",
     "promote_item",
     "read_refs",
+    "refuse_project_refs",
     "resolve_ref",
     "revise_item",
     "revision_dto",
@@ -257,6 +258,40 @@ async def read_refs(session: AsyncSession, scope: Scope, doc: LibraryDoc) -> Ref
         if key not in out:
             out[key] = await resolve_ref(session, scope, ref)
     return out
+
+
+async def refuse_project_refs(session: AsyncSession, scope: Scope, doc: LibraryDoc) -> None:
+    """Refuse a model recipe about to become a tenant item (created with ``scope: tenant``,
+    or promoted) that references an item of a project: every project of the tenant reads a
+    tenant item, but only that one project can read what it references (``LIBRARY_INVALID``,
+    one issue per reference, pointing at its ``item``)."""
+    if not isinstance(doc, ModelRecipeDoc):
+        return
+    named = [*([("/prep/item", doc.prep)] if doc.prep is not None else [])]
+    named += [(f"/charts/{i}/item", ref) for i, ref in enumerate(doc.charts)]
+    issues: list[Issue] = []
+    for pointer, ref in named:
+        project_id = (
+            await session.execute(
+                select(m.LibraryItem.project_id).where(
+                    m.LibraryItem.id == ref.item, _visible(scope)
+                )
+            )
+        ).scalar_one_or_none()
+        if project_id is not None:
+            issues.append(
+                Issue(
+                    code=ErrorCode.LIBRARY_INVALID,
+                    severity=Severity.ERROR,
+                    pointer=pointer,
+                    message=(
+                        "A tenant item can only use tenant items: this one belongs to a "
+                        "project. Promote it first and point to the promoted item."
+                    ),
+                )
+            )
+    if issues:
+        raise refusal(issues, "the model recipe cannot be shared with the tenant")
 
 
 # ----------------------------------------------------------------------------------- writes

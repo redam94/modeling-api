@@ -162,6 +162,8 @@ async def create_library_item(
         auth.require(Action.CREATE, ResourceKind.TENANT_LIBRARY)
     doc, stored = svc.parse_body(body.document, body.text)
     scope = ctx.scope
+    if body.scope == "tenant":
+        await svc.refuse_project_refs(session, scope, doc)
     checked = await svc.check_document(ctx, session, scope, doc)
     item, _ = await svc.create_item(
         session,
@@ -265,6 +267,8 @@ async def create_library_revision(
     item = await svc.load_item(session, scope, item_id, for_update=True)
     _require_for(auth, item, Action.UPDATE)
     doc, stored = svc.parse_body(body.document, body.text)
+    if item.project_id is None:  # a tenant item: every project reads what it references
+        await svc.refuse_project_refs(session, scope, doc)
     checked = await svc.check_document(ctx, session, scope, doc)
     rev = await svc.revise_item(
         session,
@@ -333,7 +337,9 @@ async def promote_library_item(
     scope = ctx.scope
     item = await svc.load_item(session, scope, item_id)
     latest = await svc.load_revision(session, item)
-    checked = await svc.check_document(ctx, session, scope, parse_library_doc(latest.document))
+    doc = parse_library_doc(latest.document)
+    await svc.refuse_project_refs(session, scope, doc)
+    checked = await svc.check_document(ctx, session, scope, doc)
     tenant_item, _ = await svc.promote_item(
         session,
         item,

@@ -21,7 +21,7 @@ import { ProgressRing } from "@/components/ods/progress-ring";
 import { useWorkspace } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
 
-import { CHECKLIST_STEPS, checklistCount, checklistDone, useOnboarding, useOnboardingTenant, usePatchOnboarding, type OnboardingState } from "./api";
+import { CHECKLIST_STEPS, checklistCount, hubFolded, useOnboarding, useOnboardingTenant, usePatchOnboarding, type OnboardingState } from "./api";
 import { Checklist, CHECKLIST_COPY, nextStep, StepAction } from "./checklist";
 import { BLOCK_FOCUS, LIME, PILL_SM, QUIET, SampleCard, UploadLink } from "./sample-card";
 import { startTour } from "./use-onboarding";
@@ -62,7 +62,7 @@ export function firstName(name: string | null | undefined): string | null {
 
 /** Fold the hub into a banner? (checklist done or hidden, or tips off). */
 export function hubCollapsed(state: OnboardingState | undefined): boolean {
-  return Boolean(state && (checklistDone(state) || state.tips_off));
+  return hubFolded(state);
 }
 
 // ------------------------------------------------------------------------------ Expert Home
@@ -89,7 +89,7 @@ function Hub({ state, onDismiss }: { state: OnboardingState | undefined; onDismi
   const { info } = useSample();
   const titleId = useId();
   return (
-    <section data-testid="start-here" data-state="open" data-tour="home.start-here" aria-labelledby={titleId} className="grid gap-6">
+    <section data-testid="start-here" data-state="open" aria-labelledby={titleId} className="grid gap-6">
       <Hero titleId={titleId} state={state} />
       <div className={cn("grid gap-6", state && "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]")}>
         {state ? <Checklist state={state} sample={info} surface="home" onDismiss={onDismiss} /> : null}
@@ -116,21 +116,24 @@ function Hero({ titleId, state }: { titleId: string; state: OnboardingState | un
         <p className="max-w-[46ch] text-lg leading-relaxed text-block-muted">
           Open a real model on example data, move a few budgets and watch sales respond. No setup, and nothing you do here can break a thing.
         </p>
-        {info && view !== "none" ? (
-          <SampleCard info={info} variant="hero" secondary={<UploadLink onBlock />} className="mt-3 w-full" />
-        ) : (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button type="button" className={LIME} onClick={() => startTour("welcome")}>
-              <Compass /> Take the 2-minute tour
+        {/* the welcome tour's first step: the hero's actions (a small target the coach-mark sits beside) */}
+        <div data-tour="home.start-here" className="grid w-full justify-items-start gap-5">
+          {info && view !== "none" ? (
+            <SampleCard info={info} variant="hero" secondary={<UploadLink onBlock />} className="mt-3 w-full" />
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button type="button" className={LIME} onClick={() => startTour("welcome")}>
+                <Compass /> Take the 2-minute tour
+              </button>
+              <UploadLink onBlock />
+            </div>
+          )}
+          {info && view !== "none" && !tourDone ? (
+            <button type="button" onClick={() => startTour("welcome")} className={cn(BLOCK_FOCUS, "text-xs text-block-muted underline underline-offset-4 hover:text-block-foreground")}>
+              New here? Take the 2-minute tour
             </button>
-            <UploadLink onBlock />
-          </div>
-        )}
-        {info && view !== "none" && !tourDone ? (
-          <button type="button" onClick={() => startTour("welcome")} className={cn(BLOCK_FOCUS, "text-xs text-block-muted underline underline-offset-4 hover:text-block-foreground")}>
-            New here? Take the 2-minute tour
-          </button>
-        ) : null}
+          ) : null}
+        </div>
       </div>
       <div className="order-first w-full max-w-[260px] justify-self-start md:order-none md:max-w-[380px] md:justify-self-end">
         <HeroArt className="w-full" />
@@ -222,7 +225,17 @@ export function StartHereStrip() {
         ) : null}
       </div>
       <div className="flex items-start gap-3">
-        {showSample && info ? <SampleCard info={info} variant="strip" className="min-w-0 flex-1" /> : <div className="flex-1" />}
+        {showSample && info ? (
+          <SampleCard info={info} variant="strip" className="min-w-0 flex-1" />
+        ) : info && view === "ready" ? (
+          // opened already: one quiet line, which still carries the "fit" tour's first anchor
+          <div data-testid="sample-done" data-tour="sample.progress" className="grid min-w-0 flex-1 gap-0.5">
+            <p className="text-sm font-semibold">{info.title}</p>
+            <p className="text-xs text-muted-foreground">Fitted on our servers and ready. You have opened it.</p>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
         <button
           type="button"
           onClick={() => patch.mutate({ patch: { checklist_dismissed: true } })}

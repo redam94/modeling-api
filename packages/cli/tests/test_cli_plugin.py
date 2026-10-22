@@ -18,6 +18,7 @@ from mapi_cli import plugin_doctor
 from mapi_cli.commands import plugin
 from mapi_cli.commands.plugin import Base, Kind, plugin_names, render_plugin
 from mapi_spec.catalog import Catalog, CatalogDiagnostic
+from mapi_spec.errors import MapiError
 from mapi_spec.namespaces import reserved_namespace
 from typer.testing import Result
 
@@ -102,6 +103,10 @@ def test_every_kind_and_base_renders(tmp_path: Path, kinds: list[str], base: str
     assert readme.rstrip().split("\n\n")[-1].startswith("If something is missing")
     for heading in ("## Test it", "## See it on your stack (3 ways)", "## See it in the app"):
         assert heading in readme
+    # v0.18 review: 'uv lock' alone never installed a new workspace member, and WHEELS is
+    # read relative to the platform checkout, not the plugin
+    assert "`make install`" in readme and "`uv lock`" not in readme
+    assert 'WHEELS="path/to/acme-lab/dist/*.whl"' in readme
     if "template" in kinds:
         templates = (tmp_path / "src/acme_lab/templates.py").read_text()
         assert ("test.acme_lab_zero_share" in templates) == ("node" in kinds)
@@ -134,6 +139,28 @@ def test_reserved_namespaces_are_refused_with_the_reason(
     assert reason is not None
     assert reason in as_json(res)["error"]["detail"]
     assert not (tmp_path / "x").exists()
+
+
+@pytest.mark.parametrize(
+    ("name", "why"),
+    [
+        ("import", "keyword"),
+        ("class", "keyword"),
+        ("match", "keyword"),
+        ("json", "standard library"),
+    ],
+)
+def test_keyword_and_stdlib_module_names_are_refused(
+    mapi: Invoke, tmp_path: Path, as_json: AsJson, name: str, why: str
+) -> None:
+    # v0.18 review: 'import' scaffolded a package whose own tests failed with SyntaxError
+    res = mapi("--json", "plugin", "init", name, "--dir", str(tmp_path))
+    assert res.exit_code == 1
+    assert why in as_json(res)["error"]["detail"]
+    assert not (tmp_path / name).exists()
+    with pytest.raises(MapiError):
+        plugin_names(name, None)
+    assert plugin_names(f"acme-{name}", None)["module"] == f"acme_{name}"
 
 
 def test_a_template_namespace_head_must_be_free(mapi: Invoke, tmp_path: Path) -> None:
