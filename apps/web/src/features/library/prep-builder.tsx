@@ -23,6 +23,7 @@ import { useGrants } from "@/features/auth/workspace";
 import { SchemaForm, type JsonObject as FormObject } from "@/features/forms/json-schema-form";
 import { safeSchema } from "@/features/forms/schema-sanitize";
 import { useQuery } from "@tanstack/react-query";
+import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
 
 import { useSaveDoc, type Saved } from "./actions";
@@ -62,7 +63,7 @@ function withErrors(issues: readonly Issue[] | undefined, index: number): Record
   const out: Record<string, string> = {};
   for (const i of issues ?? []) {
     const p = i.pointer ?? "";
-    if (p.startsWith(prefix) && (i.severity ?? "error") !== "info") out[p.slice(prefix.length).split("/")[0] ?? ""] ??= i.message;
+    if (p.startsWith(prefix) && (i.severity ?? "error") !== "info") out[p.slice(prefix.length).split("/")[0] ?? ""] ??= plainIssue(i);
   }
   return out;
 }

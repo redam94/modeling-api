@@ -42,6 +42,12 @@ export interface TourStep {
   route?: TourRoute;
   /** Preferred side of the coach-mark (it flips when there is no room). */
   side?: "top" | "right" | "bottom" | "left";
+  /**
+   * `"dialog"`: the anchor sits in an open dialog whose fields the step talks about. The
+   * coach-mark goes beside the dialog (its wider margin), or, when neither margin has room,
+   * docks in the window's bottom-left corner, never over the dialog's top fields.
+   */
+  beside?: "dialog";
   /** "Next" first clicks the anchored element (it opens what the next step points into). */
   clickOnNext?: boolean;
   /** Show the step only in this context (e.g. one persona). */
@@ -291,6 +297,8 @@ export const TOURS: Readonly<Record<TourId, TourDef>> = {
         id: "presets",
         anchor: "dashboards.new.presets",
         route: newDashboardPath,
+        // the card would cover the dialog's Title and Source fields above the layouts
+        beside: "dialog",
         title: "Start from a preset",
         body: "Pick the layout closest to what your readers need, then press Create. You can change every panel later.",
       },

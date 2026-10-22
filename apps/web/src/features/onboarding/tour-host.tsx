@@ -104,6 +104,24 @@ interface StepViewProps extends TourViewProps {
 /** When a step's anchor is revealed a second time (after a page change has settled). */
 export const REVEAL_AGAIN_MS = 450;
 
+/** The coach-mark's widest and narrowest width beside a dialog, and its gap to the edges. */
+export const BESIDE_MAX = 360;
+export const BESIDE_MIN = 260;
+export const BESIDE_GAP = 16;
+
+/**
+ * Where a `beside: "dialog"` step puts its coach-mark: next to the dialog in its wider margin
+ * (`side`, with the card's `width`), or `null` when neither margin fits `BESIDE_MIN` (the card
+ * then docks in the window's bottom-left corner).
+ */
+export function besideDialog(dialog: { left: number; right: number }, viewportWidth: number): { side: "left" | "right"; width: number } | null {
+  const right = viewportWidth - dialog.right - 2 * BESIDE_GAP;
+  const left = dialog.left - 2 * BESIDE_GAP;
+  const side = right >= left ? "right" : "left";
+  const room = Math.max(right, left);
+  return room >= BESIDE_MIN ? { side, width: Math.min(BESIDE_MAX, Math.floor(room)) } : null;
+}
+
 function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, onStep, onFinish, onSkip }: Omit<StepViewProps, "samplesPending">) {
   const stepKey = `${tour.id}:${i}`;
   const route = stepRoute(current, ctx);
@@ -181,7 +199,12 @@ function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, on
   const skipStep = useCallback(() => (last ? onFinish(i) : onStep(i + 1)), [last, i, onFinish, onStep]);
 
   const shown = Boolean(anchor.el && box);
-  const sheet = phone || !shown;
+  // v0.18: a step about a dialog's fields keeps its card off them (`box` re-renders this on
+  // resize and scroll, so the choice follows the window)
+  const dialogEl = !phone && shown && current.beside === "dialog" ? anchor.el!.closest<HTMLElement>("[role='dialog']") : null;
+  const beside = dialogEl ? besideDialog(dialogEl.getBoundingClientRect(), window.innerWidth || document.documentElement.clientWidth) : null;
+  const docked = Boolean(dialogEl && !beside);
+  const sheet = phone || !shown || docked;
   useTourKeys(coachRef, { next, back, skip, escape: sheet });
 
   // The bottom sheet and the "not on screen" card take focus themselves; the popover does it in onOpenAutoFocus.
@@ -256,7 +279,7 @@ function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, on
       </div>
     </>
   );
-  const card = (variant: "popover" | "sheet") => (
+  const card = (variant: "popover" | "sheet" | "card") => (
     <CoachCard
       refs={{ coach: coachRef, title: titleRef }}
       ids={ids}
@@ -279,18 +302,24 @@ function StepView({ tour, ctx, steps, i, current, pathname, search, navigate, on
       <Spotlight box={box!} stepKey={stepKey} reduced={reduced} />
       {phone ? (
         <div className="fixed inset-x-0 bottom-0 z-[70]">{card("sheet")}</div>
+      ) : docked ? (
+        <div className="pointer-events-none fixed bottom-4 left-4 z-[70]" data-tour-docked="">
+          {card("card")}
+        </div>
       ) : (
         <PopoverPrimitive.Root open>
-          <PopoverPrimitive.Anchor virtualRef={{ current: visiblePart(anchor.el!) }} />
+          <PopoverPrimitive.Anchor virtualRef={{ current: dialogEl && beside ? visiblePart(dialogEl) : visiblePart(anchor.el!) }} />
           <PopoverPrimitive.Portal>
             <PopoverPrimitive.Content
-              side={current.side ?? "bottom"}
+              side={beside?.side ?? current.side ?? "bottom"}
               align="start"
-              sideOffset={16}
+              sideOffset={BESIDE_GAP}
               collisionPadding={16}
-              avoidCollisions
+              avoidCollisions={!beside}
               aria-labelledby={ids.title}
               aria-describedby={ids.body}
+              data-side-beside={beside?.side}
+              style={beside ? { width: beside.width } : undefined}
               className="z-[70] w-[min(360px,calc(100vw-32px))] outline-none"
               onOpenAutoFocus={(e) => {
                 e.preventDefault();

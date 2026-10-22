@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 import type { Issue } from "@/api/types";
+import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
 import { Field, Input, Textarea } from "@/components/ui/primitives";
 
@@ -120,10 +121,11 @@ export function BuilderSection({ n, title, hint, children, className, done }: { 
 
 // ------------------------------------------------------------------------------ problems
 
-/** The message of the first issue at (or under, with `deep`) `pointer`, for a field's `error`. */
+/** The message (in plain words) of the first issue at (or under, with `deep`) `pointer`, for a field's `error`. */
 export function issueText(issues: readonly Issue[] | undefined, pointer: string, deep = false): string | undefined {
   const here = deep ? issuesAt(issues, pointer) : (issues ?? []).filter((i) => (i.pointer ?? "") === pointer);
-  return here.find((i) => (i.severity ?? "error") !== "info")?.message;
+  const first = here.find((i) => (i.severity ?? "error") !== "info");
+  return first ? plainIssue(first) : undefined;
 }
 
 /** Every issue at or under `pointer`, as small lines (warnings and notes included). */
@@ -134,7 +136,7 @@ export function IssueLines({ issues, pointer, className }: { issues: readonly Is
     <ul className={cn("grid gap-1", className)}>
       {here.map((i, k) => (
         <li key={`${i.pointer ?? ""}-${k}`} role={(i.severity ?? "error") === "error" ? "alert" : undefined} className={cn("text-xs font-medium", (i.severity ?? "error") === "error" ? "text-destructive" : i.severity === "warning" ? "text-warning" : "text-muted-foreground")}>
-          {i.message}
+          {plainIssue(i)}
         </li>
       ))}
     </ul>

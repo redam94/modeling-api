@@ -27,6 +27,7 @@ import { Field, Input, NativeSelect } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { SchemaForm, type JsonObject as FormObject } from "@/features/forms/json-schema-form";
 import { safeSchema } from "@/features/forms/schema-sanitize";
+import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
 
 import { useModelRecipeUse, useSaveDoc, type Saved } from "./actions";
@@ -399,7 +400,7 @@ function settingsErrors(issues: readonly Issue[] | undefined): Record<string, st
     const p = i.pointer ?? "";
     if (p.startsWith("/settings/") && (i.severity ?? "error") !== "info") {
       const key = p.slice("/settings/".length).split("/")[0] ?? "";
-      out[key] ??= i.message;
+      out[key] ??= plainIssue(i);
     }
   }
   return out;

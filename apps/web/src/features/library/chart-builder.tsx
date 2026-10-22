@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, Textarea } from "@/components/ui/primitives";
 import { useGrants } from "@/features/auth/workspace";
 import { PlotFrame } from "@/features/plots/plot-frame";
+import { plainIssue } from "@/lib/plain-issue";
 import { cn } from "@/lib/utils";
 
 import { decodeInline, useChartExample } from "./chart-data";
@@ -31,7 +32,7 @@ import { chartStarters, columnsOf, EMPTY_CHART, MARKS, simpleSpec, type DatasetC
 import { tidyDoc } from "./doc";
 import { BuilderSection, Chip, focusPointer, IssueLines, issueText, LIME, MetadataFields, PILL, PILL_SM, ScopeChoice, ToggleChip, useDebounced } from "./ui";
 import { LazyYamlTab as YamlTab } from "./yaml-tab-lazy";
-import { isChartTemplateDoc, PLOT_SPEC_MAX_BYTES, jsonBytes, splitUseRef, type ChartTemplateDoc, type JsonObject, type LibraryDoc, type LibraryScope } from "./types";
+import { chartPreviewable, isChartTemplateDoc, PLOT_SPEC_MAX_BYTES, jsonBytes, splitUseRef, type ChartTemplateDoc, type JsonObject, type LibraryDoc, type LibraryScope } from "./types";
 
 const PREVIEW_DEBOUNCE_MS = 250;
 
@@ -56,7 +57,11 @@ function ChartPreviewPanel({ doc: raw, enabled }: { doc: ChartTemplateDoc; enabl
   // An untitled template still previews (the title is checked when you save).
   const doc = useMemo(() => (raw.metadata.title.trim() && raw.metadata.name ? raw : { ...raw, metadata: { ...raw.metadata, title: raw.metadata.title.trim() || "Untitled chart", name: raw.metadata.name || "untitled-chart" } }), [raw]);
   const debounced = useDebounced(doc, PREVIEW_DEBOUNCE_MS);
-  const preview = useChartPreview(enabled ? (debounced as unknown as JsonObject) : null, enabled);
+  // v0.18 live: `enabled` follows the doc at once, the debounced copy lags behind it; right
+  // after a chart type is picked the copy still has no type (or no spec), and previewing it
+  // only earned a 422 `/source_recipe`. Ask only for a copy that has both.
+  const ready = enabled && chartPreviewable(debounced);
+  const preview = useChartPreview(ready ? (debounced as unknown as JsonObject) : null, ready);
   const plot = preview.data?.plot ?? null;
   const data = useQuery({
     queryKey: ["library", "chart-preview-data", plot ? docKey(plot.datasets ?? {}) : ""],
@@ -95,7 +100,7 @@ function ChartPreviewPanel({ doc: raw, enabled }: { doc: ChartTemplateDoc; enabl
         <ul className="grid gap-1" aria-label="What the safety check says">
           {issues.map((i, k) => (
             <li key={k} className={cn("text-xs", (i.severity ?? "error") === "error" ? "font-medium text-destructive" : "text-muted-foreground")}>
-              {i.message}
+              {plainIssue(i)}
             </li>
           ))}
         </ul>

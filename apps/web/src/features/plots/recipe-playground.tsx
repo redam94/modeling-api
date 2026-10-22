@@ -26,6 +26,7 @@ import { Spinner } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/overlays";
 import { type Json, type JsonObject, SchemaForm, type SchemaNode } from "@/features/forms/json-schema-form";
+import { plainIssueMessage } from "@/lib/plain-issue";
 import { parsePointer } from "@/lib/pointer";
 import { cn } from "@/lib/utils";
 
@@ -72,9 +73,62 @@ export function settingErrors(error: unknown): Record<string, string> {
     }
     if (segs[0] === "settings") segs = segs.slice(1);
     const key = segs[0];
-    if (key && !(key in out)) out[key] = issue.message;
+    if (key && !(key in out)) out[key] = plainIssueMessage(issue.message);
   }
   return out;
+}
+
+/**
+ * The variables each core chart's synthetic example can draw (its `var` / `vars` setting), so
+ * the playground can say which names work here (v0.18 live: the field was free text and a
+ * guess like `y` only earned a refusal ten seconds later). Read off `mapi_plots.examples`:
+ * every name of the example data that renders when passed as the setting. A chart missing
+ * here (a plugin's) gets no hint.
+ */
+export const EXAMPLE_VARIABLES: Readonly<Record<string, readonly string[]>> = {
+  "core.data_overview": ["revenue", "spend"],
+  "core.prior_predictive": ["revenue"],
+  "core.ppc": ["revenue"],
+  "core.ppc_fan": ["revenue"],
+  "core.fit_vs_actual": ["revenue"],
+  "core.residuals_over_time": ["revenue"],
+  "core.decomposition": ["baseline", "channel_contribution"],
+  "core.model_comparison": ["revenue"],
+  "core.counterfactual": ["revenue"],
+  "core.decision_distribution": ["objective"],
+  "core.ridge": ["effect"],
+  "core.rank_matrix": ["effect"],
+  "core.calibration": ["y"],
+  "core.state_sequence": ["state_prob"],
+  "core.roc_pr": ["p"],
+  "core.confusion": ["p"],
+  "core.loss_curve": ["loss"],
+  "core.loo_pit": ["y"],
+};
+
+/** The settings that name variables of the data. */
+const VARIABLE_KEYS = ["var", "vars"] as const;
+
+/**
+ * `schema` with a hint on its variable settings that names the example's variables, and the
+ * names to offer there (`suggest` of {@link SchemaForm}). Unchanged without known variables.
+ */
+export function withExampleVariables(schema: SchemaNode, plotId: string): { schema: SchemaNode; suggest: Record<string, string[]> } {
+  const names = EXAMPLE_VARIABLES[plotId];
+  const props = obj(schema.properties);
+  if (!names?.length || !props) return { schema, suggest: {} };
+  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(", ")} or ${names.at(-1)!}`;
+  const suggest: Record<string, string[]> = {};
+  const next: Record<string, Json> = { ...props };
+  for (const key of VARIABLE_KEYS) {
+    const prop = obj(props[key]);
+    if (!prop) continue;
+    suggest[key] = [...names];
+    const own = typeof prop.description === "string" && prop.description.trim() ? `${prop.description.trim().replace(/\.?$/, ".")} ` : "";
+    const empty = key === "vars" ? "Leave it empty for all of them." : "Leave it empty for the model's main one.";
+    next[key] = { ...prop, description: `${own}The example has ${list}. ${empty}` };
+  }
+  return { schema: { ...schema, properties: next }, suggest };
 }
 
 const PLAIN = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
@@ -234,7 +288,8 @@ export function RecipePlayground({ plot, className }: { plot: PlotCatalogEntry; 
   const formId = useId();
   const schema = useMemo(() => (plot.settings_schema ? (plot.settings_schema as SchemaNode) : null), [plot.settings_schema]);
   const quickSchema = useMemo(() => (schema ? pickProperties(schema, (k) => INSTANT.has(k)) : null), [schema]);
-  const moreSchema = useMemo(() => (schema ? pickProperties(schema, (k) => !INSTANT.has(k)) : null), [schema]);
+  const more = useMemo(() => (schema ? withExampleVariables(pickProperties(schema, (k) => !INSTANT.has(k)), plot.id) : null), [schema, plot.id]);
+  const moreSchema = more?.schema ?? null;
   const quickCount = Object.keys(obj(quickSchema?.properties) ?? {}).length;
   const moreCount = Object.keys(obj(moreSchema?.properties) ?? {}).length;
 
@@ -313,7 +368,7 @@ export function RecipePlayground({ plot, className }: { plot: PlotCatalogEntry; 
               Chart settings
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">redraws in about 10 s</span>
             </legend>
-            <SchemaForm schema={moreSchema as SchemaNode} value={settings} skip={[...INSTANT]} errors={fieldErrors} onChange={setSettings} empty="" />
+            <SchemaForm schema={moreSchema as SchemaNode} value={settings} skip={[...INSTANT]} errors={fieldErrors} suggest={more?.suggest ?? {}} onChange={setSettings} empty="" />
           </fieldset>
         ) : null}
         {applyMode ? (

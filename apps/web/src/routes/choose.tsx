@@ -6,7 +6,7 @@ import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { PageHeader } from "@/components/common";
-import { SegmentedControl } from "@/components/ui/overlays";
+import { FilterPills } from "@/components/ui/filter-pills";
 import { HelpMeChoose } from "@/features/about/chooser";
 import type { ChooserAnswers, ChooserKind } from "@/features/about/types";
 
@@ -47,7 +47,7 @@ export function ChoosePage() {
       <PageHeader
         title="Help me choose"
         description="Answer some questions about what you want to know and about your data. The page shows the best models, analyses and workflows for you, with the reasons. Click one to start it."
-        actions={<SegmentedControl label="What to suggest" value={kind ?? "start"} options={KINDS} onValueChange={(v) => void navigate({ search: searchFromAnswers(answers, v === "start" ? undefined : v), replace: true })} />}
+        actions={<FilterPills label="What to suggest" value={kind ?? "start"} options={KINDS} onValueChange={(v) => void navigate({ search: searchFromAnswers(answers, v === "start" ? undefined : v), replace: true })} />}
       />
       <HelpMeChoose answers={answers} onAnswersChange={(a) => void navigate({ search: searchFromAnswers(a, kind ?? undefined), replace: true })} kind={kind} limit={6} layout="page" />
     </div>

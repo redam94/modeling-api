@@ -20,6 +20,7 @@ from mapi_spec.library import (
 )
 from mapi_spec.model_recipes import (
     DECLARATIVE_MODEL_ID,
+    DECLARATIVE_PLOTS,
     CompiledModel,
     compile_model_recipe,
     declarative_settings,
@@ -260,6 +261,8 @@ def test_golden_every_distribution_interactions_and_crossed_groups(catalog: Cata
     c = compile_model_recipe(_doc(raw), catalog)
     assert _errors(c) == []
     assert c.pipeline == []
+    # a declarative recipe that lists no plots draws the defaults
+    assert _frag(c)["outputs"] == {"plots": list(DECLARATIVE_PLOTS)}
 
 
 def test_golden_identical_transforms_merge_in_term_order(catalog: Catalog) -> None:
@@ -725,6 +728,8 @@ def test_prep_preset_is_prepended_and_labelled(catalog: Catalog) -> None:
     )
     assert c.ok, _errors(c)
     assert c.labels == {LABEL_MODEL: f"{ITEM}-r1", LABEL_PREP: f"{PREP_ITEM}-r2"}
+    # the listed plot stays; the chart template's source recipe is drawn too
+    assert _frag(c)["outputs"] == {"plots": ["core.ppc", "core.fit_vs_actual@^1"]}
     first = _frag(c)["pipeline"][0]
     # slot values name dataset variables; after the binding the outcome is "y"
     assert first == {
@@ -757,3 +762,39 @@ def test_prep_issues_point_under_prep(catalog: Catalog) -> None:
     )
     assert ("/prep/slots/v", "The dataset has no variable 'nope'.") in _errors(c)
     assert ("/prep/slots/time", "Slot 'time' (T) needs a value.") in _errors(c)
+
+
+def test_declarative_default_plots_and_chart_sources(catalog: Catalog) -> None:
+    """A declarative recipe with no plots draws predicted vs actual, the forest and the
+    sampler check (v0.18 live: its fits had an empty plots.json and "Your charts" had nothing
+    to restyle); listed plots are kept as they are, and a chart's source is added once."""
+    bare = {k: v for k, v in STORE_SALES.items() if k != "plots"}
+    c = compile_model_recipe(_doc(bare), catalog, schema=PANEL)
+    assert c.ok, _errors(c)
+    assert [str(p) for p in c.outputs.plots] == list(DECLARATIVE_PLOTS)
+    v = validate_spec(_spec(c), catalog, PANEL)
+    assert not has_errors(v.issues), [(i.pointer, i.message) for i in v.issues]
+    # a chart over a default plot does not add it twice
+    charted = compile_model_recipe(
+        _doc({**bare, "charts": [{"item": CHART_ITEM}]}), catalog, resolve=_resolver
+    )
+    assert [str(p) for p in charted.outputs.plots] == list(DECLARATIVE_PLOTS)
+    # the fallback target gets the same defaults
+    fb = copy.deepcopy(bare)
+    for t in fb["declarative"]["terms"]:
+        t["sign"] = "any"
+    fallback = compile_model_recipe(_doc(fb), catalog, schema=PANEL, target="fallback")
+    assert [str(p) for p in fallback.outputs.plots] == list(DECLARATIVE_PLOTS)
+    # a preset with no plots keeps the model's own (none listed)
+    preset = compile_model_recipe(
+        _doc(
+            {
+                "apiVersion": "mapi/v1",
+                "kind": "ModelRecipe",
+                "metadata": {"name": "p", "title": "P"},
+                "base": "ts.sarimax@^1",
+            }
+        ),
+        catalog,
+    )
+    assert preset.outputs.plots == []

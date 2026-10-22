@@ -10,7 +10,7 @@ import { onOnboarding } from "@/lib/onboarding-events";
 
 import { emptyOnboarding, type OnboardingState, type SampleInfo } from "./api";
 import { ANCHOR_WAIT_MS } from "./spotlight";
-import TourHost, { pickSample, REVEAL_AGAIN_MS, TourView, type TourViewProps } from "./tour-host";
+import TourHost, { besideDialog, pickSample, REVEAL_AGAIN_MS, TourView, type TourViewProps } from "./tour-host";
 import { TOURS, type TourDef } from "./tours";
 import { startTour, TOUR_POSITION_KEY, useTourStore } from "./use-onboarding";
 import { WelcomeDialog } from "./welcome-dialog";
@@ -382,6 +382,48 @@ describe("TourView", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe("a step about a dialog's fields (the dashboard tour, v0.18 live)", () => {
+    const realWidth = window.innerWidth;
+    afterEach(() => {
+      window.innerWidth = realWidth;
+    });
+    /** The New dashboard dialog: 768 px wide in the middle of the window, the presets inside. */
+    function placeDialog(viewport: number) {
+      window.innerWidth = viewport;
+      const left = (viewport - 768) / 2;
+      const dialog = document.createElement("div");
+      dialog.setAttribute("role", "dialog");
+      dialog.getBoundingClientRect = () => ({ top: 80, left, width: 768, height: 640, right: left + 768, bottom: 720, x: left, y: 80, toJSON: () => ({}) });
+      document.body.append(dialog);
+      dialog.append(placeAnchor("dashboards.new.presets", 400));
+    }
+    const dashboardTour = { tour: TOURS.dashboard, ctx: { persona: "expert" as const, sample: ready } };
+
+    it("puts the coach-mark beside the dialog when a margin has room", () => {
+      placeDialog(1440);
+      view(dashboardTour);
+      const card = screen.getByTestId("tour-popover");
+      expect(card).toHaveAttribute("data-variant", "popover");
+      expect(card.closest("[data-side-beside]")).toHaveAttribute("data-side-beside", "right");
+      expect(document.querySelector("[data-tour-docked]")).toBeNull();
+    });
+
+    it("docks it in the bottom-left corner, off the Title and Source fields, when neither has", () => {
+      placeDialog(1100);
+      view(dashboardTour);
+      const card = screen.getByTestId("tour-popover");
+      expect(card.closest("[data-tour-docked]")).not.toBeNull();
+      expect(card).toHaveAttribute("role", "dialog");
+      expect(document.activeElement?.tagName).toBe("H2");
+    });
+
+    it("chooses the wider margin and a width that fits it", () => {
+      expect(besideDialog({ left: 336, right: 1104 }, 1440)).toEqual({ side: "right", width: 304 });
+      expect(besideDialog({ left: 600, right: 1368 }, 1440)).toEqual({ side: "left", width: 360 });
+      expect(besideDialog({ left: 256, right: 1024 }, 1280)).toBeNull();
+    });
   });
 
   it("is a bottom sheet on a phone, with Esc ending the tour", () => {

@@ -12,7 +12,8 @@ import type { Issue } from "@/api/types";
 import { EmptyState, ErrorNotice, PageHeader, QueryView, Spinner } from "@/components/common";
 import { InlineMessage, TagWord, type TagTone } from "@/components/ods";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, SegmentedControl, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
+import { FilterPills } from "@/components/ui/filter-pills";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Card, CardContent, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
 import { useArchiveDashboard, useDashboard, useDashboards } from "@/features/dashboards/api";
@@ -73,7 +74,7 @@ export function DashboardsPage() {
         description="Readouts for your clients in plain words, for any model: the latest results, trends, cases to try and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
         actions={
           <>
-            <SegmentedControl<"active" | DashboardStatus>
+            <FilterPills<"active" | DashboardStatus>
               label="Dashboard status"
               value={status ?? "active"}
               onValueChange={(v) => void navigate({ search: { status: v === "active" ? undefined : v }, replace: true })}

@@ -23,12 +23,13 @@ from mapi_server.db import models as m
 from mapi_server.services.dispatcher import Dispatcher
 from mapi_server.services.finalizer import Finalizer
 from mapi_server.services.runs import apply_transition, load_run, now
-from mapi_server.services.samples import SAMPLE_OBJECT_PREFIX, sample_bytes
+from mapi_server.services.samples import SAMPLE_OBJECT_PREFIX, _plain, sample_bytes
 from mapi_server.services.samples_loop import SampleLoop
 from mapi_server.settings import Profile, Settings
 from mapi_server_testkit.builders import simulate_outputs
 from mapi_server_testkit.fake_executor import FakeExecutor
 from mapi_server_testkit.identity import grant_role, make_tenant, make_user, session_caller
+from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.guided import draft_schema
 from mapi_spec.run import Actor, RunTrigger
 from mapi_spec.samples import SAMPLE_LABEL, SAMPLES, SampleInfo, sample_draft
@@ -222,7 +223,9 @@ async def test_a_quota_refusal_fails_the_sample_plainly_and_a_retry_reuses_the_d
     row = await _row(ctx)
     assert row.state == "failed" and row.run_id is None and row.spec_id is None
     assert row.problem is not None and row.problem["code"] == "QUOTA_EXCEEDED"
-    assert row.problem["detail"]  # plain words, not a stack
+    # product copy, not the quota arithmetic ("… (0 + 120 > 0)")
+    assert row.problem["detail"].startswith("Your team has used its computing allowance")
+    assert "concurrent" not in row.problem["detail"] and ">" not in row.problem["detail"]
     [info] = [SampleInfo.model_validate(x) for x in (await who["editor"].get(BASE)).json()]
     assert info.state == "failed" and info.can_retry and info.problem is not None
 
@@ -377,3 +380,21 @@ def test_the_pending_index_covers_exactly_the_loop_states() -> None:
     assert f'sa.text("{predicate}")' in migration
     [index] = [i for i in m.TenantSample.__table__.indexes if i.name == "ix_tenant_samples_pending"]
     assert str(index.dialect_options["postgresql"]["where"]) == predicate
+
+
+def test_a_placement_refusal_reads_as_product_copy() -> None:
+    """v0.18 live: the sample card showed the placement reason ("…gvisor and enforced
+    egress/DNS"); it now says what to do, and keeps the code (so the retry rules hold)."""
+    row = m.TenantSample(tenant_id="acme", sample_id="geo_mmm")
+    exc = MapiError(
+        "no executor can run public-tier work now (needs gvisor and enforced egress/DNS)",
+        code=ErrorCode.INFRA_ERROR,
+    )
+    problem = _plain(exc, row)
+    assert problem.code is ErrorCode.INFRA_ERROR
+    assert problem.detail == (
+        "No machine that can run the sample is free right now. Retry the sample in a while."
+    )
+    # other refusals keep their own (already plain) words
+    other = _plain(MapiError("the data could not be read", code=ErrorCode.FORBIDDEN), row)
+    assert other.detail == "the data could not be read"

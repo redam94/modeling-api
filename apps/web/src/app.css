@@ -462,6 +462,16 @@
   }
 }
 
+/* The Studio filter pill (direction §9, Catalog filters): 1.5px border-strong on the card;
+   pressed (a toggle-group item that is on, or aria-pressed) = foreground fill. */
+@utility filter-pill {
+  @apply inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-3.5 text-xs font-semibold whitespace-nowrap text-foreground transition-colors hover:border-primary [&_svg]:size-3.5;
+  &[data-state="on"],
+  &[aria-pressed="true"] {
+    @apply border-foreground bg-foreground text-background;
+  }
+}
+
 /* The ODS 2xs eyebrow: 10px/20px bold uppercase, in the hint ink. */
 @utility eyebrow {
   font-size: 0.625rem;

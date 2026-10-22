@@ -67,6 +67,7 @@ __all__ = [
     "COMPILE_TARGET",
     "DECLARATIVE_MODEL_ID",
     "DECLARATIVE_MODEL_RANGE",
+    "DECLARATIVE_PLOTS",
     "FALLBACK_MODEL_ID",
     "FALLBACK_MODEL_RANGE",
     "ROW_DIM",
@@ -88,6 +89,15 @@ FALLBACK_MODEL_RANGE: Final = "^1.1"
 CompileTarget = Literal["declarative", "fallback"]
 COMPILE_TARGET: Final[CompileTarget] = "declarative"
 """Flipped to ``"fallback"`` only by the integrator if ``tabular.declarative_glm`` slips."""
+
+DECLARATIVE_PLOTS: Final = (
+    "core.fit_vs_actual@^1",
+    "core.posterior_forest@^1",
+    "core.convergence@^1",
+)
+"""The plots a declarative recipe that lists none draws (those in the catalog): predicted vs
+actual (what "Your charts" templates on ``core.fit_vs_actual`` restyle), the coefficient forest
+and the sampler check, as for the sample ``tabular.hierarchical_glm`` specs."""
 
 TARGET_VAR: Final = "y"
 """The canonical outcome variable of both target models (``data.bind.vars: {y: <outcome>}``)."""
@@ -793,15 +803,27 @@ def compile_model_recipe(
                 )
             )
         plots.append(ref)
+    if not plots and doc.is_declarative:
+        plots = [
+            ref
+            for ref in (UseRef.parse(x) for x in DECLARATIVE_PLOTS)
+            if catalog.resolve_plot(ref) is not None
+        ]
     if resolve is not None:
         for i, cref in enumerate(doc.charts):
-            if not isinstance(resolve(cref, "chart_template"), ChartTemplateDoc):
+            chart = resolve(cref, "chart_template")
+            if not isinstance(chart, ChartTemplateDoc):
                 issues.append(
                     _issue(
                         json_pointer("charts", i, "item"),
                         "The chart template is not in the library.",
                     )
                 )
+                continue
+            # a chart template restyles the stored plot of its source recipe: draw it
+            src = chart.source_recipe
+            if all(p.id != src.id for p in plots) and catalog.resolve_plot(src) is not None:
+                plots.append(src)
 
     pipeline = [*prep_steps, *shape_steps, *transform_steps]
     if schema is not None and not has_errors(issues):

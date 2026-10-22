@@ -10,7 +10,8 @@ import { useEffectivePersona, useGuidedLock, useSetPersona } from "@/features/gu
 import { useOnboarding, useOnboardingTenant, usePatchOnboarding, useResetOnboarding } from "@/features/onboarding/api";
 import { DataSettings } from "@/features/trust/data-settings";
 import { KeyValues, Mono, PageHeader } from "@/components/common";
-import { SegmentedControl, Switch } from "@/components/ui/overlays";
+import { FilterPills } from "@/components/ui/filter-pills";
+import { Switch } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { absoluteTime, formatNumber } from "@/lib/format";
@@ -173,7 +174,7 @@ export function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <SegmentedControl<ThemePreference>
+            <FilterPills<ThemePreference>
               label="Theme"
               value={theme}
               onValueChange={setTheme}
@@ -198,9 +199,9 @@ export function SettingsPage() {
             {lock.locked ? (
               <p className="text-sm text-muted-foreground">A project admin locked this project to Guided mode.</p>
             ) : (
-              <SegmentedControl<Persona>
+              <FilterPills<Persona>
                 label="Mode"
-                value={persona}
+                  value={persona}
                 onValueChange={setPersona}
                 options={[
                   { value: "expert", label: "Expert" },

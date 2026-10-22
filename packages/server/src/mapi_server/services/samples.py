@@ -661,7 +661,7 @@ async def advance(ctx: ServerContext, session: AsyncSession, row: m.TenantSample
             async with session.begin_nested():
                 moved = await _step(ctx, session, sample, row)
         except MapiError as exc:
-            _fail(row, _plain(exc))
+            _fail(row, _plain(exc, row))
             moved = True
         changed |= moved
         if not moved:
@@ -671,9 +671,33 @@ async def advance(ctx: ServerContext, session: AsyncSession, row: m.TenantSample
     return changed
 
 
-def _plain(exc: MapiError) -> Problem:
+_PLAIN_DETAIL: Final[dict[ErrorCode, str]] = {
+    ErrorCode.QUOTA_EXCEEDED: (
+        "Your team has used its computing allowance for now. Retry the sample later, or ask a "
+        "tenant admin to raise the limit."
+    ),
+    ErrorCode.INFRA_ERROR: (
+        "No machine that can run the sample is free right now. Retry the sample in a while."
+    ),
+}
+"""Product copy for refusals whose server detail is operator text (quota arithmetic,
+placement reasons); the original detail goes to the log."""
+
+
+def _plain(exc: MapiError, row: m.TenantSample) -> Problem:
     problem = exc.to_problem()
-    return problem.model_copy(update={"trace_id": None, "instance": None})
+    update: dict[str, object] = {"trace_id": None, "instance": None}
+    plain = _PLAIN_DETAIL.get(problem.code)
+    if plain is not None:
+        log.info(
+            "sample %s of tenant %s failed with %s: %s",
+            row.sample_id,
+            row.tenant_id,
+            problem.code.value,
+            problem.detail,
+        )
+        update["detail"] = plain
+    return problem.model_copy(update=update)
 
 
 async def _installer(ctx: ServerContext, row: m.TenantSample) -> ServerContext:

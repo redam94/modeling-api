@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useCatalog } from "@/api/queries";
 import type { ModelCatalogEntry, StepCatalogEntry } from "@/api/types";
-import { JsonBlock, KeyValues, Mono, QueryView } from "@/components/common";
+import { JsonBlock, KeyValues, Mono, PageHeader, QueryView } from "@/components/common";
 import { AddYourOwn } from "@/components/extend/add-your-own";
 import { DataTable } from "@/components/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
@@ -133,17 +133,11 @@ export function CatalogPage() {
   );
   return (
     <>
-      <header className="grid gap-3 pb-8">
-        <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Catalog</h1>
-        <p className="max-w-[60ch] text-lg leading-relaxed text-muted-foreground">
-          Every model you can fit, every preparation step, every chart, each with a card that says what it is good for. Plus whatever your team has added.
-        </p>
-        {catalog.data ? (
-          <p className="text-xs text-muted-foreground">
-            <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono>
-          </p>
-        ) : null}
-      </header>
+      <PageHeader
+        title="Catalog"
+        description="Every model you can fit, every preparation step, every chart, each with a card that says what it is good for. Plus whatever your team has added."
+        meta={catalog.data ? <Mono title={catalog.data.digest}>digest {catalog.data.digest.slice(0, 19)}</Mono> : undefined}
+      />
       <QueryView query={catalog}>
         {(c) => (
           <Tabs value={active} onValueChange={go}>

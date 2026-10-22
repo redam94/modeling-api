@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -209,6 +210,25 @@ describe("Make your own: model builder", () => {
   });
 });
 
+describe("Make your own: field problems in plain words (v0.18 live)", () => {
+  it("shows what to do, not the validator's text", async () => {
+    server.use(
+      http.post("*/v1/library:validate", () =>
+        HttpResponse.json({
+          valid: false,
+          compiled: null,
+          issues: [{ code: "LIBRARY_INVALID", severity: "error", pointer: "/metadata/name", message: "String should match pattern '^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$'" }],
+        }),
+      ),
+    );
+    renderPage("/library?tab=models&new=model");
+    const name = await screen.findByLabelText("Short name", undefined, { timeout: 4000 });
+    const field = name.closest("div.grid") as HTMLElement;
+    await waitFor(() => expect(field).toHaveTextContent("Use lower-case letters, digits, - and _, and start and end with a letter or digit."), { timeout: 4000 });
+    expect(field).not.toHaveTextContent("String should match pattern");
+  });
+});
+
 describe("Make your own: prep builder", () => {
   it("adds a step and turns its columns into a slot", async () => {
     const user = userEvent.setup();
@@ -244,6 +264,23 @@ describe("Make your own: chart template builder", () => {
     expect(last.document.metadata.title).toBe("Fan by market");
     expect(last.document.plot.data.name).toBe("fan");
   }, 20_000);
+
+  it("asks for no preview before a chart type and its spec are there (v0.18 live)", async () => {
+    // the debounced copy lagged behind: the first preview went out with no chart type (422)
+    const user = userEvent.setup();
+    renderPage("/library?tab=charts&new=chart");
+    const pick = await screen.findByLabelText("Chart type", undefined, { timeout: 4000 });
+    await waitFor(() => expect(within(pick).getByRole("option", { name: /core\.ppc_fan/ })).toBeInTheDocument(), { timeout: 4000 });
+    await user.selectOptions(pick, "core.ppc_fan");
+    const preview = await screen.findByTestId("chart-preview");
+    await waitFor(() => expect(within(preview).getByText("Up to date")).toBeInTheDocument(), { timeout: 6000 });
+    const sent = posts("/v1/library/charts:preview").map((c) => (c.body as { document: { source_recipe: string; plot: object } }).document);
+    expect(sent.length).toBeGreaterThan(0);
+    for (const d of sent) {
+      expect(d.source_recipe).toMatch(/^core\.ppc_fan@/);
+      expect(Object.keys(d.plot).length).toBeGreaterThan(0);
+    }
+  }, 15_000);
 
   it("reports a spec that reads a dataset the chart type does not have", async () => {
     const user = userEvent.setup();

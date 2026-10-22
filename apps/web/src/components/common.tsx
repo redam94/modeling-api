@@ -23,15 +23,19 @@ export function PageHeader({
   description,
   actions,
   meta,
+  eyebrow,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   meta?: ReactNode;
+  /** A small label above the title (the Studio list-page eyebrow). */
+  eyebrow?: ReactNode;
 }) {
   return (
     <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6">
       <div className="min-w-0">
+        {eyebrow ? <p className="eyebrow mb-3">{eyebrow}</p> : null}
         {/* the Studio page title (direction §4): 48px display, as on the list pages */}
         <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">{title}</h1>
         {description ? <p className="mt-2 max-w-[68ch] text-lg text-muted-foreground">{description}</p> : null}

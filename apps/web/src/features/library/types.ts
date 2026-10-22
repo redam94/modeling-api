@@ -351,6 +351,11 @@ export function splitUseRef(ref: string): [string, string | null] {
   return at < 0 ? [ref, null] : [ref.slice(0, at), ref.slice(at + 1)];
 }
 
+/** A chart template the server can preview: it names a chart type and has a spec. */
+export function chartPreviewable(doc: { source_recipe: string; plot?: object | null }): boolean {
+  return Boolean(splitUseRef(doc.source_recipe)[0]) && Object.keys(doc.plot ?? {}).length > 0;
+}
+
 /** The dataset names a Vega-Lite spec reads (`data: {name}` at any depth). */
 export function datasetNamesOf(spec: unknown): string[] {
   const out = new Set<string>();

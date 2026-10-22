@@ -12,7 +12,7 @@ import { env } from "@/env";
 import { useScope } from "@/stores/scope";
 
 import { PlotHost } from "./plot-host";
-import { pickProperties, RecipePlayground, RecipePlaygroundDialog, recipeYaml, settingErrors } from "./recipe-playground";
+import { pickProperties, RecipePlayground, RecipePlaygroundDialog, recipeYaml, settingErrors, withExampleVariables } from "./recipe-playground";
 
 const PLOT: PlotCatalogEntry = {
   id: "core.ppc_fan",
@@ -223,6 +223,26 @@ describe("RecipePlayground", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Apply" }, { timeout: 3000 }));
     await waitFor(() => expect(status()).toHaveTextContent("Your settings are in the YAML below"));
     expect(posts).toEqual([{ var: "y" }, { var: "y" }]);
+  });
+});
+
+describe("the example's variables (v0.18 live: Var was free text with no hint)", () => {
+  it("names them under Var and offers them as suggestions", async () => {
+    renderPlayground();
+    const input = screen.getByLabelText("Var");
+    expect(input.closest("div.grid")).toHaveTextContent("The example has revenue. Leave it empty for the model's main one.");
+    const list = document.getElementById(input.getAttribute("list") ?? "");
+    expect([...(list?.querySelectorAll("option") ?? [])].map((o) => o.getAttribute("value"))).toEqual(["revenue"]);
+  });
+
+  it("keeps a setting's own words and leaves charts without known variables alone", () => {
+    const schema = { type: "object", properties: { vars: { type: "array", items: { type: "string" }, description: "Variables to use (default: all)" } } };
+    const out = withExampleVariables(schema, "core.decomposition");
+    expect((out.schema.properties as Record<string, { description: string }>).vars?.description).toBe(
+      "Variables to use (default: all). The example has baseline or channel_contribution. Leave it empty for all of them.",
+    );
+    expect(out.suggest).toEqual({ vars: ["baseline", "channel_contribution"] });
+    expect(withExampleVariables(schema, "acme.weekly")).toEqual({ schema, suggest: {} });
   });
 });
 
