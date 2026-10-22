@@ -7,6 +7,10 @@
  * provider's account page (`MAPI_DEV_ACCOUNT`, default `admin@dev.local`, the seeded tenant
  * admin and operator), `/auth/callback`, and back to the web app with the session cookie. A
  * single-tenant stack (no sign-in) is detected through `/auth/session` and left alone.
+ *
+ * v0.18 (D24): the saved state also holds localStorage `mapi.noTour=1` on the web origin, so
+ * the welcome dialog and automatic tours never appear in an `@e2e` test (a UX switch, not a
+ * security control; `?tour=<id>` deep links still work).
  */
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -24,6 +28,10 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
+    const webOrigin = new URL(web).origin;
+    await context.addInitScript((origin) => {
+      if (window.location.origin === origin) localStorage.setItem("mapi.noTour", "1");
+    }, webOrigin);
     const page = await context.newPage();
     const session = await page.request.get(`${api}/auth/session`);
     const info = session.ok() ? ((await session.json()) as { authenticated?: boolean }) : {};
@@ -35,6 +43,9 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
       const after = (await (await page.request.get(`${api}/auth/session`)).json()) as { authenticated?: boolean };
       if (!after.authenticated) throw new Error(`signing in as ${account} at ${api} did not create a session`);
     }
+    // the web origin's localStorage is saved only once a page of it has loaded
+    if (!page.url().startsWith(web)) await page.goto(web, { waitUntil: "commit" });
+    await page.evaluate(() => localStorage.setItem("mapi.noTour", "1"));
     await context.storageState({ path: AUTH_STATE });
   } finally {
     await browser.close();

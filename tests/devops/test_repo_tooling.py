@@ -376,6 +376,7 @@ class TestMakefile:
             "security",
             "web",
             "containers",
+            "extensions",
             "docs",
             "release",
             "housekeeping",

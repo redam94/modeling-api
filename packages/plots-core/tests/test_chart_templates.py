@@ -247,7 +247,11 @@ def test_known_columns_layers_and_transforms(example: PlotSpec) -> None:
                 "mark": "point",
                 "usermeta": {"embedOptions": {"actions": True}},
             },
-            "/plot/usermeta/embedOptions",
+            "/plot/usermeta",
+        ),
+        (
+            {"data": {"name": "points"}, "mark": "point", "usermeta": {"note": "x"}},
+            "/plot/usermeta",
         ),
         (
             {

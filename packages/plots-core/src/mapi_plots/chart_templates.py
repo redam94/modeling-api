@@ -152,6 +152,11 @@ def _structure_issues(
         )
     used: set[str] = set()
     for key, value, ptr, _ in _walk(plot, "/plot", None):
+        if key == "usermeta":
+            issues.append(
+                _issue(ptr, "A chart template cannot carry usermeta.", action="Remove usermeta.")
+            )
+            continue
         if key != "data":
             continue
         if not (

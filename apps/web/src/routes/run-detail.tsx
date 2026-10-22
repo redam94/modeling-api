@@ -12,7 +12,7 @@ import {
   WifiOff,
   Workflow as WorkflowIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { useModelVersionById, useRun } from "@/api/queries";
 import { runName, runTags } from "@/api/tracking";
@@ -50,6 +50,9 @@ import { cn } from "@/lib/utils";
 import type { RunTab } from "@/router";
 
 const route = getRouteApi("/runs/$runId");
+
+/** v0.18: the team's chart templates on the fit's model version (lazy; signed-in pages only). */
+const YourChartsForVersion = lazy(() => import("@/features/library/your-charts").then((m) => ({ default: m.YourChartsForVersion })));
 
 function RunCostValue({ run }: { run: Run }) {
   const c = runCostView(run.cost);
@@ -256,6 +259,11 @@ export function RunDetailPage() {
                 </Card>
               ) : null}
               <RunPlotsCard run={r} />
+              {r.output_model_version_id ? (
+                <Suspense fallback={null}>
+                  <YourChartsForVersion mvId={r.output_model_version_id} />
+                </Suspense>
+              ) : null}
             </div>
             <div className="grid min-w-0 content-start gap-5">
               {r.output_model_version_id ? (

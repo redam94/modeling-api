@@ -16,6 +16,7 @@ import { InlineMessage, TagWord } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect } from "@/components/ui/primitives";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { cn } from "@/lib/utils";
 
 import { useCreateDashboard, useDashboardPresets } from "../api";
@@ -26,15 +27,19 @@ import { issueAt, MAX_TITLE, nameFromTitle, NAME_RE, specIssues } from "./spec-f
 import { PRESET_WORDS, presetSwitchReason, switchPreset } from "./spec-form-v2";
 import { PlainIssues } from "./upgrade-banner";
 
-export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (d: Dashboard) => void }) {
+/**
+ * `initialModel` (v0.18, `/dashboards?new=1&model=`) starts the dialog on that model's latest
+ * version, so the dashboard tour can open it prefilled with the sample's model.
+ */
+export function NewDashboardDialog({ onClose, onCreated, initialModel }: { onClose: () => void; onCreated: (d: Dashboard) => void; initialModel?: string }) {
   const create = useCreateDashboard();
   const endpoints = useEndpoints();
   const models = useModels();
   const [title, setTitle] = useState("");
   const [name, setName] = useState<string | null>(null);
-  const [kind, setKind] = useState<DashboardSource["kind"]>("endpoint");
+  const [kind, setKind] = useState<DashboardSource["kind"]>(initialModel ? "model_version" : "endpoint");
   const [alias, setAlias] = useState<string | null>(null);
-  const [modelId, setModelId] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(initialModel ?? null);
   const [version, setVersion] = useState<number | null>(null);
   const [picked, setPicked] = useState<{ ref: string; preset: PresetKey } | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -65,7 +70,16 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
     e.preventDefault();
     setSubmitted(true);
     if (!spec || issues.length || nameError || !title.trim()) return;
-    create.mutate({ name: effName, spec }, { onSuccess: onCreated });
+    create.mutate(
+      { name: effName, spec },
+      {
+        onSuccess: (d) => {
+          // v0.18 D25: a new dashboard ticks "Make a dashboard".
+          emitOnboarding("dashboard_created", { dashboard: d.id });
+          onCreated(d);
+        },
+      },
+    );
   };
 
   return (
@@ -132,7 +146,7 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
             )}
           </div>
 
-          <fieldset className="grid min-w-0 gap-2">
+          <fieldset className="grid min-w-0 gap-2" data-tour="dashboards.new.presets">
             <legend className="mb-1 text-sm font-semibold">Layout</legend>
             {ref === null ? (
               <p className="text-sm text-muted-foreground">Choose a source first.</p>

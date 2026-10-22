@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogIn, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { ChevronDown, LogIn, Monitor, Moon, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Search, Sun } from "lucide-react";
+import { lazy, Suspense, useEffect, useId, type ReactNode } from "react";
 
 import { useReady } from "@/api/queries";
 import { signIn } from "@/api/session";
@@ -28,10 +28,37 @@ import { useAuth } from "@/stores/auth";
 import { useScope } from "@/stores/scope";
 
 import { CommandPalette, ShortcutsDialog } from "./command-palette";
-import { ADMIN_NAV, EXPERT_NAV, GUIDED_MODE_NAV, LOCKED_NAV, PROJECT_NAV, SETTINGS_NAV, type NavItem } from "./nav";
+import {
+  ADMIN_NAV,
+  EXPERT_NAV,
+  EXPERT_NAV_GROUPS,
+  GUIDED_MORE_NAV,
+  GUIDED_PRIMARY_NAV,
+  inGuidedMore,
+  LOCKED_NAV,
+  PROJECT_NAV,
+  SETTINGS_NAV,
+  type NavGroup,
+  type NavItem,
+} from "./nav";
 import { ProjectSwitcher } from "./project-switcher";
 import { Toaster } from "./toaster";
 import { UserMenu } from "./user-menu";
+
+/**
+ * v0.18 (D18): the tour engine, a lazy signed-in chunk (`tour-host-*`). It plays tours, offers
+ * the welcome dialog on a first visit and ticks the checklist from onboarding events.
+ */
+const TourHost = lazy(() => import("@/features/onboarding/tour-host"));
+
+/** The `data-tour` anchors of the nav items the tours point at (v0.18 I-8). */
+const NAV_ANCHOR: Readonly<Record<string, string>> = {
+  "/guided": "nav.guided",
+  "/datasets": "nav.datasets",
+  "/dashboards": "nav.dashboards",
+  "/catalog": "nav.catalog",
+  "/library": "nav.make-your-own",
+};
 
 function useIsActive(item: NavItem): boolean {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -45,13 +72,15 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
+      data-tour={NAV_ANCHOR[item.to]}
       className={cn(
-        "focus-ring group relative flex min-h-10 items-center gap-3 rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
-        active && "bg-border text-foreground hover:bg-border",
+        "focus-ring group relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        // Studio: the active item is an ink block with its icon in lime.
+        active && "bg-block text-block-foreground hover:bg-block hover:text-block-foreground",
         collapsed && "justify-center px-0",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
+      <Icon className={cn("size-[18px] shrink-0", active && "stroke-highlight")} />
       {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
     </Link>
   );
@@ -71,13 +100,123 @@ function CompactNavLink({ item }: { item: NavItem }) {
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
+      data-tour={NAV_ANCHOR[item.to]}
       className={cn(
-        "rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-        active && "bg-border text-foreground",
+        "focus-ring rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+        active && "bg-block text-block-foreground hover:bg-block hover:text-block-foreground",
       )}
     >
       {item.label}
     </Link>
+  );
+}
+
+/** An eyebrow over a group of nav items (screen-reader only while the sidebar is collapsed). */
+function GroupLabel({ children, collapsed, first = false, hidden = false }: { children: ReactNode; collapsed: boolean; first?: boolean; hidden?: boolean }) {
+  return (
+    <p aria-hidden={hidden || undefined} className={cn("eyebrow px-3 pb-1", first ? "pt-0" : "pt-4", collapsed && "sr-only")}>
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Guided mode's "More" (v0.18 D23): a disclosure over the Expert areas an analyst needs less
+ * often. It remembers its state (`useUi.navMoreOpen`) and opens by itself on one of its pages.
+ */
+function useNavMore() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const open = useUi((s) => s.navMoreOpen);
+  const setOpen = useUi((s) => s.setNavMoreOpen);
+  const onMorePage = inGuidedMore(pathname);
+  useEffect(() => {
+    if (onMorePage) setOpen(true);
+  }, [onMorePage, setOpen]);
+  return { open: open || onMorePage, toggle: () => setOpen(!(open || onMorePage)) };
+}
+
+function MoreButton({ open, onToggle, controls, collapsed, compact = false }: { open: boolean; onToggle: () => void; controls: string; collapsed?: boolean; compact?: boolean }) {
+  const button = (
+    <button
+      type="button"
+      data-testid="nav-more"
+      data-tour="nav.more"
+      aria-expanded={open}
+      aria-controls={controls}
+      onClick={onToggle}
+      className={cn(
+        "focus-ring flex items-center gap-3 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        compact ? "rounded-full px-2.5 py-1 text-xs" : "min-h-10 w-full rounded-lg px-3 text-sm",
+        collapsed && "justify-center px-0",
+      )}
+    >
+      {compact ? null : <MoreHorizontal className="size-[18px] shrink-0" />}
+      {collapsed ? <span className="sr-only">More</span> : <span className="truncate">More</span>}
+      {collapsed ? null : <ChevronDown aria-hidden className={cn("ml-auto size-4 shrink-0 transition-transform", compact && "ml-0 size-3.5", open && "rotate-180")} />}
+    </button>
+  );
+  return collapsed ? (
+    <Tooltip side="right" content={open ? "Fewer" : "More"}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
+}
+
+/** The sidebar's main items for the current mode. */
+function SidebarNav({ mode, collapsed }: { mode: "locked" | "guided" | "expert"; collapsed: boolean }) {
+  const more = useNavMore();
+  const moreId = useId();
+  if (mode === "locked") return LOCKED_NAV.map((item) => <NavLink key={item.to} item={item} collapsed={collapsed} />);
+  if (mode === "guided") {
+    return (
+      <>
+        {GUIDED_PRIMARY_NAV.map((item) => (
+          <NavLink key={item.to} item={item} collapsed={collapsed} />
+        ))}
+        <MoreButton open={more.open} onToggle={more.toggle} controls={moreId} collapsed={collapsed} />
+        <div id={moreId} hidden={!more.open} className="grid gap-0.5">
+          {more.open ? GUIDED_MORE_NAV.map((item) => <NavLink key={item.to} item={item} collapsed={collapsed} />) : null}
+        </div>
+      </>
+    );
+  }
+  return EXPERT_NAV_GROUPS.map((group: NavGroup, i) => (
+    <div key={group.label} role="group" aria-label={group.label} className="grid gap-0.5">
+      {/* the group's aria-label names it for screen readers; the eyebrow is for the eye */}
+      <GroupLabel collapsed={collapsed} first={i === 0} hidden>
+        {group.label}
+      </GroupLabel>
+      {group.items.map((item) => (
+        <NavLink key={item.to} item={item} collapsed={collapsed} />
+      ))}
+    </div>
+  ));
+}
+
+/** Phone-width nav: every destination in a wrapping row, never scrolled (Guided: the seven, then More). */
+function CompactNav({ mode, extra }: { mode: "locked" | "guided" | "expert"; extra: NavItem[] }) {
+  const more = useNavMore();
+  const moreId = useId();
+  const main = mode === "locked" ? LOCKED_NAV : mode === "guided" ? GUIDED_PRIMARY_NAV : EXPERT_NAV;
+  return (
+    <nav aria-label="Primary (compact)" data-tour="nav.primary" className="flex flex-wrap gap-1 border-t px-3 py-1.5 md:hidden">
+      {main.map((item) => (
+        <CompactNavLink key={item.to} item={item} />
+      ))}
+      {mode === "guided" ? (
+        <>
+          <MoreButton open={more.open} onToggle={more.toggle} controls={moreId} compact />
+          <span id={moreId} hidden={!more.open} className="contents">
+            {more.open ? GUIDED_MORE_NAV.map((item) => <CompactNavLink key={item.to} item={item} />) : null}
+          </span>
+        </>
+      ) : null}
+      {extra.map((item) => (
+        <CompactNavLink key={item.to} item={item} />
+      ))}
+    </nav>
   );
 }
 
@@ -182,7 +321,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
 
   // A Guided-locked project shows members below admin the Guided screens only, and the
   // Integrations hub that Guided mode's "Share" step leads to.
-  const nav = lock.locked ? LOCKED_NAV : persona === "guided" ? GUIDED_MODE_NAV : EXPERT_NAV;
+  const navMode = lock.locked ? "locked" : persona === "guided" ? "guided" : "expert";
   // Guided mode has no Expert Home: "/" opens the Guided start page (a new self-service
   // workspace lands there, as does a Guided-locked project).
   useEffect(() => {
@@ -215,25 +354,23 @@ export function AppShell({ children }: { children?: ReactNode }) {
       </a>
       <aside
         className={cn(
-          "sticky top-0 hidden h-svh shrink-0 flex-col border-r bg-sidebar px-2 py-3 transition-[width] md:flex",
-          collapsed ? "w-14" : "w-56",
+          "sticky top-0 hidden h-svh shrink-0 flex-col overflow-y-auto border-r bg-sidebar px-3 py-4 transition-[width] md:flex",
+          collapsed ? "w-16" : "w-60",
         )}
       >
-        <div className={cn("flex items-center gap-2 px-2 pb-4", collapsed && "justify-center px-0")}>
+        <div className={cn("flex items-center gap-2.5 px-2 pb-5", collapsed && "justify-center px-0")}>
           <Logo />
           {collapsed ? null : (
-            <span className="text-base font-semibold">
+            <span className="font-display text-lg leading-none font-bold tracking-[-0.02em]">
               modeling<span className="text-muted-foreground">-api</span>
             </span>
           )}
         </div>
-        <nav aria-label="Primary" className="grid gap-0.5">
-          {nav.map((item) => (
-            <NavLink key={item.to} item={item} collapsed={collapsed} />
-          ))}
+        <nav aria-label="Primary" data-tour="nav.primary" className="grid gap-0.5">
+          <SidebarNav mode={navMode} collapsed={collapsed} />
           {projectNav.length ? (
             <>
-              <p className={cn("eyebrow px-2.5 pt-4 pb-1", collapsed && "sr-only")}>Project</p>
+              <GroupLabel collapsed={collapsed}>Project</GroupLabel>
               {projectNav.map((item) => (
                 <NavLink key={item.to} item={item} collapsed={collapsed} />
               ))}
@@ -241,7 +378,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           ) : null}
           {adminNav.length ? (
             <>
-              <p className={cn("eyebrow px-2.5 pt-4 pb-1", collapsed && "sr-only")}>Platform</p>
+              <GroupLabel collapsed={collapsed}>Platform</GroupLabel>
               {adminNav.map((item) => (
                 <NavLink key={item.to} item={item} collapsed={collapsed} />
               ))}
@@ -255,7 +392,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             size="sm"
             onClick={toggleSidebar}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn("justify-start gap-3 px-2.5 text-muted-foreground", collapsed && "justify-center px-0")}
+            className={cn("justify-start gap-3 rounded-lg px-3 text-muted-foreground", collapsed && "justify-center px-0")}
           >
             {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             {collapsed ? null : "Collapse"}
@@ -290,11 +427,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <UserMenu />
             </div>
           </div>
-          <nav aria-label="Primary (compact)" className="flex flex-wrap gap-1 border-t px-3 py-1.5 md:hidden">
-            {[...nav, ...projectNav, ...adminNav, SETTINGS_NAV].map((item) => (
-              <CompactNavLink key={item.to} item={item} />
-            ))}
-          </nav>
+          <CompactNav mode={navMode} extra={[...projectNav, ...adminNav, SETTINGS_NAV]} />
           <SignedOutBanner />
           <TenantStatusBanner />
         </header>
@@ -305,6 +438,11 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <CommandPalette />
       <ShortcutsDialog />
       <Toaster />
+      {ws.mode === "session" ? (
+        <Suspense fallback={null}>
+          <TourHost />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

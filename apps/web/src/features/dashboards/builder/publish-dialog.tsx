@@ -12,6 +12,7 @@ import { InlineMessage } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { useWorkspace } from "@/features/auth/workspace";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { toast } from "@/stores/toast";
 
 import { usePublishDashboard, useValidateDashboard } from "../api";
@@ -114,6 +115,8 @@ export function PublishDialog({ dashboard, onClose, onIssue }: { dashboard: Dash
             onClick={() =>
               publish.mutate(dashboard.draft_etag, {
                 onSuccess: (d) => {
+                  // v0.18 D25: publishing also ticks "Make a dashboard".
+                  emitOnboarding("dashboard_published", { dashboard: d.id });
                   toast.success(again ? "Changes published" : "Dashboard published", `Revision ${d.published_revision?.seq ?? 1} is live. The new readout appears on the History tab when it is ready.`);
                   onClose();
                 },

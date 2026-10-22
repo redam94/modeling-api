@@ -20,9 +20,13 @@ import { createExploreHandlers, createExploreState, explorerValidations } from "
 import { createSciHandlers, createSciState, SCI_DATASETS } from "./explore-sci";
 import { createSciDemoHandlers } from "./explore-sci-demo";
 import { createGovernanceHandlers, createGovernanceState, notValidatedProblem } from "./governance";
-import { createGuidedHandlers } from "./guided";
+import { createGuidedHandlers, createGuidedState, seedSampleSession, type SampleSession } from "./guided";
+// v0.18: the sample project's data (the same file as the server's geo_mmm.csv and the e2e fixture).
+import sampleCsv from "../../e2e/fixtures/guided-geo-mmm.csv?raw";
 import { createIntegrationHandlers, createIntegrationsState } from "./integrations";
+import { createLibraryHandlers, createLibraryState, mockCatalog, seedSampleLibrary } from "./library";
 import { createMediaHandlers, createMediaState } from "./media";
+import { createOnboardingHandlers, createOnboardingState, restoreSampleProjects } from "./onboarding";
 import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { advanceTracking, createTrackingHandlers, createTrackingState } from "./tracking";
@@ -63,6 +67,10 @@ interface MockState {
   collections: ReturnType<typeof createCollectionState>;
   /** v0.16: client dashboards, readouts, share links and share sessions, refit requests; v0.17: layout 2. */
   dashboards: ReturnType<typeof createDashboardsState>;
+  /** v0.18: library items and revisions, recipe previews (mocks/library.ts). */
+  library: ReturnType<typeof createLibraryState>;
+  /** v0.18: onboarding progress and sample projects (mocks/onboarding.ts; survive a reload). */
+  onboarding: ReturnType<typeof createOnboardingState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -86,6 +94,8 @@ export function createState(): MockState {
     ["preview.json", { bytes: json(fx.previewView), type: "application/json" }],
   ]);
   const tenancy = createTenancyState();
+  const onboarding = createOnboardingState();
+  restoreSampleProjects(onboarding, addProject(tenancy));
   return {
     tenancy,
     integrations: createIntegrationsState(),
@@ -100,11 +110,22 @@ export function createState(): MockState {
     media: withDlMedia(createMediaState(artifacts), artifacts),
     collections: createCollectionState(),
     dashboards: createDashboardsState(() => tenancy.members),
+    library: createLibraryState(),
+    onboarding,
     runs: new Map([...fx.runs, ...SHAPE_RUNS, dlRun].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
     uploads: new Map(),
     artifacts,
+  };
+}
+
+/** v0.18: a sample project joins the tenant's projects (the switcher and the per-request checks see it). */
+function addProject(tenancy: ReturnType<typeof createTenancyState>) {
+  return (tenant: string, project: string, name: string) => {
+    const key = `${tenant}/${project}`;
+    if (tenancy.projects.has(key)) return;
+    tenancy.projects.set(key, { id: project, tenant_id: tenant, name, description: "A sample project with a real fit, made for you to explore.", created_at: new Date().toISOString() });
   };
 }
 
@@ -186,9 +207,29 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   };
   // M3.5: explorers, About cards, Help me choose, governance evidence, budget optimisation.
   const explore = createExploreHandlers(state, state.explore);
+  // v0.18: the Guided mock state, so the sample project can be a real Guided session in it.
+  const guided = createGuidedState();
+  const sessions = new Map<string, SampleSession | null>();
+  const sampleSession = (tenant: string): SampleSession | null => {
+    if (!sessions.has(tenant)) {
+      sessions.set(tenant, seedSampleSession(guided, { tenant, project: "sample" }, new TextEncoder().encode(sampleCsv), sessions.size));
+    }
+    return sessions.get(tenant) ?? null;
+  };
+  // A sample installed before this page load (localStorage) exists again at once, so its pages
+  // load after a reload (the session's ids do not change).
+  for (const tenant of state.onboarding.samples.keys()) sampleSession(tenant);
   return [
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
+    // v0.18: onboarding progress and sample projects (tenant routes), the library, recipe
+    // previews and catalog diagnostics (mocks/onboarding.ts, mocks/library.ts).
+    ...createOnboardingHandlers(state.onboarding, {
+      addProject: addProject(state.tenancy),
+      seedLibrary: (tenant, project) => seedSampleLibrary(state.library, tenant, project),
+      session: sampleSession,
+    }),
+    ...createLibraryHandlers(state.library),
     // v0.10: score results by output shape (grid summary table, classifier, areal output).
     ...createShapeHandlers({ artifacts: state.artifacts }),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
@@ -203,7 +244,7 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ...createSciDemoHandlers({ artifacts: state.artifacts }),
     ...explore.early,
     // M3 Guided mode: answers for the resources a Guided session creates, falls through otherwise.
-    ...createGuidedHandlers(state),
+    ...createGuidedHandlers(state, guided),
     ...explore.late,
     // M3.5: workflows (mocks/workflows.ts) and governance (mocks/governance.ts); the promotion
     // gate refuses unvalidated versions when a policy says so, before the endpoint routes run.
@@ -223,8 +264,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       HttpResponse.json({ status: "ok", version: "0.16.0-mock", contract_version: "0.2", api_version: "v1", checks: { postgres: { status: "ok", latency_ms: 1.2 }, object_store: { status: "ok", latency_ms: 2.1 } } }),
     ),
     http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.16.0-mock", contract_version: "0.2" })),
-    // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real.
-    http.get(`${API}/v1/catalog`, () => HttpResponse.json(editorGen.catalog)),
+    // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real
+    // (v0.18: plus a team's plugin step with `mapi.mock.extensions=1`, mocks/library.ts).
+    http.get(`${API}/v1/catalog`, () => HttpResponse.json(mockCatalog())),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
     http.get(`${API}/v1/catalog/plots/:id/:version/example`, async ({ params }) => {
       const { plots } = (await import("./plot-examples.gen.json")).default as { plots: Record<string, unknown> };

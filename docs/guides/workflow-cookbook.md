@@ -12,6 +12,10 @@ documents that you copy operate correctly. For the format, see
 [node reference](../reference/workflow-nodes.md). For short parts with one pattern each, see
 the [workflows guide](workflows.md#cookbook).
 
+Made a recipe your own? Save it from the editor as a
+[team workflow template](../extend/workflow-templates.md), so your teammates start from your
+version.
+
 | Recipe | The question it answers |
 |---|---|
 | [Is my weekly KPI ready to forecast?](#readiness-to-arimax) | Does the series need differencing? Which ARIMA orders are correct? Is ARIMAX better than a naive forecast on honest backtests? Can we use it? |

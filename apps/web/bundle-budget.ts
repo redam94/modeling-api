@@ -44,7 +44,38 @@ export interface ChunkBudget {
   match: RegExp;
   maxBytes: number;
   forbidden: RegExp[];
+  /**
+   * The budget applies once a chunk bundles a module matching this (the lazy page or panel
+   * the budget is for). Until then (a feature not mounted yet) a missing chunk is fine; once
+   * the module is in the build, a missing chunk is a problem, because the module was merged
+   * into another chunk (often the entry) instead of loading lazily.
+   */
+  requiredWhen?: RegExp;
 }
+
+/** A module id inside an npm package (a flat or a pnpm `.pnpm/<pkg>@<v>/node_modules/` layout). */
+export function pkgPattern(names: string): RegExp {
+  return new RegExp(`node_modules\\/(?:\\.pnpm\\/[^/]+\\/node_modules\\/)?(?:${names})\\/`);
+}
+
+/**
+ * v0.18 (plan D27, I-8): the animation library (`motion` re-exports framer-motion, motion-dom
+ * and motion-utils) and the app's one wrapper around it. Lazy signed-in chunks only.
+ */
+export const MOTION_PATTERNS: RegExp[] = [pkgPattern("motion|framer-motion|motion-dom|motion-utils"), /\/src\/lib\/motion\.tsx$/];
+
+/**
+ * v0.18: what a share link and the client portal must never load: the animation library, the
+ * onboarding, library and extension features, the interactive controls and the illustrations.
+ */
+export const SIGNED_IN_ONLY: RegExp[] = [
+  ...MOTION_PATTERNS,
+  /\/src\/features\/onboarding\//,
+  /\/src\/features\/library\//,
+  /\/src\/features\/extend\//,
+  /\/src\/components\/interactive\//,
+  /\/src\/components\/illustrations\//,
+];
 
 /** The chunk and every chunk it reaches through static imports. */
 export function staticClosure(chunks: ChunkInfo[], fileName: string): Set<string> {
@@ -77,6 +108,15 @@ export function checkChunkBudgets(chunks: ChunkInfo[], budgets: ChunkBudget[]): 
   for (const budget of budgets) {
     const root = chunks.find((c) => budget.match.test(c.fileName));
     if (!root) {
+      if (budget.requiredWhen) {
+        const pattern = budget.requiredWhen;
+        const holder = chunks.find((c) => c.moduleIds.some((id) => pattern.test(id)));
+        if (holder) {
+          const id = holder.moduleIds.find((m) => pattern.test(m));
+          problems.push(`${id} is bundled in ${holder.fileName}, but no chunk matches ${budget.match}; load it with import() in its own chunk`);
+        }
+        continue;
+      }
       problems.push(`no chunk matches ${budget.match}; rename the budget with the chunk`);
       continue;
     }

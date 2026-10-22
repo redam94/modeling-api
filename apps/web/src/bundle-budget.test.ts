@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { checkChunkBudgets, checkEntryBudget, loadedBefore, type ChunkBudget, type ChunkInfo } from "../bundle-budget";
+import { checkChunkBudgets, checkEntryBudget, loadedBefore, MOTION_PATTERNS, SIGNED_IN_ONLY, type ChunkBudget, type ChunkInfo } from "../bundle-budget";
 
 const chunk = (fileName: string, over: Partial<ChunkInfo> = {}): ChunkInfo => ({
   fileName,
@@ -142,5 +142,96 @@ describe("the v0.17 readout budgets (vite.config.ts)", () => {
     const budget = (m: RegExp, maxBytes: number): ChunkBudget => ({ match: m, maxBytes, forbidden: [] });
     expect(checkChunkBudgets(chunks, [budget(/readout-extra-/, 33_000), budget(/try-a-case-/, 37_000)])).toEqual([]);
     expect(checkChunkBudgets(chunks, [budget(/try-a-case-/, 36_999)])[0]).toContain("37000");
+  });
+});
+
+describe("v0.18 lazy chunk budgets (requiredWhen)", () => {
+  const tourHost: ChunkBudget = { match: /tour-host-[^/]*\.js$/, maxBytes: 3000, forbidden: [], requiredWhen: /\/src\/features\/onboarding\/tour-host\.tsx$/ };
+
+  it("skips a budget whose module is not in the build yet (a feature mounted later)", () => {
+    expect(checkChunkBudgets([chunk("index.js", { isEntry: true })], [tourHost])).toEqual([]);
+  });
+
+  it("fails when the module is bundled but not in its own chunk (it slipped into the entry)", () => {
+    const chunks = [chunk("index.js", { isEntry: true, moduleIds: ["/w/src/main.tsx", "/w/src/features/onboarding/tour-host.tsx"] })];
+    const problems = checkChunkBudgets(chunks, [tourHost]);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("tour-host.tsx is bundled in index.js");
+  });
+
+  it("checks the size once the chunk exists", () => {
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["tour-host-a.js"] }),
+      chunk("tour-host-a.js", { size: 3500, moduleIds: ["/w/src/features/onboarding/tour-host.tsx"] }),
+    ];
+    expect(checkChunkBudgets(chunks, [tourHost])[0]).toContain("3500");
+  });
+});
+
+describe("v0.18 signed-in-only modules", () => {
+  const ids = {
+    motion: "/r/node_modules/.pnpm/motion@12.43.0_react@19/node_modules/motion/dist/es/react.mjs",
+    framer: "/r/node_modules/.pnpm/framer-motion@12.43.0/node_modules/framer-motion/dist/es/render/components/m/proxy.mjs",
+    dom: "/r/node_modules/.pnpm/motion-dom@12.43.0/node_modules/motion-dom/dist/es/index.mjs",
+    wrapper: "/r/apps/web/src/lib/motion.tsx",
+    tour: "/r/apps/web/src/features/onboarding/tour-host.tsx",
+    library: "/r/apps/web/src/features/library/api.ts",
+    extend: "/r/apps/web/src/features/extend/api.ts",
+    sliders: "/r/apps/web/src/components/interactive/sliders.tsx",
+    art: "/r/apps/web/src/components/illustrations/hero.tsx",
+  };
+  const hit = (patterns: RegExp[], id: string) => patterns.some((p) => p.test(id));
+
+  it("the motion patterns catch the library in a pnpm layout, and its wrapper", () => {
+    for (const id of [ids.motion, ids.framer, ids.dom, ids.wrapper]) expect([id, hit(MOTION_PATTERNS, id)]).toEqual([id, true]);
+    // not other packages whose names merely contain the word
+    expect(hit(MOTION_PATTERNS, "/r/node_modules/.pnpm/x@1/node_modules/@scope/no-motion/index.js")).toBe(false);
+    expect(hit(MOTION_PATTERNS, "/r/apps/web/src/lib/onboarding-events.ts")).toBe(false);
+  });
+
+  it("share links and the portal forbid motion and the v0.18 signed-in folders", () => {
+    for (const id of Object.values(ids)) expect([id, hit(SIGNED_IN_ONLY, id)]).toEqual([id, true]);
+    expect(hit(SIGNED_IN_ONLY, "/r/apps/web/src/features/dashboards/readout/page.tsx")).toBe(false);
+    expect(hit(SIGNED_IN_ONLY, "/r/apps/web/src/components/common.tsx")).toBe(false);
+  });
+
+  it("a share link that reached the onboarding feature fails its budget", () => {
+    const share: ChunkBudget = { match: /share-app-/, maxBytes: 100_000, forbidden: SIGNED_IN_ONLY };
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["share-app-a.js"] }),
+      chunk("share-app-a.js", { imports: ["index.js", "x.js"] }),
+      chunk("x.js", { moduleIds: [ids.tour] }),
+    ];
+    expect(checkChunkBudgets(chunks, [share])[0]).toContain("onboarding/tour-host.tsx");
+  });
+});
+
+describe("the v0.18 budgets (vite.config.ts)", () => {
+  const config = readFileSync(resolve(__dirname, "../vite.config.ts"), "utf8");
+
+  it("keeps the entry at 640 KiB and forbids the animation library in it (critic)", () => {
+    expect(config).toMatch(/maxEntryBytes: 640 \* 1024,/);
+    expect(config).toContain("|apache-arrow|@xyflow)\\//, ...MOTION_PATTERNS],");
+  });
+
+  it("share links and the portal forbid every signed-in-only module", () => {
+    expect(config).toMatch(/const SHARE_FORBIDDEN = \[[^\]]*\.\.\.SIGNED_IN_ONLY,\s*\];/);
+    expect(config).toMatch(/client-app-[\s\S]*?forbidden: \[[^\]]*\.\.\.SIGNED_IN_ONLY\]/);
+  });
+
+  it("budgets the new lazy chunks (I-8)", () => {
+    const budgets: [string, number, string][] = [
+      ["tour-host-", 48, "features\\/onboarding\\/tour-host"],
+      ["playground-", 84, "features\\/onboarding\\/playground"], // 72 in I-8; raised by E1 (measured 83,203 B)
+      ["recipe-playground-", 32, "features\\/plots\\/recipe-playground"],
+      ["library-", 160, "routes\\/library"],
+      ["checklist)-", 48, "features\\/onboarding\\/(?:start-here|checklist)"],
+    ];
+    for (const [name, kib, module] of budgets) {
+      const at = config.indexOf(`${name}[^/]*\\.js$/`);
+      expect([name, at >= 0]).toEqual([name, true]);
+      const entry = config.slice(at, config.indexOf("}", at));
+      expect([name, entry.includes(`maxBytes: ${kib} * 1024`), entry.includes(module)]).toEqual([name, true, true]);
+    }
   });
 });

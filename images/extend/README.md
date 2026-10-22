@@ -1,7 +1,7 @@
 # images/extend: a runner image with your own plugins
 
 `images/extend/Dockerfile` adds your plugin wheels to a platform runner image. It is path (c) of
-"run your plugin on your stack" (`docs/guides/extend/`): use it when your models, steps, plot
+"run your plugin on your stack" (`docs/extend/develop/run-on-your-stack.md`): use it when your models, steps, plot
 recipes, workflow nodes or workflow templates must run under the docker or Cloud Run executor.
 For a source checkout (`make dev`), `make plugin-dev PLUGIN=../acme` is simpler.
 
@@ -81,5 +81,5 @@ A plugin whose image is routed by namespace only is not in the catalog.
 ## 5. See it in the app
 
 Open **Catalog**. Your entries show "Installed by your team"; tenant admins see any load
-problems under **Catalog → Yours → Diagnostics** (`GET /v1/catalog/diagnostics`, and
+problems under **Catalog → Yours → Problems** (`GET /v1/catalog/diagnostics`, and
 `mapi plugin doctor --server`).

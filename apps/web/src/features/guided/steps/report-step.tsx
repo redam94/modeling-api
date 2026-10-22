@@ -6,7 +6,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Microscope, RefreshCw } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { stringify } from "yaml";
 
 import { useModelPlots, type ModelPlot } from "../model-plots";
@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input
 import { useGrants } from "@/features/auth/workspace";
 import { PlotFrame } from "@/features/plots/plot-frame";
 import { useModelPlotData } from "@/features/plots/plot-data";
+import { emitOnboarding } from "@/lib/onboarding-events";
 import { cn } from "@/lib/utils";
 
 import { useResponseGrid } from "../api";
@@ -30,7 +31,7 @@ import { amount, holdoutFraction, ratio, share } from "../plain";
 import { useGuidedLock } from "../persona";
 import { canFitMoreCarefully, withCarefulFit } from "../refit";
 import { GUIDED_MESSAGE, exploreTitle, hasExplore } from "../session";
-import { StatusBadge, Figure, type CheckStatus } from "../ui";
+import { StatusBadge, type CheckStatus } from "../ui";
 import type { GuidedSession } from "../use-session";
 import { baselineShare, channelHeadlines, type ChannelHeadline, type ResponseGrid } from "../whatif";
 
@@ -113,7 +114,7 @@ function ScorecardView({ scorecard, mv, session }: { scorecard: Scorecard; mv: M
   const counts = { pass: 0, warn: 0, fail: 0 };
   for (const i of items) counts[i.status] += 1;
   return (
-    <section aria-labelledby="scorecard-h" className="grid gap-4">
+    <section aria-labelledby="scorecard-h" className="grid gap-4" data-tour="guided.report.scorecard">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
           <h2 id="scorecard-h" className="text-[17px] font-semibold tracking-tight">
@@ -332,6 +333,72 @@ export function LiftTestCard({ session }: { session: GuidedSession }) {
   );
 }
 
+/** One number tile inside the headline block: the value first, then what it means. */
+function KpiTile({ label, value, detail }: { label: string; value: ReactNode; detail?: string }) {
+  return (
+    <div className="grid content-start gap-1 rounded-lg bg-block-raised px-4 py-3.5">
+      <p className="font-display text-2xl leading-tight font-bold tracking-[-0.02em] tabular [overflow-wrap:anywhere]">{value}</p>
+      <p className="text-xs font-semibold text-block-foreground">{label}</p>
+      {detail ? <p className="text-xs text-block-muted">{detail}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * The report's one ink block (v0.18 Studio): the short answer as a big claim with the key number
+ * on the lime highlighter, the range in plain words, and the supporting numbers as tiles.
+ */
+function HeadlineBlock({
+  base,
+  best,
+  mape,
+  coverage,
+  scorecard,
+}: {
+  base: ReturnType<typeof baselineShare>;
+  best: ChannelHeadline | undefined;
+  mape: number | null | undefined;
+  coverage: number | null | undefined;
+  scorecard: Scorecard | null;
+}) {
+  const hl = "rounded-[10px] bg-highlight px-[0.12em] text-highlight-foreground [box-decoration-break:clone] [-webkit-box-decoration-break:clone]";
+  const checks = scorecard?.items ?? [];
+  const passed = checks.filter((i) => i.status === "pass").length;
+  const toRead = checks.length - passed;
+  const why: string[] = [];
+  // "Results driven by media": the claim holds the best estimate, the sentence its 90% range.
+  if (base) why.push(`The model is 90% sure that the true share is between ${share(1 - base.quantiles[2]!)} and ${share(1 - base.quantiles[0]!)}.`);
+  if (best?.roi) why.push(`${best.channel} gave the most back for each 1 spent.`);
+  return (
+    <div data-tour="guided.report.headline" className="grid gap-7 rounded-3xl bg-block p-[clamp(1.5rem,4vw,2.5rem)] text-block-foreground lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <h2 id="headline-h" className="display-title text-[clamp(2.25rem,5vw,3.75rem)] leading-none text-balance [overflow-wrap:anywhere]">
+          {base ? (
+            <>
+              Media drove <span className={hl}>{share(1 - base.mean)}</span> of your results.
+            </>
+          ) : best?.roi ? (
+            <>
+              <span className={hl}>{best.channel}</span> gave the best return.
+            </>
+          ) : (
+            <>Your results are ready.</>
+          )}
+        </h2>
+        {why.length ? <p className="mt-4 max-w-[48ch] text-base text-block-muted">{why.join(" ")}</p> : null}
+      </div>
+      <div className="grid content-start gap-2.5 sm:grid-cols-2">
+        {best?.roi ? <KpiTile label="Best return on spend" value={best.channel} detail={`${ratio(best.roi.mean)} back per 1 spent`} /> : null}
+        {mape != null ? <KpiTile label="Forecast error on held-back weeks" value={share(mape)} detail="on average, lower is better" /> : null}
+        {coverage != null ? <KpiTile label="Weeks inside the 90% range" value={share(coverage)} detail="a value near 90% shows that the ranges are correct" /> : null}
+        {checks.length ? (
+          <KpiTile label="Health checks passed" value={`${passed} of ${checks.length}`} detail={toRead ? `${toRead} to read below` : "nothing to read"} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** The charts on the results page, in this order: the causal effect, then ROI, response curves, then the fit; two at most. */
 const REPORT_FIRST = [
   "causal.impact",
@@ -357,6 +424,11 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const grid = useResponseGrid(mv);
   const plots = useModelPlots(mv);
   const explore = hasExplore(session.template);
+  const viewed = session.lastGoodFit && mv ? mv.id : null;
+  useEffect(() => {
+    // v0.18 D25: reading a finished report ticks "See what drove sales".
+    if (viewed) emitOnboarding("report_viewed", { model_version: viewed, template: session.template.id });
+  }, [viewed, session.template.id]);
   if (!session.lastGoodFit) {
     return (
       <EmptyState title="No results yet" action={<Button onClick={() => void navigate({ to: "/guided/$specId/$step", params: { specId: session.spec.id, step: "run" } })}>Fit the model</Button>}>
@@ -374,22 +446,14 @@ export function ReportStep({ session }: { session: GuidedSession }) {
   const stale = session.lastGoodFit.spec_revision !== session.latest.revision;
   return (
     <div className="grid gap-8">
-      {stale ? <p className="rounded-lg border border-info/35 bg-info/8 px-4 py-2 text-sm">These results are older than your latest changes. Fit the model again to update them.</p> : null}
+      {stale ? <p className="rounded-2xl border border-info/35 bg-info/8 px-4 py-2.5 text-sm">These results are older than your latest changes. Fit the model again to update them.</p> : null}
       <section aria-labelledby="headline-h" className="grid gap-4">
-        <h2 id="headline-h" className="sr-only">
-          Headline numbers
-        </h2>
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {base ? <Figure label="Results driven by media" value={share(1 - base.mean)} detail={`between ${share(1 - base.quantiles[2]!)} and ${share(1 - base.quantiles[0]!)}`} /> : null}
-          {best?.roi ? <Figure label="Best return on spend" value={best.channel} detail={`${ratio(best.roi.mean)} back per 1 spent`} /> : null}
-          {mape != null ? <Figure label="Forecast error on held-back weeks" value={share(mape)} detail="on average, lower is better" /> : null}
-          {coverage != null ? <Figure label="Weeks inside the 90% range" value={share(coverage)} detail="a value near 90% shows that the ranges are correct" /> : null}
-        </div>
+        <HeadlineBlock base={base} best={best} mape={mape} coverage={coverage} scorecard={mv.scorecard ?? null} />
         {grid.isPending ? <Skeleton className="h-40" /> : rows.length ? <ChannelTable rows={rows} grid={grid.data!} /> : null}
         {rows.length ? <p className="text-xs text-muted-foreground">Each number is the best estimate of the model. The range in brackets contains the true value with 90% probability.</p> : null}
       </section>
       {shown.length ? (
-        <section aria-label="Charts" className="grid gap-6 xl:grid-cols-2">
+        <section aria-label="Charts" className="grid gap-6 xl:grid-cols-2" data-tour="guided.report.plots">
           {shown.map((p) => (
             <ModelPlotFigure key={p.id} mv={mv} plot={p} />
           ))}

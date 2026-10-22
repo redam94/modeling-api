@@ -122,6 +122,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.18": whats-new-0.18.md
       - "What's new in 0.17": whats-new-0.17.md
       - "What's new in 0.16": whats-new-0.16.md
       - "What's new in 0.10 to 0.15": whats-new-0.15.md
@@ -183,6 +184,7 @@ nav:
       - Image data and collections: concepts/image-collections.md
   - Guides:
       - Using the platform:
+          - "Start here: tours, checklist and sample": guides/start-here.md
           - The Expert web app: guides/web-ui.md
           - Your first model in the web app: guides/first-model-in-the-ui.md
           - The command line: guides/cli.md
@@ -223,6 +225,24 @@ nav:
           - Plots, recipes and templates: guides/plots.md
           - Sharing plots: guides/sharing-plots.md
           - Conformance corpus: guides/conformance.md
+  - Extend:
+      - extend/index.md
+      - Your first extensions: tutorials/your-first-extensions.md
+      - No code:
+          - Your model: extend/your-model.md
+          - Prep presets: extend/prep-presets.md
+          - Chart templates: extend/chart-templates.md
+          - Workflow templates: extend/workflow-templates.md
+      - With Python:
+          - extend/develop/index.md
+          - Models: extend/develop/models.md
+          - Preprocessing steps: extend/develop/steps.md
+          - Plot recipes: extend/develop/plot-recipes.md
+          - Workflow nodes: extend/develop/workflow-nodes.md
+          - Workflow templates: extend/develop/workflow-templates.md
+          - Contract kits: extend/develop/contract-kits.md
+          - Run on your stack: extend/develop/run-on-your-stack.md
+      - "Coming in 0.19: upload": extend/upload-roadmap.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Spec schema: reference/generated/spec-schema.md
@@ -237,6 +257,7 @@ nav:
       - Governance checks: reference/generated/governance-checks.md
       - Plots and the sanitizer: reference/plots.md
       - Plot recipes catalog: reference/generated/plots-catalog.md
+      - Extension points: reference/generated/extension-points.md
       - Error codes: reference/generated/error-codes.md
       - HTTP API (v1): reference/http-api.md
       - OpenAPI explorer: reference/openapi.md
@@ -282,7 +303,7 @@ nav:
       - Cloud and multi-tenant (v0.3): roadmap/cloud.md
       - Guided mode and integrations (v0.4): roadmap/guided-ui.md
       - Workflows, governance and explorers (v0.5): roadmap/workflows-governance.md
-      - "Planned: dashboard chat, expert plugins and MCP": roadmap/expert-plugins.md
+      - "Planned: plugin upload, dashboard chat and MCP": roadmap/expert-plugins.md
   - Project:
       - Licensing: project/licensing.md
       - Contributing: project/contributing.md

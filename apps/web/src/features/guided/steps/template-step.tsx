@@ -131,7 +131,7 @@ export function TemplatePicker() {
   if (templates.isPending) return <LoadingRows rows={3} />;
   if (templates.isError) return <ErrorNotice error={templates.error} title="The app could not load the templates" onRetry={() => void templates.refetch()} />;
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Templates">
+    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Templates" data-tour="guided.templates">
       {sortTemplates(templates.data.items).map((t) => (
         <li key={t.id} className="relative">
           <TemplateCard template={t} />

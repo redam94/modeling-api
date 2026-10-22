@@ -1,0 +1,25 @@
+# A chart template that restyles core.fit_vs_actual (docs/extend/chart-templates.md).
+# `make docs-test` applies it to the recipe's catalog example and sanitizes the result.
+apiVersion: mapi/v1
+kind: ChartTemplate
+metadata:
+  name: fit-small-multiples
+  title: "Predicted against actual, one panel per group"
+  tags: [fit]
+source_recipe: core.fit_vs_actual@^1
+plot:
+  data: {name: points}
+  facet: {field: group, type: nominal, title: null}
+  columns: 3
+  spec:
+    width: 160
+    height: 160
+    mark: {type: circle, opacity: 0.7}
+    encoding:
+      x: {field: observed, type: quantitative, title: Actual}
+      y: {field: point, type: quantitative, title: Predicted}
+      tooltip:
+        - {field: x, type: temporal, title: Week}
+        - {field: observed, type: quantitative}
+        - {field: point, type: quantitative}
+caption_plain: "Each dot is one week. Dots near the diagonal are good predictions."

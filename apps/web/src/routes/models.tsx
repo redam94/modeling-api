@@ -1,11 +1,13 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Boxes, Columns2, Gauge, ShieldCheck, Telescope, Wallet } from "lucide-react";
+import { Columns2, Gauge, ShieldCheck, Telescope, Wallet } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { useModel, useModels, useModelVersion, useModelVersions } from "@/api/queries";
 import type { Model, ModelVersion } from "@/api/types";
 import { CopyButton, EmptyState, ErrorNotice, KeyValues, LoadingRows, Mono, PageHeader, QueryView } from "@/components/common";
 import { DataTable } from "@/components/data-table";
+import { EmptyModelsArt } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
@@ -34,7 +36,13 @@ export function ModelsPage() {
   const navigate = useNavigate();
   return (
     <>
-      <PageHeader title="Models" description="Each successful fit makes a verified, signed model version." />
+      <header className="pb-8">
+        <div className="grid min-w-0 gap-3">
+          <p className="eyebrow">Fitted and signed</p>
+          <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Models</h1>
+          <p className="max-w-[60ch] text-lg text-muted-foreground">Each successful fit makes a verified, signed model version. Open one to read its scorecard, plots and diagnostics.</p>
+        </div>
+      </header>
       <QueryView query={models}>
         {(page) =>
           page.items.length ? (
@@ -47,13 +55,49 @@ export function ModelsPage() {
               onRowClick={(m) => void navigate({ to: "/models/$modelId", params: { modelId: m.id } })}
             />
           ) : (
-            <EmptyState icon={<Boxes />} title="No models yet">
-              Fit a spec on the Build page. When the fit is successful and the server verifies its outputs, the model version shows here.
-            </EmptyState>
+            <div className="grid gap-4">
+              <EmptyState
+                title="No models yet"
+                illustration={<EmptyModelsArt />}
+                primaryAction={
+                  <Button asChild className="rounded-full">
+                    <Link to="/build">Fit a spec</Link>
+                  </Button>
+                }
+                action={
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link to="/guided">Start a guided analysis</Link>
+                  </Button>
+                }
+              >
+                Your fitted models land here. Fit a spec on the Build page: when the fit is successful and the server verifies its outputs, the model version shows here.
+              </EmptyState>
+              <EmptyHints
+                hints={[
+                  ["Signed", "Each version has a signature, so you know it is the one that was fitted."],
+                  ["Scored", "A sanity scorecard checks the fit, the forecast and the data."],
+                  ["Ready to use", "Score it, explore what-ifs or plan a budget from the version page."],
+                ]}
+              />
+            </div>
           )
         }
       </QueryView>
     </>
+  );
+}
+
+/** Three small cards under a Studio empty state: what the page gives you once it has something in it. */
+function EmptyHints({ hints }: { hints: [string, string][] }) {
+  return (
+    <ul className="grid gap-4 md:grid-cols-3">
+      {hints.map(([title, body]) => (
+        <li key={title} className="rounded-2xl border bg-card p-5">
+          <p className="font-display text-lg font-bold tracking-[-0.02em]">{title}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -106,6 +150,9 @@ export function ModelPage() {
 }
 
 const versionRoute = getRouteApi("/models/$modelId/versions/$version");
+
+/** v0.18: the team's chart templates on this version (lazy; signed-in pages only). */
+const YourCharts = lazy(() => import("@/features/library/your-charts").then((m) => ({ default: m.YourCharts })));
 
 export function ModelVersionPage() {
   const { modelId, version } = versionRoute.useParams();
@@ -228,7 +275,12 @@ export function ModelVersionPage() {
           <DiagnosticsTable diagnostics={d.diagnostics ?? []} capabilities={caps} />
         </TabsContent>
         <TabsContent value="plots">
-          <PlotGallery modelId={modelId} version={v} />
+          <div className="grid gap-5">
+            <PlotGallery modelId={modelId} version={v} />
+            <Suspense fallback={null}>
+              <YourCharts modelId={modelId} version={v} />
+            </Suspense>
+          </div>
         </TabsContent>
         <TabsContent value="tree">
           <TreeBrowser mv={d} />

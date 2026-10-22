@@ -374,6 +374,8 @@ function createModelVersion(state: GuidedMockState, f: FitRecord): ModelVersion 
   if (mediaGrid) {
     const grid = mediaGrid;
     putJson(state, mvId, "ui/grids/response_curves.json", grid);
+    // The version lists the grid among its objects, as the runner writes it (hasNoGrid, v0.17 R7).
+    mv.artifacts = [...(mv.artifacts ?? []), { name: "ui/grids/response_curves.json", size: 4096, content_type: "application/json" }];
     const one = grid.multipliers.indexOf(1);
     const at1 = grid.contribution.map((perC) => perC.map((row) => row[one] as number));
     state.fitted.set(mvId, { inputs, grid, at1, half: inputs.channels.map((_, c) => 0.8 + 0.25 * (c % 3)), template: tpl });
@@ -600,6 +602,82 @@ function scoreViews(f: Fitted, request: Record<string, unknown>): { name: string
       delta_share: dist(delta.map((v, i) => v / (base[i] as number))),
     },
   };
+}
+
+// ----------------------------------------------------------------------------- v0.18 sample project
+
+/** What a seeded sample session is called in the mock (the server's `geo_mmm` sample, D20). */
+export interface SampleSession {
+  specId: string;
+  runId: string;
+  modelId: string;
+  modelVersion: number;
+}
+
+/**
+ * v0.18 (D20): the sample project as a real Guided session of the geo marketing mix: dataset,
+ * Guided spec (from `buildDraft`), a finished fit and its model version, made at once from the
+ * sample CSV (the same file as the server's `geo_mmm.csv` and the e2e fixture). The ids come from
+ * a counter range of their own, so a reload (which re-seeds) gives the same ids.
+ */
+export function seedSampleSession(state: GuidedMockState, scope: { tenant: string; project: string }, csv: Uint8Array, slot = 0): SampleSession | null {
+  const tpl = template("geo_mmm");
+  if (!tpl) return null;
+  const saved = state.counter;
+  state.counter = 40_000_000 + slot * 1000;
+  try {
+    const name = "sample-geo-mmm";
+    const answers: GuidedAnswers = {
+      template_id: tpl.id,
+      name,
+      dataset: name,
+      format: "csv",
+      answers: { kpi: "Revenue (EUR)", date: "week", geo: "market", spend: ["tv_spend", "search_spend", "social_spend"], controls: ["avg_price"], frequency: "weekly", holdout_periods: 8 },
+    };
+    const draft = buildDraft(tpl, answers, scope.project);
+    const outcome = ingest(csv, draft.mapping);
+    const ds: Dataset = { id: nid(state, "ds"), tenant_id: scope.tenant, project_id: scope.project, name, ref: `dataset://${scope.project}/${name}`, description: "The sample project's data.", labels: { guided: tpl.id }, latest_version: 1, created_at: now(), updated_at: now() };
+    const uploadId = nid(state, "upl");
+    state.uploads.set(uploadId, { datasetId: ds.id, bytes: csv });
+    const version: DatasetVersion = {
+      dataset_id: ds.id,
+      tenant_id: ds.tenant_id,
+      project_id: ds.project_id,
+      version: 1,
+      ref: `dataset://${ds.project_id}/${name}@v1`,
+      status: "ready",
+      sha256: fx.SHA,
+      size_bytes: csv.length,
+      data_schema: outcome.schema,
+      summary: outcome.summary,
+      profile: null,
+      preview: null,
+      ingest_run_id: nid(state, "run"),
+      issues: [],
+      message: null,
+      created_at: now(),
+      ready_at: now(),
+    };
+    state.datasets.set(ds.id, ds);
+    state.versions.set(ds.id, [{ version, created: 0, mapping: draft.mapping, uploadId }]);
+    const doc = draft.spec as Record<string, unknown>;
+    const specId = nid(state, "spc");
+    const rev: SpecRevision = { spec_id: specId, tenant_id: scope.tenant, project_id: scope.project, revision: 1, ref: `spec://${scope.project}/${name}@r1`, kind: "ModelSpec", hash: fx.SHA, yaml: draft.yaml, document: doc, valid: true, issues: [], parent_revision: null, message: "The sample project", created_at: now() };
+    const sd: SpecDoc = { id: specId, tenant_id: scope.tenant, project_id: scope.project, name, kind: "ModelSpec", ref: `spec://${scope.project}/${name}`, latest_revision: 1, latest: rev, created_at: now(), updated_at: now() };
+    state.specs.set(specId, { doc: sd, revisions: [rev] });
+    const run = baseRun(state, scope, { spec_id: specId, spec_revision: 1, spec_hash: fx.SHA, labels: { "mapi.sample": "geo_mmm" } });
+    const f: FitRecord = { run, started: 0, specId, revision: 1, cancelled: false };
+    state.fits.set(run.id, f);
+    state.runs.set(run.id, run);
+    const done = finishFit(state, f);
+    state.runs.set(run.id, done);
+    const mvId = done.output_model_version_id;
+    const mrec = [...state.models.values()].find((m) => m.versions.some((v) => v.id === mvId));
+    if (!mrec) return null;
+    return { specId, runId: run.id, modelId: mrec.model.id, modelVersion: mrec.model.latest_version ?? 1 };
+  } finally {
+    state.counter = saved;
+  }
 }
 
 // ----------------------------------------------------------------------------- handlers

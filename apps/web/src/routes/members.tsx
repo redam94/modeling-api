@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, SegmentedControl } from "@/components/ui/overlays";
 import { Badge, Card, CardContent, Field, Input, NativeSelect } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
+import { useSampleAction, useSamples, type SampleInfo } from "@/features/onboarding/api";
 import { ReviewerToggle } from "@/features/governance/reviewer-toggle";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ export function MembersPage() {
   const [inviting, setInviting] = useState(false);
   const [removing, setRemoving] = useState<Membership | null>(null);
   const update = useUpdateMember(tenantId, projectId);
+  const samples = useSamples({ enabled: !tenantWide });
 
   const columns = useMemo<ColumnDef<Membership, unknown>[]>(
     () => [
@@ -168,6 +170,7 @@ export function MembersPage() {
 
   if (!current) return null;
   const where = tenantWide ? current.tenant.name : current.project.name;
+  const sample = !tenantWide ? sampleOf(samples.data, current.project.project_id) : null;
   return (
     <>
       <PageHeader
@@ -178,6 +181,14 @@ export function MembersPage() {
           ) : (
             <>
               People and service accounts who can work in <span className="font-medium text-foreground">{current.project.name}</span>.
+              {sample ? (
+                <>
+                  {" "}
+                  <Badge variant="info" data-testid="sample-badge">
+                    Sample
+                  </Badge>
+                </>
+              ) : null}
             </>
           )
         }
@@ -200,6 +211,7 @@ export function MembersPage() {
           </>
         }
       />
+      {sample ? <SampleNotice sample={sample} tenantName={current.tenant.name} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <QueryView query={members}>
           {(page) =>
@@ -224,6 +236,70 @@ export function MembersPage() {
       {inviting ? <InviteDialog tenantId={current.tenant.id} projectId={projectId} where={where} onClose={() => setInviting(false)} /> : null}
       {removing ? <RemoveDialog member={removing} tenantId={current.tenant.id} projectId={projectId} where={where} onClose={() => setRemoving(null)} /> : null}
     </>
+  );
+}
+
+/** The tenant's sample whose project is `projectId` (v0.18 D20), if any. */
+export function sampleOf(samples: readonly SampleInfo[] | undefined, projectId: string): SampleInfo | null {
+  return samples?.find((s) => s.project_id === projectId && s.state !== "retired") ?? null;
+}
+
+/**
+ * v0.18 (D20): the sample project's members join by opening it (a project role capped at
+ * Runner, audited). A tenant admin can retire it: it is hidden and those roles go; nothing is
+ * deleted.
+ */
+function SampleNotice({ sample, tenantName }: { sample: SampleInfo; tenantName: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const action = useSampleAction();
+  return (
+    <div className="mb-5 flex flex-wrap items-start gap-x-4 gap-y-2 rounded-2xl bg-highlight-soft px-4 py-3 text-sm">
+      <p className="min-w-0 flex-1">
+        <span className="font-semibold">This is {tenantName}'s sample project.</span>{" "}
+        <span className="text-muted-foreground">
+          When a person in the organisation opens it, they join it with the Runner role at most. The audit log records each join.
+        </span>
+      </p>
+      {sample.can_retire ? (
+        <Button variant="outline" size="sm" onClick={() => setConfirming(true)}>
+          Retire the sample
+        </Button>
+      ) : null}
+      {confirming ? (
+        <Dialog open onOpenChange={(open) => (open ? undefined : setConfirming(false))}>
+          <DialogContent>
+            <DialogTitle>Retire the sample project?</DialogTitle>
+            <DialogDescription>
+              The sample is hidden for everyone in {tenantName}, and the roles that people got by opening it are removed. Its runs and model stay in the audit trail. Nothing
+              is deleted.
+            </DialogDescription>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={action.isPending}
+                onClick={() =>
+                  action.mutate(
+                    { id: sample.id, action: "retire" },
+                    {
+                      onSuccess: () => {
+                        setConfirming(false);
+                        toast.success("Sample retired", sample.title);
+                      },
+                      onError: (err) => toast.error("The app could not retire the sample", errorMessage(err)),
+                    },
+                  )
+                }
+              >
+                Retire
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </div>
   );
 }
 

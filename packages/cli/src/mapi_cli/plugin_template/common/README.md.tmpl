@@ -15,7 +15,7 @@ with yours and keep `mapi plugin test` green.
 ```bash
 mapi plugin test                 # the contract kits (tests/), with this interpreter
 mapi plugin validate             # load the entry points, run every check, print the catalog
-mapi plugin validate --json      # the same as one JSON document (for CI)
+mapi --json plugin validate      # the same as one JSON document (for CI)
 ```
 
 `validate` exits 0 when every check passes, 1 when a check fails and 2 when an entry point

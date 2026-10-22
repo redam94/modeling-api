@@ -1,7 +1,6 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { FlaskConical } from "lucide-react";
 
-import { PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { RunsTable } from "@/features/runs/runs-table";
 
@@ -10,23 +9,27 @@ const route = getRouteApi("/runs");
 /**
  * The runs workspace (v0.14): every run of the project with tracked columns, filters, saved
  * views, and the selection that opens the compare page. The table's state is the URL search.
+ * v0.18: the Studio list header (eyebrow, display title, lede); the table itself stays calm.
  */
 export function RunsPage() {
   const search = route.useSearch();
   const navigate = useNavigate({ from: "/runs" });
   return (
     <>
-      <PageHeader
-        title="Runs"
-        description="All the fit, dry-run, ingest and score runs. Add metric, param and tag columns, filter and sort them, and select runs to compare. The page updates active runs live."
-        actions={
-          <Button asChild variant="outline" size="sm">
-            <Link to="/experiments">
-              <FlaskConical /> Experiments
-            </Link>
-          </Button>
-        }
-      />
+      <header className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-4 pb-8">
+        <div className="grid min-w-0 gap-3">
+          <p className="eyebrow">Everything that ran</p>
+          <h1 className="display-title text-[clamp(2.25rem,5vw,3rem)] leading-[1.02] text-balance">Runs</h1>
+          <p className="max-w-[60ch] text-lg text-muted-foreground">
+            All the fit, dry-run, ingest and score runs. Add metric, param and tag columns, filter and sort them, and select runs to compare. The page updates active runs live.
+          </p>
+        </div>
+        <Button asChild variant="outline" className="rounded-full">
+          <Link to="/experiments">
+            <FlaskConical /> Experiments
+          </Link>
+        </Button>
+      </header>
       <RunsTable search={search} onSearch={(next) => void navigate({ search: next, replace: true })} />
     </>
   );

@@ -2,6 +2,10 @@
  * Every item a user can pick, by its About card: models, preparation steps, splits, Guided
  * analyses, workflow templates, workflow nodes and governance checks
  * (`GET /v1/catalog/abouts`), filterable by kind, difficulty and text.
+ *
+ * v0.18 (Studio, §3.4): a card grid with kind glyphs and "good for" / difficulty / runtime
+ * chips. The marketing-mix model is featured on the page's one ink block, next to the what-if
+ * playground on example data (WP-T5's `catalog-playground`, lazy).
  */
 import { Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -9,12 +13,14 @@ import { Link } from "@tanstack/react-router";
 
 import { useCatalog } from "@/api/queries";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
+import { CatalogGlyph, EmptySearchArt, glyphKind, HeroArt } from "@/components/illustrations";
 import { Button } from "@/components/ui/button";
 import { Input, NativeSelect } from "@/components/ui/primitives";
+import { CatalogPlayground } from "@/features/onboarding/catalog-playground";
 import { PlotExample } from "@/features/plots/plot-example";
 import { cn } from "@/lib/utils";
 
-import { AboutDialog, AboutTile } from "./about-card";
+import { AboutDialog, AboutTile, DifficultyChip, RuntimeChip } from "./about-card";
 import { useAboutIndex } from "./api";
 import { StartButton } from "./chooser";
 import { aboutKey, KIND_META, KIND_ORDER, parseAboutKey } from "./labels";
@@ -43,12 +49,88 @@ function CatalogPlotExample({ id, title }: { id: string; title: string }) {
   return <PlotExample id={id} version={version} title={title} height={320} className="rounded-lg border p-2" />;
 }
 
-export function CatalogBrowser({ selected, onSelect }: { selected: string | null; onSelect: (key: string | null) => void }) {
+/** The model the grid features on an ink block with the what-if playground (the MMM card). */
+const FEATURED_IDS = ["mmm.bayesian", "mmm.hierarchical_geo"];
+
+/** The featured item among `items` (the MMM model), or `null` when the catalog has none. */
+export function featuredAbout(items: readonly CatalogAbout[]): CatalogAbout | null {
+  const models = items.filter((a) => a.kind === "model");
+  for (const id of FEATURED_IDS) {
+    const hit = models.find((a) => a.id === id);
+    if (hit) return hit;
+  }
+  return models.find((a) => a.id.startsWith("mmm.")) ?? null;
+}
+
+const FILTER_PILL =
+  "focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-full border-[1.5px] border-border-strong bg-card px-4 text-sm font-semibold transition-colors hover:border-primary aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background";
+
+/** The featured card: the one ink block of the page, with the playground beside it. */
+function FeaturedCard({ entry, onOpen }: { entry: CatalogAbout; onOpen: () => void }) {
+  const a = entry.about;
+  return (
+    <section
+      aria-labelledby="catalog-featured-title"
+      data-testid="catalog-featured"
+      className="grid gap-6 rounded-3xl bg-block p-6 text-block-foreground sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-8"
+    >
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center rounded-full bg-block-raised px-2.5 py-0.5 text-xs font-semibold">{KIND_META.model.label}</span>
+          <span className="inline-flex items-center rounded-full bg-block-raised px-2.5 py-0.5 text-xs font-semibold">Most used</span>
+        </div>
+        <h3 id="catalog-featured-title" className="display-title text-[clamp(1.75rem,4vw,2.25rem)] leading-[1.05] [overflow-wrap:anywhere]">
+          {a.title}
+        </h3>
+        <p className="max-w-[52ch] text-base leading-relaxed text-block-muted">{a.summary_plain}</p>
+        {a.use_when[0] ? (
+          <p className="max-w-[52ch] text-sm text-block-muted">
+            <span className="font-semibold text-block-foreground">Good for: </span>
+            {a.use_when[0]}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <DifficultyChip difficulty={a.difficulty} onBlock />
+          <RuntimeChip runtime={a.typical_runtime} onBlock />
+          <span className="font-mono text-xs text-block-muted">{entry.id}</span>
+        </div>
+        <div className="flex flex-wrap gap-2.5 pt-3 [&_[data-slot=button]]:h-auto [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:rounded-full [&_[data-slot=button]]:px-5">
+          <span className="contents [&_[data-slot=button]]:bg-highlight [&_[data-slot=button]]:text-highlight-foreground [&_[data-slot=button]:hover]:shadow-[inset_0_0_0_2px_var(--highlight-foreground)]">
+            <StartButton kind="model" id={entry.id}>
+              Use this model
+            </StartButton>
+          </span>
+          <Button variant="ghost" onClick={onOpen} className="text-block-foreground shadow-[inset_0_0_0_1.5px_currentColor] hover:bg-block-raised hover:text-block-foreground">
+            Read the card
+          </Button>
+        </div>
+        <HeroArt animate={false} className="mt-auto hidden w-full max-w-[300px] pt-6 lg:block" />
+      </div>
+      <div className="min-w-0 self-center">
+        <CatalogPlayground />
+      </div>
+    </section>
+  );
+}
+
+export function CatalogBrowser({
+  selected,
+  onSelect,
+  teamCount = 0,
+  onShowTeam,
+}: {
+  selected: string | null;
+  onSelect: (key: string | null) => void;
+  /** Items in Catalog › Yours; with `onShowTeam`, a "Your team's" filter pill opens that tab. */
+  teamCount?: number;
+  onShowTeam?: (() => void) | undefined;
+}) {
   const index = useAboutIndex();
   const [kind, setKind] = useState<AboutKind | "all">("all");
   const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
   const [text, setText] = useState("");
-  const items = useMemo(() => filterAbouts(index.data?.items ?? [], { kind, difficulty, text }), [index.data, kind, difficulty, text]);
+  const all = useMemo(() => filterAbouts(index.data?.items ?? [], { kind, difficulty, text }), [index.data, kind, difficulty, text]);
+  const featured = useMemo(() => featuredAbout(index.data?.items ?? []), [index.data]);
   const counts = useMemo(() => {
     const m = new Map<AboutKind, number>();
     for (const a of index.data?.items ?? []) m.set(a.kind, (m.get(a.kind) ?? 0) + 1);
@@ -59,61 +141,63 @@ export function CatalogBrowser({ selected, onSelect }: { selected: string | null
   const open = parseAboutKey(selected);
   const entry = open ? index.data.byKey.get(aboutKey(open.kind, open.id)) : undefined;
   const kinds = KIND_ORDER.filter((k) => counts.get(k));
+  // The featured card stands in for its tile while it shows (plain view: no search, no other kind).
+  const showFeatured = featured !== null && !text.trim() && (kind === "all" || kind === "model") && (difficulty === "all" || difficulty === featured.about.difficulty);
+  const items = showFeatured ? all.filter((a) => !(a.kind === featured.kind && a.id === featured.id)) : all;
   return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-        <div className="grid gap-0.5">
-          <p className="font-semibold tracking-tight">Not sure where to start?</p>
-          <p className="text-sm text-muted-foreground">Answer some questions about your goal and your data. The app then shows suggestions in order of fit.</p>
-        </div>
-        <Button asChild>
-          <Link to="/choose">
-            <Sparkles /> Help me choose
-          </Link>
-        </Button>
-      </div>
+    <div className="grid gap-6" data-tour="catalog.browse">
       <div className="grid gap-3">
-        <div role="group" aria-label="Kind" className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label="Kind" className="flex flex-wrap gap-2">
           {(["all", ...kinds] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={kind === k}
-              onClick={() => setKind(k)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring",
-                kind === k && "border-primary/60 bg-accent text-accent-foreground",
-              )}
-            >
+            <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={FILTER_PILL}>
               {k === "all" ? "Everything" : KIND_META[k].plural}
-              <span className="text-muted-foreground tabular">{k === "all" ? index.data.items.length : counts.get(k)}</span>
+              <span className="font-medium tabular opacity-65">{k === "all" ? index.data.items.length : counts.get(k)}</span>
             </button>
           ))}
+          {onShowTeam && teamCount > 0 ? (
+            <button type="button" onClick={onShowTeam} className={cn(FILTER_PILL, "border-highlight-ink/40 bg-highlight-soft text-highlight-ink")}>
+              Your team's
+              <span className="font-medium tabular opacity-65">{teamCount}</span>
+            </button>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <div className="relative min-w-[14rem] flex-1 sm:max-w-sm">
-            <Search aria-hidden className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-            <Input aria-label="Search the catalog" placeholder="Type a word, for example forecast, seasonality or holdout" value={text} onChange={(e) => setText(e.target.value)} className="pl-8" />
+          <div className="relative min-w-[min(14rem,100%)] flex-1 sm:max-w-sm">
+            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input aria-label="Search the catalog" placeholder="Type a word, for example forecast, seasonality or holdout" value={text} onChange={(e) => setText(e.target.value)} className="rounded-full pl-9" />
           </div>
-          <NativeSelect aria-label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty | "all")} className="w-48">
+          <NativeSelect aria-label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty | "all")} className="w-48 rounded-full">
             <option value="all">Any difficulty</option>
             <option value="beginner">Beginner friendly</option>
             <option value="intermediate">Some experience</option>
             <option value="expert">For experts</option>
           </NativeSelect>
+          <Button asChild variant="ghost" className="ml-auto h-auto min-h-10 rounded-full bg-highlight-soft px-4 text-highlight-ink hover:bg-highlight hover:text-highlight-foreground">
+            <Link to="/choose">
+              <Sparkles /> Help me choose
+            </Link>
+          </Button>
         </div>
       </div>
+      {showFeatured ? <FeaturedCard entry={featured} onOpen={() => onSelect(aboutKey(featured.kind, featured.id))} /> : null}
       {items.length ? (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Catalog items">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Catalog items">
           {items.map((a) => (
             <li key={aboutKey(a.kind, a.id)}>
-              <AboutTile about={a.about} kind={a.kind} id={a.id} onOpen={() => onSelect(aboutKey(a.kind, a.id))} selected={selected === aboutKey(a.kind, a.id)} />
+              <AboutTile
+                about={a.about}
+                kind={a.kind}
+                id={a.id}
+                glyph={<CatalogGlyph kind={glyphKind(a.kind)} seed={a.id} size="sm" />}
+                onOpen={() => onSelect(aboutKey(a.kind, a.id))}
+                selected={selected === aboutKey(a.kind, a.id)}
+              />
             </li>
           ))}
         </ul>
-      ) : (
-        <EmptyState icon={<Search />} title="No item matches">
-          Type a different word, or clear the filters.
+      ) : showFeatured ? null : (
+        <EmptyState icon={<Search />} title="No item matches" illustration={<EmptySearchArt />}>
+          Nothing here yet for those words. Try a different word, or clear the filters.
         </EmptyState>
       )}
       {entry ? (

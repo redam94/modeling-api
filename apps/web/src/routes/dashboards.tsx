@@ -5,7 +5,7 @@
  */
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { Archive, LayoutDashboard, Plus, RotateCcw, Save, Send } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
 import type { Issue } from "@/api/types";
@@ -51,12 +51,21 @@ function StatusTag({ status }: { status: DashboardStatus }) {
 // ------------------------------------------------------------------------------ the list
 
 export function DashboardsPage() {
-  const { status } = listRoute.useSearch();
+  const { status, new: openNew, model } = listRoute.useSearch();
   const navigate = useNavigate({ from: "/dashboards" });
   const ws = useWorkspace();
   const canCreate = can(ws.grants, "create", "dashboard");
   const dashboards = useDashboards(status ? { status } : {});
-  const [creating, setCreating] = useState(false);
+  // v0.18: `?new=1&model=<id>` (the checklist, the dashboard tour) opens the New dashboard
+  // dialog with that model as the source.
+  const [creating, setCreatingState] = useState(() => Boolean(openNew) && canCreate);
+  useEffect(() => {
+    if (openNew && canCreate) setCreatingState(true);
+  }, [openNew, canCreate]);
+  const setCreating = (open: boolean) => {
+    setCreatingState(open);
+    if (!open && (openNew || model)) void navigate({ search: (s) => ({ ...s, new: undefined, model: undefined }), replace: true });
+  };
   return (
     <>
       <PageHeader
@@ -116,6 +125,7 @@ export function DashboardsPage() {
       </QueryView>
       {creating ? (
         <NewDashboardDialog
+          initialModel={openNew && model ? model : undefined}
           onClose={() => setCreating(false)}
           onCreated={(d) => {
             setCreating(false);
@@ -225,7 +235,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             <Button variant="secondary" disabled={!canEdit || !draft.dirty || draft.saving || shapeIssues.length > 0} title={shapeIssues.length ? `Fix ${shapeIssues.length} ${shapeIssues.length === 1 ? "problem" : "problems"} first.` : undefined} onClick={() => void save()}>
               {draft.saving ? <Spinner /> : <Save />} Save draft
             </Button>
-            <Button disabled={!canEdit || Boolean(publishBlocked)} title={publishBlocked ?? undefined} onClick={() => setPublishing(true)}>
+            <Button disabled={!canEdit || Boolean(publishBlocked)} title={publishBlocked ?? undefined} onClick={() => setPublishing(true)} data-tour="dashboards.publish">
               <Send /> {dashboard.status === "published" ? "Publish changes" : "Publish"}
             </Button>
             {dashboard.status !== "archived" && can(ws.grants, "delete", "dashboard") ? (
@@ -271,7 +281,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             {DASHBOARD_TABS.map((t) => {
               const n = t === "setup" || t === "inputs" ? issues.filter((i) => tabOfIssue(i.pointer) === t).length : 0;
               return (
-                <TabsTrigger key={t} value={t}>
+                <TabsTrigger key={t} value={t} data-tour={t === "access" ? "dashboards.share" : undefined}>
                   {TAB_LABEL[t]}
                   {n ? (
                     <span className="ml-1 text-xs text-destructive" aria-label={`${n} problems`}>
@@ -282,7 +292,7 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
               );
             })}
           </TabsList>
-          <TabsContent value="setup">
+          <TabsContent value="setup" data-tour="dashboards.builder.panels">
             <SetupTab spec={spec} onChange={draft.set} issues={issues} grid={grid} readOnly={!canEdit} />
           </TabsContent>
           <TabsContent value="inputs">
