@@ -1,0 +1,47 @@
+"""{{model_id}}: a scikit-learn model scaffolded by ``mapi plugin init --base sklearn``.
+
+An :class:`~mapi_sklearn.SklearnModel` is one ``estimator()`` method: the base turns the
+panel into a feature table, fits the estimator, saves it without pickle (allow-listed
+estimator classes only) and scores, forecasts and evaluates. Replace the estimator with
+yours, update the About card and keep ``mapi plugin test`` (the contract kit) green.
+"""
+
+from __future__ import annotations
+
+from typing import ClassVar
+
+from mapi_sklearn import PointSettings, SklearnModel, capabilities_for
+from mapi_spec import Capabilities
+from mapi_spec.about import About
+from sklearn.linear_model import Ridge
+
+__all__ = ["MODELS", "RidgeDemand"]
+
+
+class RidgeDemand(SklearnModel[PointSettings]):
+    id = "{{model_id}}"
+    version = "0.1.0"
+    capabilities: ClassVar[Capabilities] = capabilities_for("none").model_copy(
+        update={"contribution_scale": "additive"}  # a linear model decomposes exactly
+    )
+    # The catalog card analysts read (Catalog, Help me choose, the model page).
+    about: ClassVar[About | None] = About(
+        title="Ridge demand model",
+        summary_plain="Predicts demand from its drivers with a straight-line model that "
+        "keeps every effect small. Use it as a fast, readable first model.",
+        use_when=["You want a fast model whose effects add up"],
+        avoid_when=["Effects change a lot with the level of a driver"],
+        data_needs=["A numeric target and a few numeric drivers per row"],
+        assumptions=["Each driver moves the target by a fixed amount per unit"],
+        outputs=["Predictions and the part each driver adds"],
+        difficulty="beginner",
+        typical_runtime="seconds",
+        example="One more unit of promotion adds about 12 units of weekly demand.",
+    )
+
+    def estimator(self, s: PointSettings) -> Ridge:
+        return Ridge(alpha=0.5)  # must be exactly an allow-listed estimator class
+
+
+MODELS = [RidgeDemand]
+"""The ``mapi.models`` entry point: every model class listed here is registered."""

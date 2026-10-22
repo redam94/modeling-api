@@ -174,6 +174,8 @@ mapi score request.yaml --remote @ --model MODEL_ID --version 1 -o result.zarr.z
 mapi catalog [models|steps|plots] [--remote @]
 
 mapi plugin init acme-demand && mapi plugin test acme-demand   # scaffold + contract kit
+mapi plugin init acme-lab --kind recipe --kind node   # one scaffold per extension kind
+mapi plugin validate acme-lab [--json] | doctor [--server]   # check a package / the install
 mapi spec upgrade spec.yaml --check
 mapi config show | path | set KEY VALUE | unset KEY
 ```

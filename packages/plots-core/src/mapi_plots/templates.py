@@ -15,24 +15,33 @@ Placeholders inside ``spec``:
 * ``"{{y}}"`` - the bound name; ``"{{y.field}}"`` - the name escaped for Vega-Lite field
   access (dots); ``"{{y.type}}"`` - the Vega-Lite type; ``"{{y.title}}"`` - name plus units.
   Placeholders may be embedded in longer strings (titles, captions).
+
+:data:`STARTERS` (v0.18) are the chart-template starting points for the platform recipes a
+chart template may restyle: per source recipe, the named datasets of its plots with their
+columns and Vega-Lite types (the catalog example carries them only inside inline Arrow, which
+the control plane never decodes), and a few ready Vega-Lite specs that read only those
+datasets.
 """
 
 from __future__ import annotations
 
+import copy
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from mapi_spec.errors import ErrorCode, Issue, MapiError, json_pointer
 from mapi_spec.plots import PlotBindings, PlotSpec
 from mapi_spec.schema import DataSchema, DimSpec, Role, VarSpec
 
 __all__ = [
+    "STARTERS",
     "BoundField",
     "TemplateError",
     "apply_template",
     "resolve_bindings",
+    "starter_spec",
     "template_issues",
     "vl_field",
 ]
@@ -239,3 +248,313 @@ def template_issues(
     except TemplateError as exc:
         return [exc.to_issue()]
     return []
+
+
+# ------------------------------------------------------------------ chart-template starters
+
+
+def _q(field: str, title: str | None = None, **extra: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {"field": field, "type": "quantitative", **extra}
+    if title is not None:
+        out["title"] = title
+    return out
+
+
+def _t(field: str, title: str | None = None) -> dict[str, Any]:
+    out: dict[str, Any] = {"field": field, "type": "temporal"}
+    if title is not None:
+        out["title"] = title
+    return out
+
+
+def _n(field: str, title: str | None = None) -> dict[str, Any]:
+    out: dict[str, Any] = {"field": field, "type": "nominal"}
+    if title is not None:
+        out["title"] = title
+    return out
+
+
+_SERIES_FIELDS: Final[dict[str, str]] = {"x": "temporal", "group": "nominal"}
+
+STARTERS: Final[dict[str, dict[str, Any]]] = {
+    "core.fit_vs_actual": {
+        "datasets": {"points": ["x", "group", "point", "observed"], "identity": ["v"]},
+        "fields": {
+            "points": {**_SERIES_FIELDS, "point": "quantitative", "observed": "quantitative"},
+            "identity": {"v": "quantitative"},
+        },
+        "starters": [
+            {
+                "name": "over_time",
+                "title": "Actual and predicted over time",
+                "summary": "A line for the prediction and dots for the actual values, one "
+                "colour per group.",
+                "spec": {
+                    "data": {"name": "points"},
+                    "width": 480,
+                    "height": 220,
+                    "layer": [
+                        {
+                            "mark": {"type": "line"},
+                            "encoding": {
+                                "x": _t("x", "Time"),
+                                "y": _q("point", "Value"),
+                                "color": _n("group", "Group"),
+                            },
+                        },
+                        {
+                            "mark": {"type": "circle", "size": 20},
+                            "encoding": {
+                                "x": _t("x"),
+                                "y": _q("observed"),
+                                "color": _n("group"),
+                                "tooltip": [_t("x"), _n("group"), _q("observed"), _q("point")],
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                "name": "scatter_by_group",
+                "title": "Predicted against actual, one panel per group",
+                "summary": "A small scatter plot for each group: points near the diagonal "
+                "are good predictions.",
+                "spec": {
+                    "data": {"name": "points"},
+                    "facet": _n("group", "Group"),
+                    "columns": 3,
+                    "spec": {
+                        "width": 160,
+                        "height": 160,
+                        "mark": {"type": "circle", "opacity": 0.7},
+                        "encoding": {
+                            "x": _q("observed", "Actual"),
+                            "y": _q("point", "Predicted"),
+                            "tooltip": [_t("x"), _q("observed"), _q("point")],
+                        },
+                    },
+                },
+            },
+        ],
+    },
+    "core.ppc_fan": {
+        "datasets": {
+            "fan": [
+                "x",
+                "group",
+                "point",
+                "lo_90",
+                "hi_90",
+                "lo_50",
+                "hi_50",
+                "observed",
+                "split",
+            ]
+        },
+        "fields": {
+            "fan": {
+                **_SERIES_FIELDS,
+                "point": "quantitative",
+                "lo_90": "quantitative",
+                "hi_90": "quantitative",
+                "lo_50": "quantitative",
+                "hi_50": "quantitative",
+                "observed": "quantitative",
+                "split": "temporal",
+            }
+        },
+        "starters": [
+            {
+                "name": "one_panel",
+                "title": "All groups in one panel",
+                "summary": "The 90% band and the prediction for every group on one chart.",
+                "spec": {
+                    "data": {"name": "fan"},
+                    "width": 480,
+                    "height": 240,
+                    "layer": [
+                        {
+                            "mark": {"type": "area", "opacity": 0.25},
+                            "encoding": {
+                                "x": _t("x", "Time"),
+                                "y": _q("lo_90", "Value", scale={"zero": False}),
+                                "y2": {"field": "hi_90"},
+                                "color": _n("group", "Group"),
+                            },
+                        },
+                        {
+                            "mark": {"type": "line"},
+                            "encoding": {
+                                "x": _t("x"),
+                                "y": _q("point"),
+                                "color": _n("group"),
+                                "tooltip": [_t("x"), _n("group"), _q("point"), _q("observed")],
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                "name": "line_and_dots",
+                "title": "Prediction and actual values, one panel per group",
+                "summary": "A line for the prediction and dots for the actual values, "
+                "without the bands.",
+                "spec": {
+                    "data": {"name": "fan"},
+                    "facet": _n("group", "Group"),
+                    "columns": 3,
+                    "spec": {
+                        "width": 160,
+                        "height": 160,
+                        "layer": [
+                            {
+                                "mark": {"type": "line"},
+                                "encoding": {"x": _t("x", "Time"), "y": _q("point", "Value")},
+                            },
+                            {
+                                "mark": {"type": "circle", "size": 16},
+                                "encoding": {
+                                    "x": _t("x"),
+                                    "y": _q("observed"),
+                                    "tooltip": [_t("x"), _q("observed"), _q("point")],
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        ],
+    },
+    "core.residuals_over_time": {
+        "datasets": {"residuals": ["x", "group", "residual"]},
+        "fields": {"residuals": {**_SERIES_FIELDS, "residual": "quantitative"}},
+        "starters": [
+            {
+                "name": "bars_by_group",
+                "title": "Residual bars, one panel per group",
+                "summary": "A bar for each period: bars above zero are periods the model "
+                "predicted too low.",
+                "spec": {
+                    "data": {"name": "residuals"},
+                    "facet": _n("group", "Group"),
+                    "columns": 2,
+                    "spec": {
+                        "width": 220,
+                        "height": 140,
+                        "mark": {"type": "bar"},
+                        "encoding": {
+                            "x": _t("x", "Time"),
+                            "y": _q("residual", "Actual minus predicted"),
+                            "tooltip": [_t("x"), _q("residual")],
+                        },
+                    },
+                },
+            },
+            {
+                "name": "histogram",
+                "title": "How large the residuals are",
+                "summary": "A histogram of the residuals: a narrow shape centred on zero is "
+                "a good fit.",
+                "spec": {
+                    "data": {"name": "residuals"},
+                    "width": 480,
+                    "height": 200,
+                    "mark": {"type": "bar"},
+                    "encoding": {
+                        "x": _q("residual", "Actual minus predicted", bin={"maxbins": 30}),
+                        "y": {"aggregate": "count", "type": "quantitative", "title": "Periods"},
+                    },
+                },
+            },
+        ],
+    },
+    "mmm.response_curves": {
+        "datasets": {
+            "curves": ["channel", "spend", "point", "lo", "hi", "current_spend", "current_value"]
+        },
+        "fields": {
+            "curves": {
+                "channel": "nominal",
+                "spend": "quantitative",
+                "point": "quantitative",
+                "lo": "quantitative",
+                "hi": "quantitative",
+                "current_spend": "quantitative",
+                "current_value": "quantitative",
+            }
+        },
+        "starters": [
+            {
+                "name": "one_panel_per_channel",
+                "title": "One panel per channel",
+                "summary": "Each channel's response curve with its band and a dot at the "
+                "current spend.",
+                "spec": {
+                    "data": {"name": "curves"},
+                    "facet": _n("channel", "Channel"),
+                    "columns": 3,
+                    "resolve": {"scale": {"x": "independent", "y": "independent"}},
+                    "spec": {
+                        "width": 160,
+                        "height": 140,
+                        "layer": [
+                            {
+                                "mark": {"type": "area", "opacity": 0.3},
+                                "encoding": {
+                                    "x": _q("spend", "Spend"),
+                                    "y": _q("lo", "Response"),
+                                    "y2": {"field": "hi"},
+                                },
+                            },
+                            {
+                                "mark": {"type": "line"},
+                                "encoding": {"x": _q("spend"), "y": _q("point")},
+                            },
+                            {
+                                "mark": {"type": "point", "filled": True, "size": 60},
+                                "encoding": {
+                                    "x": _q("current_spend", aggregate="mean"),
+                                    "y": _q("current_value", aggregate="mean"),
+                                    "tooltip": [_q("current_spend", aggregate="mean")],
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+            {
+                "name": "curves_only",
+                "title": "Curves only",
+                "summary": "Every channel's curve on one chart, without the bands.",
+                "spec": {
+                    "data": {"name": "curves"},
+                    "width": 480,
+                    "height": 240,
+                    "mark": {"type": "line"},
+                    "encoding": {
+                        "x": _q("spend", "Spend"),
+                        "y": _q("point", "Response"),
+                        "color": _n("channel", "Channel"),
+                        "tooltip": [_n("channel"), _q("spend"), _q("point")],
+                    },
+                },
+            },
+        ],
+    },
+}
+"""Chart-template starters per source recipe (JSON only).
+
+``STARTERS[recipe_id]`` has ``datasets`` (``{dataset: [column, ...]}``, the names the recipe's
+plots and catalog example use), ``fields`` (``{dataset: {column: Vega-Lite type}}``, for the
+channel pickers) and ``starters`` (a list of ``{name, title, summary, spec}``; each ``spec``
+is a Vega-Lite spec that reads only those datasets by name and sets no colours, so the plot
+theme applies). A plots-core test decodes each catalog example and checks the columns."""
+
+
+def starter_spec(recipe_id: str, name: str) -> dict[str, Any]:
+    """A copy of one starter's Vega-Lite spec (``KeyError`` for an unknown recipe or name)."""
+    for s in STARTERS[recipe_id]["starters"]:
+        if s["name"] == name:
+            out: dict[str, Any] = copy.deepcopy(s["spec"])
+            return out
+    raise KeyError(f"no starter {name!r} for {recipe_id!r}")

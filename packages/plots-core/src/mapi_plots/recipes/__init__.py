@@ -41,11 +41,20 @@ The MMM domain pack lives in :mod:`mapi_plots.packs.mmm` and the tabular-ML pack
 ``causal.donor_weights``, ``causal.event_study``) in :mod:`mapi_plots.packs.causal`. All are
 exposed through the ``mapi.plots`` entry-point group, so
 ``mapi_sdk.registry.default_registry()`` finds them.
+
+``all_recipes(installed=True)`` (v0.18) adds the recipes other installed distributions export
+through ``mapi.plots`` (loaded on that call only), with the registry's namespace rules.
 """
 
 from __future__ import annotations
 
+import importlib.metadata
+import warnings
+from collections.abc import Iterable, Iterator
 from typing import Any
+
+from mapi_spec.namespaces import check_namespace
+from mapi_spec.refs import Version
 
 from mapi_plots.recipes._base import (
     Figure,
@@ -95,6 +104,9 @@ __all__ = [
     "standard_recipes",
 ]
 
+ENTRY_POINT_GROUP = "mapi.plots"
+_OWN_DISTRIBUTION = "mapi-plots"
+
 _STANDARD: tuple[Recipe[Any], ...] = (
     data_overview,
     prior_predictive,
@@ -127,8 +139,7 @@ def standard_recipes() -> list[Recipe[Any]]:
     return list(_STANDARD)
 
 
-def all_recipes() -> list[Recipe[Any]]:
-    """Core catalog plus the bundled domain packs."""
+def _bundled() -> list[Recipe[Any]]:
     from mapi_plots.packs.causal import causal_recipes
     from mapi_plots.packs.ml import ml_recipes
     from mapi_plots.packs.mmm import mmm_recipes
@@ -145,9 +156,72 @@ def all_recipes() -> list[Recipe[Any]]:
     ]
 
 
-def get_recipe(id: str) -> Recipe[Any]:
-    """Look a bundled recipe up by id (e.g. ``"core.ppc_fan"``)."""
-    for r in all_recipes():
-        if r.id == id:
-            return r
-    raise KeyError(f"no recipe {id!r}")
+def _norm_dist(name: str) -> str:
+    return name.strip().lower().replace("_", "-").replace(".", "-")
+
+
+def _flatten(obj: Any) -> Iterator[Any]:
+    if isinstance(obj, Recipe):
+        yield obj
+    elif isinstance(obj, Iterable) and not isinstance(obj, str | bytes):
+        for item in obj:
+            yield from _flatten(item)
+    else:
+        raise TypeError(f"{obj!r} is not a plot recipe")
+
+
+def _installed() -> Iterator[Recipe[Any]]:
+    """Recipes exported through ``mapi.plots`` by other distributions.
+
+    Like the SDK registry: a callable entry point is called, nested lists are flattened, and
+    a recipe in a reserved or built-in namespace from a third-party distribution is refused.
+    One broken entry point is reported as a :class:`RuntimeWarning` and skipped (the
+    registry's ``diagnostics`` are the record; this helper serves notebooks and tests)."""
+    for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
+        dist = getattr(getattr(ep, "dist", None), "name", None)
+        if dist is not None and _norm_dist(dist) == _OWN_DISTRIBUTION:
+            continue  # the bundled packs, already listed
+        try:
+            obj = ep.load()
+            if callable(obj) and not isinstance(obj, Recipe | type):
+                obj = obj()
+            found = list(_flatten(obj))
+        except Exception as exc:  # plugin code: report it, keep the rest
+            warnings.warn(
+                f"{ENTRY_POINT_GROUP}:{ep.name}: {type(exc).__name__}: {exc}",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            continue
+        for r in found:
+            reason = check_namespace(r.id, dist)
+            if reason is not None:
+                msg = f"{ENTRY_POINT_GROUP}:{ep.name}: {reason}"
+                warnings.warn(msg, RuntimeWarning, stacklevel=3)
+                continue
+            yield r
+
+
+def all_recipes(*, installed: bool = False) -> list[Recipe[Any]]:
+    """Core catalog plus the bundled domain packs.
+
+    ``installed=True`` also loads the recipes other installed distributions export through
+    the ``mapi.plots`` entry points (imported on this call, not at module import). A bundled
+    recipe wins over an installed one with the same ``id@version``."""
+    out = _bundled()
+    if installed:
+        seen = {r.ref for r in out}
+        for r in _installed():
+            if r.ref not in seen:
+                seen.add(r.ref)
+                out.append(r)
+    return out
+
+
+def get_recipe(id: str, *, installed: bool = False) -> Recipe[Any]:
+    """Look a recipe up by id (e.g. ``"core.ppc_fan"``): the bundled ones, plus the installed
+    ``mapi.plots`` packs with ``installed=True``. The highest version wins."""
+    found = [r for r in all_recipes(installed=installed) if r.id == id]
+    if not found:
+        raise KeyError(f"no recipe {id!r}")
+    return max(found, key=lambda r: Version.parse(r.version))

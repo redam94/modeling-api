@@ -1,5 +1,5 @@
 """Operator endpoints (``/v1/admin``): tenants, quota policies, kill switches, executor
-health, cost by tenant and the platform audit log.
+health, cost by tenant, the platform audit log and (v0.18) a catalog describe on demand.
 
 Only platform operators pass the route checks (``MAPI_OPERATOR_EMAILS``, signed in with a
 browser session; API tokens never carry operator powers). These routes read across tenants,
@@ -8,10 +8,12 @@ so they use the platform role, always with explicit filters. Every change is aud
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Response, status
+from fastapi.responses import JSONResponse
 from mapi_spec.admin import (
     ExecutorEvidence,
     ExecutorEvidenceUpdate,
@@ -25,6 +27,7 @@ from mapi_spec.api import (
     AdminUsageReport,
     GlobalSpend,
     Page,
+    Run,
     TenantAdminUpdate,
     TenantCost,
     TenantCreate,
@@ -32,7 +35,7 @@ from mapi_spec.api import (
 from mapi_spec.audit import AuditAction, AuditEvent, AuditOutcome, AuditQuery
 from mapi_spec.cost import CostTotals
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.executor import ExecutorCaps
+from mapi_spec.executor import ExecutorCaps, RunKind
 from mapi_spec.quotas import QuotaPolicy, QuotaPolicyUpsert, QuotaScope
 from mapi_spec.run import Actor, FailureClass, RunState, RunTrigger
 from mapi_spec.tenancy import ProjectRole, ResourceKind, Tenant, TenantStatus, TrustTier
@@ -50,6 +53,8 @@ from mapi_server.api.common import (
     decode_cursor,
     encode_cursor,
 )
+from mapi_server.api.problems import responses_for
+from mapi_server.api.runs import run_view
 from mapi_server.api.tenancy import audit_page, tenant_dto
 from mapi_server.api.usage import Period, period_bounds
 from mapi_server.auth.identity import invite_user
@@ -67,6 +72,7 @@ from mapi_server.services.quotas import (
     policy_dto,
 )
 from mapi_server.services.runs import apply_transition, now
+from mapi_server.services.submit import submit_describe
 from mapi_server.services.tenancy import grant
 
 __all__ = ["executor_health", "router"]
@@ -747,3 +753,59 @@ async def admin_list_audit(
         outcome=outcome, since=since, until=until,
     )  # fmt: skip
     return await audit_page(system, q, limit, cursor)
+
+
+# ================================================================================== catalog
+
+
+@router.post(
+    "/catalog:describe",
+    response_model=Run,
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="admin_describe_catalog",
+    summary="Queue a describe run for the current image digest (operators)",
+    responses=responses_for("admin_describe_catalog"),
+)
+async def admin_describe_catalog(ctx: Ctx, auth: Auth) -> JSONResponse:
+    """Queue a ``describe`` run that builds the catalog of this image digest (for example
+    after a describe failed and the plugin was fixed). When one is queued or running, or
+    one already succeeded, that run is returned and nothing is queued: the catalog of an
+    image digest never changes, so a new plugin needs a new digest (``make plugin-dev`` or
+    a new image) and a restart, which describes again by itself."""
+    image = ctx.catalogs.image_digest
+    # a platform run in the platform project (like the one the orchestrator queues at
+    # start), written under that tenant's row-level security, not as the operator's own
+    platform = replace(ctx, request=None)
+    async with ctx.db.tenant_session(platform.platform_scope.tenant_id) as session:
+        run = await submit_describe(session, platform)
+        queued = run is not None
+        if run is None:
+            run = (
+                await session.execute(
+                    select(m.Run)
+                    .where(
+                        m.Run.kind == RunKind.DESCRIBE.value,
+                        m.Run.payload["image_digest"].astext == image,
+                    )
+                    .order_by(m.Run.created_at.desc(), m.Run.id.desc())
+                    .limit(1)
+                )
+            ).scalar_one()
+        await session.flush()
+        await write_audit(
+            ctx.db,
+            [
+                auth.audit(
+                    ctx,
+                    AuditAction.CATALOG_DESCRIBE_REQUESTED,
+                    ResourceKind.CATALOG,
+                    resource_id=run.id,
+                    details={"run_id": run.id, "pending": not queued, "image_digest": image},
+                    tenant_id=run.tenant_id,
+                    project_id=run.project_id,
+                )
+            ],
+            session=session,
+        )
+        view = await run_view(session, run)
+    return JSONResponse(view.model_dump(mode="json"), status_code=status.HTTP_202_ACCEPTED)

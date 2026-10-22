@@ -11,7 +11,8 @@ column and stratified splits; and the v0.15 contracts: image collections, safete
 weights, the GPU resource class and model side tables; and the v0.16 contracts: client
 dashboards, readouts, share links, the client role and the read-only dashboard tools; and the
 v0.17 contracts: layout 2 dashboards for any model type, with presets, panels, scenario rows,
-actuals tracking and batch scoring).
+actuals tracking and batch scoring; and the v0.18 contracts: id namespaces, JSON-Schema
+safety, catalog diagnostics, plugin workflow nodes and templates, and recipe previews).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -64,9 +65,11 @@ from mapi_spec.capabilities import (
 )
 from mapi_spec.catalog import (
     Catalog,
+    CatalogDiagnostic,
     ModelCatalogEntry,
     PlotCatalogEntry,
     StepCatalogEntry,
+    TemplateCatalogEntry,
     catalog_about_issues,
 )
 from mapi_spec.collection import (
@@ -204,6 +207,7 @@ from mapi_spec.ingest import (
     WideVarMapping,
 )
 from mapi_spec.jsonschema_export import export_schemas
+from mapi_spec.library_workflows import all_templates, node_contracts
 from mapi_spec.loader import (
     Limits,
     canonical_json,
@@ -225,6 +229,14 @@ from mapi_spec.media import (
     check_media_key,
     media_name,
     sniff_image,
+)
+from mapi_spec.namespaces import (
+    BUILTIN_DISTRIBUTIONS,
+    BUILTIN_NAMESPACES,
+    PLATFORM_RESERVED,
+    check_namespace,
+    namespace_of,
+    reserved_namespace,
 )
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import (
@@ -273,6 +285,12 @@ from mapi_spec.schema import (
     RaggedSpec,
     Role,
     VarSpec,
+)
+from mapi_spec.schema_safety import (
+    is_safe_regex,
+    require_safe_schema,
+    sanitize_schema,
+    sanitize_settings_schema,
 )
 from mapi_spec.scorecard import (
     SCORECARD_CHECKS,
@@ -386,8 +404,15 @@ from mapi_spec.workflow import (
     topological_order,
     validate_workflow,
 )
-from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, NodeImplementation, NodeKind, PortType
-from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate
+from mapi_spec.workflow_nodes import (
+    NODE_IMPLEMENTATIONS,
+    PLUGIN_NODE_KINDS,
+    NodeImplementation,
+    NodeKind,
+    PortType,
+    plugin_contract_issues,
+)
+from mapi_spec.workflow_templates import WORKFLOW_TEMPLATES, WorkflowTemplate, template_from_entry
 from mapi_spec.xrjson import XrJsonDataset
 
 try:
@@ -399,6 +424,8 @@ __all__ = [
     "API_VERSION",
     "BASE_INFO_INPUT",
     "BASE_MANIFEST_INPUT",
+    "BUILTIN_DISTRIBUTIONS",
+    "BUILTIN_NAMESPACES",
     "COLLECTION_FORMAT",
     "COLLECTION_INFO",
     "COLLECTION_MANIFEST",
@@ -430,6 +457,8 @@ __all__ = [
     "PACK_OBJECT_PREFIX",
     "PART_ENTRY_RE",
     "PERMISSIONS",
+    "PLATFORM_RESERVED",
+    "PLUGIN_NODE_KINDS",
     "PRESET_RULES",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
@@ -459,6 +488,7 @@ __all__ = [
     "Capabilities",
     "Capability",
     "Catalog",
+    "CatalogDiagnostic",
     "ChannelBelief",
     "CheckResult",
     "ChooserAnswer",
@@ -620,6 +650,7 @@ __all__ = [
     "Sweep",
     "TagItem",
     "TagsPayload",
+    "TemplateCatalogEntry",
     "Tenant",
     "TenantDeletion",
     "TenantStatus",
@@ -651,6 +682,7 @@ __all__ = [
     "XrJsonDataset",
     "__version__",
     "about_issues",
+    "all_templates",
     "apply_effect",
     "apply_prior_translation",
     "authorize_promotion",
@@ -665,6 +697,7 @@ __all__ = [
     "check_media",
     "check_media_key",
     "check_metric_key",
+    "check_namespace",
     "check_param_key",
     "check_tag_key",
     "check_webhook_url",
@@ -684,6 +717,7 @@ __all__ = [
     "http_status",
     "info_input",
     "is_ancestor",
+    "is_safe_regex",
     "json_pointer",
     "kill_switch_decision",
     "labels_key",
@@ -693,7 +727,9 @@ __all__ = [
     "load_workflow",
     "media_name",
     "metrics_of",
+    "namespace_of",
     "node_ancestors",
+    "node_contracts",
     "node_depth",
     "node_join",
     "node_name",
@@ -716,13 +752,18 @@ __all__ = [
     "plan_folds",
     "plan_group_folds",
     "plan_leases",
+    "plugin_contract_issues",
     "promotion_gate",
     "propagate",
     "recommend",
     "register_upgrader",
     "render_snippets",
+    "require_safe_schema",
+    "reserved_namespace",
     "resolve_effect",
     "resolve_version",
+    "sanitize_schema",
+    "sanitize_settings_schema",
     "scenario_score_request",
     "schema_breaks",
     "scope_allows",
@@ -732,6 +773,7 @@ __all__ = [
     "split_for_events",
     "suggest_roles",
     "summary_allowed",
+    "template_from_entry",
     "tools_json_schema",
     "topological_order",
     "transition",

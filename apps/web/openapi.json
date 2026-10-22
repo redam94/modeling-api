@@ -1474,7 +1474,16 @@
           "dashboard.refit_decide",
           "dashboard.upgraded",
           "dashboard.readout_keep",
-          "dashboard.batch_download"
+          "dashboard.batch_download",
+          "library.create",
+          "library.revise",
+          "library.archive",
+          "library.promote",
+          "catalog.describe",
+          "sample.install",
+          "sample.join",
+          "sample.retry",
+          "sample.retire"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -3251,6 +3260,105 @@
         "title": "CatalogAbout",
         "type": "object"
       },
+      "CatalogDiagnostic": {
+        "additionalProperties": false,
+        "description": "Something the runner could not put into the catalog, or put there with a change.\n\n``message`` is platform-authored plain text; anything a plugin wrote (an exception\nmessage, an id it exported) goes in ``untrusted_text`` and is shown as text only.",
+        "examples": [
+          {
+            "code": "namespace_reserved",
+            "distribution": "acme-models",
+            "entry_point": "acme",
+            "group": "mapi.models",
+            "id": "mmm.acme_mix",
+            "message": "The namespace 'mmm' belongs to the built-in plugins."
+          }
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "load_error",
+              "namespace_reserved",
+              "id_collision",
+              "schema_unsafe",
+              "about_incomplete",
+              "node_contract_invalid",
+              "template_invalid",
+              "deprecated"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "distribution": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distribution"
+          },
+          "entry_point": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Point"
+          },
+          "group": {
+            "description": "The entry-point group (mapi.models, ...) or the check",
+            "maxLength": 64,
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The catalog id concerned",
+            "title": "Id"
+          },
+          "message": {
+            "description": "Trusted, platform-authored text",
+            "maxLength": 500,
+            "title": "Message",
+            "type": "string"
+          },
+          "untrusted_text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Plugin-originated text; render as text only",
+            "title": "Untrusted Text"
+          }
+        },
+        "required": [
+          "code",
+          "group",
+          "message"
+        ],
+        "title": "CatalogDiagnostic",
+        "type": "object"
+      },
       "CatalogInput": {
         "description": "An input a scenario row or batch column can bind (a variable or a dim), with its\ndeclared bounds and the fit data's range (``profile_min``/``profile_max``: defaults\nthat the analyst must confirm).",
         "properties": {
@@ -4304,6 +4412,82 @@
           "source"
         ],
         "title": "ChartPanel",
+        "type": "object"
+      },
+      "ChartPreview": {
+        "description": "A previewed chart (``None`` when it was refused) and what the checks found.",
+        "examples": [
+          {
+            "issues": []
+          }
+        ],
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "plot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlotSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ChartPreview",
+        "type": "object"
+      },
+      "ChartPreviewRequest": {
+        "additionalProperties": false,
+        "description": "Preview a chart template document on its source recipe's catalog example.",
+        "examples": [
+          {
+            "document": {
+              "apiVersion": "mapi/v1",
+              "kind": "ChartTemplate",
+              "metadata": {
+                "name": "fit-dots",
+                "title": "Fit as dots"
+              },
+              "plot": {
+                "data": {
+                  "name": "points"
+                },
+                "encoding": {
+                  "x": {
+                    "field": "observed",
+                    "type": "quantitative"
+                  },
+                  "y": {
+                    "field": "point",
+                    "type": "quantitative"
+                  }
+                },
+                "mark": "point"
+              },
+              "source_recipe": "core.fit_vs_actual@^1"
+            }
+          }
+        ],
+        "properties": {
+          "document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Document",
+            "type": "object"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "ChartPreviewRequest",
         "type": "object"
       },
       "CheckDirection": {
@@ -12822,7 +13006,13 @@
           "DASHBOARD_INPUT_INVALID",
           "DASHBOARD_BATCH_TOO_LARGE",
           "DASHBOARD_DOWNLOAD_GONE",
-          "DASHBOARD_LAYOUT_RETIRED"
+          "DASHBOARD_LAYOUT_RETIRED",
+          "LIBRARY_INVALID",
+          "LIBRARY_DATA_SHAPE",
+          "SCHEMA_UNSAFE",
+          "EXTENSION_UNAVAILABLE",
+          "SAMPLES_DISABLED",
+          "PREVIEW_DISABLED"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -19141,6 +19331,849 @@
         "title": "LeaveGroupOutSplit",
         "type": "object"
       },
+      "LibraryCreate": {
+        "additionalProperties": false,
+        "description": "Create a library item (revision 1).",
+        "examples": [
+          {
+            "document": {
+              "apiVersion": "mapi/v1",
+              "base": "declarative",
+              "declarative": {
+                "groups": [
+                  {
+                    "dim": "store"
+                  }
+                ],
+                "outcome": {
+                  "family": "negative_binomial",
+                  "var": "sales"
+                },
+                "terms": [
+                  {
+                    "prior": {
+                      "sigma": 0.5
+                    },
+                    "sign": "negative",
+                    "transform": [
+                      {
+                        "use": "log1p"
+                      }
+                    ],
+                    "var": "price"
+                  },
+                  {
+                    "prior": {
+                      "sigma": 1.0
+                    },
+                    "sign": "positive",
+                    "var": "promo",
+                    "varies_by": "store"
+                  }
+                ]
+              },
+              "kind": "ModelRecipe",
+              "metadata": {
+                "name": "store-sales",
+                "title": "Store sales with promo lift"
+              },
+              "plots": [
+                "core.ppc"
+              ]
+            },
+            "scope": "project"
+          }
+        ],
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "scope": {
+            "default": "project",
+            "enum": [
+              "project",
+              "tenant"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The document as YAML or JSON text (instead of document)",
+            "title": "Text"
+          }
+        },
+        "title": "LibraryCreate",
+        "type": "object"
+      },
+      "LibraryItem": {
+        "description": "A library item (its documents are in :class:`LibraryRevision`).",
+        "examples": [
+          {
+            "archived": false,
+            "created_at": "2026-10-15T09:30:00Z",
+            "created_by": "usr_analyst",
+            "etag": "\"r3\"",
+            "id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "kind": "model_recipe",
+            "latest_revision": 3,
+            "name": "store-sales",
+            "project_id": "growth",
+            "scope": "project",
+            "summary": "",
+            "tags": [
+              "retail"
+            ],
+            "title": "Store sales with promo lift",
+            "updated_at": "2026-10-15T09:30:00Z"
+          }
+        ],
+        "properties": {
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "etag": {
+            "description": "The latest revision as an ETag: \"r<latest_revision>\"",
+            "title": "Etag",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^lib_[0-9a-z]{26}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "model_recipe",
+              "prep_preset",
+              "chart_template",
+              "workflow_template"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "latest_revision": {
+            "minimum": 1.0,
+            "title": "Latest Revision",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "enum": [
+              "project",
+              "tenant"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "summary": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Summary",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "scope",
+          "name",
+          "title",
+          "latest_revision",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "etag"
+        ],
+        "title": "LibraryItem",
+        "type": "object"
+      },
+      "LibraryRevision": {
+        "description": "One immutable revision of a library item: the document, whether it compiled against\nthe catalog of the time, and the compiled output.",
+        "examples": [
+          {
+            "catalog_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "created_at": "2026-10-15T09:30:00Z",
+            "created_by": "usr_analyst",
+            "doc_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "document": {
+              "apiVersion": "mapi/v1",
+              "base": "declarative",
+              "declarative": {
+                "groups": [
+                  {
+                    "dim": "store"
+                  }
+                ],
+                "outcome": {
+                  "family": "negative_binomial",
+                  "var": "sales"
+                },
+                "terms": [
+                  {
+                    "prior": {
+                      "sigma": 0.5
+                    },
+                    "sign": "negative",
+                    "transform": [
+                      {
+                        "use": "log1p"
+                      }
+                    ],
+                    "var": "price"
+                  },
+                  {
+                    "prior": {
+                      "sigma": 1.0
+                    },
+                    "sign": "positive",
+                    "var": "promo",
+                    "varies_by": "store"
+                  }
+                ]
+              },
+              "kind": "ModelRecipe",
+              "metadata": {
+                "name": "store-sales",
+                "title": "Store sales with promo lift"
+              },
+              "plots": [
+                "core.ppc"
+              ]
+            },
+            "issues": [],
+            "item_id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "message": "first version",
+            "revision": 1,
+            "valid": true
+          }
+        ],
+        "properties": {
+          "catalog_digest": {
+            "anyOf": [
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Digest"
+          },
+          "compiled": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiled"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "doc_hash": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Doc Hash",
+            "type": "string"
+          },
+          "document": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Document",
+            "type": "object"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "item_id": {
+            "pattern": "^lib_[0-9a-z]{26}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "item_id",
+          "revision",
+          "document",
+          "doc_hash",
+          "valid",
+          "created_by",
+          "created_at"
+        ],
+        "title": "LibraryRevision",
+        "type": "object"
+      },
+      "LibraryRevisionCreate": {
+        "additionalProperties": false,
+        "description": "Add a revision to a library item (``If-Match: \"r<latest_revision>\"``).",
+        "examples": [
+          {
+            "document": {
+              "apiVersion": "mapi/v1",
+              "base": "declarative",
+              "declarative": {
+                "groups": [
+                  {
+                    "dim": "store"
+                  }
+                ],
+                "outcome": {
+                  "family": "negative_binomial",
+                  "var": "sales"
+                },
+                "terms": [
+                  {
+                    "prior": {
+                      "sigma": 0.5
+                    },
+                    "sign": "negative",
+                    "transform": [
+                      {
+                        "use": "log1p"
+                      }
+                    ],
+                    "var": "price"
+                  },
+                  {
+                    "prior": {
+                      "sigma": 1.0
+                    },
+                    "sign": "positive",
+                    "var": "promo",
+                    "varies_by": "store"
+                  }
+                ]
+              },
+              "kind": "ModelRecipe",
+              "metadata": {
+                "name": "store-sales",
+                "title": "Store sales with promo lift"
+              },
+              "plots": [
+                "core.ppc"
+              ]
+            },
+            "message": "tighter price prior"
+          }
+        ],
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The document as YAML or JSON text (instead of document)",
+            "title": "Text"
+          }
+        },
+        "title": "LibraryRevisionCreate",
+        "type": "object"
+      },
+      "LibraryUseRequest": {
+        "additionalProperties": false,
+        "description": "Use an item: the values of its slots and exposed settings, the dataset to check\nagainst, and for chart templates the model version to apply to.",
+        "examples": [
+          {
+            "dataset": "dataset://growth/store_sales@latest",
+            "slots": {
+              "media": [
+                "tv",
+                "search"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "dataset": {
+            "anyOf": [
+              {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset"
+          },
+          "exposed": {
+            "maxProperties": 12,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "$ref": "#/components/schemas/JsonValue"
+              }
+            },
+            "title": "Exposed",
+            "type": "object"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "slots": {
+            "maxProperties": 16,
+            "patternProperties": {
+              "^[A-Za-z_][A-Za-z0-9_.\\-]{0,127}$": {
+                "$ref": "#/components/schemas/JsonValue"
+              }
+            },
+            "title": "Slots",
+            "type": "object"
+          }
+        },
+        "title": "LibraryUseRequest",
+        "type": "object"
+      },
+      "LibraryUseResult": {
+        "description": "What an item compiles to: a spec fragment (model recipes), prep steps (prep presets),\nan applied chart (chart templates) or a workflow document (workflow templates).",
+        "examples": [
+          {
+            "issues": [],
+            "kind": "prep_preset",
+            "labels": {
+              "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2"
+            },
+            "pipeline": [
+              {
+                "id": "p_scale",
+                "use": "core.max_abs_scale@^1",
+                "with": {
+                  "over": [
+                    "time"
+                  ],
+                  "vars": [
+                    "tv",
+                    "search"
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "model_recipe",
+              "prep_preset",
+              "chart_template",
+              "workflow_template"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "labels": {
+            "patternProperties": {
+              "^[a-z0-9]([a-z0-9_.\\-/]{0,62})$": {
+                "maxLength": 63,
+                "pattern": "^[A-Za-z0-9_.\\-]*$",
+                "type": "string"
+              }
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "pipeline": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/JsonValue"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline"
+          },
+          "plot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlotSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spec_fragment": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Fragment"
+          },
+          "workflow_document": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Document"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "LibraryUseResult",
+        "type": "object"
+      },
+      "LibraryValidateRequest": {
+        "additionalProperties": false,
+        "description": "Check a document; with ``dataset``, also its slots and variables against the data.",
+        "examples": [
+          {
+            "dataset": "dataset://growth/store_sales@latest",
+            "document": {
+              "apiVersion": "mapi/v1",
+              "base": "declarative",
+              "declarative": {
+                "groups": [
+                  {
+                    "dim": "store"
+                  }
+                ],
+                "outcome": {
+                  "family": "negative_binomial",
+                  "var": "sales"
+                },
+                "terms": [
+                  {
+                    "prior": {
+                      "sigma": 0.5
+                    },
+                    "sign": "negative",
+                    "transform": [
+                      {
+                        "use": "log1p"
+                      }
+                    ],
+                    "var": "price"
+                  },
+                  {
+                    "prior": {
+                      "sigma": 1.0
+                    },
+                    "sign": "positive",
+                    "var": "promo",
+                    "varies_by": "store"
+                  }
+                ]
+              },
+              "kind": "ModelRecipe",
+              "metadata": {
+                "name": "store-sales",
+                "title": "Store sales with promo lift"
+              },
+              "plots": [
+                "core.ppc"
+              ]
+            }
+          }
+        ],
+        "properties": {
+          "dataset": {
+            "anyOf": [
+              {
+                "description": "Dataset reference dataset://project/name@version",
+                "examples": [
+                  "dataset://growth/eu_media_daily@latest"
+                ],
+                "pattern": "^dataset://([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)/([a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?)(?:@(latest|v\\d{1,9}|\\d{1,9}|sha256:[0-9a-f]{64}))?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 262144,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The document as YAML or JSON text (instead of document)",
+            "title": "Text"
+          }
+        },
+        "title": "LibraryValidateRequest",
+        "type": "object"
+      },
+      "LibraryValidation": {
+        "description": "The result of a check: issues point into the document.",
+        "examples": [
+          {
+            "issues": [
+              {
+                "code": "LIBRARY_INVALID",
+                "message": "varies_by 'region' is not one of the groups",
+                "pointer": "/declarative/terms/1/varies_by",
+                "severity": "error"
+              }
+            ],
+            "valid": false
+          }
+        ],
+        "properties": {
+          "compiled": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiled"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid"
+        ],
+        "title": "LibraryValidation",
+        "type": "object"
+      },
       "LiftTest": {
         "additionalProperties": false,
         "description": "One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)\nfrom ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.\n\nGive the measurement's uncertainty as a standard error ``se`` *or* a confidence interval\n``ci`` at ``ci_level``. A holdout (\"turn the channel off\") is a negative ``spend_delta``\nwith (usually) a negative ``kpi_delta``.",
@@ -21399,6 +22432,19 @@
             ],
             "title": "Overlay Hash"
           },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the distribution that installed a non-built-in model",
+            "title": "Provider"
+          },
           "yanked": {
             "default": false,
             "title": "Yanked",
@@ -22618,6 +23664,19 @@
             "title": "Params Schema",
             "type": "object"
           },
+          "plugin": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_]{0,62}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the namespace of a plugin node (None for the built-in nodes); the id is '<kind>.<plugin>_<name>'",
+            "title": "Plugin"
+          },
           "result_fields": {
             "additionalProperties": {
               "$ref": "#/components/schemas/ResultField"
@@ -23098,6 +24157,244 @@
           "size"
         ],
         "title": "ObjectRef",
+        "type": "object"
+      },
+      "OnboardingPatch": {
+        "additionalProperties": false,
+        "description": "``PATCH /v1/tenants/{t}/me/onboarding`` (at most 2 KiB). Every field is optional;\nan absent field leaves the state as it is.",
+        "examples": [
+          {
+            "complete": [
+              "took_tour"
+            ]
+          },
+          {
+            "tours": {
+              "fit": {
+                "status": "in_progress",
+                "step": 2,
+                "updated_at": "2026-10-15T09:30:00Z"
+              }
+            },
+            "welcomed": true
+          },
+          {
+            "checklist_dismissed": true,
+            "hide_samples": [
+              "geo_mmm"
+            ]
+          }
+        ],
+        "properties": {
+          "checklist_dismissed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checklist Dismissed"
+          },
+          "complete": {
+            "description": "Steps now done",
+            "items": {
+              "enum": [
+                "took_tour",
+                "open_sample",
+                "fit_model",
+                "read_results",
+                "try_whatif",
+                "make_dashboard",
+                "own_data",
+                "make_your_own"
+              ],
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Complete",
+            "type": "array"
+          },
+          "hide_samples": {
+            "items": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Hide Samples",
+            "type": "array"
+          },
+          "tips_off": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tips Off"
+          },
+          "tours": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/TourProgress"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "welcome",
+                    "data",
+                    "fit",
+                    "results",
+                    "whatif",
+                    "dashboard",
+                    "make_your_own"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tours to set (other tours are kept)",
+            "title": "Tours"
+          },
+          "unhide_samples": {
+            "items": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Unhide Samples",
+            "type": "array"
+          },
+          "welcomed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "true records the first welcome; only a reset clears it",
+            "title": "Welcomed"
+          }
+        },
+        "title": "OnboardingPatch",
+        "type": "object"
+      },
+      "OnboardingState": {
+        "description": "The checklist and tour progress of the calling user in one tenant.",
+        "examples": [
+          {
+            "version": 0
+          },
+          {
+            "checklist": {
+              "open_sample": "2026-10-15T09:30:00Z",
+              "took_tour": "2026-10-15T09:30:00Z"
+            },
+            "checklist_dismissed": false,
+            "hidden_samples": [],
+            "tips_off": false,
+            "tours": {
+              "welcome": {
+                "status": "completed",
+                "step": 5,
+                "updated_at": "2026-10-15T09:30:00Z"
+              }
+            },
+            "version": 4,
+            "welcomed_at": "2026-10-15T09:30:00Z"
+          }
+        ],
+        "properties": {
+          "checklist": {
+            "additionalProperties": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Completed steps and when they were completed",
+            "propertyNames": {
+              "enum": [
+                "took_tour",
+                "open_sample",
+                "fit_model",
+                "read_results",
+                "try_whatif",
+                "make_dashboard",
+                "own_data",
+                "make_your_own"
+              ]
+            },
+            "title": "Checklist",
+            "type": "object"
+          },
+          "checklist_dismissed": {
+            "default": false,
+            "title": "Checklist Dismissed",
+            "type": "boolean"
+          },
+          "hidden_samples": {
+            "description": "Sample projects the user hid from the Start-here hub",
+            "items": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Hidden Samples",
+            "type": "array"
+          },
+          "tips_off": {
+            "default": false,
+            "description": "The user turned the welcome dialog and tips off",
+            "title": "Tips Off",
+            "type": "boolean"
+          },
+          "tours": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TourProgress"
+            },
+            "propertyNames": {
+              "enum": [
+                "welcome",
+                "data",
+                "fit",
+                "results",
+                "whatif",
+                "dashboard",
+                "make_your_own"
+              ]
+            },
+            "title": "Tours",
+            "type": "object"
+          },
+          "version": {
+            "default": 0,
+            "description": "Bumped on every change; the ETag of the state",
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "welcomed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the user first saw (and closed) the welcome dialog",
+            "title": "Welcomed At"
+          }
+        },
+        "title": "OnboardingState",
         "type": "object"
       },
       "Optimization": {
@@ -24617,6 +25914,72 @@
           "items"
         ],
         "title": "Page[GuidedTemplate]",
+        "type": "object"
+      },
+      "Page_LibraryItem_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[LibraryItem]",
+        "type": "object"
+      },
+      "Page_LibraryRevision_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryRevision"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[LibraryRevision]",
         "type": "object"
       },
       "Page_LogLine_": {
@@ -26191,6 +27554,19 @@
             "title": "Id",
             "type": "string"
           },
+          "pack_label": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the name of the recipe pack shown on the catalog card",
+            "title": "Pack Label"
+          },
           "persona": {
             "default": "both",
             "enum": [
@@ -26200,6 +27576,19 @@
             ],
             "title": "Persona",
             "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the distribution that installed a non-built-in recipe",
+            "title": "Provider"
           },
           "requires_groups": {
             "items": {
@@ -26215,6 +27604,21 @@
             "title": "Requires Representation",
             "type": "array"
           },
+          "settings_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; absent when too large)",
+            "title": "Settings Schema"
+          },
           "summary": {
             "anyOf": [
               {
@@ -26227,6 +27631,15 @@
             ],
             "description": "One line on what the chart shows (the recipe's summary)",
             "title": "Summary"
+          },
+          "tags": {
+            "items": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
           },
           "title": {
             "maxLength": 200,
@@ -29702,6 +31115,94 @@
         "title": "RecipePanel",
         "type": "object"
       },
+      "RecipePreviewRequest": {
+        "additionalProperties": false,
+        "description": "``POST /v1/catalog/plots/{plot_id}/{version}:preview``: the recipe settings to try\n(validated against the recipe's catalog ``settings_schema`` before any run).",
+        "examples": [
+          {
+            "settings": {
+              "title": "Sales: fit and forecast",
+              "var": "y"
+            }
+          }
+        ],
+        "properties": {
+          "settings": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "title": "RecipePreviewRequest",
+        "type": "object"
+      },
+      "RecipePreviewResult": {
+        "description": "A recipe preview: done (``plot`` set, or ``problem`` when the run failed) or still\nrunning (``run_id`` to poll). ``cached``: served from an earlier run with the same key.",
+        "examples": [
+          {
+            "cached": false,
+            "done": false,
+            "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+          },
+          {
+            "cached": true,
+            "done": true
+          }
+        ],
+        "properties": {
+          "cached": {
+            "default": false,
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "plot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlotSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "done"
+        ],
+        "title": "RecipePreviewResult",
+        "type": "object"
+      },
       "Recommendation": {
         "description": "One ranked candidate with the reasons in plain words.",
         "properties": {
@@ -30168,7 +31669,9 @@
           "tenant_policy",
           "dashboard",
           "dashboard_grant",
-          "dashboard_share"
+          "dashboard_share",
+          "library",
+          "tenant_library"
         ],
         "title": "ResourceKind",
         "type": "string"
@@ -32354,6 +33857,216 @@
         ],
         "title": "RunnerPhase",
         "type": "string"
+      },
+      "SampleInfo": {
+        "description": "A sample project as one tenant member sees it.",
+        "examples": [
+          {
+            "can_install": true,
+            "id": "geo_mmm",
+            "minutes": 1.0,
+            "summary": "Two years of weekly revenue and media spend.",
+            "title": "Marketing mix in four regions"
+          },
+          {
+            "attempts": 1,
+            "id": "geo_mmm",
+            "minutes": 1.0,
+            "progress": 0.6,
+            "project_id": "sample",
+            "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "state": "fitting",
+            "summary": "Two years of weekly revenue and media spend.",
+            "title": "Marketing mix in four regions"
+          },
+          {
+            "attempts": 1,
+            "can_retire": true,
+            "id": "geo_mmm",
+            "minutes": 1.0,
+            "model_id": "mdl_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "model_version": 1,
+            "progress": 1.0,
+            "project_id": "sample",
+            "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+            "state": "ready",
+            "summary": "Two years of weekly revenue and media spend.",
+            "title": "Marketing mix in four regions"
+          }
+        ],
+        "properties": {
+          "attempts": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "can_install": {
+            "default": false,
+            "description": "Install, or join the installed sample",
+            "title": "Can Install",
+            "type": "boolean"
+          },
+          "can_retire": {
+            "default": false,
+            "title": "Can Retire",
+            "type": "boolean"
+          },
+          "can_retry": {
+            "default": false,
+            "title": "Can Retry",
+            "type": "boolean"
+          },
+          "hidden": {
+            "default": false,
+            "description": "The caller hid the sample from the hub",
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,126}[a-z0-9])?$",
+            "title": "Id",
+            "type": "string"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": "number"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Problem"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the sample failed (plain words)"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "spec_id": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec Id"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "provisioning",
+                  "ingesting",
+                  "fitting",
+                  "ready",
+                  "failed",
+                  "retired"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: not installed in the tenant",
+            "title": "State"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "minutes"
+        ],
+        "title": "SampleInfo",
+        "type": "object"
       },
       "SavedPlot": {
         "description": "A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;\nomitted in lists). ``embeddable`` is :func:`embeddable` of this plot.",
@@ -36300,6 +38013,19 @@
           "kind": {
             "$ref": "#/components/schemas/StepKind"
           },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.18: the distribution that installed a non-built-in step",
+            "title": "Provider"
+          },
           "provides": {
             "description": "Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it",
             "items": {
@@ -37744,6 +39470,40 @@
         ],
         "title": "TokenStatus",
         "type": "string"
+      },
+      "TourProgress": {
+        "additionalProperties": false,
+        "description": "Where the user is in one tour. ``updated_at`` is set by the server on merge.",
+        "properties": {
+          "status": {
+            "enum": [
+              "in_progress",
+              "completed",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step": {
+            "default": 0,
+            "description": "Index of the current step",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Step",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "updated_at"
+        ],
+        "title": "TourProgress",
+        "type": "object"
       },
       "TreeSchema": {
         "additionalProperties": false,
@@ -41199,6 +42959,16 @@
             "title": "Id",
             "type": "string"
           },
+          "source": {
+            "default": "builtin",
+            "description": "v0.18: 'plugin' for a template an installed plugin added",
+            "enum": [
+              "builtin",
+              "plugin"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -42288,6 +44058,120 @@
           }
         },
         "summary": "Admin List Audit",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/v1/admin/catalog:describe": {
+      "post": {
+        "description": "Queue a ``describe`` run that builds the catalog of this image digest (for example\nafter a describe failed and the plugin was fixed). When one is queued or running, or\none already succeeded, that run is returned and nothing is queued: the catalog of an\nimage digest never changes, so a new plugin needs a new digest (``make plugin-dev`` or\na new image) and a restart, which describes again by itself.",
+        "operationId": "admin_describe_catalog",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Queue a describe run for the current image digest (operators)",
         "tags": [
           "admin"
         ]
@@ -43718,6 +45602,124 @@
         ]
       }
     },
+    "/v1/catalog/diagnostics": {
+      "get": {
+        "description": "Load errors, reserved namespaces, unsafe schemas that were stripped, and plugin\nworkflow nodes and templates that were hidden. ``message`` is platform text;\n``untrusted_text`` comes from a plugin and is shown as text only. Empty while no catalog\nis cached for the image digest.",
+        "operationId": "list_catalog_diagnostics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogDiagnostic"
+                  },
+                  "title": "Response List Catalog Diagnostics",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Problems found while the current catalog was built (tenant admins, operators)",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/v1/catalog/governance-checks": {
       "get": {
         "description": "Every check a policy can require, with its About card, metric, direction, default\nthresholds and parameter schema.",
@@ -43953,6 +45955,141 @@
         ]
       }
     },
+    "/v1/catalog/plots/previews/{run_id}": {
+      "get": {
+        "operationId": "get_catalog_plot_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipePreviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "The result of a recipe preview run",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/v1/catalog/plots/{plot_id}/{version}/example": {
       "get": {
         "description": "The plot recipe rendered on its synthetic example data (made by the describe run,\ndatasets inline). ``404`` when the recipe, or its example, does not exist.",
@@ -44092,6 +46229,237 @@
           }
         },
         "summary": "Get Catalog Plot Example",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/v1/catalog/plots/{plot_id}/{version}:preview": {
+      "post": {
+        "description": "``200`` with the plot when it is done (or cached), else ``202`` with the ``run_id``\nto poll at ``GET /v1/catalog/plots/previews/{run_id}``. The settings are checked against\nthe recipe's settings schema before any run (``SCHEMA_INVALID`` with pointers).",
+        "operationId": "preview_catalog_plot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plot_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+              "title": "Plot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d+\\.\\d+\\.\\d+$",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipePreviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PREVIEW_DISABLED": {
+                    "summary": "Live chart previews are turned off",
+                    "value": {
+                      "code": "PREVIEW_DISABLED",
+                      "detail": "Live chart previews are turned off",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Live chart previews are turned off",
+                      "type": "urn:mapi:error:PREVIEW_DISABLED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PREVIEW_DISABLED"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MODE_NOT_SUPPORTED": {
+                    "summary": "Score mode not supported",
+                    "value": {
+                      "code": "MODE_NOT_SUPPORTED",
+                      "detail": "Score mode not supported",
+                      "errors": [],
+                      "status": 422,
+                      "title": "Score mode not supported",
+                      "type": "urn:mapi:error:MODE_NOT_SUPPORTED"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "QUOTA_EXCEEDED": {
+                    "summary": "Quota exceeded",
+                    "value": {
+                      "code": "QUOTA_EXCEEDED",
+                      "detail": "Quota exceeded",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Quota exceeded",
+                      "type": "urn:mapi:error:QUOTA_EXCEEDED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, QUOTA_EXCEEDED"
+          }
+        },
+        "summary": "Draw a plot recipe's example with these settings (Prefer: wait=N, at most 15)",
         "tags": [
           "catalog"
         ]
@@ -44327,6 +46695,7 @@
     },
     "/v1/catalog/workflow-nodes": {
       "get": {
+        "description": "The built-in nodes and those of installed plugins (``plugin`` set; v0.18).",
         "operationId": "list_workflow_nodes",
         "parameters": [
           {
@@ -56472,6 +58841,2298 @@
         ]
       }
     },
+    "/v1/library": {
+      "get": {
+        "description": "Library items of the project and of the tenant, most recently changed first. Archived\nitems only with ``include_archived=true``; ``q`` matches the name or the title.",
+        "operationId": "list_library_items",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "model_recipe",
+                    "prep_preset",
+                    "chart_template",
+                    "workflow_template"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "tenant",
+                    "project"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scope"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_LibraryItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "List Library Items",
+        "tags": [
+          "library"
+        ]
+      },
+      "post": {
+        "description": "Create an item and its revision 1 from a document (or YAML/JSON text). A document that\ndoes not compile against the current catalog is stored with ``valid: false`` and its\nissues, except a workflow template, which is refused. ``scope: tenant`` needs a tenant\nadmin.",
+        "operationId": "create_library_item",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEC_PARSE_ERROR": {
+                    "summary": "The document could not be parsed",
+                    "value": {
+                      "code": "SPEC_PARSE_ERROR",
+                      "detail": "The document could not be parsed",
+                      "errors": [],
+                      "status": 400,
+                      "title": "The document could not be parsed",
+                      "type": "urn:mapi:error:SPEC_PARSE_ERROR"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SPEC_PARSE_ERROR"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LIBRARY_INVALID": {
+                    "summary": "The library document is not valid",
+                    "value": {
+                      "code": "LIBRARY_INVALID",
+                      "detail": "The library document is not valid",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The library document is not valid",
+                      "type": "urn:mapi:error:LIBRARY_INVALID"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "SCHEMA_UNSAFE": {
+                    "summary": "The JSON Schema uses a feature that is not safe",
+                    "value": {
+                      "code": "SCHEMA_UNSAFE",
+                      "detail": "The JSON Schema uses a feature that is not safe",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The JSON Schema uses a feature that is not safe",
+                      "type": "urn:mapi:error:SCHEMA_UNSAFE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Create Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/charts:preview": {
+      "post": {
+        "description": "Draw a chart template on its source recipe's example data (JSON only, no run).\nProblems with the template come back as issues with ``plot: null``.",
+        "operationId": "preview_library_chart",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChartPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "EXTENSION_UNAVAILABLE": {
+                    "summary": "An extension that the item needs is not in the current catalog",
+                    "value": {
+                      "code": "EXTENSION_UNAVAILABLE",
+                      "detail": "An extension that the item needs is not in the current catalog",
+                      "errors": [],
+                      "status": 409,
+                      "title": "An extension that the item needs is not in the current catalog",
+                      "type": "urn:mapi:error:EXTENSION_UNAVAILABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: EXTENSION_UNAVAILABLE"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LIBRARY_INVALID": {
+                    "summary": "The library document is not valid",
+                    "value": {
+                      "code": "LIBRARY_INVALID",
+                      "detail": "The library document is not valid",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The library document is not valid",
+                      "type": "urn:mapi:error:LIBRARY_INVALID"
+                    }
+                  },
+                  "PLOT_UNSAFE": {
+                    "summary": "The plot spec violates the plot safety policy",
+                    "value": {
+                      "code": "PLOT_UNSAFE",
+                      "detail": "The plot spec violates the plot safety policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The plot spec violates the plot safety policy",
+                      "type": "urn:mapi:error:PLOT_UNSAFE"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, LIBRARY_INVALID, PLOT_UNSAFE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Preview Library Chart",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}": {
+      "get": {
+        "description": "One item (``ETag``: ``\"r<latest_revision>\"``, for ``If-Match`` on a new revision).",
+        "operationId": "get_library_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}/revisions": {
+      "get": {
+        "description": "The revisions of an item, newest first.",
+        "operationId": "list_library_revisions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_LibraryRevision_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "List Library Revisions",
+        "tags": [
+          "library"
+        ]
+      },
+      "post": {
+        "description": "Add an immutable revision. ``If-Match`` with the item's ``ETag`` refuses the change\n(``412``) when someone saved in between. The kind cannot change; the document's\nmetadata renames and retitles the item.",
+        "operationId": "create_library_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 130,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryRevisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryRevision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEC_PARSE_ERROR": {
+                    "summary": "The document could not be parsed",
+                    "value": {
+                      "code": "SPEC_PARSE_ERROR",
+                      "detail": "The document could not be parsed",
+                      "errors": [],
+                      "status": 400,
+                      "title": "The document could not be parsed",
+                      "type": "urn:mapi:error:SPEC_PARSE_ERROR"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SPEC_PARSE_ERROR"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PRECONDITION_FAILED": {
+                    "summary": "Precondition failed",
+                    "value": {
+                      "code": "PRECONDITION_FAILED",
+                      "detail": "Precondition failed",
+                      "errors": [],
+                      "status": 412,
+                      "title": "Precondition failed",
+                      "type": "urn:mapi:error:PRECONDITION_FAILED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PRECONDITION_FAILED"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LIBRARY_INVALID": {
+                    "summary": "The library document is not valid",
+                    "value": {
+                      "code": "LIBRARY_INVALID",
+                      "detail": "The library document is not valid",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The library document is not valid",
+                      "type": "urn:mapi:error:LIBRARY_INVALID"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "SCHEMA_UNSAFE": {
+                    "summary": "The JSON Schema uses a feature that is not safe",
+                    "value": {
+                      "code": "SCHEMA_UNSAFE",
+                      "detail": "The JSON Schema uses a feature that is not safe",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The JSON Schema uses a feature that is not safe",
+                      "type": "urn:mapi:error:SCHEMA_UNSAFE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Create Library Revision",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}/revisions/{revision}": {
+      "get": {
+        "description": "One revision: the document, whether it compiled, its issues and the compiled output.",
+        "operationId": "get_library_revision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryRevision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Library Revision",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}:archive": {
+      "post": {
+        "description": "Archive an item: lists and pickers hide it; nothing is deleted, and recipes that use\nit keep working.",
+        "operationId": "archive_library_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Archive Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}:promote": {
+      "post": {
+        "description": "Copy a project item's latest revision into a new tenant item, which every project of\nthe tenant can read (tenant admins). The project item stays as it is.",
+        "operationId": "promote_library_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Promote Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}:unarchive": {
+      "post": {
+        "description": "Show an archived item again.",
+        "operationId": "unarchive_library_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Unarchive Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library/{item_id}:use": {
+      "post": {
+        "description": "Compile an item for use, with lineage labels; nothing is saved. A model recipe gives a\nspec fragment (it needs ``spec`` create), a prep preset its steps, a chart template the\nchart applied to ``model_id`` v``model_version``, a workflow template its document.",
+        "operationId": "use_library_item",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "pattern": "^lib_[0-9a-z]{26}$",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryUseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryUseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "EXTENSION_UNAVAILABLE": {
+                    "summary": "An extension that the item needs is not in the current catalog",
+                    "value": {
+                      "code": "EXTENSION_UNAVAILABLE",
+                      "detail": "An extension that the item needs is not in the current catalog",
+                      "errors": [],
+                      "status": 409,
+                      "title": "An extension that the item needs is not in the current catalog",
+                      "type": "urn:mapi:error:EXTENSION_UNAVAILABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: EXTENSION_UNAVAILABLE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LIBRARY_DATA_SHAPE": {
+                    "summary": "The dataset does not have the shape that the library item needs",
+                    "value": {
+                      "code": "LIBRARY_DATA_SHAPE",
+                      "detail": "The dataset does not have the shape that the library item needs",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The dataset does not have the shape that the library item needs",
+                      "type": "urn:mapi:error:LIBRARY_DATA_SHAPE"
+                    }
+                  },
+                  "LIBRARY_INVALID": {
+                    "summary": "The library document is not valid",
+                    "value": {
+                      "code": "LIBRARY_INVALID",
+                      "detail": "The library document is not valid",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The library document is not valid",
+                      "type": "urn:mapi:error:LIBRARY_INVALID"
+                    }
+                  },
+                  "PLOT_UNSAFE": {
+                    "summary": "The plot spec violates the plot safety policy",
+                    "value": {
+                      "code": "PLOT_UNSAFE",
+                      "detail": "The plot spec violates the plot safety policy",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The plot spec violates the plot safety policy",
+                      "type": "urn:mapi:error:PLOT_UNSAFE"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, LIBRARY_INVALID, LIBRARY_DATA_SHAPE, PLOT_UNSAFE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Use Library Item",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/v1/library:validate": {
+      "post": {
+        "description": "Check a document against the current catalog (and, with ``dataset``, against the\ndata: binding, shape, slots, variables). Nothing is saved; the issues point into the\ndocument.",
+        "operationId": "validate_library_document",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryValidation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEC_PARSE_ERROR": {
+                    "summary": "The document could not be parsed",
+                    "value": {
+                      "code": "SPEC_PARSE_ERROR",
+                      "detail": "The document could not be parsed",
+                      "errors": [],
+                      "status": 400,
+                      "title": "The document could not be parsed",
+                      "type": "urn:mapi:error:SPEC_PARSE_ERROR"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SPEC_PARSE_ERROR"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LIBRARY_INVALID": {
+                    "summary": "The library document is not valid",
+                    "value": {
+                      "code": "LIBRARY_INVALID",
+                      "detail": "The library document is not valid",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The library document is not valid",
+                      "type": "urn:mapi:error:LIBRARY_INVALID"
+                    }
+                  },
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  },
+                  "SCHEMA_UNSAFE": {
+                    "summary": "The JSON Schema uses a feature that is not safe",
+                    "value": {
+                      "code": "SCHEMA_UNSAFE",
+                      "detail": "The JSON Schema uses a feature that is not safe",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The JSON Schema uses a feature that is not safe",
+                      "type": "urn:mapi:error:SCHEMA_UNSAFE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Validate Library Document",
+        "tags": [
+          "library"
+        ]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Who is calling, and the tenants, projects and roles they can act in. For a token:\nonly its own project (its scopes narrow every role shown).",
@@ -65977,6 +70638,498 @@
         ]
       }
     },
+    "/v1/tenants/{tenant_id}/me/onboarding": {
+      "get": {
+        "description": "Your checklist and tour progress in this tenant (``ETag``: its version). Before the\nfirst change it is empty, at version 0.",
+        "operationId": "get_onboarding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Onboarding",
+        "tags": [
+          "onboarding"
+        ]
+      },
+      "patch": {
+        "description": "Merge progress: steps completed, tours moved, the checklist dismissed, tips off,\nsamples hidden. A completed step never reverts (only ``:reset`` starts again). With\n``If-Match`` the change applies only to that version (``412`` when it moved).",
+        "operationId": "update_onboarding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 130,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PRECONDITION_FAILED": {
+                    "summary": "Precondition failed",
+                    "value": {
+                      "code": "PRECONDITION_FAILED",
+                      "detail": "Precondition failed",
+                      "errors": [],
+                      "status": 412,
+                      "title": "Precondition failed",
+                      "type": "urn:mapi:error:PRECONDITION_FAILED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PRECONDITION_FAILED"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Update Onboarding",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/me/onboarding:reset": {
+      "post": {
+        "description": "Start the tours and the checklist again and turn tips back on. The samples you hid\nstay hidden, and the welcome dialog does not show again.",
+        "operationId": "reset_onboarding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Reset Onboarding",
+        "tags": [
+          "onboarding"
+        ]
+      }
+    },
     "/v1/tenants/{tenant_id}/members": {
       "get": {
         "operationId": "list_tenant_members",
@@ -66707,6 +71860,685 @@
         "summary": "Update Project Member",
         "tags": [
           "tenants"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/samples": {
+      "get": {
+        "description": "The sample projects of the tenant: what each is, whether it is installed and how far\nit got, and what you may do with it. Empty when samples are turned off.",
+        "operationId": "list_samples",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SampleInfo"
+                  },
+                  "title": "Response List Samples",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "List Samples",
+        "tags": [
+          "samples"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:install": {
+      "post": {
+        "description": "Install the sample (``202``: its project is made and the fit starts as you), or join\nthe one installed (``200``: a membership of its project, at most ``runner``).",
+        "operationId": "install_sample",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,30}[a-z0-9])?$",
+              "title": "Sample Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  },
+                  "SAMPLES_DISABLED": {
+                    "summary": "Sample projects are turned off",
+                    "value": {
+                      "code": "SAMPLES_DISABLED",
+                      "detail": "Sample projects are turned off",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Sample projects are turned off",
+                      "type": "urn:mapi:error:SAMPLES_DISABLED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND, SAMPLES_DISABLED"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "QUOTA_EXCEEDED": {
+                    "summary": "Quota exceeded",
+                    "value": {
+                      "code": "QUOTA_EXCEEDED",
+                      "detail": "Quota exceeded",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Quota exceeded",
+                      "type": "urn:mapi:error:QUOTA_EXCEEDED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, QUOTA_EXCEEDED"
+          }
+        },
+        "summary": "Install Sample",
+        "tags": [
+          "samples"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retire": {
+      "post": {
+        "description": "Retire the sample: it is hidden for everyone and the grants it made are removed. Its\nproject, data and models stay.",
+        "operationId": "retire_sample",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,30}[a-z0-9])?$",
+              "title": "Sample Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  },
+                  "SAMPLES_DISABLED": {
+                    "summary": "Sample projects are turned off",
+                    "value": {
+                      "code": "SAMPLES_DISABLED",
+                      "detail": "Sample projects are turned off",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Sample projects are turned off",
+                      "type": "urn:mapi:error:SAMPLES_DISABLED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND, SAMPLES_DISABLED"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Retire Sample",
+        "tags": [
+          "samples"
+        ]
+      }
+    },
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retry": {
+      "post": {
+        "description": "Start a failed sample again; its next runs are yours. ``409`` when it is not failed\nor used its attempts.",
+        "operationId": "retry_sample",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,30}[a-z0-9])?$",
+              "title": "Sample Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  },
+                  "SAMPLES_DISABLED": {
+                    "summary": "Sample projects are turned off",
+                    "value": {
+                      "code": "SAMPLES_DISABLED",
+                      "detail": "Sample projects are turned off",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Sample projects are turned off",
+                      "type": "urn:mapi:error:SAMPLES_DISABLED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND, SAMPLES_DISABLED"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CONFLICT": {
+                    "summary": "Conflict",
+                    "value": {
+                      "code": "CONFLICT",
+                      "detail": "Conflict",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Conflict",
+                      "type": "urn:mapi:error:CONFLICT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CONFLICT"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "QUOTA_EXCEEDED": {
+                    "summary": "Quota exceeded",
+                    "value": {
+                      "code": "QUOTA_EXCEEDED",
+                      "detail": "Quota exceeded",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Quota exceeded",
+                      "type": "urn:mapi:error:QUOTA_EXCEEDED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, QUOTA_EXCEEDED"
+          }
+        },
+        "summary": "Retry Sample",
+        "tags": [
+          "samples"
         ]
       }
     },
@@ -70026,6 +75858,7 @@
     },
     "/v1/workflow-templates": {
       "get": {
+        "description": "The built-in templates and those of installed plugins (``source: \"plugin\"``; v0.18).",
         "operationId": "list_workflow_templates",
         "parameters": [
           {

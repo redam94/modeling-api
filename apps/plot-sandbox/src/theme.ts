@@ -2,13 +2,14 @@ import type { Theme } from "./protocol";
 
 /** Shared chart palette; mirrors the web app's `--series-*` tokens. */
 export const SERIES: Record<Theme, string[]> = {
-  light: ["#2954ff", "#0068ad", "#12871c", "#cc4b00", "#b41880", "#832eea", "#646c72", "#0e8a6a"],
-  dark: ["#85a3ff", "#7ab6ff", "#6ce07b", "#ff9e66", "#ed78c6", "#b794ff", "#a2a9b0", "#45e4b6"],
+  light: ["#3a2bd6", "#e0452b", "#0a8768", "#b56a00", "#c0287f", "#0a7fb5", "#5f7f00", "#6e6a8a"],
+  dark: ["#aaa3ff", "#ff8a70", "#3fd6aa", "#ffb84d", "#ff7ac0", "#5cc4f5", "#c8ef4f", "#aeabc8"],
 };
 
+/** Mirrors `--foreground`, `--muted-foreground`, `--chart-grid` and `--chart-base`. */
 export const INK: Record<Theme, { text: string; muted: string; grid: string; domain: string }> = {
-  light: { text: "#121619", muted: "#4d5358", grid: "#e7eaee", domain: "#c1c7cd" },
-  dark: { text: "#f4f5f7", muted: "#a2a9b0", grid: "#2c3440", domain: "#3c4552" },
+  light: { text: "#18152f", muted: "#48455f", grid: "#e0deec", domain: "#c3c0d5" },
+  dark: { text: "#f2f1fa", muted: "#b6b3d2", grid: "#2e2866", domain: "#433c86" },
 };
 
 // The sandbox loads no web font of its own: Inter only shows where the viewer has it installed.

@@ -1,9 +1,9 @@
-"""{{plugin_id}}: a baseline model scaffolded by ``mapi plugin init``.
+"""{{model_id}}: a baseline model scaffolded by ``mapi plugin init``.
 
 ``GroupMeanModel`` predicts each group's training mean of the target (optionally shrunk
 toward the global mean); new groups get the global mean (``pooled``) or zero. It is a
 minimal but complete :class:`~mapi_sdk.models.CustomModel`: replace ``fit``/``score`` with
-your model and keep ``mapi plugin test`` (the contract kit) green.
+your model, update the About card and keep ``mapi plugin test`` (the contract kit) green.
 
 The platform owns coordinates: binding dataset names to the canonical names below
 (``geo``, ``time``, ``y``), reindexing score data to the fit order, flagging new levels
@@ -27,10 +27,11 @@ from mapi_sdk.models import (
     new_level_mask,
 )
 from mapi_spec import Capabilities, Representation
+from mapi_spec.about import About
 from mapi_spec.spec import FitConfig, ScoreRequest
 from pydantic import Field
 
-__all__ = ["GroupMeanModel", "GroupMeanSettings"]
+__all__ = ["MODELS", "GroupMeanModel", "GroupMeanSettings"]
 
 GROUP, TIME, TARGET = "geo", "time", "y"
 
@@ -44,7 +45,7 @@ class GroupMeanSettings(ModelSettings):
 
 
 class GroupMeanModel(CustomModel[GroupMeanSettings]):
-    id = "{{plugin_id}}"
+    id = "{{model_id}}"
     version = "0.1.0"
     description = "Per-group mean of the target (a baseline to start from)"
     Settings = GroupMeanSettings
@@ -52,6 +53,21 @@ class GroupMeanModel(CustomModel[GroupMeanSettings]):
         inference="point",
         representation=Representation.POINT,
         score_modes=frozenset({"predict", "forecast", "evaluate"}),
+    )
+    # The catalog card analysts read (Catalog, Help me choose, the model page). Plain words:
+    # what it does for them, when to use it and when not to.
+    about: ClassVar[About | None] = About(
+        title="Group mean baseline",
+        summary_plain="Predicts each group with its own average. Use it as a simple baseline "
+        "to beat.",
+        use_when=["You need a quick baseline before you fit a real model"],
+        avoid_when=["You must explain what drives the target"],
+        data_needs=["A numeric target per group and period"],
+        assumptions=["Each group's level does not change over time"],
+        outputs=["One predicted value per group and period"],
+        difficulty="beginner",
+        typical_runtime="instant",
+        example="A store that sold 200 a week on average is predicted to sell 200 next week.",
     )
     # the data the model accepts, in canonical names: one categorical group dim whose new
     # levels are pooled, one time dim that may be extended, and a float target
@@ -104,3 +120,7 @@ class GroupMeanModel(CustomModel[GroupMeanSettings]):
             coords={GROUP: groups, TIME: ds[TIME].values},
         )
         return xr.DataTree.from_dict({PREDICTIONS: xr.Dataset({"y_hat": y_hat})})
+
+
+MODELS = [GroupMeanModel]
+"""The ``mapi.models`` entry point: every model class listed here is registered."""

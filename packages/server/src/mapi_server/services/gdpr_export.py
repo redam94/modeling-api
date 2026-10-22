@@ -22,8 +22,9 @@ Contents (``include`` selects the parts):
 
 * ``metadata/<table>.jsonl``: every row of every tenant table (projects, members, tokens,
   datasets and versions with their schemas and profiles, specs and revisions with their
-  YAML, runs, models and versions, plots, ...), discovered from the catalog so tables added
-  later are exported too. Columns that hold credentials (token hashes, HMAC keys, nonces,
+  YAML, runs, models and versions, plots, v0.18 library items and revisions, onboarding
+  progress and sample rows, ...), discovered from the catalog so tables added later are
+  exported too. Columns that hold credentials (token hashes, HMAC keys, nonces,
   webhook secrets) are redacted;
 * ``datasets/<dataset>/v<n>/<object>``: the stored objects of every ready dataset version,
   copied byte for byte (never decoded), up to ``MAPI_EXPORT_MAX_INLINE_BYTES`` in total;

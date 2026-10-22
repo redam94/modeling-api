@@ -51,27 +51,36 @@ id                          what it automates
 Templates are complete :class:`~mapi_spec.workflow.WorkflowSpec` documents that pass
 :func:`~mapi_spec.workflow.validate_workflow` (a test checks it);
 :func:`instantiate_template` names a copy for a project.
+
+v0.18: plugins add templates through the ``mapi.workflow_templates`` entry-point group (a
+:class:`~mapi_spec.catalog.TemplateCatalogEntry` in the catalog);
+:func:`template_from_entry` turns one into a gallery template with ``source="plugin"``.
 """
 
 from __future__ import annotations
 
 import copy
-from typing import Any, Final, cast
+from typing import Any, Final, Literal, cast
 
 from pydantic import Field, JsonValue
 
 from mapi_spec._dto import ResponseModel, dto_examples
 from mapi_spec._types import Slug
 from mapi_spec.about import About, AboutReference, Difficulty, TypicalRuntime
+from mapi_spec.catalog import TemplateCatalogEntry
 from mapi_spec.guided import MMM_MODEL_ID, MMM_TEMPLATE_SETTINGS
 from mapi_spec.workflow import WorkflowSpec
 
 __all__ = [
     "WORKFLOW_TEMPLATES",
+    "TemplateSource",
     "WorkflowTemplate",
     "get_workflow_template",
     "instantiate_template",
+    "template_from_entry",
 ]
+
+TemplateSource = Literal["builtin", "plugin"]
 
 
 class WorkflowTemplate(ResponseModel):
@@ -82,6 +91,11 @@ class WorkflowTemplate(ResponseModel):
     about: About
     document: dict[str, JsonValue]
     tags: list[str] = Field(default_factory=list, max_length=16)
+    source: TemplateSource = Field(
+        "builtin",
+        description="v0.18: 'plugin' for a template an installed plugin added",
+        exclude_if=lambda v: v == "builtin",
+    )
 
     model_config = dto_examples(
         {
@@ -1495,3 +1509,16 @@ def instantiate_template(
     assert isinstance(labels, dict)
     labels["workflow-template"] = t.id
     return WorkflowSpec.model_validate(doc)
+
+
+def template_from_entry(e: TemplateCatalogEntry) -> WorkflowTemplate:
+    """The gallery template of a plugin's catalog entry (``source="plugin"``). The caller
+    validates its document against the merged node contracts first."""
+    return WorkflowTemplate(
+        id=e.id,
+        version=e.version,
+        about=e.about,
+        document=copy.deepcopy(e.document),
+        tags=list(e.tags),
+        source="plugin",
+    )

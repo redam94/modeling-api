@@ -1,4 +1,7 @@
-"""Health, identity, projects, catalog and JSON Schemas."""
+"""Health, identity, projects, catalog and JSON Schemas.
+
+v0.18: the catalog diagnostics (tenant admins and operators) and the live recipe previews of
+the plot catalog (thin handlers over :mod:`mapi_server.services.plot_previews`)."""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ import time
 from functools import lru_cache
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Header, Path, Query, Request
 from fastapi.responses import JSONResponse
 from mapi_spec.about import (
     CHOOSER_QUESTIONS,
@@ -19,6 +22,7 @@ from mapi_spec.about import (
 )
 from mapi_spec.abouts import builtin_about_kind, builtin_abouts
 from mapi_spec.api import (
+    PREFER_HEADER,
     CatalogAbout,
     CatalogResponse,
     Health,
@@ -28,13 +32,18 @@ from mapi_spec.api import (
 )
 from mapi_spec.catalog import (
     Catalog,
+    CatalogDiagnostic,
     ModelCatalogEntry,
     PlotCatalogEntry,
     StepCatalogEntry,
 )
+from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.jobs import RecipePreviewRequest, RecipePreviewResult
 from mapi_spec.jsonschema_export import export_schemas
 from mapi_spec.plots import PlotSpec
 from mapi_spec.refs import Version
+from mapi_spec.tenancy import ProjectRole
+from mapi_spec.tokens import ScopeName
 from sqlalchemy import text
 
 import mapi_server
@@ -50,8 +59,10 @@ from mapi_server.api.common import (
 )
 from mapi_server.api.problems import responses_for
 from mapi_server.api.tenancy import project_dto, visible_projects
+from mapi_server.auth.request import RequestAuth
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.plot_previews import preview_result, preview_wait, request_preview
 
 __all__ = ["router"]
 
@@ -255,6 +266,91 @@ async def get_catalog_plot_example(
     if example is None:
         raise NotFoundError("plot example", f"{plot_id}@{version}")
     return example
+
+
+def _may_read_diagnostics(auth: RequestAuth) -> bool:
+    """Operators, and tenant admins of any tenant (an API token also needs the ``admin``
+    scope). Diagnostics are about the platform's image, not about one tenant's data."""
+    if auth.operator:
+        return True
+    if auth.token is not None and ScopeName.ADMIN.value not in auth.token.scopes:
+        return False
+    return any(mm.role is ProjectRole.ADMIN and mm.project_id is None for mm in auth.memberships)
+
+
+@router.get(
+    "/v1/catalog/diagnostics",
+    response_model=list[CatalogDiagnostic],
+    tags=["catalog"],
+    operation_id="list_catalog_diagnostics",
+    summary="Problems found while the current catalog was built (tenant admins, operators)",
+    responses=responses_for("list_catalog_diagnostics"),
+)
+async def list_catalog_diagnostics(
+    ctx: Ctx, auth: Auth, session: SystemSession
+) -> list[CatalogDiagnostic]:
+    """Load errors, reserved namespaces, unsafe schemas that were stripped, and plugin
+    workflow nodes and templates that were hidden. ``message`` is platform text;
+    ``untrusted_text`` comes from a plugin and is shown as text only. Empty while no catalog
+    is cached for the image digest."""
+    if not _may_read_diagnostics(auth):
+        raise MapiError(
+            "Only tenant admins and operators can see the catalog diagnostics.",
+            code=ErrorCode.FORBIDDEN,
+        )
+    snap = await ctx.catalogs.get(session)
+    return [] if snap is None else list(snap.diagnostics)
+
+
+# ===================================================== live recipe previews (v0.18, WP-T2)
+
+_ID = r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$"
+PreferHeader = Annotated[str | None, Header(alias=PREFER_HEADER, max_length=200)]
+
+
+@router.post(
+    "/v1/catalog/plots/{plot_id}/{version}:preview",
+    response_model=RecipePreviewResult,
+    status_code=202,
+    tags=["catalog"],
+    operation_id="preview_catalog_plot",
+    summary="Draw a plot recipe's example with these settings (Prefer: wait=N, at most 15)",
+    responses=responses_for("preview_catalog_plot"),
+)
+async def preview_catalog_plot(
+    request: Request,
+    ctx: Ctx,
+    plot_id: Annotated[str, Path(pattern=_ID)],
+    version: Annotated[str, Path(pattern=r"^\d+\.\d+\.\d+$")],
+    body: RecipePreviewRequest,
+    prefer: PreferHeader = None,
+) -> JSONResponse:
+    """``200`` with the plot when it is done (or cached), else ``202`` with the ``run_id``
+    to poll at ``GET /v1/catalog/plots/previews/{run_id}``. The settings are checked against
+    the recipe's settings schema before any run (``SCHEMA_INVALID`` with pointers)."""
+    result = await request_preview(
+        ctx,
+        plot_id,
+        version,
+        body,
+        wait=preview_wait(ctx, prefer),
+        disconnected=request.is_disconnected,
+    )
+    return JSONResponse(result.model_dump(mode="json"), status_code=200 if result.done else 202)
+
+
+@router.get(
+    "/v1/catalog/plots/previews/{run_id}",
+    response_model=RecipePreviewResult,
+    tags=["catalog"],
+    operation_id="get_catalog_plot_preview",
+    summary="The result of a recipe preview run",
+    responses=responses_for("get_catalog_plot_preview"),
+)
+async def get_catalog_plot_preview(
+    ctx: Ctx, run_id: Annotated[str, Path(pattern=_ID)]
+) -> RecipePreviewResult:
+    return await preview_result(ctx, run_id)
 
 
 @lru_cache(maxsize=1)

@@ -14,6 +14,10 @@
       "level": "project",
       "min_role": "viewer"
     },
+    "catalog:update": {
+      "level": "platform",
+      "min_role": null
+    },
     "dashboard:create": {
       "level": "project",
       "min_role": "editor"
@@ -133,6 +137,22 @@
     "kill_switch:update": {
       "level": "platform",
       "min_role": null
+    },
+    "library:create": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "library:delete": {
+      "level": "project",
+      "min_role": "editor"
+    },
+    "library:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "library:update": {
+      "level": "project",
+      "min_role": "editor"
     },
     "member:create": {
       "level": "project",
@@ -319,6 +339,22 @@
       "min_role": "admin"
     },
     "tenant_export:read": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_library:create": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_library:delete": {
+      "level": "tenant",
+      "min_role": "admin"
+    },
+    "tenant_library:read": {
+      "level": "project",
+      "min_role": "viewer"
+    },
+    "tenant_library:update": {
       "level": "tenant",
       "min_role": "admin"
     },

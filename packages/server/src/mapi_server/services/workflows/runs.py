@@ -39,7 +39,7 @@ from mapi_spec.workflow import (
     check_run_params,
     topological_order,
 )
-from mapi_spec.workflow_nodes import NODE_IMPLEMENTATIONS, NodeKind, PortType
+from mapi_spec.workflow_nodes import NodeKind, PortType
 from pydantic import JsonValue
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,6 +54,7 @@ from mapi_server.services.notify import notify_run
 from mapi_server.services.runs import Scope, now
 from mapi_server.services.specs import resolve_dataset, resolve_model_version
 from mapi_server.services.submit import refuse_collection
+from mapi_server.services.workflows.node_catalog import node_contracts
 from mapi_server.services.workflows.store import load_revision, workflow_ref
 
 __all__ = [
@@ -174,6 +175,16 @@ async def start_workflow_run(
             code=ErrorCode.WORKFLOW_NOT_RUNNABLE,
         )
     spec = WorkflowSpec.model_validate(rev.document)
+    # v0.18: a plugin node is valid only while the current catalog still has its contract
+    nodes = await node_contracts(ctx, session)
+    missing = sorted({n.impl_id for n in spec.nodes if n.impl_id not in nodes})
+    if missing:
+        raise MapiError(
+            f"revision {rev.revision} of {workflow_ref(wf)} uses workflow nodes that are not "
+            f"installed now: {', '.join(missing)}. Ask an operator to install the plugin, or "
+            "save a revision without them",
+            code=ErrorCode.EXTENSION_UNAVAILABLE,
+        )
     params = check_run_params(spec, dict(body.params))
     pinned, refs, identities = await _resolve_inputs(session, scope, spec, body.inputs)
     active = (
@@ -267,7 +278,7 @@ async def start_workflow_run(
     for i, nid in enumerate(topological_order(spec)):
         node = spec.node(nid)
         assert node is not None
-        impl = NODE_IMPLEMENTATIONS[node.impl_id]
+        impl = nodes[node.impl_id]
         session.add(
             m.WorkflowNodeRunRow(
                 run_id=run_id,

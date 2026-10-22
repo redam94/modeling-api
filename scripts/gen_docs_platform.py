@@ -88,6 +88,9 @@ RESOURCE_LABELS: dict[str, str] = {
     "dashboard": "Client dashboards, their revisions, inputs and readouts",
     "dashboard_grant": "Which client users see a dashboard",
     "dashboard_share": "Share links of a dashboard",
+    # v0.18
+    "library": "A project's library: model recipes, prep presets, chart and workflow templates",
+    "tenant_library": "Tenant-wide library items, readable from every project of the tenant",
 }
 
 ACTION_NOTES: dict[tuple[str, str], str] = {
@@ -105,6 +108,9 @@ ACTION_NOTES: dict[tuple[str, str], str] = {
     ("model", "validate"): "submit, resubmit or cancel a governance validation",
     ("model", "approve"): "needs the reviewer capability; never the submitter, never a token",
     ("model", "update"): "deprecate a validated version",
+    ("catalog", "update"): "refresh the catalog (`POST /v1/admin/catalog:describe`)",
+    ("library", "delete"): "archive an item",
+    ("tenant_library", "delete"): "archive an item",
 }
 
 

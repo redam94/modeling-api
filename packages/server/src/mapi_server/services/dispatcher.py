@@ -680,6 +680,13 @@ class Dispatcher:
                 if mv is not None:
                     ref = (mv.lineage or {}).get("plugin")
             elif run.kind == RunKind.WORKFLOW_NODE.value:
+                from mapi_server.services.workflows.node_catalog import NODE_PLUGIN_PARAM
+
+                # a plugin node (v0.18) names its plugin's namespace in a platform-set param
+                params = (run.payload or {}).get("params")
+                node_plugin = params.get(NODE_PLUGIN_PARAM) if isinstance(params, dict) else None
+                if isinstance(node_plugin, str) and _NAMESPACE.match(node_plugin):
+                    return node_plugin
                 ref = await _workflow_node_model(session, run)
         if not isinstance(ref, str) or "." not in ref:
             return None

@@ -15,28 +15,38 @@ with ``{"$ref": "<dataset>.<column>"}`` (one shared table instead of one per tra
 
 Recipe objects satisfy the SDK's ``PlotRecipe`` protocol (``catalog_entry()`` + ``render``),
 so ``Registry.register`` accepts them and the ``mapi.plots`` entry points expose them.
+
+The catalog entry (v0.18) also carries the recipe's settings as a safe JSON Schema (the
+recipe playground renders a form from it), its tags and the name of its pack. A third-party
+recipe checks all of this with :func:`mapi_plots.testing.check_recipe`.
 """
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from functools import cache
+from typing import Any, Final, Literal
 
 import altair as alt
 import pandas as pd
 import xarray as xr
+from mapi_spec._types import SLUG_RE
 from mapi_spec.about import About
 from mapi_spec.capabilities import Representation
 from mapi_spec.catalog import PlotCatalogEntry
-from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.errors import ErrorCode, MapiError, json_pointer
 from mapi_spec.plots import PlotBindings, PlotSpec
+from mapi_spec.schema_safety import sanitize_settings_schema
 from mapi_spec.spec import Binding
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from mapi_plots.convert import from_altair, from_plotly
 
 __all__ = [
+    "BUILTIN_PACK_LABELS",
     "ExampleFn",
     "Figure",
     "Recipe",
@@ -49,6 +59,8 @@ __all__ = [
     "named",
     "plotly_plot",
     "recipe",
+    "recipe_tags",
+    "settings_schema_of",
     "wrap_facet",
 ]
 
@@ -238,6 +250,53 @@ class RecipeInput:
         return out
 
 
+BUILTIN_PACK_LABELS: Final[Mapping[str, str]] = {
+    "core": "Core",
+    "mmm": "Marketing mix",
+    "ml": "Machine learning",
+    "sci": "Science",
+    "net": "Networks",
+    "causal": "Causal inference",
+}
+"""The pack name the catalog card shows for a built-in namespace (a recipe's own
+``pack_label`` wins). Only built-in distributions may register in these namespaces."""
+
+_SLUG: Final = re.compile(SLUG_RE)
+_MAX_TAGS: Final = 8
+
+
+def recipe_tags(tags: Iterable[str]) -> list[str]:
+    """The tags a catalog entry can carry: slugs only, without repeats, at most 8.
+
+    A tag that is not a slug is left out here rather than failing the catalog (one bad tag
+    never hides a recipe); :func:`mapi_plots.testing.check_recipe` reports it."""
+    return [t for t in dict.fromkeys(tags) if isinstance(t, str) and _SLUG.match(t)][:_MAX_TAGS]
+
+
+@cache
+def _settings_schema_json(settings: type[BaseModel]) -> str | None:
+    try:
+        raw = settings.model_json_schema()
+    except Exception:  # plugin settings with a type JSON Schema cannot express
+        return None
+    safe = sanitize_settings_schema(raw)
+    return None if safe is None else json.dumps(safe)
+
+
+def settings_schema_of(settings: type[BaseModel]) -> dict[str, JsonValue] | None:
+    """A recipe settings class as the safe JSON Schema the catalog publishes.
+
+    The Pydantic schema goes through :func:`~mapi_spec.schema_safety.sanitize_settings_schema`
+    (``strip`` mode, at most 16 KiB). ``None`` when the schema cannot be generated or is still
+    too large: the catalog entry then has no settings form. Cached per settings class; every
+    call returns a fresh copy."""
+    text = _settings_schema_json(settings)
+    if text is None:
+        return None
+    out: dict[str, JsonValue] = json.loads(text)
+    return out
+
+
 RecipeFn = Callable[[RecipeInput, Any], Figure]
 ExampleFn = Callable[[], tuple[Any, Mapping[str, Any]]]
 """Synthetic ``(data, options)`` a recipe renders for its catalog example."""
@@ -259,10 +318,23 @@ class Recipe[S: RecipeSettings]:
     tags: tuple[str, ...] = field(default_factory=tuple)
     about: About | None = None
     example: ExampleFn | None = field(default=None, compare=False)
+    pack_label: str | None = None
+    """The pack name on the catalog card (at most 40 characters); built-in namespaces
+    default to :data:`BUILTIN_PACK_LABELS`."""
 
     @property
     def ref(self) -> str:
         return f"{self.id}@{self.version}"
+
+    @property
+    def namespace(self) -> str:
+        return self.id.split(".", 1)[0]
+
+    @property
+    def card_pack_label(self) -> str | None:
+        """``pack_label``, else the built-in pack name of the namespace (clipped to 40)."""
+        label = self.pack_label or BUILTIN_PACK_LABELS.get(self.namespace)
+        return label[:40] if label else None
 
     def catalog_entry(self) -> PlotCatalogEntry:
         from mapi_spec.plot_abouts import PLOT_ABOUTS
@@ -276,28 +348,42 @@ class Recipe[S: RecipeSettings]:
             requires_groups=list(self.requires_groups),
             summary=self.summary[:300] or None,
             about=self.about or PLOT_ABOUTS.get(self.id),
+            settings_schema=settings_schema_of(self.settings),
+            tags=recipe_tags(self.tags),
+            pack_label=self.card_pack_label,
         )
 
-    def example_spec(self) -> PlotSpec | None:
-        """The recipe rendered on its synthetic example data (``None`` when it has none):
+    def example_input(self) -> tuple[Any, Mapping[str, Any]] | None:
+        """The synthetic ``(data, options)`` of the catalog example, ``None`` without one:
         ``example`` if given, else the bundled one (:mod:`mapi_plots.examples`)."""
         if self.example is not None:
-            data, options = self.example()
-        else:
-            from mapi_plots.examples import example_inputs
+            return self.example()
+        from mapi_plots.examples import example_inputs
 
-            found = example_inputs().get(self.id)
-            if found is None:
-                return None
-            data, options = found
-        return self.render(data, **options)
+        return example_inputs().get(self.id)
+
+    def example_spec(self, settings: Mapping[str, Any] | None = None) -> PlotSpec | None:
+        """The recipe rendered on its synthetic example data (``None`` when it has none).
+
+        ``settings`` (the recipe playground's form values) are merged over the example's
+        own options; ``None`` and ``{}`` render the plain catalog example. Invalid settings
+        raise :class:`RecipeDataError` (``SCHEMA_INVALID``) pointing at the first bad key."""
+        found = self.example_input()
+        if found is None:
+            return None
+        data, options = found
+        merged = {**options, **settings} if settings else dict(options)
+        return self.render(data, **merged)
 
     def parse_settings(self, options: Mapping[str, Any]) -> S:
         try:
             return self.settings.model_validate(dict(options))
         except ValidationError as exc:
+            errors = exc.errors(include_url=False, include_input=False)
+            loc = [p for p in errors[0]["loc"] if isinstance(p, str | int)] if errors else []
             raise RecipeDataError(
                 f"invalid settings for {self.id}: {exc.error_count()} error(s)",
+                pointer=json_pointer(*loc) if loc else "",
                 untrusted_text=str(exc)[:4000],
             ) from None
 
@@ -438,12 +524,14 @@ def recipe(
     tags: Iterable[str] = (),
     about: About | None = None,
     example: ExampleFn | None = None,
+    pack_label: str | None = None,
 ) -> Callable[[Callable[[RecipeInput, Any], Figure]], Recipe[Any]]:
     """Decorator turning ``fn(inp, settings) -> Figure`` into a registered :class:`Recipe`.
 
     ``about`` is the plot's About card (built-in recipes take theirs from
     :data:`mapi_spec.plot_abouts.PLOT_ABOUTS`); ``example`` returns synthetic ``(data,
-    options)`` for the catalog's example render."""
+    options)`` for the catalog's example render; ``pack_label`` names the pack on the
+    catalog card (``tags`` are slugs, at most 8 reach the catalog)."""
 
     def wrap(fn: Callable[[RecipeInput, Any], Figure]) -> Recipe[Any]:
         doc = (fn.__doc__ or "").strip()
@@ -460,6 +548,7 @@ def recipe(
             tags=tuple(tags),
             about=about,
             example=example,
+            pack_label=pack_label,
         )
         _REGISTRY[id] = r
         return r

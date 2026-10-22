@@ -103,7 +103,7 @@ export function PlotFrame({
   }
 
   return (
-    <figure className={cn("group relative grid gap-2", className)}>
+    <figure className={cn("group relative grid gap-2", className)} aria-busy={status === "loading"}>
       {toolbar ? (
         <div className="absolute top-1 right-1 z-[1] flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
           <Button variant="outline" size="sm" onClick={() => hostRef.current?.requestExport("svg")} disabled={status !== "rendered"}>
@@ -127,11 +127,7 @@ export function PlotFrame({
           style={{ height: frameHeight }}
           data-testid="plot-frame"
         />
-        {status === "loading" ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <Spinner />
-          </div>
-        ) : null}
+        {status === "loading" ? <PlotSkeleton /> : null}
       </div>
       {status === "error" && error ? (
         <figcaption role="alert" className="text-xs text-destructive">
@@ -139,5 +135,32 @@ export function PlotFrame({
         </figcaption>
       ) : null}
     </figure>
+  );
+}
+
+// Bar heights of the skeleton, as a share of the plot area: a calm rise and fall, not data.
+const SKELETON_BARS = [0.42, 0.58, 0.5, 0.72, 0.64, 0.86, 0.7, 0.54, 0.62, 0.46];
+
+/**
+ * What a plot shows while the sandbox draws it: a chart-shaped placeholder (gridlines, an axis
+ * and muted bars) in token colours, so the page keeps its shape. Static: it never pulses; the
+ * small spinner in the corner is the only motion, and the reduced-motion override stops it.
+ */
+function PlotSkeleton() {
+  return (
+    <div aria-hidden data-slot="plot-skeleton" className="pointer-events-none absolute inset-0 flex flex-col gap-3 rounded-md bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="h-3 w-1/3 max-w-40 rounded-full bg-muted" />
+        <Spinner className="text-hint" />
+      </div>
+      <div className="relative flex min-h-0 flex-1 items-end gap-[3%] border-b-2 border-chart-base px-[2%]">
+        <div className="absolute inset-x-0 top-1/4 h-px bg-chart-grid" />
+        <div className="absolute inset-x-0 top-1/2 h-px bg-chart-grid" />
+        <div className="absolute inset-x-0 top-3/4 h-px bg-chart-grid" />
+        {SKELETON_BARS.map((h, i) => (
+          <div key={i} className="relative flex-1 rounded-t-md bg-muted" style={{ height: `${h * 100}%` }} />
+        ))}
+      </div>
+    </div>
   );
 }

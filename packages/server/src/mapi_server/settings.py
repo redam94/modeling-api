@@ -35,6 +35,7 @@ from mapi_server import __version__
 from mapi_server.clientaddr import normalise_trusted_proxies
 
 __all__ = [
+    "CHECKOUT_EXTRA_LIST",
     "DEFAULT_CLOUDRUN_BASES",
     "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
@@ -140,39 +141,91 @@ class ObjectStoreKind(StrEnum):
     GCS = "gcs"  # real Cloud Storage (mapi_gcs_shim.GcsObjectStore; the `gcp` extra)
 
 
-def local_image_digest(lock_path: Path) -> str:
-    """``sha256:<hex>`` of ``uv.lock``: the image digest of an environment built from it."""
-    return "sha256:" + hashlib.sha256(lock_path.read_bytes()).hexdigest()
+_EXTENSIONS_SEPARATOR = b"\0ext\0"
+"""Separates ``uv.lock`` from the extensions lock in the digest (v0.18)."""
+
+
+def local_image_digest(lock_path: Path, extensions_lock: Path | None = None) -> str:
+    """``sha256:<hex>`` of ``uv.lock``: the image digest of an environment built from it.
+
+    v0.18: an image built from ``images/extend`` (a base image plus operator-installed plugin
+    wheels) also has an extensions lock; its bytes are folded in
+    (``sha256(uv.lock ‖ "\\0ext\\0" ‖ extensions.lock)``), so the extended image gets its own
+    catalog. Without one the digest is that of ``uv.lock`` alone (unchanged)."""
+    h = hashlib.sha256(lock_path.read_bytes())
+    if extensions_lock is not None:
+        h.update(_EXTENSIONS_SEPARATOR)
+        h.update(extensions_lock.read_bytes())
+    return "sha256:" + h.hexdigest()
 
 
 CHECKOUT_SOURCES = ("packages/*/src", "plugins/*/src")
 """The workspace sources a source checkout's catalog is made from (steps, models, plots and
 the runner that describes them), relative to the directory of ``uv.lock``."""
 
+CHECKOUT_EXTRA_LIST = ".local/extra-plugins.txt"
+"""v0.18: the out-of-tree plugins installed into a source checkout (``make plugin-dev``), one
+plugin directory per line (relative to the directory of ``uv.lock`` or absolute; ``#``
+comments and blank lines are ignored). :func:`checkout_image_digest` hashes the ``src/``
+of each, so installing, changing or removing one describes the catalog again."""
 
-def checkout_image_digest(lock_path: Path) -> str:
-    """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
-    under :data:`CHECKOUT_SOURCES` (path and content).
 
-    A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
-    changes the catalog, so it must change the digest too, or the catalog cached under the
-    old digest is served forever. Without workspace sources next to the lock this is
-    :func:`local_image_digest`."""
-    root = lock_path.parent
-    files = sorted(
+def _source_files(src: Path) -> list[Path]:
+    return sorted(
         p
-        for pattern in CHECKOUT_SOURCES
-        for src in root.glob(pattern)
         for p in src.rglob("*")
         if p.is_file() and "__pycache__" not in p.parts and p.suffix not in {".pyc", ".pyo"}
     )
-    if not files:
-        return local_image_digest(lock_path)
+
+
+def _extra_plugin_dirs(root: Path) -> list[str]:
+    """The entries of :data:`CHECKOUT_EXTRA_LIST` (sorted, without duplicates)."""
+    path = root / CHECKOUT_EXTRA_LIST
+    if not path.is_file():
+        return []
+    entries = {
+        line.strip()
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    return sorted(entries)
+
+
+def checkout_image_digest(lock_path: Path, extensions_lock: Path | None = None) -> str:
+    """The image digest of a source checkout (``make dev``): ``uv.lock`` plus every file
+    under :data:`CHECKOUT_SOURCES` (path and content), plus the ``src/`` of every plugin
+    listed in :data:`CHECKOUT_EXTRA_LIST` (v0.18), plus ``extensions_lock`` when given.
+
+    A code change that leaves ``uv.lock`` alone (a new recipe, an About card, a fixed step)
+    changes the catalog, so it must change the digest too, or the catalog cached under the
+    old digest is served forever. Without workspace sources or extra plugins next to the
+    lock this is :func:`local_image_digest`."""
+    root = lock_path.parent
+    files = sorted(
+        p for pattern in CHECKOUT_SOURCES for src in root.glob(pattern) for p in _source_files(src)
+    )
+    extras = _extra_plugin_dirs(root)
+    if not files and not extras:
+        return local_image_digest(lock_path, extensions_lock)
     h = hashlib.sha256(lock_path.read_bytes())
     for p in files:
         h.update(p.relative_to(root).as_posix().encode())
         h.update(b"\0")
         h.update(hashlib.sha256(p.read_bytes()).digest())
+    for entry in extras:
+        # keyed by the entry as listed (not the absolute path): the digest does not depend
+        # on where the checkout lives; a listed directory that is gone still counts
+        h.update(b"\0extra\0" + entry.encode())
+        src = (root / entry / "src").resolve()
+        if not src.is_dir():
+            h.update(b"\0missing")
+            continue
+        for p in _source_files(src):
+            h.update(b"\0" + p.relative_to(src).as_posix().encode() + b"\0")
+            h.update(hashlib.sha256(p.read_bytes()).digest())
+    if extensions_lock is not None:
+        h.update(_EXTENSIONS_SEPARATOR)
+        h.update(extensions_lock.read_bytes())
     return "sha256:" + h.hexdigest()
 
 
@@ -440,6 +493,12 @@ class Settings(BaseSettings):
     )
     image_digest: str | None = Field(None, pattern=r"^sha256:[0-9a-f]{64}$")
     uv_lock_path: Path | None = None
+    extensions_lock_path: Path | None = Field(
+        None,
+        description="v0.18: the extensions lock of an image built from images/extend "
+        "(/opt/mapi/extensions.lock), folded into the image digest; mount the same file into "
+        "the api and the worker so both key the catalog alike",
+    )
     signing_key_path: Path | None = Field(
         None,
         description="PEM of the bundle-signing key (default: data_dir/keys/"
@@ -679,6 +738,44 @@ class Settings(BaseSettings):
         description="Accept new layout 1 (media planner only) dashboard specs on create and "
         "on a layout 2 draft's save (off, the default from v0.17: new dashboards are layout 2 "
         "and a layout 1 spec is refused with DASHBOARD_LAYOUT_RETIRED)",
+    )
+
+    # ------------------------------------------- the library, samples, recipe previews (v0.18)
+    library_items_per_tenant: int = Field(
+        500, ge=1, le=100_000, description="Library items (archived included) one tenant may have"
+    )
+    library_revisions_per_item: int = Field(
+        200, ge=1, le=10_000, description="Revisions one library item may have"
+    )
+    library_validate_per_minute: int = Field(
+        60, ge=1, le=10_000, description="Library document checks one user may ask for a minute"
+    )
+    library_chart_preview_per_minute: int = Field(
+        60, ge=1, le=10_000, description="Chart template previews one user may ask for a minute"
+    )
+    samples_enabled: bool = Field(
+        True, description="Offer the one-click sample project (off: the samples list is empty)"
+    )
+    sample_max_attempts: int = Field(
+        3,
+        ge=1,
+        le=20,
+        description="Attempts one sample project may take in all (the first install included)",
+    )
+    plot_preview_enabled: bool = Field(
+        True,
+        description="Live recipe previews (a render run on a recipe's example data). Default: "
+        "on, except with the cloudrun-jobs executor, where a job start is too slow for a live "
+        "control (set it explicitly to override)",
+    )
+    plot_preview_per_minute: int = Field(
+        20, ge=1, le=10_000, description="Recipe preview runs one user may start a minute"
+    )
+    plot_preview_per_day: int = Field(
+        200, ge=1, le=1_000_000, description="Recipe preview runs one tenant may start in 24 hours"
+    )
+    plot_preview_wait_s: float = Field(
+        15.0, ge=0, le=15, description="Longest Prefer: wait a recipe preview request may hold"
     )
 
     # ------------------------------------------------------------------- observability
@@ -1031,6 +1128,17 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _preview_default(self) -> Settings:
+        # live recipe previews wait on a render run: a Cloud Run Jobs start is too slow for
+        # a live control, so they are off there unless the operator turns them on
+        if (
+            "plot_preview_enabled" not in self.model_fields_set
+            and self.executor is ExecutorName.CLOUDRUN_JOBS
+        ):
+            self.plot_preview_enabled = False
+        return self
+
     # ------------------------------------------------------------------------- derived
     @property
     def effective_mailer(self) -> MailerKind:
@@ -1175,17 +1283,22 @@ class Settings(BaseSettings):
         """The image digest the catalog is cached under: ``image_digest``, else the
         ``sha256`` of ``uv_lock_path`` (the images bake their lock), else the source
         checkout's digest (:func:`checkout_image_digest` of the ``uv.lock`` above the
-        working directory: ``make dev`` describes again after a code change)."""
+        working directory: ``make dev`` describes again after a code change). v0.18: the
+        ``extensions_lock_path`` of an extended image is folded into the last two (never into
+        a literal ``image_digest``)."""
         if self.image_digest:
             return self.image_digest
+        ext = self.extensions_lock_path
+        if ext is not None and not ext.is_file():
+            raise RuntimeError(f"MAPI_EXTENSIONS_LOCK_PATH {ext} is not a file")
         if self.uv_lock_path is not None:
             if not self.uv_lock_path.is_file():
                 raise RuntimeError(f"MAPI_UV_LOCK_PATH {self.uv_lock_path} is not a file")
-            return local_image_digest(self.uv_lock_path)
+            return local_image_digest(self.uv_lock_path, ext)
         lock = _find_uv_lock(Path.cwd())
         if lock is None:
             raise RuntimeError(
                 "cannot determine the local image digest: set MAPI_IMAGE_DIGEST or "
                 "MAPI_UV_LOCK_PATH (no uv.lock found above the working directory)"
             )
-        return checkout_image_digest(lock)
+        return checkout_image_digest(lock, ext)

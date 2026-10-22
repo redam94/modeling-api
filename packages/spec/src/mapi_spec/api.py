@@ -18,8 +18,9 @@ optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
 :data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
 comparison, experiments and saved views, v0.14) and :data:`V015_ENDPOINTS` (resumable uploads and
 image collections, v0.15) and :data:`V016_ENDPOINTS` (client dashboards and share links, v0.16)
-and :data:`V017_ENDPOINTS` (dashboards for any model type, v0.17) are the machine-readable
-endpoint tables;
+and :data:`V017_ENDPOINTS` (dashboards for any model type, v0.17) and :data:`V018_ENDPOINTS`
+(the library, catalog extensions, recipe previews, onboarding and samples, v0.18) are the
+machine-readable endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -91,7 +92,12 @@ from mapi_spec.calibration import (
     PriorTranslationResult,
 )
 from mapi_spec.capabilities import Capabilities, Diagnostic
-from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEntry
+from mapi_spec.catalog import (
+    CatalogDiagnostic,
+    ModelCatalogEntry,
+    PlotCatalogEntry,
+    StepCatalogEntry,
+)
 from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
@@ -179,6 +185,18 @@ from mapi_spec.ingest import (
     VarMapping,
     WideVarMapping,
 )
+from mapi_spec.library import (
+    ChartPreview,
+    ChartPreviewRequest,
+    LibraryCreate,
+    LibraryItem,
+    LibraryRevision,
+    LibraryRevisionCreate,
+    LibraryUseRequest,
+    LibraryUseResult,
+    LibraryValidateRequest,
+    LibraryValidation,
+)
 from mapi_spec.media import (
     MAX_API_MEDIA_BYTES,
     MAX_MEDIA_CAPTION_CHARS,
@@ -186,11 +204,13 @@ from mapi_spec.media import (
     MediaKind,
     check_media,
 )
+from mapi_spec.onboarding import OnboardingPatch, OnboardingState
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import PlotSpec
 from mapi_spec.quotas import QuotaLimitStatus, QuotaPolicy, QuotaPolicyUpsert
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import BundleManifest, ChainProgress, FailureClass, RunnerPhase, RunState
+from mapi_spec.samples import SampleInfo
 from mapi_spec.schema import DataSchema
 from mapi_spec.scorecard import PromotionGateDecision, Scorecard, ScorecardItem
 from mapi_spec.sharing import (
@@ -337,6 +357,7 @@ __all__ = [
     "V015_ENDPOINTS",
     "V016_ENDPOINTS",
     "V017_ENDPOINTS",
+    "V018_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -354,7 +375,10 @@ __all__ = [
     "BlobMissing",
     "BlobQuery",
     "CatalogAbout",
+    "CatalogDiagnostic",
     "CatalogResponse",
+    "ChartPreview",
+    "ChartPreviewRequest",
     "CheckResult",
     "ChooserQuestionnaire",
     "ChooserResult",
@@ -437,6 +461,14 @@ __all__ = [
     "InspectedArray",
     "KillSwitchUpdate",
     "KillSwitches",
+    "LibraryCreate",
+    "LibraryItem",
+    "LibraryRevision",
+    "LibraryRevisionCreate",
+    "LibraryUseRequest",
+    "LibraryUseResult",
+    "LibraryValidateRequest",
+    "LibraryValidation",
     "Lineage",
     "LogLine",
     "Me",
@@ -462,6 +494,8 @@ __all__ = [
     "NodeImplementation",
     "NodeRun",
     "ObjectRef",
+    "OnboardingPatch",
+    "OnboardingState",
     "Optimization",
     "OptimizeRequest",
     "OptimizeResult",
@@ -509,6 +543,7 @@ __all__ = [
     "RunViewCreate",
     "RunViewPatch",
     "RunViewQuery",
+    "SampleInfo",
     "SavedPlot",
     "SavedPlotCreate",
     "ScenarioRowsRequest",
@@ -4859,6 +4894,166 @@ V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The v0.17 endpoint table (layout 2 presets, the source catalog, the upgrade, scenario rows,
 batch scoring, predictions downloads and pictures; part of :data:`ENDPOINTS`)."""
 
+# ===================================== v0.18: the library, catalog extensions, onboarding, samples
+#
+# DTOs: the library documents and their DTOs live in mapi_spec.library (LibraryItem, ...),
+# onboarding and samples in mapi_spec.onboarding / mapi_spec.samples and CatalogDiagnostic in
+# mapi_spec.catalog; all are re-exported above. The recipe preview DTOs stay in mapi_spec.jobs
+# only (jobs imports this module, so a re-export here would be an import cycle).
+
+_LIB = "/v1/library/{item_id}"
+_LIB_ERRORS = (_E.LIBRARY_INVALID, _E.SCHEMA_UNSAFE, _E.PAYLOAD_TOO_LARGE)
+_ONB = _TEN + "/me/onboarding"
+_SMP = _TEN + "/samples/{sample_id}"
+_PREVIEW_ERRORS = (_E.PREVIEW_DISABLED, _E.RATE_LIMITED, _E.QUOTA_EXCEEDED, _E.MODE_NOT_SUPPORTED)
+
+V018_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # the library: model recipes, prep presets, chart templates, workflow templates
+    EndpointDecl(
+        "GET", "/v1/library", "list_library_items",
+        "Library items of the project and of the tenant (archived items only with "
+        "include_archived)", "Page[LibraryItem]", 200, headers=_PH, paginated=True,
+        query=("kind", "scope", "q", "include_archived", *_PAGE),
+    ),
+    EndpointDecl(
+        "POST", "/v1/library", "create_library_item",
+        "Create a library item and its revision 1 (scope tenant: tenant admins). An invalid "
+        "document is stored with valid=false, except a workflow template, which is refused",
+        "LibraryItem", 201, request="LibraryCreate",
+        errors=(*_BODY, *_LIB_ERRORS, _E.CONFLICT, _E.FORBIDDEN, _E.SPEC_PARSE_ERROR),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _LIB, "get_library_item", "One library item (ETag: its latest revision)",
+        "LibraryItem", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _LIB + "/revisions", "list_library_revisions",
+        "The revisions of a library item, newest first", "Page[LibraryRevision]", 200,
+        errors=_NF, headers=_PH, paginated=True, query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _LIB + "/revisions/{revision}", "get_library_revision",
+        "One revision: the document, its issues and the compiled output",
+        "LibraryRevision", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + "/revisions", "create_library_revision",
+        "Add an immutable revision (If-Match: the item's ETag; 412 when stale)",
+        "LibraryRevision", 201, request="LibraryRevisionCreate",
+        errors=(*_NF, *_BODY, *_LIB_ERRORS, _E.PRECONDITION_FAILED, _E.CONFLICT,
+                _E.SPEC_PARSE_ERROR),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":archive", "archive_library_item",
+        "Archive a library item (it is hidden from lists and pickers; nothing is deleted)",
+        "LibraryItem", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":unarchive", "unarchive_library_item", "Unarchive a library item",
+        "LibraryItem", 200, errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":promote", "promote_library_item",
+        "Copy the latest revision of a project item into a tenant item (tenant admins)",
+        "LibraryItem", 201, errors=(*_NF, _E.CONFLICT, _E.FORBIDDEN), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/library:validate", "validate_library_document",
+        "Check a library document (and, with a dataset, its slots and variables) and return "
+        "the issues with JSON pointers and the compiled output; nothing is saved",
+        "LibraryValidation", 200, request="LibraryValidateRequest",
+        errors=(*_BODY, *_LIB_ERRORS, _E.RATE_LIMITED, _E.SPEC_PARSE_ERROR), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _LIB + ":use", "use_library_item",
+        "Compile a library item for use: a spec fragment, prep steps, a chart applied to a "
+        "model version or a workflow document, with lineage labels; nothing is saved",
+        "LibraryUseResult", 200, request="LibraryUseRequest",
+        errors=(*_NF, *_BODY, _E.LIBRARY_INVALID, _E.LIBRARY_DATA_SHAPE,
+                _E.EXTENSION_UNAVAILABLE, _E.PLOT_UNSAFE),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/library/charts:preview", "preview_library_chart",
+        "Preview a chart template on its source recipe's example data (JSON only, no run)",
+        "ChartPreview", 200, request="ChartPreviewRequest",
+        errors=(*_BODY, _E.LIBRARY_INVALID, _E.EXTENSION_UNAVAILABLE, _E.PLOT_UNSAFE,
+                _E.RATE_LIMITED, _E.PAYLOAD_TOO_LARGE),
+        headers=_PH,
+    ),
+    # catalog extensions
+    EndpointDecl(
+        "GET", "/v1/catalog/diagnostics", "list_catalog_diagnostics",
+        "Problems found while the current catalog was built: load errors, reserved "
+        "namespaces, unsafe schemas, invalid plugin nodes and templates (tenant admins and "
+        "operators)", "list[CatalogDiagnostic]", 200, errors=(_E.FORBIDDEN,),
+    ),
+    EndpointDecl(
+        "POST", "/v1/admin/catalog:describe", "admin_describe_catalog",
+        "Operators: queue a describe run that rebuilds the catalog of the current image "
+        "digest (returns the pending run when one is already queued)", "Run", 202,
+        errors=(_E.FORBIDDEN,),
+    ),
+    # live recipe previews (a render run on the recipe's example data)
+    EndpointDecl(
+        "POST", "/v1/catalog/plots/{plot_id}/{version}:preview", "preview_catalog_plot",
+        "Render a plot recipe's example with these settings (Prefer: wait=N, at most 15: "
+        "200 with the plot when done or cached, else 202 with the run id)",
+        "RecipePreviewResult", 202, request="RecipePreviewRequest",
+        errors=(*_NF, *_BODY, *_PREVIEW_ERRORS), headers=(*_PH, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/catalog/plots/previews/{run_id}", "get_catalog_plot_preview",
+        "The result of a recipe preview run", "RecipePreviewResult", 200, errors=_NF,
+        headers=_PH,
+    ),
+    # onboarding progress (per user, per tenant; signed-in sessions only)
+    EndpointDecl(
+        "GET", _ONB, "get_onboarding", "Your tour and checklist progress in this tenant "
+        "(ETag: its version)", "OnboardingState", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "PATCH", _ONB, "update_onboarding",
+        "Merge progress (completed steps never revert; If-Match: the ETag, 412 when stale)",
+        "OnboardingState", 200, request="OnboardingPatch",
+        errors=(*_NF, *_BODY, _E.FORBIDDEN, _E.PRECONDITION_FAILED, _E.PAYLOAD_TOO_LARGE),
+        headers=(_IF_MATCH,),
+    ),
+    EndpointDecl(
+        "POST", _ONB + ":reset", "reset_onboarding",
+        "Start the tours and the checklist again", "OnboardingState", 200,
+        errors=(*_NF, _E.FORBIDDEN),
+    ),
+    # sample projects
+    EndpointDecl(
+        "GET", _TEN + "/samples", "list_samples",
+        "The sample projects of the tenant and their state (empty when samples are off)",
+        "list[SampleInfo]", 200, errors=(*_NF, _E.FORBIDDEN),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":install", "install_sample",
+        "Install a sample project (an editor somewhere in the tenant: it spends compute), or "
+        "join the one already installed (a viewer)", "SampleInfo", 202,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED, _E.QUOTA_EXCEEDED, _E.CONFLICT),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":retry", "retry_sample",
+        "Retry a failed sample (its installer or a tenant admin; at most 3 attempts)",
+        "SampleInfo", 202,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED, _E.CONFLICT, _E.QUOTA_EXCEEDED),
+    ),
+    EndpointDecl(
+        "POST", _SMP + ":retire", "retire_sample",
+        "Retire a sample (tenant admins): it is hidden and its sample grants are removed; "
+        "nothing is deleted", "SampleInfo", 200,
+        errors=(*_NF, _E.FORBIDDEN, _E.SAMPLES_DISABLED),
+    ),
+)  # fmt: skip
+"""The v0.18 endpoint table (the library, catalog diagnostics and refresh, recipe previews,
+onboarding progress and sample projects; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
@@ -4871,9 +5066,10 @@ ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     + V015_ENDPOINTS
     + V016_ENDPOINTS
     + V017_ENDPOINTS
+    + V018_ENDPOINTS
 )
 """Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16 +
-v0.17); the server serves every row."""
+v0.17 + v0.18); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -5110,6 +5306,46 @@ grant); keeping a tried case needs ``run`` (the handler checks the readout's own
 editor); downloads and pictures need ``read`` (the handler checks the readout's owner);
 presets, sources and the upgrade need an editor."""
 
+_V018_ACCESS: Final[dict[str, RouteAccess]] = {
+    "list_library_items": _p(_RK.LIBRARY, _AC.READ),
+    # scope "tenant" in the body: the handler also requires create on tenant_library
+    "create_library_item": _p(_RK.LIBRARY, _AC.CREATE),
+    "get_library_item": _p(_RK.LIBRARY, _AC.READ),
+    "list_library_revisions": _p(_RK.LIBRARY, _AC.READ),
+    "get_library_revision": _p(_RK.LIBRARY, _AC.READ),
+    # a tenant item: the handler requires update on tenant_library instead
+    "create_library_revision": _p(_RK.LIBRARY, _AC.UPDATE),
+    "archive_library_item": _p(_RK.LIBRARY, _AC.DELETE),
+    "unarchive_library_item": _p(_RK.LIBRARY, _AC.DELETE),
+    # the handler also requires create on tenant_library (a tenant admin)
+    "promote_library_item": _p(_RK.LIBRARY, _AC.CREATE),
+    "validate_library_document": _p(_RK.LIBRARY, _AC.READ),
+    # a model recipe compiled into a spec: the handler also requires create on spec
+    "use_library_item": _p(_RK.LIBRARY, _AC.READ),
+    "preview_library_chart": _p(_RK.LIBRARY, _AC.READ),
+    # the handler requires a tenant admin membership (any tenant) or an operator
+    "list_catalog_diagnostics": _AUTH,
+    "admin_describe_catalog": _op(_RK.CATALOG, _AC.UPDATE),
+    # a render run on catalog example data: viewers, with their own rate limits
+    "preview_catalog_plot": _p(_RK.PLOT, _AC.READ),
+    "get_catalog_plot_preview": _p(_RK.PLOT, _AC.READ),
+    # membership of the tenant (any project) suffices; tokens are refused (tenant scope)
+    "get_onboarding": _t(),
+    "update_onboarding": _t(),
+    "reset_onboarding": _t(),
+    "list_samples": _t(),
+    # install needs an editor in some project of the tenant (join: a viewer); retry needs
+    # the installer or a tenant admin: the handler decides
+    "install_sample": _t(),
+    "retry_sample": _t(),
+    "retire_sample": _t(_RK.TENANT, _AC.UPDATE),
+}
+"""Access rules of :data:`V018_ENDPOINTS`. Library reads need a project viewer (tenant items
+are readable from every project of the tenant); writes need an editor, and tenant items a
+tenant admin (the handler checks ``tenant_library`` when the item or the body is tenant
+scoped). Onboarding and samples are tenant routes for signed-in members (API tokens are
+refused); clients reach none of them (:data:`CLIENT_OPERATIONS` is unchanged)."""
+
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
     "health": _PUBLIC,
@@ -5272,6 +5508,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_V016_ACCESS,
     # v0.17 dashboards for any model type
     **_V017_ACCESS,
+    # v0.18 the library, catalog extensions, recipe previews, onboarding and samples
+    **_V018_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).

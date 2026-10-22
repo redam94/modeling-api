@@ -62,7 +62,6 @@ from mapi_spec.tenancy import ResourceKind
 from mapi_spec.tree import TreeSchema
 from mapi_spec.views import EXPLORE_PREFIX
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError as DBIntegrityError
 
 from mapi_server.api.common import (
     DEFAULT_LIMIT,
@@ -77,15 +76,15 @@ from mapi_server.api.common import (
 from mapi_server.api.problems import responses_for
 from mapi_server.api.runs import run_view
 from mapi_server.db import models as m
-from mapi_server.errors import Conflict, NotFoundError, ProblemWithHeaders
+from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.audit import write_audit
 from mapi_server.services.bundles import artifact_link
-from mapi_server.services.quotas import admit_storage, charge_egress
+from mapi_server.services.datasets import admit_upload, create_dataset_row, create_version
+from mapi_server.services.quotas import charge_egress
 from mapi_server.services.runs import load_run, now
 from mapi_server.services.specs import layout_of
 from mapi_server.services.submit import (
     submit_collection_ingest,
-    submit_ingest,
     submit_inspect,
 )
 
@@ -170,23 +169,9 @@ async def _dataset(ctx: Ctx, session: Session, dataset_id: str, *, lock: bool = 
     "", response_model=Dataset, status_code=status.HTTP_201_CREATED, operation_id="create_dataset"
 )
 async def create_dataset(ctx: Ctx, session: Session, body: DatasetCreate) -> Dataset:
-    ts = now()
-    ds = m.Dataset(
-        id=new_id("ds"),
-        tenant_id=ctx.scope.tenant_id,
-        project_id=ctx.scope.project_id,
-        name=body.name,
-        description=body.description,
-        labels=dict(body.labels),
-        next_version=1,
-        created_at=ts,
-        updated_at=ts,
+    ds = await create_dataset_row(
+        session, ctx.scope, name=body.name, description=body.description, labels=body.labels
     )
-    try:
-        async with session.begin_nested():
-            session.add(ds)
-    except DBIntegrityError:
-        raise Conflict(f"a dataset named {body.name!r} already exists") from None
     return dataset_dto(ds)
 
 
@@ -265,17 +250,7 @@ async def create_upload(
 
 async def _admit_upload(ctx: Ctx, session: Session, tenant_id: str, nbytes: int) -> None:
     """Admit ``nbytes`` of upload against the tenant's storage quota (429/403 otherwise)."""
-    async with ctx.db.session() as system:
-        decision = await admit_storage(
-            session, system, tenant_id=tenant_id, nbytes=nbytes, now=now()
-        )
-    if not decision.allowed:
-        assert decision.code is not None
-        raise ProblemWithHeaders(
-            decision.message or "storage quota exceeded",
-            code=decision.code,
-            headers=decision.headers(),
-        )
+    await admit_upload(ctx, session, tenant_id, nbytes)
 
 
 def _upload_dto(u: m.Upload, *, received: bool | None = None) -> UploadSession:
@@ -414,44 +389,16 @@ async def create_dataset_version(
             code=ErrorCode.PAYLOAD_TOO_LARGE,
             pointer="/body/assembly",
         )
-    version = ds.next_version
-    ds.next_version += 1
-    ds.updated_at = now()
-    for upload, _ in ready:
-        upload.status = "consumed"
-        upload.consumed_by_version = version
-    stored_mapping = (
-        {"assembly": body.assembly.model_dump(mode="json", exclude_none=True)}
-        if body.assembly is not None
-        else body.mapping.model_dump(mode="json")  # type: ignore[union-attr]
-    )
-    dv = m.DatasetVersion(
-        dataset_id=ds.id,
-        version=version,
-        tenant_id=ds.tenant_id,
-        project_id=ds.project_id,
-        status="ingesting",
-        upload_id=ready[0][0].id,
-        sources=[upload.id for upload, _ in ready],
-        mapping=stored_mapping,
-        message=body.message,
-        objects={},
-        issues=[],
-        created_at=now(),
-    )
-    session.add(dv)
-    await session.flush()
-    run = await submit_ingest(
+    dv = await create_version(
         session,
         ctx,
-        dataset=ds,
-        version=version,
-        uploads=[(upload, meta.generation) for upload, meta in ready],
+        ds,
+        [(upload, meta.generation) for upload, meta in ready],
         mapping=body.mapping.model_dump(mode="json") if body.mapping is not None else None,
         assembly=body.assembly,
+        message=body.message,
     )
-    dv.ingest_run_id = run.id
-    await session.flush()
+    version = dv.version
     await idem.complete("dataset_version", str(version), 202)
     return JSONResponse(version_dto(ds, dv).model_dump(mode="json"), status_code=202)
 

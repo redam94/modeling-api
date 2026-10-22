@@ -11,23 +11,23 @@ import type { JsonValue, Theme } from "./protocol";
 
 /** `{light: dark}`; keys and values are lowercase `#rrggbb`. */
 export const DARK_VARIANTS: Readonly<Record<string, string>> = {
-  "#c7dbff": "#5c85ff", // band
-  "#0014cc": "#85a3ff", // estimate
-  "#121619": "#f4f5f7", // observed
-  "#c20021": "#ff8597", // alert
-  "#036e1b": "#4fd26b", // ok
-  "#767e8c": "#8b95a5", // reference
-  "#5b6577": "#9aa3b2", // muted
-  "#333b48": "#c8cfdb", // strong
-  "#6b7685": "#97a6b6", // baseline
-  "#c45a00": "#f0a35e", // scenario
-  "#1f6fb4": "#6fb0f2", // positive
-  "#e3e6ec": "#2a3140", // empty
-  "#ffffff": "#1b212d", // surface
+  "#dcd8ff": "#5a4af5", // band
+  "#3a2bd6": "#aaa3ff", // estimate
+  "#18152f": "#f2f1fa", // observed
+  "#c0182f": "#ff8a9a", // alert
+  "#0b6b3a": "#5fdc8f", // ok
+  "#84819b": "#8a86b3", // reference
+  "#625f79": "#b6b3d2", // muted
+  "#2d2a45": "#e0deec", // strong
+  "#6e6a8a": "#aeabc8", // baseline
+  "#b56a00": "#ffb84d", // scenario
+  "#0a7fb5": "#5cc4f5", // positive
+  "#e0deec": "#2e2866", // empty
+  "#ffffff": "#1a1642", // surface
 };
 
 /** Fills that need no text-level contrast (empty cells, separators in the card colour). */
-export const NON_TEXT_FILLS: ReadonlySet<string> = new Set(["#e3e6ec", "#ffffff"]);
+export const NON_TEXT_FILLS: ReadonlySet<string> = new Set(["#e0deec", "#ffffff"]);
 
 /** Data and inline datasets are values, not styling: never rewritten (Vega-Lite). */
 const DATA_KEYS: ReadonlySet<string> = new Set(["data", "datasets"]);

@@ -146,9 +146,9 @@ export function metricsOf(points: ComparePoint[]): CompareMetrics {
 }
 
 /** Recipe-palette colours (`mapi_plots.palette`): the plot sandbox swaps them for dark mode. */
-const BAND = "#c7dbff";
-const ESTIMATE = "#0014cc";
-const OBSERVED = "#121619";
+const BAND = "#dcd8ff";
+const ESTIMATE = "#3a2bd6";
+const OBSERVED = "#18152f";
 
 /** The chart of one series (or all, coloured): the band, the predictions and the actuals as points. */
 export function comparisonChart(c: Comparison, series: string | null): { spec: JsonObject; datasets: Record<string, Row[]> } {

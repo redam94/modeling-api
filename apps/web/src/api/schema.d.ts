@@ -203,6 +203,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/catalog:describe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a describe run for the current image digest (operators)
+         * @description Queue a ``describe`` run that builds the catalog of this image digest (for example
+         *     after a describe failed and the plugin was fixed). When one is queued or running, or
+         *     one already succeeded, that run is returned and nothing is queued: the catalog of an
+         *     image digest never changes, so a new plugin needs a new digest (``make plugin-dev`` or
+         *     a new image) and a restart, which describes again by itself.
+         */
+        post: operations["admin_describe_catalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/executors": {
         parameters: {
             query?: never;
@@ -531,6 +555,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Problems found while the current catalog was built (tenant admins, operators)
+         * @description Load errors, reserved namespaces, unsafe schemas that were stripped, and plugin
+         *     workflow nodes and templates that were hidden. ``message`` is platform text;
+         *     ``untrusted_text`` comes from a plugin and is shown as text only. Empty while no catalog
+         *     is cached for the image digest.
+         */
+        get: operations["list_catalog_diagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/governance-checks": {
         parameters: {
             query?: never;
@@ -603,6 +650,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/catalog/plots/previews/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The result of a recipe preview run */
+        get: operations["get_catalog_plot_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/catalog/plots/{plot_id}/{version}/example": {
         parameters: {
             query?: never;
@@ -618,6 +682,28 @@ export interface paths {
         get: operations["get_catalog_plot_example"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog/plots/{plot_id}/{version}:preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draw a plot recipe's example with these settings (Prefer: wait=N, at most 15)
+         * @description ``200`` with the plot when it is done (or cached), else ``202`` with the ``run_id``
+         *     to poll at ``GET /v1/catalog/plots/previews/{run_id}``. The settings are checked against
+         *     the recipe's settings schema before any run (``SCHEMA_INVALID`` with pointers).
+         */
+        post: operations["preview_catalog_plot"];
         delete?: never;
         options?: never;
         head?: never;
@@ -672,7 +758,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Workflow node implementations with ports, parameters and About cards */
+        /**
+         * Workflow node implementations with ports, parameters and About cards
+         * @description The built-in nodes and those of installed plugins (``plugin`` set; v0.18).
+         */
         get: operations["list_workflow_nodes"];
         put?: never;
         post?: never;
@@ -2206,6 +2295,227 @@ export interface paths {
         get: operations["get_guided_template"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Library Items
+         * @description Library items of the project and of the tenant, most recently changed first. Archived
+         *     items only with ``include_archived=true``; ``q`` matches the name or the title.
+         */
+        get: operations["list_library_items"];
+        put?: never;
+        /**
+         * Create Library Item
+         * @description Create an item and its revision 1 from a document (or YAML/JSON text). A document that
+         *     does not compile against the current catalog is stored with ``valid: false`` and its
+         *     issues, except a workflow template, which is refused. ``scope: tenant`` needs a tenant
+         *     admin.
+         */
+        post: operations["create_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/charts:preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Library Chart
+         * @description Draw a chart template on its source recipe's example data (JSON only, no run).
+         *     Problems with the template come back as issues with ``plot: null``.
+         */
+        post: operations["preview_library_chart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Library Item
+         * @description One item (``ETag``: ``"r<latest_revision>"``, for ``If-Match`` on a new revision).
+         */
+        get: operations["get_library_item"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Library Revisions
+         * @description The revisions of an item, newest first.
+         */
+        get: operations["list_library_revisions"];
+        put?: never;
+        /**
+         * Create Library Revision
+         * @description Add an immutable revision. ``If-Match`` with the item's ``ETag`` refuses the change
+         *     (``412``) when someone saved in between. The kind cannot change; the document's
+         *     metadata renames and retitles the item.
+         */
+        post: operations["create_library_revision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Library Revision
+         * @description One revision: the document, whether it compiled, its issues and the compiled output.
+         */
+        get: operations["get_library_revision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Library Item
+         * @description Archive an item: lists and pickers hide it; nothing is deleted, and recipes that use
+         *     it keep working.
+         */
+        post: operations["archive_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote Library Item
+         * @description Copy a project item's latest revision into a new tenant item, which every project of
+         *     the tenant can read (tenant admins). The project item stays as it is.
+         */
+        post: operations["promote_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive Library Item
+         * @description Show an archived item again.
+         */
+        post: operations["unarchive_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library/{item_id}:use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Library Item
+         * @description Compile an item for use, with lineage labels; nothing is saved. A model recipe gives a
+         *     spec fragment (it needs ``spec`` create), a prep preset its steps, a chart template the
+         *     chart applied to ``model_id`` v``model_version``, a workflow template its document.
+         */
+        post: operations["use_library_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/library:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Library Document
+         * @description Check a document against the current catalog (and, with ``dataset``, against the
+         *     data: binding, shape, slots, variables). Nothing is saved; the issues point into the
+         *     document.
+         */
+        post: operations["validate_library_document"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3810,6 +4120,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/me/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Onboarding
+         * @description Your checklist and tour progress in this tenant (``ETag``: its version). Before the
+         *     first change it is empty, at version 0.
+         */
+        get: operations["get_onboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Onboarding
+         * @description Merge progress: steps completed, tours moved, the checklist dismissed, tips off,
+         *     samples hidden. A completed step never reverts (only ``:reset`` starts again). With
+         *     ``If-Match`` the change applies only to that version (``412`` when it moved).
+         */
+        patch: operations["update_onboarding"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/me/onboarding:reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Onboarding
+         * @description Start the tours and the checklist again and turn tips back on. The samples you hid
+         *     stay hidden, and the welcome dialog does not show again.
+         */
+        post: operations["reset_onboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/members": {
         parameters: {
             query?: never;
@@ -3923,6 +4281,90 @@ export interface paths {
         head?: never;
         /** Update Project Member */
         patch: operations["update_member"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Samples
+         * @description The sample projects of the tenant: what each is, whether it is installed and how far
+         *     it got, and what you may do with it. Empty when samples are turned off.
+         */
+        get: operations["list_samples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Sample
+         * @description Install the sample (``202``: its project is made and the fit starts as you), or join
+         *     the one installed (``200``: a membership of its project, at most ``runner``).
+         */
+        post: operations["install_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire Sample
+         * @description Retire the sample: it is hidden for everyone and the grants it made are removed. Its
+         *     project, data and models stay.
+         */
+        post: operations["retire_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/samples/{sample_id}:retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Sample
+         * @description Start a failed sample again; its next runs are yours. ``409`` when it is not failed
+         *     or used its attempts.
+         */
+        post: operations["retry_sample"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/tenants/{tenant_id}/usage": {
@@ -4410,7 +4852,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The gallery of workflow templates */
+        /**
+         * The gallery of workflow templates
+         * @description The built-in templates and those of installed plugins (``source: "plugin"``; v0.18).
+         */
         get: operations["list_workflow_templates"];
         put?: never;
         post?: never;
@@ -5366,7 +5811,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -6237,6 +6682,52 @@ export interface components {
             kind: components["schemas"]["AboutKind"];
         };
         /**
+         * CatalogDiagnostic
+         * @description Something the runner could not put into the catalog, or put there with a change.
+         *
+         *     ``message`` is platform-authored plain text; anything a plugin wrote (an exception
+         *     message, an id it exported) goes in ``untrusted_text`` and is shown as text only.
+         * @example {
+         *       "code": "namespace_reserved",
+         *       "distribution": "acme-models",
+         *       "entry_point": "acme",
+         *       "group": "mapi.models",
+         *       "id": "mmm.acme_mix",
+         *       "message": "The namespace 'mmm' belongs to the built-in plugins."
+         *     }
+         */
+        CatalogDiagnostic: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "load_error" | "namespace_reserved" | "id_collision" | "schema_unsafe" | "about_incomplete" | "node_contract_invalid" | "template_invalid" | "deprecated";
+            /** Distribution */
+            distribution?: string | null;
+            /** Entry Point */
+            entry_point?: string | null;
+            /**
+             * Group
+             * @description The entry-point group (mapi.models, ...) or the check
+             */
+            group: string;
+            /**
+             * Id
+             * @description The catalog id concerned
+             */
+            id?: string | null;
+            /**
+             * Message
+             * @description Trusted, platform-authored text
+             */
+            message: string;
+            /**
+             * Untrusted Text
+             * @description Plugin-originated text; render as text only
+             */
+            untrusted_text?: string | null;
+        };
+        /**
          * CatalogInput
          * @description An input a scenario row or batch column can bind (a variable or a dim), with its
          *     declared bounds and the fit data's range (``profile_min``/``profile_max``: defaults
@@ -6626,6 +7117,55 @@ export interface components {
             source: components["schemas"]["OutputSource"] | components["schemas"]["AccuracySource"];
             /** Title */
             title: string;
+        };
+        /**
+         * ChartPreview
+         * @description A previewed chart (``None`` when it was refused) and what the checks found.
+         * @example {
+         *       "issues": []
+         *     }
+         */
+        ChartPreview: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            plot?: components["schemas"]["PlotSpec"] | null;
+        };
+        /**
+         * ChartPreviewRequest
+         * @description Preview a chart template document on its source recipe's catalog example.
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "kind": "ChartTemplate",
+         *         "metadata": {
+         *           "name": "fit-dots",
+         *           "title": "Fit as dots"
+         *         },
+         *         "plot": {
+         *           "data": {
+         *             "name": "points"
+         *           },
+         *           "encoding": {
+         *             "x": {
+         *               "field": "observed",
+         *               "type": "quantitative"
+         *             },
+         *             "y": {
+         *               "field": "point",
+         *               "type": "quantitative"
+         *             }
+         *           },
+         *           "mark": "point"
+         *         },
+         *         "source_recipe": "core.fit_vs_actual@^1"
+         *       }
+         *     }
+         */
+        ChartPreviewRequest: {
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
         };
         /**
          * CheckDirection
@@ -11219,7 +11759,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -14587,6 +15127,482 @@ export interface components {
             seed?: number | null;
         };
         /**
+         * LibraryCreate
+         * @description Create a library item (revision 1).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "scope": "project"
+         *     }
+         */
+        LibraryCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Scope
+             * @default project
+             * @enum {string}
+             */
+            scope?: "project" | "tenant";
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryItem
+         * @description A library item (its documents are in :class:`LibraryRevision`).
+         * @example {
+         *       "archived": false,
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_analyst",
+         *       "etag": "\"r3\"",
+         *       "id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "kind": "model_recipe",
+         *       "latest_revision": 3,
+         *       "name": "store-sales",
+         *       "project_id": "growth",
+         *       "scope": "project",
+         *       "summary": "",
+         *       "tags": [
+         *         "retail"
+         *       ],
+         *       "title": "Store sales with promo lift",
+         *       "updated_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        LibraryItem: {
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Etag
+             * @description The latest revision as an ETag: "r<latest_revision>"
+             */
+            etag: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model_recipe" | "prep_preset" | "chart_template" | "workflow_template";
+            /** Latest Revision */
+            latest_revision: number;
+            /** Name */
+            name: string;
+            /** Project Id */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "project" | "tenant";
+            /**
+             * Summary
+             * @default
+             */
+            summary?: string;
+            /** Tags */
+            tags?: string[];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * LibraryRevision
+         * @description One immutable revision of a library item: the document, whether it compiled against
+         *     the catalog of the time, and the compiled output.
+         * @example {
+         *       "catalog_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "created_by": "usr_analyst",
+         *       "doc_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "issues": [],
+         *       "item_id": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "message": "first version",
+         *       "revision": 1,
+         *       "valid": true
+         *     }
+         */
+        LibraryRevision: {
+            /** Catalog Digest */
+            catalog_digest?: string | null;
+            /** Compiled */
+            compiled?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /** Doc Hash */
+            doc_hash: string;
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Item Id */
+            item_id: string;
+            /** Message */
+            message?: string | null;
+            /** Revision */
+            revision: number;
+            /** Valid */
+            valid: boolean;
+        };
+        /**
+         * LibraryRevisionCreate
+         * @description Add a revision to a library item (``If-Match: "r<latest_revision>"``).
+         * @example {
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       },
+         *       "message": "tighter price prior"
+         *     }
+         */
+        LibraryRevisionCreate: {
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryUseRequest
+         * @description Use an item: the values of its slots and exposed settings, the dataset to check
+         *     against, and for chart templates the model version to apply to.
+         * @example {
+         *       "dataset": "dataset://growth/store_sales@latest",
+         *       "slots": {
+         *         "media": [
+         *           "tv",
+         *           "search"
+         *         ]
+         *       }
+         *     }
+         */
+        LibraryUseRequest: {
+            /** Dataset */
+            dataset?: string | null;
+            /** Exposed */
+            exposed?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Model Id */
+            model_id?: string | null;
+            /** Model Version */
+            model_version?: number | null;
+            /** Revision */
+            revision?: number | null;
+            /** Slots */
+            slots?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
+        /**
+         * LibraryUseResult
+         * @description What an item compiles to: a spec fragment (model recipes), prep steps (prep presets),
+         *     an applied chart (chart templates) or a workflow document (workflow templates).
+         * @example {
+         *       "issues": [],
+         *       "kind": "prep_preset",
+         *       "labels": {
+         *         "mapi.library/prep": "lib_01jaf3q2x8m9v7k5h4g3f2e1d0-r2"
+         *       },
+         *       "pipeline": [
+         *         {
+         *           "id": "p_scale",
+         *           "use": "core.max_abs_scale@^1",
+         *           "with": {
+         *             "over": [
+         *               "time"
+         *             ],
+         *             "vars": [
+         *               "tv",
+         *               "search"
+         *             ]
+         *           }
+         *         }
+         *       ]
+         *     }
+         */
+        LibraryUseResult: {
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model_recipe" | "prep_preset" | "chart_template" | "workflow_template";
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Pipeline */
+            pipeline?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[] | null;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            /** Spec Fragment */
+            spec_fragment?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Workflow Document */
+            workflow_document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+        };
+        /**
+         * LibraryValidateRequest
+         * @description Check a document; with ``dataset``, also its slots and variables against the data.
+         * @example {
+         *       "dataset": "dataset://growth/store_sales@latest",
+         *       "document": {
+         *         "apiVersion": "mapi/v1",
+         *         "base": "declarative",
+         *         "declarative": {
+         *           "groups": [
+         *             {
+         *               "dim": "store"
+         *             }
+         *           ],
+         *           "outcome": {
+         *             "family": "negative_binomial",
+         *             "var": "sales"
+         *           },
+         *           "terms": [
+         *             {
+         *               "prior": {
+         *                 "sigma": 0.5
+         *               },
+         *               "sign": "negative",
+         *               "transform": [
+         *                 {
+         *                   "use": "log1p"
+         *                 }
+         *               ],
+         *               "var": "price"
+         *             },
+         *             {
+         *               "prior": {
+         *                 "sigma": 1
+         *               },
+         *               "sign": "positive",
+         *               "var": "promo",
+         *               "varies_by": "store"
+         *             }
+         *           ]
+         *         },
+         *         "kind": "ModelRecipe",
+         *         "metadata": {
+         *           "name": "store-sales",
+         *           "title": "Store sales with promo lift"
+         *         },
+         *         "plots": [
+         *           "core.ppc"
+         *         ]
+         *       }
+         *     }
+         */
+        LibraryValidateRequest: {
+            /** Dataset */
+            dataset?: string | null;
+            /** Document */
+            document?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
+             * Text
+             * @description The document as YAML or JSON text (instead of document)
+             */
+            text?: string | null;
+        };
+        /**
+         * LibraryValidation
+         * @description The result of a check: issues point into the document.
+         * @example {
+         *       "issues": [
+         *         {
+         *           "code": "LIBRARY_INVALID",
+         *           "message": "varies_by 'region' is not one of the groups",
+         *           "pointer": "/declarative/terms/1/varies_by",
+         *           "severity": "error"
+         *         }
+         *       ],
+         *       "valid": false
+         *     }
+         */
+        LibraryValidation: {
+            /** Compiled */
+            compiled?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            /** Valid */
+            valid: boolean;
+        };
+        /**
          * LiftTest
          * @description One experiment: ``spend_delta`` extra spend on ``channel`` (optionally in one ``geo``)
          *     from ``start`` to ``end`` (inclusive) caused ``kpi_delta`` incremental KPI.
@@ -15729,6 +16745,11 @@ export interface components {
             /** Overlay Hash */
             overlay_hash?: string | null;
             /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in model
+             */
+            provider?: string | null;
+            /**
              * Yanked
              * @default false
              */
@@ -16388,6 +17409,11 @@ export interface components {
             params_schema?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /**
+             * Plugin
+             * @description v0.18: the namespace of a plugin node (None for the built-in nodes); the id is '<kind>.<plugin>_<name>'
+             */
+            plugin?: string | null;
             /** Result Fields */
             result_fields?: {
                 [key: string]: components["schemas"]["ResultField"];
@@ -16583,6 +17609,124 @@ export interface components {
             name: string;
             /** Size */
             size: number;
+        };
+        /**
+         * OnboardingPatch
+         * @description ``PATCH /v1/tenants/{t}/me/onboarding`` (at most 2 KiB). Every field is optional;
+         *     an absent field leaves the state as it is.
+         * @example {
+         *       "complete": [
+         *         "took_tour"
+         *       ]
+         *     }
+         * @example {
+         *       "tours": {
+         *         "fit": {
+         *           "status": "in_progress",
+         *           "step": 2,
+         *           "updated_at": "2026-10-15T09:30:00Z"
+         *         }
+         *       },
+         *       "welcomed": true
+         *     }
+         * @example {
+         *       "checklist_dismissed": true,
+         *       "hide_samples": [
+         *         "geo_mmm"
+         *       ]
+         *     }
+         */
+        OnboardingPatch: {
+            /** Checklist Dismissed */
+            checklist_dismissed?: boolean | null;
+            /**
+             * Complete
+             * @description Steps now done
+             */
+            complete?: ("took_tour" | "open_sample" | "fit_model" | "read_results" | "try_whatif" | "make_dashboard" | "own_data" | "make_your_own")[];
+            /** Hide Samples */
+            hide_samples?: string[];
+            /** Tips Off */
+            tips_off?: boolean | null;
+            /**
+             * Tours
+             * @description Tours to set (other tours are kept)
+             */
+            tours?: {
+                [key: string]: components["schemas"]["TourProgress"];
+            } | null;
+            /** Unhide Samples */
+            unhide_samples?: string[];
+            /**
+             * Welcomed
+             * @description true records the first welcome; only a reset clears it
+             */
+            welcomed?: boolean | null;
+        };
+        /**
+         * OnboardingState
+         * @description The checklist and tour progress of the calling user in one tenant.
+         * @example {
+         *       "version": 0
+         *     }
+         * @example {
+         *       "checklist": {
+         *         "open_sample": "2026-10-15T09:30:00Z",
+         *         "took_tour": "2026-10-15T09:30:00Z"
+         *       },
+         *       "checklist_dismissed": false,
+         *       "hidden_samples": [],
+         *       "tips_off": false,
+         *       "tours": {
+         *         "welcome": {
+         *           "status": "completed",
+         *           "step": 5,
+         *           "updated_at": "2026-10-15T09:30:00Z"
+         *         }
+         *       },
+         *       "version": 4,
+         *       "welcomed_at": "2026-10-15T09:30:00Z"
+         *     }
+         */
+        OnboardingState: {
+            /**
+             * Checklist
+             * @description Completed steps and when they were completed
+             */
+            checklist?: {
+                [key: string]: string;
+            };
+            /**
+             * Checklist Dismissed
+             * @default false
+             */
+            checklist_dismissed?: boolean;
+            /**
+             * Hidden Samples
+             * @description Sample projects the user hid from the Start-here hub
+             */
+            hidden_samples?: string[];
+            /**
+             * Tips Off
+             * @description The user turned the welcome dialog and tips off
+             * @default false
+             */
+            tips_off?: boolean;
+            /** Tours */
+            tours?: {
+                [key: string]: components["schemas"]["TourProgress"];
+            };
+            /**
+             * Version
+             * @description Bumped on every change; the ETag of the state
+             * @default 0
+             */
+            version?: number;
+            /**
+             * Welcomed At
+             * @description When the user first saw (and closed) the welcome dialog
+             */
+            welcomed_at?: string | null;
         };
         /**
          * Optimization
@@ -17299,6 +18443,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[LibraryItem]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_LibraryItem_: {
+            /** Items */
+            items: components["schemas"]["LibraryItem"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[LibraryRevision]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_LibraryRevision_: {
+            /** Items */
+            items: components["schemas"]["LibraryRevision"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[LogLine]
          * @example {
          *       "items": [],
@@ -17887,20 +19057,39 @@ export interface components {
             /** Id */
             id: string;
             /**
+             * Pack Label
+             * @description v0.18: the name of the recipe pack shown on the catalog card
+             */
+            pack_label?: string | null;
+            /**
              * Persona
              * @default both
              * @enum {string}
              */
             persona?: "guided" | "expert" | "both";
+            /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in recipe
+             */
+            provider?: string | null;
             /** Requires Groups */
             requires_groups?: string[];
             /** Requires Representation */
             requires_representation?: components["schemas"]["Representation"][];
             /**
+             * Settings Schema
+             * @description v0.18: the recipe's settings as a safe JSON Schema (at most 16 KiB; absent when too large)
+             */
+            settings_schema?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /**
              * Summary
              * @description One line on what the chart shows (the recipe's summary)
              */
             summary?: string | null;
+            /** Tags */
+            tags?: string[];
             /** Title */
             title: string;
             /**
@@ -19578,6 +20767,50 @@ export interface components {
             title: string;
         };
         /**
+         * RecipePreviewRequest
+         * @description ``POST /v1/catalog/plots/{plot_id}/{version}:preview``: the recipe settings to try
+         *     (validated against the recipe's catalog ``settings_schema`` before any run).
+         * @example {
+         *       "settings": {
+         *         "title": "Sales: fit and forecast",
+         *         "var": "y"
+         *       }
+         *     }
+         */
+        RecipePreviewRequest: {
+            /** Settings */
+            settings?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
+        /**
+         * RecipePreviewResult
+         * @description A recipe preview: done (``plot`` set, or ``problem`` when the run failed) or still
+         *     running (``run_id`` to poll). ``cached``: served from an earlier run with the same key.
+         * @example {
+         *       "cached": false,
+         *       "done": false,
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+         *     }
+         * @example {
+         *       "cached": true,
+         *       "done": true
+         *     }
+         */
+        RecipePreviewResult: {
+            /**
+             * Cached
+             * @default false
+             */
+            cached?: boolean;
+            /** Done */
+            done: boolean;
+            plot?: components["schemas"]["PlotSpec"] | null;
+            problem?: components["schemas"]["Problem"] | null;
+            /** Run Id */
+            run_id?: string | null;
+        };
+        /**
          * Recommendation
          * @description One ranked candidate with the reasons in plain words.
          */
@@ -19759,7 +20992,7 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share" | "library" | "tenant_library";
         /**
          * ResultField
          * @description A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).
@@ -20855,6 +22088,100 @@ export interface components {
          * @enum {string}
          */
         RunnerPhase: "bootstrap" | "load_inputs" | "validate" | "preprocess" | "fit" | "sample" | "score" | "evaluate" | "derive" | "plots" | "upload" | "done";
+        /**
+         * SampleInfo
+         * @description A sample project as one tenant member sees it.
+         * @example {
+         *       "can_install": true,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         * @example {
+         *       "attempts": 1,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "progress": 0.6,
+         *       "project_id": "sample",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "state": "fitting",
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         * @example {
+         *       "attempts": 1,
+         *       "can_retire": true,
+         *       "id": "geo_mmm",
+         *       "minutes": 1,
+         *       "model_id": "mdl_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "model_version": 1,
+         *       "progress": 1,
+         *       "project_id": "sample",
+         *       "run_id": "run_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "spec_id": "spec_01jaf3q2x8m9v7k5h4g3f2e1d0",
+         *       "state": "ready",
+         *       "summary": "Two years of weekly revenue and media spend.",
+         *       "title": "Marketing mix in four regions"
+         *     }
+         */
+        SampleInfo: {
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts?: number;
+            /**
+             * Can Install
+             * @description Install, or join the installed sample
+             * @default false
+             */
+            can_install?: boolean;
+            /**
+             * Can Retire
+             * @default false
+             */
+            can_retire?: boolean;
+            /**
+             * Can Retry
+             * @default false
+             */
+            can_retry?: boolean;
+            /**
+             * Hidden
+             * @description The caller hid the sample from the hub
+             * @default false
+             */
+            hidden?: boolean;
+            /** Id */
+            id: string;
+            /** Minutes */
+            minutes: number;
+            /** Model Id */
+            model_id?: string | null;
+            /** Model Version */
+            model_version?: number | null;
+            /** @description Why the sample failed (plain words) */
+            problem?: components["schemas"]["Problem"] | null;
+            /** Progress */
+            progress?: number | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Spec Id */
+            spec_id?: string | null;
+            /**
+             * State
+             * @description None: not installed in the tenant
+             */
+            state?: ("provisioning" | "ingesting" | "fitting" | "ready" | "failed" | "retired") | null;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
         /**
          * SavedPlot
          * @description A saved plot. ``spec`` is the sanitized PlotSpec (on ``GET /v1/plots/{plot_id}``;
@@ -22778,6 +24105,11 @@ export interface components {
             invertible?: boolean;
             kind: components["schemas"]["StepKind"];
             /**
+             * Provider
+             * @description v0.18: the distribution that installed a non-built-in step
+             */
+            provider?: string | null;
+            /**
              * Provides
              * @description Preprocessing a model may declare it owns (ModelManifest owns); such a step is rejected on the target/media variables of a model that owns it
              */
@@ -23401,6 +24733,28 @@ export interface components {
          * @enum {string}
          */
         TokenStatus: "active" | "expired" | "revoked";
+        /**
+         * TourProgress
+         * @description Where the user is in one tour. ``updated_at`` is set by the server on merge.
+         */
+        TourProgress: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_progress" | "completed" | "dismissed";
+            /**
+             * Step
+             * @description Index of the current step
+             * @default 0
+             */
+            step?: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * TreeSchema
          * @description Schema of an ``xr.DataTree``: one :class:`~mapi_spec.schema.DataSchema` per node.
@@ -25249,6 +26603,13 @@ export interface components {
             };
             /** Id */
             id: string;
+            /**
+             * Source
+             * @description v0.18: 'plugin' for a template an installed plugin added
+             * @default builtin
+             * @enum {string}
+             */
+            source?: "builtin" | "plugin";
             /** Tags */
             tags?: string[];
             /**
@@ -25854,6 +27215,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_describe_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -26698,6 +28115,62 @@ export interface operations {
             };
         };
     };
+    list_catalog_diagnostics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogDiagnostic"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_governance_checks: {
         parameters: {
             query?: {
@@ -26826,6 +28299,73 @@ export interface operations {
             };
         };
     };
+    get_catalog_plot_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipePreviewResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_catalog_plot_example: {
         parameters: {
             query?: never;
@@ -26884,6 +28424,89 @@ export interface operations {
                 };
             };
             /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_catalog_plot: {
+        parameters: {
+            query?: never;
+            header?: {
+                Prefer?: string | null;
+            };
+            path: {
+                plot_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipePreviewResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PREVIEW_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, MODE_NOT_SUPPORTED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -32415,6 +34038,961 @@ export interface operations {
             };
         };
     };
+    list_library_items: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                kind?: ("model_recipe" | "prep_preset" | "chart_template" | "workflow_template") | null;
+                scope?: ("tenant" | "project") | null;
+                q?: string | null;
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LibraryItem_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_library_chart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChartPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartPreview"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: EXTENSION_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, PLOT_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_library_revisions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_LibraryRevision_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_library_revision: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryRevisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryRevision"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_library_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryRevision"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archive_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    promote_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unarchive_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryItem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    use_library_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryUseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryUseResult"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: EXTENSION_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, LIBRARY_DATA_SHAPE, PLOT_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    validate_library_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryValidation"];
+                };
+            };
+            /** @description Problem: SPEC_PARSE_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, LIBRARY_INVALID, SCHEMA_UNSAFE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_me: {
         parameters: {
             query?: never;
@@ -37154,6 +39732,231 @@ export interface operations {
             };
         };
     };
+    get_onboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_onboarding: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OnboardingPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reset_onboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingState"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     list_tenant_members: {
         parameters: {
             query?: {
@@ -37559,6 +40362,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_samples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    install_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    retire_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    retry_sample: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                sample_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleInfo"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND, SAMPLES_DISABLED */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

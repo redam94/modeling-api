@@ -628,7 +628,7 @@ def validate_workflow(
             alts = n.alternatives(port)
             for k, b in enumerate(alts):
                 bptr = ptr if isinstance(n.inputs[port], str) else ptr + f"/{k}"
-                src_type = _binding_type(spec, b, impls, sub_specs, by_id)
+                src_type = _binding_type(spec, b, impls, sub_specs, by_id, registry)
                 if not isinstance(src_type, PortType):
                     issues.append(_issue(ErrorCode.WORKFLOW_INVALID, bptr,
                                          f"node {n.id!r}: {src_type}"))  # fmt: skip
@@ -667,7 +667,7 @@ def validate_workflow(
             issues.append(_issue(ErrorCode.WORKFLOW_INVALID, ptr,
                                  f"output {name!r} must name <node>.<port>"))  # fmt: skip
             continue
-        t = _binding_type(spec, b, impls, sub_specs, by_id)
+        t = _binding_type(spec, b, impls, sub_specs, by_id, registry)
         if not isinstance(t, PortType):
             issues.append(_issue(ErrorCode.WORKFLOW_INVALID, ptr, f"output {name!r}: {t}"))
 
@@ -713,8 +713,10 @@ def _binding_type(
     impls: Mapping[str, NodeImplementation],
     subs: Mapping[str, WorkflowSpec],
     by_id: Mapping[str, WorkflowNode],
+    nodes: Mapping[str, NodeImplementation] | None = None,
 ) -> PortType | str:
-    """The port type a binding delivers, or why it is wrong (a message)."""
+    """The port type a binding delivers, or why it is wrong (a message). ``nodes`` is the
+    node contract map in use (default: the built-in nodes)."""
     m = _BIND_RE.match(binding)
     if m is None:  # pragma: no cover - checked by the model
         return f"{binding!r} is not a binding"
@@ -737,7 +739,9 @@ def _binding_type(
         target = sub.outputs.get(port)
         if target is None:
             return f"the sub-workflow of {src!r} has no output {port!r}"
-        t = _binding_type(sub, target, _impls_of(sub), {}, {x.id: x for x in sub.nodes})
+        t = _binding_type(
+            sub, target, _impls_of(sub, nodes), {}, {x.id: x for x in sub.nodes}, nodes
+        )
         return t
     out = impl.outputs.get(port)
     if out is None:
@@ -748,12 +752,13 @@ def _binding_type(
     return out
 
 
-def _impls_of(spec: WorkflowSpec) -> dict[str, NodeImplementation]:
-    return {
-        n.id: NODE_IMPLEMENTATIONS[n.impl_id]
-        for n in spec.nodes
-        if n.impl_id in NODE_IMPLEMENTATIONS
-    }
+def _impls_of(
+    spec: WorkflowSpec, nodes: Mapping[str, NodeImplementation] | None = None
+) -> dict[str, NodeImplementation]:
+    """The contract of each node of ``spec`` that ``nodes`` knows (default: the built-in
+    nodes; v0.18 passes the built-in nodes merged with the catalog's plugin nodes)."""
+    registry = NODE_IMPLEMENTATIONS if nodes is None else nodes
+    return {n.id: registry[n.impl_id] for n in spec.nodes if n.impl_id in registry}
 
 
 def _check_params(

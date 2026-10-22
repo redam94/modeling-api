@@ -71,8 +71,11 @@ scores a local bundle with a `ScoreRequest` document.
 --8<-- "cli_local.sh:upgrade"
 ```
 
-`mapi plugin init NAME` scaffolds a plugin package (model, entry point, contract-kit tests).
-`mapi plugin test NAME` runs its tests. See [Write a plugin](plugins.md).
+`mapi plugin init NAME [--kind model|step|recipe|node|template ...] [--base custom|pymc|sklearn]`
+scaffolds a plugin package (one module, entry point and contract-kit test per kind).
+`mapi plugin test NAME` runs its tests, `mapi plugin validate [PATH]` checks the package without
+installing it, and `mapi plugin doctor [--server]` lists the installed extensions and their load
+diagnostics. See [Write a plugin](plugins.md).
 
 ## With a server
 

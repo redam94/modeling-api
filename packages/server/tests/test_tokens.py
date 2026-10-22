@@ -279,6 +279,11 @@ def _path(template: str) -> str:
 _SCOPES = ["models:read", "runs:create", "datasets:write", "plugins:publish", "score:*", "admin"]
 
 
+# v0.18: authenticated routes with no resource whose handler admits tenant admins and
+# operators only; a token there also needs the ``admin`` scope (catalog diagnostics).
+_ADMIN_SCOPE_ROUTES = frozenset({"list_catalog_diagnostics"})
+
+
 @pytest.mark.parametrize("scope", _SCOPES)
 async def test_token_scopes_gate_every_endpoint(
     ctx: ServerContext, client: httpx.AsyncClient, scope: str
@@ -314,6 +319,9 @@ async def test_token_scopes_gate_every_endpoint(
         if access.scope is RouteScope.TENANT and e.operation_id not in TOKEN_TENANT_ROUTES:
             assert r.status_code == 403, (scope, e.operation_id, r.status_code)
             checked += 1
+            continue
+        if e.operation_id in _ADMIN_SCOPE_ROUTES:
+            assert (r.status_code == 403) == (scope != "admin"), (scope, e.operation_id, r.text)
             continue
         if access.resource is None or access.action is None:
             assert r.status_code != 403, (scope, e.operation_id, r.text)

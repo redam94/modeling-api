@@ -203,6 +203,30 @@ class AuditAction(StrEnum):
     DASHBOARD_BATCH_DOWNLOAD = "dashboard.batch_download"
     """A predictions CSV of a batch readout was downloaded (details ``{"seq": n, "rows": n,
     "bytes": n}``)."""
+    # --- v0.18 (additive) --------------------------------------------------------------------
+    LIBRARY_ITEM_CREATED = "library.create"
+    """A library item (model recipe, prep preset, chart template, workflow template) was
+    created with its first revision (details ``{"kind": k, "scope": s, "name": n, "valid":
+    bool}``; the sample seed writes it with ``actor_kind="service"``)."""
+    LIBRARY_ITEM_REVISED = "library.revise"
+    """A revision was added to a library item (details ``{"revision": n, "valid": bool}``)."""
+    LIBRARY_ITEM_ARCHIVED = "library.archive"
+    """A library item was archived or unarchived (details ``{"archived": bool}``)."""
+    LIBRARY_ITEM_PROMOTED = "library.promote"
+    """A tenant admin copied a project item's latest revision into a tenant item (details
+    ``{"from_item": id, "revision": n}``)."""
+    CATALOG_DESCRIBE_REQUESTED = "catalog.describe"
+    """An operator asked for a new catalog ``describe`` run (details ``{"run_id": id,
+    "pending": bool}``; ``pending`` when one was already queued)."""
+    SAMPLE_INSTALL = "sample.install"
+    """A member installed a tenant's sample project (it spends their compute)."""
+    SAMPLE_JOIN = "sample.join"
+    """A member joined an installed sample project (a project membership capped at
+    ``runner``; details ``{"sample": id, "role": r}``)."""
+    SAMPLE_RETRY = "sample.retry"
+    """The installer or a tenant admin retried a failed sample (details ``{"attempt": n}``)."""
+    SAMPLE_RETIRE = "sample.retire"
+    """A tenant admin retired a sample: it is hidden and its sample grants are removed."""
 
 
 class AuditEvent(ResponseModel):

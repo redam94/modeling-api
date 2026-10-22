@@ -63,6 +63,7 @@ EXPECTED: dict[str, tuple[str, set[str], tuple[Any, ...]]] = {
     "causal_impact": ("causal", TIME, (_SLOW,)),
     "geo_lift": ("causal", BASE | {"backtest"}, (_SLOW,)),
     "did_event_study": ("causal", BASE, (_SLOW,)),
+    "declarative_glm": ("tabular", BASE, ()),
 }
 CHEAP_CHECKS = (
     "convergence",

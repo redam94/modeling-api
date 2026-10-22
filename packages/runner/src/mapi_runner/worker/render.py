@@ -18,6 +18,14 @@ Rendering never fetches anything:
 raster is capped at :data:`mapi_spec.sharing.MAX_RENDER_PIXELS` *before* anything is drawn
 (Vega-Lite: the laid-out SVG's size, so composite views and the plot's own size count;
 Plotly: the figure's size), and each image at :data:`MAX_IMAGE_BYTES`.
+
+v0.18: a ``RenderJob`` with ``recipe`` set is a **recipe preview** (the recipe playground,
+D21) instead: the recipe draws its own synthetic catalog example with the given settings
+merged over the example's options, the result is sanitized and written as
+:data:`~mapi_spec.jobs.PREVIEW_OUTPUT` (a PlotSpec with inline datasets). Nothing else is
+read or written, and no image is drawn. A recipe without an example is
+``MODE_NOT_SUPPORTED``; settings the recipe refuses are ``SCHEMA_INVALID`` with the pointer
+the preview request has for them (``/settings/<key>``, as the API's own pre-run check).
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ from __future__ import annotations
 import base64
 import copy
 import importlib
+import inspect
 import json
 import os
 import re
@@ -36,7 +45,14 @@ from typing import Any, Final
 import pyarrow as pa
 from mapi_plots.sanitize import SanitizeError, sanitize_plot
 from mapi_spec.errors import ErrorCode, MapiError
-from mapi_spec.jobs import INPUT_PLOTS, PLOT_DATA_INPUT_PREFIX, RenderJob, render_output
+from mapi_spec.jobs import (
+    INPUT_PLOTS,
+    PLOT_DATA_INPUT_PREFIX,
+    PREVIEW_OUTPUT,
+    RecipePreview,
+    RenderJob,
+    render_output,
+)
 from mapi_spec.plots import PlotSpec
 from mapi_spec.run import RunnerPhase
 from mapi_spec.sharing import check_render_pixels
@@ -48,6 +64,7 @@ __all__ = [
     "MAX_IMAGE_BYTES",
     "find_chrome",
     "find_fetching_constructs",
+    "recipe_preview",
     "render_plot",
     "run_render",
 ]
@@ -382,7 +399,99 @@ def _loader(ctx: WorkerContext) -> LoadData:
     return load
 
 
+_SETTINGS_POINTER: Final = "/settings"
+"""Refused settings point where ``RecipePreviewRequest`` has them (the form the user edits)."""
+
+
+def _takes_settings(make: Callable[..., Any]) -> bool:
+    try:
+        params = inspect.signature(make).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(
+        p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD, p.VAR_POSITIONAL) for p in params
+    )
+
+
+def _settings_error(exc: MapiError, settings: dict[str, Any]) -> MapiError:
+    """``exc`` pointing at ``/settings/<key>`` when its pointer names a key of ``settings``
+    (the recipe's settings model reports ``/<key>``), with the issue attached so the run's
+    typed errors keep the pointer."""
+    pointer = exc.pointer or ""
+    key = pointer.lstrip("/").split("/", 1)[0].replace("~1", "/").replace("~0", "~")
+    if exc.code is not ErrorCode.SCHEMA_INVALID or not key or key not in settings:
+        return exc
+    out = MapiError(
+        exc.detail,
+        code=ErrorCode.SCHEMA_INVALID,
+        pointer=_SETTINGS_POINTER + pointer,
+        untrusted_text=exc.untrusted_text,
+    )
+    out.issues = [out.to_issue()]
+    return out
+
+
+def recipe_preview(registry: Any, preview: RecipePreview) -> PlotSpec:
+    """The sanitized PlotSpec of ``preview.ref`` drawn on its own catalog example with
+    ``preview.settings`` (every dataset inline).
+
+    Raises :class:`MapiError`: ``MODE_NOT_SUPPORTED`` when the recipe has no example (or
+    takes no settings and some were given), ``SCHEMA_INVALID`` for refused settings,
+    ``PLOT_UNSAFE`` when the result does not pass the sanitizer or is not self-contained."""
+    recipe = registry.plot(preview.ref)
+    make = getattr(recipe, "example_spec", None)
+    settings = dict(preview.settings)
+    if make is None or (settings and not _takes_settings(make)):
+        raise MapiError(
+            f"the plot recipe {preview.ref} has no example to preview"
+            if make is None
+            else f"the plot recipe {preview.ref} takes no preview settings",
+            code=ErrorCode.MODE_NOT_SUPPORTED,
+        )
+    try:
+        spec = make(settings) if settings else make()
+    except MapiError as exc:
+        raise _settings_error(exc, settings) from None
+    if spec is None:
+        raise MapiError(
+            f"the plot recipe {preview.ref} has no example to preview",
+            code=ErrorCode.MODE_NOT_SUPPORTED,
+        )
+    try:
+        given = spec if isinstance(spec, PlotSpec) else PlotSpec.model_validate(spec)
+        plot = sanitize_plot(given).plot
+    except (ValidationError, SanitizeError) as exc:
+        raise MapiError(
+            f"the preview of {preview.ref} is invalid or unsafe",
+            code=ErrorCode.PLOT_UNSAFE,
+            untrusted_text=str(exc)[:4000],
+        ) from None
+    for name, ref in plot.datasets.items():
+        if ref.kind != "inline_arrow":
+            raise MapiError(
+                f"the preview of {preview.ref} is not self-contained: dataset {name!r} is "
+                f"{ref.kind}, not inline",
+                code=ErrorCode.PLOT_UNSAFE,
+                pointer=f"/datasets/{name}",
+            )
+    fetching = find_fetching_constructs(plot.kind, plot.spec)
+    if fetching:
+        raise _unsafe(f"the preview of {preview.ref} names external resources", fetching[0])
+    return plot
+
+
+def run_recipe_preview(ctx: WorkerContext, preview: RecipePreview) -> list[str]:
+    """Write the sanitized preview of a recipe as :data:`PREVIEW_OUTPUT` (no inputs)."""
+    ctx.state(RunnerPhase.PLOTS, f"previewing {preview.ref}")
+    plot = recipe_preview(ctx.registry, preview)
+    ctx.write_output(PREVIEW_OUTPUT, plot.model_dump_json().encode())
+    ctx.progress(1.0, f"previewed {preview.ref}", force=True)
+    return [PREVIEW_OUTPUT]
+
+
 def run_render(ctx: WorkerContext, job: RenderJob) -> list[str]:
+    if job.recipe is not None:
+        return run_recipe_preview(ctx, job.recipe)
     ctx.state(RunnerPhase.LOAD_INPUTS, "downloading plots")
     path = ctx.download(INPUT_PLOTS)
     assert path is not None

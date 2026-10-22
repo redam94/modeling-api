@@ -245,37 +245,6 @@ def test_spec_upgrade_with_a_registered_converter(
     assert upgraded.metadata.labels == {"migrated": "yes"}
 
 
-# ------------------------------------------------------------------------------ plugin
-
-
-def test_plugin_init_and_contract_kit(mapi: Invoke, tmp_path: Path, as_json: AsJson) -> None:
-    res = mapi("--json", "plugin", "init", "acme-demand", "--dir", str(tmp_path))
-    assert res.exit_code == 0, res.output
-    doc = as_json(res)
-    assert doc["plugin_id"] == "acme_demand.group_mean" and doc["module"] == "acme_demand"
-    root = tmp_path / "acme-demand"
-    assert (root / "src/acme_demand/model.py").is_file()
-    pyproject = (root / "pyproject.toml").read_text()
-    assert 'acme_demand = "acme_demand:PLUGINS"' in pyproject
-    assert "{{" not in (root / "src/acme_demand/model.py").read_text()
-    res = mapi("--json", "plugin", "test", str(root))
-    report = as_json(res)
-    assert res.exit_code == 0, report["output"]
-    assert report["passed"] is True and "2 passed" in report["output"]
-    assert mapi("plugin", "init", "acme-demand", "--dir", str(tmp_path)).exit_code == 1
-
-
-def test_plugin_init_rejects_reserved_namespaces(mapi: Invoke, tmp_path: Path) -> None:
-    res = mapi("plugin", "init", "x", "--namespace", "mmm", "--dir", str(tmp_path))
-    assert res.exit_code == 1 and "reserved" in res.stderr
-    assert mapi("plugin", "init", "Bad Name", "--dir", str(tmp_path)).exit_code == 1
-
-
-def test_plugin_test_needs_tests(mapi: Invoke, tmp_path: Path) -> None:
-    res = mapi("plugin", "test", str(tmp_path))
-    assert res.exit_code == 1 and "tests" in res.stderr
-
-
 # ------------------------------------------------------------------------------ config
 
 

@@ -28,6 +28,7 @@ from mapi_spec.api import (
     ROUTE_ACCESS,
     V016_ENDPOINTS,
     V017_ENDPOINTS,
+    V018_ENDPOINTS,
     ActualsSubmit,
     ApprovalCreate,
     BatchSubmit,
@@ -146,6 +147,9 @@ NOT_FOR_PROGRAMS = frozenset(
         # Pub/Sub push with a Google-signed service-account token
         "ingest_event",
     }
+    # v0.18: library, catalog diagnostics/refresh, recipe previews, onboarding and samples are
+    # web-only in 0.18 (client builders later)
+    | {d.operation_id for d in V018_ENDPOINTS}
 )
 
 BUILDERS: dict[str, Callable[[], Call[Any]]] = {

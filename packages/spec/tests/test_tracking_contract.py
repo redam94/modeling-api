@@ -425,12 +425,13 @@ def test_parse_run_order() -> None:
 
 
 def test_v011_rows_are_part_of_the_table_with_access() -> None:
-    # the v0.14, v0.15, v0.16 and v0.17 rows follow the v0.11 rows
+    # the v0.14, v0.15, v0.16, v0.17 and v0.18 rows follow the v0.11 rows
     v014 = (
         len(api.V014_ENDPOINTS)
         + len(api.V015_ENDPOINTS)
         + len(api.V016_ENDPOINTS)
         + len(api.V017_ENDPOINTS)
+        + len(api.V018_ENDPOINTS)
     )
     assert ENDPOINTS[-len(V011_ENDPOINTS) - v014 : -v014] == V011_ENDPOINTS
     by_op = {e.operation_id: e for e in V011_ENDPOINTS}

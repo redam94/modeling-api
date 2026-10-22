@@ -1,98 +1,17 @@
 /**
  * Small building blocks of the Guided screens, in the shadcn/ui new-york style of the rest of
- * the app: sliders, a side sheet, check badges, sparklines and an uncertainty band.
+ * the app: a side sheet, check badges, sparklines and headline figures. The sliders and the
+ * uncertainty band moved to `components/interactive` (the playgrounds use them too); they are
+ * re-exported here so the Guided steps keep their imports.
  */
 import { AlertTriangle, CheckCircle2, X, XCircle } from "lucide-react";
-import { Dialog as DialogPrimitive, Slider as SliderPrimitive } from "radix-ui";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-// ----------------------------------------------------------------------------- sliders
-
-const track = "relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted";
-const thumb =
-  "block size-4 rounded-full border-2 border-primary bg-card shadow-sm transition-[box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40 disabled:pointer-events-none";
-
-/** One value on a scale (what-if multipliers, horizons). */
-export function ValueSlider({
-  value,
-  onValueChange,
-  min,
-  max,
-  step,
-  label,
-  valueText,
-  className,
-  disabled,
-}: {
-  value: number;
-  onValueChange: (v: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  label: string;
-  valueText?: string;
-  className?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <SliderPrimitive.Root
-      className={cn("relative flex h-6 w-full touch-none items-center select-none", className)}
-      value={[value]}
-      min={min}
-      max={max}
-      step={step}
-      disabled={disabled}
-      onValueChange={(v) => onValueChange(v[0] ?? value)}
-    >
-      <SliderPrimitive.Track className={track}>
-        <SliderPrimitive.Range className="absolute h-full bg-primary" />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className={thumb} aria-label={label} {...(valueText ? { "aria-valuetext": valueText } : {})} />
-    </SliderPrimitive.Root>
-  );
-}
-
-/** A low-high range on a scale (ROI or share beliefs). */
-export function RangeSlider({
-  value,
-  onValueChange,
-  min,
-  max,
-  step,
-  label,
-  format,
-  disabled,
-}: {
-  value: [number, number];
-  onValueChange: (v: [number, number]) => void;
-  min: number;
-  max: number;
-  step: number;
-  label: string;
-  format: (v: number) => string;
-  disabled?: boolean;
-}) {
-  return (
-    <SliderPrimitive.Root
-      className="relative flex h-6 w-full touch-none items-center select-none data-[disabled]:opacity-50"
-      value={value}
-      min={min}
-      max={max}
-      step={step}
-      minStepsBetweenThumbs={1}
-      disabled={disabled}
-      onValueChange={(v) => onValueChange([v[0] ?? value[0], v[1] ?? value[1]])}
-    >
-      <SliderPrimitive.Track className={track}>
-        <SliderPrimitive.Range className="absolute h-full bg-primary" />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className={thumb} aria-label={`${label}: low end`} aria-valuetext={format(value[0])} />
-      <SliderPrimitive.Thumb className={thumb} aria-label={`${label}: high end`} aria-valuetext={format(value[1])} />
-    </SliderPrimitive.Root>
-  );
-}
+export { ChangeBand } from "@/components/interactive/change-band";
+export { RangeSlider, ValueSlider, type SliderColor } from "@/components/interactive/sliders";
 
 // ----------------------------------------------------------------------------- sheet
 
@@ -175,85 +94,6 @@ export function Sparkline({ values, label, className }: { values: readonly numbe
     <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className={cn("h-7 w-[7.5rem] text-primary", className)} preserveAspectRatio="none">
       <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-// ----------------------------------------------------------------------------- uncertainty band
-
-/**
- * A value with its 90% band on a symmetric scale around zero (what-if changes): the band is
- * where 90% of plausible outcomes fall, the mark the average. `exact` adds the exact run's
- * band underneath for comparison.
- */
-export function ChangeBand({
-  lo,
-  mid,
-  hi,
-  exact,
-  label,
-}: {
-  lo: number;
-  mid: number;
-  hi: number;
-  exact?: { lo: number; mid: number; hi: number } | null;
-  label: string;
-}) {
-  const extent = Math.max(Math.abs(lo), Math.abs(hi), Math.abs(exact?.lo ?? 0), Math.abs(exact?.hi ?? 0), 1e-9) * 1.15;
-  const x = (v: number) => `${((v + extent) / (2 * extent)) * 100}%`;
-  const width = (a: number, b: number) => `${(Math.abs(b - a) / (2 * extent)) * 100}%`;
-  const tone = mid >= 0 ? "bg-success" : "bg-destructive";
-  return (
-    <div className="grid gap-1">
-      <ChangeBandTrack lo={lo} mid={mid} hi={hi} exact={exact} label={label} x={x} width={width} tone={tone} />
-      <div aria-hidden className="flex flex-wrap items-center justify-between gap-x-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className={cn("h-2 w-4 rounded-full opacity-40", tone)} /> instant estimate
-        </span>
-        <span>| no change</span>
-        {exact ? (
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-foreground/40" /> exact run
-          </span>
-        ) : (
-          <span />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ChangeBandTrack({
-  lo,
-  mid,
-  hi,
-  exact,
-  label,
-  x,
-  width,
-  tone,
-}: {
-  lo: number;
-  mid: number;
-  hi: number;
-  exact?: { lo: number; mid: number; hi: number } | null | undefined;
-  label: string;
-  x: (v: number) => string;
-  width: (a: number, b: number) => string;
-  tone: string;
-}) {
-  return (
-    <div role="img" aria-label={label} className="relative h-12 w-full">
-      <div aria-hidden className="absolute inset-x-0 top-5 h-px bg-border" />
-      <div aria-hidden className="absolute top-2 bottom-2 w-px bg-muted-foreground/50" style={{ left: "50%" }} />
-      <div aria-hidden className={cn("absolute top-3.5 h-3 rounded-full opacity-30", tone)} style={{ left: x(Math.min(lo, hi)), width: width(lo, hi) }} />
-      <div aria-hidden className={cn("absolute top-2.5 h-5 w-1 -translate-x-1/2 rounded-full", tone)} style={{ left: x(mid) }} />
-      {exact ? (
-        <>
-          <div aria-hidden className="absolute top-8 h-1.5 rounded-full bg-foreground/35" style={{ left: x(Math.min(exact.lo, exact.hi)), width: width(exact.lo, exact.hi) }} />
-          <div aria-hidden className="absolute top-7 h-3.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground" style={{ left: x(exact.mid) }} />
-        </>
-      ) : null}
-    </div>
   );
 }
 

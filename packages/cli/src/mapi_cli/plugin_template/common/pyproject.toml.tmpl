@@ -1,21 +1,21 @@
 [project]
 name = "{{dist}}"
 version = "0.1.0"
-description = "A modeling-api model plugin"
+description = "{{description}}"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "mapi-sdk>={{sdk_version}}",
-  "numpy>=2.0",
-  "xarray>=2025.1",
+{{dependencies}}
 ]
 
 [project.optional-dependencies]
-test = ["mapi-sdk[testing]>={{sdk_version}}", "pytest>=8.3"]
+test = [
+{{test_dependencies}}
+]
 
-# runner images discover plugins through this entry point group
-[project.entry-points."mapi.models"]
-{{module}} = "{{module}}:PLUGINS"
+# The runner discovers extensions through these entry-point groups. Each entry point names
+# one module, so a broken model never hides your plots or workflow nodes.
+{{entry_points}}
 
 [build-system]
 requires = ["hatchling>=1.25"]

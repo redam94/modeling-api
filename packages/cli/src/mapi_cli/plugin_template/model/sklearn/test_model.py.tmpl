@@ -1,0 +1,32 @@
+"""Contract-kit tests for {{model_id}} (run them with ``mapi plugin test``).
+
+The kit fits the model on a store x sku x week demand panel, then checks bundle round
+trips (no pickle), shuffled/subset/new-level scoring, typed errors for every dim policy,
+evaluate == score path, additive contributions, seed determinism and the About card.
+"""
+
+from __future__ import annotations
+
+import pytest
+from mapi_sdk.testing import ModelFixture, check_model
+from mapi_sklearn.testing import demand_dataset, demand_registry, demand_schema, demand_spec
+
+from {{module}}.model import MODELS, RidgeDemand
+
+
+def test_the_model_is_exported() -> None:
+    assert RidgeDemand in MODELS
+    assert RidgeDemand.catalog_entry().ref == "{{model_id}}@0.1.0"
+
+
+@pytest.mark.mapi_contract
+def test_contract_kit() -> None:
+    data = demand_dataset()
+    fixture = ModelFixture(
+        spec=demand_spec("{{model_id}}@^0.1", {"estimator": None}),
+        data=data,
+        raw_schema=demand_schema(data),
+        registry=demand_registry(),
+    )
+    report = check_model(RidgeDemand, fixture, raise_on_failure=False, require_about=True)
+    assert report.ok, report.summary()

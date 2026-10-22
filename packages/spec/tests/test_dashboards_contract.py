@@ -186,7 +186,7 @@ def test_v016_rows_follow_the_conventions(e: api.EndpointDecl) -> None:
 
 
 def test_v016_table_is_last_unique_and_exported() -> None:
-    v017 = len(V017_ENDPOINTS)  # the v0.17 rows follow
+    v017 = len(V017_ENDPOINTS) + len(api.V018_ENDPOINTS)  # the v0.17 and v0.18 rows follow
     assert api.ENDPOINTS[-len(V016_ENDPOINTS) - v017 : -v017] == V016_ENDPOINTS
     keys = [(e.method, e.path) for e in api.ENDPOINTS]
     assert len(keys) == len(set(keys))
