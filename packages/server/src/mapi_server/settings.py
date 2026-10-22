@@ -649,6 +649,37 @@ class Settings(BaseSettings):
     dashboard_refresh_debounce_s: int = Field(
         60, ge=0, description="Least time between two refresh readouts of one dashboard"
     )
+    # ------------------------------------------------------------- any-model dashboards (v0.17)
+    share_batch_per_day: int = Field(
+        2,
+        ge=0,
+        le=1000,
+        description="Batch scores (files of new cases) a share link may send per day",
+    )
+    client_batch_per_day: int = Field(
+        4,
+        ge=0,
+        le=1000,
+        description="Batch scores a client user may send per day and dashboard",
+    )
+    batch_rows_per_day: int = Field(
+        20_000,
+        ge=0,
+        le=10_000_000,
+        description="Rows of batch files one dashboard scores per day, all callers together",
+    )
+    dashboard_auto_upgrade: bool = Field(
+        True,
+        description="Move every layout 1 dashboard to layout 2 once per worker start (an "
+        "idempotent pass under a Postgres advisory lock; a dashboard that needs review keeps "
+        "layout 1 and is flagged)",
+    )
+    dashboard_layout1_create: bool = Field(
+        False,
+        description="Accept new layout 1 (media planner only) dashboard specs on create and "
+        "on a layout 2 draft's save (off, the default from v0.17: new dashboards are layout 2 "
+        "and a layout 1 spec is refused with DASHBOARD_LAYOUT_RETIRED)",
+    )
 
     # ------------------------------------------------------------------- observability
     log_json: bool = Field(

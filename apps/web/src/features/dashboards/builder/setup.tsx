@@ -1,6 +1,10 @@
 /**
  * Builder › Setup: the words of the dashboard, its source (an endpoint or a pinned model
  * version), the KPI, the channels (from the response grid), the tiles and the tabs.
+ *
+ * A layout 2 draft (v0.17: a new dashboard, or one that moved to the new layout) gets the
+ * layout 2 setup ({@link SetupV2}: preset, result and panels). A layout 1 draft keeps the v0.16
+ * form, with the "Use the new layout" banner above it.
  */
 import { Plus, Trash2 } from "lucide-react";
 
@@ -13,7 +17,8 @@ import { Field, Input, Label, NativeSelect, Table, TBody, TD, TH, THead, TR, Tex
 import { cn } from "@/lib/utils";
 
 import { Section } from "../readout/parts";
-import { MAX_CHANNELS, MAX_TILES, TAB_KEYS, TILE_KEYS, type ChannelDef, type DashboardSource, type DashboardSpec, type KpiDef } from "../types";
+import { isLayout2, MAX_CHANNELS, MAX_TILES, TAB_KEYS, TILE_KEYS, type AnyDashboardSpec, type ChannelDef, type DashboardSource, type DashboardSpec, type KpiDef } from "../types";
+import { SetupV2 } from "./setup-v2";
 import type { SourceGrid } from "./source";
 import {
   channelsFrom,
@@ -30,10 +35,11 @@ import {
   UNIT_LABEL,
   type FormIssue,
 } from "./spec-form";
+import type { SpecUpdate } from "./use-draft";
 
 export interface SpecEditorProps {
-  spec: DashboardSpec;
-  onChange: (next: DashboardSpec | ((s: DashboardSpec) => DashboardSpec)) => void;
+  spec: AnyDashboardSpec;
+  onChange: (next: SpecUpdate) => void;
   issues: readonly FormIssue[];
   grid: SourceGrid;
   readOnly?: boolean;
@@ -47,22 +53,46 @@ const PERIODS = [
 
 const UNITS = ["count", "currency", "ratio", "percent"] as const;
 
+/** A change of a layout 1 draft (ignored once the draft is layout 2). */
+export type V1Update = DashboardSpec | ((s: DashboardSpec) => DashboardSpec);
+
+/** `onChange` of the layout 1 sections: applies only while the draft is layout 1. */
+export function v1Change(onChange: (next: SpecUpdate) => void): (next: V1Update) => void {
+  return (next) => onChange((s) => (isLayout2(s) ? s : typeof next === "function" ? next(s) : next));
+}
+
 export function SetupTab({ spec, onChange, issues, grid, readOnly = false }: SpecEditorProps) {
+  if (isLayout2(spec)) return <SetupV2 spec={spec} onChange={onChange} issues={issues} grid={grid} readOnly={readOnly} />;
+  const change = v1Change(onChange);
   return (
-    <fieldset disabled={readOnly} className="grid min-w-0 gap-5 xl:grid-cols-2">
-      <legend className="sr-only">Setup</legend>
-      <WordsSection spec={spec} onChange={onChange} issues={issues} />
-      <SourceSection spec={spec} onChange={onChange} issues={issues} grid={grid} />
-      <KpiSection spec={spec} onChange={onChange} issues={issues} grid={grid} />
-      <LayoutSection spec={spec} onChange={onChange} issues={issues} />
-      <ChannelsSection spec={spec} onChange={onChange} issues={issues} grid={grid} className="xl:col-span-2" />
-    </fieldset>
+    <div className="grid min-w-0 gap-5">
+      <fieldset disabled={readOnly} className="grid min-w-0 gap-5 xl:grid-cols-2">
+        <legend className="sr-only">Setup</legend>
+        <WordsSection spec={spec} onChange={onChange} issues={issues} />
+        <SourceSection spec={spec} onChange={onChange} issues={issues} grid={grid} />
+        <KpiSection spec={spec} onChange={change} issues={issues} grid={grid} />
+        <LayoutSection spec={spec} onChange={change} issues={issues} />
+        <ChannelsSection
+          className="xl:col-span-2"
+          channels={spec.channels}
+          onChannels={(f) => change((s) => ({ ...s, channels: f(s.channels) }))}
+          issues={issues}
+          grid={grid}
+        />
+      </fieldset>
+    </div>
   );
 }
 
 type PartProps = Omit<SpecEditorProps, "grid" | "readOnly">;
+interface V1PartProps {
+  spec: DashboardSpec;
+  onChange: (next: V1Update) => void;
+  issues: readonly FormIssue[];
+}
 
-function WordsSection({ spec, onChange, issues }: PartProps) {
+/** The words of the dashboard (either layout). */
+export function WordsSection({ spec, onChange, issues }: PartProps) {
   return (
     <Section title="Words" description="Plain text only. The client sees these words on the dashboard.">
       <Field label="Title" htmlFor="ds-title" error={issueAt(issues, "/title")}>
@@ -81,7 +111,8 @@ function WordsSection({ spec, onChange, issues }: PartProps) {
   );
 }
 
-function SourceSection({ spec, onChange, issues, grid }: PartProps & { grid: SourceGrid }) {
+/** The source of the dashboard (either layout). */
+export function SourceSection({ spec, onChange, issues, grid }: PartProps & { grid: SourceGrid }) {
   const src = spec.source;
   const endpoints = useEndpoints();
   const models = useModels();
@@ -148,7 +179,7 @@ function SourceSection({ spec, onChange, issues, grid }: PartProps & { grid: Sou
           </Field>
         </div>
       )}
-      <GridStatus grid={grid} />
+      {isLayout2(spec) && spec.preset !== "mmm_planner" ? null : <GridStatus grid={grid} />}
     </Section>
   );
 }
@@ -170,7 +201,7 @@ function GridStatus({ grid }: { grid: SourceGrid }) {
   return null;
 }
 
-function KpiSection({ spec, onChange, issues, grid }: PartProps & { grid: SourceGrid }) {
+function KpiSection({ spec, onChange, issues, grid }: V1PartProps & { grid: SourceGrid }) {
   const k = spec.kpi;
   const setKpi = (patch: Partial<KpiDef>) => onChange((s) => ({ ...s, kpi: { ...s.kpi, ...patch } }));
   return (
@@ -216,7 +247,7 @@ function KpiSection({ spec, onChange, issues, grid }: PartProps & { grid: Source
   );
 }
 
-function LayoutSection({ spec, onChange, issues }: PartProps) {
+function LayoutSection({ spec, onChange, issues }: V1PartProps) {
   const tiles = spec.tiles ?? [];
   const tabs = spec.tabs ?? ["this_period"];
   const whatif = spec.whatif?.enabled ?? true;
@@ -288,10 +319,21 @@ function LayoutSection({ spec, onChange, issues }: PartProps) {
   );
 }
 
-function ChannelsSection({ spec, onChange, issues, grid, className }: PartProps & { grid: SourceGrid; className?: string }) {
-  const setChannel = (i: number, patch: Partial<ChannelDef>) => onChange((s) => ({ ...s, channels: s.channels.map((c, j) => (j === i ? { ...c, ...patch } : c)) }));
+export interface ChannelsSectionProps {
+  channels: readonly ChannelDef[];
+  onChannels: (f: (c: ChannelDef[]) => ChannelDef[]) => void;
+  issues: readonly FormIssue[];
+  grid: SourceGrid;
+  /** Where the channels are in the spec (`/channels`, or `/mmm/channels` on layout 2). */
+  at?: string;
+  className?: string;
+}
+
+/** The media channels (layout 1, and the planner of layout 2). */
+export function ChannelsSection({ channels, onChannels, issues, grid, at = "/channels", className }: ChannelsSectionProps) {
+  const setChannel = (i: number, patch: Partial<ChannelDef>) => onChannels((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const fromGrid = grid.channels ?? null;
-  const missing = fromGrid ? fromGrid.filter((n) => !spec.channels.some((c) => c.name === n)) : [];
+  const missing = fromGrid ? fromGrid.filter((n) => !channels.some((c) => c.name === n)) : [];
   const num = (v: string) => (v === "" ? undefined : Number(v));
   return (
     <Section
@@ -301,24 +343,24 @@ function ChannelsSection({ spec, onChange, issues, grid, className }: PartProps 
       action={
         <div className="flex flex-wrap gap-2">
           {fromGrid ? (
-            <Button size="sm" variant="secondary" disabled={!missing.length} onClick={() => onChange((s) => ({ ...s, channels: channelsFrom([...s.channels.map((c) => c.name), ...fromGrid], s.channels) }))}>
+            <Button size="sm" variant="secondary" disabled={!missing.length} onClick={() => onChannels((cs) => channelsFrom([...cs.map((c) => c.name), ...fromGrid], cs))}>
               <Plus /> Add the grid's channels{missing.length ? ` (${missing.length})` : ""}
             </Button>
           ) : null}
           <Button
             size="sm"
             variant="ghost"
-            disabled={spec.channels.length >= MAX_CHANNELS}
-            onClick={() => onChange((s) => ({ ...s, channels: [...s.channels, { name: "", label: "", min_mult: 0.5, max_mult: 1.5, step: 0.05 }] }))}
+            disabled={channels.length >= MAX_CHANNELS}
+            onClick={() => onChannels((cs) => [...cs, { name: "", label: "", min_mult: 0.5, max_mult: 1.5, step: 0.05 }])}
           >
             <Plus /> Add a channel
           </Button>
         </div>
       }
     >
-      {issueAt(issues, "/channels") ? (
+      {issueAt(issues, at) ? (
         <p role="alert" className="text-xs font-medium text-destructive">
-          {issueAt(issues, "/channels")}
+          {issueAt(issues, at)}
         </p>
       ) : null}
       <div className="min-w-0 overflow-x-auto">
@@ -336,8 +378,8 @@ function ChannelsSection({ spec, onChange, issues, grid, className }: PartProps 
             </TR>
           </THead>
           <TBody>
-            {spec.channels.map((c, i) => {
-              const p = `/channels/${i}`;
+            {channels.map((c, i) => {
+              const p = `${at}/${i}`;
               const err = issueAt(issues, `${p}/name`) ?? issueAt(issues, `${p}/label`) ?? issueAt(issues, `${p}/min_mult`) ?? issueAt(issues, `${p}/step`) ?? issueAt(issues, p, true);
               const who = c.label || c.name || `channel ${i + 1}`;
               return (
@@ -363,7 +405,7 @@ function ChannelsSection({ spec, onChange, issues, grid, className }: PartProps 
                     <Input aria-label={`Step of ${who}`} className="h-8" type="number" min={0.01} step={0.01} value={c.step ?? 0.05} onChange={(e) => setChannel(i, { step: num(e.target.value) })} />
                   </TD>
                   <TD className="text-right align-top">
-                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${who}`} onClick={() => onChange((s) => ({ ...s, channels: s.channels.filter((_, j) => j !== i) }))}>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${who}`} onClick={() => onChannels((cs) => cs.filter((_, j) => j !== i))}>
                       <Trash2 />
                     </Button>
                   </TD>

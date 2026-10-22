@@ -725,6 +725,55 @@ print(shared.get().title, [r.seq for r in shared.readouts()])
 | `refit_requests(id, *, status=None)`, `approve_refit(id, request_id, *, note=None)`, `reject_refit(id, request_id, *, note=None)` | Refit requests |
 | `open_share(link, *, passcode=None)` | A `SharedDashboard` with `get`, `readouts`, `readout`, `wait_readout`, `grid`, `whatif`, `save_scenario`, `actuals_template` and `submit_actuals`. It gets a new session before the old one expires |
 
+### Dashboards for any model type <span class="mapi-badge">v0.17</span> { #client-dashboards-v017 }
+
+Layout 2 dashboards work for any model family. Start a dashboard from the presets that fit a
+model version, then let clients try cases and score files
+([What's new in 0.17](../whats-new-0.17.md)).
+
+```python
+from mapi_spec.dashboard_v2 import BatchDef, ScenarioInputDef, ScenarioRowsDef
+
+found = api.dashboards.presets(model_id="mdl_01jaf3c1d2e3f4g5h6j7k8m9n0", version=3)
+print([s.preset for s in found.suggestions])  # best first
+# the compiled spec has every client input off: turn on the ones clients may use
+spec = found.spec.model_copy(update={
+    "scenario_rows": ScenarioRowsDef(enabled=True, outputs=["y_hat"], inputs=[
+        ScenarioInputDef(name="price", label="Price", bind={"var": "price"}, type="number",
+                         min=5, max=30, default=12),
+        ScenarioInputDef(name="promo", label="Promotion", bind={"var": "promo"},
+                         type="toggle", default=False),
+    ]),
+    "batch": BatchDef(enabled=True, outputs=["y_hat"], id_column="store"),
+})
+dash = api.dashboards.create("weekly-churn", spec)  # the layout 2 draft
+api.dashboards.publish(dash.id)  # inputs work on the published revision only
+
+readout = api.dashboards.predict(dash.id, {"price": 12, "promo": True}, wait=30)
+api.dashboards.keep_readout(dash.id, readout.seq)  # waits for an editor's review
+
+template = api.dashboards.batch_template(dash.id)
+scored = api.dashboards.score_batch(dash.id, cases_ds, label="October stores")
+scored = api.dashboards.wait_readout(dash.id, scored.seq, timeout=300)
+open("predictions.csv", "wb").write(api.dashboards.download_predictions(dash.id, scored.seq))
+```
+
+| Call | What it does |
+|---|---|
+| `presets(*, model_id=None, version=None, alias=None)` | `DashboardPresets`: the presets that fit, and the compiled spec of the first |
+| `sources(id)` | `SourceCatalog`: what the draft's model version offers to panels and inputs |
+| `upgrade(id, *, etag)` | Move a layout 1 draft to layout 2 (`DashboardUpgrade`). The server also does this automatically |
+| `predict(id, rows, *, label=None, wait=None, idempotency_key=None)` | Try one or more cases: a private prediction readout (`wait`: seconds the server may hold the call for the result) |
+| `keep_readout(id, seq)` | Keep a tried case for an editor's review (it no longer expires) |
+| `batch_template(id)`, `score_batch(id, inputs, *, label=None, wait=None, idempotency_key=None)` | Score a file of cases. `inputs` is an `xr.Dataset` or XrJSON along the id column |
+| `download_predictions(id, seq)`, `asset(id, asset_id)` | The predictions CSV of a batch readout, and a picture of the revision, as bytes |
+
+A compiled preset has every client input off (`scenario_rows.enabled` is false and `batch` is
+unset): `predict` and `batch_template` answer `409 DASHBOARD_INPUT_DISABLED` until the published
+revision turns them on. `create` and `update_draft` take a layout 1 or a layout 2 spec. A `SharedDashboard` also has
+`predict`, `batch_template`, `score_batch`, `download_predictions` and `asset`; a share link
+cannot keep a case, and neither a client nor a share link can score image files.
+
 ## Async
 
 `AsyncClient` has the same resources and arguments. Use `await` for the calls. Use

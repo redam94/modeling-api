@@ -3,6 +3,9 @@
  * response grid are free; exact results, uploads and refreshes are score runs that run as the
  * publisher (plan §3.4). Uploads can carry a refit request to the analyst's refit workflow,
  * which an editor with the runner role approves (§10.4).
+ *
+ * A layout 2 draft gets the layout 2 inputs ({@link InputsV2}: try a case, uploads by period
+ * or by case, score a file, refresh and limits).
  */
 import { Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
@@ -14,11 +17,12 @@ import { Field, Input, Label, NativeSelect } from "@/components/ui/primitives";
 import { useWorkflows } from "@/features/workflows/api";
 
 import { Section } from "../readout/parts";
-import type { DashboardSpec } from "../types";
-import type { SpecEditorProps } from "./setup";
+import { isLayout2, type DashboardSpec } from "../types";
+import { InputsV2 } from "./inputs-v2";
+import { v1Change, type SpecEditorProps } from "./setup";
 import { issueAt, MAX_EXACT_RUNS, setActuals, setRefitWorkflow, setWhatIf } from "./spec-form";
 
-function Toggle({ id, label, hint, checked, disabled, onChange, error }: { id: string; label: string; hint: React.ReactNode; checked: boolean; disabled?: boolean; onChange: (on: boolean) => void; error?: string | undefined }) {
+export function Toggle({ id, label, hint, checked, disabled, onChange, error }: { id: string; label: string; hint: React.ReactNode; checked: boolean; disabled?: boolean; onChange: (on: boolean) => void; error?: string | undefined }) {
   return (
     <div className="flex items-start gap-3">
       <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onChange} aria-describedby={`${id}-hint`} />
@@ -37,7 +41,7 @@ function Toggle({ id, label, hint, checked, disabled, onChange, error }: { id: s
   );
 }
 
-function WorkflowPicker({ id, label, hint, value, onChange, error }: { id: string; label: string; hint: React.ReactNode; value: string | null; onChange: (v: string | null) => void; error?: string | undefined }) {
+export function WorkflowPicker({ id, label, hint, value, onChange, error }: { id: string; label: string; hint: React.ReactNode; value: string | null; onChange: (v: string | null) => void; error?: string | undefined }) {
   const workflows = useWorkflows();
   const items = workflows.data?.items ?? [];
   const known = value ? items.some((w) => w.id === value) : true;
@@ -63,7 +67,13 @@ function WorkflowPicker({ id, label, hint, value, onChange, error }: { id: strin
   );
 }
 
-export function InputsTab({ spec, onChange, issues, grid, readOnly = false }: SpecEditorProps) {
+export function InputsTab(props: SpecEditorProps) {
+  const { spec } = props;
+  if (isLayout2(spec)) return <InputsV2 {...props} spec={spec} />;
+  return <InputsV1 {...props} spec={spec} onChange={v1Change(props.onChange)} />;
+}
+
+function InputsV1({ spec, onChange, issues, grid, readOnly = false }: Omit<SpecEditorProps, "spec" | "onChange"> & { spec: DashboardSpec; onChange: ReturnType<typeof v1Change> }) {
   const whatif = spec.whatif?.enabled ?? true;
   const exact = spec.whatif?.exact ?? false;
   const a = spec.actuals ?? {};

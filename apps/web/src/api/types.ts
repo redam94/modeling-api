@@ -261,6 +261,9 @@ export type DashboardShareCreate = S["DashboardShareCreate"];
 export type DashboardShareCreated = S["DashboardShareCreated"];
 export type DashboardSource = S["DashboardSource"];
 export type DashboardSpec = S["DashboardSpec"];
+// v0.17: layout 2 specs (`mapi_spec.dashboard_v2`); a stored spec is either layout.
+export type DashboardSpecV2 = S["DashboardSpecV2"];
+export type AnyDashboardSpec = DashboardSpec | DashboardSpecV2;
 export type DashboardSummary = S["DashboardSummary"];
 export type DashboardValidation = S["DashboardValidation"];
 export type EffectiveInputs = S["EffectiveInputs"];

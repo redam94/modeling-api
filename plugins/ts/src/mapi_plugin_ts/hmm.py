@@ -172,6 +172,8 @@ class GaussianHMMModel(CustomModel[GaussianHMMSettings]):
         "state_prob": {
             "dims": [GROUP_DIM, STEP_DIM, STATE],
             "units": "probability",
+            "meaning": "state_probability",
+            "classes_dim": STATE,
             "description": "Hidden-state probabilities (predicted, or filtered in filter mode)",
         },
     }

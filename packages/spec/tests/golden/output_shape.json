@@ -1,0 +1,974 @@
+{
+ "_comment": "Parity cases for mapi_spec.output_shape.classify_table: expected = apps/web/src/features/score/shape.ts classify() (shape, time, series) and tableDims(), computed by running the TypeScript on these tables.",
+ "cases": [
+  {
+   "name": "grid_field",
+   "table": {
+    "variable": "rate",
+    "columns": [
+     "period",
+     "row",
+     "col",
+     "mean"
+    ],
+    "rows": [
+     [
+      "2020Q1",
+      0,
+      0,
+      1.0
+     ]
+    ]
+   },
+   "has_field": true,
+   "expected": {
+    "shape": "grid",
+    "time": null,
+    "series": null,
+    "dims": [
+     "period",
+     "row",
+     "col"
+    ]
+   }
+  },
+  {
+   "name": "grid_field_no_table_dims",
+   "table": {
+    "variable": "intensity",
+    "columns": [
+     "mean"
+    ],
+    "rows": [
+     [
+      1.0
+     ]
+    ]
+   },
+   "has_field": true,
+   "expected": {
+    "shape": "grid",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "areal_plot",
+   "table": {
+    "variable": "cases",
+    "columns": [
+     "district",
+     "mean",
+     "hdi_90_lower",
+     "hdi_90_upper"
+    ],
+    "rows": [
+     [
+      "a",
+      1,
+      0,
+      2
+     ]
+    ],
+    "plots": [
+     "sci.area_map",
+     "core.ridge"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "areal",
+    "time": null,
+    "series": null,
+    "dims": [
+     "district"
+    ]
+   }
+  },
+  {
+   "name": "areal_beats_classification",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "area",
+     "mean"
+    ],
+    "rows": [
+     [
+      "a",
+      1
+     ]
+    ],
+    "plots": [
+     "core.confusion",
+     "sci.area_map"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "areal",
+    "time": null,
+    "series": null,
+    "dims": [
+     "area"
+    ]
+   }
+  },
+  {
+   "name": "classification_roc",
+   "table": {
+    "variable": "y_hat",
+    "columns": [
+     "store",
+     "sku",
+     "week",
+     "mean"
+    ],
+    "rows": [
+     [
+      "s1",
+      "k1",
+      "2026-01-05",
+      0.3
+     ]
+    ],
+    "plots": [
+     "core.roc_pr"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "classification",
+    "time": null,
+    "series": null,
+    "dims": [
+     "store",
+     "sku",
+     "week"
+    ]
+   }
+  },
+  {
+   "name": "classification_calibration",
+   "table": {
+    "variable": "y_hat",
+    "columns": [
+     "case",
+     "mean"
+    ],
+    "rows": [
+     [
+      "c1",
+      0.3
+     ]
+    ],
+    "plots": [
+     "core.calibration"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "classification",
+    "time": null,
+    "series": null,
+    "dims": [
+     "case"
+    ]
+   }
+  },
+  {
+   "name": "classification_scalar",
+   "table": {
+    "variable": "y_hat",
+    "columns": [
+     "mean"
+    ],
+    "rows": [
+     [
+      0.4
+     ]
+    ],
+    "plots": [
+     "core.confusion"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "classification",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "other_plots_ignored",
+   "table": {
+    "variable": "y_hat",
+    "columns": [
+     "week",
+     "mean"
+    ],
+    "rows": [
+     [
+      "2026-01-05",
+      1
+     ]
+    ],
+    "plots": [
+     "core.ppc_fan"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "week",
+    "series": null,
+    "dims": [
+     "week"
+    ]
+   }
+  },
+  {
+   "name": "scalar_mean_sd",
+   "table": {
+    "variable": "peak",
+    "columns": [
+     "mean",
+     "sd"
+    ],
+    "rows": [
+     [
+      1,
+      0.1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "scalar",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "scalar_point",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "point"
+    ],
+    "rows": [
+     [
+      3
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "scalar",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "scalar_quantiles",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "median",
+     "q5",
+     "q95"
+    ],
+    "rows": [
+     [
+      1,
+      0,
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "scalar",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "scalar_dims_empty",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "mean"
+    ],
+    "rows": [
+     [
+      1
+     ]
+    ],
+    "dims": []
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "scalar",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "time_named_quarter",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "quarter",
+     "mean"
+    ],
+    "rows": [
+     [
+      "2020Q1",
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "quarter",
+    "series": null,
+    "dims": [
+     "quarter"
+    ]
+   }
+  },
+  {
+   "name": "time_named_t",
+   "table": {
+    "variable": "y_hat",
+    "columns": [
+     "t",
+     "median",
+     "eti_90_lower",
+     "eti_90_upper"
+    ],
+    "rows": [
+     [
+      0,
+      1,
+      0,
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "t",
+    "series": null,
+    "dims": [
+     "t"
+    ]
+   }
+  },
+  {
+   "name": "time_iso_dates_with_series",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "geo",
+     "ts",
+     "mean"
+    ],
+    "rows": [
+     [
+      "de",
+      "2026-01-05",
+      1
+     ],
+     [
+      "fr",
+      "2026-01-05",
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "ts",
+    "series": "geo",
+    "dims": [
+     "geo",
+     "ts"
+    ]
+   }
+  },
+  {
+   "name": "time_declared",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "k",
+     "mean"
+    ],
+    "rows": [
+     [
+      1,
+      2
+     ]
+    ],
+    "dims": [
+     "k"
+    ],
+    "time_dim": "k"
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "k",
+    "series": null,
+    "dims": [
+     "k"
+    ]
+   }
+  },
+  {
+   "name": "time_declared_not_in_dims_falls_back",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "date",
+     "mean"
+    ],
+    "rows": [
+     [
+      "x",
+      1
+     ]
+    ],
+    "dims": [
+     "date"
+    ],
+    "time_dim": "zzz"
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "date",
+    "series": null,
+    "dims": [
+     "date"
+    ]
+   }
+  },
+  {
+   "name": "time_two_others_no_series",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "cell",
+     "time",
+     "mean"
+    ],
+    "rows": [
+     [
+      "a",
+      "2026-01-05",
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "time",
+    "series": "cell",
+    "dims": [
+     "cell",
+     "time"
+    ]
+   }
+  },
+  {
+   "name": "time_series_too_many_levels",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "store",
+     "week",
+     "mean"
+    ],
+    "rows": [
+     [
+      "s0",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s1",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s2",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s3",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s4",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s5",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s6",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s7",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s8",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s9",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s10",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s11",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s12",
+      "2026-01-05",
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "week",
+    "series": null,
+    "dims": [
+     "store",
+     "week"
+    ]
+   }
+  },
+  {
+   "name": "time_series_twelve_levels",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "store",
+     "week",
+     "mean"
+    ],
+    "rows": [
+     [
+      "s0",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s1",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s2",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s3",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s4",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s5",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s6",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s7",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s8",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s9",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s10",
+      "2026-01-05",
+      1
+     ],
+     [
+      "s11",
+      "2026-01-05",
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "week",
+    "series": "store",
+    "dims": [
+     "store",
+     "week"
+    ]
+   }
+  },
+  {
+   "name": "time_iso_beats_name",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "step",
+     "day_of",
+     "mean"
+    ],
+    "rows": [
+     [
+      1,
+      "2026-01-05",
+      3
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "day_of",
+    "series": "step",
+    "dims": [
+     "step",
+     "day_of"
+    ]
+   }
+  },
+  {
+   "name": "time_case_insensitive",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "Date",
+     "mean"
+    ],
+    "rows": [
+     [
+      "x",
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "Date",
+    "series": null,
+    "dims": [
+     "Date"
+    ]
+   }
+  },
+  {
+   "name": "categorical_channel",
+   "table": {
+    "variable": "roi",
+    "columns": [
+     "channel",
+     "mean"
+    ],
+    "rows": [
+     [
+      "tv",
+      1.2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "channel"
+    ]
+   }
+  },
+  {
+   "name": "categorical_circular",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "hour",
+     "mean"
+    ],
+    "rows": [
+     [
+      1,
+      2
+     ]
+    ],
+    "period": 24,
+    "dims": [
+     "hour"
+    ],
+    "time_dim": "hour"
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "hour"
+    ]
+   }
+  },
+  {
+   "name": "categorical_two_dims",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "store",
+     "sku",
+     "point",
+     "interval_lower",
+     "interval_upper"
+    ],
+    "rows": [
+     [
+      "s",
+      "k",
+      1,
+      0,
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "store",
+     "sku"
+    ]
+   }
+  },
+  {
+   "name": "categorical_null_dates_not_dates",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "when",
+     "mean"
+    ],
+    "rows": [
+     [
+      null,
+      1
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "when"
+    ]
+   }
+  },
+  {
+   "name": "categorical_mixed_dates",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "when",
+     "mean"
+    ],
+    "rows": [
+     [
+      "2026-01-05",
+      1
+     ],
+     [
+      3,
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "when"
+    ]
+   }
+  },
+  {
+   "name": "dims_declared_filter_missing",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "a",
+     "mean"
+    ],
+    "rows": [
+     [
+      "x",
+      1
+     ]
+    ],
+    "dims": [
+     "a",
+     "zz"
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "a"
+    ]
+   }
+  },
+  {
+   "name": "leading_stat_q50",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "q50",
+     "x"
+    ],
+    "rows": [
+     [
+      1,
+      "a"
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "scalar",
+    "time": null,
+    "series": null,
+    "dims": []
+   }
+  },
+  {
+   "name": "quantile_fraction_column",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "region",
+     "q2_5",
+     "q97_5"
+    ],
+    "rows": [
+     [
+      "n",
+      1,
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "categorical",
+    "time": null,
+    "series": null,
+    "dims": [
+     "region"
+    ]
+   }
+  },
+  {
+   "name": "bool_levels_distinct",
+   "table": {
+    "variable": "y",
+    "columns": [
+     "flag",
+     "week",
+     "mean"
+    ],
+    "rows": [
+     [
+      true,
+      "2026-01-05",
+      1
+     ],
+     [
+      1,
+      "2026-01-05",
+      2
+     ]
+    ]
+   },
+   "has_field": false,
+   "expected": {
+    "shape": "time",
+    "time": "week",
+    "series": "flag",
+    "dims": [
+     "flag",
+     "week"
+    ]
+   }
+  }
+ ]
+}

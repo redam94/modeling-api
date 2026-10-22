@@ -1,0 +1,746 @@
+{
+ "bundle_ui_artifacts": [
+  "ui/explore/diagnostics.json",
+  "ui/explore/index.json",
+  "ui/explore/params.json",
+  "ui/explore/plots/params.json",
+  "ui/preprocess.json",
+  "ui/summaries.json",
+  "ui/thin.zarr.zip",
+  "ui/tree_index.json"
+ ],
+ "capabilities": {
+  "checkpointable": false,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "mcmc",
+  "loo_invalid_reason": "the model stores no pointwise log-likelihood",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "evaluate",
+   "predict"
+  ]
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.554300-04:00",
+   "key": "accuracy",
+   "labels": {},
+   "last": 0.6666666666666666,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.554300-04:00",
+   "max": 0.6666666666666666,
+   "min": 0.6666666666666666
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.554336-04:00",
+   "key": "accuracy_naive",
+   "labels": {},
+   "last": 0.3333333333333333,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.554336-04:00",
+   "max": 0.3333333333333333,
+   "min": 0.3333333333333333
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.554365-04:00",
+   "key": "auc",
+   "labels": {},
+   "last": 0.8333333333333334,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.554365-04:00",
+   "max": 0.8333333333333334,
+   "min": 0.8333333333333334
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.554392-04:00",
+   "key": "brier",
+   "labels": {},
+   "last": 0.4407869631540699,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:46.554392-04:00",
+   "max": 0.4407869631540699,
+   "min": 0.4407869631540699
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.631594-04:00",
+   "key": "explained_variance",
+   "labels": {},
+   "last": 0.6260830050895115,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:43.631594-04:00",
+   "max": 0.6260830050895115,
+   "min": 0.6260830050895115
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:40.058651-04:00",
+   "key": "explained_variance",
+   "labels": {
+    "fit": "evaluation"
+   },
+   "last": 0.6590686895839882,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:40.058651-04:00",
+   "max": 0.6590686895839882,
+   "min": 0.6590686895839882
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 7.0,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.6336811533109347,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 0.6336811533109347,
+   "min": 0.6336811533109347
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0",
+    "fit": "evaluation"
+   },
+   "last": 0.650024244571528,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 0.650024244571528,
+   "min": 0.650024244571528
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:46.344698-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.5829626163051229,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:46.344698-04:00",
+   "max": 0.5829626163051229,
+   "min": 0.5829626163051229
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:43.552594-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1",
+    "fit": "evaluation"
+   },
+   "last": 0.6661958707039355,
+   "last_step": 250,
+   "last_ts": "2026-10-21T09:47:43.552594-04:00",
+   "max": 0.6661958707039355,
+   "min": 0.6661958707039355
+  }
+ ],
+ "fit_run": "run_01m5fbf7frh48hgs3rbz4kc64a",
+ "inputs": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "A level of x",
+     "dims": [],
+     "freq": null,
+     "name": "x",
+     "role": "coord"
+    },
+    {
+     "description": "A level of y",
+     "dims": [],
+     "freq": null,
+     "name": "y",
+     "role": "coord"
+    },
+    {
+     "description": "A level of image",
+     "dims": [],
+     "freq": null,
+     "name": "image",
+     "role": "coord"
+    },
+    {
+     "description": "A level of channel",
+     "dims": [],
+     "freq": null,
+     "name": "channel",
+     "role": "coord"
+    },
+    {
+     "description": "The value of the target",
+     "dims": [
+      "image"
+     ],
+     "freq": null,
+     "name": "label",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "image",
+      "y",
+      "x",
+      "channel"
+     ],
+     "freq": null,
+     "name": "pixels",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": null,
+   "rows": []
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-image-f5dc83@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "channel": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 1,
+     "start": null,
+     "step": null,
+     "values": [
+      "gray"
+     ]
+    },
+    "image": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 30,
+     "start": null,
+     "step": null,
+     "values": [
+      "00",
+      "01",
+      "02",
+      "03",
+      "04",
+      "05",
+      "06",
+      "07",
+      "08",
+      "09",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18",
+      "19",
+      "20",
+      "21",
+      "22",
+      "23",
+      "24",
+      "25",
+      "26",
+      "27",
+      "28",
+      "29"
+     ]
+    },
+    "x": {
+     "contiguous": true,
+     "end": 11,
+     "freq": null,
+     "kind": "integer",
+     "size": 12,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ]
+    },
+    "y": {
+     "contiguous": true,
+     "end": 11,
+     "freq": null,
+     "kind": "integer",
+     "size": 12,
+     "start": 0,
+     "step": 1,
+     "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": null,
+   "input_schema": {
+    "dims": {
+     "channel": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "image": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "pooled",
+      "ordered": false,
+      "policy": "new_levels"
+     },
+     "x": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "y": {
+      "description": null,
+      "freq": null,
+      "kind": "integer",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "label": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "image"
+      ],
+      "dtype": "str",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": null
+     },
+     "pixels": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "image",
+       "y",
+       "x",
+       "channel"
+      ],
+      "dtype": "uint8",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:00a18c25e8ba47d79baefc21f11ac4f6fca6c1d32cf56c8099464c315f0b4665",
+   "score_modes": [
+    "evaluate",
+    "predict"
+   ]
+  }
+ },
+ "manifest_outputs": null,
+ "model_ref": "model://default/v017-image-f5dc83@v1",
+ "plugin": "tabular.image_logistic@1.1.0",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.038 for 'beta' (threshold 1.01)",
+    "message_plain": "The chains agree, but not fully (R-hat 1.04).",
+    "metric": "r_hat_max",
+    "status": "warn",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.01,
+    "title": "Chains agree",
+    "value": 1.0375604788820092
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 177 for 'beta' (threshold 200)",
+    "message_plain": "There are only 177 independent draws. The results can change a little from one run to the next.",
+    "metric": "ess_bulk_min",
+    "status": "warn",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 400.0,
+    "title": "Enough independent draws",
+    "value": 176.7441792294397
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 4320 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   }
+  ],
+  "overall": "warn",
+  "skipped": {
+   "data.history": "the model has no time dim",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "predict_few__canonical": {
+   "captured": [
+    "predict_few__canonical.summary.json",
+    "predict_few__canonical.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-image-f5dc83-predict-few--canonical@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-image-f5dc83@v1",
+    "output": {
+     "names": "canonical",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbhc6frdy3sxsa322n9mrv",
+   "state": "succeeded"
+  },
+  "predict_few__predictive": {
+   "captured": [
+    "predict_few__predictive.summary.json",
+    "predict_few__predictive.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-image-f5dc83-predict-few--predictive@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-image-f5dc83@v1",
+    "output": {
+     "kind": "predictive",
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbgrhhywy44f6ew3tsebxd",
+   "state": "succeeded"
+  },
+  "predict_few__readout": {
+   "captured": [
+    "predict_few__readout.summary.json",
+    "predict_few__readout.result.json"
+   ],
+   "inline": false,
+   "output_names": [
+    "plots.json",
+    "result.json",
+    "score.zarr.zip",
+    "summary.json",
+    "ui/summary.arrow"
+   ],
+   "request": {
+    "apiVersion": "mapi/v1",
+    "data": "dataset://default/v017-image-f5dc83-predict-few--readout@v1",
+    "kind": "ScoreRequest",
+    "mode": "predict",
+    "model": "model://default/v017-image-f5dc83@v1",
+    "output": {
+     "summary": [
+      "mean",
+      "hdi_90"
+     ]
+    }
+   },
+   "run_id": "run_01m5fbg4jfwqh12ts5mjjp4f87",
+   "state": "succeeded"
+  }
+ },
+ "size": "tiny",
+ "source": "probe case image",
+ "spec": {
+  "apiVersion": "mapi/v1",
+  "data": {
+   "dataset": "dataset://default/v017-image-f5dc83-data@v1",
+   "split": {
+    "column": "split",
+    "dim": "image",
+    "holdout": [
+     "test"
+    ],
+    "kind": "column"
+   }
+  },
+  "evaluate": {
+   "metrics": [
+    "accuracy",
+    "accuracy_naive",
+    "brier",
+    "auc"
+   ]
+  },
+  "kind": "ModelSpec",
+  "metadata": {
+   "name": "v017-image-f5dc83",
+   "project": "default"
+  },
+  "model": {
+   "fit": {
+    "chains": 2,
+    "draws": 100,
+    "engine": "nutpie",
+    "mode": "evaluate_then_refit",
+    "seed": 4,
+    "tune": 150
+   },
+   "settings": {
+    "n_components": 6
+   },
+   "use": "tabular.image_logistic@^1"
+  }
+ },
+ "version_metrics": {
+  "accuracy": 0.6666666666666666,
+  "accuracy_naive": 0.3333333333333333,
+  "auc": 0.8333333333333334,
+  "brier": 0.4407869631540699
+ }
+}

@@ -1,0 +1,1973 @@
+{
+ "actuals": {
+  "against": "predictive",
+  "expected": {
+   "band_hit_rate": 0.75,
+   "bias": 0.1561148067369423,
+   "mae": 2.5033184538413473,
+   "mape": 10.103724742144768,
+   "n": 24,
+   "r2": 0.9692844130167718,
+   "rmse": 3.129176103664336,
+   "smape": 9.879190989399312,
+   "wape": 7.370659117526684
+  },
+  "inputs": {
+   "coords": {
+    "geo": {
+     "data": [
+      "north",
+      "south",
+      "west"
+     ],
+     "dims": [
+      "geo"
+     ]
+    },
+    "t": {
+     "data": [
+      "2024-11-03",
+      "2024-11-10",
+      "2024-11-17",
+      "2024-11-24",
+      "2024-12-01",
+      "2024-12-08",
+      "2024-12-15",
+      "2024-12-22"
+     ],
+     "dims": [
+      "t"
+     ]
+    }
+   },
+   "data_vars": {
+    "y": {
+     "data": [
+      [
+       9.408,
+       27.313,
+       17.784,
+       12.678,
+       15.6,
+       12.689,
+       22.935,
+       10.144
+      ],
+      [
+       28.125,
+       40.157,
+       29.003,
+       20.737,
+       23.411,
+       28.651,
+       36.344,
+       25.598
+      ],
+      [
+       54.236,
+       65.885,
+       57.913,
+       58.668,
+       54.953,
+       56.38,
+       49.96,
+       56.547
+      ]
+     ],
+     "dims": [
+      "geo",
+      "t"
+     ]
+    }
+   }
+  },
+  "kpi_column": "y",
+  "match": "time",
+  "names": {
+   "date": "t",
+   "geo": "geo"
+  },
+  "table": {
+   "columns": [
+    "geo",
+    "date",
+    "actual"
+   ],
+   "rows": [
+    [
+     "north",
+     "2024-11-03",
+     9.408
+    ],
+    [
+     "north",
+     "2024-11-10",
+     27.313
+    ],
+    [
+     "north",
+     "2024-11-17",
+     17.784
+    ],
+    [
+     "north",
+     "2024-11-24",
+     12.678
+    ],
+    [
+     "north",
+     "2024-12-01",
+     15.6
+    ],
+    [
+     "north",
+     "2024-12-08",
+     12.689
+    ],
+    [
+     "north",
+     "2024-12-15",
+     22.935
+    ],
+    [
+     "north",
+     "2024-12-22",
+     10.144
+    ],
+    [
+     "south",
+     "2024-11-03",
+     28.125
+    ],
+    [
+     "south",
+     "2024-11-10",
+     40.157
+    ],
+    [
+     "south",
+     "2024-11-17",
+     29.003
+    ],
+    [
+     "south",
+     "2024-11-24",
+     20.737
+    ],
+    [
+     "south",
+     "2024-12-01",
+     23.411
+    ],
+    [
+     "south",
+     "2024-12-08",
+     28.651
+    ],
+    [
+     "south",
+     "2024-12-15",
+     36.344
+    ],
+    [
+     "south",
+     "2024-12-22",
+     25.598
+    ],
+    [
+     "west",
+     "2024-11-03",
+     54.236
+    ],
+    [
+     "west",
+     "2024-11-10",
+     65.885
+    ],
+    [
+     "west",
+     "2024-11-17",
+     57.913
+    ],
+    [
+     "west",
+     "2024-11-24",
+     58.668
+    ],
+    [
+     "west",
+     "2024-12-01",
+     54.953
+    ],
+    [
+     "west",
+     "2024-12-08",
+     56.38
+    ],
+    [
+     "west",
+     "2024-12-15",
+     49.96
+    ],
+    [
+     "west",
+     "2024-12-22",
+     56.547
+    ]
+   ]
+  }
+ },
+ "capabilities": {
+  "checkpointable": false,
+  "conditions_on_actuals": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": true,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [],
+  "inference": "kalman",
+  "loo_invalid_reason": "statsmodels estimates are maximum-likelihood or least-squares point estimates without posterior draws; use holdout or backtest metrics instead of LOO",
+  "loo_valid": false,
+  "owns": [],
+  "recommend": false,
+  "representation": "quantiles",
+  "score_modes": [
+   "evaluate",
+   "forecast",
+   "predict"
+  ]
+ },
+ "case": "forecast_sarimax",
+ "derived_from": [
+  "ts.sarimax/forecast_8__predictive.result.json",
+  "ts.sarimax/forecast_8__predictive.summary.json",
+  "ts.sarimax/forecast_8__readout.result.json",
+  "ts.sarimax/forecast_8__readout.summary.json",
+  "ts.sarimax/predict_tail__readout.result.json",
+  "ts.sarimax/predict_tail__readout.summary.json",
+  "ts.sarimax/probe.json"
+ ],
+ "facts": {
+  "aggregates": {},
+  "predictive": {
+   "predictive.y_hat": {
+    "expected_width": 7.097013527794936,
+    "predictive_width": 7.097013527794936,
+    "widens": false
+   }
+  },
+  "scalar_fit_metrics": {
+   "coverage_90": 0.875,
+   "mae": 2.0545795769689463,
+   "mape": 10.371587192855236,
+   "rmse": 2.624718389622321
+  },
+  "tables": {
+   "baseline": {
+    "y_hat": {
+     "band": [
+      "eti_90_lower",
+      "eti_90_upper"
+     ],
+     "centre": "median",
+     "dims": [
+      "geo",
+      "date"
+     ],
+     "mean_band_width": 7.097013527794936,
+     "n_rows": 24,
+     "sum_centre": 818.8657553616866,
+     "sum_high": 904.0299176952258,
+     "sum_low": 733.7015930281474,
+     "time_dim": "date"
+    }
+   },
+   "in_sample": {
+    "y_hat": {
+     "band": [
+      "eti_90_lower",
+      "eti_90_upper"
+     ],
+     "centre": "median",
+     "dims": [
+      "geo",
+      "date"
+     ],
+     "mean_band_width": 6.1545824594539145,
+     "n_rows": 36,
+     "sum_centre": 1176.4684861103665,
+     "sum_high": 1287.250970380537,
+     "sum_low": 1065.686001840196,
+     "time_dim": "date"
+    }
+   },
+   "predictive": {
+    "y_hat": {
+     "band": [
+      "eti_90_lower",
+      "eti_90_upper"
+     ],
+     "centre": "median",
+     "dims": [
+      "geo",
+      "date"
+     ],
+     "mean_band_width": 7.097013527794936,
+     "n_rows": 24,
+     "sum_centre": 818.8657553616866,
+     "sum_high": 904.0299176952258,
+     "sum_low": 733.7015930281474,
+     "time_dim": "date"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025216-04:00",
+   "key": "coverage_90",
+   "labels": {},
+   "last": 0.875,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025216-04:00",
+   "max": 0.875,
+   "min": 0.875
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025264-04:00",
+   "key": "mae",
+   "labels": {},
+   "last": 2.0545795769689463,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025264-04:00",
+   "max": 2.0545795769689463,
+   "min": 2.0545795769689463
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025301-04:00",
+   "key": "mape",
+   "labels": {},
+   "last": 10.371587192855236,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025301-04:00",
+   "max": 10.371587192855236,
+   "min": 10.371587192855236
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:39:16.025332-04:00",
+   "key": "rmse",
+   "labels": {},
+   "last": 2.624718389622321,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:39:16.025332-04:00",
+   "max": 2.624718389622321,
+   "min": 2.624718389622321
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "The period (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "W-SUN",
+     "name": "t",
+     "role": "coord"
+    },
+    {
+     "description": "A level of geo",
+     "dims": [],
+     "freq": null,
+     "name": "geo",
+     "role": "coord"
+    },
+    {
+     "description": "The actual (leave empty for the periods to forecast)",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "price",
+     "role": "driver"
+    },
+    {
+     "description": "Necessary on each period, also on the periods to forecast",
+     "dims": [
+      "geo",
+      "t"
+     ],
+     "freq": null,
+     "name": "promo",
+     "role": "driver"
+    }
+   ],
+   "conditions_on_actuals": true,
+   "horizon_dim": "t",
+   "rows": [
+    [
+     "2024-11-03",
+     "north",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-03",
+     "south",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-10",
+     "north",
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-11-10",
+     "south",
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-sm-arimax-4bec7d-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": true,
+   "fit_coords": {
+    "geo": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 3,
+     "start": null,
+     "step": null,
+     "values": [
+      "north",
+      "south",
+      "west"
+     ]
+    },
+    "t": {
+     "contiguous": true,
+     "end": "2024-10-27T00:00:00",
+     "freq": "W-SUN",
+     "kind": "time",
+     "size": 96,
+     "start": "2023-01-01T00:00:00",
+     "step": null,
+     "values": null
+    }
+   },
+   "future_required": [
+    "price",
+    "promo"
+   ],
+   "horizon_dim": "t",
+   "input_schema": {
+    "dims": {
+     "geo": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "t": {
+      "description": null,
+      "freq": "W-SUN",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "extend"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "price": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": "EUR"
+     },
+     "promo": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "geo",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "quantiles",
+   "schema_hash": "sha256:c1a04903221eba5a91b00fd8f50569b8fe7b4634bae5fbaff1b5aced57da7c43",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "After differencing, the series varies around a stable level",
+    "Relationships stay the same over time"
+   ],
+   "avoid_when": [
+    "You have less than about 50 periods",
+    "Two or more series change each other (use VAR)"
+   ],
+   "data_needs": [
+    "One number over time at a regular frequency, and optional driver columns that you know for the future"
+   ],
+   "difficulty": "intermediate",
+   "example": "Forecast weekly orders 12 weeks ahead from the orders of recent weeks and planned discounts.",
+   "expert_notes": "statsmodels SARIMAX (state space): ARIMA(p,d,q)(P,D,Q)s with exogenous regressors. Exact likelihood through the Kalman filter. Prediction intervals as quantiles. Forecasts need future exog.",
+   "fits": {
+    "data_shape": [
+     "one_series"
+    ],
+    "drivers": [
+     "yes",
+     "no"
+    ],
+    "frequency": [
+     "daily",
+     "weekly",
+     "monthly"
+    ],
+    "goal": [
+     "forecast",
+     "explain_drivers"
+    ],
+    "history": [
+     "medium",
+     "long"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice",
+     "no"
+    ]
+   },
+   "outputs": [
+    "A forecast with a range",
+    "Effects of the drivers",
+    "Residual checks"
+   ],
+   "references": [
+    {
+     "title": "statsmodels: time series analysis",
+     "url": "https://www.statsmodels.org/stable/tsa.html"
+    },
+    {
+     "title": "Hyndman & Athanasopoulos, Forecasting: Principles and Practice (ch. 9-10)",
+     "url": "https://otexts.com/fpp3/"
+    }
+   ],
+   "related": [
+    "ts.arima",
+    "search.arma_order",
+    "test.adf",
+    "transform.difference"
+   ],
+   "summary_plain": "Forecasts a series from its recent past, its seasonal pattern and outside drivers that you know in advance, such as planned prices or holidays.",
+   "title": "Forecast with past values and drivers",
+   "typical_runtime": "seconds",
+   "use_when": [
+    "You forecast one regular series some periods ahead",
+    "Known future drivers (prices, promotions, holidays) are important"
+   ]
+  },
+  "capabilities": {
+   "conditions_on_actuals": true,
+   "inference": "kalman",
+   "loo_invalid_reason": "statsmodels estimates are maximum-likelihood or least-squares point estimates without posterior draws; use holdout or backtest metrics instead of LOO",
+   "loo_valid": false,
+   "representation": "quantiles",
+   "score_modes": [
+    "evaluate",
+    "forecast",
+    "predict"
+   ]
+  },
+  "description": "statsmodels SARIMAX: ARIMA(p,d,q)(P,D,Q)s with drivers, estimated by exact maximum likelihood with the Kalman filter; one model per series of a panel; prediction intervals as quantiles; future drivers are required for forecasts.",
+  "family": "forecast",
+  "id": "ts.sarimax",
+  "outputs": {
+   "y_hat": {
+    "description": "Prediction-interval quantiles of y: one-step-ahead inside the fitted range, a multi-step forecast after it",
+    "dims": [
+     "t"
+    ],
+    "dims_of": "y",
+    "units_of": "y"
+   }
+  },
+  "plots": [
+   "core.ppc_fan",
+   "core.fit_vs_actual",
+   "core.residuals_over_time"
+  ],
+  "schema_template": {
+   "cases": [
+    {
+     "merge": {
+      "dims": {
+       "t": {
+        "kind": "integer"
+       }
+      }
+     },
+     "when": {
+      "time_kind": "integer"
+     }
+    }
+   ],
+   "params": {
+    "exog": {
+     "default": [],
+     "type": "string_list"
+    },
+    "series_dims": {
+     "default": [],
+     "type": "string_list"
+    },
+    "time_kind": {
+     "default": "time",
+     "enum": [
+      "time",
+      "integer"
+     ],
+     "type": "string"
+    }
+   },
+   "template": {
+    "dims": {
+     "t": {
+      "kind": "time",
+      "policy": "extend"
+     },
+     "{*series_dims as d}": {
+      "kind": "categorical",
+      "policy": "fixed"
+     }
+    },
+    "vars": {
+     "y": {
+      "dims": [
+       "{*series_dims}",
+       "t"
+      ],
+      "dtype": "float64",
+      "missing": "allow",
+      "role": "target"
+     },
+     "{*exog as x}": {
+      "dims": [
+       "{*series_dims}",
+       "t"
+      ],
+      "dtype": "float64",
+      "future_required": true,
+      "role": "covariate"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "additionalProperties": false,
+   "description": "Settings of ``ts.sarimax`` (ARIMA with seasonal terms and drivers).",
+   "properties": {
+    "enforce_invertibility": {
+     "default": true,
+     "title": "Enforce Invertibility",
+     "type": "boolean",
+     "x-ui-level": "advanced"
+    },
+    "enforce_stationarity": {
+     "default": true,
+     "title": "Enforce Stationarity",
+     "type": "boolean",
+     "x-ui-level": "advanced"
+    },
+    "exog": {
+     "description": "Driver variables (prices, promotions, holidays) whose future values are supplied for forecasts",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 64,
+     "title": "Exog",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "maxiter": {
+     "default": 200,
+     "description": "Optimiser iterations",
+     "maximum": 5000,
+     "minimum": 10,
+     "title": "Maxiter",
+     "type": "integer",
+     "x-ui-level": "advanced"
+    },
+    "method": {
+     "default": "lbfgs",
+     "description": "Likelihood optimiser",
+     "enum": [
+      "lbfgs",
+      "bfgs",
+      "powell",
+      "nm"
+     ],
+     "title": "Method",
+     "type": "string",
+     "x-ui-level": "advanced"
+    },
+    "order": {
+     "default": [
+      1,
+      0,
+      0
+     ],
+     "description": "(p, d, q): past values used (AR), times differenced (d), past errors used (MA)",
+     "maxItems": 3,
+     "minItems": 3,
+     "prefixItems": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      }
+     ],
+     "title": "Order",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "quantiles": {
+     "description": "Quantiles of the prediction intervals (must include 0.05, 0.5 and 0.95)",
+     "items": {
+      "type": "number"
+     },
+     "maxItems": 16,
+     "minItems": 3,
+     "title": "Quantiles",
+     "type": "array",
+     "x-ui-level": "advanced"
+    },
+    "seasonal_order": {
+     "default": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "description": "(P, D, Q, s): the same for the seasonal pattern repeating every s periods",
+     "maxItems": 4,
+     "minItems": 4,
+     "prefixItems": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      },
+      {
+       "type": "integer"
+      }
+     ],
+     "title": "Seasonal Order",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "series_dims": {
+     "description": "Panel dims (geo, product, ...): one model per series cell. Empty for a single series.",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 4,
+     "title": "Series Dims",
+     "type": "array",
+     "x-ui-level": "basic"
+    },
+    "time_kind": {
+     "default": "time",
+     "description": "Whether the time index holds dates ('time') or period numbers ('integer')",
+     "enum": [
+      "time",
+      "integer"
+     ],
+     "title": "Time Kind",
+     "type": "string",
+     "x-ui-level": "advanced"
+    },
+    "trend": {
+     "default": "auto",
+     "description": "Deterministic trend: n none, c constant, t linear, ct both; auto uses a constant when the series is not differenced",
+     "enum": [
+      "auto",
+      "n",
+      "c",
+      "t",
+      "ct"
+     ],
+     "title": "Trend",
+     "type": "string"
+    }
+   },
+   "title": "SarimaxSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "quantiles: no forecast.json; a sum over geo or time is refused (CAPABILITY_UNSUPPORTED); predictive is a no-op (already an outcome band)",
+ "plugin": "ts.sarimax",
+ "preset": "forecast",
+ "primary_output": "y_hat",
+ "refusals": [
+  {
+   "code": "CAPABILITY_UNSUPPORTED",
+   "inline": false,
+   "issues": [
+    {
+     "code": "CAPABILITY_UNSUPPORTED",
+     "context": {},
+     "message": "cannot aggregate 'quantiles' output: Quantiles are marginal per cell; summing quantiles is not a quantile of the sum.",
+     "pointer": "/output/aggregate",
+     "severity": "error",
+     "suggested_action": null,
+     "untrusted_text": null
+    }
+   ],
+   "output": {
+    "aggregate": {
+     "over": [
+      "geo"
+     ]
+    }
+   },
+   "probe_case": "forecast_sum_geo",
+   "refused": "CapabilityError: validation failed with 1 error. The first error is at /output/aggregate: cannot aggregate 'quantiles' output: Quantiles are marginal per cell; summing quantiles is not a quantile of the sum."
+  }
+ ],
+ "representation": "quantiles",
+ "scorecard": {
+  "items": [
+   {
+    "category": "holdout",
+    "check": "holdout.mape",
+    "code": "HOLDOUT_MAPE",
+    "docs_anchor": "check-holdout-mape",
+    "message_expert": "mape 10.37% over 24 held-out values",
+    "message_plain": "The forecast error on the holdout periods was 10%.",
+    "metric": "mape",
+    "status": "warn",
+    "suggested_action": "Look for gaps or one-time events in the last periods of data. Add holidays or controls that explain them.",
+    "threshold": 0.1,
+    "title": "Holdout error",
+    "value": 0.10371587192855236
+   },
+   {
+    "category": "holdout",
+    "check": "holdout.coverage_90",
+    "code": "HOLDOUT_COVERAGE",
+    "docs_anchor": "check-holdout-coverage-90",
+    "message_expert": "coverage_90 0.875 over 24 held-out values",
+    "message_plain": "88% of the holdout values were in the 90% range. This is correct.",
+    "metric": "coverage_90",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.1,
+    "title": "The uncertainty is correct",
+    "value": 0.875
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 864 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "96 periods at W-SUN (52 per year) along 't' at the model stage",
+    "message_plain": "There are only 1.8 years of history. The seasonal effects are not certain.",
+    "metric": "history_years",
+    "status": "warn",
+    "suggested_action": "If you have more history, add it.",
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 1.8461538461538463
+   }
+  ],
+  "overall": "warn",
+  "skipped": {
+   "convergence.divergences": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.ess": "the model has no posterior draws (the fit did not use MCMC)",
+   "convergence.rhat": "the model has no posterior draws (the fit did not use MCMC)",
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.prior_overlap": "the fit kept no prior draws (set fit.prior_predictive or fit.keep.prior)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "baseline": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": {
+    "dim": "t",
+    "periods": 8
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "summary": [
+     "median",
+     "eti_90"
+    ]
+   },
+   "probe_case": "forecast_8__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "81d9cbbb5cc3b9f1c2510b647f862014",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2024-10-27",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-10-27); no actuals were supplied. 8 periods forecast from 2024-11-03 to 2024-12-22.",
+     "n_actuals": 0,
+     "n_series": 3,
+     "parameters": "fitted",
+     "periods": 8,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "north"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "south"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "west"
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "quantiles",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2024-10-27",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-10-27); no actuals were supplied. 8 periods forecast from 2024-11-03 to 2024-12-22.",
+     "n_actuals": 0,
+     "n_series": 3,
+     "parameters": "fitted",
+     "periods": 8,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "north"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "south"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "west"
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "geo",
+       "date",
+       "median",
+       "eti_90_lower",
+       "eti_90_upper"
+      ],
+      "dims": [
+       "geo",
+       "date"
+      ],
+      "rows": [
+       [
+        "north",
+        "2024-11-03",
+        10.916735172690693,
+        7.898777363465493,
+        13.934692981915891
+       ],
+       [
+        "north",
+        "2024-11-10",
+        26.66135548690984,
+        23.401360857882775,
+        29.921350115936907
+       ],
+       [
+        "north",
+        "2024-11-17",
+        13.495700728282642,
+        10.197055272233081,
+        16.794346184332202
+       ],
+       [
+        "north",
+        "2024-11-24",
+        17.966418398097062,
+        14.661368833078404,
+        21.271467963115718
+       ],
+       [
+        "north",
+        "2024-12-01",
+        15.59950376736451,
+        12.293387014748964,
+        18.905620519980054
+       ],
+       [
+        "north",
+        "2024-12-08",
+        10.37433845831572,
+        7.068043700737737,
+        13.6806332158937
+       ],
+       [
+        "north",
+        "2024-12-15",
+        25.911166663058893,
+        22.60484220991545,
+        29.217491116202332
+       ],
+       [
+        "north",
+        "2024-12-22",
+        8.821547484468525,
+        5.515218077251479,
+        12.127876891685569
+       ],
+       [
+        "south",
+        "2024-11-03",
+        29.617719704514883,
+        26.631579399052203,
+        32.60386000997756
+       ],
+       [
+        "south",
+        "2024-11-10",
+        39.46242516006562,
+        35.98899442703876,
+        42.93585589309248
+       ],
+       [
+        "south",
+        "2024-11-17",
+        24.283987323877156,
+        20.65413257567522,
+        27.91384207207909
+       ],
+       [
+        "south",
+        "2024-11-24",
+        26.630893845904836,
+        22.94740783414399,
+        30.314379857665678
+       ],
+       [
+        "south",
+        "2024-12-01",
+        23.410508535079543,
+        19.708276366467835,
+        27.112740703691248
+       ],
+       [
+        "south",
+        "2024-12-08",
+        26.055072622031304,
+        22.34624574125538,
+        29.763899502807224
+       ],
+       [
+        "south",
+        "2024-12-15",
+        39.684052585274515,
+        35.97290058868725,
+        43.395204581861776
+       ],
+       [
+        "south",
+        "2024-12-22",
+        24.113476431677555,
+        20.401504023741445,
+        27.825448839613664
+       ],
+       [
+        "west",
+        "2024-11-03",
+        55.84990142704244,
+        52.622125852549445,
+        59.077677001535434
+       ],
+       [
+        "west",
+        "2024-11-10",
+        65.14145587147296,
+        61.4232232879622,
+        68.85968845498371
+       ],
+       [
+        "west",
+        "2024-11-17",
+        52.888833009358464,
+        49.02370638461639,
+        56.75395963410054
+       ],
+       [
+        "west",
+        "2024-11-24",
+        64.92735383350588,
+        61.01539136961244,
+        68.83931629739931
+       ],
+       [
+        "west",
+        "2024-12-01",
+        54.95260334639815,
+        51.02544738610886,
+        58.87975930668743
+       ],
+       [
+        "west",
+        "2024-12-08",
+        53.62747379862911,
+        49.69536250963327,
+        57.559585087624946
+       ],
+       [
+        "west",
+        "2024-12-15",
+        53.49995749685027,
+        49.56622723747033,
+        57.433687756230206
+       ],
+       [
+        "west",
+        "2024-12-22",
+        54.973274210816044,
+        51.03901471481893,
+        58.90753370681315
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "in_sample": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "median",
+     "eti_90"
+    ]
+   },
+   "probe_case": "predict_tail__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "81d9cbbb5cc3b9f1c2510b647f862014",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "quantiles",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "geo",
+       "date",
+       "median",
+       "eti_90_lower",
+       "eti_90_upper"
+      ],
+      "dims": [
+       "geo",
+       "date"
+      ],
+      "rows": [
+       [
+        "north",
+        "2024-08-11",
+        13.70544967532625,
+        10.68749186610105,
+        16.723407484551448
+       ],
+       [
+        "north",
+        "2024-08-18",
+        15.09437924301541,
+        12.07642143379021,
+        18.11233705224061
+       ],
+       [
+        "north",
+        "2024-08-25",
+        16.45607725996757,
+        13.438119450742372,
+        19.47403506919277
+       ],
+       [
+        "north",
+        "2024-09-01",
+        10.305366215738587,
+        7.2874084065133875,
+        13.323324024963785
+       ],
+       [
+        "north",
+        "2024-09-08",
+        18.256981563904716,
+        15.239023754679517,
+        21.274939373129914
+       ],
+       [
+        "north",
+        "2024-09-15",
+        27.68456161979408,
+        24.66660381056888,
+        30.70251942901928
+       ],
+       [
+        "north",
+        "2024-09-22",
+        15.984259479541137,
+        12.966301670315937,
+        19.002217288766335
+       ],
+       [
+        "north",
+        "2024-09-29",
+        11.855941624173923,
+        8.837983814948723,
+        14.87389943339912
+       ],
+       [
+        "north",
+        "2024-10-06",
+        12.735999813430155,
+        9.718042004204955,
+        15.753957622655353
+       ],
+       [
+        "north",
+        "2024-10-13",
+        13.290065770783215,
+        10.272107961558016,
+        16.308023580008413
+       ],
+       [
+        "north",
+        "2024-10-20",
+        28.87589155481146,
+        25.85793374558626,
+        31.893849364036658
+       ],
+       [
+        "north",
+        "2024-10-27",
+        9.954168057688932,
+        6.936210248463732,
+        12.97212586691413
+       ],
+       [
+        "south",
+        "2024-08-11",
+        26.01773739771265,
+        23.03159709224997,
+        29.003877703175327
+       ],
+       [
+        "south",
+        "2024-08-18",
+        26.687101769025602,
+        23.700961463562923,
+        29.67324207448828
+       ],
+       [
+        "south",
+        "2024-08-25",
+        28.1212752431108,
+        25.13513493764812,
+        31.107415548573478
+       ],
+       [
+        "south",
+        "2024-09-01",
+        29.892435308980893,
+        26.906295003518213,
+        32.87857561444357
+       ],
+       [
+        "south",
+        "2024-09-08",
+        26.009548156294713,
+        23.023407850832033,
+        28.99568846175739
+       ],
+       [
+        "south",
+        "2024-09-15",
+        31.490273004911217,
+        28.504132699448537,
+        34.47641331037389
+       ],
+       [
+        "south",
+        "2024-09-22",
+        40.33728657568521,
+        37.351146270222536,
+        43.32342688114789
+       ],
+       [
+        "south",
+        "2024-09-29",
+        26.071106910247053,
+        23.084966604784373,
+        29.05724721570973
+       ],
+       [
+        "south",
+        "2024-10-06",
+        30.500428302617678,
+        27.514287997154998,
+        33.486568608080354
+       ],
+       [
+        "south",
+        "2024-10-13",
+        28.686520405678706,
+        25.700380100216027,
+        31.672660711141383
+       ],
+       [
+        "south",
+        "2024-10-20",
+        26.08261810118168,
+        23.096477795719,
+        29.068758406644356
+       ],
+       [
+        "south",
+        "2024-10-27",
+        29.045393909095893,
+        26.059253603633213,
+        32.03153421455857
+       ],
+       [
+        "west",
+        "2024-08-11",
+        46.3499564666115,
+        43.12218089211851,
+        49.5777320411045
+       ],
+       [
+        "west",
+        "2024-08-18",
+        56.85305599315423,
+        53.625280418661234,
+        60.08083156764722
+       ],
+       [
+        "west",
+        "2024-08-25",
+        44.01146409530847,
+        40.783688520815474,
+        47.239239669801464
+       ],
+       [
+        "west",
+        "2024-09-01",
+        51.42405469726478,
+        48.196279122771784,
+        54.651830271757774
+       ],
+       [
+        "west",
+        "2024-09-08",
+        51.49142026629097,
+        48.26364469179798,
+        54.71919584078397
+       ],
+       [
+        "west",
+        "2024-09-15",
+        49.7046879652392,
+        46.47691239074621,
+        52.9324635397322
+       ],
+       [
+        "west",
+        "2024-09-22",
+        69.875375510584,
+        66.64759993609101,
+        73.103151085077
+       ],
+       [
+        "west",
+        "2024-09-29",
+        53.3008413390679,
+        50.073065764574906,
+        56.528616913560896
+       ],
+       [
+        "west",
+        "2024-10-06",
+        50.64042861235936,
+        47.41265303786636,
+        53.86820418685235
+       ],
+       [
+        "west",
+        "2024-10-13",
+        55.30275339725695,
+        52.074977822763955,
+        58.530528971749945
+       ],
+       [
+        "west",
+        "2024-10-20",
+        57.46231659425091,
+        54.23454101975791,
+        60.6900921687439
+       ],
+       [
+        "west",
+        "2024-10-27",
+        46.91126421026078,
+        43.68348863576779,
+        50.13903978475378
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  },
+  "predictive": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": {
+    "dim": "t",
+    "periods": 8
+   },
+   "inline": false,
+   "mode": "forecast",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "median",
+     "eti_90"
+    ]
+   },
+   "probe_case": "forecast_8__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "81d9cbbb5cc3b9f1c2510b647f862014",
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2024-10-27",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-10-27); no actuals were supplied. 8 periods forecast from 2024-11-03 to 2024-12-22.",
+     "n_actuals": 0,
+     "n_series": 3,
+     "parameters": "fitted",
+     "periods": 8,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "north"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "south"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "west"
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "forecast",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "quantiles",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "conditioning": {
+     "conditioned": false,
+     "dim": "t",
+     "fit_end": "2024-10-27",
+     "horizon_source": "rows",
+     "message": "Forecast from the end of the fitted history (2024-10-27); no actuals were supplied. 8 periods forecast from 2024-11-03 to 2024-12-22.",
+     "n_actuals": 0,
+     "n_series": 3,
+     "parameters": "fitted",
+     "periods": 8,
+     "revised": 0,
+     "series": [
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "north"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "south"
+       }
+      },
+      {
+       "forecast_from": "2024-11-03",
+       "forecast_to": "2024-12-22",
+       "missing": 0,
+       "n_actuals": 0,
+       "n_forecast": 8,
+       "origin": "2024-10-27",
+       "revised": 0,
+       "series": {
+        "geo": "west"
+       }
+      }
+     ],
+     "series_conditioned": 0,
+     "truncated": false
+    },
+    "tables": [
+     {
+      "columns": [
+       "geo",
+       "date",
+       "median",
+       "eti_90_lower",
+       "eti_90_upper"
+      ],
+      "dims": [
+       "geo",
+       "date"
+      ],
+      "rows": [
+       [
+        "north",
+        "2024-11-03",
+        10.916735172690693,
+        7.898777363465493,
+        13.934692981915891
+       ],
+       [
+        "north",
+        "2024-11-10",
+        26.66135548690984,
+        23.401360857882775,
+        29.921350115936907
+       ],
+       [
+        "north",
+        "2024-11-17",
+        13.495700728282642,
+        10.197055272233081,
+        16.794346184332202
+       ],
+       [
+        "north",
+        "2024-11-24",
+        17.966418398097062,
+        14.661368833078404,
+        21.271467963115718
+       ],
+       [
+        "north",
+        "2024-12-01",
+        15.59950376736451,
+        12.293387014748964,
+        18.905620519980054
+       ],
+       [
+        "north",
+        "2024-12-08",
+        10.37433845831572,
+        7.068043700737737,
+        13.6806332158937
+       ],
+       [
+        "north",
+        "2024-12-15",
+        25.911166663058893,
+        22.60484220991545,
+        29.217491116202332
+       ],
+       [
+        "north",
+        "2024-12-22",
+        8.821547484468525,
+        5.515218077251479,
+        12.127876891685569
+       ],
+       [
+        "south",
+        "2024-11-03",
+        29.617719704514883,
+        26.631579399052203,
+        32.60386000997756
+       ],
+       [
+        "south",
+        "2024-11-10",
+        39.46242516006562,
+        35.98899442703876,
+        42.93585589309248
+       ],
+       [
+        "south",
+        "2024-11-17",
+        24.283987323877156,
+        20.65413257567522,
+        27.91384207207909
+       ],
+       [
+        "south",
+        "2024-11-24",
+        26.630893845904836,
+        22.94740783414399,
+        30.314379857665678
+       ],
+       [
+        "south",
+        "2024-12-01",
+        23.410508535079543,
+        19.708276366467835,
+        27.112740703691248
+       ],
+       [
+        "south",
+        "2024-12-08",
+        26.055072622031304,
+        22.34624574125538,
+        29.763899502807224
+       ],
+       [
+        "south",
+        "2024-12-15",
+        39.684052585274515,
+        35.97290058868725,
+        43.395204581861776
+       ],
+       [
+        "south",
+        "2024-12-22",
+        24.113476431677555,
+        20.401504023741445,
+        27.825448839613664
+       ],
+       [
+        "west",
+        "2024-11-03",
+        55.84990142704244,
+        52.622125852549445,
+        59.077677001535434
+       ],
+       [
+        "west",
+        "2024-11-10",
+        65.14145587147296,
+        61.4232232879622,
+        68.85968845498371
+       ],
+       [
+        "west",
+        "2024-11-17",
+        52.888833009358464,
+        49.02370638461639,
+        56.75395963410054
+       ],
+       [
+        "west",
+        "2024-11-24",
+        64.92735383350588,
+        61.01539136961244,
+        68.83931629739931
+       ],
+       [
+        "west",
+        "2024-12-01",
+        54.95260334639815,
+        51.02544738610886,
+        58.87975930668743
+       ],
+       [
+        "west",
+        "2024-12-08",
+        53.62747379862911,
+        49.69536250963327,
+        57.559585087624946
+       ],
+       [
+        "west",
+        "2024-12-15",
+        53.49995749685027,
+        49.56622723747033,
+        57.433687756230206
+       ],
+       [
+        "west",
+        "2024-12-22",
+        54.973274210816044,
+        51.03901471481893,
+        58.90753370681315
+       ]
+      ],
+      "time_dim": "date",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": null
+  }
+ }
+}

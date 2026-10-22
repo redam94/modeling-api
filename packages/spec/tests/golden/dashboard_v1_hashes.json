@@ -1,0 +1,678 @@
+{
+ "_comment": "v0.16 DashboardSpec (layout 1) hashes frozen before the v0.17 spec edits; never regenerate.",
+ "cases": [
+  {
+   "name": "spec_example",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": true,
+     "enabled": true,
+     "publish": "review",
+     "refit_workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "channels": [
+     {
+      "label": "TV",
+      "name": "tv"
+     },
+     {
+      "label": "Paid search",
+      "max_mult": 2.0,
+      "min_mult": 0.5,
+      "name": "search"
+     }
+    ],
+    "client_name": "Acme Retail",
+    "kpi": {
+     "label": "Orders",
+     "unit": "count",
+     "value_per_unit": 42.0,
+     "variable": "orders"
+    },
+    "layout_version": 1,
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "note": "Results use the model fitted on data to 18/10/2026.",
+    "period_label": "week",
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "show_technical": false,
+    "source": {
+     "kind": "model_version",
+     "model_id": "eu-geo-mmm",
+     "version": 3
+    },
+    "summary": "How media spend drives online orders, updated every Monday.",
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "update",
+     "history"
+    ],
+    "tiles": [
+     "expected",
+     "vs_expected",
+     "return_on_media",
+     "in_range_spend"
+    ],
+    "title": "Weekly media results",
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    }
+   },
+   "canonical": "{\"actuals\":{\"allow_refit_requests\":true,\"enabled\":true,\"refit_workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"}],\"client_name\":\"Acme Retail\",\"kpi\":{\"label\":\"Orders\",\"unit\":\"count\",\"value_per_unit\":42,\"variable\":\"orders\"},\"note\":\"Results use the model fitted on data to 18/10/2026.\",\"refresh\":{\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"source\":{\"kind\":\"model_version\",\"model_id\":\"eu-geo-mmm\",\"version\":3},\"summary\":\"How media spend drives online orders, updated every Monday.\",\"tabs\":[\"this_period\",\"trends\",\"scenarios\",\"update\",\"history\"],\"title\":\"Weekly media results\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:3c004d72d516bb44822357fda176535b03cca60c2d5fc5f62b390a72ba67635e"
+  },
+  {
+   "name": "mmm_mock",
+   "spec": {
+    "layout_version": 1,
+    "title": "Weekly media readout",
+    "client_name": "Northwind Outdoor",
+    "summary": "How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.",
+    "period_label": "week",
+    "source": {
+     "kind": "endpoint",
+     "alias": "geo-mmm-prod"
+    },
+    "kpi": {
+     "variable": "revenue",
+     "label": "Revenue",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "search",
+      "label": "Paid search",
+      "min_mult": 0.5,
+      "max_mult": 2,
+      "step": 0.05
+     },
+     {
+      "name": "social",
+      "label": "Social",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "display",
+      "label": "Display",
+      "min_mult": 0.25,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "tiles": [
+     "expected",
+     "return_on_media",
+     "in_range_spend",
+     "vs_expected"
+    ],
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "update",
+     "history"
+    ],
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    },
+    "actuals": {
+     "enabled": true,
+     "publish": "review",
+     "allow_refit_requests": true,
+     "refit_workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0",
+     "follow_endpoint": true
+    },
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "show_technical": true,
+    "note": "Spend in this readout is net media spend. Agency fees are not included."
+   },
+   "canonical": "{\"actuals\":{\"allow_refit_requests\":true,\"enabled\":true,\"refit_workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"},{\"label\":\"Social\",\"name\":\"social\"},{\"label\":\"Display\",\"min_mult\":0.25,\"name\":\"display\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Revenue\",\"unit\":\"currency\",\"variable\":\"revenue\"},\"note\":\"Spend in this readout is net media spend. Agency fees are not included.\",\"refresh\":{\"follow_endpoint\":true,\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"show_technical\":true,\"source\":{\"alias\":\"geo-mmm-prod\",\"kind\":\"endpoint\"},\"summary\":\"How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.\",\"tabs\":[\"this_period\",\"trends\",\"scenarios\",\"update\",\"history\"],\"tiles\":[\"expected\",\"return_on_media\",\"in_range_spend\",\"vs_expected\"],\"title\":\"Weekly media readout\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:722a880fc52ce49b9f3fb1916ac373fcae8ac30a4b0b813634840921d3910738"
+  },
+  {
+   "name": "forecast_dummy_channel_mock",
+   "spec": {
+    "layout_version": 1,
+    "title": "Monthly sales forecast",
+    "client_name": "Northwind Outdoor",
+    "summary": "The sales that we expect for the next months. Send the actual sales of each month: the forecast then starts from your newest numbers.",
+    "period_label": "month",
+    "source": {
+     "kind": "endpoint",
+     "alias": "sales-forecast"
+    },
+    "kpi": {
+     "variable": "sales",
+     "label": "Sales",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "channels": [
+     {
+      "name": "price",
+      "label": "Average price",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "tiles": [
+     "expected",
+     "vs_expected",
+     "accuracy",
+     "index"
+    ],
+    "tabs": [
+     "this_period",
+     "trends",
+     "update",
+     "history"
+    ],
+    "whatif": {
+     "enabled": false,
+     "exact": false
+    },
+    "actuals": {
+     "enabled": true,
+     "publish": "auto",
+     "allow_refit_requests": false,
+     "refit_workflow_id": null
+    },
+    "refresh": {
+     "workflow_id": null,
+     "follow_endpoint": true
+    },
+    "limits": {
+     "exact_runs_per_day": 0
+    },
+    "show_technical": false,
+    "note": null
+   },
+   "canonical": "{\"actuals\":{\"enabled\":true,\"publish\":\"auto\"},\"channels\":[{\"label\":\"Average price\",\"name\":\"price\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Sales\",\"unit\":\"currency\",\"variable\":\"sales\"},\"limits\":{\"exact_runs_per_day\":0},\"period_label\":\"month\",\"refresh\":{\"follow_endpoint\":true},\"source\":{\"alias\":\"sales-forecast\",\"kind\":\"endpoint\"},\"summary\":\"The sales that we expect for the next months. Send the actual sales of each month: the forecast then starts from your newest numbers.\",\"tabs\":[\"this_period\",\"trends\",\"update\",\"history\"],\"tiles\":[\"expected\",\"vs_expected\",\"accuracy\",\"index\"],\"title\":\"Monthly sales forecast\",\"whatif\":{\"enabled\":false}}",
+   "hash": "sha256:81c0b23d1baee9909b236828d34dbf257ef7afc8c12ded58046ec05c10a9d6b5"
+  },
+  {
+   "name": "mmm_draft_mock",
+   "spec": {
+    "layout_version": 1,
+    "title": "Spring promotion plan",
+    "client_name": "Northwind Outdoor",
+    "summary": null,
+    "period_label": "week",
+    "source": {
+     "kind": "endpoint",
+     "alias": "geo-mmm-prod"
+    },
+    "kpi": {
+     "variable": "revenue",
+     "label": "Revenue",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "search",
+      "label": "Paid search",
+      "min_mult": 0.5,
+      "max_mult": 2,
+      "step": 0.05
+     },
+     {
+      "name": "social",
+      "label": "Social",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "display",
+      "label": "Display",
+      "min_mult": 0.25,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "tiles": [
+     "expected",
+     "return_on_media"
+    ],
+    "tabs": [
+     "this_period",
+     "scenarios"
+    ],
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    },
+    "actuals": {
+     "enabled": false,
+     "publish": "review",
+     "allow_refit_requests": false,
+     "refit_workflow_id": null
+    },
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0",
+     "follow_endpoint": true
+    },
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "show_technical": true,
+    "note": null
+   },
+   "canonical": "{\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"},{\"label\":\"Social\",\"name\":\"social\"},{\"label\":\"Display\",\"min_mult\":0.25,\"name\":\"display\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Revenue\",\"unit\":\"currency\",\"variable\":\"revenue\"},\"refresh\":{\"follow_endpoint\":true,\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"show_technical\":true,\"source\":{\"alias\":\"geo-mmm-prod\",\"kind\":\"endpoint\"},\"tabs\":[\"this_period\",\"scenarios\"],\"tiles\":[\"expected\",\"return_on_media\"],\"title\":\"Spring promotion plan\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:90c802c453bfe9a3205b872dc5e103fefe22af402b6709b3eb17682880410b8e"
+  },
+  {
+   "name": "perm_minimal",
+   "spec": {
+    "title": "Orders",
+    "source": {
+     "kind": "model_version",
+     "model_id": "eu-geo-mmm"
+    },
+    "kpi": {
+     "variable": "orders",
+     "label": "Orders",
+     "unit": "count"
+    },
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV"
+     }
+    ]
+   },
+   "canonical": "{\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"}],\"kpi\":{\"label\":\"Orders\",\"unit\":\"count\",\"variable\":\"orders\"},\"source\":{\"kind\":\"model_version\",\"model_id\":\"eu-geo-mmm\"},\"title\":\"Orders\"}",
+   "hash": "sha256:4a9c1eb44d275dda6e4664085f926a9e5ef3c21c0973258f47456fe09d6f0b07"
+  },
+  {
+   "name": "perm_minimal_explicit_defaults",
+   "spec": {
+    "layout_version": 1,
+    "title": "Orders",
+    "source": {
+     "kind": "model_version",
+     "model_id": "eu-geo-mmm"
+    },
+    "kpi": {
+     "variable": "orders",
+     "label": "Orders",
+     "unit": "count"
+    },
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV"
+     }
+    ],
+    "client_name": null,
+    "summary": null,
+    "period_label": "week",
+    "tiles": [
+     "expected",
+     "vs_expected",
+     "return_on_media",
+     "in_range_spend"
+    ],
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "history"
+    ],
+    "whatif": {
+     "enabled": true,
+     "exact": false
+    },
+    "actuals": {
+     "enabled": false,
+     "publish": "review",
+     "refit_workflow_id": null,
+     "allow_refit_requests": false
+    },
+    "refresh": {
+     "workflow_id": null,
+     "follow_endpoint": false
+    },
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "show_technical": false,
+    "note": null
+   },
+   "canonical": "{\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"}],\"kpi\":{\"label\":\"Orders\",\"unit\":\"count\",\"variable\":\"orders\"},\"source\":{\"kind\":\"model_version\",\"model_id\":\"eu-geo-mmm\"},\"title\":\"Orders\"}",
+   "hash": "sha256:4a9c1eb44d275dda6e4664085f926a9e5ef3c21c0973258f47456fe09d6f0b07"
+  },
+  {
+   "name": "perm_mmm_without_layout_version",
+   "spec": {
+    "title": "Weekly media readout",
+    "client_name": "Northwind Outdoor",
+    "summary": "How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.",
+    "period_label": "week",
+    "source": {
+     "kind": "endpoint",
+     "alias": "geo-mmm-prod"
+    },
+    "kpi": {
+     "variable": "revenue",
+     "label": "Revenue",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "search",
+      "label": "Paid search",
+      "min_mult": 0.5,
+      "max_mult": 2,
+      "step": 0.05
+     },
+     {
+      "name": "social",
+      "label": "Social",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "display",
+      "label": "Display",
+      "min_mult": 0.25,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "tiles": [
+     "expected",
+     "return_on_media",
+     "in_range_spend",
+     "vs_expected"
+    ],
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "update",
+     "history"
+    ],
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    },
+    "actuals": {
+     "enabled": true,
+     "publish": "review",
+     "allow_refit_requests": true,
+     "refit_workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0",
+     "follow_endpoint": true
+    },
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "show_technical": true,
+    "note": "Spend in this readout is net media spend. Agency fees are not included."
+   },
+   "canonical": "{\"actuals\":{\"allow_refit_requests\":true,\"enabled\":true,\"refit_workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"},{\"label\":\"Social\",\"name\":\"social\"},{\"label\":\"Display\",\"min_mult\":0.25,\"name\":\"display\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Revenue\",\"unit\":\"currency\",\"variable\":\"revenue\"},\"note\":\"Spend in this readout is net media spend. Agency fees are not included.\",\"refresh\":{\"follow_endpoint\":true,\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"show_technical\":true,\"source\":{\"alias\":\"geo-mmm-prod\",\"kind\":\"endpoint\"},\"summary\":\"How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.\",\"tabs\":[\"this_period\",\"trends\",\"scenarios\",\"update\",\"history\"],\"tiles\":[\"expected\",\"return_on_media\",\"in_range_spend\",\"vs_expected\"],\"title\":\"Weekly media readout\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:722a880fc52ce49b9f3fb1916ac373fcae8ac30a4b0b813634840921d3910738"
+  },
+  {
+   "name": "perm_mmm_reversed_keys",
+   "spec": {
+    "note": "Spend in this readout is net media spend. Agency fees are not included.",
+    "show_technical": true,
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0",
+     "follow_endpoint": true
+    },
+    "actuals": {
+     "enabled": true,
+     "publish": "review",
+     "allow_refit_requests": true,
+     "refit_workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    },
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "update",
+     "history"
+    ],
+    "tiles": [
+     "expected",
+     "return_on_media",
+     "in_range_spend",
+     "vs_expected"
+    ],
+    "channels": [
+     {
+      "name": "tv",
+      "label": "TV",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "search",
+      "label": "Paid search",
+      "min_mult": 0.5,
+      "max_mult": 2,
+      "step": 0.05
+     },
+     {
+      "name": "social",
+      "label": "Social",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     },
+     {
+      "name": "display",
+      "label": "Display",
+      "min_mult": 0.25,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "kpi": {
+     "variable": "revenue",
+     "label": "Revenue",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "source": {
+     "kind": "endpoint",
+     "alias": "geo-mmm-prod"
+    },
+    "period_label": "week",
+    "summary": "How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.",
+    "client_name": "Northwind Outdoor",
+    "title": "Weekly media readout",
+    "layout_version": 1
+   },
+   "canonical": "{\"actuals\":{\"allow_refit_requests\":true,\"enabled\":true,\"refit_workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"},{\"label\":\"Social\",\"name\":\"social\"},{\"label\":\"Display\",\"min_mult\":0.25,\"name\":\"display\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Revenue\",\"unit\":\"currency\",\"variable\":\"revenue\"},\"note\":\"Spend in this readout is net media spend. Agency fees are not included.\",\"refresh\":{\"follow_endpoint\":true,\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"show_technical\":true,\"source\":{\"alias\":\"geo-mmm-prod\",\"kind\":\"endpoint\"},\"summary\":\"How your media spend turns into revenue, week by week. The numbers come from the media mix model that we fitted on your sales.\",\"tabs\":[\"this_period\",\"trends\",\"scenarios\",\"update\",\"history\"],\"tiles\":[\"expected\",\"return_on_media\",\"in_range_spend\",\"vs_expected\"],\"title\":\"Weekly media readout\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:722a880fc52ce49b9f3fb1916ac373fcae8ac30a4b0b813634840921d3910738"
+  },
+  {
+   "name": "perm_forecast_float_spelling",
+   "spec": {
+    "layout_version": 1,
+    "title": "Monthly sales forecast",
+    "client_name": "Northwind Outdoor",
+    "summary": "The sales that we expect for the next months. Send the actual sales of each month: the forecast then starts from your newest numbers.",
+    "period_label": "month",
+    "source": {
+     "kind": "endpoint",
+     "alias": "sales-forecast"
+    },
+    "kpi": {
+     "variable": "sales",
+     "label": "Sales",
+     "unit": "currency",
+     "currency": "EUR",
+     "decimals": 0
+    },
+    "channels": [
+     {
+      "name": "price",
+      "label": "Average price",
+      "min_mult": 0.5,
+      "max_mult": 1.5,
+      "step": 0.05
+     }
+    ],
+    "tiles": [
+     "expected",
+     "vs_expected",
+     "accuracy",
+     "index"
+    ],
+    "tabs": [
+     "this_period",
+     "trends",
+     "update",
+     "history"
+    ],
+    "whatif": {
+     "enabled": false,
+     "exact": false
+    },
+    "actuals": {
+     "enabled": true,
+     "publish": "auto",
+     "allow_refit_requests": false,
+     "refit_workflow_id": null
+    },
+    "refresh": {
+     "workflow_id": null,
+     "follow_endpoint": true
+    },
+    "limits": {
+     "exact_runs_per_day": 0
+    },
+    "show_technical": false,
+    "note": null
+   },
+   "canonical": "{\"actuals\":{\"enabled\":true,\"publish\":\"auto\"},\"channels\":[{\"label\":\"Average price\",\"name\":\"price\"}],\"client_name\":\"Northwind Outdoor\",\"kpi\":{\"currency\":\"EUR\",\"label\":\"Sales\",\"unit\":\"currency\",\"variable\":\"sales\"},\"limits\":{\"exact_runs_per_day\":0},\"period_label\":\"month\",\"refresh\":{\"follow_endpoint\":true},\"source\":{\"alias\":\"sales-forecast\",\"kind\":\"endpoint\"},\"summary\":\"The sales that we expect for the next months. Send the actual sales of each month: the forecast then starts from your newest numbers.\",\"tabs\":[\"this_period\",\"trends\",\"update\",\"history\"],\"tiles\":[\"expected\",\"vs_expected\",\"accuracy\",\"index\"],\"title\":\"Monthly sales forecast\",\"whatif\":{\"enabled\":false}}",
+   "hash": "sha256:81c0b23d1baee9909b236828d34dbf257ef7afc8c12ded58046ec05c10a9d6b5"
+  },
+  {
+   "name": "perm_example_model_version_count_kpi",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": true,
+     "enabled": true,
+     "publish": "review",
+     "refit_workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "channels": [
+     {
+      "label": "TV",
+      "name": "tv"
+     },
+     {
+      "label": "Paid search",
+      "max_mult": 2.0,
+      "min_mult": 0.5,
+      "name": "search"
+     }
+    ],
+    "client_name": "Acme Retail",
+    "kpi": {
+     "variable": "orders",
+     "label": "Orders",
+     "unit": "count",
+     "value_per_unit": 42
+    },
+    "layout_version": 1,
+    "limits": {
+     "exact_runs_per_day": 20
+    },
+    "note": "Results use the model fitted on data to 18/10/2026.",
+    "period_label": "period",
+    "refresh": {
+     "workflow_id": "wf_01jaf3w1x2y3z4a5b6c7d8e9f0"
+    },
+    "show_technical": false,
+    "source": {
+     "kind": "model_version",
+     "model_id": "eu-geo-mmm",
+     "version": 7
+    },
+    "summary": "How media spend drives online orders, updated every Monday.",
+    "tabs": [
+     "this_period",
+     "trends",
+     "scenarios",
+     "update",
+     "history"
+    ],
+    "tiles": [
+     "expected",
+     "vs_expected",
+     "return_on_media",
+     "in_range_spend"
+    ],
+    "title": "Weekly media results",
+    "whatif": {
+     "enabled": true,
+     "exact": true
+    }
+   },
+   "canonical": "{\"actuals\":{\"allow_refit_requests\":true,\"enabled\":true,\"refit_workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"channels\":[{\"label\":\"TV\",\"name\":\"tv\"},{\"label\":\"Paid search\",\"max_mult\":2,\"name\":\"search\"}],\"client_name\":\"Acme Retail\",\"kpi\":{\"label\":\"Orders\",\"unit\":\"count\",\"value_per_unit\":42,\"variable\":\"orders\"},\"note\":\"Results use the model fitted on data to 18/10/2026.\",\"period_label\":\"period\",\"refresh\":{\"workflow_id\":\"wf_01jaf3w1x2y3z4a5b6c7d8e9f0\"},\"source\":{\"kind\":\"model_version\",\"model_id\":\"eu-geo-mmm\",\"version\":7},\"summary\":\"How media spend drives online orders, updated every Monday.\",\"tabs\":[\"this_period\",\"trends\",\"scenarios\",\"update\",\"history\"],\"title\":\"Weekly media results\",\"whatif\":{\"exact\":true}}",
+   "hash": "sha256:1220d05dc57977e873d797bad89bd01e3ddc2b64f3c8b24da0435cc8ed4f15d0"
+  }
+ ]
+}

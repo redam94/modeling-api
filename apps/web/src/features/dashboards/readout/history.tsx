@@ -4,16 +4,21 @@
  * page. A sent upload shows whether it waits for review and the state of its refit request.
  */
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 
 import { InlineMessage } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { dashboardErrorMessage, useReadout, useReadoutList } from "../client";
-import type { ClientDashboard, DashboardClient } from "../types";
+import { dashboardErrorMessage, useKeepReadout, useReadout, useReadoutList } from "../client";
+import { hasPanels, isLayout2Dashboard, type ClientDashboard, type DashboardClient, type DashboardClientV2, type Readout } from "../types";
+import { LazyPart } from "./load-boundary";
+import { asClientV2 } from "./panel-model";
+import { PanelBlocks } from "./panels/blocks";
 import { KpiChart, ReadoutState, ReadoutTiles, Section, Tags, Working } from "./parts";
 import { historyRow, metaLine, periodOf } from "./readout-model";
+
+const ReadoutResults = lazy(() => import("./panels/readout-extra").then((m) => ({ default: m.ReadoutResults })));
 
 const PAGE = 20;
 /** Below `lg` the list and the detail stack: the detail is below the whole list. */
@@ -30,8 +35,10 @@ function HistoryPage({
   onSelect,
   onOlder,
   last,
+  othersWords = false,
 }: {
   client: DashboardClient;
+  othersWords?: boolean;
   beforeSeq: number | undefined;
   selected: number | null;
   onSelect: (seq: number) => void;
@@ -46,7 +53,7 @@ function HistoryPage({
   return (
     <>
       {items.map((h) => {
-        const row = historyRow(h);
+        const row = historyRow(h, undefined, { othersWords });
         const active = selected === h.seq;
         return (
           <li key={h.seq}>
@@ -83,6 +90,26 @@ function HistoryPage({
   );
 }
 
+/** "Keep this case" on the viewer's own private tried case (never on a share link: it has no keep). */
+function KeepTried({ client, readout }: { client: DashboardClient; readout: Readout }) {
+  const v2 = asClientV2(client);
+  const keep = useKeepReadout(v2 ?? (client as DashboardClientV2));
+  if (!v2?.keep || readout.kind !== "prediction" || readout.status !== "ready" || readout.mine === false) return null;
+  if (readout.visibility !== "private" && readout.visibility !== "pending_review") return null;
+  const kept = readout.visibility === "pending_review";
+  return (
+    <div className="grid gap-1" data-readout="keep">
+      <div>
+        <Button variant="secondary" size="sm" disabled={kept || keep.isPending} onClick={() => keep.mutate(readout.seq)}>
+          Keep this case
+        </Button>
+      </div>
+      <p className="text-xs text-hint">{kept ? "Kept. The analyst checks it before other people see it." : "Only you can see this result. Keep it to show it to the analyst."}</p>
+      {keep.isError ? <InlineMessage tone="error">{dashboardErrorMessage(keep.error)}</InlineMessage> : null}
+    </div>
+  );
+}
+
 function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; dashboard: ClientDashboard; seq: number }) {
   const q = useReadout(client, seq);
   if (q.isPending) return <Working>Loading the readout…</Working>;
@@ -92,7 +119,17 @@ function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; da
   return (
     <Section title={r.title} description={metaLine(r, periodOf(dashboard))} action={<Tags tags={row.tags} />} data-readout="detail">
       <ReadoutState readout={r} />
-      {r.status === "ready" && r.snapshot ? (
+      {r.status === "ready" && r.snapshot && hasPanels(r.snapshot) && r.snapshot.preset !== "mmm_planner" ? (
+        // a layout 2 readout (v0.17): its panels and what its input gave back
+        <>
+          <p className="text-base text-foreground">{r.snapshot.lead}</p>
+          <PanelBlocks client={client} dashboard={dashboard} snapshot={r.snapshot} label={`Key numbers of ${r.title}`} />
+          <LazyPart>
+            <ReadoutResults client={client} dashboard={dashboard} readout={r} />
+          </LazyPart>
+          <KeepTried client={client} readout={r} />
+        </>
+      ) : r.status === "ready" && r.snapshot ? (
         <>
           <p className="text-base text-foreground">{r.snapshot.lead}</p>
           <ReadoutTiles dashboard={dashboard} readout={r} label={`Key numbers of ${r.title}`} />
@@ -103,7 +140,20 @@ function ReadoutDetail({ client, dashboard, seq }: { client: DashboardClient; da
   );
 }
 
-export function History({ client, dashboard, initial = null }: { client: DashboardClient; dashboard: ClientDashboard; initial?: number | null }) {
+const DESCRIPTION = "The newest first. Your saved plans and sent numbers show only to you and the analysts.";
+
+export function History({
+  client,
+  dashboard,
+  initial = null,
+  description = DESCRIPTION,
+}: {
+  client: DashboardClient;
+  dashboard: ClientDashboard;
+  initial?: number | null;
+  /** The words under "Readouts" (layout 2 names its own private readouts). */
+  description?: string;
+}) {
   const [cursors, setCursors] = useState<(number | undefined)[]>([undefined]);
   const [selected, setSelected] = useState<number | null>(initial);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -122,12 +172,13 @@ export function History({ client, dashboard, initial = null }: { client: Dashboa
   };
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-12" data-tab="history">
-      <Section className="lg:col-span-5" title="Readouts" description="The newest first. Your saved plans and sent numbers show only to you and the analysts.">
+      <Section className="lg:col-span-5" title="Readouts" description={description}>
         <ul aria-label="Readouts" className="-mx-5 -mb-5 max-sm:-mx-4 max-sm:-mb-4">
           {cursors.map((c, i) => (
             <HistoryPage
               key={c ?? "first"}
               client={client}
+              othersWords={isLayout2Dashboard(dashboard)}
               beforeSeq={c}
               selected={selected}
               onSelect={choose}

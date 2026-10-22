@@ -13,6 +13,11 @@ The readout and input routes act through the link's
 published spec's, narrowed by the link's ``allowed_inputs``): the reads call the read-only
 tool surface; scenarios and uploads are the member routes' functions (their runs act as
 the publisher, within the link's hourly cap).
+
+v0.17: scenario rows, batch scoring (never of images, plan §10.3), this link's own
+predictions downloads and the published revision's pictures. Their bodies are capped
+before parsing: :data:`PREDICTION_BODY_PATHS` (32 KiB) and the batch files with the
+uploads (:data:`ACTUALS_BODY_PATHS`).
 """
 
 from __future__ import annotations
@@ -20,7 +25,13 @@ from __future__ import annotations
 from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Header, Path, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from mapi_spec.dashboard_v2 import (
+    ASSET_ID_RE,
+    BatchSubmit,
+    BatchTemplate,
+    ScenarioRowsRequest,
+)
 from mapi_spec.dashboards import (
     SHARE_SESSION_HEADER,
     ActualsSubmit,
@@ -40,10 +51,18 @@ from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.xrjson import MAX_XRJSON_BYTES
 
 from mapi_server.api.common import Auth, Ctx, IdempotencyKeyHeader
-from mapi_server.api.dashboard_readouts import PreferHeader, save_scenario_as, submit_actuals_as
+from mapi_server.api.dashboard_readouts import (
+    _CSV_RESPONSES,
+    PreferHeader,
+    csv_response,
+    save_scenario_as,
+    submit_actuals_as,
+    submit_batch_as,
+    submit_predictions_as,
+)
 from mapi_server.api.problems import responses_for
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
-from mapi_server.services.dashboards import inputs
+from mapi_server.services.dashboards import cases, downloads, inputs
 from mapi_server.services.dashboards.access import DashboardContext
 from mapi_server.services.dashboards.shares import (
     open_session,
@@ -58,6 +77,8 @@ __all__ = [
     "ACTUALS_BODY_PATHS",
     "INPUT_BODY_MAX_BYTES",
     "INPUT_BODY_PATHS",
+    "PREDICTION_BODY_MAX_BYTES",
+    "PREDICTION_BODY_PATHS",
     "SESSION_BODY_MAX_BYTES",
     "router",
 ]
@@ -67,22 +88,34 @@ router = APIRouter(tags=["dashboards"])
 SESSION_BODY_MAX_BYTES: Final = 4096
 """A session exchange is a token and a passcode: anything larger is refused unread."""
 INPUT_BODY_MAX_BYTES: Final = 16 * 1024
-"""What-ifs and saved scenarios: at most 40 channel multipliers and a label."""
+"""What-ifs and saved scenarios: at most 40 channel multipliers and a label (keeping a tried
+case, v0.17, takes no body)."""
 INPUT_BODY_PATHS: Final = (
     r"/v1/shared/(?:whatif:evaluate|scenarios)",
     r"/v1/dashboards/[^/]+/(?:whatif:evaluate|scenarios)",
+    r"/v1/dashboards/[^/]+/readouts/[^/]+:keep",
 )
 ACTUALS_BODY_MAX_BYTES: Final = MAX_XRJSON_BYTES * 2
 """An actuals upload: one inline XrJSON payload (as sent, with its whitespace)."""
-ACTUALS_BODY_PATHS: Final = (r"/v1/shared/actuals", r"/v1/dashboards/[^/]+/actuals")
+ACTUALS_BODY_PATHS: Final = (
+    r"/v1/shared/actuals",
+    r"/v1/dashboards/[^/]+/actuals",
+    r"/v1/shared/batch",
+    r"/v1/dashboards/[^/]+/batch",
+)
 """The public share routes are anonymous: :class:`~mapi_server.api.problems.JsonBodyLimit`
 caps and depth-checks these bodies before FastAPI reads and validates them (that happens
-before the handler, so before the session check and the per-address limit)."""
+before the handler, so before the session check and the per-address limit). v0.17: batch
+files are inline XrJSON like uploads."""
+PREDICTION_BODY_MAX_BYTES: Final = 32 * 1024
+"""Scenario rows (v0.17): at most 20 rows of 64 short values and a label."""
+PREDICTION_BODY_PATHS: Final = (r"/v1/shared/predictions", r"/v1/dashboards/[^/]+/predictions")
 
 ShareHeader = Annotated[
     str | None, Header(alias=SHARE_SESSION_HEADER, max_length=512, include_in_schema=True)
 ]
 Seq = Annotated[int, Path(ge=1)]
+AssetId = Annotated[str, Path(pattern=ASSET_ID_RE)]
 
 
 def _op(operation_id: str, **extra: Any) -> dict[str, Any]:
@@ -246,3 +279,96 @@ async def submit_shared_actuals(
     dashboard publishes uploads automatically)."""
     dctx = await _view(ctx, auth, x_mapi_share)
     return await submit_actuals_as(ctx, dctx, "/v1/shared/actuals", body, idempotency_key)
+
+
+# ========================================================= scenario rows and batch (v0.17)
+
+
+@router.post(
+    "/v1/shared/predictions",
+    response_model=Readout,
+    status_code=202,
+    **_op("submit_shared_predictions"),
+)
+async def submit_shared_predictions(
+    ctx: Ctx,
+    auth: Auth,
+    body: ScenarioRowsRequest,
+    x_mapi_share: ShareHeader = None,
+    prefer: PreferHeader = None,
+    idempotency_key: IdempotencyKeyHeader = None,
+) -> JSONResponse:
+    """Public: score scenario rows as this link's private readout (the link must allow
+    them; it spends the publisher's compute, within the link's hourly cap)."""
+    dctx = await _view(ctx, auth, x_mapi_share)
+    return await submit_predictions_as(
+        ctx, dctx, "/v1/shared/predictions", body, idempotency_key, prefer
+    )
+
+
+@router.get(
+    "/v1/shared/batch/template",
+    response_model=BatchTemplate,
+    **_op("get_shared_batch_template"),
+)
+async def get_shared_batch_template(
+    ctx: Ctx, auth: Auth, x_mapi_share: ShareHeader = None
+) -> BatchTemplate:
+    """Public: the batch file template (the link must allow batch scoring)."""
+    dctx = await _view(ctx, auth, x_mapi_share)
+    async with ctx.db.tenant_session(dctx.tenant_id) as session:
+        return await cases.batch_template(ctx, session, dctx)
+
+
+@router.post(
+    "/v1/shared/batch",
+    response_model=Readout,
+    status_code=202,
+    **_op("submit_shared_batch"),
+)
+async def submit_shared_batch(
+    ctx: Ctx,
+    auth: Auth,
+    body: BatchSubmit,
+    x_mapi_share: ShareHeader = None,
+    prefer: PreferHeader = None,
+    idempotency_key: IdempotencyKeyHeader = None,
+) -> JSONResponse:
+    """Public: score a file of new cases as this link's private readout (within the
+    link's daily batch cap)."""
+    dctx = await _view(ctx, auth, x_mapi_share)
+    return await submit_batch_as(ctx, dctx, "/v1/shared/batch", body, idempotency_key, prefer)
+
+
+@router.get(
+    "/v1/shared/readouts/{seq}/predictions.csv",
+    response_class=Response,
+    responses={**_CSV_RESPONSES, **responses_for("download_shared_predictions")},
+    operation_id="download_shared_predictions",
+)
+async def download_shared_predictions(
+    ctx: Ctx, auth: Auth, seq: Seq, x_mapi_share: ShareHeader = None
+) -> Response:
+    """Public: the predictions CSV of this link's own batch readout (``404`` for any
+    other readout, ``410`` once it expired)."""
+    dctx = await _view(ctx, auth, x_mapi_share)
+    async with ctx.db.tenant_session(dctx.tenant_id) as session:
+        found = await downloads.predictions_csv(ctx, session, dctx, seq)
+    return csv_response(found, share=True)
+
+
+@router.get(
+    "/v1/shared/assets/{asset_id}",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}}, **responses_for("get_shared_asset")},
+    operation_id="get_shared_asset",
+)
+async def get_shared_asset(
+    ctx: Ctx, auth: Auth, asset_id: AssetId, x_mapi_share: ShareHeader = None
+) -> Response:
+    """Public: a picture of the shared dashboard's published revision (PNG, at most
+    512 KiB; ``nosniff`` and ``private, no-store`` like every share response)."""
+    dctx = await _view(ctx, auth, x_mapi_share)
+    async with ctx.db.tenant_session(dctx.tenant_id) as session:
+        asset = await downloads.asset_bytes(ctx, session, dctx, asset_id)
+    return Response(content=asset.data, media_type=asset.content_type)

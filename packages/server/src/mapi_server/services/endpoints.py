@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import itertools
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mapi_spec._types import RESERVED_STAGE
@@ -55,7 +55,14 @@ from mapi_spec.scorecard import (
     authorize_promotion,
 )
 from mapi_spec.spec import ScoreRequest
-from mapi_spec.storage import check_segment
+from mapi_spec.storage import (
+    NotFound,
+    ObjectMeta,
+    PreconditionFailed,
+    check_segment,
+    crc32c,
+    crc32c_to_base64,
+)
 from mapi_spec.tenancy import Action, ResourceKind
 from mapi_spec.validate import ScoreMetadata
 from mapi_spec.webhooks import WebhookEventType
@@ -95,6 +102,8 @@ __all__ = [
 INLINE_PREFIX = "inline"
 """``t/{tenant}/inline/{sha256}.json`` in the quarantine bucket (7-day lifecycle): inline
 score payloads are user data the sandbox decodes, like uploads awaiting ingest."""
+INLINE_REUSE_MAX_AGE: Final = timedelta(days=1)
+"""How old a stored inline payload may be for a new call to reuse its generation."""
 
 
 def _now() -> datetime:
@@ -1011,11 +1020,32 @@ async def store_inline_inputs(
             payload.model_dump(mode="json"), separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         sha = hashlib.sha256(body).hexdigest()
-        meta = await ctx.store.put(
-            ctx.buckets.quarantine,
-            f"t/{tenant}/{INLINE_PREFIX}/{sha}.json",
-            body,
-            content_type="application/json",
+        meta = await _put_content_addressed(
+            ctx, ctx.buckets.quarantine, f"t/{tenant}/{INLINE_PREFIX}/{sha}.json", body
         )
         out[input_name] = StoredRef(meta.bucket, meta.name, meta.generation)
     return out
+
+
+async def _put_content_addressed(
+    ctx: ServerContext, bucket: str, name: str, body: bytes
+) -> ObjectMeta:
+    """Write ``body`` once at its content address, or reuse the live generation that already
+    holds these bytes. A blind rewrite would give the same name a new generation, and every
+    earlier reference pinned to the old one (a queued run, a stored upload) would then 404.
+    A copy near the end of its 7-day lifecycle is written again, so a new run never pins one
+    that is about to be deleted."""
+    try:
+        return await ctx.store.put(
+            bucket, name, body, content_type="application/json", if_generation_match=0
+        )
+    except PreconditionFailed:
+        pass
+    try:
+        live = await ctx.store.stat(bucket, name)
+    except NotFound:  # deleted in between: write it again
+        return await ctx.store.put(bucket, name, body, content_type="application/json")
+    fresh = datetime.now(UTC) - live.time_created < INLINE_REUSE_MAX_AGE
+    if fresh and live.size == len(body) and live.crc32c == crc32c_to_base64(crc32c(body)):
+        return live
+    return await ctx.store.put(bucket, name, body, content_type="application/json")

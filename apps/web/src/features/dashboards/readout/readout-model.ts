@@ -86,6 +86,20 @@ export function stamp(iso: string, timeZone?: string): string {
   return `${dateOf(iso, timeZone)} ${hm(iso, timeZone)}`;
 }
 
+/** A readout title in the viewer's time zone. The server writes default titles such as
+ * "Published on 22/10/2026" with the UTC date of the readout; next to the local "Updated"
+ * time that read as the wrong day (v0.17 R7). A title whose date is the UTC day of
+ * `created_at` gets the local day instead; any other title (an analyst's label) is kept. */
+export function localTitle(h: Pick<ReadoutHeader, "title" | "created_at">, timeZone?: string): string {
+  const m = /^(.* on) (\d{2})\/(\d{2})\/(\d{4})$/.exec(h.title);
+  if (!m || !h.created_at) return h.title;
+  const utc = new Date(h.created_at);
+  if (Number.isNaN(utc.getTime())) return h.title;
+  const day = `${String(utc.getUTCDate()).padStart(2, "0")}/${String(utc.getUTCMonth() + 1).padStart(2, "0")}/${utc.getUTCFullYear()}`;
+  if (`${m[2]}/${m[3]}/${m[4]}` !== day) return h.title;
+  return `${m[1]} ${dateOf(h.created_at, timeZone)}`;
+}
+
 /** The meta line under the title: "Updated 20/10/2026 09.40 with results to the week ending 18/10/2026." */
 export function metaLine(r: Pick<ReadoutHeader, "ready_at" | "created_at" | "period"> | null, period: PeriodLabel, timeZone?: string): string {
   if (!r) return "There are no results yet. Your analyst publishes the first readout soon.";
@@ -121,6 +135,13 @@ export function formatValue(v: Num, unit: KpiValue["unit"], kpi?: Pick<KpiDef, "
       return `${fixed(v, 1)}%`;
     case "index":
       return fixed(v, 0);
+    case "probability":
+      return `${fixed(v * 100, 1)}%`;
+    case "rate":
+      return fixed(v, 2);
+    case "number":
+    case "label":
+      return grouped(v, decimals);
   }
 }
 
@@ -314,6 +335,23 @@ export function accuracyOf(snapshot: Pick<ReadoutSnapshot, "accuracy" | "series"
 }
 
 /** The accuracy card in sentences ("The actual number was in the likely range in 9 of 12 weeks."). */
+/**
+ * The accuracy of the last published numbers when this readout has none of its own: a newer
+ * baseline (a refresh, or the one an automatic upgrade adds) would otherwise hide the comparison
+ * the client last saw. `null` when the history holds no error metrics either.
+ */
+export function lastSentAccuracy(snapshot: Pick<ReadoutSnapshot, "accuracy_history"> | null | undefined): { acc: ActualsAccuracy; sentAt: string } | null {
+  const last = (snapshot?.accuracy_history ?? []).at(-1);
+  if (!last || !last.n) return null;
+  const v = last.values ?? {};
+  const num = (k: string): number | null => {
+    const x = (v as Record<string, number | null | undefined>)[k];
+    return isNum(x) ? x : null;
+  };
+  if (num("mape") === null && num("band_hit_rate") === null && num("bias") === null) return null;
+  return { acc: { n: last.n, mape: num("mape"), bias: num("bias"), band_hit_rate: num("band_hit_rate") }, sentAt: last.created_at };
+}
+
 export function accuracyLines(acc: ActualsAccuracy | null, kpi: KpiDef, period: PeriodLabel): string[] {
   if (!acc || !acc.n) return [];
   const n = acc.n;
@@ -353,7 +391,22 @@ export const KIND_WORD: Record<Readout["kind"], string> = {
   refresh: "Regular update",
   scenario: "Saved plan",
   actuals: "Your numbers",
+  prediction: "Your prediction",
+  batch: "Batch scores",
 };
+
+/** The words of an upload, a tried case or a file someone else made (`mine: false`): "Your
+ * numbers" on a share-link upload read wrong to a signed-in client (v0.17 R7). */
+export const OTHERS_KIND_WORD: Partial<Record<Readout["kind"], string>> = {
+  actuals: "Numbers sent",
+  prediction: "A tried case",
+  batch: "Batch scores",
+};
+
+/** The kind word of a readout for the caller. */
+export function kindWord(h: Pick<ReadoutHeader, "kind" | "mine">): string {
+  return (h.mine === false ? OTHERS_KIND_WORD[h.kind] : undefined) ?? KIND_WORD[h.kind];
+}
 
 export const STATUS_WORD: Record<Readout["status"], string> = {
   queued: "Waiting to start",
@@ -399,9 +452,10 @@ export interface HistoryRow {
   tags: Tag[];
 }
 
-export function historyRow(h: ReadoutHeader, timeZone?: string): HistoryRow {
+export function historyRow(h: ReadoutHeader, timeZone?: string, opts: { othersWords?: boolean } = {}): HistoryRow {
   const tags: Tag[] = [];
-  const vis = visibilityTag(h.visibility);
+  // a failed readout is the uploader's own note, never a history row: no visibility tag
+  const vis = h.status === "failed" ? null : visibilityTag(h.visibility);
   if (vis) tags.push(vis);
   const refit = refitTag(h.refit_status);
   if (refit) tags.push(refit);
@@ -409,9 +463,10 @@ export function historyRow(h: ReadoutHeader, timeZone?: string): HistoryRow {
   else if (h.status !== "ready") tags.push({ label: STATUS_WORD[h.status], tone: "info" });
   return {
     seq: h.seq,
-    title: h.title,
+    title: localTitle(h, timeZone),
     when: stamp(h.ready_at ?? h.created_at, timeZone),
-    kind: KIND_WORD[h.kind],
+    // layout 2 names others' uploads apart; the layout 1 page keeps its words (its DOM is fixed)
+    kind: opts.othersWords ? kindWord(h) : KIND_WORD[h.kind],
     status: STATUS_WORD[h.status],
     ready: h.status === "ready",
     failed: h.status === "failed",

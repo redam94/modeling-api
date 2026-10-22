@@ -27,10 +27,23 @@ import { toast } from "@/stores/toast";
 
 import { shareUrl, useCreateShare, useDashboardGrants, useDashboardShares, useDeleteGrant, usePutGrant, useRevokeShare } from "../api";
 import { Section } from "../readout/parts";
-import { MAX_PASSCODE_LEN, MIN_PASSCODE_LEN, type Dashboard, type DashboardGrant, type DashboardShare, type DashboardShareCreated } from "../types";
+import {
+  isLayout2,
+  MAX_PASSCODE_LEN,
+  MIN_PASSCODE_LEN,
+  SHARE_INPUTS,
+  SHARE_INPUTS_V1,
+  type AnyDashboardSpec,
+  type Dashboard,
+  type DashboardGrant,
+  type DashboardShare,
+  type DashboardShareCreated,
+  type ShareInput,
+} from "../types";
 import {
   DEFAULT_SHARE_FORM,
   MAX_SHARE_LABEL,
+  readOnlyShareForm,
   SHARE_EXPIRY_DAYS,
   SHARE_INPUT_WORD,
   shareAccessWords,
@@ -40,6 +53,24 @@ import {
   shareInputsPermission,
   type ShareForm,
 } from "./spec-form";
+
+const SHARE_INPUT_TEXT: Record<ShareInput, { label: string; hint: string; missing: string }> = {
+  whatif: { label: "Let them try plan scenarios", hint: "Sliders, saved scenarios and exact results (if the dashboard offers them).", missing: "The dashboard has no what-ifs." },
+  actuals: { label: "Let them upload numbers", hint: "Uploads go to the History tab for review, as the dashboard says.", missing: "The dashboard has no uploads." },
+  scenario_rows: { label: "Let them try cases", hint: "They change a few values and see the prediction. Their tries stay private to them.", missing: "The dashboard has no Try a case." },
+  batch: { label: "Let them score a file", hint: "They send a CSV file of new cases and download the predictions. Only they can download it.", missing: "The dashboard has no Score a file." },
+};
+
+/** The toggles a link of this dashboard shows (layout 1: the two v0.16 inputs only). */
+function shareToggles(spec: AnyDashboardSpec): readonly ShareInput[] {
+  if (!isLayout2(spec)) return SHARE_INPUTS_V1;
+  return SHARE_INPUTS.filter((k) => k !== "whatif" || spec.preset === "mmm_planner");
+}
+
+function missingReason(spec: AnyDashboardSpec, k: ShareInput): string {
+  if (k === "batch" && isLayout2(spec) && spec.preset === "image" && spec.batch?.enabled) return "Share links cannot score files on an image dashboard.";
+  return SHARE_INPUT_TEXT[k].missing;
+}
 
 const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,255}$/;
 const SHARE_STATUS = { active: "success", expired: "outline", revoked: "danger" } as const;
@@ -360,7 +391,7 @@ export function CreateShareDialog({ dashboard, onClose, onCreated }: { dashboard
     e.preventDefault();
     setSubmitted(true);
     if (Object.keys(issues).length) return;
-    create.mutate(shareCreateBody(inputs.allowed ? form : { ...form, whatif: false, actuals: false }, available), { onSuccess: onCreated });
+    create.mutate(shareCreateBody(inputs.allowed ? form : readOnlyShareForm(form), available), { onSuccess: onCreated });
   };
   const set = (patch: Partial<ShareForm>) => setForm((f) => ({ ...f, ...patch }));
   return (
@@ -394,26 +425,26 @@ export function CreateShareDialog({ dashboard, onClose, onCreated }: { dashboard
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-sm font-semibold">What the link allows</legend>
             <p className="text-xs text-muted-foreground">The link can always read the dashboard. Inputs run as you and use your project's compute.</p>
-            {(["whatif", "actuals"] as const).map((k) => {
+            {shareToggles(spec).map((k) => {
               const has = available.includes(k);
               const id = `ds-share-${k}`;
-              const why = !has ? (k === "whatif" ? "The dashboard has no what-ifs." : "The dashboard has no uploads.") : !inputs.allowed ? inputs.reason : null;
+              const why = !has ? missingReason(spec, k) : !inputs.allowed ? inputs.reason : null;
               return (
                 <div key={k} className="flex items-start gap-2 text-sm">
                   <Checkbox id={id} className="mt-0.5" checked={has && inputs.allowed && form[k]} disabled={!has || !inputs.allowed} onCheckedChange={(on) => set({ [k]: on === true })} aria-describedby={`${id}-hint`} />
                   <span className="grid gap-0.5">
                     <label htmlFor={id} className="font-medium">
-                      {k === "whatif" ? "Let them try plan scenarios" : "Let them upload numbers"}
+                      {SHARE_INPUT_TEXT[k].label}
                     </label>
                     <span id={`${id}-hint`} className="text-xs text-muted-foreground">
-                      {why ?? (k === "whatif" ? "Sliders, saved scenarios and exact results (if the dashboard offers them)." : "Uploads go to the History tab for review, as the dashboard says.")}
+                      {why ?? SHARE_INPUT_TEXT[k].hint}
                     </span>
                   </span>
                 </div>
               );
             })}
             <p className="text-xs text-muted-foreground" data-testid="share-access-summary">
-              This link: {shareAccessWords(shareCreateBody(inputs.allowed ? form : { ...form, whatif: false, actuals: false }, available).allowed_inputs)}.
+              This link: {shareAccessWords(shareCreateBody(inputs.allowed ? form : readOnlyShareForm(form), available).allowed_inputs)}.
             </p>
           </fieldset>
           {create.isError ? <ErrorNotice error={create.error} title="The link was not created" /> : null}

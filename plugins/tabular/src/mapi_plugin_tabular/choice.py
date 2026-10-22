@@ -370,6 +370,8 @@ class MultinomialLogit(CustomModel[MultinomialLogitSettings]):
         "y_hat": {
             "dims": [GROUP_DIM, OCCASION_DIM, ALTERNATIVE_DIM],
             "units": "probability",
+            "meaning": "class_probability",
+            "classes_dim": ALTERNATIVE_DIM,
             "description": "Choice probability of each product per household and trip "
             "(predictive: one sampled choice, one-hot)",
         }

@@ -1,0 +1,21 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "ca672b1926817470defeec8fc59f4991",
+ "groups": [
+  "/summary"
+ ],
+ "issues": [],
+ "kind": "expected",
+ "mode": "predict",
+ "names": "canonical",
+ "output_space": {
+  "rate": "raw",
+  "total": "raw"
+ },
+ "representation": "draws",
+ "retransform": {
+  "rate": "none",
+  "total": "none"
+ },
+ "units": "original"
+}

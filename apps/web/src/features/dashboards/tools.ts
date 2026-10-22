@@ -1,27 +1,42 @@
 /**
- * The read-only dashboard tool surface in the browser (plan I-3, §3.7): the names, arguments
- * and results of `mapi_spec.dashboard_tools.DASHBOARD_TOOLS`, answered over any
- * {@link DashboardClient}, so v0.17's chat can run the same tools in the portal, the analyst's
- * preview and a share link.
+ * The read-only dashboard tool surface in the browser (plan I-3, I-5, §3.7): the names,
+ * arguments and results of `mapi_spec.dashboard_tools.DASHBOARD_TOOLS`, answered over any
+ * {@link DashboardClient}, so the chat and MCP adapters of v0.18 can run the same tools in
+ * the portal, the analyst's preview and a share link, for a dashboard of either layout.
  *
  * No tool submits a run or writes: `evaluate_whatif` is the grid evaluation, and the client
- * only reads what its viewer may see. `compare_readouts` and `get_channel` are computed here
- * from readouts with the server's rules (`services/dashboards/tools.py`), and
- * `explain_metric` from the static glossary. `tools.test.ts` checks the names, argument
- * properties and glossary keys against `api/dashboard-tools.gen.json` (drift test).
+ * only reads what its viewer may see. `compare_readouts` (with the KPI panel changes of
+ * layout 2), `get_channel`, `get_panel` and `get_accuracy` are computed here from readouts
+ * with the server's rules (`services/dashboards/tools.py`), `list_panels` and `list_inputs`
+ * from the dashboard view, and `explain_metric` from the static glossary. The media tools
+ * (`get_channel`, `evaluate_whatif`) refuse a dashboard without the media planner
+ * (`DASHBOARD_INPUT_DISABLED`). `tools.test.ts` checks the names, argument properties and
+ * glossary keys against `api/dashboard-tools.gen.json` (drift test).
  */
 import {
-  GLOSSARY_KEYS,
+  GLOSSARY_KEYS_V2,
+  isLayout2Dashboard,
   MAX_CHANNEL_HISTORY,
+  MAX_PANELS,
   MAX_READOUT_PAGE,
+  PANEL_ID_RE,
+  type AccuracyDetail,
+  type AccuracyReport,
+  type BatchReport,
   type ChannelDelta,
   type ChannelHistory,
   type ChannelPoint,
   type ClientDashboard,
   type DashboardClient,
-  type GlossaryKey,
+  type GlossaryKeyV2,
+  type InputsReport,
+  type KpiBlock,
   type KpiValue,
   type MetricExplanation,
+  type PanelDelta,
+  type PanelList,
+  type PanelReport,
+  type PredictionReport,
   type Readout,
   type ReadoutComparison,
   type ReadoutHeader,
@@ -40,11 +55,17 @@ export const DASHBOARD_TOOL_NAMES = [
   "get_channel",
   "explain_metric",
   "evaluate_whatif",
+  "list_panels",
+  "get_panel",
+  "get_accuracy",
+  "list_inputs",
+  "get_prediction",
+  "get_batch_summary",
 ] as const;
 export type DashboardToolName = (typeof DASHBOARD_TOOL_NAMES)[number];
 
 /** `mapi_spec.dashboards.GLOSSARY`: plain (ASD-STE100) definitions behind "What does this mean?". */
-export const GLOSSARY: Readonly<Record<GlossaryKey, string>> = {
+export const GLOSSARY: Readonly<Record<GlossaryKeyV2, string>> = {
   expected: "The result that the model calculates from your media spend and the other inputs.",
   vs_expected: "The difference between the actual result and the result that the model expected. A positive number means that the actual result was better.",
   return_on_media: "The result that each 1 unit of media spend brought. For money results, a value above 1 means that the media paid back.",
@@ -66,6 +87,21 @@ export const GLOSSARY: Readonly<Record<GlossaryKey, string>> = {
   compared: "We compare your numbers with what the model expected. The model does not change.",
   conditioned: "The model uses your numbers to update its forecast. The model parameters do not change.",
   refit: "The analyst fits the model again with new data. Only the analyst can start a refit.",
+  prediction: "The value that the model calculates for the case or the period that you selected.",
+  likely_range: "The range where one new result will probably be. The model is 90% sure that the result is in this range.",
+  probability: "How probable a result is, from 0% (it will not occur) to 100% (it will occur).",
+  share_positive: "The percentage of cases where the probability of the selected result is more than the threshold that the analyst set.",
+  accuracy_rate: "The percentage of cases where the most probable class was the actual class.",
+  calibration: "A check of the probabilities. When the model gives a probability of 70%, the result must occur in approximately 70% of those cases.",
+  typical_error: "The average size of the difference between the prediction and the actual number, in the units of the result.",
+  effect: "The difference between the actual result and the result that the model calculates without the change.",
+  cumulative_effect: "The total effect of the change over all periods since it started.",
+  without_intervention: "The result that the model calculates for the time after the change, as if the change did not occur.",
+  chance_of_effect: "How probable it is that the change had a positive effect, as the model calculates it.",
+  map: "A map of the values that the model calculates for each place. The legend shows the value of each colour.",
+  batch: "A file of many cases. The model calculates a prediction for each case, and you can download the predictions as a CSV file.",
+  approximate: "This value is approximate. The model gives one value per case without a range, so the total does not show the uncertainty.",
+  expected_count: "The number of cases where the result will probably occur. It is the sum of the probabilities of all the cases.",
 };
 
 // ------------------------------------------------------------------------------ arguments
@@ -87,10 +123,19 @@ export interface ChannelArgs {
   last_n?: number;
 }
 export interface ExplainArgs {
-  metric: GlossaryKey;
+  metric: GlossaryKeyV2;
 }
 export interface WhatIfArgs {
   multipliers?: Record<string, number>;
+}
+/** `get_accuracy` (the latest published actuals readout without `seq`). */
+export interface OptionalReadoutRef {
+  seq?: number | null;
+}
+/** `get_panel` (the latest published readout without `seq`). */
+export interface PanelArgs {
+  panel_id: string;
+  seq?: number | null;
 }
 
 /** A tool call the arguments of which do not fit (the server's `SCHEMA_INVALID`). */
@@ -103,6 +148,33 @@ export class ToolArgsError extends Error {
 export class ToolNotFoundError extends Error {
   override name = "ToolNotFoundError";
   readonly code = "NOT_FOUND";
+}
+
+/**
+ * A tool that does not apply now: the media tools on a dashboard without the media planner
+ * (`DASHBOARD_INPUT_DISABLED`), or a readout that is still running (`NOT_READY`).
+ */
+export class ToolRefusedError extends Error {
+  override name = "ToolRefusedError";
+  constructor(
+    message: string,
+    readonly code: "DASHBOARD_INPUT_DISABLED" | "NOT_READY",
+  ) {
+    super(message);
+  }
+}
+
+function noPlanner(): ToolRefusedError {
+  return new ToolRefusedError("this dashboard has no media planner: channels and spend plans are not part of it", "DASHBOARD_INPUT_DISABLED");
+}
+
+function optionalSeq(v: unknown, what: string): number | null {
+  return v === undefined || v === null ? null : seqArg(v, what);
+}
+
+function panelIdArg(v: unknown): string {
+  if (typeof v !== "string" || !PANEL_ID_RE.test(v)) throw new ToolArgsError("panel_id must be a panel id (lower case letters, digits and _)");
+  return v;
 }
 
 function seqArg(v: unknown, what: string): number {
@@ -147,12 +219,57 @@ function delta(a: number | null | undefined, b: number | null | undefined): numb
   return a !== null && a !== undefined && b !== null && b !== undefined ? b - a : null;
 }
 
+function kpiBlocks(r: Readout): Map<string, KpiBlock> {
+  const out = new Map<string, KpiBlock>();
+  for (const b of snap(r)?.panels ?? []) if (b.kind === "kpi") out.set(b.panel_id, b);
+  return out;
+}
+
+/** The change of each KPI panel of either readout (`b`'s order, then `a`'s; `tools._panel_deltas`). */
+export function panelDeltasOf(ra: Readout, rb: Readout): PanelDelta[] {
+  const pa = kpiBlocks(ra);
+  const pb = kpiBlocks(rb);
+  const ids = [...pb.keys(), ...[...pa.keys()].filter((k) => !pb.has(k))];
+  return ids.slice(0, MAX_PANELS).map((id) => {
+    const a = pa.get(id);
+    const b = pb.get(id);
+    const va = a?.tile.value ?? null;
+    const vb = b?.tile.value ?? null;
+    return { panel_id: id, label: (b ?? a)?.title ?? id, a: va, b: vb, delta: delta(va, vb) };
+  });
+}
+
+/** The dashboard fields `compare_readouts` reads (the subject of layout 2, else the KPI). */
+export type CompareDashboard = Pick<ClientDashboard, "kpi" | "channels"> & Partial<Pick<ClientDashboard, "subject" | "layout_version">>;
+
+function compareLead(dash: CompareDashboard, ra: Readout, rb: Readout, tiles: TileDelta[], panels: PanelDelta[]): string {
+  const kpi = isLayout2Dashboard(dash) && dash.subject ? dash.subject : dash.kpi;
+  const expected = tiles.find((t) => t.key === "expected" && t.delta !== null && t.delta !== undefined);
+  if (expected && expected.delta !== null && expected.delta !== undefined) {
+    const word = expected.delta > 0 ? "more" : kpi.unit === "count" ? "fewer" : "less";
+    return Math.abs(expected.delta) > 0
+      ? `Readout ${rb.seq} expects ${fmtPlain(Math.abs(expected.delta), kpi.decimals ?? 0)} ${word} ${kpiNoun(kpi.label)} than readout ${ra.seq}.`
+      : `Readouts ${ra.seq} and ${rb.seq} expect the same result.`;
+  }
+  const first = panels.find((p) => p.delta !== null && p.delta !== undefined && p.b !== null && p.b !== undefined);
+  if (first && first.delta !== null && first.delta !== undefined && first.b !== null && first.b !== undefined) {
+    const decimals = Number.isInteger(first.b) && Number.isInteger(first.delta) ? 0 : 2;
+    if (Math.abs(first.delta) > 0) {
+      const way = first.delta > 0 ? "up" : "down";
+      return `${first.label} went ${way} by ${fmtPlain(Math.abs(first.delta), decimals)} from readout ${ra.seq} to readout ${rb.seq}.`;
+    }
+    return `${first.label} is the same in readouts ${ra.seq} and ${rb.seq}.`;
+  }
+  return `Readout ${rb.seq} compared with readout ${ra.seq}.`;
+}
+
 /** `compare_readouts` over two readouts already read (`tools._compare`). */
-export function compareReadoutsOf(dash: Pick<ClientDashboard, "kpi" | "channels">, ra: Readout, rb: Readout): ReadoutComparison {
+export function compareReadoutsOf(dash: CompareDashboard, ra: Readout, rb: Readout): ReadoutComparison {
   const sa = snap(ra);
   const sb = snap(rb);
-  const ta = new Map<string, KpiValue>((sa?.tiles ?? []).map((t) => [t.key, t]));
-  const tb = new Map<string, KpiValue>((sb?.tiles ?? []).map((t) => [t.key, t]));
+  // layout 2 KPI panels copied into the legacy tiles are compared as panels
+  const ta = new Map<string, KpiValue>((sa?.tiles ?? []).filter((t) => t.key !== "panel").map((t) => [t.key, t]));
+  const tb = new Map<string, KpiValue>((sb?.tiles ?? []).filter((t) => t.key !== "panel").map((t) => [t.key, t]));
   const keys = [...ta.keys(), ...[...tb.keys()].filter((k) => !ta.has(k))];
   const tiles: TileDelta[] = keys.slice(0, 6).map((k) => {
     const a = ta.get(k);
@@ -179,20 +296,10 @@ export function compareReadoutsOf(dash: Pick<ClientDashboard, "kpi" | "channels"
       zone_b: b?.zone ?? null,
     });
   }
-  const expected = tiles.find((t) => t.key === "expected" && t.delta !== null && t.delta !== undefined);
-  const noun = kpiNoun(dash.kpi.label);
-  let lead: string;
-  if (expected && expected.delta !== null && expected.delta !== undefined) {
-    const word = expected.delta > 0 ? "more" : dash.kpi.unit === "count" ? "fewer" : "less";
-    lead =
-      Math.abs(expected.delta) > 0
-        ? `Readout ${rb.seq} expects ${fmtPlain(Math.abs(expected.delta), dash.kpi.decimals ?? 0)} ${word} ${noun} than readout ${ra.seq}.`
-        : `Readouts ${ra.seq} and ${rb.seq} expect the same result.`;
-  } else {
-    lead = `Readout ${rb.seq} compared with readout ${ra.seq}.`;
-  }
+  const panel_deltas = panelDeltasOf(ra, rb);
+  let lead = compareLead(dash, ra, rb, tiles, panel_deltas);
   if (ra.model_version_id !== rb.model_version_id) lead += " The model changed between the two readouts.";
-  return { a: header(ra), b: header(rb), same_model: ra.model_version_id === rb.model_version_id, tiles, channels: channels.slice(0, 40), lead: lead.slice(0, 400) };
+  return { a: header(ra), b: header(rb), same_model: ra.model_version_id === rb.model_version_id, tiles, channels: channels.slice(0, 40), lead: lead.slice(0, 400), panel_deltas };
 }
 
 /** `get_channel` over published readouts given newest first (`tools._channel`). */
@@ -211,7 +318,7 @@ export function channelHistoryOf(dash: Pick<ClientDashboard, "channels">, name: 
 }
 
 export function explainMetric(args: ExplainArgs): MetricExplanation {
-  if (!(GLOSSARY_KEYS as readonly string[]).includes(args.metric)) throw new ToolArgsError(`no explanation for ${String(args.metric)}`);
+  if (!(GLOSSARY_KEYS_V2 as readonly string[]).includes(args.metric)) throw new ToolArgsError(`no explanation for ${String(args.metric)}`);
   return { metric: args.metric, text: GLOSSARY[args.metric] };
 }
 
@@ -245,6 +352,7 @@ export async function compareReadouts(c: DashboardClient, args: CompareArgs): Pr
 export async function getChannel(c: DashboardClient, args: ChannelArgs): Promise<ChannelHistory> {
   const lastN = clampLimit(args.last_n, 13, MAX_CHANNEL_HISTORY, "last_n");
   const d = await c.dashboard();
+  if (!(d.channels ?? []).length) throw noPlanner();
   if (!(d.channels ?? []).some((ch) => ch.name === args.name)) throw new ToolNotFoundError(`the dashboard has no channel named ${args.name}`);
   // Published, ready readouts newest first; pages back until `lastN` points or 200 rows.
   const rows: Readout[] = [];
@@ -263,10 +371,125 @@ export async function getChannel(c: DashboardClient, args: ChannelArgs): Promise
 }
 
 export async function evaluateWhatIf(c: DashboardClient, args: WhatIfArgs): Promise<WhatIfResult> {
+  if (!((await c.dashboard()).channels ?? []).length) throw noPlanner();
   return c.evaluate(args.multipliers ?? {});
 }
 
-export type ToolResult = ClientDashboard | Readout | ReadoutList | ReadoutComparison | ChannelHistory | MetricExplanation | WhatIfResult;
+// ------------------------------------------------------------------------------ layout 2 tools
+
+/** `list_panels`: the panels of the published revision in reading order (empty on layout 1). */
+export async function listPanels(c: DashboardClient): Promise<PanelList> {
+  const d = await c.dashboard();
+  return { panels: isLayout2Dashboard(d) ? [...(d.panels_meta ?? [])] : [] };
+}
+
+/** The newest published, ready readout of `kind` the client sees (pages back over ≤ 200 rows). */
+async function latestPublished(c: DashboardClient, kind: ReadoutKind): Promise<Readout | null> {
+  let before: number | undefined;
+  let scanned = 0;
+  while (scanned < 200) {
+    const page = await c.readoutPage({ kind, beforeSeq: before, limit: MAX_READOUT_PAGE });
+    const items = page.items ?? [];
+    scanned += items.length;
+    const found = items.find((h) => h.visibility === "published" && h.status === "ready");
+    if (found) return c.readout(found.seq);
+    if (page.next_before_seq === null || page.next_before_seq === undefined || !items.length) break;
+    before = page.next_before_seq;
+  }
+  return null;
+}
+
+function notReady(r: Readout): ToolRefusedError | null {
+  return r.status === "queued" || r.status === "running" || r.status === "materialising"
+    ? new ToolRefusedError(`readout ${r.seq} is not ready yet: try again in a moment`, "NOT_READY")
+    : null;
+}
+
+/** `get_panel` over a readout already read (`tools._panel`). */
+export function panelOf(r: Readout, panelId: string): PanelReport {
+  const waiting = notReady(r);
+  if (waiting) throw waiting;
+  const panel = snap(r)?.panels?.find((b) => b.panel_id === panelId);
+  if (!panel) throw new ToolNotFoundError(`readout ${r.seq} has no panel named ${panelId}`);
+  return { seq: r.seq, panel };
+}
+
+export async function getPanel(c: DashboardClient, args: PanelArgs): Promise<PanelReport> {
+  const panelId = panelIdArg(args.panel_id);
+  const seq = optionalSeq(args.seq, "seq");
+  const r = seq !== null ? await c.readout(seq) : (await c.dashboard()).latest_readout;
+  if (!r) throw new ToolNotFoundError("the dashboard has no readout yet");
+  return panelOf(r, panelId);
+}
+
+/** `get_accuracy` over a readout already read: layout 1's accuracy reads as the error metrics (`tools._accuracy`). */
+export function accuracyOf(r: Readout | null): AccuracyReport {
+  if (!r) return { seq: null, detail: null, history: [] };
+  const s = snap(r);
+  if (!s) return { seq: r.seq, detail: null, history: [] };
+  let detail: AccuracyDetail | null = s.accuracy_detail ?? null;
+  if (!detail && s.accuracy) detail = { ...s.accuracy, kind: "error" };
+  return { seq: r.seq, detail, history: [...(s.accuracy_history ?? [])] };
+}
+
+export async function getAccuracy(c: DashboardClient, args: OptionalReadoutRef = {}): Promise<AccuracyReport> {
+  const seq = optionalSeq(args.seq, "seq");
+  return accuracyOf(seq !== null ? await c.readout(seq) : await latestPublished(c, "actuals"));
+}
+
+/**
+ * `list_inputs`: the caller's inputs and forms as the dashboard view gives them. The view has
+ * no daily caps, so `exact_runs_per_day` and `batch_runs_per_day` are `null` in the browser
+ * (the server tool fills them in).
+ */
+export async function listInputs(c: DashboardClient): Promise<InputsReport> {
+  const d = await c.dashboard();
+  return {
+    inputs: d.inputs ?? {},
+    scenario_form: d.scenario_form ?? null,
+    batch_form: d.batch_form ?? null,
+    exact_runs_per_day: null,
+    batch_runs_per_day: null,
+  };
+}
+
+/**
+ * The caller's readout `seq` of `kind` (`tools._own`): only a readout the caller made
+ * (`ReadoutHeader.mine`; an analyst reads every readout, but these tools read the caller's own, as
+ * the server tool does). A readout of another kind, or somebody else's, is "not found".
+ */
+async function own(c: DashboardClient, seq: number, kind: ReadoutKind): Promise<Readout> {
+  const r = await c.readout(seq);
+  if (r.kind !== kind) throw new ToolNotFoundError(`readout ${seq} is not a ${kind} readout`);
+  if (r.mine === false) throw new ToolNotFoundError(`readout ${seq} is not one of yours`);
+  return r;
+}
+
+export async function getPrediction(c: DashboardClient, args: ReadoutRef): Promise<PredictionReport> {
+  const r = await own(c, seqArg(args.seq, "seq"), "prediction");
+  return { readout: header(r), prediction: snap(r)?.prediction ?? null };
+}
+
+/** `get_batch_summary`: the summary only (never the CSV or its link). */
+export async function getBatchSummary(c: DashboardClient, args: ReadoutRef): Promise<BatchReport> {
+  const r = await own(c, seqArg(args.seq, "seq"), "batch");
+  return { readout: header(r), summary: snap(r)?.batch ?? null };
+}
+
+export type ToolResult =
+  | ClientDashboard
+  | Readout
+  | ReadoutList
+  | ReadoutComparison
+  | ChannelHistory
+  | MetricExplanation
+  | WhatIfResult
+  | PanelList
+  | PanelReport
+  | AccuracyReport
+  | InputsReport
+  | PredictionReport
+  | BatchReport;
 
 export function isToolName(name: string): name is DashboardToolName {
   return (DASHBOARD_TOOL_NAMES as readonly string[]).includes(name);
@@ -293,5 +516,17 @@ export async function callTool(c: DashboardClient, name: string, args: Record<st
       return explainMetric(args as unknown as ExplainArgs);
     case "evaluate_whatif":
       return evaluateWhatIf(c, args);
+    case "list_panels":
+      return listPanels(c);
+    case "get_panel":
+      return getPanel(c, args as unknown as PanelArgs);
+    case "get_accuracy":
+      return getAccuracy(c, args);
+    case "list_inputs":
+      return listInputs(c);
+    case "get_prediction":
+      return getPrediction(c, args as unknown as ReadoutRef);
+    case "get_batch_summary":
+      return getBatchSummary(c, args as unknown as ReadoutRef);
   }
 }

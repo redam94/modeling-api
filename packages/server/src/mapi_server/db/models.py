@@ -41,6 +41,7 @@ __all__ = [
     "Catalog",
     "CostLedgerEntry",
     "Dashboard",
+    "DashboardAsset",
     "DashboardGrant",
     "DashboardReadout",
     "DashboardRefitRequest",
@@ -161,6 +162,8 @@ TENANT_TABLES: tuple[str, ...] = (
     "dashboard_readouts",
     "dashboard_shares",
     "dashboard_refit_requests",
+    # v0.17 layout 2 dashboards (0020_any_model_dashboards)
+    "dashboard_assets",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -1765,8 +1768,11 @@ class ValidationApproval(_Scoped, Base):
 
 DASHBOARD_SPEC_MAX_BYTES = 65_536
 """``mapi_spec.dashboards.MAX_SPEC_BYTES``: the cap on ``draft_spec`` / ``spec`` as text."""
-DASHBOARD_SNAPSHOT_MAX_BYTES = 300_000
-"""The database's cap on a readout snapshot as text (the contract's own cap is lower)."""
+DASHBOARD_SNAPSHOT_MAX_BYTES = 400_000
+"""The database's cap on a readout snapshot as text (0020; was 300 000 in 0018). The
+contract's own caps are lower: 262 144 bytes for layout 1, 393 216 for layout 2."""
+DASHBOARD_ASSET_MAX_BYTES = 524_288
+"""The cap on a dashboard asset (a picture PNG) in object storage."""
 
 
 class Dashboard(_Scoped, Base):
@@ -1905,9 +1911,13 @@ class DashboardReadout(_Scoped, Base):
     __table_args__ = (
         _scope_fk(),
         CheckConstraint("seq >= 1", name="seq"),
-        CheckConstraint("kind in ('baseline','refresh','scenario','actuals')", name="kind"),
         CheckConstraint(
-            "trigger in ('publish','manual','whatif','actuals','workflow','endpoint')",
+            "kind in ('baseline','refresh','scenario','actuals','prediction','batch')",
+            name="kind",
+        ),
+        CheckConstraint(
+            "trigger in ('publish','manual','whatif','actuals','workflow','endpoint',"
+            "'scenario_rows','batch')",
             name="trigger",
         ),
         CheckConstraint(
@@ -1971,7 +1981,8 @@ class DashboardShare(_Scoped, Base):
         _scope_fk(),
         CheckConstraint("session_version >= 1", name="session_version"),
         CheckConstraint(
-            "allowed_inputs <@ ARRAY['whatif','actuals']::text[]", name="allowed_inputs"
+            "allowed_inputs <@ ARRAY['whatif','actuals','scenario_rows','batch']::text[]",
+            name="allowed_inputs",
         ),
         Index("ix_dashboard_shares_dashboard", "tenant_id", "project_id", "dashboard_id"),
     )
@@ -2019,4 +2030,55 @@ class DashboardRefitRequest(_Scoped, Base):
             unique=True,
             postgresql_where=text("status = 'open'"),
         ),
+    )
+
+
+class DashboardAsset(_Scoped, Base):
+    """A picture of a published revision (0020): a model-version plot (``plot_id``, its
+    platform ``recipe``) that a render run (``run_id``) turned into a PNG of at most
+    :data:`DASHBOARD_ASSET_MAX_BYTES`. ``queued`` until the run finishes, then ``ready``
+    (``bucket``/``name``/``generation`` point at the object; rows never hold the bytes) or
+    ``failed`` (``problem``). One asset per revision and plot. The request path may insert,
+    read and update assets, never delete them; they go with their dashboard or revision."""
+
+    __tablename__ = "dashboard_assets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"))
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("dashboard_revisions.id", ondelete="CASCADE")
+    )
+    plot_id: Mapped[str] = mapped_column(String(128))
+    recipe: Mapped[str | None] = mapped_column(String(128))
+    content_type: Mapped[str] = mapped_column(
+        String(32), default="image/png", server_default="image/png"
+    )
+    status: Mapped[str] = mapped_column(String(16), default="queued", server_default="queued")
+    run_id: Mapped[str | None] = mapped_column(String(64))
+    bucket: Mapped[str | None] = mapped_column(String(128))
+    name: Mapped[str | None] = mapped_column(String(1024))
+    generation: Mapped[int | None] = mapped_column(BigInteger)
+    bytes: Mapped[int | None] = mapped_column(Integer)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    problem: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    ready_at: Mapped[datetime | None] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint("revision_id", "plot_id"),
+        CheckConstraint("content_type = 'image/png'", name="content_type"),
+        CheckConstraint("status in ('queued','ready','failed')", name="status"),
+        CheckConstraint(
+            f"bytes IS NULL OR (bytes >= 1 AND bytes <= {DASHBOARD_ASSET_MAX_BYTES})",
+            name="bytes",
+        ),
+        CheckConstraint(
+            "status <> 'ready' OR (bucket IS NOT NULL AND name IS NOT NULL "
+            "AND generation IS NOT NULL AND bytes IS NOT NULL)",
+            name="ready_object",
+        ),
+        Index("ix_dashboard_assets_dashboard", "tenant_id", "dashboard_id"),
+        Index("ix_dashboard_assets_queued", "run_id", postgresql_where=text("status = 'queued'")),
     )

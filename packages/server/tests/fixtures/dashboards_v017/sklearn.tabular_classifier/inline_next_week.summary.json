@@ -1,0 +1,28 @@
+{
+ "tables": [
+  {
+   "columns": [
+    "store",
+    "sku",
+    "week",
+    "mean"
+   ],
+   "dims": [
+    "store",
+    "sku",
+    "week"
+   ],
+   "rows": [
+    [
+     "s0",
+     "k0",
+     "2024-10-13",
+     0.1536941905214257
+    ]
+   ],
+   "time_dim": "week",
+   "variable": "y_hat"
+  }
+ ],
+ "truncated": false
+}

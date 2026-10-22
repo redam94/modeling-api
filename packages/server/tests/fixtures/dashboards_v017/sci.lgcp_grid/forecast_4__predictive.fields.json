@@ -1,0 +1,460 @@
+{
+ "caption_plain": "Shows each output of the score on its grid. Select the mean, the uncertainty or a draw. Use the slider to go through the frames.",
+ "fields": [
+  {
+   "color": "single",
+   "colormap": "magma",
+   "description": "Events per cell and period: the expected intensity, or a predictive count draw",
+   "downsampled": false,
+   "encoding": "log10",
+   "facet": {},
+   "frame_dim": "quarter",
+   "frames": [
+    {
+     "draws": [
+      {
+       "data": "AAAuRS5FLkX/////AAD+/////////wAAXIr/////AAAAAP///////////////wAA/////////////y5F",
+       "hi": 1.1139433523068367,
+       "lo": 0.0
+      },
+      {
+       "data": "AAAAAP//AAD//wAA//8wWzBbAAD/////h5AAAP////8wWwAAh5D//////////////v//////////////",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      },
+      {
+       "data": "/////8JQ/////wAA//+DoQAA/////8JQ/v/////////CUAAA////////////////AAD///////////9/",
+       "hi": 0.9542425094393249,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAAEr/////AAD+/wBKAAD/////AAAAAP//////////////////////////AAD/////////////",
+       "hi": 1.0413926851582251,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAIeQ/////4eQX7aHkLfr//////7//v8AAP////8AAIeQMFv//////////1+2/////wAAAAD/////",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAP////8AAP//AAAAAP//////f/////////////////////8AAP///////////v//////////////",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "//////////////////////7//////76uvq7//////////0BuAAD///////8AAEBuAAD/////////////",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "//////////8AAP//AACO71VVAACpqv7/P4f///////8AAP///////////////////////////////1VV",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "////////////////2mf+/////////2CpksT///////8AAAyDAAD/////AAAAAAAA//8AAP//////////",
+       "hi": 1.1760912590556813,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAP//AAAAAP//vq7/////AAD/////AAD//wAA/////0Buvq4AAP///////////v//////AAAAAP//",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAAAA//8AAAAAQG6A3P7//////0Bu//9Abv///////wAA//////////////////9Abv///////wAA",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "AAAAAIOhAAAAAIO7wlDB0IO7wlAAALbiRfL///////+Du/9///8AAP//AAAAAP9//3//////wlD+/wAA",
+       "hi": 0.9542425094393249,
+       "lo": 0.0
+      },
+      {
+       "data": "////////AAD//1yK//+lbS5F//////7/XIoAAP////8AAM/lAAD///////8AAP//AAClbf//LkX/////",
+       "hi": 1.1139433523068367,
+       "lo": 0.0
+      },
+      {
+       "data": "////////SXUAAABK/v//k///AAD//wAAAAAAAP///////wBKAEoAAP////8ASgAA/////////////wAA",
+       "hi": 1.0413926851582251,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAAACDof///v8AAAAA////////AAD/////////////AAD///////8AAIOhAAAAAAAA/////4Oh",
+       "hi": 0.47712125471966244,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAAAAAAD//whjAAD+/wAA//8AAAAAEMb///////////ac////////////////9pz//////////wAA",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      }
+     ],
+     "label": "2013-01-01",
+     "mean": {
+      "data": "nDyDQqiMq7CncgSCD8X+/9HNq1D9aWrnWurQii8qAADqiGuc3oL6WQwDoUNqbNibecfNK19BVjPRa7Wx",
+      "hi": 0.7193312869837266,
+      "lo": -0.978810700930062
+     },
+     "q05": {
+      "data": "////////////////////////////////////////////////////////////////////////////////"
+     },
+     "q95": {
+      "data": "AAAAAJFqHpyiRSxswrz+/7XJPEM8Q5no1t+RagAAAACRanmGkWo8QwAAPEM8Q3mGwrwAADxDAAA8Qx6c",
+      "hi": 1.146128035678238,
+      "lo": 0.0
+     },
+     "sd": {
+      "data": "0jJsMXF436hUZIB1p7z+//6/UkjGX77gFt36dnUpAABaeIaQwXOnZskJBUXJa16axslQL905/y+6bISz",
+      "hi": 0.6859041563478766,
+      "lo": -0.4904470758543771
+     }
+    },
+    {
+     "draws": [
+      {
+       "data": "9pz//wAA9pz/////EMb+////AAAAAAhj9pwAAP////8AAP//////////////////AAD//wAA//8AAAhj",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "//8wW////////wAAAAD//4eQAAD///7/utOHkP////8wW////////////////wAAMFv/////////////",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      },
+      {
+       "data": "/////1VVAAD///////+U3D+H/////////v///////////6mq/////////////1VV//////////8AAP//",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAAAAwWwAA///+//7///8AAAAA/v//////////////AAAAAP//////////////////////////",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      },
+      {
+       "data": "/////6Vt/////wAAAABL21yK//8AAEvbLkWhoP////8uRf7/LkX///////8AAAAAAAAAAP////8AAAAA",
+       "hi": 1.1139433523068367,
+       "lo": 0.0
+      },
+      {
+       "data": "/////////3////9/////fwAA/////wAAAAAAAP////8AAP//AAD//////////////3///wAA////f/7/",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "////////h5D///////8AAP7///8AAAAAAAD//////////////////////////wAAh5D//////////zBb",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAP4c/h///qaqU3AAAAAAAAP7/AAAAAP////////////8AAP//AAD//////////////////1VV",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "////////////////7YvtiwAA//////7/h3j///////8AAIRf//9DPP////8AAP//AAD/////AAD//0M8",
+       "hi": 1.2787536009528289,
+       "lo": 0.0
+      },
+      {
+       "data": "//////////8IY///9pwIYwhj/////wAA/v8IY////////whj//8AAP//AAD//whj9pwAAAAA9pwAAAAA",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAAAD///////8AAP9///8AAP///v8AAP//////////////////////////AAD/////////////",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "/////35Y/bDVN76cqm/+/35YAAAAAICnAADVN/////8AAAAAAAAAAP////8AAP//qm///////////wAA",
+       "hi": 1.380211241711606,
+       "lo": 0.0
+      },
+      {
+       "data": "/////yQx403/////JDHjTf////8AAP+p/v8kMf/////jTSQxJDH///////8kMf//JDH/////AAD/////",
+       "hi": 1.568201724066995,
+       "lo": 0.0
+      },
+      {
+       "data": "CGP/////9pwIY/ac/v/2nBDG//////acEMb2nAAA/////wAACGP///////8IY/ac8uX///////////Ll",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "AAD//////////wAAQG4AAEBu////////QG7//wAA//9AbgAAQG7///////////7/AAD//wAAAAAAAEBu",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "////////AAD///7////+/wAA//8AAP//g6H///////8AAIOh/////////////wAA/////////////4Oh",
+       "hi": 0.47712125471966244,
+       "lo": 0.0
+      }
+     ],
+     "label": "2013-04-01",
+     "mean": {
+      "data": "rS7/PkSUkrkKa+GPEsf+//HOzU83bATnRu1Qma0uAACLhLWb9XjfYgAAXzoeW/CR2MlCEwpeUCIKawC0",
+      "hi": 0.6998377258672457,
+      "lo": -0.9030899869919435
+     },
+     "q05": {
+      "data": "////////////////////////////////////////////////////////////////////////////////"
+     },
+     "q95": {
+      "data": "AAAuRVyK07IuRUxvNsL+/zbCLkUuRc/lz+VcigAAAAClbVyKpUcuRQAA3wQuRaVtp7MAAAAAAAClR5+h",
+      "hi": 1.1139433523068367,
+      "lo": 0.0
+     },
+     "sd": {
+      "data": "HDTNRWGBerQ+UcWIx8T+/9XTU0zFdgXXGuwfiXA1uAo4coqSgW4lYgAAHUHkWmucKM6AGjipFy5TY22x",
+      "hi": 0.7020462242134267,
+      "lo": -0.4604548480769613
+     }
+    },
+    {
+     "draws": [
+      {
+       "data": "AABciqVtLkUAAC5F07L+/wAA/////4nPXIr/////AAAAAC5F//////////8uRf//AAD///////8AAKVt",
+       "hi": 1.1139433523068367,
+       "lo": 0.0
+      },
+      {
+       "data": "//////////////////9AbkBuQG7//wAAQG7+/wAA/////wAA/////////////wAA////////AAD/////",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "////////CGP/////AAD+/wAAAAAAAAAAEMb///////8AAAAA////////CGP/////9pz///////8AAP//",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "/////4Oh//8AAP/////+/8JQ/////////////wAA/////////////////////////////wAA////////",
+       "hi": 0.9542425094393249,
+       "lo": 0.0
+      },
+      {
+       "data": "/////whjAAD//wAA//8IY/7///////acCGPy5f////////ac9pz//wAA////////////////AAD///ac",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "////////AAD//wAA//+A3L6u/////wAAAAD//////////////////0BuAAD/////QG4AAAAA//8AAP7/",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "////////vq7/////QG6A3P7/////////QG7///////9Abv//QG7///////8AAAAAvq7///////8AAP//",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "/////76uAAAAAP//vq7+////AAAAAP7/AAD/////////////////////////////QG5Abv///////wAA",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAA///////////SqwAA/////////v////////8AAAAA////////AEoAAP////////////8ASkl1",
+       "hi": 1.0413926851582251,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAAAD/////AAD+/1VV/////wAA/////////////1VV//8/h////////wAAAAD///////8AAP//",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "AAD//wAA/v8AAP//////////AAD//0BuAAD//wAA//////////////////////////8AAP///////wAA",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "Qzz//4RfLqn//wAALqn+/4RfAABDPId4h3gAAP//AACHeHrQhF+EX///AAD//0M8AAAAAP///////wAA",
+       "hi": 1.2787536009528289,
+       "lo": 0.0
+      },
+      {
+       "data": "/////1JW/////wAA//+Iyf////8AAOxs/v92Nv/////sbFvPUlb/////////////AAAAAP///////3Y2",
+       "hi": 1.414973347970818,
+       "lo": 0.0
+      },
+      {
+       "data": "//9Abv//vq5AbgAAvq7+//7//////0BuQG7///////8AAL6uAAAAAP///////wAAAAD//wAAAAD//0Bu",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "/////5FqAAD////////+//////8AAJFq//8AAP////8AAP////8AAP////8AAAAAmej//wAA////////",
+       "hi": 1.146128035678238,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAP7/AAAAAP//AAD+/////////wAAAAD+////////////////////////////AAD/////////////",
+       "hi": 0.3010299956639812,
+       "lo": 0.0
+      }
+     ],
+     "label": "2013-07-01",
+     "mean": {
+      "data": "nDWaS2aV1LNWbE+AUcb+/+fVNlN8W6zefulnjnow4RJdjHebI3ErZxcK7EfvT7uP6MzdSJpLAACfdZyu",
+      "hi": 0.7319914490189294,
+      "lo": -0.9030899869919435
+     },
+     "q05": {
+      "data": "////////////////////////////////////////////////////////////////////////////////"
+     },
+     "q95": {
+      "data": "AADtP9p/P6XtP1Jlx7/+/8e/7T/tP6TKJt1vlAAAAADaf9p/UmVSZQAA7T/tP9p/pMrtP+0/AABSZQOm",
+      "hi": 1.2054750367408904,
+      "lo": 0.0
+     },
+     "sd": {
+      "data": "/CpxUL141KDoYm6AtKmC3v7/bngFR9bH3tVGgbUpfRiKfEmQrF1+Va8XnE9eSqGNVdbcUkWCAADedICv",
+      "hi": 0.8652490132447751,
+      "lo": -0.47945250735767786
+     }
+    },
+    {
+     "draws": [
+      {
+       "data": "CGMAAP///////wAAAADy5f////////7//v8AAP////8IYwhj/////////////////////////////whj",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "/////47vIsYAAP//AAAixv7/AAD//wAAP4f//wAAAAD//1VV//9VVf///////wAAVVX/////VVX/////",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAP////////////8ASkl1/////wBK/v////////8AAEl1/////////////wAA/////wAA/////wBK",
+       "hi": 1.0413926851582251,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAA/////wAAAAD//wAA//8AAIOh//////////////////8AAP///////////v////////8AAP//",
+       "hi": 0.47712125471966244,
+       "lo": 0.0
+      },
+      {
+       "data": "////////AAD///////8Qxv7/AAAAABDGCGMIY//////y5fLlAAD///////8AAP//////////////////",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "//////9//3////////8AAP//////f/7/3sr///////8AAP//////////////////3sr///////////9/",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "////////QG7///////////7//////wAAvq4AAP//////////AAD//////////0BuAAD//////////0Bu",
+       "hi": 0.6989700043360189,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAAAAtuL//////3/+///////CUMJQ//////////8AAP//////////////////AAD/////////////",
+       "hi": 0.9542425094393249,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAAAA////////SKb+/zs7/////0imAAA7O////////wAA////////////////Ozv/////////////",
+       "hi": 1.3010299956639813,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAP4cAAP////9VVQAAAAD/////VVX///////////////////////9VVQAA/v//////AAAAAP//",
+       "hi": 0.9030899869919435,
+       "lo": 0.0
+      },
+      {
+       "data": "AAAAAAAA/38AAAAAAAD//////////wAA/38AAP////8AAP///////////////////v///////////wAA",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAAyHr//8h6AAD+/2Q9///Iesh678tNYf//AABNYe/L//8AAP////9kPWQ9AAD//2Q9//8AAE1h",
+       "hi": 1.255272505103306,
+       "lo": 0.0
+      },
+      {
+       "data": "AAD//////////zxDwryRajxD/////1vf/v8enP////95hpFqAAD//zxD////////PEMAAP//AAAAAAAA",
+       "hi": 1.146128035678238,
+       "lo": 0.0
+      },
+      {
+       "data": "CGP//wAA9pwAAPacEMb+//ac//8AAP//CGP//whj//8AAPac//////////8AAP///////wAA//8IYwAA",
+       "hi": 0.7781512503836436,
+       "lo": 0.0
+      },
+      {
+       "data": "/////wAA//////9/AAD/fwAA////////AAD//////////wAA/v////////8AAP//3sr///////////9/",
+       "hi": 0.6020599913279624,
+       "lo": 0.0
+      },
+      {
+       "data": "//8AAP//AAD////////+////AAD//wAAAAD/////////////////////////////AAD//////////wAA",
+       "hi": 0.8450980400142568,
+       "lo": 0.0
+      }
+     ],
+     "label": "2013-10-01",
+     "mean": {
+      "data": "Wy+4NnSGobJdYEpuO8L+/4XOQV8mZcDZnt4tggMMAAAvg3yK+HVRVlgcpzlJPi6KMMZfGbA4QxYrZv+k",
+      "hi": 0.7944880466591696,
+      "lo": -0.7958800173440752
+     },
+     "q05": {
+      "data": "////////////////////////////////////////////////////////////////////////////////"
+     },
+     "q95": {
+      "data": "KwQAAHZ2SKbhXeFdsbH+/zu8Vz1LX7LUstR2dgAAAAB2doiJ4V07OwAAOzs7O+FdwbIAADs7AADhXRyZ",
+      "hi": 1.3010299956639813,
+      "lo": 0.0
+     },
+     "sd": {
+      "data": "+FU/Hj5g8sgDTBtwTrn+/8DfalT1ajjNXNGEcgAAHADFcY97+4zZdaExsjy1KC++Bue7JXE+4hmNZRKh",
+      "hi": 0.821265067976444,
+      "lo": -0.3238844935833478
+     }
+    }
+   ],
+   "height": 6,
+   "kind": "scalar",
+   "log": true,
+   "n_draws": 200,
+   "omitted_frames": 0,
+   "origin": "lower",
+   "output": "rate",
+   "rgb_scale": "uint8",
+   "source_height": 6,
+   "source_width": 5,
+   "width": 5,
+   "x_coords": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "x_dim": "col",
+   "y_coords": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "y_dim": "row"
+  }
+ ],
+ "format": "mapi.model-explorer.fields/v1",
+ "kind": "expected",
+ "omitted": [],
+ "warnings_plain": []
+}

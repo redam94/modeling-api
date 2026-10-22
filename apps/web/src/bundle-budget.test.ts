@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { checkChunkBudgets, checkEntryBudget, loadedBefore, type ChunkBudget, type ChunkInfo } from "../bundle-budget";
@@ -113,5 +116,31 @@ describe("checkChunkBudgets", () => {
     const problems = checkEntryBudget(app({ share: { size: 9000 } }), { maxEntryBytes: 60_000, forbidden: [], chunkBudgets: [share] });
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("share-app-a1.js");
+  });
+});
+
+describe("the v0.17 readout budgets (vite.config.ts)", () => {
+  const config = readFileSync(resolve(__dirname, "../vite.config.ts"), "utf8");
+
+  it("keeps the share and client budgets and budgets each lazy readout chunk at 48 KiB with the share link's forbidden list", () => {
+    expect(config).toMatch(/share-app-\[\^\/\]\*\\\.js\$\/, maxBytes: 288 \* 1024, forbidden: SHARE_FORBIDDEN/);
+    expect(config).toMatch(/client-app-\[\^\/\]\*\\\.js\$\/,\s+maxBytes: 260 \* 1024/);
+    for (const name of ["readout-extra", "try-a-case", "check-accuracy", "score-file"]) {
+      expect([name, new RegExp(`${name}-\\[\\^/\\]\\*\\\\\\.js\\$/, maxBytes: 48 \\* 1024, forbidden: SHARE_FORBIDDEN`).test(config)]).toEqual([name, true]);
+    }
+  });
+
+  it("a lazy readout chunk counts the shared chunks it adds, not what the readout page already loaded", () => {
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["share-app-a.js"] }),
+      chunk("share-app-a.js", { imports: ["index.js", "readout-page-b.js"] }),
+      chunk("readout-page-b.js", { dynamicImports: ["readout-extra-c.js", "try-a-case-d.js"], size: 90_000 }),
+      chunk("readout-extra-c.js", { imports: ["results-e.js"], size: 3000 }),
+      chunk("try-a-case-d.js", { imports: ["results-e.js", "readout-page-b.js"], size: 7000 }),
+      chunk("results-e.js", { size: 30_000 }),
+    ];
+    const budget = (m: RegExp, maxBytes: number): ChunkBudget => ({ match: m, maxBytes, forbidden: [] });
+    expect(checkChunkBudgets(chunks, [budget(/readout-extra-/, 33_000), budget(/try-a-case-/, 37_000)])).toEqual([]);
+    expect(checkChunkBudgets(chunks, [budget(/try-a-case-/, 36_999)])[0]).toContain("37000");
   });
 });

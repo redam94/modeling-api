@@ -1,0 +1,70 @@
+{
+ "conditioning": {
+  "conditioned": false,
+  "dim": "time",
+  "fit_end": "2024-03-18",
+  "horizon_source": "rows",
+  "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+  "n_actuals": 0,
+  "n_series": 1,
+  "parameters": "fitted",
+  "periods": 4,
+  "revised": 0,
+  "series": [
+   {
+    "forecast_from": "2024-03-25",
+    "forecast_to": "2024-04-15",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2024-03-18",
+    "revised": 0,
+    "series": {}
+   }
+  ],
+  "series_conditioned": 0,
+  "truncated": false
+ },
+ "tables": [
+  {
+   "columns": [
+    "time",
+    "mean",
+    "hdi_90_lower",
+    "hdi_90_upper"
+   ],
+   "dims": [
+    "time"
+   ],
+   "rows": [
+    [
+     "2024-03-25",
+     101.14526469392891,
+     99.54821700716806,
+     102.80377806570584
+    ],
+    [
+     "2024-04-01",
+     101.21776985830132,
+     99.65390160379359,
+     102.81609827035724
+    ],
+    [
+     "2024-04-08",
+     101.78336860774782,
+     100.04225291266268,
+     103.55068488496624
+    ],
+    [
+     "2024-04-15",
+     102.5606735667962,
+     100.80269912257651,
+     104.45216730795457
+    ]
+   ],
+   "time_dim": "time",
+   "variable": "y_hat"
+  }
+ ],
+ "truncated": false
+}

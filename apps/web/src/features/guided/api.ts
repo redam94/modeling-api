@@ -203,6 +203,12 @@ export function useModelVersionForRun(modelName: string | null, run: Run | null 
   });
 }
 
+/** Whether the version's object list says it wrote no response grid (an empty list says nothing). */
+export function hasNoGrid(mv: Pick<ModelVersion, "artifacts">): boolean {
+  const names = (mv.artifacts ?? []).map((a) => a.name);
+  return names.length > 0 && !names.includes(RESPONSE_GRID_VIEW);
+}
+
 /** The what-if grid of a fitted model version (`ui/grids/response_curves.json`), or `null`. */
 export function useResponseGrid(mv: ModelVersion | null | undefined) {
   const s = useProjectScope();
@@ -210,6 +216,9 @@ export function useResponseGrid(mv: ModelVersion | null | undefined) {
     queryKey: gk.grid(s.key, mv?.model_id ?? "", mv?.version ?? 0),
     queryFn: async ({ signal }): Promise<ResponseGrid | null> => {
       if (!mv) return null;
+      // the version lists its signed objects: without the grid there, asking for its link only
+      // logs a 404 in the console (a builder on any non-MMM model, v0.17 R7)
+      if (hasNoGrid(mv)) return null;
       let link: ArtifactLink;
       try {
         link = await modelArtifactLink(mv.model_id, mv.version, RESPONSE_GRID_VIEW);

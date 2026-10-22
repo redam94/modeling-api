@@ -1,0 +1,19 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "81d9cbbb5cc3b9f1c2510b647f862014",
+ "groups": [
+  "/summary"
+ ],
+ "issues": [],
+ "kind": "expected",
+ "mode": "predict",
+ "names": "canonical",
+ "output_space": {
+  "y_hat": "raw"
+ },
+ "representation": "quantiles",
+ "retransform": {
+  "y_hat": "none"
+ },
+ "units": "original"
+}

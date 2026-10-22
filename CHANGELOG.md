@@ -5,6 +5,127 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+Client dashboards now work for any model type, not only for marketing-mix models. Each
+model family gets a preset: forecast, regression, classifier, effect of a change, map,
+image model or the media planner. Analysts can add, remove and move the panels. Clients
+always see a clean readout. Clients can try a case, send actuals and see the accuracy that
+fits the model, and score a file of new cases. The v0.16 dashboards move to the new layout
+by themselves.
+
+#### Added
+- Layout 2 dashboards (`mapi_spec.dashboard_v2.DashboardSpecV2`, `layout_version: 2`): a
+  `preset`, a `subject` and up to 24 panels (`kpi`, `chart`, `table`, `note`, `recipe` and,
+  for the media planner, `mmm`). `parse_dashboard_spec` reads both layouts. The layout 1
+  spec and the hashes of stored revisions do not change.
+- Presets for each model family (`mapi_spec.dashboard_presets`): `mmm_planner`, `forecast`,
+  `regression`, `classifier`, `causal_impact`, `field_map`, `image` and `generic`.
+  `GET /v1/dashboards:presets` suggests the presets that fit a model version or an endpoint,
+  with plain reasons and blocked inputs, and compiles a starting draft.
+- A source catalog of the model version (`GET /v1/dashboards/{id}/sources`): the real output
+  names and dims, fit metrics, scorecard checks, plots and inputs. Panels are checked
+  against it at validate and again when a readout is built. A missing source makes one
+  `unavailable` panel, never a failed readout.
+- Predictive ranges: outcome panels show where one new result will probably be (scored as
+  `predictive`). Sums over a dim come from the draws. A sum of point values is marked
+  approximate. A sum of quantiles is refused. The server never adds interval bounds.
+- Try a case (scenario rows): `POST /v1/dashboards/{id}/predictions` and
+  `POST /v1/shared/predictions`, up to 20 rows. The server checks each value against the
+  published revision and refuses (never clips) a value out of range, with a pointer. The
+  result is a private `prediction` readout. `POST …/readouts/{seq}:keep` keeps a tried case
+  for the review of an editor.
+- Actuals tracking for each family (`mapi_spec.dashboard_metrics`, pure Python, equal to
+  `mapi_sdk.metrics.compute_metrics` within 1e-9): errors (MAE, RMSE, MAPE, WAPE, sMAPE, bias,
+  R², band hit rate), classification (accuracy, AUC, Brier, log score, calibration,
+  confusion; the analyst sets the threshold) and the updated effect of a causal impact
+  model. Actuals match by period or by case (`match: "row"`, up to 5000 rows). The accuracy
+  history uses only published readouts.
+- Batch scoring: `GET …/batch/template`, `POST /v1/dashboards/{id}/batch` and
+  `POST /v1/shared/batch` (up to 5000 rows). The result is a private `batch` readout with a
+  summary. `GET …/readouts/{seq}/predictions.csv` makes the predictions CSV on demand: only
+  for the person or link that sent the file, and editors; formula cells escaped; charged as
+  egress; audited (`DASHBOARD_BATCH_DOWNLOAD`); `410 DASHBOARD_DOWNLOAD_GONE` after it expires.
+- Pictures: a `recipe` panel that the page cannot draw shows the fit-time plot of the model
+  version as a PNG, made one time at publish (a maximum of 4 for each revision) and served
+  from the same origin (`GET …/assets/{asset_id}`, `GET /v1/shared/assets/{asset_id}`).
+- The automatic upgrade: one pass when the worker starts, under a Postgres advisory lock
+  (`MAPI_DASHBOARD_AUTO_UPGRADE`, default on). Each layout 1 dashboard gets a layout 2
+  published revision on the same model version and run-as owner, audited as
+  `DASHBOARD_UPGRADED`, and a new baseline. Drafts move too. A dashboard that cannot move
+  keeps layout 1 with `problem: "upgrade_needs_review"`. `POST /v1/dashboards/{id}:upgrade`
+  lets an editor finish it.
+- Clients see a one-time note on a moved dashboard: "This dashboard has a new layout. The
+  numbers come from the same model."
+- Limits for scored files: `limits.batch_runs_per_day` (default 3),
+  `MAPI_SHARE_BATCH_PER_DAY` (2), `MAPI_CLIENT_BATCH_PER_DAY` (4) and
+  `MAPI_BATCH_ROWS_PER_DAY` (20 000). The setting `MAPI_DASHBOARD_LAYOUT1_CREATE` (off)
+  accepts new layout 1 specs.
+- Six more read-only tools: `list_panels`, `get_panel`, `get_accuracy`, `list_inputs`,
+  `get_prediction` and `get_batch_summary`. `compare_readouts` also gives `panel_deltas`. The
+  v0.16 tools keep their names and arguments.
+- `OutputDecl.meaning` and `classes_dim` (optional) in plugin manifests, set by the
+  classifier, choice, causal and HMM models.
+- Migration `0020_any_model_dashboards`: the readout kinds `prediction` and `batch`, the
+  triggers `scenario_rows` and `batch`, the share inputs `scenario_rows` and `batch`, a
+  snapshot cap of 400 000 bytes and the table `dashboard_assets` (row-level security).
+- Web app: the layout 2 readout (Overview, Try a case, Check accuracy, Score a file and
+  History) with SVG and canvas charts that load no plot library on client and share pages,
+  the new-dashboard dialog with presets, the panels editor and the upgrade banner.
+- Python client: `presets()`, `sources()`, `upgrade()`, `predict()`, `keep_readout()`,
+  `batch_template()`, `score_batch()`, `download_predictions()` and `asset()` on
+  `client.dashboards` (sync and async), and the share-link inputs on `open_share()`.
+- Docs: "What's new in 0.17", and the concept page, the analyst guide and the client guide
+  for any model type.
+
+#### Changed
+- New dashboards are layout 2. A new layout 1 spec is refused with
+  `DASHBOARD_LAYOUT_RETIRED`.
+- Moved marketing-mix dashboards show predictive ranges, which are wider than the v0.16
+  ranges of the average. The middle values do not change. Old readouts keep the layout 1
+  renderer in History.
+- On layout 2 dashboards that are not a media planner, `/grid`, `/whatif:evaluate`,
+  `/scenarios`, `get_channel` and `evaluate_whatif` answer `DASHBOARD_INPUT_DISABLED`.
+- Layout 1 readouts also use a `point` centre when a model gives only point values.
+- Layout 2 snapshots hold up to 384 KiB and 1040 series points. Layout 1 snapshots keep
+  256 KiB and 520 points.
+
+#### Fixed
+- The API allows the `If-Match` header across origins. Before, the browser preflight
+  failed, so the builder could not save a draft, publish or use `:upgrade` when the web app
+  and the API had different origins (also in v0.16).
+- A kept case that an editor publishes stays in the history: the client Overview, the
+  `get_latest_readout` tool and the "readout before" of a key number use only `baseline`,
+  `refresh`, `scenario` and `actuals` readouts.
+- A scored file asks the model only for `batch.outputs` (and the subject), and the size
+  check counts only those outputs. A file of `max_rows` rows over a few levels of another
+  dim is no longer refused because of outputs that the file does not show.
+- Validate gives an error for a number input whose default is off its step grid, and for a
+  `batch.id_column` or row-match `actuals.id_column` that is not a dim of the model. The
+  builder seeds number inputs with a round step and a default on it, offers the model's
+  dims as case id columns, and shows "Scoring a file is not available" instead of an error
+  on a dashboard published before this check.
+- The accuracy history draws one point for each upload, also for two uploads on the same
+  day. The history titles that the server dates in UTC ("Published on …") show the
+  viewer's day. An upload made by somebody else is "Numbers sent", not "Your numbers".
+- An upgraded media planner no longer notes "This readout has no values of … to compare"
+  under the comparison it shows.
+- An upload whose readout fails is hidden (its open refit request fails too). Only the
+  person who sent it sees it, marked "Did not finish", and `:publish` refuses it (`409`).
+- A key number that picks one case shows its change from the readout before only when that
+  readout picked the same case from the same inputs. A history with one point is a sentence
+  until a second upload. Yes/no codes (`0`/`1`, `false`/`true`) show as "No"/"Yes".
+- After a keyboard **Remove** in the panels editor, the focus moves to the next panel's
+  Remove button. The builder no longer asks for the response grid of a version that wrote
+  none (a 404 in the console).
+
+#### Known gaps
+- Clients and share links cannot score image files. Analysts score image collections in
+  the app.
+- Pictures are only fit-time plots of the model version. Score runs draw native charts.
+- Synthetic-control and difference-in-differences models update their effect only after a
+  refit.
+- Not tested: real GCS, Cloud Run cold starts for prediction and batch runs, the Docker
+  images, GPU image models, and the client copy for each family with human testers.
+
 ## [0.16.0] — Client dashboards and a new look — 2026-10-21
 
 You can now show model results to your clients. An analyst makes a dashboard from a fitted

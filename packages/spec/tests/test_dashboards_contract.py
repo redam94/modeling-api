@@ -11,7 +11,13 @@ from typing import Any, get_args
 
 import pytest
 from mapi_spec import api, dashboard_tools, dashboards, sharing
-from mapi_spec.api import CLIENT_OPERATIONS, ROUTE_ACCESS, V016_ENDPOINTS, RouteScope
+from mapi_spec.api import (
+    CLIENT_OPERATIONS,
+    ROUTE_ACCESS,
+    V016_ENDPOINTS,
+    V017_ENDPOINTS,
+    RouteScope,
+)
 from mapi_spec.dashboards import (
     DASHBOARD_SHARE_TOKEN_RE,
     GLOSSARY,
@@ -95,7 +101,7 @@ def test_client_operations_exist_in_route_access() -> None:
 
 
 def test_client_operations_are_only_dashboards_me_and_session() -> None:
-    v016 = {e.operation_id for e in V016_ENDPOINTS}
+    v016 = {e.operation_id for e in V016_ENDPOINTS + V017_ENDPOINTS}
     session = {"auth_login", "auth_callback", "auth_logout", "auth_session"}
     for op in CLIENT_OPERATIONS:
         acc = ROUTE_ACCESS[op]
@@ -121,6 +127,9 @@ def test_client_operations_are_only_dashboards_me_and_session() -> None:
         "list_dashboards", "get_dashboard", "get_dashboard_grid", "evaluate_dashboard_whatif",
         "save_dashboard_scenario", "get_dashboard_actuals_template", "submit_dashboard_actuals",
         "list_dashboard_readouts", "get_dashboard_readout",
+        # v0.17 inputs (and keeping a tried case), downloads and pictures
+        "submit_dashboard_predictions", "keep_dashboard_readout", "get_dashboard_batch_template",
+        "submit_dashboard_batch", "download_dashboard_predictions", "get_dashboard_asset",
     }  # fmt: skip
     # membership-only routes and listings stay closed to clients (D4)
     for op in ("list_projects", "list_tenants", "get_catalog", "list_guided_templates",
@@ -177,7 +186,8 @@ def test_v016_rows_follow_the_conventions(e: api.EndpointDecl) -> None:
 
 
 def test_v016_table_is_last_unique_and_exported() -> None:
-    assert api.ENDPOINTS[-len(V016_ENDPOINTS) :] == V016_ENDPOINTS
+    v017 = len(V017_ENDPOINTS)  # the v0.17 rows follow
+    assert api.ENDPOINTS[-len(V016_ENDPOINTS) - v017 : -v017] == V016_ENDPOINTS
     keys = [(e.method, e.path) for e in api.ENDPOINTS]
     assert len(keys) == len(set(keys))
     assert len({e.operation_id for e in V016_ENDPOINTS}) == len(V016_ENDPOINTS) == 37
@@ -356,10 +366,11 @@ def test_zone_breakeven_from_the_kpi() -> None:
 def test_dashboard_tools_read_only_unique_and_schema_exportable() -> None:
     tools = dashboard_tools.DASHBOARD_TOOLS
     names = [t.name for t in tools]
-    assert names == [
+    assert names[:8] == [
         "get_dashboard", "get_latest_readout", "list_readouts", "get_readout",
         "compare_readouts", "get_channel", "explain_metric", "evaluate_whatif",
     ]  # fmt: skip
+    assert tuple(names[:8]) == dashboard_tools.V016_TOOL_NAMES  # v0.17 only appends
     assert tuple(names) == dashboard_tools.DASHBOARD_TOOL_NAMES
     for t in tools:
         assert t.read_only is True
@@ -419,5 +430,65 @@ def test_reference_docs_cover_v016() -> None:
     tenancy = (docs / "concepts" / "tenancy-and-auth.md").read_text("utf-8")
     assert "`client`" in tenancy and "CLIENT_OPERATIONS" in tenancy
     concepts = (docs / "concepts" / "client-dashboards.md").read_text("utf-8")
-    for name in dashboard_tools.DASHBOARD_TOOL_NAMES:
+    for name in dashboard_tools.V016_TOOL_NAMES:  # the v0.17 tools: docs of v0.17
         assert f"`{name}`" in concepts, name
+
+
+def test_reference_docs_cover_v017() -> None:
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    text = (docs / "reference" / "http-api.md").read_text("utf-8")
+    assert "{ #v017 }" in text
+    for e in V017_ENDPOINTS:
+        assert f"`{e.method} {e.path}`" in text, f"http-api.md is missing {e.method} {e.path}"
+        for dto in filter(None, (e.request, e.response)):
+            assert f"`{dto}`" in text, dto
+    for op in sorted(api.CLIENT_OPERATIONS):
+        if any(e.operation_id == op for e in V017_ENDPOINTS):
+            assert f"`{op}`" in text, op
+    assert (docs / "whats-new-0.17.md").exists()
+
+
+def _python_blocks(text: str, after: str) -> list[str]:
+    start = text.index(after)
+    return re.findall(r"```python\n(.*?)```", text[start:], flags=re.S)
+
+
+@pytest.mark.parametrize(
+    ("page", "anchor"),
+    [("guides/python-client.md", "{ #client-dashboards-v017 }"),
+     ("guides/client-dashboards.md", "## With the API or the Python client")],
+)  # fmt: skip
+def test_v017_sdk_examples_turn_the_inputs_on_and_publish_before_using_them(
+    page: str, anchor: str
+) -> None:
+    """A compiled preset has every input off: the documented flows enable scenario rows and
+    batch scoring, and publish, before they predict or score a file."""
+    from mapi_spec.dashboard_presets import compile_preset
+    from mapi_spec.dashboard_v2 import SourceCatalog
+
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    code = _python_blocks((docs / page).read_text("utf-8"), anchor)[0]
+    for call in ("ScenarioRowsDef(enabled=True", "BatchDef(enabled=True", "publish("):
+        assert call in code, (page, call)
+    assert code.index("publish(") < code.index("predict(") < code.index("score_batch(")
+    compiled = compile_preset("generic", SourceCatalog.model_validate({}), title="T",
+                              source={"kind": "endpoint", "alias": "a"})  # fmt: skip
+    assert compiled.scenario_rows.enabled is False and compiled.batch is None
+
+
+def test_whats_new_says_which_moved_dashboards_lose_their_what_ifs() -> None:
+    """Only the media planner keeps channel what-ifs and saved scenarios after the move: a
+    dashboard moved to another preset has none (PRESET_RULES), and the page says so."""
+    from mapi_spec.dashboard_v2 import PRESET_RULES
+
+    assert "whatif" not in PRESET_RULES["forecast"].inputs
+    docs = _docs()
+    if docs is None:  # pragma: no cover - sdist without the docs tree
+        pytest.skip("docs/ not available")
+    text = (docs / "whats-new-0.17.md").read_text("utf-8")
+    assert "Share links, client grants, saved scenarios and refit requests keep their" not in text
+    assert "DASHBOARD_INPUT_DISABLED" in text and "read-only" in text

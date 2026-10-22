@@ -898,6 +898,7 @@ class SklearnClassifier[SettingsT: ClassifierSettings](SklearnModel[SettingsT]):
             "dims": [],
             "dims_of": "y",  # plus the row dims (settings.rows)
             "units": "1",
+            "meaning": "class_probability",
             "description": "Probability that the target equals the positive class",
         },
         "contributions": {
@@ -942,6 +943,8 @@ class SklearnMulticlassClassifier[SettingsT: MulticlassClassifierSettings](Sklea
             "dims": ["class"],
             "dims_of": "y",  # plus the row dims (settings.rows)
             "units": "1",
+            "meaning": "class_probability",
+            "classes_dim": "class",
             "description": "Probability of each class (sums to 1 over class)",
         },
     }

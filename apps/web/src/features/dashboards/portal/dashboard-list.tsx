@@ -10,13 +10,17 @@ import { useWorkspace } from "@/features/auth/workspace";
 
 import { useDashboards } from "../api";
 import { dashboardErrorMessage } from "../client";
-import { stamp } from "../readout/readout-model";
+import { localTitle, stamp } from "../readout/readout-model";
 import type { DashboardSummary } from "../types";
 
 const PERIOD_WORD: Record<NonNullable<DashboardSummary["period_label"]>, string> = {
   week: "Weekly",
   month: "Monthly",
   period: "Each period",
+  day: "Daily",
+  quarter: "Quarterly",
+  year: "Yearly",
+  case: "Per case",
 };
 
 function DashboardCard({ d, onOpen }: { d: DashboardSummary; onOpen: (id: string) => void }) {
@@ -45,7 +49,7 @@ function DashboardCard({ d, onOpen }: { d: DashboardSummary; onOpen: (id: string
           {d.live_inputs === "paused" ? <TagWord tone="warning">New results paused</TagWord> : null}
         </div>
         <p className="text-sm text-muted-foreground">
-          {latest ? `Latest: ${latest.title}. Updated ${stamp(latest.ready_at ?? latest.created_at)}.` : "There are no results yet."}
+          {latest ? `Latest: ${localTitle(latest)}. Updated ${stamp(latest.ready_at ?? latest.created_at)}.` : "There are no results yet."}
         </p>
       </a>
     </li>

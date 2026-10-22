@@ -12,12 +12,13 @@
     retired the `Sweep` document). Public code upload for all users comes after these
     items, with its own controls (see the [roadmap](index.md#after-v06)).
 
-## Planned for v0.17 { #planned-for-v017 }
+## Planned for v0.18 { #planned-for-v018 }
 
 v0.16 shipped client dashboards with a read-only tool surface
-(`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`: `get_dashboard`, `get_latest_readout`,
-`list_readouts`, `get_readout`, `compare_readouts`, `get_channel`, `explain_metric` and
-`evaluate_whatif`). The member, client and share routes already call these tools. v0.17 adds:
+(`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`). v0.17 made dashboards work for any model type
+and added six tools (`list_panels`, `get_panel`, `get_accuracy`, `list_inputs`,
+`get_prediction` and `get_batch_summary`), 14 in all. The member, client and share routes
+already call these tools. v0.18 adds:
 
 - **A chat explainer on a dashboard.** A Gemini flash-class model answers questions about a
   dashboard in plain words. The control plane is the proxy. The API keys stay on the server,

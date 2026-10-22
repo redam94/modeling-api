@@ -23,6 +23,7 @@ import { NewDashboardDialog } from "@/features/dashboards/builder/new-dashboard-
 import { PreviewTab } from "@/features/dashboards/builder/preview";
 import { PublishDialog } from "@/features/dashboards/builder/publish-dialog";
 import { SetupTab } from "@/features/dashboards/builder/setup";
+import { UpgradeBanner } from "@/features/dashboards/builder/upgrade-banner";
 import { useSourceGrid } from "@/features/dashboards/builder/source";
 import { publishPermission, specIssues, tabOfIssue } from "@/features/dashboards/builder/spec-form";
 import { useDraft } from "@/features/dashboards/builder/use-draft";
@@ -60,7 +61,7 @@ export function DashboardsPage() {
     <>
       <PageHeader
         title="Dashboards"
-        description="Readouts for your clients in plain words: the latest results, trends, plan scenarios and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
+        description="Readouts for your clients in plain words, for any model: the latest results, trends, cases to try and new numbers. Clients sign in to see only the dashboards that you give them, or open a share link."
         actions={
           <>
             <SegmentedControl<"active" | DashboardStatus>
@@ -241,7 +242,8 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             Live inputs are paused{dashboard.problem ? `: ${dashboard.problem}` : "."} Clients see the last readout. Publish again as a member with the runner role to start them again.
           </InlineMessage>
         ) : null}
-        {dashboard.problem && dashboard.live_inputs !== "paused" ? (
+        <UpgradeBanner spec={spec} readOnly={!canEdit} />
+        {dashboard.problem && dashboard.live_inputs !== "paused" && dashboard.problem !== "upgrade_needs_review" ? (
           <InlineMessage tone="warning" role="none">
             {dashboardProblemText(dashboard.problem)}
           </InlineMessage>

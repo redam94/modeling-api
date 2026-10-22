@@ -127,6 +127,11 @@ class ErrorCode(StrEnum):
     SHARE_PASSCODE_INVALID = "SHARE_PASSCODE_INVALID"
     SHARE_LOCKED = "SHARE_LOCKED"
     INVALID_ROLE_SCOPE = "INVALID_ROLE_SCOPE"
+    # --- v0.17: dashboards for any model type -------------------------------------------
+    DASHBOARD_INPUT_INVALID = "DASHBOARD_INPUT_INVALID"
+    DASHBOARD_BATCH_TOO_LARGE = "DASHBOARD_BATCH_TOO_LARGE"
+    DASHBOARD_DOWNLOAD_GONE = "DASHBOARD_DOWNLOAD_GONE"
+    DASHBOARD_LAYOUT_RETIRED = "DASHBOARD_LAYOUT_RETIRED"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -274,6 +279,17 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
     ),
     ErrorCode.INVALID_ROLE_SCOPE: ErrorInfo(
         422, "The role cannot be granted on the whole tenant", "api"
+    ),
+    # v0.17: dashboards for any model type
+    ErrorCode.DASHBOARD_INPUT_INVALID: ErrorInfo(
+        422, "One or more values are not valid for this dashboard", "api"
+    ),
+    ErrorCode.DASHBOARD_BATCH_TOO_LARGE: ErrorInfo(
+        409, "The file has too many rows or results for one batch", "quota"
+    ),
+    ErrorCode.DASHBOARD_DOWNLOAD_GONE: ErrorInfo(410, "The download is no longer available", "api"),
+    ErrorCode.DASHBOARD_LAYOUT_RETIRED: ErrorInfo(
+        422, "New dashboards use layout 2: layout 1 can no longer be created", "spec"
     ),
 }
 

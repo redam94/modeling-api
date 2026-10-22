@@ -1,0 +1,45 @@
+{
+ "aggregation_flagged": false,
+ "bundle_id": "23d4b60b62c075b575a0512ca4e5f4ca",
+ "conditioning": {
+  "conditioned": false,
+  "dim": "time",
+  "fit_end": "2024-03-18",
+  "horizon_source": "rows",
+  "message": "Forecast from the end of the fitted history (2024-03-18); no actuals were supplied. 4 periods forecast from 2024-03-25 to 2024-04-15.",
+  "n_actuals": 0,
+  "n_series": 1,
+  "parameters": "fitted",
+  "periods": 4,
+  "revised": 0,
+  "series": [
+   {
+    "forecast_from": "2024-03-25",
+    "forecast_to": "2024-04-15",
+    "missing": 0,
+    "n_actuals": 0,
+    "n_forecast": 4,
+    "origin": "2024-03-18",
+    "revised": 0,
+    "series": {}
+   }
+  ],
+  "series_conditioned": 0,
+  "truncated": false
+ },
+ "groups": [
+  "/summary"
+ ],
+ "issues": [],
+ "kind": "expected",
+ "mode": "forecast",
+ "names": "dataset",
+ "output_space": {
+  "y_hat": "raw"
+ },
+ "representation": "draws",
+ "retransform": {
+  "y_hat": "none"
+ },
+ "units": "original"
+}

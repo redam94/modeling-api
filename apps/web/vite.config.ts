@@ -50,6 +50,13 @@ const ENTRY_BUDGET = {
       maxBytes: 260 * 1024,
       forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow")],
     },
+    // v0.17: the lazy parts of the layout 2 readout (plan D18): the heavy panels and the
+    // results of the inputs, then each input section with what it adds (the shared charts
+    // included). Share links load them too, so they have the share link's forbidden list.
+    { match: /(?:^|\/)readout-extra-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
+    { match: /(?:^|\/)try-a-case-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
+    { match: /(?:^|\/)check-accuracy-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
+    { match: /(?:^|\/)score-file-[^/]*\.js$/, maxBytes: 48 * 1024, forbidden: SHARE_FORBIDDEN },
   ],
 };
 

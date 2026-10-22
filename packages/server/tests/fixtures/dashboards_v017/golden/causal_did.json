@@ -1,0 +1,3806 @@
+{
+ "actuals": null,
+ "capabilities": {
+  "checkpointable": true,
+  "contribution_scale": "none",
+  "decision": false,
+  "deterministic_given_seed": false,
+  "evidence": false,
+  "fast_score": false,
+  "identified_quantities": [
+   "event_coef",
+   "sigma"
+  ],
+  "inference": "mcmc",
+  "loo_invalid_reason": null,
+  "loo_valid": true,
+  "owns": [
+   "scaling"
+  ],
+  "recommend": false,
+  "representation": "draws",
+  "score_modes": [
+   "counterfactual",
+   "predict"
+  ]
+ },
+ "case": "causal_did",
+ "derived_from": [
+  "causal.did/no_treatment.counterfactual.json",
+  "causal.did/no_treatment.result.json",
+  "causal.did/no_treatment.summary.json",
+  "causal.did/predict_in_sample__predictive.result.json",
+  "causal.did/predict_in_sample__predictive.summary.json",
+  "causal.did/predict_in_sample__readout.result.json",
+  "causal.did/predict_in_sample__readout.summary.json",
+  "causal.did/probe.json"
+ ],
+ "facts": {
+  "aggregates": {
+   "counterfactual.counterfactual_delta_total": {
+    "mean": -212.098708904,
+    "quantiles": {
+     "0.05": -417.080724262,
+     "0.25": -300.290305166,
+     "0.5": -221.440416119,
+     "0.75": -124.937504346,
+     "0.95": 59.4262775696
+    },
+    "sd": 140.731851556,
+    "units": "units"
+   }
+  },
+  "predictive": {
+   "predictive.y_hat": {
+    "expected_width": 2.164319190671033,
+    "predictive_width": 6.892660658085134,
+    "widens": true
+   }
+  },
+  "scalar_fit_metrics": {
+   "att": 3.981211065630888,
+   "att_p05": 2.5248116739501767,
+   "att_p95": 5.189165748901062,
+   "effect_average": 3.988746752314039,
+   "effect_relative": 0.03884188857180862,
+   "effect_total": 319.0997401851231,
+   "effect_total_p05": 198.3893557294206,
+   "effect_total_p95": 416.00508906917855,
+   "effect_total_sd": 63.53874425231597,
+   "p_effect_positive": 1.0,
+   "pre_mape": 0.018713106781957162,
+   "pre_rmse": 2.120577050423824
+  },
+  "tables": {
+   "baseline": {
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "store",
+      "month"
+     ],
+     "mean_band_width": 2.164319190671033,
+     "n_rows": 96,
+     "sum_centre": 10219.914925680721,
+     "sum_high": 10323.121459879716,
+     "sum_low": 10115.346817575297,
+     "time_dim": "month"
+    }
+   },
+   "counterfactual": {
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "store",
+      "month"
+     ],
+     "mean_band_width": 2.6260890063296842,
+     "n_rows": 96,
+     "sum_centre": 10166.890248454696,
+     "sum_high": 10291.163101137923,
+     "sum_low": 10039.058556530274,
+     "time_dim": "month"
+    }
+   },
+   "predictive": {
+    "y_hat": {
+     "band": [
+      "hdi_90_lower",
+      "hdi_90_upper"
+     ],
+     "centre": "mean",
+     "dims": [
+      "store",
+      "month"
+     ],
+     "mean_band_width": 6.892660658085134,
+     "n_rows": 96,
+     "sum_centre": 10218.745677056684,
+     "sum_high": 10553.642043518026,
+     "sum_low": 9891.946620341854,
+     "time_dim": "month"
+    }
+   }
+  }
+ },
+ "fit_metrics": [
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att",
+   "labels": {},
+   "last": 3.981211065630888,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.981211065630888,
+   "min": 3.981211065630888
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att_p05",
+   "labels": {},
+   "last": 2.5248116739501767,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.5248116739501767,
+   "min": 2.5248116739501767
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "att_p95",
+   "labels": {},
+   "last": 5.189165748901062,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 5.189165748901062,
+   "min": 5.189165748901062
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "divergences",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_average",
+   "labels": {},
+   "last": 3.988746752314039,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.988746752314039,
+   "min": 3.988746752314039
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {},
+   "last": 0.03884188857180862,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03884188857180862,
+   "min": 0.03884188857180862
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 0.04652773290077091,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04652773290077091,
+   "min": 0.04652773290077091
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 0.03589027520869145,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03589027520869145,
+   "min": 0.03589027520869145
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 0.03202914599152221,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03202914599152221,
+   "min": 0.03202914599152221
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 0.05003989848418419,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.05003989848418419,
+   "min": 0.05003989848418419
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 0.03232963577928985,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03232963577928985,
+   "min": 0.03232963577928985
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 0.04081181877145659,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04081181877145659,
+   "min": 0.04081181877145659
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 0.03446296258453081,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.03446296258453081,
+   "min": 0.03446296258453081
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_relative",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 0.04089628765923447,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.04089628765923447,
+   "min": 0.04089628765923447
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {},
+   "last": 319.0997401851231,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 319.0997401851231,
+   "min": 319.0997401851231
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 48.726787554748064,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 48.726787554748064,
+   "min": 48.726787554748064
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 40.827499669241995,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 40.827499669241995,
+   "min": 40.827499669241995
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 30.997600272232884,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 30.997600272232884,
+   "min": 30.997600272232884
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 43.7849495572052,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 43.7849495572052,
+   "min": 43.7849495572052
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 34.79533436077574,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 34.79533436077574,
+   "min": 34.79533436077574
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 40.021611772773994,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 40.021611772773994,
+   "min": 40.021611772773994
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 36.33663548666128,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 36.33663548666128,
+   "min": 36.33663548666128
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 43.60932151148398,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 43.60932151148398,
+   "min": 43.60932151148398
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_p05",
+   "labels": {},
+   "last": 198.3893557294206,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 198.3893557294206,
+   "min": 198.3893557294206
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_p95",
+   "labels": {},
+   "last": 416.00508906917855,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 416.00508906917855,
+   "min": 416.00508906917855
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "effect_total_sd",
+   "labels": {},
+   "last": 63.53874425231597,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 63.53874425231597,
+   "min": 63.53874425231597
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-1"
+   },
+   "last": 0.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.0,
+   "min": 0.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-2"
+   },
+   "last": -1.1965063209206317,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -1.1965063209206317,
+   "min": -1.1965063209206317
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-3"
+   },
+   "last": -0.05286364233762768,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -0.05286364233762768,
+   "min": -0.05286364233762768
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "-4"
+   },
+   "last": -1.095491098185296,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": -1.095491098185296,
+   "min": -1.095491098185296
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "0"
+   },
+   "last": 4.822768494477988,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.822768494477988,
+   "min": 4.822768494477988
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "1"
+   },
+   "last": 4.751351276254712,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.751351276254712,
+   "min": 4.751351276254712
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "2"
+   },
+   "last": 3.095761365935358,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.095761365935358,
+   "min": 3.095761365935358
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "3"
+   },
+   "last": 4.399687815902568,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.399687815902568,
+   "min": 4.399687815902568
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "4"
+   },
+   "last": 2.127356650309009,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.127356650309009,
+   "min": 2.127356650309009
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "5"
+   },
+   "last": 3.5154883298746773,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 3.5154883298746773,
+   "min": 3.5154883298746773
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "event_coef",
+   "labels": {
+    "event_time": "6"
+   },
+   "last": 4.2749241808886405,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 4.2749241808886405,
+   "min": 4.2749241808886405
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "num_steps",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 7.0,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 7.0,
+   "min": 7.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {},
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_04"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_05"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_09"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_12"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_13"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_14"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_16"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "p_effect_positive",
+   "labels": {
+    "unit": "store_17"
+   },
+   "last": 1.0,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 1.0,
+   "min": 1.0
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "pre_mape",
+   "labels": {},
+   "last": 0.018713106781957162,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 0.018713106781957162,
+   "min": 0.018713106781957162
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.139134-04:00",
+   "key": "pre_rmse",
+   "labels": {},
+   "last": 2.120577050423824,
+   "last_step": null,
+   "last_ts": "2026-10-21T09:47:44.139134-04:00",
+   "max": 2.120577050423824,
+   "min": 2.120577050423824
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "0"
+   },
+   "last": 0.3297089404588118,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.3297089404588118,
+   "min": 0.3297089404588118
+  },
+  {
+   "attempt": 1,
+   "count": 1,
+   "first_ts": "2026-10-21T09:47:44.051209-04:00",
+   "key": "step_size",
+   "labels": {
+    "chain": "1"
+   },
+   "last": 0.402393080511828,
+   "last_step": 200,
+   "last_ts": "2026-10-21T09:47:44.051209-04:00",
+   "max": 0.402393080511828,
+   "min": 0.402393080511828
+  }
+ ],
+ "format": "mapi.test.dashboard-material/v1",
+ "input_contract": {
+  "input_table": {
+   "columns": [
+    {
+     "description": "A date (yyyy-MM-dd)",
+     "dims": [],
+     "freq": "MS",
+     "name": "time",
+     "role": "coord"
+    },
+    {
+     "description": "A level of unit",
+     "dims": [],
+     "freq": null,
+     "name": "unit",
+     "role": "coord"
+    },
+    {
+     "description": "The value of the target",
+     "dims": [
+      "unit",
+      "time"
+     ],
+     "freq": null,
+     "name": "y",
+     "role": "target"
+    },
+    {
+     "description": "An input",
+     "dims": [
+      "unit",
+      "time"
+     ],
+     "freq": null,
+     "name": "treatment",
+     "role": "input"
+    }
+   ],
+   "conditions_on_actuals": false,
+   "horizon_dim": null,
+   "rows": []
+  },
+  "max_inline_bytes": 5242880,
+  "model_ref": "model://default/v017-did-event-study-2699f9-model@v1",
+  "snapshot": {
+   "conditions_on_actuals": false,
+   "fit_coords": {
+    "time": {
+     "contiguous": true,
+     "end": "2024-12-01T00:00:00",
+     "freq": "MS",
+     "kind": "time",
+     "size": 24,
+     "start": "2023-01-01T00:00:00",
+     "step": null,
+     "values": null
+    },
+    "unit": {
+     "contiguous": true,
+     "end": null,
+     "freq": null,
+     "kind": "categorical",
+     "size": 20,
+     "start": null,
+     "step": null,
+     "values": [
+      "store_00",
+      "store_01",
+      "store_02",
+      "store_03",
+      "store_04",
+      "store_05",
+      "store_06",
+      "store_07",
+      "store_08",
+      "store_09",
+      "store_10",
+      "store_11",
+      "store_12",
+      "store_13",
+      "store_14",
+      "store_15",
+      "store_16",
+      "store_17",
+      "store_18",
+      "store_19"
+     ]
+    }
+   },
+   "future_required": [],
+   "horizon_dim": null,
+   "input_schema": {
+    "dims": {
+     "time": {
+      "description": null,
+      "freq": "MS",
+      "kind": "time",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     },
+     "unit": {
+      "description": null,
+      "freq": null,
+      "kind": "categorical",
+      "max_extension": null,
+      "new_level_strategy": "error",
+      "ordered": false,
+      "policy": "fixed"
+     }
+    },
+    "layout": "dense",
+    "ragged": [],
+    "vars": {
+     "treatment": {
+      "bounds": [
+       0.0,
+       1.0
+      ],
+      "description": null,
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "forbid",
+      "missing_sentinel": null,
+      "role": "covariate",
+      "units": null
+     },
+     "y": {
+      "bounds": null,
+      "description": null,
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "future_required": false,
+      "index_of": null,
+      "missing": "allow",
+      "missing_sentinel": null,
+      "role": "target",
+      "units": "units"
+     }
+    }
+   },
+   "inputs_stage": "raw",
+   "representation": "draws",
+   "schema_hash": "sha256:63623a03aaade39f921f05d7aaf48bf6b29847a4530bbf8ce0e7e46844eaff31",
+   "score_modes": [
+    "counterfactual",
+    "predict"
+   ]
+  }
+ },
+ "manifest": {
+  "about": {
+   "assumptions": [
+    "Without the change, all units move in parallel",
+    "A unit does not stop the change after it starts"
+   ],
+   "avoid_when": [
+    "All units got the change",
+    "The units got the change at different times and the effect is different for each group (the result can be wrong)",
+    "You want to forecast (the time effects are only for the periods of the data)"
+   ],
+   "data_needs": [
+    "The same number for each unit over time",
+    "A column that is 1 from the period when a unit got the change, else 0",
+    "At least one unit that never got the change"
+   ],
+   "difficulty": "intermediate",
+   "example": "A new store layout in 12 of 30 stores added 5% to monthly sales, and the stores moved together before the change.",
+   "expert_notes": "Bayesian two-way fixed effects: unit and time effects (ZeroSumNormal; time effects iid or a random walk) plus event-time dummies (reference period -1, endpoints binned at -leads/+lags) or one treatment dummy (design 'did'). Under staggered adoption with effects that differ between cohorts, TWFE estimates can be biased (Goodman-Bacon 2021, Sun and Abraham 2021): the model emits a STAGGERED_ADOPTION warning. Counterfactual mode sets treatment to 0.",
+   "fits": {
+    "data_shape": [
+     "panel"
+    ],
+    "frequency": [
+     "daily",
+     "weekly",
+     "monthly"
+    ],
+    "goal": [
+     "measure_impact"
+    ],
+    "uncertainty": [
+     "essential",
+     "nice"
+    ]
+   },
+   "outputs": [
+    "The average effect of the change with a range",
+    "The effect for each period before and after the change",
+    "A warning when the units got the change at different times"
+   ],
+   "references": [
+    {
+     "title": "Goodman-Bacon (2021), Difference-in-differences with variation in treatment timing, Journal of Econometrics",
+     "url": "https://doi.org/10.1016/j.jeconom.2021.03.014"
+    },
+    {
+     "title": "Sun and Abraham (2021), Estimating dynamic treatment effects in event studies with heterogeneous treatment effects, Journal of Econometrics",
+     "url": "https://doi.org/10.1016/j.jeconom.2020.09.006"
+    }
+   ],
+   "related": [
+    "causal.synthetic_control",
+    "causal.impact"
+   ],
+   "summary_plain": "Measures the effect of a change that some stores or markets got and others did not. It shows the effect for each period before and after the change.",
+   "title": "Before and after, with a comparison group",
+   "typical_runtime": "minutes",
+   "use_when": [
+    "Some units got a change and other units never got it",
+    "The units got the change at the same time or at different times",
+    "You want to see if the groups moved the same way before the change"
+   ]
+  },
+  "capabilities": {
+   "checkpointable": true,
+   "deterministic_given_seed": false,
+   "identified_quantities": [
+    "event_coef",
+    "sigma"
+   ],
+   "inference": "mcmc",
+   "owns": [
+    "scaling"
+   ],
+   "representation": "draws",
+   "score_modes": [
+    "counterfactual",
+    "predict"
+   ]
+  },
+  "description": "Bayesian difference-in-differences and event study on a panel of units over time: unit and period effects plus one effect per period relative to the adoption of the treatment, compared with units that never got it.",
+  "id": "causal.did",
+  "outputs": {
+   "y_hat": {
+    "description": "Expected value or predictive draw of y; with the intervention treatment = 0, the outcome without the treatment",
+    "dims": [
+     "unit",
+     "time"
+    ],
+    "units_of": "y"
+   }
+  },
+  "plots": [
+   "causal.event_study",
+   "causal.impact",
+   "causal.pre_fit",
+   "core.convergence",
+   "core.posterior_forest"
+  ],
+  "schema_template": {
+   "params": {
+    "covariates": {
+     "default": [],
+     "type": "string_list"
+    }
+   },
+   "template": {
+    "dims": {
+     "time": {
+      "kind": "time",
+      "policy": "fixed"
+     },
+     "unit": {
+      "kind": "categorical",
+      "policy": "fixed"
+     }
+    },
+    "vars": {
+     "treatment": {
+      "bounds": [
+       0.0,
+       1.0
+      ],
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "role": "covariate"
+     },
+     "y": {
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "missing": "allow",
+      "role": "target"
+     },
+     "{*covariates as x}": {
+      "dims": [
+       "unit",
+       "time"
+      ],
+      "dtype": "float64",
+      "role": "covariate"
+     }
+    }
+   }
+  },
+  "settings_schema": {
+   "additionalProperties": false,
+   "description": "Settings of ``causal.did`` (priors on the standardised target).",
+   "properties": {
+    "bin_endpoints": {
+     "default": true,
+     "description": "The first lead and the last lag also take the periods further out",
+     "title": "Bin Endpoints",
+     "type": "boolean"
+    },
+    "covariates": {
+     "description": "Control variables over (unit, time)",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 16,
+     "title": "Covariates",
+     "type": "array"
+    },
+    "design": {
+     "default": "event_study",
+     "description": "event_study: one effect per period relative to the adoption; did: one effect for all treated cells (x-ui-level: basic)",
+     "enum": [
+      "event_study",
+      "did"
+     ],
+     "title": "Design",
+     "type": "string"
+    },
+    "effect_sigma": {
+     "default": 1.0,
+     "description": "Prior sd of the event effects",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Effect Sigma",
+     "type": "number"
+    },
+    "lags": {
+     "default": 8,
+     "description": "Periods after the adoption with an effect",
+     "maximum": 104,
+     "minimum": 0,
+     "title": "Lags",
+     "type": "integer"
+    },
+    "leads": {
+     "default": 4,
+     "description": "Periods before the adoption with an effect",
+     "maximum": 52,
+     "minimum": 0,
+     "title": "Leads",
+     "type": "integer"
+    },
+    "likelihood": {
+     "default": "normal",
+     "enum": [
+      "normal",
+      "student_t"
+     ],
+     "title": "Likelihood",
+     "type": "string"
+    },
+    "noise_sigma": {
+     "default": 0.5,
+     "description": "Half-normal scale of sigma",
+     "exclusiveMinimum": 0,
+     "maximum": 10,
+     "title": "Noise Sigma",
+     "type": "number"
+    },
+    "time_effects": {
+     "default": "iid",
+     "description": "iid: independent period effects; random_walk: smooth period effects",
+     "enum": [
+      "iid",
+      "random_walk"
+     ],
+     "title": "Time Effects",
+     "type": "string"
+    }
+   },
+   "title": "DiDSettings",
+   "type": "object"
+  },
+  "version": "1.0.0"
+ },
+ "note": "no new rows possible (unit and time fixed); att*, event_coef{event_time} and per-unit metrics; the counterfactual delta is in counterfactual.json",
+ "plugin": "causal.did",
+ "preset": "causal_impact",
+ "primary_output": "y_hat",
+ "refusals": [],
+ "representation": "draws",
+ "scorecard": {
+  "items": [
+   {
+    "category": "convergence",
+    "check": "convergence.rhat",
+    "code": "RHAT",
+    "docs_anchor": "check-convergence-rhat",
+    "message_expert": "max rank-normalised split r-hat 1.398 for 'intercept' (threshold 1.01)",
+    "message_plain": "The chains do not agree (R-hat 1.4). The results are not reliable.",
+    "metric": "r_hat_max",
+    "status": "fail",
+    "suggested_action": "Increase the tuning steps and the draws, or make the model simpler.",
+    "threshold": 1.05,
+    "title": "Chains agree",
+    "value": 1.3983221850906615
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.ess",
+    "code": "ESS",
+    "docs_anchor": "check-convergence-ess",
+    "message_expert": "min bulk ESS 5 for 'event_effect' (threshold 200)",
+    "message_plain": "There are only 5 independent draws. The results are not stable.",
+    "metric": "ess_bulk_min",
+    "status": "fail",
+    "suggested_action": "Increase the number of draws.",
+    "threshold": 100.0,
+    "title": "Enough independent draws",
+    "value": 4.937522282021873
+   },
+   {
+    "category": "convergence",
+    "check": "convergence.divergences",
+    "code": "DIVERGENCES",
+    "docs_anchor": "check-convergence-divergences",
+    "message_expert": "0 divergent transitions in 200 draws",
+    "message_plain": "The sampler had no problems with the model.",
+    "metric": "divergence_rate",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.0,
+    "title": "The sampler had no problems",
+    "value": 0.0
+   },
+   {
+    "category": "plausibility",
+    "check": "plausibility.prior_overlap",
+    "code": "PRIOR_OVERLAP",
+    "docs_anchor": "check-plausibility-prior-overlap",
+    "message_expert": "prior/posterior overlap 0.30 for 'event_effect[6]'",
+    "message_plain": "The data moved each parameter away from its prior.",
+    "metric": "prior_overlap_max",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.9,
+    "title": "The data changed the model",
+    "value": 0.30000000000000004
+   },
+   {
+    "category": "data",
+    "check": "data.missing",
+    "code": "DATA_MISSING",
+    "docs_anchor": "check-data-missing",
+    "message_expert": "0 of 960 values missing",
+    "message_plain": "Only 0% of the values are missing.",
+    "metric": "missing_fraction",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 0.05,
+    "title": "Few missing values",
+    "value": 0.0
+   },
+   {
+    "category": "data",
+    "check": "data.history",
+    "code": "DATA_HISTORY",
+    "docs_anchor": "check-data-history",
+    "message_expert": "24 periods at MS (12 per year) along 'time' at the model stage",
+    "message_plain": "There are 2.0 years of history. This is enough to find the seasonality.",
+    "metric": "history_years",
+    "status": "pass",
+    "suggested_action": null,
+    "threshold": 2.0,
+    "title": "Enough history",
+    "value": 2.0
+   }
+  ],
+  "overall": "fail",
+  "skipped": {
+   "data.spend_variation": "the dataset has no spend variable along time",
+   "holdout.coverage_90": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "holdout.hit_rate": "only models of a categorical target (choice models) report a hit rate. Evaluate accuracy_lift on one of these models",
+   "holdout.mape": "the spec does not evaluate it (evaluate.metrics) or has no holdout split",
+   "plausibility.baseline_share": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.negative_roi": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.roi_absurd": "the model has no response curves (outputs.derived: response_curves)",
+   "plausibility.share_outlier": "the model has no response curves (outputs.derived: response_curves)"
+  }
+ },
+ "scores": {
+  "baseline": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_in_sample__readout",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "981536ac484409461050b00d02107b65",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "month",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "store",
+       "month"
+      ],
+      "rows": [
+       [
+        "store_00",
+        "2023-01-01",
+        100.72990980519084,
+        99.77199711079011,
+        102.00993417425101
+       ],
+       [
+        "store_00",
+        "2023-02-01",
+        104.39600686275831,
+        103.30698622970202,
+        105.16863814390872
+       ],
+       [
+        "store_00",
+        "2023-03-01",
+        104.14031188393501,
+        103.09322924726952,
+        105.02541809902615
+       ],
+       [
+        "store_00",
+        "2023-04-01",
+        107.06926142760611,
+        106.05675982838085,
+        107.94995848374124
+       ],
+       [
+        "store_00",
+        "2023-05-01",
+        106.74947205363156,
+        105.92993791027743,
+        107.77333738396509
+       ],
+       [
+        "store_00",
+        "2023-06-01",
+        105.34564995940303,
+        104.45538744132566,
+        106.34613203291632
+       ],
+       [
+        "store_00",
+        "2023-07-01",
+        103.09979136680624,
+        102.10772279034423,
+        103.93531517670887
+       ],
+       [
+        "store_00",
+        "2023-08-01",
+        102.64974340729127,
+        101.46945978705162,
+        103.74104661910891
+       ],
+       [
+        "store_00",
+        "2023-09-01",
+        103.08402716109177,
+        102.32296931446436,
+        104.02175848490556
+       ],
+       [
+        "store_00",
+        "2023-10-01",
+        103.45633930726643,
+        102.62906615549697,
+        104.42631012617437
+       ],
+       [
+        "store_00",
+        "2023-11-01",
+        102.62173388357137,
+        101.66805602674204,
+        103.72655785403983
+       ],
+       [
+        "store_00",
+        "2023-12-01",
+        104.3146077320457,
+        102.9212505834144,
+        105.24467673032181
+       ],
+       [
+        "store_00",
+        "2024-01-01",
+        107.89211120034408,
+        106.76318266938702,
+        108.90731082999807
+       ],
+       [
+        "store_00",
+        "2024-02-01",
+        110.24330197632855,
+        109.05299696497312,
+        111.24497629903715
+       ],
+       [
+        "store_00",
+        "2024-03-01",
+        110.3630666143473,
+        109.19330944530957,
+        111.37681640182876
+       ],
+       [
+        "store_00",
+        "2024-04-01",
+        112.99881358152828,
+        111.97866866619653,
+        114.08604858311526
+       ],
+       [
+        "store_00",
+        "2024-05-01",
+        111.63184199289378,
+        110.41467926874084,
+        112.67435116689612
+       ],
+       [
+        "store_00",
+        "2024-06-01",
+        110.71892515959077,
+        109.69099869064375,
+        111.81199300263907
+       ],
+       [
+        "store_00",
+        "2024-07-01",
+        111.06129541774175,
+        110.08466368975643,
+        112.41523657795831
+       ],
+       [
+        "store_00",
+        "2024-08-01",
+        110.94797553769968,
+        109.87372599084682,
+        111.89695511451002
+       ],
+       [
+        "store_00",
+        "2024-09-01",
+        108.16107669523633,
+        107.2068511246287,
+        109.08946958985722
+       ],
+       [
+        "store_00",
+        "2024-10-01",
+        110.8986686808719,
+        109.89739421684496,
+        111.77692504573345
+       ],
+       [
+        "store_00",
+        "2024-11-01",
+        111.0355609577171,
+        110.00155977612388,
+        112.03448653984381
+       ],
+       [
+        "store_00",
+        "2024-12-01",
+        112.0484259592494,
+        110.80495114515922,
+        112.75136688445001
+       ],
+       [
+        "store_01",
+        "2023-01-01",
+        98.04276817487397,
+        96.75311668148767,
+        99.01466344532632
+       ],
+       [
+        "store_01",
+        "2023-02-01",
+        101.70886523244145,
+        100.85513719159042,
+        102.5597234119102
+       ],
+       [
+        "store_01",
+        "2023-03-01",
+        101.45317025361811,
+        100.48079143028029,
+        102.6197753750716
+       ],
+       [
+        "store_01",
+        "2023-04-01",
+        104.38211979728922,
+        103.31575911562243,
+        105.34290017679588
+       ],
+       [
+        "store_01",
+        "2023-05-01",
+        104.06233042331469,
+        102.99627518557119,
+        105.03551527207573
+       ],
+       [
+        "store_01",
+        "2023-06-01",
+        102.65850832908617,
+        101.60612407067886,
+        103.55419281850472
+       ],
+       [
+        "store_01",
+        "2023-07-01",
+        100.41264973648937,
+        99.31254427379042,
+        101.29323741802826
+       ],
+       [
+        "store_01",
+        "2023-08-01",
+        99.96260177697441,
+        98.79769584183957,
+        100.97432251085694
+       ],
+       [
+        "store_01",
+        "2023-09-01",
+        100.39688553077492,
+        99.33224330714319,
+        101.29783246739686
+       ],
+       [
+        "store_01",
+        "2023-10-01",
+        100.76919767694959,
+        99.72145010247432,
+        101.57959210442678
+       ],
+       [
+        "store_01",
+        "2023-11-01",
+        99.9345922532545,
+        98.83421335323708,
+        100.76541333292506
+       ],
+       [
+        "store_01",
+        "2023-12-01",
+        101.62746610172883,
+        100.40332181473812,
+        102.77462804257834
+       ],
+       [
+        "store_01",
+        "2024-01-01",
+        105.20496957002725,
+        103.90533758631821,
+        106.14608051068726
+       ],
+       [
+        "store_01",
+        "2024-02-01",
+        107.55616034601168,
+        106.70752167666708,
+        108.89162958240684
+       ],
+       [
+        "store_01",
+        "2024-03-01",
+        107.67592498403043,
+        106.76112090500159,
+        109.06354869254343
+       ],
+       [
+        "store_01",
+        "2024-04-01",
+        110.31167195121142,
+        109.17016298384748,
+        111.26157498422678
+       ],
+       [
+        "store_01",
+        "2024-05-01",
+        108.94470036257691,
+        107.68138938417948,
+        110.02958117670158
+       ],
+       [
+        "store_01",
+        "2024-06-01",
+        108.0317835292739,
+        106.85690632155362,
+        108.99593978863854
+       ],
+       [
+        "store_01",
+        "2024-07-01",
+        108.37415378742487,
+        107.20665998984286,
+        109.56839032289099
+       ],
+       [
+        "store_01",
+        "2024-08-01",
+        108.2608339073828,
+        107.43813110116544,
+        109.37073927853275
+       ],
+       [
+        "store_01",
+        "2024-09-01",
+        105.47393506491946,
+        104.4994804038614,
+        106.34046878565024
+       ],
+       [
+        "store_01",
+        "2024-10-01",
+        108.21152705055505,
+        107.28999543691214,
+        109.10211502943649
+       ],
+       [
+        "store_01",
+        "2024-11-01",
+        108.34841932740022,
+        107.38450161208578,
+        109.42226754223832
+       ],
+       [
+        "store_01",
+        "2024-12-01",
+        109.36128432893251,
+        108.4686432183984,
+        110.23831030039491
+       ],
+       [
+        "store_04",
+        "2023-01-01",
+        93.624040413779,
+        92.74120566026191,
+        94.67090603284686
+       ],
+       [
+        "store_04",
+        "2023-02-01",
+        97.29013747134648,
+        96.37267051941434,
+        98.25424640214005
+       ],
+       [
+        "store_04",
+        "2023-03-01",
+        97.03444249252316,
+        95.73208470104237,
+        97.79786104176297
+       ],
+       [
+        "store_04",
+        "2023-04-01",
+        99.96339203619425,
+        99.14744624601443,
+        101.25161879789879
+       ],
+       [
+        "store_04",
+        "2023-05-01",
+        99.6436026622197,
+        98.37758898797401,
+        100.50630753190902
+       ],
+       [
+        "store_04",
+        "2023-06-01",
+        98.2397805679912,
+        97.32263597054897,
+        99.4046169523512
+       ],
+       [
+        "store_04",
+        "2023-07-01",
+        95.9939219753944,
+        95.00879666050305,
+        97.04317982319654
+       ],
+       [
+        "store_04",
+        "2023-08-01",
+        95.54387401587945,
+        94.4407357091845,
+        96.71030416394909
+       ],
+       [
+        "store_04",
+        "2023-09-01",
+        95.97815776967992,
+        95.03266209884478,
+        96.82723674429731
+       ],
+       [
+        "store_04",
+        "2023-10-01",
+        96.35046991585459,
+        95.42985270513549,
+        97.28997213172832
+       ],
+       [
+        "store_04",
+        "2023-11-01",
+        95.51586449215952,
+        94.52294218925732,
+        96.48725237870697
+       ],
+       [
+        "store_04",
+        "2023-12-01",
+        98.25136579648151,
+        97.00545871067727,
+        99.50096478975556
+       ],
+       [
+        "store_04",
+        "2024-01-01",
+        100.68522658619692,
+        99.55336062361913,
+        101.98161426823562
+       ],
+       [
+        "store_04",
+        "2024-02-01",
+        104.23292368310202,
+        102.86698536863892,
+        105.28325379765919
+       ],
+       [
+        "store_04",
+        "2024-03-01",
+        109.17545681559874,
+        108.04625687120071,
+        110.53117967599657
+       ],
+       [
+        "store_04",
+        "2024-04-01",
+        111.73978656455645,
+        110.50537122192472,
+        113.37943778521996
+       ],
+       [
+        "store_04",
+        "2024-05-01",
+        108.71722506560262,
+        107.54687852884032,
+        110.02070588736399
+       ],
+       [
+        "store_04",
+        "2024-06-01",
+        109.1082346822668,
+        107.99067717898333,
+        110.48822798677685
+       ],
+       [
+        "store_04",
+        "2024-07-01",
+        107.1782737748242,
+        105.78385134816887,
+        108.58796670872134
+       ],
+       [
+        "store_04",
+        "2024-08-01",
+        108.45308557434778,
+        106.944041978161,
+        109.64984223539223
+       ],
+       [
+        "store_04",
+        "2024-09-01",
+        106.42562258289843,
+        105.24131345546392,
+        107.42043839580087
+       ],
+       [
+        "store_04",
+        "2024-10-01",
+        109.16321456853402,
+        108.00120227194543,
+        110.19023713925264
+       ],
+       [
+        "store_04",
+        "2024-11-01",
+        109.30010684537919,
+        108.35049234825372,
+        110.51820875600987
+       ],
+       [
+        "store_04",
+        "2024-12-01",
+        110.3129718469115,
+        109.25414512115248,
+        111.44831572754764
+       ],
+       [
+        "store_05",
+        "2023-01-01",
+        102.67604587880352,
+        101.67962287643564,
+        103.61868938044017
+       ],
+       [
+        "store_05",
+        "2023-02-01",
+        106.342142936371,
+        105.3061742140037,
+        107.23906736156397
+       ],
+       [
+        "store_05",
+        "2023-03-01",
+        106.08644795754768,
+        105.14044828619356,
+        107.16965997553585
+       ],
+       [
+        "store_05",
+        "2023-04-01",
+        109.0153975012188,
+        108.1031377168664,
+        110.23428475905455
+       ],
+       [
+        "store_05",
+        "2023-05-01",
+        108.69560812724423,
+        107.61509786255384,
+        109.66043018357858
+       ],
+       [
+        "store_05",
+        "2023-06-01",
+        107.29178603301571,
+        106.36575603723453,
+        108.4643452675643
+       ],
+       [
+        "store_05",
+        "2023-07-01",
+        105.04592744041892,
+        103.8450737154688,
+        106.11665170582833
+       ],
+       [
+        "store_05",
+        "2023-08-01",
+        104.59587948090395,
+        103.46817263500385,
+        105.72414642719467
+       ],
+       [
+        "store_05",
+        "2023-09-01",
+        105.03016323470447,
+        104.00236222876825,
+        105.92271721365755
+       ],
+       [
+        "store_05",
+        "2023-10-01",
+        105.40247538087911,
+        104.19538782653599,
+        106.21733215058161
+       ],
+       [
+        "store_05",
+        "2023-11-01",
+        104.56786995718404,
+        103.42393142318306,
+        105.53223995735189
+       ],
+       [
+        "store_05",
+        "2023-12-01",
+        107.30337126150603,
+        105.87440666907202,
+        108.79255242170497
+       ],
+       [
+        "store_05",
+        "2024-01-01",
+        109.73723205122144,
+        108.41731471657499,
+        111.0917353016894
+       ],
+       [
+        "store_05",
+        "2024-02-01",
+        113.28492914812654,
+        112.20577364553012,
+        114.78091631455479
+       ],
+       [
+        "store_05",
+        "2024-03-01",
+        118.22746228062326,
+        116.93678254876454,
+        119.44027862699568
+       ],
+       [
+        "store_05",
+        "2024-04-01",
+        120.79179202958098,
+        119.71865874563542,
+        122.37603432527409
+       ],
+       [
+        "store_05",
+        "2024-05-01",
+        117.76923053062714,
+        116.30815449181942,
+        119.24715328140806
+       ],
+       [
+        "store_05",
+        "2024-06-01",
+        118.16024014729132,
+        116.7963481579889,
+        119.20793719267317
+       ],
+       [
+        "store_05",
+        "2024-07-01",
+        116.23027923984873,
+        114.85247560210065,
+        117.82284685799922
+       ],
+       [
+        "store_05",
+        "2024-08-01",
+        117.50509103937233,
+        116.14551871831092,
+        118.73924037660926
+       ],
+       [
+        "store_05",
+        "2024-09-01",
+        115.47762804792295,
+        114.30344403504606,
+        116.49174853720695
+       ],
+       [
+        "store_05",
+        "2024-10-01",
+        118.21522003355851,
+        117.25207515291387,
+        119.23820754263367
+       ],
+       [
+        "store_05",
+        "2024-11-01",
+        118.35211231040371,
+        117.29383825070782,
+        119.58325420596633
+       ],
+       [
+        "store_05",
+        "2024-12-01",
+        119.364977311936,
+        118.40387848121699,
+        120.48863364295019
+       ]
+      ],
+      "time_dim": "month",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": {
+    "dim": "store",
+    "keep": [
+     "store_00",
+     "store_01",
+     "store_04",
+     "store_05"
+    ]
+   }
+  },
+  "counterfactual": {
+   "counterfactual": {
+    "baseline_total": {
+     "mean": 50323.7485957,
+     "quantiles": {
+      "0.05": 50257.3598736,
+      "0.25": 50292.7462671,
+      "0.5": 50322.7054694,
+      "0.75": 50351.2456353,
+      "0.95": 50405.4972782
+     },
+     "sd": 48.3319515055,
+     "units": "units"
+    },
+    "delta_fan": {
+     "coords": [
+      "2023-01-01",
+      "2023-02-01",
+      "2023-03-01",
+      "2023-04-01",
+      "2023-05-01",
+      "2023-06-01",
+      "2023-07-01",
+      "2023-08-01",
+      "2023-09-01",
+      "2023-10-01",
+      "2023-11-01",
+      "2023-12-01",
+      "2024-01-01",
+      "2024-02-01",
+      "2024-03-01",
+      "2024-04-01",
+      "2024-05-01",
+      "2024-06-01",
+      "2024-07-01",
+      "2024-08-01",
+      "2024-09-01",
+      "2024-10-01",
+      "2024-11-01",
+      "2024-12-01"
+     ],
+     "dim": "month",
+     "quantiles": [
+      0.05,
+      0.25,
+      0.5,
+      0.75,
+      0.95
+     ],
+     "units": "units",
+     "values": [
+      [
+       -0.0607242415869,
+       -0.0607242415869,
+       -0.0607242415869,
+       -0.0607242415869,
+       -0.0607242415869,
+       -0.0607242415868,
+       -0.0607242415868,
+       -0.0607242415869,
+       -0.0607242415869,
+       -0.0607242415868,
+       -0.0607242415869,
+       -14.5063236314,
+       -5.81464586052,
+       0.0,
+       -54.2598367969,
+       -53.7521701794,
+       -37.6916205757,
+       -51.2938965718,
+       -32.7458344434,
+       -42.4812265813,
+       -44.7499488927,
+       -44.7499488927,
+       -44.7499488927,
+       -44.7499488927
+      ],
+      [
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       5.03399200236,
+       -6.31094093599,
+       3.43076375497,
+       0.0,
+       -45.6169162864,
+       -43.1633556491,
+       -31.3137226306,
+       -40.9173017044,
+       -23.0875162624,
+       -35.5248086132,
+       -39.2897733382,
+       -39.2897733382,
+       -39.2897733382,
+       -39.2897733382
+      ],
+      [
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       8.34001867215,
+       0.198160834437,
+       9.51908726916,
+       0.0,
+       -38.613767888,
+       -38.2008168974,
+       -24.6597394048,
+       -34.8051552033,
+       -17.7683646037,
+       -28.9236563247,
+       -34.2590248908,
+       -34.2590248908,
+       -34.2590248908,
+       -34.2590248908
+      ],
+      [
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       12.333044015,
+       6.56014925593,
+       15.9410602226,
+       0.0,
+       -31.742289407,
+       -31.8464289064,
+       -19.7963332405,
+       -29.5824451168,
+       -9.41894291019,
+       -21.4343324149,
+       -29.7187273141,
+       -29.7187273141,
+       -29.7187273141,
+       -29.7187273141
+      ],
+      [
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       20.3366386796,
+       17.6706793411,
+       23.5124813012,
+       0.0,
+       -21.4056897801,
+       -21.002547348,
+       -9.39518402802,
+       -19.4544861978,
+       -2.0248941546,
+       -9.03988676667,
+       -22.9212827345,
+       -22.9212827345,
+       -22.9212827345,
+       -22.9212827345
+      ]
+     ]
+    },
+    "delta_share": {
+     "mean": -0.00421468081994,
+     "quantiles": {
+      "0.05": -0.00829731862849,
+      "0.25": -0.00596644350574,
+      "0.5": -0.00440323368569,
+      "0.75": -0.0024842997581,
+      "0.95": 0.00118121802323
+     },
+     "sd": 0.00279650256928
+    },
+    "delta_total": {
+     "mean": -212.098708904,
+     "quantiles": {
+      "0.05": -417.080724262,
+      "0.25": -300.290305166,
+      "0.5": -221.440416119,
+      "0.75": -124.937504346,
+      "0.95": 59.4262775696
+     },
+     "sd": 140.731851556,
+     "units": "units"
+    },
+    "dim": "month",
+    "format": "mapi.counterfactual/v1",
+    "interventions": [
+     {
+      "sel": {},
+      "set": 0.0,
+      "var": "treatment"
+     }
+    ],
+    "kind": "expected",
+    "kpi": "y_hat",
+    "scenario_total": {
+     "mean": 50111.6498868,
+     "quantiles": {
+      "0.05": 49887.0612269,
+      "0.25": 50025.3046587,
+      "0.5": 50100.7527797,
+      "0.75": 50207.413168,
+      "0.95": 50369.1932097
+     },
+     "sd": 148.668883072,
+     "units": "units"
+    },
+    "summed_over": [
+     "store"
+    ],
+    "units": "units"
+   },
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "counterfactual",
+   "output": {
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "no_treatment",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "981536ac484409461050b00d02107b65",
+    "groups": [
+     "/baseline",
+     "/baseline/summary",
+     "/delta",
+     "/delta/summary",
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "expected",
+    "mode": "counterfactual",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "month",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "store",
+       "month"
+      ],
+      "rows": [
+       [
+        "store_00",
+        "2023-01-01",
+        100.72990980519084,
+        99.77199711079011,
+        102.00993417425101
+       ],
+       [
+        "store_00",
+        "2023-02-01",
+        104.39600686275831,
+        103.30698622970202,
+        105.16863814390872
+       ],
+       [
+        "store_00",
+        "2023-03-01",
+        104.14031188393501,
+        103.09322924726952,
+        105.02541809902615
+       ],
+       [
+        "store_00",
+        "2023-04-01",
+        107.06926142760611,
+        106.05675982838085,
+        107.94995848374124
+       ],
+       [
+        "store_00",
+        "2023-05-01",
+        106.74947205363156,
+        105.92993791027743,
+        107.77333738396509
+       ],
+       [
+        "store_00",
+        "2023-06-01",
+        105.34564995940303,
+        104.45538744132566,
+        106.34613203291632
+       ],
+       [
+        "store_00",
+        "2023-07-01",
+        103.09979136680624,
+        102.10772279034423,
+        103.93531517670887
+       ],
+       [
+        "store_00",
+        "2023-08-01",
+        102.64974340729127,
+        101.46945978705162,
+        103.74104661910891
+       ],
+       [
+        "store_00",
+        "2023-09-01",
+        103.08402716109177,
+        102.32296931446436,
+        104.02175848490556
+       ],
+       [
+        "store_00",
+        "2023-10-01",
+        103.45633930726643,
+        102.62906615549697,
+        104.42631012617437
+       ],
+       [
+        "store_00",
+        "2023-11-01",
+        102.62173388357137,
+        101.66805602674204,
+        103.72655785403983
+       ],
+       [
+        "store_00",
+        "2023-12-01",
+        104.3146077320457,
+        102.9212505834144,
+        105.24467673032181
+       ],
+       [
+        "store_00",
+        "2024-01-01",
+        107.89211120034408,
+        106.76318266938702,
+        108.90731082999807
+       ],
+       [
+        "store_00",
+        "2024-02-01",
+        110.24330197632855,
+        109.05299696497312,
+        111.24497629903715
+       ],
+       [
+        "store_00",
+        "2024-03-01",
+        110.3630666143473,
+        109.19330944530957,
+        111.37681640182876
+       ],
+       [
+        "store_00",
+        "2024-04-01",
+        112.99881358152828,
+        111.97866866619653,
+        114.08604858311526
+       ],
+       [
+        "store_00",
+        "2024-05-01",
+        111.63184199289378,
+        110.41467926874084,
+        112.67435116689612
+       ],
+       [
+        "store_00",
+        "2024-06-01",
+        110.71892515959077,
+        109.69099869064375,
+        111.81199300263907
+       ],
+       [
+        "store_00",
+        "2024-07-01",
+        111.06129541774175,
+        110.08466368975643,
+        112.41523657795831
+       ],
+       [
+        "store_00",
+        "2024-08-01",
+        110.94797553769968,
+        109.87372599084682,
+        111.89695511451002
+       ],
+       [
+        "store_00",
+        "2024-09-01",
+        108.16107669523633,
+        107.2068511246287,
+        109.08946958985722
+       ],
+       [
+        "store_00",
+        "2024-10-01",
+        110.8986686808719,
+        109.89739421684496,
+        111.77692504573345
+       ],
+       [
+        "store_00",
+        "2024-11-01",
+        111.0355609577171,
+        110.00155977612388,
+        112.03448653984381
+       ],
+       [
+        "store_00",
+        "2024-12-01",
+        112.0484259592494,
+        110.80495114515922,
+        112.75136688445001
+       ],
+       [
+        "store_01",
+        "2023-01-01",
+        98.04276817487397,
+        96.75311668148767,
+        99.01466344532632
+       ],
+       [
+        "store_01",
+        "2023-02-01",
+        101.70886523244145,
+        100.85513719159042,
+        102.5597234119102
+       ],
+       [
+        "store_01",
+        "2023-03-01",
+        101.45317025361811,
+        100.48079143028029,
+        102.6197753750716
+       ],
+       [
+        "store_01",
+        "2023-04-01",
+        104.38211979728922,
+        103.31575911562243,
+        105.34290017679588
+       ],
+       [
+        "store_01",
+        "2023-05-01",
+        104.06233042331469,
+        102.99627518557119,
+        105.03551527207573
+       ],
+       [
+        "store_01",
+        "2023-06-01",
+        102.65850832908617,
+        101.60612407067886,
+        103.55419281850472
+       ],
+       [
+        "store_01",
+        "2023-07-01",
+        100.41264973648937,
+        99.31254427379042,
+        101.29323741802826
+       ],
+       [
+        "store_01",
+        "2023-08-01",
+        99.96260177697441,
+        98.79769584183957,
+        100.97432251085694
+       ],
+       [
+        "store_01",
+        "2023-09-01",
+        100.39688553077492,
+        99.33224330714319,
+        101.29783246739686
+       ],
+       [
+        "store_01",
+        "2023-10-01",
+        100.76919767694959,
+        99.72145010247432,
+        101.57959210442678
+       ],
+       [
+        "store_01",
+        "2023-11-01",
+        99.9345922532545,
+        98.83421335323708,
+        100.76541333292506
+       ],
+       [
+        "store_01",
+        "2023-12-01",
+        101.62746610172883,
+        100.40332181473812,
+        102.77462804257834
+       ],
+       [
+        "store_01",
+        "2024-01-01",
+        105.20496957002725,
+        103.90533758631821,
+        106.14608051068726
+       ],
+       [
+        "store_01",
+        "2024-02-01",
+        107.55616034601168,
+        106.70752167666708,
+        108.89162958240684
+       ],
+       [
+        "store_01",
+        "2024-03-01",
+        107.67592498403043,
+        106.76112090500159,
+        109.06354869254343
+       ],
+       [
+        "store_01",
+        "2024-04-01",
+        110.31167195121142,
+        109.17016298384748,
+        111.26157498422678
+       ],
+       [
+        "store_01",
+        "2024-05-01",
+        108.94470036257691,
+        107.68138938417948,
+        110.02958117670158
+       ],
+       [
+        "store_01",
+        "2024-06-01",
+        108.0317835292739,
+        106.85690632155362,
+        108.99593978863854
+       ],
+       [
+        "store_01",
+        "2024-07-01",
+        108.37415378742487,
+        107.20665998984286,
+        109.56839032289099
+       ],
+       [
+        "store_01",
+        "2024-08-01",
+        108.2608339073828,
+        107.43813110116544,
+        109.37073927853275
+       ],
+       [
+        "store_01",
+        "2024-09-01",
+        105.47393506491946,
+        104.4994804038614,
+        106.34046878565024
+       ],
+       [
+        "store_01",
+        "2024-10-01",
+        108.21152705055505,
+        107.28999543691214,
+        109.10211502943649
+       ],
+       [
+        "store_01",
+        "2024-11-01",
+        108.34841932740022,
+        107.38450161208578,
+        109.42226754223832
+       ],
+       [
+        "store_01",
+        "2024-12-01",
+        109.36128432893251,
+        108.4686432183984,
+        110.23831030039491
+       ],
+       [
+        "store_04",
+        "2023-01-01",
+        94.71953151196429,
+        93.16717045207825,
+        96.15581692578945
+       ],
+       [
+        "store_04",
+        "2023-02-01",
+        98.38562856953176,
+        96.55887834527027,
+        99.80325745702456
+       ],
+       [
+        "store_04",
+        "2023-03-01",
+        98.12993359070846,
+        96.24765557999244,
+        99.53883562583937
+       ],
+       [
+        "store_04",
+        "2023-04-01",
+        101.05888313437954,
+        99.65881490201316,
+        102.84424711219602
+       ],
+       [
+        "store_04",
+        "2023-05-01",
+        100.73909376040501,
+        99.17064935888087,
+        102.3450333098171
+       ],
+       [
+        "store_04",
+        "2023-06-01",
+        99.33527166617648,
+        97.71575336392971,
+        100.99404384102762
+       ],
+       [
+        "store_04",
+        "2023-07-01",
+        97.0894130735797,
+        95.96775326707282,
+        99.13751068655881
+       ],
+       [
+        "store_04",
+        "2023-08-01",
+        96.63936511406472,
+        94.99549311024654,
+        98.28810050527584
+       ],
+       [
+        "store_04",
+        "2023-09-01",
+        97.07364886786523,
+        95.3664278406723,
+        98.64922985221959
+       ],
+       [
+        "store_04",
+        "2023-10-01",
+        97.4459610140399,
+        95.8991252118641,
+        98.74127801409131
+       ],
+       [
+        "store_04",
+        "2023-11-01",
+        96.61135559034483,
+        95.22408186360012,
+        98.57031920132414
+       ],
+       [
+        "store_04",
+        "2023-12-01",
+        98.30422943881914,
+        96.75982699781895,
+        100.10236021042012
+       ],
+       [
+        "store_04",
+        "2024-01-01",
+        101.88173290711755,
+        100.3445156964971,
+        103.69691772073422
+       ],
+       [
+        "store_04",
+        "2024-02-01",
+        104.23292368310202,
+        102.86698536863892,
+        105.28325379765919
+       ],
+       [
+        "store_04",
+        "2024-03-01",
+        104.35268832112074,
+        102.99645261598764,
+        106.42044689805863
+       ],
+       [
+        "store_04",
+        "2024-04-01",
+        106.98843528830176,
+        105.1947838505832,
+        108.57812353400665
+       ],
+       [
+        "store_04",
+        "2024-05-01",
+        105.62146369966723,
+        103.9903536095429,
+        106.94409261857584
+       ],
+       [
+        "store_04",
+        "2024-06-01",
+        104.70854686636422,
+        103.12348718741453,
+        106.2249469963088
+       ],
+       [
+        "store_04",
+        "2024-07-01",
+        105.0509171245152,
+        103.4486804503204,
+        106.72384796470145
+       ],
+       [
+        "store_04",
+        "2024-08-01",
+        104.93759724447312,
+        103.21764300606193,
+        106.78175022458976
+       ],
+       [
+        "store_04",
+        "2024-09-01",
+        102.15069840200978,
+        100.5639089353502,
+        103.771340143761
+       ],
+       [
+        "store_04",
+        "2024-10-01",
+        104.88829038764537,
+        103.37328161050003,
+        106.3380412012295
+       ],
+       [
+        "store_04",
+        "2024-11-01",
+        105.02518266449057,
+        103.5843680922475,
+        106.74810991409734
+       ],
+       [
+        "store_04",
+        "2024-12-01",
+        106.03804766602283,
+        104.65322698966514,
+        107.61073100314667
+       ],
+       [
+        "store_05",
+        "2023-01-01",
+        103.77153697698881,
+        102.01990192572424,
+        105.12670315458865
+       ],
+       [
+        "store_05",
+        "2023-02-01",
+        107.43763403455631,
+        105.92053975512422,
+        109.05594329634766
+       ],
+       [
+        "store_05",
+        "2023-03-01",
+        107.18193905573298,
+        105.56291334009997,
+        108.81530559664246
+       ],
+       [
+        "store_05",
+        "2023-04-01",
+        110.11088859940408,
+        108.19078660831666,
+        111.46158575784621
+       ],
+       [
+        "store_05",
+        "2023-05-01",
+        109.79109922542953,
+        108.37326529383407,
+        111.53805144288785
+       ],
+       [
+        "store_05",
+        "2023-06-01",
+        108.387277131201,
+        106.7170240137364,
+        109.86421655276857
+       ],
+       [
+        "store_05",
+        "2023-07-01",
+        106.14141853860423,
+        104.5474866556487,
+        107.7988217743324
+       ],
+       [
+        "store_05",
+        "2023-08-01",
+        105.69137057908924,
+        103.85289854148057,
+        107.24042800534458
+       ],
+       [
+        "store_05",
+        "2023-09-01",
+        106.12565433288975,
+        104.45133562792407,
+        107.59813728858009
+       ],
+       [
+        "store_05",
+        "2023-10-01",
+        106.49796647906442,
+        105.08842997449578,
+        108.04243675023577
+       ],
+       [
+        "store_05",
+        "2023-11-01",
+        105.66336105536935,
+        103.92791286314645,
+        107.27533356547262
+       ],
+       [
+        "store_05",
+        "2023-12-01",
+        107.35623490384367,
+        105.31706553907824,
+        108.76806842944659
+       ],
+       [
+        "store_05",
+        "2024-01-01",
+        110.93373837214207,
+        109.32923231801163,
+        112.65202406688742
+       ],
+       [
+        "store_05",
+        "2024-02-01",
+        113.28492914812654,
+        112.20577364553012,
+        114.78091631455479
+       ],
+       [
+        "store_05",
+        "2024-03-01",
+        113.40469378614526,
+        111.60174825686155,
+        115.10956787356874
+       ],
+       [
+        "store_05",
+        "2024-04-01",
+        116.04044075332625,
+        114.340136528466,
+        117.75490890014969
+       ],
+       [
+        "store_05",
+        "2024-05-01",
+        114.67346916469178,
+        112.9707855472368,
+        116.12928223789358
+       ],
+       [
+        "store_05",
+        "2024-06-01",
+        113.76055233138875,
+        112.18816414616384,
+        115.49287729587229
+       ],
+       [
+        "store_05",
+        "2024-07-01",
+        114.10292258953972,
+        112.28227480820307,
+        115.66172050126805
+       ],
+       [
+        "store_05",
+        "2024-08-01",
+        113.98960270949765,
+        112.17544619173522,
+        115.77530226309145
+       ],
+       [
+        "store_05",
+        "2024-09-01",
+        111.20270386703433,
+        109.38245400042263,
+        112.76342422352606
+       ],
+       [
+        "store_05",
+        "2024-10-01",
+        113.94029585266989,
+        112.14474381132676,
+        115.45009556342546
+       ],
+       [
+        "store_05",
+        "2024-11-01",
+        114.0771881295151,
+        112.49539244997132,
+        115.71005545961586
+       ],
+       [
+        "store_05",
+        "2024-12-01",
+        115.09005313104736,
+        113.40919991932903,
+        116.3287983499434
+       ]
+      ],
+      "time_dim": "month",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": {
+    "dim": "store",
+    "keep": [
+     "store_00",
+     "store_01",
+     "store_04",
+     "store_05"
+    ]
+   }
+  },
+  "predictive": {
+   "counterfactual": null,
+   "fields": null,
+   "forecast": null,
+   "horizon": null,
+   "inline": false,
+   "mode": "predict",
+   "output": {
+    "kind": "predictive",
+    "summary": [
+     "mean",
+     "hdi_90"
+    ]
+   },
+   "probe_case": "predict_in_sample__predictive",
+   "result": {
+    "aggregation_flagged": false,
+    "bundle_id": "981536ac484409461050b00d02107b65",
+    "groups": [
+     "/summary"
+    ],
+    "issues": [],
+    "kind": "predictive",
+    "mode": "predict",
+    "names": "dataset",
+    "output_space": {
+     "y_hat": "raw"
+    },
+    "representation": "draws",
+    "retransform": {
+     "y_hat": "none"
+    },
+    "units": "original"
+   },
+   "summary": {
+    "tables": [
+     {
+      "columns": [
+       "store",
+       "month",
+       "mean",
+       "hdi_90_lower",
+       "hdi_90_upper"
+      ],
+      "dims": [
+       "store",
+       "month"
+      ],
+      "rows": [
+       [
+        "store_00",
+        "2023-01-01",
+        100.94541131465706,
+        97.72411794689664,
+        104.93661236579005
+       ],
+       [
+        "store_00",
+        "2023-02-01",
+        104.39781026662442,
+        101.61182785017678,
+        108.62209114236755
+       ],
+       [
+        "store_00",
+        "2023-03-01",
+        103.87413976935353,
+        100.69669292881387,
+        107.41299516231778
+       ],
+       [
+        "store_00",
+        "2023-04-01",
+        107.03561815748981,
+        103.25688723741233,
+        110.43899243467048
+       ],
+       [
+        "store_00",
+        "2023-05-01",
+        106.18174059952567,
+        102.80588528883247,
+        109.33047387010157
+       ],
+       [
+        "store_00",
+        "2023-06-01",
+        105.1664887566337,
+        101.8634993195238,
+        108.71720824716637
+       ],
+       [
+        "store_00",
+        "2023-07-01",
+        103.01101200118177,
+        99.65142161632656,
+        106.53110071190599
+       ],
+       [
+        "store_00",
+        "2023-08-01",
+        102.42147976700443,
+        98.95100236189842,
+        105.5395482406821
+       ],
+       [
+        "store_00",
+        "2023-09-01",
+        102.9296747640601,
+        99.63095317087792,
+        106.44212741116495
+       ],
+       [
+        "store_00",
+        "2023-10-01",
+        103.41695923705868,
+        99.64754987444854,
+        106.6797265395733
+       ],
+       [
+        "store_00",
+        "2023-11-01",
+        102.51384066770544,
+        99.46475591281683,
+        105.69716343231214
+       ],
+       [
+        "store_00",
+        "2023-12-01",
+        104.20036782246247,
+        101.0343893566719,
+        108.32850429871225
+       ],
+       [
+        "store_00",
+        "2024-01-01",
+        108.1097941511331,
+        105.18456705461679,
+        112.36527184644874
+       ],
+       [
+        "store_00",
+        "2024-02-01",
+        110.24017020115666,
+        106.70921831555964,
+        113.43164871256661
+       ],
+       [
+        "store_00",
+        "2024-03-01",
+        110.12439209535259,
+        106.56708501687999,
+        113.90703667780842
+       ],
+       [
+        "store_00",
+        "2024-04-01",
+        112.9692197817367,
+        109.79808875934881,
+        116.83291000895312
+       ],
+       [
+        "store_00",
+        "2024-05-01",
+        111.61363837360314,
+        107.2556159699393,
+        114.8091758598546
+       ],
+       [
+        "store_00",
+        "2024-06-01",
+        110.83020367792109,
+        107.67140743318522,
+        114.42993808918852
+       ],
+       [
+        "store_00",
+        "2024-07-01",
+        110.94653426278586,
+        107.70991979998901,
+        114.67685314385604
+       ],
+       [
+        "store_00",
+        "2024-08-01",
+        110.86530218241603,
+        107.61523258336284,
+        113.95438207022401
+       ],
+       [
+        "store_00",
+        "2024-09-01",
+        107.93229674660105,
+        104.35090754925932,
+        111.28935417485816
+       ],
+       [
+        "store_00",
+        "2024-10-01",
+        111.11490484537357,
+        107.81297841038212,
+        113.9969304516355
+       ],
+       [
+        "store_00",
+        "2024-11-01",
+        110.90934238158069,
+        107.25897728161647,
+        114.04082853236179
+       ],
+       [
+        "store_00",
+        "2024-12-01",
+        112.01093572324578,
+        109.20250450090157,
+        115.75841789008078
+       ],
+       [
+        "store_01",
+        "2023-01-01",
+        98.47485168435476,
+        94.39678875054517,
+        101.74146832780944
+       ],
+       [
+        "store_01",
+        "2023-02-01",
+        101.73964514247162,
+        98.01867063392223,
+        105.04127560291292
+       ],
+       [
+        "store_01",
+        "2023-03-01",
+        101.38302066063717,
+        97.38211216659428,
+        104.27749423762398
+       ],
+       [
+        "store_01",
+        "2023-04-01",
+        104.4631581975249,
+        101.18358429139187,
+        107.978145523058
+       ],
+       [
+        "store_01",
+        "2023-05-01",
+        104.15097125929077,
+        100.62648571967699,
+        107.92191122535033
+       ],
+       [
+        "store_01",
+        "2023-06-01",
+        102.84026767427159,
+        99.59660649210798,
+        106.12775779077764
+       ],
+       [
+        "store_01",
+        "2023-07-01",
+        100.43278189358307,
+        96.962445191603,
+        103.8023223057121
+       ],
+       [
+        "store_01",
+        "2023-08-01",
+        99.7834833034933,
+        96.74339707410452,
+        103.445527872888
+       ],
+       [
+        "store_01",
+        "2023-09-01",
+        100.44158941577338,
+        97.00188158089024,
+        103.80877400619116
+       ],
+       [
+        "store_01",
+        "2023-10-01",
+        100.7975595675919,
+        97.26676038153548,
+        104.3703950208614
+       ],
+       [
+        "store_01",
+        "2023-11-01",
+        100.08658497165925,
+        96.37852775704066,
+        103.18882646953517
+       ],
+       [
+        "store_01",
+        "2023-12-01",
+        101.80335476302696,
+        98.53321837255372,
+        105.80442593189505
+       ],
+       [
+        "store_01",
+        "2024-01-01",
+        105.35351385811315,
+        101.99527903084103,
+        109.55692539810799
+       ],
+       [
+        "store_01",
+        "2024-02-01",
+        107.66818303296739,
+        104.46109579926733,
+        111.47019495065824
+       ],
+       [
+        "store_01",
+        "2024-03-01",
+        107.49258993073992,
+        104.4835572008968,
+        111.28517638157993
+       ],
+       [
+        "store_01",
+        "2024-04-01",
+        110.22378515106361,
+        106.05212321443354,
+        113.95314761988281
+       ],
+       [
+        "store_01",
+        "2024-05-01",
+        109.25011756319735,
+        105.99888066175646,
+        112.59729098201757
+       ],
+       [
+        "store_01",
+        "2024-06-01",
+        108.18156014892715,
+        104.41371891321567,
+        111.8253063630681
+       ],
+       [
+        "store_01",
+        "2024-07-01",
+        108.25546939491493,
+        104.96408252165304,
+        111.45815689746804
+       ],
+       [
+        "store_01",
+        "2024-08-01",
+        108.1307062110575,
+        104.04281725311269,
+        111.23104490572896
+       ],
+       [
+        "store_01",
+        "2024-09-01",
+        105.71928712896408,
+        102.33660375653324,
+        108.6942369228662
+       ],
+       [
+        "store_01",
+        "2024-10-01",
+        108.22691262655542,
+        105.04735998809024,
+        111.51171200390719
+       ],
+       [
+        "store_01",
+        "2024-11-01",
+        108.41254070834825,
+        105.16204756908877,
+        112.29771808198139
+       ],
+       [
+        "store_01",
+        "2024-12-01",
+        109.40005859539932,
+        106.2791981110909,
+        112.682226872472
+       ],
+       [
+        "store_04",
+        "2023-01-01",
+        93.63257792467896,
+        90.53491156461203,
+        97.7927033480949
+       ],
+       [
+        "store_04",
+        "2023-02-01",
+        97.46250875627739,
+        94.10685881539759,
+        100.31485858584026
+       ],
+       [
+        "store_04",
+        "2023-03-01",
+        97.21007188950705,
+        93.21918295216253,
+        100.19236987246197
+       ],
+       [
+        "store_04",
+        "2023-04-01",
+        99.8654478842446,
+        96.77624152246091,
+        103.79808472090254
+       ],
+       [
+        "store_04",
+        "2023-05-01",
+        99.81913273813765,
+        96.17133005040446,
+        103.17001594929563
+       ],
+       [
+        "store_04",
+        "2023-06-01",
+        98.1631489388505,
+        94.65840743633487,
+        100.8776995662508
+       ],
+       [
+        "store_04",
+        "2023-07-01",
+        96.02794577262874,
+        92.97227060914551,
+        99.2898344024263
+       ],
+       [
+        "store_04",
+        "2023-08-01",
+        95.79746691413465,
+        92.53712431606542,
+        99.64526009921346
+       ],
+       [
+        "store_04",
+        "2023-09-01",
+        96.3260183704796,
+        93.35312981803922,
+        100.45520554302738
+       ],
+       [
+        "store_04",
+        "2023-10-01",
+        96.22891859228577,
+        92.86504148673085,
+        100.14018240078187
+       ],
+       [
+        "store_04",
+        "2023-11-01",
+        95.37035169920446,
+        92.24541587701043,
+        98.70902482925786
+       ],
+       [
+        "store_04",
+        "2023-12-01",
+        98.18843057172515,
+        94.7886948604938,
+        101.13429754470549
+       ],
+       [
+        "store_04",
+        "2024-01-01",
+        100.7083269133619,
+        97.04251175246031,
+        104.16564452973125
+       ],
+       [
+        "store_04",
+        "2024-02-01",
+        104.24345357200451,
+        100.80784323994831,
+        107.48040884200074
+       ],
+       [
+        "store_04",
+        "2024-03-01",
+        108.89181054460569,
+        105.37064388273859,
+        112.34609937647315
+       ],
+       [
+        "store_04",
+        "2024-04-01",
+        111.72699102975504,
+        108.00160064056934,
+        115.89487947210479
+       ],
+       [
+        "store_04",
+        "2024-05-01",
+        108.9128426455503,
+        104.85213401677213,
+        112.48166641093296
+       ],
+       [
+        "store_04",
+        "2024-06-01",
+        108.85597857016884,
+        105.29256375433768,
+        112.25578623809545
+       ],
+       [
+        "store_04",
+        "2024-07-01",
+        107.03058972924944,
+        103.88444761501405,
+        110.32813860661834
+       ],
+       [
+        "store_04",
+        "2024-08-01",
+        108.1953328891378,
+        104.64764695083146,
+        112.45846391889344
+       ],
+       [
+        "store_04",
+        "2024-09-01",
+        106.2285049736065,
+        102.1353912919391,
+        109.41915665723575
+       ],
+       [
+        "store_04",
+        "2024-10-01",
+        109.25088252772886,
+        105.73184632632316,
+        112.78838249577434
+       ],
+       [
+        "store_04",
+        "2024-11-01",
+        109.33562965636989,
+        106.24580939373145,
+        112.66746366396252
+       ],
+       [
+        "store_04",
+        "2024-12-01",
+        110.18698760279793,
+        106.4666399907121,
+        113.54388151855963
+       ],
+       [
+        "store_05",
+        "2023-01-01",
+        102.80828852501426,
+        99.70343836336964,
+        106.09569548706428
+       ],
+       [
+        "store_05",
+        "2023-02-01",
+        106.40834908322762,
+        103.28731585753876,
+        109.70770562144799
+       ],
+       [
+        "store_05",
+        "2023-03-01",
+        105.89356601261065,
+        101.95148272040726,
+        108.92990832097166
+       ],
+       [
+        "store_05",
+        "2023-04-01",
+        109.025242632769,
+        105.36635459854087,
+        112.11221632138533
+       ],
+       [
+        "store_05",
+        "2023-05-01",
+        108.83005482911973,
+        105.4904724860737,
+        112.55945727419159
+       ],
+       [
+        "store_05",
+        "2023-06-01",
+        107.24202223281134,
+        104.1433403819616,
+        110.62207720122379
+       ],
+       [
+        "store_05",
+        "2023-07-01",
+        105.00596122486877,
+        101.69145236443292,
+        108.30656038787413
+       ],
+       [
+        "store_05",
+        "2023-08-01",
+        104.56494801893808,
+        101.29694537852626,
+        107.93814601743527
+       ],
+       [
+        "store_05",
+        "2023-09-01",
+        104.57166983587304,
+        101.02379342797092,
+        107.85902980474617
+       ],
+       [
+        "store_05",
+        "2023-10-01",
+        105.23169199070553,
+        102.21264626620462,
+        108.29386768830453
+       ],
+       [
+        "store_05",
+        "2023-11-01",
+        104.45552406871208,
+        101.16968134278414,
+        107.52454957744993
+       ],
+       [
+        "store_05",
+        "2023-12-01",
+        107.55214518359297,
+        104.69573051561456,
+        111.55234079336189
+       ],
+       [
+        "store_05",
+        "2024-01-01",
+        109.72210962203013,
+        106.45394945928251,
+        112.9780546531738
+       ],
+       [
+        "store_05",
+        "2024-02-01",
+        113.1510313907869,
+        109.25582127860437,
+        116.9578111805625
+       ],
+       [
+        "store_05",
+        "2024-03-01",
+        118.25180354999537,
+        114.32275472255478,
+        121.798444584714
+       ],
+       [
+        "store_05",
+        "2024-04-01",
+        120.76461000860724,
+        117.31095761588763,
+        124.93407603915765
+       ],
+       [
+        "store_05",
+        "2024-05-01",
+        117.70637435999392,
+        114.77443917808236,
+        121.83692452250641
+       ],
+       [
+        "store_05",
+        "2024-06-01",
+        118.13437756022353,
+        115.06426996043616,
+        121.9014124288121
+       ],
+       [
+        "store_05",
+        "2024-07-01",
+        116.42536460959032,
+        112.55111680068228,
+        119.76771596715409
+       ],
+       [
+        "store_05",
+        "2024-08-01",
+        117.47514456063419,
+        114.03403572812041,
+        121.29179189499429
+       ],
+       [
+        "store_05",
+        "2024-09-01",
+        115.36184858870705,
+        111.92120551845878,
+        119.01726581275695
+       ],
+       [
+        "store_05",
+        "2024-10-01",
+        118.40237089703247,
+        115.80673507176057,
+        121.4070501622974
+       ],
+       [
+        "store_05",
+        "2024-11-01",
+        118.36151180422581,
+        114.67201832816811,
+        121.93426299339185
+       ],
+       [
+        "store_05",
+        "2024-12-01",
+        119.26704532953362,
+        116.23624684047273,
+        122.72541718145428
+       ]
+      ],
+      "time_dim": "month",
+      "variable": "y_hat"
+     }
+    ],
+    "truncated": false
+   },
+   "trimmed": {
+    "dim": "store",
+    "keep": [
+     "store_00",
+     "store_01",
+     "store_04",
+     "store_05"
+    ]
+   }
+  }
+ }
+}

@@ -18,7 +18,8 @@ optimisation and About cards, v0.5), :data:`M4_ENDPOINTS` (tree datasets) and
 :data:`V011_ENDPOINTS` (run tracking, v0.11) and :data:`V014_ENDPOINTS` (media, run
 comparison, experiments and saved views, v0.14) and :data:`V015_ENDPOINTS` (resumable uploads and
 image collections, v0.15) and :data:`V016_ENDPOINTS` (client dashboards and share links, v0.16)
-are the machine-readable endpoint tables;
+and :data:`V017_ENDPOINTS` (dashboards for any model type, v0.17) are the machine-readable
+endpoint tables;
 :data:`ENDPOINTS` (= :data:`ALL_ENDPOINTS`) is all of them. The server's route table and the
 reference docs are tested against them. :data:`ROUTE_ACCESS` gives every operation its
 tenant/project scope and the permission it checks. From v0.3 every M1 resource is
@@ -94,6 +95,15 @@ from mapi_spec.catalog import ModelCatalogEntry, PlotCatalogEntry, StepCatalogEn
 from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
+from mapi_spec.dashboard_v2 import (
+    BatchSubmit,
+    BatchTemplate,
+    DashboardPresets,
+    DashboardSpecV2,
+    DashboardUpgrade,
+    ScenarioRowsRequest,
+    SourceCatalog,
+)
 from mapi_spec.dashboards import (
     SHARE_SESSION_HEADER,
     ActualsSubmit,
@@ -326,6 +336,7 @@ __all__ = [
     "V014_ENDPOINTS",
     "V015_ENDPOINTS",
     "V016_ENDPOINTS",
+    "V017_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -338,6 +349,8 @@ __all__ = [
     "ArtifactLink",
     "AssemblySource",
     "AuditEvent",
+    "BatchSubmit",
+    "BatchTemplate",
     "BlobMissing",
     "BlobQuery",
     "CatalogAbout",
@@ -359,12 +372,15 @@ __all__ = [
     "DashboardDraftUpdate",
     "DashboardGrant",
     "DashboardGrid",
+    "DashboardPresets",
     "DashboardRefitRequest",
     "DashboardRevision",
     "DashboardShare",
     "DashboardShareCreate",
     "DashboardShareCreated",
+    "DashboardSpecV2",
     "DashboardSummary",
+    "DashboardUpgrade",
     "DashboardValidation",
     "DataExploreRequest",
     "Dataset",
@@ -495,6 +511,7 @@ __all__ = [
     "RunViewQuery",
     "SavedPlot",
     "SavedPlotCreate",
+    "ScenarioRowsRequest",
     "ScenarioSave",
     "ScheduleCreate",
     "ScheduleUpdate",
@@ -514,6 +531,7 @@ __all__ = [
     "SignupReviewDecision",
     "Snippet",
     "SnippetSet",
+    "SourceCatalog",
     "SpecCreate",
     "SpecDoc",
     "SpecRevision",
@@ -4524,7 +4542,8 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     ),
     EndpointDecl(
         "POST", "/v1/dashboards", "create_dashboard", "Create a dashboard draft", "Dashboard",
-        201, request="DashboardCreate", errors=(*_BODY, _E.CONFLICT), headers=_PH,
+        201, request="DashboardCreate",
+        errors=(*_BODY, _E.CONFLICT, _E.DASHBOARD_LAYOUT_RETIRED), headers=_PH,
     ),
     EndpointDecl(
         "GET", _DSH, "get_dashboard",
@@ -4535,7 +4554,8 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
         "PUT", _DSH + "/draft", "update_dashboard_draft",
         "Replace the draft spec (If-Match: the draft_etag)", "Dashboard", 200,
         request="DashboardDraftUpdate",
-        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED),
+        errors=(*_BODY, *_NF, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED,
+                _E.DASHBOARD_LAYOUT_RETIRED),
         headers=(*_PH, _IF_MATCH),
     ),
     EndpointDecl(
@@ -4734,6 +4754,111 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 """The v0.16 endpoint table (client dashboards, readouts, refit requests and share links;
 part of :data:`ENDPOINTS`)."""
 
+# ======================================================== v0.17: dashboards for any model type
+#
+# Layout 2 DTOs live in mapi_spec.dashboard_v2 (re-exported here). The existing actuals routes
+# dispatch on the layout; /grid, /whatif:evaluate and /scenarios answer
+# DASHBOARD_INPUT_DISABLED on layout 2 presets other than mmm_planner.
+
+_V017_RUN_ERRORS = (*_DASH_RUN_ERRORS, _E.DASHBOARD_INPUT_INVALID, _E.PAYLOAD_TOO_LARGE)
+
+V017_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # analyst: presets, the source catalog and the layout 2 upgrade
+    EndpointDecl(
+        "GET", "/v1/dashboards:presets", "list_dashboard_presets",
+        "Presets that fit a model version (or an endpoint), best first, and the compiled "
+        "layout 2 spec of the first (nothing is saved)", "DashboardPresets", 200,
+        errors=(*_NF, *_BODY), headers=_PH, query=("model_id", "version", "alias"),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/sources", "get_dashboard_sources",
+        "What the draft's model version offers to panels and inputs (outputs, metrics, "
+        "scorecard checks, pictures, inputs)", "SourceCatalog", 200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + ":upgrade", "upgrade_dashboard",
+        "Convert a layout 1 draft to layout 2 and save it as the draft (If-Match: the "
+        "draft_etag; SCHEMA_INVALID with the issues when it cannot be converted); publish it "
+        "as usual", "DashboardUpgrade", 200,
+        errors=(*_NF, *_BODY, _E.DASHBOARD_SPEC_STALE, _E.PRECONDITION_FAILED, _E.CONFLICT),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    # inputs (clients too): scenario rows, batch scoring, downloads, pictures
+    EndpointDecl(
+        "POST", _DSH + "/predictions", "submit_dashboard_predictions",
+        "Score scenario rows (values checked against the published revision): a private "
+        "prediction readout (Prefer: wait=N -> 200 with the readout if done, else 202 with "
+        "its header)", "Readout", 202, request="ScenarioRowsRequest",
+        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/readouts/{seq}:keep", "keep_dashboard_readout",
+        "Keep a tried case (a private prediction readout): it no longer expires and waits "
+        "for an editor's review before it can enter the history (its owner or an editor)",
+        "ReadoutHeader", 200, errors=(*_NF, _E.CONFLICT), headers=_PH,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/batch/template", "get_dashboard_batch_template",
+        "The columns of a batch file, an example CSV and the row cap", "BatchTemplate", 200,
+        errors=(*_NF, _E.DASHBOARD_INPUT_DISABLED), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/batch", "submit_dashboard_batch",
+        "Score a file of new cases: a private batch readout with a summary and a "
+        "predictions download (Prefer: wait=N -> 200 with the readout if done, else 202 "
+        "with its header)", "Readout", 202, request="BatchSubmit",
+        errors=(*_BODY, *_NF, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE),
+        headers=(*_PH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/readouts/{seq}/predictions.csv", "download_dashboard_predictions",
+        "The predictions of a batch readout as CSV (its owner or an editor)", None, 200,
+        errors=(*_NF, _E.DASHBOARD_DOWNLOAD_GONE), headers=_PH, streaming=True,
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/assets/{asset_id}", "get_dashboard_asset",
+        "A picture of the dashboard (PNG): a client reads only those of the published "
+        "revision, members those of any revision", None, 200, errors=_NF, headers=_PH,
+    ),
+    # share links (public; the session in X-Mapi-Share authorises)
+    EndpointDecl(
+        "POST", "/v1/shared/predictions", "submit_shared_predictions",
+        "Public: score scenario rows as this link's private readout (Prefer: wait=N -> 200 "
+        "with the readout if done, else 202 with its header)", "Readout", 202,
+        request="ScenarioRowsRequest",
+        errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/batch/template", "get_shared_batch_template",
+        "Public: the batch file template (the link must allow batch scoring)",
+        "BatchTemplate", 200, errors=(*_SHARE_ERRORS, _E.DASHBOARD_INPUT_DISABLED),
+        headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/batch", "submit_shared_batch",
+        "Public: score a file of new cases as this link's private readout (Prefer: wait=N "
+        "-> 200 with the readout if done, else 202 with its header)", "Readout", 202,
+        request="BatchSubmit",
+        errors=(*_BODY, *_SHARE_ERRORS, *_V017_RUN_ERRORS, _E.DASHBOARD_BATCH_TOO_LARGE),
+        headers=(*_SH, IDEMPOTENCY_KEY_HEADER, PREFER_HEADER),
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/readouts/{seq}/predictions.csv", "download_shared_predictions",
+        "Public: the predictions CSV of this link's own batch readout", None, 200,
+        errors=(*_NF, *_SHARE_ERRORS, _E.DASHBOARD_DOWNLOAD_GONE), headers=_SH,
+        streaming=True,
+    ),
+    EndpointDecl(
+        "GET", "/v1/shared/assets/{asset_id}", "get_shared_asset",
+        "Public: a picture of the shared dashboard (PNG)", None, 200,
+        errors=(*_NF, *_SHARE_ERRORS), headers=_SH,
+    ),
+)  # fmt: skip
+"""The v0.17 endpoint table (layout 2 presets, the source catalog, the upgrade, scenario rows,
+batch scoring, predictions downloads and pictures; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
@@ -4745,9 +4870,10 @@ ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     + V014_ENDPOINTS
     + V015_ENDPOINTS
     + V016_ENDPOINTS
+    + V017_ENDPOINTS
 )
-"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16); the
-server serves every row."""
+"""Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16 +
+v0.17); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -4959,6 +5085,31 @@ Drafts, publishing, review, refresh and refit requests need an editor; publishin
 links with inputs, also need the runner role (handler checks: they spend the publisher's
 compute). Refit approval needs the runner role (``also``)."""
 
+_V017_ACCESS: Final[dict[str, RouteAccess]] = {
+    # the presets read a model version (or an endpoint) of the project: editors who create
+    "list_dashboard_presets": _p(_RK.DASHBOARD, _AC.CREATE, (_RK.MODEL, _AC.READ)),
+    "get_dashboard_sources": _dash(_AC.UPDATE),
+    "upgrade_dashboard": _dash(_AC.UPDATE),
+    "submit_dashboard_predictions": _dash(_AC.RUN),
+    # the handler also requires the readout's own actor or an editor
+    "keep_dashboard_readout": _dash(_AC.RUN),
+    "get_dashboard_batch_template": _dash(_AC.RUN),
+    "submit_dashboard_batch": _dash(_AC.RUN),
+    # the handler also requires the readout's own actor (same client, same link) or an editor
+    "download_dashboard_predictions": _dash(_AC.READ),
+    "get_dashboard_asset": _dash(_AC.READ),
+    "submit_shared_predictions": _PUBLIC,
+    "get_shared_batch_template": _PUBLIC,
+    "submit_shared_batch": _PUBLIC,
+    "download_shared_predictions": _PUBLIC,
+    "get_shared_asset": _PUBLIC,
+}
+"""Access rules of :data:`V017_ENDPOINTS`, as :data:`_V016_ACCESS`: inputs need ``run`` on
+``dashboard`` (clients too: the handler checks the published spec and, for a client, the
+grant); keeping a tried case needs ``run`` (the handler checks the readout's owner, or an
+editor); downloads and pictures need ``read`` (the handler checks the readout's owner);
+presets, sources and the upgrade need an editor."""
+
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
     "health": _PUBLIC,
@@ -5119,6 +5270,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     **_V015_ACCESS,
     # v0.16 client dashboards, readouts, refit requests, share links
     **_V016_ACCESS,
+    # v0.17 dashboards for any model type
+    **_V017_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).
@@ -5153,6 +5306,13 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "submit_dashboard_actuals",
         "list_dashboard_readouts",
         "get_dashboard_readout",
+        # v0.17: scenario rows, batch scoring, their downloads and the revision's pictures
+        "submit_dashboard_predictions",
+        "keep_dashboard_readout",
+        "get_dashboard_batch_template",
+        "submit_dashboard_batch",
+        "download_dashboard_predictions",
+        "get_dashboard_asset",
         # the caller and the browser session (the portal's project switcher reads /v1/me)
         "get_me",
         "auth_login",
@@ -5161,12 +5321,12 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "auth_session",
     }
 )
-"""Every operation a ``client`` may reach (v0.16; fail closed). The server refuses any other
-project-scoped operation (``404``) when the caller's effective role in the project is
-``client``, and any other signed-in or tenant operation when every membership of the
-caller is ``client``. Refit-request decisions, drafts, grants and share-link management are
-not in the set; neither are the catalog, guided, workflow, governance, project and tenant
-listings."""
+"""Every operation a ``client`` may reach (v0.16, and the v0.17 inputs and keeping a tried
+case; fail closed). The server refuses any other project-scoped operation (``404``) when the
+caller's effective role in the project is ``client``, and any other signed-in or tenant
+operation when every membership of the caller is ``client``. Refit-request decisions,
+drafts, grants and share-link management are not in the set; neither are the catalog,
+guided, workflow, governance, project and tenant listings."""
 
 
 def route_access(operation_id: str) -> RouteAccess:

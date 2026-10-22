@@ -1,7 +1,10 @@
 /**
- * New dashboard: a title, a source and the KPI. The channels come from the source's response
- * grid (or are typed in for a model without one); the rest of the draft takes the defaults
- * and is edited on the Setup and Inputs tabs.
+ * New dashboard (v0.17: always layout 2): a title, a source, and a layout. The app asks which
+ * layouts fit the source's model (`GET /v1/dashboards:presets`, best first, with plain reasons
+ * and the inputs each cannot offer) and starts from the compiled draft of the suggested one;
+ * another layout is applied to that draft in the browser (`switchPreset`). Nothing asks for
+ * channels: the media planner takes them from the model's response grid. Everything else is
+ * edited on the Setup and Inputs tabs.
  */
 import { Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -9,16 +12,19 @@ import { useState, type FormEvent } from "react";
 import { useEndpoints } from "@/api/integrations";
 import { useModels, useModelVersions } from "@/api/queries";
 import { ErrorNotice, Spinner } from "@/components/common";
+import { InlineMessage, TagWord } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/overlays";
 import { Field, Input, NativeSelect } from "@/components/ui/primitives";
+import { cn } from "@/lib/utils";
 
-import { useCreateDashboard } from "../api";
-import type { Dashboard, DashboardSource, KpiDef } from "../types";
+import { useCreateDashboard, useDashboardPresets } from "../api";
+import type { Dashboard, DashboardSource, DashboardSpecV2, PresetKey } from "../types";
+import { presetRefOf } from "./setup-v2";
 import { useSourceGrid } from "./source";
-import { channelLabel, defaultSpec, issueAt, MAX_TITLE, nameFromTitle, NAME_RE, specIssues, UNIT_LABEL } from "./spec-form";
-
-const UNITS = ["currency", "count", "ratio", "percent"] as const;
+import { issueAt, MAX_TITLE, nameFromTitle, NAME_RE, specIssues } from "./spec-form";
+import { PRESET_WORDS, presetSwitchReason, switchPreset } from "./spec-form-v2";
+import { PlainIssues } from "./upgrade-banner";
 
 export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (d: Dashboard) => void }) {
   const create = useCreateDashboard();
@@ -30,11 +36,7 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
   const [alias, setAlias] = useState<string | null>(null);
   const [modelId, setModelId] = useState<string | null>(null);
   const [version, setVersion] = useState<number | null>(null);
-  const [kpiVar, setKpiVar] = useState<string | null>(null);
-  const [kpiLabel, setKpiLabel] = useState<string | null>(null);
-  const [unit, setUnit] = useState<KpiDef["unit"]>("currency");
-  const [currency, setCurrency] = useState("EUR");
-  const [typed, setTyped] = useState("");
+  const [picked, setPicked] = useState<{ ref: string; preset: PresetKey } | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const effAlias = alias ?? endpoints.data?.items[0]?.alias ?? null;
@@ -42,26 +44,27 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
   const versions = useModelVersions(kind === "model_version" ? (effModel ?? undefined) : undefined);
   const effVersion = version ?? versions.data?.items.reduce((m, v) => Math.max(m, v.version), 0) ?? null;
   const source: DashboardSource = kind === "endpoint" ? { kind, alias: effAlias } : { kind, model_id: effModel, version: effVersion || null };
+  const ref = presetRefOf(source);
+  const refKey = JSON.stringify(ref);
+  const presets = useDashboardPresets(ref);
   const grid = useSourceGrid(source);
-  const variable = kpiVar ?? grid.kpi ?? "";
-  const label = kpiLabel ?? (variable ? channelLabel(variable) : "");
-  const channels = grid.channels ?? typed.split(/[\s,]+/).filter(Boolean);
+  const suggestions = presets.data?.suggestions ?? [];
+  const base = presets.data?.spec ?? null;
+  const chosen: PresetKey | null = (picked?.ref === refKey ? picked.preset : null) ?? base?.preset ?? null;
+  const ctx = { gridChannels: grid.channels };
+  const spec: DashboardSpecV2 | null = base && chosen ? { ...(chosen === base.preset ? base : switchPreset(base, chosen, ctx).spec), title: title.trim(), source } : null;
+  const issues = spec ? specIssues(spec) : [];
   const effName = name ?? nameFromTitle(title);
-  const spec = defaultSpec({
-    title,
-    source,
-    kpi: { variable, label, unit, currency: unit === "currency" ? currency.trim().toUpperCase() : null, decimals: 0 },
-    channels,
-    hasGrid: Boolean(grid.channels),
-  });
-  const issues = specIssues(spec, { gridChannels: grid.channels });
   const nameError = NAME_RE.test(effName) ? undefined : "Use letters, digits, _, . and -. Start with a letter.";
   const err = (p: string, deep = false) => (submitted ? issueAt(issues, p, deep) : undefined);
+  const titleError = submitted && !title.trim() ? "Type a title." : err("/title");
+  const loading = ref !== null && presets.isPending;
+  const noSpec = presets.isSuccess && !base;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (issues.length || nameError) return;
+    if (!spec || issues.length || nameError || !title.trim()) return;
     create.mutate({ name: effName, spec }, { onSuccess: onCreated });
   };
 
@@ -69,11 +72,11 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent wide>
         <DialogTitle>New client dashboard</DialogTitle>
-        <DialogDescription>Choose the model and the KPI. You can change everything later. Nobody outside your team sees the dashboard before you publish it.</DialogDescription>
+        <DialogDescription>Choose the model and a layout. You can change everything later. Nobody outside your team sees the dashboard before you publish it.</DialogDescription>
         <form className="grid gap-5" onSubmit={submit} noValidate>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title" htmlFor="nd-title" error={err("/title")} hint="The client sees the title.">
-              <Input id="nd-title" autoFocus maxLength={MAX_TITLE} placeholder="Weekly media readout" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Field label="Title" htmlFor="nd-title" error={titleError} hint="The client sees the title.">
+              <Input id="nd-title" autoFocus maxLength={MAX_TITLE} placeholder="Monthly sales forecast" value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
             <Field label="Name" htmlFor="nd-name" error={submitted ? nameError : undefined} hint="Only your team sees the name. It must be unique in the project.">
               <Input id="nd-name" className="font-mono" maxLength={128} value={effName} onChange={(e) => setName(e.target.value.trim())} />
@@ -128,50 +131,73 @@ export function NewDashboardDialog({ onClose, onCreated }: { onClose: () => void
               </div>
             )}
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="KPI variable" htmlFor="nd-kpi" error={err("/kpi/variable")} hint={grid.kpi ? `From the response grid: ${grid.kpi}.` : "The model's output, for example revenue."}>
-              <Input id="nd-kpi" className="font-mono" value={variable} onChange={(e) => setKpiVar(e.target.value.trim())} />
-            </Field>
-            <Field label="KPI label" htmlFor="nd-kpi-label" error={err("/kpi/label")}>
-              <Input id="nd-kpi-label" maxLength={60} value={label} onChange={(e) => setKpiLabel(e.target.value)} />
-            </Field>
-            <Field label="Unit" htmlFor="nd-unit" error={err("/kpi/currency")}>
-              <div className="flex gap-2">
-                <NativeSelect id="nd-unit" className="min-w-0 flex-1" value={unit} onChange={(e) => setUnit(e.target.value as KpiDef["unit"])}>
-                  {UNITS.map((u) => (
-                    <option key={u} value={u}>
-                      {UNIT_LABEL[u]}
-                    </option>
-                  ))}
-                </NativeSelect>
-                {unit === "currency" ? <Input aria-label="Currency" className="w-20 uppercase" maxLength={3} value={currency} onChange={(e) => setCurrency(e.target.value)} /> : null}
+
+          <fieldset className="grid min-w-0 gap-2">
+            <legend className="mb-1 text-sm font-semibold">Layout</legend>
+            {ref === null ? (
+              <p className="text-sm text-muted-foreground">Choose a source first.</p>
+            ) : loading ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner /> Looking at what the model can show…
+              </p>
+            ) : presets.isError ? (
+              <ErrorNotice error={presets.error} title="The app could not look at the model" onRetry={() => void presets.refetch()} />
+            ) : (
+              <div role="radiogroup" aria-label="Layout" className="grid gap-2 sm:grid-cols-2">
+                {suggestions.map((sg, i) => {
+                  const why = base ? presetSwitchReason(base, sg.preset, ctx) : "The app could not make a starting draft for this model.";
+                  const on = chosen === sg.preset;
+                  const id = `nd-preset-${sg.preset}`;
+                  return (
+                    <label
+                      key={sg.preset}
+                      htmlFor={id}
+                      className={cn("grid cursor-pointer gap-1 rounded-lg border p-3 text-sm", on && "border-primary ring-1 ring-primary", why && "cursor-not-allowed opacity-70")}
+                      data-preset={sg.preset}
+                    >
+                      <span className="flex flex-wrap items-center gap-2">
+                        <input
+                          id={id}
+                          type="radio"
+                          name="nd-preset"
+                          value={sg.preset}
+                          checked={on}
+                          disabled={Boolean(why)}
+                          onChange={() => setPicked({ ref: refKey, preset: sg.preset })}
+                          aria-describedby={`${id}-why`}
+                          className="accent-[var(--primary)]"
+                        />
+                        <span className="font-medium">{PRESET_WORDS[sg.preset].label}</span>
+                        {i === 0 ? <TagWord tone="positive">Suggested</TagWord> : null}
+                      </span>
+                      <span id={`${id}-why`} className="grid gap-0.5 text-xs text-muted-foreground">
+                        <span>{why ?? ((sg.reasons ?? []).join(" ") || PRESET_WORDS[sg.preset].hint)}</span>
+                        {sg.blocked_inputs?.length ? <span>Not possible with this model: {sg.blocked_inputs.join("; ")}.</span> : null}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
-            </Field>
-          </div>
-          {grid.loading ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner /> Looking for the model's response grid…
-            </p>
-          ) : grid.channels ? (
-            <p className="text-sm text-muted-foreground">
-              Channels from the response grid: <span className="text-foreground">{grid.channels.map(channelLabel).join(", ")}</span>. What-ifs are on.
-            </p>
-          ) : (
-            <Field
-              label="Channels"
-              htmlFor="nd-channels"
-              error={err("/channels", true)}
-              hint={grid.channels === null ? "This model has no response grid, so what-ifs are off. Type the model names of the channels, separated by commas." : "Type the model names of the channels, separated by commas."}
-            >
-              <Input id="nd-channels" className="font-mono" placeholder="tv, search, social" value={typed} onChange={(e) => setTyped(e.target.value)} />
-            </Field>
-          )}
+            )}
+            {noSpec ? (
+              <InlineMessage tone="warning" size="s" role="none">
+                The app could not make a starting draft for this model. Choose another source, or ask an admin.
+                <PlainIssues issues={presets.data?.issues ?? []} label="Why there is no starting draft" />
+              </InlineMessage>
+            ) : null}
+            {submitted && spec && issues.length ? (
+              <InlineMessage tone="error" size="s" role="alert">
+                The starting draft has problems:
+                <PlainIssues issues={issues} label="Problems of the starting draft" />
+              </InlineMessage>
+            ) : null}
+          </fieldset>
           {create.isError ? <ErrorNotice error={create.error} title="The dashboard was not created" /> : null}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={create.isPending}>
+            <Button type="submit" disabled={create.isPending || !spec} title={spec ? undefined : "Choose a source that the app can make a dashboard for."}>
               {create.isPending ? <Spinner /> : <Plus />} Create dashboard
             </Button>
           </DialogFooter>
