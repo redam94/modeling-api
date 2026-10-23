@@ -255,8 +255,15 @@ async def _render(
             if not resolved.embeddable:
                 return _asset(revision, plot.plot_id, plot.recipe, status="failed",
                               problem=_PROBLEMS["provenance"])  # fmt: skip
+            # pictures reach clients and share links: refuse uploaded recipe code (v0.19 D16)
             run = await submit_render(
-                session, ctx, resolved, fmt="png", scale=PICTURE_SCALE, width=PICTURE_WIDTH
+                session,
+                ctx,
+                resolved,
+                fmt="png",
+                scale=PICTURE_SCALE,
+                width=PICTURE_WIDTH,
+                shared=True,
             )
     except MapiError as exc:
         log.info("dashboard %s: picture %s not queued: %s", revision.dashboard_id,

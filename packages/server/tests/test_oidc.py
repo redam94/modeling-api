@@ -531,3 +531,56 @@ async def test_http_provider_discovery_exchange_and_verification() -> None:
     assert "different issuer" in await _reason(bad.metadata())
     rp_plain = OidcClient(bad, client_id="c", redirect_uri="https://app/cb")
     await _reason(rp_plain.authorize_url(tx))
+
+
+async def _reauth(client: httpx.AsyncClient, email: str) -> httpx.Response:
+    """The browser flow with ``reauth=1``; returns the callback's response."""
+    r = await client.get("/auth/login", params={"return_to": "/plugins", "reauth": "1"})
+    assert r.status_code == 302, r.text
+    authorize = r.headers["location"]
+    q = parse_qs(urlsplit(authorize).query)
+    assert q["max_age"] == ["0"] and q["prompt"] == ["login"]  # the IdP must ask again
+    r = await client.get(authorize + "&" + str(httpx.QueryParams({"login_hint": email})))
+    assert r.status_code == 302
+    return await client.get(r.headers["location"])
+
+
+async def test_a_reauth_sign_in_records_a_fresh_auth_time(
+    client: httpx.AsyncClient, ctx: ServerContext
+) -> None:
+    """review-flow-3: approving uploaded code needs the IdP's ``auth_time``, so the re-auth
+    round trip asks for ``max_age=0`` and the session keeps the token's ``auth_time``."""
+    plain = await client.get("/auth/login")
+    assert "max_age" not in parse_qs(urlsplit(plain.headers["location"]).query)
+    r = await _reauth(client, "analyst@dev.local")
+    assert r.status_code == 302, r.text
+    async with ctx.db.session() as s:
+        [row] = (await s.execute(select(m.WebSession))).scalars()
+    assert row.auth_time is not None
+    assert abs((row.auth_time - row.created_at).total_seconds()) < 5
+
+
+async def test_a_reauth_without_auth_time_is_refused(
+    client: httpx.AsyncClient, ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An IdP that answers ``max_age=0`` without ``auth_time`` (or with an old one, e.g. a
+    silent SSO session) does not sign the person in for a re-authentication."""
+    real = DevIdP.id_token
+
+    def without(self: DevIdP, email: str, **kw: Any) -> str:
+        kw["auth_time"] = None
+        return real(self, email, **kw)
+
+    monkeypatch.setattr(DevIdP, "id_token", without)
+    r = await _reauth(client, "analyst@dev.local")
+    assert r.status_code == 401, r.text
+    async with ctx.db.session() as s:
+        assert list((await s.execute(select(m.WebSession))).scalars()) == []
+
+    def stale(self: DevIdP, email: str, **kw: Any) -> str:
+        kw["auth_time"] = int(time.time()) - 3600
+        return real(self, email, **kw)
+
+    monkeypatch.setattr(DevIdP, "id_token", stale)
+    r = await _reauth(client, "analyst@dev.local")
+    assert r.status_code == 401, r.text

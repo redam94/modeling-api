@@ -12,7 +12,9 @@ weights, the GPU resource class and model side tables; and the v0.16 contracts: 
 dashboards, readouts, share links, the client role and the read-only dashboard tools; and the
 v0.17 contracts: layout 2 dashboards for any model type, with presets, panels, scenario rows,
 actuals tracking and batch scoring; and the v0.18 contracts: id namespaces, JSON-Schema
-safety, catalog diagnostics, plugin workflow nodes and templates, and recipe previews).
+safety, catalog diagnostics, plugin workflow nodes and templates, and recipe previews; and the
+v0.19 contracts: uploaded plugins (namespaces, version states, inspect and describe results,
+overlay pins) and untrusted-text safety).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -234,9 +236,12 @@ from mapi_spec.namespaces import (
     BUILTIN_DISTRIBUTIONS,
     BUILTIN_NAMESPACES,
     PLATFORM_RESERVED,
+    UPLOAD_NAMESPACE_RE,
     check_namespace,
+    is_uploaded_namespace,
     namespace_of,
     reserved_namespace,
+    uploaded_namespace_of,
 )
 from mapi_spec.optimize import OptimizeRequest, OptimizeResult
 from mapi_spec.plots import (
@@ -246,6 +251,23 @@ from mapi_spec.plots import (
     PlotExamples,
     PlotProvenance,
     PlotSpec,
+)
+from mapi_spec.plugins import (
+    MOUNTABLE_STATES,
+    PLUGIN_TRANSITIONS,
+    OverlayPin,
+    PluginDescribe,
+    PluginExports,
+    PluginInspection,
+    PluginKitReport,
+    PluginVersionState,
+    check_describe,
+    describe_digest,
+    is_uploaded_id,
+    lineage_has_uploaded_code,
+    lineage_pins,
+    upload_dist_name,
+    upload_namespace,
 )
 from mapi_spec.quotas import (
     PriorityClass,
@@ -302,7 +324,7 @@ from mapi_spec.scorecard import (
     evaluate_check,
     promotion_gate,
 )
-from mapi_spec.sharing import PlotEmbed, SavedPlot, embeddable
+from mapi_spec.sharing import PlotEmbed, SavedPlot, embeddable, uses_uploaded_ids
 from mapi_spec.snippets import Snippet, SnippetContext, SnippetLanguage, render_snippets
 from mapi_spec.spec import (
     API_VERSION,
@@ -342,6 +364,12 @@ from mapi_spec.tenancy import (
     TenantStatus,
     TrustTier,
     can,
+    untrusted_placement_problem,
+)
+from mapi_spec.text_safety import (
+    check_reference_url,
+    has_unsafe_text,
+    normalize_untrusted_text,
 )
 from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
 from mapi_spec.tracking import (
@@ -453,17 +481,20 @@ __all__ = [
     "MAX_TREE_DEPTH",
     "MAX_TREE_NODES",
     "MAX_VERSION_PACKS",
+    "MOUNTABLE_STATES",
     "NODE_IMPLEMENTATIONS",
     "PACK_OBJECT_PREFIX",
     "PART_ENTRY_RE",
     "PERMISSIONS",
     "PLATFORM_RESERVED",
     "PLUGIN_NODE_KINDS",
+    "PLUGIN_TRANSITIONS",
     "PRESET_RULES",
     "REPRESENTATION_RULES",
     "RESOURCE_CLASSES",
     "SBC",
     "SCORECARD_CHECKS",
+    "UPLOAD_NAMESPACE_RE",
     "WEIGHTS_ATTR",
     "WEIGHTS_DIM",
     "WEIGHTS_VAR",
@@ -585,6 +616,7 @@ __all__ = [
     "OptimizeResult",
     "OutputDecl",
     "OutputSelector",
+    "OverlayPin",
     "PackInfo",
     "PanelBlock",
     "ParamItem",
@@ -595,6 +627,11 @@ __all__ = [
     "PlotExamples",
     "PlotProvenance",
     "PlotSpec",
+    "PluginDescribe",
+    "PluginExports",
+    "PluginInspection",
+    "PluginKitReport",
+    "PluginVersionState",
     "PolicyCheck",
     "PortType",
     "PresetKey",
@@ -693,16 +730,19 @@ __all__ = [
     "can_aggregate",
     "canonical_json",
     "catalog_about_issues",
+    "check_describe",
     "check_labels",
     "check_media",
     "check_media_key",
     "check_metric_key",
     "check_namespace",
     "check_param_key",
+    "check_reference_url",
     "check_tag_key",
     "check_webhook_url",
     "default_summary",
     "describe_dataset",
+    "describe_digest",
     "dump_yaml",
     "embeddable",
     "estimate_cost",
@@ -714,13 +754,18 @@ __all__ = [
     "export_schemas",
     "generate_share_token",
     "generate_token",
+    "has_unsafe_text",
     "http_status",
     "info_input",
     "is_ancestor",
     "is_safe_regex",
+    "is_uploaded_id",
+    "is_uploaded_namespace",
     "json_pointer",
     "kill_switch_decision",
     "labels_key",
+    "lineage_has_uploaded_code",
+    "lineage_pins",
     "load_document",
     "load_model_spec",
     "load_score_request",
@@ -734,6 +779,7 @@ __all__ = [
     "node_join",
     "node_name",
     "node_parent",
+    "normalize_untrusted_text",
     "pack_digest",
     "pack_input",
     "pack_object_name",
@@ -777,8 +823,13 @@ __all__ = [
     "tools_json_schema",
     "topological_order",
     "transition",
+    "untrusted_placement_problem",
     "upgrade",
+    "upload_dist_name",
+    "upload_namespace",
     "uploaded_code_allowed",
+    "uploaded_namespace_of",
+    "uses_uploaded_ids",
     "validate_score_request",
     "validate_spec",
     "validate_workflow",

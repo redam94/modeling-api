@@ -177,6 +177,22 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_PLOT_PREVIEW_PER_MINUTE` | `20` | The new preview runs that one user can start in each minute. A cached preview does not count. More requests get `429` |
 | `MAPI_PLOT_PREVIEW_PER_DAY` | `200` | The new preview runs that one tenant can start in each 24 hours |
 | `MAPI_PLOT_PREVIEW_WAIT_S` | `15.0` | The longest `Prefer: wait` that a recipe preview request can hold |
+| `MAPI_PLUGINS_ENABLED` | `true` | Accept uploaded plugins (v0.19) on the tiers that allow uploaded code. Off, the plugin routes refuse uploads and the catalog shows no uploaded entries. See [Uploaded code](uploaded-code.md) |
+| `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED` | `false` | **Development only.** Lets the `local-process` executor run uploaded code without a sandbox. The server does not start with it in the `multi-tenant` profile, with `cloudrun-jobs`, with the `gcs` object store or on Cloud Run (`K_SERVICE`, `CLOUD_RUN_JOB`) |
+| `MAPI_PLUGIN_UPLOAD_MAX_BYTES` | `20971520` | The largest uploaded wheel (bytes) |
+| `MAPI_PLUGIN_UNCOMPRESSED_MAX_BYTES` | `104857600` | The largest total size of the files of a wheel after decompression |
+| `MAPI_PLUGIN_MEMBER_MAX_BYTES` | `20971520` | The largest size of one file of a wheel after decompression |
+| `MAPI_PLUGIN_MAX_MEMBERS` | `2000` | The most files in one wheel |
+| `MAPI_PLUGIN_MAX_RATIO` | `100` | The highest compression ratio of one file and of the wheel (zip bombs) |
+| `MAPI_PLUGIN_UPLOADS_PER_USER_PER_DAY` | `20` | The upload tickets that one user can take each day. More requests get `429 RATE_LIMITED` |
+| `MAPI_PLUGIN_PIPELINE_CONCURRENCY_PER_TENANT` | `2` | The check runs (`plugin_inspect`, `plugin_describe`) of one tenant that run at the same time. The others stay queued |
+| `MAPI_PLUGIN_INSPECT_TIMEOUT_S` | `60` | The time limit of a `plugin_inspect` run |
+| `MAPI_PLUGIN_DESCRIBE_TIMEOUT_S` | `600` | The time limit of a `plugin_describe` run |
+| `MAPI_PLUGIN_DATA_CHECK_TIMEOUT_S` | `120` | The time limit of one data test in a `plugin_describe` run |
+| `MAPI_PLUGIN_TICKET_TTL_S` | `900` | The life of an upload ticket (a POST policy) |
+| `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay. The server applies it when a version fails or is withdrawn and stores the purge date then: a later change does not move the purge date of earlier versions |
+| `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | `900` | An approval or a rejection needs a sign-in that is not older than this (the ID token's `auth_time`) |
+| `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | `7` | A tenant admin whom the uploader added or promoted fewer days ago than this (directly or through someone they added) cannot approve the uploader's versions |
 
 **Object storage**
 
@@ -513,6 +529,13 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |
 | `MAPI_PYMC_CHALLENGES_DATA` | The `data/` directory of a local copy of pymc-challenges. The `from_challenges` loaders of `mapi-plugin-science` read the real data files there, and the tests that use them run. If it is not set, these tests are skipped |
 | `MAPI_E21_DRAWS` | The draws for each chain in the real-data sociality fit of `sci.network_latent_space` (`plugins/science/tests/test_network.py`, default 300) |
+| `MAPI_PROBES_API_URL` | The API of the docker stack that the probes-as-upload suite (`tests/security/test_probes_as_upload.py`, `-m docker`) pushes the probe plugin to (default `http://127.0.0.1:18000`) |
+| `MAPI_PROBES_GCS_ENDPOINT` | The GCS shim of that stack (default `http://127.0.0.1:14443`) |
+| `MAPI_PROBES_GCS_ROOT` | The root folder of that GCS shim on disk. The suite uses it to swap a stored object (default `.local-v019b/gcs`) |
+| `MAPI_PROBES_IMAGE` | The image that the probes-as-upload suite runs as its baseline (default `mapi/base-bayes:0.16.0`) |
+| `MAPI_PROBES_REVIEWER` | The second tenant admin that approves the probe plugin. It must be a development-IdP account that the uploader did not add (default `reviewer@dev.local`) |
+| `MAPI_PROBES_PLUGINS_BUCKET` | The bucket of uploaded plugins in that stack (default `mapi-local-plugins`) |
+| `MAPI_PROBES_RUNS_BUCKET` | The bucket of runs in that stack (default `mapi-local-runs`) |
 
 ## Documentation
 

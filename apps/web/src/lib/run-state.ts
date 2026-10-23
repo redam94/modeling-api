@@ -5,7 +5,24 @@
 import type { Run, RunKind, RunState } from "@/api/types";
 import { shortId } from "@/lib/format";
 
-export const RUN_KINDS: readonly RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render"];
+export const RUN_KINDS: readonly RunKind[] = ["fit", "validate", "score", "ingest", "evaluate", "derive", "render", "plugin_inspect", "plugin_describe"];
+
+/**
+ * v0.19: the two sandboxed runs that check an upload (`mapi_spec.executor.PLUGIN_KINDS`):
+ * `plugin_inspect` reads the wheel without running it, `plugin_describe` runs it in the sandbox
+ * to list its exports and run the kits. Both always count as uploaded-code runs.
+ */
+export const PLUGIN_RUN_KINDS: readonly RunKind[] = ["plugin_inspect", "plugin_describe"];
+
+export function isPluginRunKind(kind: string): boolean {
+  return (PLUGIN_RUN_KINDS as readonly string[]).includes(kind);
+}
+
+/** Plain names of the plugin run kinds (the run list shows the raw kind otherwise). */
+export const PLUGIN_RUN_KIND_LABEL: Readonly<Record<string, string>> = {
+  plugin_inspect: "Upload check (files)",
+  plugin_describe: "Upload check (tests)",
+};
 
 export const RUN_STATES: readonly RunState[] = [
   "created",

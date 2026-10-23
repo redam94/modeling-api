@@ -58,7 +58,12 @@ from mapi_spec._dto import ResponseModel, dto_examples
 from mapi_spec.about import About, Difficulty, TypicalRuntime, about_issues
 from mapi_spec.capabilities import check_json_schema
 from mapi_spec.errors import ErrorCode, Issue, json_pointer
-from mapi_spec.namespaces import BUILTIN_NAMESPACES, check_namespace, reserved_namespace
+from mapi_spec.namespaces import (
+    BUILTIN_NAMESPACES,
+    check_namespace,
+    is_uploaded_namespace,
+    reserved_namespace,
+)
 from mapi_spec.schema_safety import sanitize_schema
 from mapi_spec.splitplan import (
     BlockedKFoldPlan,
@@ -210,8 +215,13 @@ class NodeImplementation(ResponseModel):
             if not name.startswith(f"{self.plugin}_") or name == f"{self.plugin}_":
                 raise ValueError(f"{self.id}: a plugin node id is '<kind>.{self.plugin}_<name>'")
             # the platform's own namespaces; a built-in namespace depends on the exporting
-            # distribution, which only plugin_contract_issues knows
-            reason = None if self.plugin in BUILTIN_NAMESPACES else reserved_namespace(self.plugin)
+            # distribution, which only plugin_contract_issues knows. v0.19: an uploaded
+            # namespace (t_<code>_<short>) is well formed here; whether the exporter may use
+            # it is decided by the overlay loader (check_namespace(..., claimed=...))
+            if self.plugin in BUILTIN_NAMESPACES or is_uploaded_namespace(self.plugin):
+                reason = None
+            else:
+                reason = reserved_namespace(self.plugin)
             if reason is not None:
                 raise ValueError(reason)
         return self
@@ -1805,7 +1815,7 @@ _PORT_NAME: Final = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 def plugin_contract_issues(
-    c: NodeImplementation, *, distribution: str | None = None
+    c: NodeImplementation, *, distribution: str | None = None, claimed: str | None = None
 ) -> list[Issue]:
     """Why a plugin node contract cannot be offered (empty when it can).
 
@@ -1814,7 +1824,8 @@ def plugin_contract_issues(
     the kind is in :data:`PLUGIN_NODE_KINDS`; it runs in the sandbox; port and result-field
     names are identifiers and it has at least one output; the About card is complete; the
     parameter schema passes :mod:`mapi_spec.schema_safety` (``refuse`` mode). Pointers are
-    into the contract.
+    into the contract. ``claimed`` (v0.19) is the namespace assigned to the uploaded overlay
+    the contract was loaded from (see :func:`~mapi_spec.namespaces.check_namespace`).
     """
     out: list[Issue] = []
 
@@ -1824,7 +1835,7 @@ def plugin_contract_issues(
     if c.plugin is None:
         bad("/plugin", "a plugin node names its namespace in 'plugin'.")
     else:
-        reason = check_namespace(c.id, distribution, plugin=c.plugin)
+        reason = check_namespace(c.id, distribution, plugin=c.plugin, claimed=claimed)
         if reason is not None:
             bad("/plugin", reason)
     if c.id in NODE_IMPLEMENTATIONS:

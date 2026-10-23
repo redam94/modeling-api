@@ -41,9 +41,11 @@ from mapi_server.services.calibration import (
     check_lift_tests,
     summary_levels,
 )
+from mapi_server.services.plugins.refs import spec_catalog_ids
+from mapi_server.services.plugins.view import pins_from, view_catalogs
 from mapi_server.services.runs import create_run
 from mapi_server.services.specs import pin_document, validate_document
-from mapi_server.services.submit import _accept, _overlay, data_ref, load_revision
+from mapi_server.services.submit import _accept, data_ref, load_revision
 
 __all__ = [
     "PRIOR_TRANSLATION_TIMEOUT_S",
@@ -100,10 +102,17 @@ async def submit_prior_translation(
     else:
         assert body.document is not None
         document = copy.deepcopy(dict(body.document))
+    # v0.19: the caller's tenant catalog view (their visible uploads)
+    catalogs = await view_catalogs(
+        ctx,
+        session,
+        tenant_id=scope.tenant_id,
+        user_id=ctx.request.user_id if ctx.request is not None else None,
+    )
     v = await validate_document(
         session,
         scope,
-        ctx.catalogs,
+        catalogs,
         document=document,
         dataset_override=body.dataset,
         resource_class=body.resource_class,
@@ -112,6 +121,8 @@ async def submit_prior_translation(
         raise MapiError(
             "prior translations need a ModelSpec", code=ErrorCode.SCHEMA_INVALID, pointer="/kind"
         )
+    # v0.19: an upload the caller may not use is PLUGIN_UNAVAILABLE, not an unknown id
+    pins = pins_from(catalogs, spec_catalog_ids(v.typed))
     if not v.valid or v.resolved is None or v.dataset is None:
         raise ValidationFailed(v.issues)
     caps = v.resolved.model.capabilities
@@ -156,9 +167,7 @@ async def submit_prior_translation(
         dataset_version=v.dataset.version,
         catalog_digest=v.catalog.digest if v.catalog else None,
     )
-    return await _accept(
-        session, ctx, run, untrusted=_overlay(v.catalog, v.resolved.model.resolved)
-    )
+    return await _accept(session, ctx, run, overlays=pins)
 
 
 async def load_prior_translation_result(

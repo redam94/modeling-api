@@ -5,7 +5,9 @@ One function decides visibility, :func:`load_dashboard`:
 * viewers and up see every dashboard of the project (a ``draft`` one needs the editor
   role: drafts are work in progress);
 * a ``client`` sees a dashboard only when it is ``published`` and a ``dashboard_grants`` row
-  names them; anything else answers ``404`` (as for a dashboard that does not exist).
+  names them; anything else answers ``404`` (as for a dashboard that does not exist). A
+  granted dashboard made with uploaded code answers ``403 UPLOADED_CODE_NOT_SHAREABLE``
+  (v0.19, plan D16): every client read and input starts here.
 
 :func:`member_context` turns a signed-in caller and a dashboard into the
 :class:`DashboardContext` the readout, input and tool functions act on; share-link
@@ -65,6 +67,7 @@ from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, unauthenticated
 from mapi_server.services.endpoints import live_capabilities_snapshot
 from mapi_server.services.runs import now
+from mapi_server.services.sharing import require_shareable
 
 __all__ = [
     "OVERVIEW_KINDS",
@@ -166,6 +169,7 @@ async def load_dashboard(
         granted = await session.get(m.DashboardGrant, (row.id, auth.user_id or ""))
         if granted is None:
             raise NotFoundError("dashboard", dashboard_id)
+        await require_shareable(session, dashboard=row)
     elif row.status == "draft" and not (
         auth is None or auth.allows(Action.UPDATE, ResourceKind.DASHBOARD)
     ):

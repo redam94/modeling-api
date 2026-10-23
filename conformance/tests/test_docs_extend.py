@@ -42,12 +42,17 @@ EXTEND_PAGES = [
     "extend/develop/run-on-your-stack.md",
     "extend/develop/contract-kits.md",
     "extend/upload-roadmap.md",
+    "extend/upload.md",
+    "extend/review-uploads.md",
     "tutorials/your-first-extensions.md",
     "guides/start-here.md",
     "reference/generated/extension-points.md",
     "whats-new-0.18.md",
 ]
-"""Every page v0.18 adds; each must be in the mkdocs nav."""
+"""Every page v0.18 adds (and the v0.19 upload pages); each must be in the mkdocs nav."""
+
+NOT_IN_NAV = {"extend/upload-roadmap.md"}
+"""v0.19: the old "Coming in 0.19" page is a pointer to extend/upload.md (`not_in_nav`)."""
 
 KIND_PAGES = [
     "extend/your-model.md",
@@ -96,6 +101,9 @@ def test_every_extend_page_is_in_the_nav() -> None:
     for page in hand_written:
         assert (DOCS / page).is_file(), f"missing page docs/{page}"
     for page in EXTEND_PAGES:
+        if page in NOT_IN_NAV:
+            assert page in nav.split("\nnav:", 1)[0], f"{page} is not listed under not_in_nav"
+            continue
         assert re.search(rf"[:\-]\s+{re.escape(page)}\s*$", nav, re.M), f"{page} is not in the nav"
     # and nothing under docs/extend is left out of the nav
     for page in (DOCS / "extend").rglob("*.md"):
@@ -141,7 +149,9 @@ def test_cli_flags_are_where_the_cli_takes_them() -> None:
         bad = re.findall(r"mapi plugin (?:validate|doctor)[^\n`]*--json", text)
         assert not bad, f"{page.relative_to(ROOT)}: {bad}"
         for sub in re.findall(r"\bmapi plugin ([a-z-]+)", text):
-            assert sub in {"init", "test", "validate", "doctor"}, f"{page}: mapi plugin {sub}"
+            assert sub in {"init", "test", "validate", "doctor", "push", "status", "yank"}, (
+                f"{page}: mapi plugin {sub}"
+            )
 
 
 def test_the_no_code_pages_name_what_the_app_shows() -> None:

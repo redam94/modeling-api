@@ -33,6 +33,7 @@ from mapi_spec._types import StrictModel
 from mapi_spec.coords import DataSummary
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.schema import DataSchema, Role
+from mapi_spec.text_safety import check_reference_url
 
 __all__ = [
     "ABOUT_JARGON",
@@ -247,11 +248,15 @@ _SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
 _WORD = re.compile(r"[a-z]+")
 
 
-def about_issues(about: About | None, *, known_ids: Iterable[str] | None = None) -> list[str]:
+def about_issues(
+    about: About | None, *, known_ids: Iterable[str] | None = None, uploaded: bool = False
+) -> list[str]:
     """Plain-language problems that make an About incomplete (empty list: complete).
 
     ``None`` is one problem ("no About"). ``known_ids``, when given, are the catalog ids
-    ``related`` may point at.
+    ``related`` may point at. ``uploaded`` (v0.19, an About from uploaded code) also applies
+    the link rules of :func:`mapi_spec.text_safety.check_reference_url` to every reference;
+    those problems start with ``"reference"``.
     """
     if about is None:
         return ["the item has no About card"]
@@ -277,6 +282,10 @@ def about_issues(about: About | None, *, known_ids: Iterable[str] | None = None)
             issues.append(f"related names unknown items {missing}")
     if about.example.strip().lower() == about.summary_plain.strip().lower():
         issues.append("example must show the item at work, not repeat the summary")
+    if uploaded:
+        for i, ref in enumerate(about.references):
+            if ref.url is not None and (problem := check_reference_url(ref.url)) is not None:
+                issues.append(f"reference {i + 1}: {problem}")
     return issues
 
 

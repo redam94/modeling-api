@@ -14,6 +14,13 @@ built-in plugins.
 | (b) Out of tree, editable | `make dev` | `make plugin-dev PLUGIN=../acme` | You develop the plugin in its own repository |
 | (c) A custom runner image | Docker Compose, Cloud Run | `make plugin-image BASE=base-bayes NAME=acme WHEELS=...` | A deployment that runs images |
 
+!!! tip "Not the operator? Upload it instead"
+    From v0.19 you don't need to run a stack. A tenant admin, or an editor that a tenant admin
+    confirmed, can push a wheel to a shared deployment with `mapi plugin push` (or
+    `make plugin-push PLUGIN=../acme`). The platform checks it in the sandbox, you use it
+    privately, and a second admin approves it for the team. See
+    [Upload your own code](../upload.md).
+
 ## How the catalog finds your plugin
 
 The control plane never imports plugin code. A **describe** run in the runner loads every

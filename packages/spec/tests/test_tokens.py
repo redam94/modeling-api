@@ -198,7 +198,8 @@ SCOPE_EXPECTED: dict[str, set[tuple[str, str]]] = {
         )
     },
     "datasets:write": {("dataset", "read"), ("dataset", "create"), ("dataset", "update")},
-    "plugins:publish": {("plugin", "read"), ("plugin", "create"), ("plugin", "delete")},
+    # v0.19: push and ask for approval; never approve or yank (TOKEN_NEVER)
+    "plugins:publish": {("plugin", "read"), ("plugin", "create"), ("plugin", "update")},
 }
 SCOPE_EXPECTED["endpoints:promote"] = {
     ("endpoint", "read"),

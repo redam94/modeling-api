@@ -19,6 +19,14 @@ One supervisor runs per execution. It:
    signed :class:`~mapi_spec.run.OutputManifest` with the signed PUT and exits with a
    :class:`~mapi_spec.run.RunnerExit` code.
 
+v0.19 (D17, D18): before the worker starts, every ``RunSpec.overlays`` mount (uploaded code
+the control plane pinned to this run) is downloaded, checked against its sha256 and
+extracted read-only into ``{scratch}/overlays/<pvid>/`` (:mod:`mapi_runner.overlay`; nothing
+from the archive is imported here); the worker gets ``--overlay DIR=NS=PVID`` per mount and
+the manifest lists the verified hashes (``overlay_hashes``), which the finalizer compares
+with the run's pins. A mount that fails its check fails the run before the worker exists.
+The worker also gets the resource limits of :func:`mapi_runner.sandbox.worker_rlimits`.
+
 The supervisor never imports plugin code, the SDK, numpy or xarray.
 """
 
@@ -42,6 +50,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from importlib import metadata
+from pathlib import Path
 from types import FrameType
 from typing import Final
 
@@ -113,7 +122,15 @@ from mapi_runner.events import (
 from mapi_runner.events import clean_payload as _clean
 from mapi_runner.obslog import StderrLog, trace_id_from_env
 from mapi_runner.outputs import OutputViolation, collect_outputs, open_regular
-from mapi_runner.sandbox import WORKER_GID, WORKER_UID, IsolationPlan, plan_isolation
+from mapi_runner.overlay import MountedOverlay, OverlayError, mount_overlays
+from mapi_runner.sandbox import (
+    WORKER_GID,
+    WORKER_UID,
+    IsolationPlan,
+    plan_isolation,
+    private_uid,
+    worker_rlimits,
+)
 from mapi_runner.transfer import Digest, TransferError, Transfers, new_client
 
 __all__ = ["EXIT_FOR_CLASS", "Supervisor", "SupervisorConfig", "Termination"]
@@ -154,6 +171,9 @@ _LIB_DISTS: Final = (
 _READ_BYTES: Final = 64 * 1024
 _MEDIA_DIR: Final = "media"
 _MAX_MEDIA_WARNINGS: Final = 10
+_OVERLAY_DIR: Final = "overlays"
+_OVERLAY_TIMEOUT_S: Final = 300.0
+"""Longest time the overlay downloads may take (never past the run deadline)."""
 _NVIDIA_DEVICES: Final = ("/dev/nvidia0", "/dev/nvidiactl")
 """Device nodes the NVIDIA container runtime exposes when a GPU is attached."""
 """``MEDIA_INVALID`` / ``MEDIA_UPLOAD_FAILED`` warnings per attempt (later ones are dropped)."""
@@ -179,7 +199,6 @@ class SupervisorConfig:
     """Time kept before the deadline for the checkpoint flush and the partial manifest."""
     scratch_check_s: float = 2.0
     base_image: str | None = None
-    overlay_hash: str | None = None
 
 
 @dataclass(slots=True)
@@ -278,6 +297,8 @@ class Supervisor:
         self.worker_result: ResultMessage | None = None
         self.worker_error: ErrorMessage | None = None
         self.pending = _Pending()
+        self.overlays: list[MountedOverlay] = []
+        """v0.19: the uploads mounted for this run (verified; their hashes go in the manifest)."""
         self._uploads: ThreadPoolExecutor | None = None
         self._futures: list[Future[None]] = []
         self._chan: socket.socket | None = None
@@ -357,9 +378,42 @@ class Supervisor:
             self._emit_error(_Failure(FailureClass.TIMEOUT, "the run stopped before it started"))
             return RunnerExit.TERMINATED
         self._prepare_scratch()
+        if rs.overlays:
+            failure = self._mount_overlays(rs)
+            if failure is not None:
+                return self._finish_failure(failure)
+            remaining = (rs.deadline - datetime.now(UTC)).total_seconds()
+            if remaining <= 0:
+                return self._finish_failure(
+                    _Failure(FailureClass.TIMEOUT, "the run deadline passed while mounting")
+                )
         self._spawn_worker(rs)
         self._loop(remaining)
         return self._finalize()
+
+    def _mount_overlays(self, rs: RunSpec) -> _Failure | None:
+        """Download, verify and extract the run's overlays (module docs)."""
+        assert self.scratch is not None
+        self._state(RunnerPhase.LOAD_INPUTS, "mounting uploaded code")
+        left = (rs.deadline - datetime.now(UTC)).total_seconds() - self.config.deadline_reserve_s
+        try:
+            self.overlays = mount_overlays(
+                rs.overlays,
+                Path(self.scratch) / _OVERLAY_DIR,
+                timeout_s=max(1.0, min(_OVERLAY_TIMEOUT_S, left)),
+            )
+        except OverlayError as exc:
+            fc = FailureClass.INTEGRITY if exc.code == "INTEGRITY_FAILURE" else FailureClass.USER
+            self._stderr(f"overlay refused: {exc}", level="warning")
+            return _Failure(fc, str(exc)[:2000])
+        except (OSError, ValueError) as exc:
+            self._stderr(f"overlay download failed: {_short(exc)}", level="warning")
+            return _Failure(
+                FailureClass.INFRA,
+                "the uploaded code of this run could not be downloaded",
+                untrusted_text=_short(exc),
+            )
+        return None
 
     def _warn_gpu(self, rs: RunSpec) -> None:
         """v0.15: one ``GPU_UNAVAILABLE`` warning when a GPU-class run sees no NVIDIA device
@@ -442,6 +496,8 @@ class Supervisor:
         ]
         if self.config.worker_registry:
             argv += ["--registry", self.config.worker_registry]
+        for overlay in self.overlays:
+            argv += overlay.argv
         work = os.path.join(self.scratch, "work")
         env = worker_environ(os.environ)
         env["TMPDIR"] = work
@@ -467,7 +523,13 @@ class Supervisor:
             user=self.isolation.user,
             group=self.isolation.group,
             extra_groups=self.isolation.extra_groups,
-            preexec_fn=self.isolation.preexec(),
+            preexec_fn=self.isolation.with_rlimits(
+                worker_rlimits(
+                    rs.resource_class,
+                    # RLIMIT_NPROC only when uid 10001 belongs to this execution alone
+                    private=self.isolation.drop_privileges and private_uid(self.environ),
+                )
+            ).preexec(),
         )
         child.close()
         start = StartMessage(
@@ -1083,7 +1145,8 @@ class Supervisor:
             objects=objects,
             runner_version=__version__,
             base_image=self.config.base_image,
-            overlay_hash=self.config.overlay_hash,
+            overlay_hash=None,
+            overlay_hashes=[o.sha256 for o in self.overlays],
             lib_versions=_lib_versions(),
             created_at=datetime.now(UTC),
         )

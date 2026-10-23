@@ -76,6 +76,7 @@ from mapi_spec.media import (
     MediaKind,
     media_name,
 )
+from mapi_spec.plugins import OVERLAYS_MAX, OverlayPin
 from mapi_spec.resources import RESOURCE_CLASSES, ResourceClass
 from mapi_spec.storage import (
     Crc32c,
@@ -156,6 +157,7 @@ __all__ = [
     "MetricSeriesBatch",
     "OutputManifest",
     "OutputTarget",
+    "OverlayMount",
     "ParamItem",
     "ParamsPayload",
     "ProgressPayload",
@@ -390,6 +392,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
     add(S.DISPATCHING, T.SUBMITTED, S.PROVISIONING, A.DISPATCHER, A.RECONCILER)
     add(S.DISPATCHING, T.INFRA_RETRY, S.QUEUED, A.DISPATCHER, A.RECONCILER, new_attempt=True)
     add(S.DISPATCHING, T.FAIL_INFRA, S.FAILED, A.DISPATCHER, A.RECONCILER)
+    # v0.19: a pinned overlay object that no longer exists at its generation (replaced or
+    # deleted after the check) is found before any URL is minted
+    add(S.DISPATCHING, T.FAIL_INTEGRITY, S.FAILED, A.DISPATCHER)
 
     for live in (S.PROVISIONING, S.RUNNING, S.STALLED):
         add(live, T.EVENT, S.RUNNING, A.EVENTS)
@@ -397,6 +402,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
         add(live, T.INFRA_RETRY, S.QUEUED, A.RECONCILER, new_attempt=True)
         for trig in _EXECUTION_FAILURES:
             add(live, trig, S.FAILED, A.RECONCILER)
+        # the supervisor refused an input or an overlay whose bytes are not the pinned
+        # ones (exit 13 INTEGRITY_ERROR, set by the supervisor, never by the worker)
+        add(live, T.FAIL_INTEGRITY, S.FAILED, A.RECONCILER)
     add(S.RUNNING, T.SILENCE, S.STALLED, A.RECONCILER)
     add(S.STALLED, T.SILENCE, S.STALLED, A.RECONCILER)
 
@@ -1004,6 +1012,20 @@ class RunLimits(StrictModel):
         return cls(**values)
 
 
+class OverlayMount(StrictModel):
+    """v0.19: one uploaded wheel a run mounts. The dispatcher signs ``get`` for this run's
+    tenant only (generation-pinned); the supervisor checks the sha256 of the download against
+    ``pin.sha256`` before it extracts anything."""
+
+    pin: OverlayPin
+    get: SignedGet
+    size: int = Field(..., ge=1)
+
+
+def _no_items(v: object) -> bool:
+    return not v
+
+
 class RunSpec(StrictModel):
     """The bootstrap object at ``bootstrap/<nonce>`` (plan §8.1).
 
@@ -1050,6 +1072,19 @@ class RunSpec(StrictModel):
         "<name>.info and <name>.pack.<i>); absent inputs are 'dataset'",
         exclude_if=lambda v: not v,
     )
+    overlays: list[OverlayMount] = Field(
+        default_factory=list,
+        max_length=OVERLAYS_MAX,
+        description="v0.19: the uploaded wheels this run mounts (exactly the run's pins)",
+        exclude_if=_no_items,
+    )
+
+    @field_validator("overlays")
+    @classmethod
+    def _unique_overlays(cls, v: list[OverlayMount]) -> list[OverlayMount]:
+        if len({m.pin.namespace for m in v}) != len(v):
+            raise ValueError("a run mounts at most one version of each uploaded namespace")
+        return v
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -1220,6 +1255,12 @@ class OutputManifest(StrictModel):
     runner_version: str = Field(..., max_length=64)
     base_image: str | None = Field(None, max_length=256)
     overlay_hash: Sha256Ref | None = None
+    overlay_hashes: list[Sha256Ref] = Field(
+        default_factory=list,
+        max_length=OVERLAYS_MAX,
+        description="v0.19: the sha256 of every overlay the supervisor verified and mounted",
+        exclude_if=_no_items,
+    )
     lib_versions: dict[str, str] = Field(default_factory=dict, max_length=256)
     created_at: AwareDatetime
     hmac: str | None = Field(None, max_length=128)
@@ -1406,6 +1447,13 @@ class BundleManifest(StrictModel):
     catalog_digest: Sha256Ref
     base_image: str | None = Field(None, max_length=256)
     overlay_hash: Sha256Ref | None = None
+    overlay_hashes: list[Sha256Ref] = Field(
+        default_factory=list,
+        max_length=OVERLAYS_MAX,
+        description="v0.19: the sha256 of every uploaded wheel the run mounted (from the "
+        "control plane's runs.overlays)",
+        exclude_if=_no_items,
+    )
     objects: dict[str, BundleObject] = Field(default_factory=dict, max_length=10_000)
     source_manifest_crc32c: Crc32c
     signed_at: AwareDatetime

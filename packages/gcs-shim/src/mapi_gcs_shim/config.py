@@ -53,6 +53,7 @@ __all__ = [
     "key_file_path",
     "load_config",
     "save_config",
+    "with_default_buckets",
     "write_key_files",
 ]
 
@@ -258,6 +259,9 @@ def default_config(
         BucketConfig(name=b.runs),
         bundles,
         BucketConfig(name=b.data),
+        # v0.19: inspected uploaded wheels; write-once by convention, purged after the
+        # plugin retention, so no retention policy and no lifecycle
+        BucketConfig(name=b.plugins),
     )
     domain = f"mapi-{env}.iam.gserviceaccount.com"
     principals = (
@@ -327,6 +331,22 @@ def save_config(path: Path, cfg: ShimConfig) -> None:
     atomic_write(Path(path), json.dumps(cfg.to_json_dict(), indent=2).encode(), mode=0o600)
 
 
+def with_default_buckets(cfg: ShimConfig) -> ShimConfig:
+    """``cfg`` plus every bucket of :func:`default_config` for its ``env`` that it lacks (a
+    root created before a new :class:`~mapi_spec.storage.BucketPurpose`, such as v0.19's
+    ``plugins``, gains it). Buckets already configured are never changed; ``cfg`` itself is
+    returned when nothing is missing."""
+    have = {b.name for b in cfg.buckets}
+    missing = tuple(
+        b
+        for b in default_config(cfg.env, bundle_retention_seconds=None).buckets
+        if b.name not in have
+    )
+    if not missing:
+        return cfg
+    return cfg.model_copy(update={"buckets": (*cfg.buckets, *missing)})
+
+
 def init_root(
     root: Path,
     *,
@@ -337,7 +357,8 @@ def init_root(
 
     An existing config is loaded as is (its ``env`` and bucket policies win over ``env`` and
     ``bundle_retention_seconds``), so secrets are stable across restarts and a locked
-    retention policy is never shortened.
+    retention policy is never shortened; a default bucket it lacks is added and saved
+    (:func:`with_default_buckets`).
     """
     root = Path(root)
     (root / CONFIG_DIR / KEYS_DIR).mkdir(parents=True, exist_ok=True)
@@ -346,7 +367,11 @@ def init_root(
     (root / "buckets").mkdir(exist_ok=True)
     path = config_path(root)
     if path.exists():
-        return load_config(path)
+        cfg = load_config(path)
+        merged = with_default_buckets(cfg)
+        if merged is not cfg:
+            save_config(path, merged)
+        return merged
     cfg = default_config(env, bundle_retention_seconds=bundle_retention_seconds)
     save_config(path, cfg)
     return cfg

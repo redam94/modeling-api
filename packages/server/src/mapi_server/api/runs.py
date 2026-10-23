@@ -702,8 +702,10 @@ async def resume_run(ctx: Ctx, session: Session, run_id: RunId) -> Run:
         raise Conflict(f"only partial runs can be resumed (run is {run.state})")
     run.finalize = {}
     run.finalize_attempts = 0
-    # resuming spends compute again: the same kill switches and quotas as a new run
-    await admit(session, ctx, run, untrusted=run.untrusted_code, audit_action=None)
+    # resuming spends compute again: the same kill switches and quotas as a new run.
+    # v0.19: the run keeps its overlay pins (``overlays=None`` never clears them), gated
+    # again for the person who created the run (a version yanked since then is refused)
+    await admit(session, ctx, run, untrusted=run.untrusted_code, overlays=None, audit_action=None)
     await apply_transition(session, run, RunTrigger.RESUME, Actor.API)
     return await run_view(session, run)
 

@@ -87,6 +87,9 @@ const ENTRY_BUDGET = {
     },
     // Make your own: Monaco stays its own lazy chunk (the YAML tab loads it with import()).
     { match: /(?:^|\/)library-[^/]*\.js$/, maxBytes: 160 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/routes\/library\.tsx$/ },
+    // v0.19 (D20, I-8): uploaded code (upload, plugin, version and review pages). Recipe examples
+    // draw through the plot sandbox from their own lazy chunk (plot data brings Arrow).
+    { match: /(?:^|\/)plugins-[^/]*\.js$/, maxBytes: 96 * 1024, forbidden: HEAVY, requiredWhen: /\/src\/routes\/plugins\.tsx$/ },
   ],
 };
 

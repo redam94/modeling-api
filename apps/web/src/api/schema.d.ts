@@ -34,6 +34,8 @@ export interface paths {
         /**
          * Auth Login
          * @description Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.
+         *     ``reauth=1`` (v0.19) asks the identity provider to authenticate the person again
+         *     (``max_age=0``, ``prompt=login``), as approving uploaded code needs.
          */
         get: operations["auth_login"];
         put?: never;
@@ -523,7 +525,8 @@ export interface paths {
         /**
          * About cards of catalog items (filter: kind)
          * @description The plain-language About card of every model, preprocessing step, split, template,
-         *     workflow template, workflow node and governance check a user can pick.
+         *     workflow template, workflow node and governance check a user can pick (v0.19: the
+         *     uploads in the caller's tenant catalog view too).
          */
         get: operations["list_catalog_abouts"];
         put?: never;
@@ -677,7 +680,8 @@ export interface paths {
         /**
          * Get Catalog Plot Example
          * @description The plot recipe rendered on its synthetic example data (made by the describe run,
-         *     datasets inline). ``404`` when the recipe, or its example, does not exist.
+         *     datasets inline). ``404`` when the recipe, or its example, does not exist. An uploaded
+         *     recipe's example is the one its version's describe run made (re-sanitized).
          */
         get: operations["get_catalog_plot_example"];
         put?: never;
@@ -723,7 +727,7 @@ export interface paths {
          *     a question or separate values with commas), each with plain reasons and cautions.
          *     Without ``kind`` the candidates are models, guided templates and workflow templates;
          *     ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
-         *     ``CHOOSER_ANSWER_INVALID``.
+         *     ``CHOOSER_ANSWER_INVALID``. v0.19: uploads are never ranked (the base catalog only).
          */
         get: operations["recommend_catalog_items"];
         put?: never;
@@ -760,7 +764,8 @@ export interface paths {
         };
         /**
          * Workflow node implementations with ports, parameters and About cards
-         * @description The built-in nodes and those of installed plugins (``plugin`` set; v0.18).
+         * @description The built-in nodes and those of installed plugins (``plugin`` set; v0.18), and
+         *     (v0.19) the uploaded nodes in the caller's tenant catalog view.
          */
         get: operations["list_workflow_nodes"];
         put?: never;
@@ -798,7 +803,9 @@ export interface paths {
         /**
          * List Dashboards
          * @description Dashboards of the project, newest first. A client sees only the published ones
-         *     granted to them; viewers do not see drafts (editors do).
+         *     granted to them, less those made with uploaded code (v0.19 D16: opening one answers
+         *     ``403 UPLOADED_CODE_NOT_SHAREABLE``, so the list leaves it out); viewers do not see
+         *     drafts (editors do).
          */
         get: operations["list_dashboards"];
         put?: never;
@@ -1799,9 +1806,10 @@ export interface paths {
         /**
          * Public: the embedded plot with inline data (410 when expired or revoked)
          * @description Public: the embedded plot with every dataset inline (``410 LINK_EXPIRED`` once
-         *     expired or revoked, ``404`` for an unknown token, ``429`` past the per-link or
-         *     per-address rate). Cookies and ``Authorization`` are ignored; browsers may read it only
-         *     from the plot-sandbox origin (CORS), which renders it under its own CSP.
+         *     expired or revoked, ``404`` for an unknown token, ``403 UPLOADED_CODE_NOT_SHAREABLE``
+         *     for a plot made with uploaded code, ``429`` past the per-link or per-address rate).
+         *     Cookies and ``Authorization`` are ignored; browsers may read it only from the
+         *     plot-sandbox origin (CORS), which renders it under its own CSP.
          */
         get: operations["get_embed"];
         put?: never;
@@ -2953,7 +2961,8 @@ export interface paths {
          * Tokenised read-only link (platform recipes only; shown once)
          * @description Mint a read-only link (the token is in the response once; only its HMAC is stored).
          *     Only plots a model version drew with a platform recipe can be embedded
-         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots). When the caller may start
+         *     (``EMBED_NOT_ALLOWED`` for plugin- and user-authored plots;
+         *     ``UPLOADED_CODE_NOT_SHAREABLE`` for a plot made with uploaded code). When the caller may start
          *     render runs, a PNG of the plot is rendered in the sandbox as the embed page's fallback.
          *     Audited.
          */
@@ -3024,6 +3033,265 @@ export interface paths {
          *     unsafe: the verdict is ``valid`` + ``issues``).
          */
         post: operations["validate_plot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugins
+         * @description The tenant's uploaded plugins by namespace. ``state`` keeps plugins with a version in
+         *     that state, ``mine`` the plugins you claimed. Versions that are private to other people
+         *     are not counted or shown.
+         */
+        get: operations["list_plugins"];
+        put?: never;
+        /**
+         * Claim Plugin
+         * @description Claim a short name for uploaded code. The namespace is ``t_<tenant code>_<short
+         *     name>``; the workspace gets its tenant code on its first claim.
+         */
+        post: operations["claim_plugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin
+         * @description One plugin and its newest version that you can see.
+         */
+        get: operations["get_plugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Plugin Upload
+         * @description An upload ticket: POST the wheel (``{dist}-{version}-py3-none-any.whl``) as
+         *     ``multipart/form-data`` to ``post.url`` with every field of ``post.fields`` and the file
+         *     last, then call ``…/uploads/{upload_id}:complete``. At most 20 tickets per person a day.
+         */
+        post: operations["create_plugin_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/uploads/{upload_id}:complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Plugin Upload
+         * @description The wheel is uploaded: the server hashes it and starts the checks (state
+         *     ``inspecting``). ``project`` pays for the check runs; ``request_approval`` sends the
+         *     version for review as soon as it passes its tests.
+         */
+        post: operations["complete_plugin_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugin Versions
+         * @description The versions of a plugin, newest first (private versions only for their uploader and
+         *     the tenant admins).
+         */
+        get: operations["list_plugin_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Version
+         * @description One version: inspect facts, SBOM, kit report, exports, issues and decisions
+         *     (``ETag``; ``If-None-Match`` answers ``304`` when nothing changed).
+         */
+        get: operations["get_plugin_version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}/examples/{plot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Example
+         * @description The example of an uploaded plot recipe: a PlotSpec, sanitized again on the way out.
+         *     Render it only in the plot-sandbox origin.
+         */
+        get: operations["get_plugin_example"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Usage
+         * @description What uses a version: runs in the last 30 days, model versions, endpoints and
+         *     dashboards (each list at most 50 ids).
+         */
+        get: operations["get_plugin_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Plugin Version
+         * @description Approve a version for the whole workspace: a tenant admin who is not the uploader,
+         *     signed in to the web app in the last 15 minutes. The body repeats the digests the page
+         *     showed.
+         */
+        post: operations["approve_plugin_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Plugin Version
+         * @description Reject a version (the same rules as approve; ``note`` is required).
+         */
+        post: operations["reject_plugin_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Plugin Approval
+         * @description Ask the tenant admins to review a version that passed its tests (its uploader or a
+         *     tenant admin).
+         */
+        post: operations["request_plugin_approval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plugins/{plugin_id}/versions/{version_id}:yank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yank Plugin Version
+         * @description Withdraw a version: it leaves every catalog at once and runs that need it cannot
+         *     start. ``security`` also cancels the queued and running runs that use it.
+         */
+        post: operations["yank_plugin_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4204,6 +4472,76 @@ export interface paths {
         patch: operations["update_tenant_member"];
         trace?: never;
     };
+    "/v1/tenants/{tenant_id}/plugin-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plugin Settings
+         * @description The workspace's uploaded-code settings, its tenant code (after the first claim) and
+         *     whether uploads are allowed here (and why not).
+         */
+        get: operations["get_plugin_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Plugin Settings
+         * @description Turn private use on or off: whether uploaders may use their own versions that passed
+         *     their tests before a tenant admin approves them.
+         */
+        patch: operations["update_plugin_settings"];
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugin-uploaders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plugin Uploaders
+         * @description The editors a tenant admin attested: they may upload code (tenant admins always may).
+         */
+        get: operations["list_plugin_uploaders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenants/{tenant_id}/plugin-uploaders/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Attest Plugin Uploader
+         * @description Confirm that you know who this member is: they may upload code. Not yourself.
+         */
+        put: operations["attest_plugin_uploader"];
+        post?: never;
+        /**
+         * Revoke Plugin Uploader
+         * @description Revoke an attestation. Versions the person uploaded keep their state.
+         */
+        delete: operations["revoke_plugin_uploader"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/{tenant_id}/projects": {
         parameters: {
             query?: never;
@@ -4854,7 +5192,8 @@ export interface paths {
         };
         /**
          * The gallery of workflow templates
-         * @description The built-in templates and those of installed plugins (``source: "plugin"``; v0.18).
+         * @description The built-in templates and those of installed plugins (``source: "plugin"``; v0.18),
+         *     and (v0.19) the uploaded templates in the caller's tenant catalog view.
          */
         get: operations["list_workflow_templates"];
         put?: never;
@@ -5811,7 +6150,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire" | "plugin.claim" | "plugin.approval_request" | "plugin.approve" | "plugin.reject" | "plugin.purge" | "plugin.settings_update" | "plugin.uploader_attest" | "plugin.uploader_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -6392,6 +6731,11 @@ export interface components {
             };
             /** Overlay Hash */
             overlay_hash?: string | null;
+            /**
+             * Overlay Hashes
+             * @description v0.19: the sha256 of every uploaded wheel the run mounted (from the control plane's runs.overlays)
+             */
+            overlay_hashes?: string[];
             /**
              * Project Id
              * @example default
@@ -11722,6 +12066,18 @@ export interface components {
             valid: boolean;
         };
         /**
+         * EntryPointDecl
+         * @description An entry point the wheel declares (read from ``entry_points.txt``, never loaded).
+         */
+        EntryPointDecl: {
+            /** Group */
+            group: string;
+            /** Name */
+            name: string;
+            /** Value */
+            value: string;
+        };
+        /**
          * ErrorAccuracy
          * @description Errors of numeric predictions (``mape``, ``wape``, ``smape`` and ``band_hit_rate`` in
          *     percent; ``bias`` = mean of predicted − actual).
@@ -11759,7 +12115,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED" | "PLUGIN_REFUSED" | "PLUGIN_NAMESPACE_TAKEN" | "PLUGIN_VERSION_EXISTS" | "PLUGIN_STATE_CONFLICT" | "PLUGIN_UNAVAILABLE" | "UPLOADED_CODE_NOT_SHAREABLE" | "UNTRUSTED_PLACEMENT_UNAVAILABLE" | "REAUTH_REQUIRED";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -12063,6 +12419,18 @@ export interface components {
              * @default []
              */
             regions?: string[];
+            /**
+             * Runs Untrusted Code
+             * @description v0.19: the backend may run uploaded (tenant) code: docker, docker-gvisor and Cloud Run Jobs; local-process only with the dev-only allowance
+             * @default false
+             */
+            runs_untrusted_code?: boolean;
+            /**
+             * Untrusted Dev Only
+             * @description v0.19: uploaded code runs here only because of the development allowance (MAPI_DEV_ALLOW_LOCAL_UNTRUSTED); the run gets a DEV_MODE_ISOLATION event
+             * @default false
+             */
+            untrusted_dev_only?: boolean;
         };
         /**
          * ExecutorEvidence
@@ -14714,6 +15082,22 @@ export interface components {
             role: "coord" | "target" | "driver" | "input";
         };
         /**
+         * InspectProblem
+         * @description One reason the inspect run refuses the wheel. ``message`` is platform-authored;
+         *     ``path`` is the archive member concerned (untrusted, normalized).
+         */
+        InspectProblem: {
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "archive_size" | "member_count" | "member_size" | "ratio" | "path_unsafe" | "link_member" | "special_member" | "duplicate_name" | "case_collision" | "zip_structure" | "encrypted" | "compression_method" | "nested_archive" | "native_code" | "bytecode" | "pth_file" | "site_hook" | "top_level_name" | "namespace_package" | "dist_name" | "dist_info" | "wheel_tag" | "data_dir" | "entry_point_group" | "entry_point_target" | "requirement_unlocked" | "requirement_url" | "requires_python" | "metadata_invalid" | "text_unsafe" | "sha_mismatch";
+            /** Message */
+            message: string;
+            /** Path */
+            path?: string | null;
+        };
+        /**
          * InspectedArray
          * @description One array of an inspected upload (from its metadata only; no data is read).
          *
@@ -14900,6 +15284,31 @@ export interface components {
             updated_at?: string | null;
             /** Updated By */
             updated_by?: string | null;
+        };
+        /**
+         * KitCheck
+         * @description One kit result. ``message`` comes from the sandbox (untrusted, normalized).
+         */
+        KitCheck: {
+            /** Check */
+            check: string;
+            /** Entry Id */
+            entry_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "model" | "step" | "plot" | "node" | "template" | "package";
+            /**
+             * Message
+             * @default
+             */
+            message?: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "skipped";
         };
         /** KpiBlock */
         KpiBlock: {
@@ -15724,6 +16133,11 @@ export interface components {
             /** Overlay Hash */
             overlay_hash?: string | null;
             /**
+             * Overlays
+             * @description v0.19: the uploaded plugin versions the run used (from the control plane's runs.overlays; overlay_hash is deprecated and always null for new rows)
+             */
+            overlays?: components["schemas"]["OverlayPin"][];
+            /**
              * Plugin
              * @example mmm.bayesian@1.3.2
              */
@@ -15937,10 +16351,25 @@ export interface components {
              */
             auth: "session" | "token" | "service";
             /**
+             * Dev Untrusted Code
+             * @default false
+             */
+            dev_untrusted_code?: boolean;
+            /**
              * Operator
              * @default false
              */
             operator?: boolean;
+            /**
+             * Plugins Enabled
+             * @default true
+             */
+            plugins_enabled?: boolean;
+            /**
+             * Plugins Paused
+             * @default false
+             */
+            plugins_paused?: boolean;
             /** Principal */
             principal: components["schemas"]["UserPrincipal"] | components["schemas"]["TokenPrincipal"] | components["schemas"]["ServicePrincipal"];
             /** Tenants */
@@ -18155,6 +18584,24 @@ export interface components {
             variable: string;
         };
         /**
+         * OverlayPin
+         * @description One uploaded plugin version a run uses: which version, its namespace and the sha256 of
+         *     the wheel the control plane stored. Set by the control plane, never by a caller.
+         * @example {
+         *       "namespace": "t_k3vq7m_acme",
+         *       "plugin_version_id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        OverlayPin: {
+            /** Namespace */
+            namespace: string;
+            /** Plugin Version Id */
+            plugin_version_id: string;
+            /** Sha256 */
+            sha256: string;
+        };
+        /**
          * PackInfo
          * @description One pack a collection version reads.
          */
@@ -18651,6 +19098,32 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[PluginVersionSummary]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_PluginVersionSummary_: {
+            /** Items */
+            items: components["schemas"]["PluginVersionSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
+         * Page[Plugin]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_Plugin_: {
+            /** Items */
+            items: components["schemas"]["Plugin"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[Project]
          * @example {
          *       "items": [],
@@ -19056,6 +19529,11 @@ export interface components {
             about?: components["schemas"]["About"] | null;
             /** Id */
             id: string;
+            /**
+             * Overlay Hash
+             * @description v0.19: the sha256 of the uploaded wheel the recipe comes from
+             */
+            overlay_hash?: string | null;
             /**
              * Pack Label
              * @description v0.18: the name of the recipe pack shown on the catalog card
@@ -19483,6 +19961,581 @@ export interface components {
             valid: boolean;
         };
         /**
+         * Plugin
+         * @description A claimed plugin name of a tenant and its latest version.
+         * @example {
+         *       "created_at": "2026-10-22T09:30:00Z",
+         *       "created_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "latest_version": {
+         *         "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *         "exports": {
+         *           "model": 1,
+         *           "node": 1,
+         *           "plot": 1,
+         *           "step": 1,
+         *           "template": 1
+         *         },
+         *         "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *         "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *         "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *         "scope": "private",
+         *         "state": "kit_passed",
+         *         "uploaded_at": "2026-10-22T09:30:00Z",
+         *         "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *         "version": "0.1.0"
+         *       },
+         *       "namespace": "t_k3vq7m_acme",
+         *       "short_name": "acme",
+         *       "title": "Acme store tools",
+         *       "updated_at": "2026-10-22T09:30:00Z",
+         *       "versions": 1
+         *     }
+         */
+        Plugin: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string;
+            /**
+             * Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            latest_version?: components["schemas"]["PluginVersionSummary"] | null;
+            /**
+             * Namespace
+             * @example t_k3vq7m_acme
+             */
+            namespace: string;
+            /** Short Name */
+            short_name: string;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Versions
+             * @default 0
+             */
+            versions?: number;
+        };
+        /**
+         * PluginClaim
+         * @description Claim a short name: the namespace becomes ``t_<tenant code>_<short_name>``.
+         * @example {
+         *       "short_name": "acme",
+         *       "title": "Acme store tools"
+         *     }
+         */
+        PluginClaim: {
+            /** Short Name */
+            short_name: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PluginDecision
+         * @description Approve or reject a version. The digests must be the ones the page showed (else
+         *     ``PLUGIN_STATE_CONFLICT``); a rejection needs a ``note``.
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "note": "The recipe sends data to an external host.",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        PluginDecision: {
+            /** Base Image Digest */
+            base_image_digest: string;
+            /** Describe Digest */
+            describe_digest: string;
+            /** Note */
+            note?: string | null;
+            /** Overlay Sha256 */
+            overlay_sha256: string;
+        };
+        /**
+         * PluginDecisionRecord
+         * @description One approval or rejection of a version, with the digests the reviewer saw.
+         * @example {
+         *       "approver_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9",
+         *       "approver_name": "Ada Admin",
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "decided_at": "2026-10-22T09:30:00Z",
+         *       "decision": "approve",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab"
+         *     }
+         */
+        PluginDecisionRecord: {
+            /** Approver Id */
+            approver_id: string;
+            /** Approver Name */
+            approver_name?: string | null;
+            /** Base Image Digest */
+            base_image_digest: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "reject";
+            /** Describe Digest */
+            describe_digest: string;
+            /**
+             * Note
+             * @description Untrusted text
+             */
+            note?: string | null;
+            /** Overlay Sha256 */
+            overlay_sha256: string;
+        };
+        /**
+         * PluginExports
+         * @description The catalog entries an upload exports (only its own distribution's).
+         */
+        PluginExports: {
+            /** Models */
+            models?: components["schemas"]["ModelCatalogEntry"][];
+            /** Plots */
+            plots?: components["schemas"]["PlotCatalogEntry"][];
+            /** Steps */
+            steps?: components["schemas"]["StepCatalogEntry"][];
+            /** Workflow Nodes */
+            workflow_nodes?: components["schemas"]["NodeImplementation"][];
+            /** Workflow Templates */
+            workflow_templates?: components["schemas"]["TemplateCatalogEntry"][];
+        };
+        /**
+         * PluginInspection
+         * @description ``plugin/inspection.json``: what the inspect run found (``ok`` = no problem).
+         */
+        PluginInspection: {
+            /** Archive Sha256 */
+            archive_sha256: string;
+            /** Dist */
+            dist?: string | null;
+            /** Entry Points */
+            entry_points?: components["schemas"]["EntryPointDecl"][];
+            /**
+             * Members
+             * @default 0
+             */
+            members?: number;
+            /** Ok */
+            ok: boolean;
+            /** Problems */
+            problems?: components["schemas"]["InspectProblem"][];
+            /** Requires Python */
+            requires_python?: string | null;
+            sbom?: components["schemas"]["PluginSbom"] | null;
+            /** Top Level */
+            top_level?: string[];
+            /**
+             * Uncompressed Bytes
+             * @default 0
+             */
+            uncompressed_bytes?: number;
+            /** Version */
+            version?: string | null;
+            /** Wheel Tags */
+            wheel_tags?: string[];
+        };
+        /**
+         * PluginKitReport
+         * @description Every kit result of a describe run (``ok``: no ``fail``; ``skipped`` is allowed).
+         */
+        PluginKitReport: {
+            /** Checks */
+            checks?: components["schemas"]["KitCheck"][];
+            /** Ok */
+            ok: boolean;
+        };
+        /**
+         * PluginSbom
+         * @description The software bill of materials of an upload: every file and every requirement.
+         */
+        PluginSbom: {
+            /** Base Image Digest */
+            base_image_digest: string;
+            /** Dist */
+            dist: string;
+            /** Files */
+            files?: components["schemas"]["SbomFile"][];
+            /**
+             * Format
+             * @default mapi.sbom/v1
+             * @constant
+             */
+            format?: "mapi.sbom/v1";
+            /** License */
+            license?: string | null;
+            /** Requires */
+            requires?: components["schemas"]["RequirementFact"][];
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginSettings
+         * @description The tenant's uploaded-code settings and whether uploads are allowed (and why not).
+         * @example {
+         *       "private_use": true,
+         *       "reason": "",
+         *       "tenant_code": "k3vq7m",
+         *       "uploads_allowed": true
+         *     }
+         */
+        PluginSettings: {
+            /**
+             * Private Use
+             * @default true
+             */
+            private_use?: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+            /** Tenant Code */
+            tenant_code?: string | null;
+            /**
+             * Uploads Allowed
+             * @default false
+             */
+            uploads_allowed?: boolean;
+        };
+        /**
+         * PluginSettingsPatch
+         * @description Turn private use of kit-passed uploads on or off for the tenant.
+         * @example {
+         *       "private_use": false
+         *     }
+         */
+        PluginSettingsPatch: {
+            /** Private Use */
+            private_use: boolean;
+        };
+        /**
+         * PluginUploadComplete
+         * @description The wheel is uploaded: check it. ``project`` pays for the pipeline runs.
+         * @example {
+         *       "project": "growth",
+         *       "request_approval": false
+         *     }
+         */
+        PluginUploadComplete: {
+            /** Project */
+            project: string;
+            /**
+             * Request Approval
+             * @default false
+             */
+            request_approval?: boolean;
+        };
+        /**
+         * PluginUploadTicket
+         * @description Where to POST the wheel: a POST policy for exactly one quarantine key.
+         * @example {
+         *       "expires_at": "2026-10-22T09:45:00Z",
+         *       "max_bytes": 20971520,
+         *       "post": {
+         *         "content_length_range": [
+         *           1,
+         *           20971520
+         *         ],
+         *         "create_only": true,
+         *         "expires_at": "2026-10-22T09:45:00Z",
+         *         "fields": {
+         *           "key": "t/default/plugins/pup_01jbz3q2x8m9v7k5h4g3f2e1d2/plugin.whl",
+         *           "policy": "eyJjb25kaXRpb25zIjpbXX0=",
+         *           "x-goog-signature": "abc123"
+         *         },
+         *         "method": "POST",
+         *         "prefix": "t/default/plugins/pup_01jbz3q2x8m9v7k5h4g3f2e1d2/",
+         *         "url": "http://127.0.0.1:4443/mapi-local-quarantine"
+         *       },
+         *       "upload_id": "pup_01jbz3q2x8m9v7k5h4g3f2e1d2"
+         *     }
+         */
+        PluginUploadTicket: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Max Bytes */
+            max_bytes: number;
+            post: components["schemas"]["PostPolicy"];
+            /**
+             * Upload Id
+             * @example pup_01jbz3q2x8m9v7k5h4g3f2e1d2
+             */
+            upload_id: string;
+        };
+        /**
+         * PluginUploadTicketRequest
+         * @description Ask for an upload ticket. ``size`` above the deployment's cap is refused by the route
+         *     with ``PAYLOAD_TOO_LARGE``.
+         * @example {
+         *       "filename": "t_k3vq7m_acme-0.1.0-py3-none-any.whl",
+         *       "size": 12960
+         *     }
+         */
+        PluginUploadTicketRequest: {
+            /** Filename */
+            filename: string;
+            /** Size */
+            size: number;
+        };
+        /**
+         * PluginUsage
+         * @description What uses a version (shown before a yank).
+         * @example {
+         *       "dashboards": [],
+         *       "endpoints": [],
+         *       "model_versions": [
+         *         "mv_01jbz3q2x8m9v7k5h4g3f2e1d3"
+         *       ],
+         *       "runs_30d": 4,
+         *       "truncated": false
+         *     }
+         */
+        PluginUsage: {
+            /** Dashboards */
+            dashboards?: string[];
+            /** Endpoints */
+            endpoints?: string[];
+            /** Model Versions */
+            model_versions?: string[];
+            /**
+             * Runs 30D
+             * @default 0
+             */
+            runs_30d?: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated?: boolean;
+        };
+        /**
+         * PluginVersion
+         * @description One version with everything the version page and the reviewer panel show.
+         * @example {
+         *       "base_image_digest": "sha256:efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "exports": {
+         *         "model": 1,
+         *         "node": 1,
+         *         "plot": 1,
+         *         "step": 1,
+         *         "template": 1
+         *       },
+         *       "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "inspection": {
+         *         "archive_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *         "dist": "t-k3vq7m-acme",
+         *         "entry_points": [
+         *           {
+         *             "group": "mapi.steps",
+         *             "name": "acme",
+         *             "value": "t_k3vq7m_acme.steps:STEPS"
+         *           }
+         *         ],
+         *         "members": 11,
+         *         "ok": true,
+         *         "problems": [],
+         *         "requires_python": ">=3.12",
+         *         "top_level": [
+         *           "t_k3vq7m_acme"
+         *         ],
+         *         "uncompressed_bytes": 40960,
+         *         "version": "0.1.0",
+         *         "wheel_tags": [
+         *           "py3-none-any"
+         *         ]
+         *       },
+         *       "kit": {
+         *         "checks": [
+         *           {
+         *             "check": "check_step",
+         *             "entry_id": "t_k3vq7m_acme.winsorize",
+         *             "kind": "step",
+         *             "message": "",
+         *             "status": "pass"
+         *           }
+         *         ],
+         *         "ok": true
+         *       },
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *       "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "scope": "private",
+         *       "state": "kit_passed",
+         *       "uploaded_at": "2026-10-22T09:30:00Z",
+         *       "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "urls": [
+         *         "https://example.org/acme"
+         *       ],
+         *       "version": "0.1.0"
+         *     }
+         */
+        PluginVersion: {
+            /** Approvals */
+            approvals?: components["schemas"]["PluginDecisionRecord"][];
+            /** Base Image Digest */
+            base_image_digest?: string | null;
+            /** Describe Digest */
+            describe_digest?: string | null;
+            /** Exports */
+            exports?: {
+                [key: string]: number;
+            };
+            exports_detail?: components["schemas"]["PluginExports"] | null;
+            /**
+             * Id
+             * @example plv_01jbz3q2x8m9v7k5h4g3f2e1d1
+             */
+            id: string;
+            inspection?: components["schemas"]["PluginInspection"] | null;
+            /** Issues */
+            issues?: components["schemas"]["Issue"][];
+            kit?: components["schemas"]["PluginKitReport"] | null;
+            /** Overlay Sha256 */
+            overlay_sha256?: string | null;
+            /**
+             * Plugin Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            plugin_id: string;
+            problem?: components["schemas"]["Problem"] | null;
+            /** Purge After */
+            purge_after?: string | null;
+            /**
+             * Scope
+             * @description Who may use it now: only the uploader (private), the whole tenant, or nobody
+             * @enum {string}
+             */
+            scope: "private" | "tenant" | "none";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged";
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string;
+            /**
+             * Urls
+             * @description Every About reference URL, for the reviewer
+             */
+            urls?: string[];
+            /** Version */
+            version: string;
+            /** Yank Note */
+            yank_note?: string | null;
+            /** Yank Reason */
+            yank_reason?: ("withdrawn" | "security" | "superseded" | "rekit_failed") | null;
+        };
+        /**
+         * PluginVersionSummary
+         * @description One uploaded version of a plugin (lists).
+         * @example {
+         *       "describe_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+         *       "exports": {
+         *         "model": 1,
+         *         "node": 1,
+         *         "plot": 1,
+         *         "step": 1,
+         *         "template": 1
+         *       },
+         *       "id": "plv_01jbz3q2x8m9v7k5h4g3f2e1d1",
+         *       "overlay_sha256": "sha256:abababababababababababababababababababababababababababababababab",
+         *       "plugin_id": "plg_01jbz3q2x8m9v7k5h4g3f2e1d0",
+         *       "scope": "private",
+         *       "state": "kit_passed",
+         *       "uploaded_at": "2026-10-22T09:30:00Z",
+         *       "uploaded_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "version": "0.1.0"
+         *     }
+         */
+        PluginVersionSummary: {
+            /** Describe Digest */
+            describe_digest?: string | null;
+            /** Exports */
+            exports?: {
+                [key: string]: number;
+            };
+            /**
+             * Id
+             * @example plv_01jbz3q2x8m9v7k5h4g3f2e1d1
+             */
+            id: string;
+            /** Overlay Sha256 */
+            overlay_sha256?: string | null;
+            /**
+             * Plugin Id
+             * @example plg_01jbz3q2x8m9v7k5h4g3f2e1d0
+             */
+            plugin_id: string;
+            /**
+             * Scope
+             * @description Who may use it now: only the uploader (private), the whole tenant, or nobody
+             * @enum {string}
+             */
+            scope: "private" | "tenant" | "none";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged";
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Uploaded By */
+            uploaded_by: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginYank
+         * @description Withdraw a version (``security`` also cancels queued and running runs that use it).
+         * @example {
+         *       "note": "Use 0.2.0.",
+         *       "reason": "superseded"
+         *     }
+         */
+        PluginYank: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "withdrawn" | "security" | "superseded";
+        };
+        /**
          * PolicyCheck
          * @description A required check in a policy: thresholds, severity and parameters.
          */
@@ -19549,6 +20602,66 @@ export interface components {
          * @enum {string}
          */
         PortType: "dataset" | "test_result" | "split_plan" | "model_version" | "metrics" | "table" | "plot" | "report" | "evidence";
+        /**
+         * PostPolicy
+         * @description A V4 POST policy: multipart form uploads of any key under ``prefix``.
+         *
+         *     The uploader posts ``multipart/form-data`` to ``url`` with every entry of ``fields``,
+         *     then ``key`` (which must start with ``prefix``), then the ``file`` part last. The storage
+         *     service rejects bodies outside ``content_length_range`` and keys outside the prefix.
+         *
+         *     A ``create_only`` policy cannot replace an existing object (its signed conditions carry
+         *     ``x-goog-if-generation-match: 0``), so the holder can neither overwrite the write-once
+         *     manifest nor swap an output after it was written.
+         * @example {
+         *       "content_length_range": [
+         *         0,
+         *         1073741824
+         *       ],
+         *       "expires_at": "2026-10-15T10:30:00Z",
+         *       "fields": {
+         *         "policy": "eyJjb25kaXRpb25zIjpbXX0=",
+         *         "x-goog-algorithm": "GOOG4-HMAC-SHA256",
+         *         "x-goog-credential": "local/20261015/auto/storage/goog4_request",
+         *         "x-goog-date": "20261015T093000Z",
+         *         "x-goog-signature": "abcdef0123"
+         *       },
+         *       "method": "POST",
+         *       "prefix": "t/default/runs/run_01jabc/a1/",
+         *       "url": "http://127.0.0.1:4443/mapi-local-runs"
+         *     }
+         */
+        PostPolicy: {
+            /** Content Length Range */
+            content_length_range: [
+                number,
+                number
+            ];
+            /**
+             * Create Only
+             * @default false
+             */
+            create_only?: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Fields */
+            fields?: {
+                [key: string]: string;
+            };
+            /**
+             * Method
+             * @default POST
+             * @constant
+             */
+            method?: "POST";
+            /** Prefix */
+            prefix: string;
+            /** Url */
+            url: string;
+        };
         /**
          * PredictionResult
          * @description The result of scenario rows. ``band``: the kind of range (``outcome``: one new result;
@@ -20890,6 +22003,23 @@ export interface components {
          * @enum {string}
          */
         Representation: "draws" | "quantiles" | "interval" | "point" | "moments";
+        /**
+         * RequirementFact
+         * @description One ``Requires-Dist`` line and the version the base image has (``None``: missing).
+         */
+        RequirementFact: {
+            /** Locked Version */
+            locked_version?: string | null;
+            /** Marker */
+            marker?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Specifier
+             * @default
+             */
+            specifier?: string;
+        };
         /** ResolvedModel */
         ResolvedModel: {
             capabilities: components["schemas"]["Capabilities"];
@@ -20992,7 +22122,7 @@ export interface components {
          * ResourceKind
          * @enum {string}
          */
-        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share" | "library" | "tenant_library";
+        ResourceKind: "tenant" | "tenant_member" | "project" | "member" | "token" | "catalog" | "dataset" | "spec" | "run" | "model" | "endpoint" | "plot" | "plugin" | "usage" | "billing" | "audit" | "quota" | "kill_switch" | "executor" | "event" | "webhook" | "embed" | "tenant_deletion" | "tenant_export" | "workflow" | "policy" | "tenant_policy" | "dashboard" | "dashboard_grant" | "dashboard_share" | "library" | "tenant_library" | "plugin_settings";
         /**
          * ResultField
          * @description A field of a node's JSON result that conditions may read (``nodes.<id>.<field>``).
@@ -21750,7 +22880,7 @@ export interface components {
          *     M4): they own child runs and never execute on an executor themselves.
          * @enum {string}
          */
-        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect";
+        RunKind: "ingest" | "describe" | "validate" | "fit" | "score" | "evaluate" | "derive" | "render" | "optimize" | "sweep" | "backtest" | "sbc" | "campaign" | "translate_priors" | "workflow" | "workflow_node" | "explore" | "governance" | "inspect" | "plugin_inspect" | "plugin_describe";
         /**
          * RunMedia
          * @description An image or a table a run logged. ``caption`` is untrusted text; ``url`` is a signed GET
@@ -22277,6 +23407,18 @@ export interface components {
             spec?: components["schemas"]["PlotSpec"] | null;
             /** Title */
             title: string;
+        };
+        /**
+         * SbomFile
+         * @description One archive member: its path, sha256 and uncompressed size.
+         */
+        SbomFile: {
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
         };
         /** ScatterBlock */
         ScatterBlock: {
@@ -24105,6 +25247,11 @@ export interface components {
             invertible?: boolean;
             kind: components["schemas"]["StepKind"];
             /**
+             * Overlay Hash
+             * @description v0.19: the sha256 of the uploaded wheel the step comes from
+             */
+            overlay_hash?: string | null;
+            /**
              * Provider
              * @description v0.18: the distribution that installed a non-built-in step
              */
@@ -24333,6 +25480,35 @@ export interface components {
             when: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+        };
+        /**
+         * TemplateCatalogEntry
+         * @description A plugin workflow template (entry-point group ``mapi.workflow_templates``).
+         *
+         *     The sibling of :class:`~mapi_spec.workflow_templates.WorkflowTemplate` (which this module
+         *     cannot import: ``workflow`` imports the catalog). The id is ``<namespace>_<name>`` so it
+         *     fits ``POST /v1/workflows {template}``; ``document`` is the workflow document, validated
+         *     against the merged node contracts when the control plane loads the catalog.
+         */
+        TemplateCatalogEntry: {
+            about: components["schemas"]["About"];
+            /** Document */
+            document: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Id */
+            id: string;
+            /** Overlay Hash */
+            overlay_hash?: string | null;
+            /** Provider */
+            provider?: string | null;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version?: string;
         };
         /**
          * TemplateLookup
@@ -25437,6 +26613,38 @@ export interface components {
             reason: string;
         };
         /**
+         * VerifiedUploader
+         * @description An editor a tenant admin attested (identity-verified for uploads).
+         * @example {
+         *       "display_name": "Eve Editor",
+         *       "email": "eve@example.com",
+         *       "method": "admin_attested",
+         *       "user_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "verified_at": "2026-10-22T09:30:00Z",
+         *       "verified_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k9"
+         *     }
+         */
+        VerifiedUploader: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "admin_attested" | "provider";
+            /** User Id */
+            user_id: string;
+            /**
+             * Verified At
+             * Format: date-time
+             */
+            verified_at: string;
+            /** Verified By */
+            verified_by: string;
+        };
+        /**
          * ViewSource
          * @description A guided view of the readout's run: the forecast total over the horizon, the
          *     counterfactual delta, or the conditioning of a forecast on actuals.
@@ -25661,7 +26869,7 @@ export interface components {
          * WebhookEventType
          * @enum {string}
          */
-        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed" | "dashboard.readout.published";
+        WebhookEventType: "run.succeeded" | "run.failed" | "model.version.ready" | "endpoint.promoted" | "score.completed" | "tenant.deletion.completed" | "workflow.run.succeeded" | "workflow.run.failed" | "model.validation.checks_passed" | "model.validation.checks_failed" | "model.validation.awaiting_approval" | "model.validated" | "model.rejected" | "model.deprecated" | "dataset.version.created" | "optimize.completed" | "dashboard.readout.published" | "plugin.version.kit_passed" | "plugin.version.kit_failed" | "plugin.version.awaiting_approval" | "plugin.version.approved" | "plugin.version.rejected" | "plugin.version.yanked";
         /**
          * WebhookUpdate
          * @description ``PATCH /v1/webhooks/{webhook_id}`` (re-activating resets the failure count).
@@ -26938,6 +28146,7 @@ export interface operations {
         parameters: {
             query?: {
                 return_to?: string | null;
+                reauth?: boolean;
             };
             header?: never;
             path?: never;
@@ -28929,7 +30138,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29002,7 +30211,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29087,7 +30296,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29164,7 +30373,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29238,7 +30447,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29323,7 +30532,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29552,7 +30761,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29694,7 +30903,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29777,7 +30986,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29867,7 +31076,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -29935,7 +31144,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -30622,7 +31831,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -30772,7 +31981,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -30987,7 +32196,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -32344,6 +33553,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbedView"];
+                };
+            };
+            /** @description Problem (`UPLOADED_CODE_NOT_SHAREABLE`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Problem (`NOT_FOUND`) */
@@ -36193,7 +37411,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem (`FORBIDDEN`) */
+            /** @description Problem (`FORBIDDEN`, `UPLOADED_CODE_NOT_SHAREABLE`) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -36425,6 +37643,1006 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugins: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                state?: ("uploaded" | "inspecting" | "inspect_failed" | "describing" | "kit_failed" | "kit_passed" | "awaiting_approval" | "approved" | "rejected" | "yanked" | "purged") | null;
+                mine?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Plugin_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    claim_plugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginClaim"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_NAMESPACE_TAKEN */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plugin"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_plugin_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginUploadTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUploadTicket"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    complete_plugin_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginUploadComplete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, IDENTITY_VERIFICATION_REQUIRED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_VERSION_EXISTS, UNTRUSTED_PLACEMENT_UNAVAILABLE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID, PLUGIN_REFUSED */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plugin_versions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PluginVersionSummary_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string | null;
+            };
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_example: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+                plot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlotSpec"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_plugin_usage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUsage"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approve_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED, REAUTH_REQUIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, SELF_APPROVAL_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reject_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED, REAUTH_REQUIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, SELF_APPROVAL_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    request_plugin_approval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    yank_plugin_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginYank"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginVersion"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PLUGIN_STATE_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -37440,7 +39658,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37516,7 +39734,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37597,7 +39815,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37691,7 +39909,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37778,7 +39996,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37860,7 +40078,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -37954,7 +40172,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38039,7 +40257,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38115,7 +40333,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38206,7 +40424,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38304,7 +40522,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38382,7 +40600,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38460,7 +40678,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38542,7 +40760,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -38631,7 +40849,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -40088,6 +42306,354 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plugin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    update_plugin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_plugin_uploaders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedUploader"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    attest_plugin_uploader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedUploader"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_plugin_uploader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

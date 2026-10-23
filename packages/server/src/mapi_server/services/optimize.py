@@ -28,6 +28,8 @@ from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
 from mapi_server.services.bundles import verified_bundle_object
+from mapi_server.services.plugins.refs import model_version_pins
+from mapi_server.services.plugins.view import resolve_pins
 from mapi_server.services.runs import create_run
 from mapi_server.services.runspec import StoredRef
 from mapi_server.services.submit import _accept
@@ -92,7 +94,9 @@ async def submit_optimize(
         model_version_id=mv.id,
         catalog_digest=mv.manifest.get("catalog_digest"),
     )
-    return await _accept(session, ctx, run, untrusted=bool((mv.lineage or {}).get("overlay_hash")))
+    # v0.19: the version's uploaded code again (its lineage pins)
+    pins = await resolve_pins(ctx, session, inherited=model_version_pins(mv.lineage))
+    return await _accept(session, ctx, run, overlays=pins)
 
 
 def parse_optimize_result(raw: bytes) -> OptimizeResult:

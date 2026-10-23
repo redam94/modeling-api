@@ -61,7 +61,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.jsonlimits import loads_limited
 from mapi_server.services.endpoints import snapshot_for
-from mapi_server.services.sharing import ran_uploaded_code
+from mapi_server.services.sharing import ran_uploaded_code, refused_on_dashboards
 
 __all__ = [
     "MAX_PROFILE_BYTES",
@@ -422,7 +422,7 @@ async def check_version_v2(
     issues: list[Issue] = []
     if mv.status != "ready":
         issues.append(_issue(ErrorCode.NOT_READY, "/source", f"model version {mv.id} is not ready"))
-    if ran_uploaded_code(mv):
+    if refused_on_dashboards(mv):
         issues.append(
             _issue(
                 ErrorCode.CAPABILITY_UNSUPPORTED,

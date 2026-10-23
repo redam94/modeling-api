@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { atLeast, can, maxRole, minimumRole, type Grants } from "@/api/access";
-import { isProjectScoped, parseRetryAfter } from "@/api/client";
+import { isProjectScoped, parseRetryAfter, sessionMiddleware, wantsCatalogTenant } from "@/api/client";
 import { loginHref, safeReturnTo } from "@/api/session";
 import type { Me } from "@/api/types";
 import { initials } from "@/components/shell/user-menu";
@@ -11,6 +11,7 @@ import { dayBound, parseLimits, tenantChanges } from "@/routes/admin";
 import { parseInvitee } from "@/routes/members";
 import { validateTokenForm } from "@/routes/tokens";
 import { dailySeries, periodKey, periodLabel, periodStart, shiftPeriod } from "@/routes/usage";
+import { useAuth } from "@/stores/auth";
 import { parseScopeKey, scopeKey } from "@/stores/scope";
 
 import { formatGibSeconds, formatMicros, formatVcpuSeconds, isSessionGroup, runCostView } from "./cost";
@@ -93,6 +94,30 @@ describe("API client helpers", () => {
     ]) {
       expect(isProjectScoped(p), p).toBe(false);
     }
+  });
+
+  it("sends the selected tenant on the catalog routes (v0.19 tenant view)", () => {
+    for (const p of ["/v1/catalog", "/v1/catalog/models", "/v1/catalog/workflow-nodes", "/v1/catalog/plots/x/1:example", "/v1/workflow-templates", "/v1/workflow-templates/t_1"]) {
+      expect(wantsCatalogTenant(p), p).toBe(true);
+    }
+    for (const p of ["/v1/catalogue", "/v1/me", "/v1/schemas/modelspec.json", "/v1/runs"]) {
+      expect(wantsCatalogTenant(p), p).toBe(false);
+    }
+  });
+
+  it("does not end the session on a plugin decision's 401 REAUTH_REQUIRED", async () => {
+    const onResponse = sessionMiddleware.onResponse;
+    if (!onResponse) throw new Error("no onResponse");
+    const call = async (code: string) => {
+      useAuth.setState({ mode: "session", expired: false });
+      const request = new Request("http://api.test/v1/plugins/plg_1/versions/plv_1:approve", { method: "POST" });
+      const response = new Response(JSON.stringify({ code, title: "x" }), { status: 401, headers: { "content-type": "application/json" } });
+      await (onResponse as (o: { request: Request; response: Response }) => unknown)({ request, response });
+      return useAuth.getState().expired;
+    };
+    expect(await call("REAUTH_REQUIRED")).toBe(false);
+    expect(await call("UNAUTHENTICATED")).toBe(true);
+    useAuth.setState({ mode: "unknown", expired: false });
   });
 
   it("reads Retry-After as seconds or an HTTP date", () => {

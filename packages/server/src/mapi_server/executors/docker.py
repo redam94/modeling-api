@@ -168,6 +168,10 @@ class DockerExecutor:
             classes=[ResourceClass.S, ResourceClass.M, ResourceClass.L, ResourceClass.GPU],
             max_tasks=1,
             checkpoint_storage=True,
+            # v0.19 (D6): a container per attempt (read-only root, dropped capabilities, pids
+            # and memory limits) may run uploaded code; the multi-tenant profile additionally
+            # wants gVisor with enforced egress and DNS (untrusted_placement_problem)
+            runs_untrusted_code=True,
         )
 
     def image_for(self, rs: RunSubmit) -> str:

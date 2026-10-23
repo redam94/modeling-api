@@ -9,7 +9,7 @@ import time
 from functools import lru_cache
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, Path, Query, Request
+from fastapi import APIRouter, Header, Path, Query, Request, Response
 from fastapi.responses import JSONResponse
 from mapi_spec.about import (
     CHOOSER_QUESTIONS,
@@ -23,6 +23,7 @@ from mapi_spec.about import (
 from mapi_spec.abouts import builtin_about_kind, builtin_abouts
 from mapi_spec.api import (
     PREFER_HEADER,
+    PROJECT_HEADER,
     CatalogAbout,
     CatalogResponse,
     Health,
@@ -62,7 +63,9 @@ from mapi_server.api.tenancy import project_dto, visible_projects
 from mapi_server.auth.request import RequestAuth
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError
+from mapi_server.services.catalog import CatalogSnapshot
 from mapi_server.services.plot_previews import preview_result, preview_wait, request_preview
+from mapi_server.services.plugins.view import CatalogView, caller_tenant, catalog_view
 
 __all__ = ["router"]
 
@@ -162,13 +165,39 @@ async def get_project(ctx: Ctx, session: Session, project_id: str) -> Project:
 
 
 # ------------------------------------------------------------------------------- catalog
+#
+# v0.19 (D11): the catalog routes answer with the caller's tenant catalog view: the base
+# catalog of the image digest plus the uploads the caller may use (approved for the tenant,
+# or their own while private use is on). The tenant is the request's, the token's, the one
+# ``X-Mapi-Project`` names or the caller's only one; without one, the base catalog. Every
+# answer is ``Cache-Control: private`` with an ETag over the view key. ``digest`` stays the
+# base catalog digest (specs pin it). Help me choose and the diagnostics stay on the base.
+
+
+async def _view(
+    ctx: Ctx, session: SystemSession, request: Request, response: Response
+) -> tuple[CatalogSnapshot, CatalogView | None]:
+    """The caller's view (``None``: the base catalog) and its snapshot, with the cache
+    headers set on ``response``. The ``X-Mapi-Project`` header is read as sent (it is not a
+    declared parameter of these routes: it only picks the tenant)."""
+    base = await ctx.catalogs.require(session)
+    tenant = caller_tenant(ctx, request.headers.get(PROJECT_HEADER))
+    view: CatalogView | None = None
+    if tenant is not None:
+        user = ctx.request.user_id if ctx.request is not None else None
+        view = await catalog_view(ctx, session, tenant_id=tenant, user_id=user)
+    response.headers["Cache-Control"] = "private"
+    response.headers["ETag"] = view.etag if view is not None else f'"{base.digest}"'
+    return (view.snapshot if view is not None else base), view
 
 
 @router.get(
     "/v1/catalog", response_model=CatalogResponse, tags=["catalog"], operation_id="get_catalog"
 )
-async def get_catalog(ctx: Ctx, session: SystemSession) -> CatalogResponse:
-    snap = await ctx.catalogs.require(session)
+async def get_catalog(
+    ctx: Ctx, session: SystemSession, request: Request, response: Response
+) -> CatalogResponse:
+    snap, _ = await _view(ctx, session, request, response)
     c = snap.catalog
     return CatalogResponse(
         digest=snap.digest,
@@ -193,9 +222,14 @@ def _page_list(items: list[Any], limit: int, cursor: str | None) -> tuple[list[A
     operation_id="list_catalog_models",
 )
 async def list_catalog_models(
-    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    response: Response,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
 ) -> Page[ModelCatalogEntry]:
-    snap = await ctx.catalogs.require(session)
+    snap, _ = await _view(ctx, session, request, response)
     items = sorted(snap.catalog.models, key=lambda e: (e.id, Version.parse(e.version)))
     chunk, nxt = _page_list(items, limit, cursor)
     return Page[ModelCatalogEntry](items=chunk, next_cursor=nxt)
@@ -208,9 +242,14 @@ async def list_catalog_models(
     operation_id="get_catalog_model",
 )
 async def get_catalog_model(
-    ctx: Ctx, session: SystemSession, model_id: str, version: str
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    response: Response,
+    model_id: str,
+    version: str,
 ) -> ModelCatalogEntry:
-    snap = await ctx.catalogs.require(session)
+    snap, _ = await _view(ctx, session, request, response)
     for entry in snap.catalog.models:
         if entry.id == model_id and entry.version == version:
             return entry
@@ -224,9 +263,14 @@ async def get_catalog_model(
     operation_id="list_catalog_steps",
 )
 async def list_catalog_steps(
-    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    response: Response,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
 ) -> Page[StepCatalogEntry]:
-    snap = await ctx.catalogs.require(session)
+    snap, _ = await _view(ctx, session, request, response)
     items = sorted(snap.catalog.steps, key=lambda e: (e.id, Version.parse(e.version)))
     chunk, nxt = _page_list(items, limit, cursor)
     return Page[StepCatalogEntry](items=chunk, next_cursor=nxt)
@@ -239,9 +283,14 @@ async def list_catalog_steps(
     operation_id="list_catalog_plots",
 )
 async def list_catalog_plots(
-    ctx: Ctx, session: SystemSession, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    response: Response,
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
 ) -> Page[PlotCatalogEntry]:
-    snap = await ctx.catalogs.require(session)
+    snap, _ = await _view(ctx, session, request, response)
     items = sorted(snap.catalog.plots, key=lambda e: (e.id, Version.parse(e.version)))
     chunk, nxt = _page_list(items, limit, cursor)
     return Page[PlotCatalogEntry](items=chunk, next_cursor=nxt)
@@ -255,14 +304,21 @@ async def list_catalog_plots(
     responses=responses_for("get_catalog_plot_example"),
 )
 async def get_catalog_plot_example(
-    ctx: Ctx, session: SystemSession, plot_id: str, version: str
+    ctx: Ctx,
+    session: SystemSession,
+    request: Request,
+    response: Response,
+    plot_id: str,
+    version: str,
 ) -> PlotSpec:
     """The plot recipe rendered on its synthetic example data (made by the describe run,
-    datasets inline). ``404`` when the recipe, or its example, does not exist."""
-    snap = await ctx.catalogs.require(session)
+    datasets inline). ``404`` when the recipe, or its example, does not exist. An uploaded
+    recipe's example is the one its version's describe run made (re-sanitized)."""
+    snap, view = await _view(ctx, session, request, response)
     if not any(e.id == plot_id and e.version == version for e in snap.catalog.plots):
         raise NotFoundError("catalog plot", f"{plot_id}@{version}")
-    example = await ctx.catalogs.example(session, f"{plot_id}@{version}")
+    catalogs = view.service(ctx.catalogs) if view is not None else ctx.catalogs
+    example = await catalogs.example(session, f"{plot_id}@{version}")
     if example is None:
         raise NotFoundError("plot example", f"{plot_id}@{version}")
     return example
@@ -441,13 +497,16 @@ def catalog_abouts(catalog: Catalog) -> list[CatalogAbout]:
 async def list_catalog_abouts(
     ctx: Ctx,
     session: SystemSession,
+    request: Request,
+    response: Response,
     limit: Limit = DEFAULT_LIMIT,
     cursor: str | None = None,
     kind: AboutKind | None = None,
 ) -> Page[CatalogAbout]:
     """The plain-language About card of every model, preprocessing step, split, template,
-    workflow template, workflow node and governance check a user can pick."""
-    snap = await ctx.catalogs.require(session)
+    workflow template, workflow node and governance check a user can pick (v0.19: the
+    uploads in the caller's tenant catalog view too)."""
+    snap, _ = await _view(ctx, session, request, response)
     items = [a for a in catalog_abouts(snap.catalog) if kind is None or a.kind is kind]
     chunk, nxt = _page_list(items, limit, cursor)
     return Page[CatalogAbout](items=chunk, next_cursor=nxt)
@@ -486,7 +545,7 @@ async def recommend_catalog_items(
     a question or separate values with commas), each with plain reasons and cautions.
     Without ``kind`` the candidates are models, guided templates and workflow templates;
     ``kind`` ranks one kind (steps, nodes, checks, ...). An unknown question or answer is
-    ``CHOOSER_ANSWER_INVALID``."""
+    ``CHOOSER_ANSWER_INVALID``. v0.19: uploads are never ranked (the base catalog only)."""
     query = {k: request.query_params.getlist(k) for k in request.query_params}
     answers = chooser_answers_from_query(query)
     snap = await ctx.catalogs.require(session)

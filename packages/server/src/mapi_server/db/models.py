@@ -67,6 +67,11 @@ __all__ = [
     "PlatformSetting",
     "Plot",
     "PlotEmbed",
+    "Plugin",
+    "PluginApproval",
+    "PluginDescribe",
+    "PluginUpload",
+    "PluginVersion",
     "Project",
     "QuotaPolicy",
     "RateCounter",
@@ -88,10 +93,12 @@ __all__ = [
     "Tenant",
     "TenantDeletion",
     "TenantExport",
+    "TenantPluginSettings",
     "TenantSample",
     "TenantVerification",
     "Upload",
     "User",
+    "UserVerification",
     "ValidationApproval",
     "WebSession",
     "Webhook",
@@ -173,6 +180,14 @@ TENANT_TABLES: tuple[str, ...] = (
     "library_item_revisions",
     "onboarding_progress",
     "tenant_samples",
+    # v0.19 uploaded code (0022_plugins)
+    "tenant_plugin_settings",
+    "user_verifications",
+    "plugins",
+    "plugin_uploads",
+    "plugin_versions",
+    "plugin_describes",
+    "plugin_approvals",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -395,6 +410,9 @@ class WebSession(Base):
     expires_at: Mapped[datetime] = mapped_column()
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+    auth_time: Mapped[datetime | None] = mapped_column()
+    """v0.19: the ID token's ``auth_time`` (when the person last authenticated at the IdP);
+    approving uploaded code needs it recent (``created_at`` is only when the row was made)."""
 
     __table_args__ = (Index("ix_web_sessions_user", "user_id"),)
 
@@ -411,6 +429,8 @@ class LoginTransactionRow(Base):
     code_verifier: Mapped[str] = mapped_column(String(128))
     return_to: Mapped[str] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column()
+    reauth: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    """v0.19: the IdP was asked to authenticate the person again (``max_age=0``)."""
 
 
 # ====================================================================== datasets
@@ -582,6 +602,9 @@ class Run(_Scoped, Base):
     untrusted_code: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    # v0.19 (0022): the overlay pins this run mounts (``mapi_spec.plugins.OverlayPin`` JSON),
+    # the control plane's truth for lineage; a run with pins is always untrusted
+    overlays: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
     estimate: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # CostEstimate at submit
     name: Mapped[str | None] = mapped_column(String(200))  # v0.11: PATCH /v1/runs/{id}
     note: Mapped[str | None] = mapped_column(Text)
@@ -606,8 +629,17 @@ class Run(_Scoped, Base):
             text("(labels ->> 'mapi.preview')"),
             postgresql_where=text("kind = 'render'"),
         ),
+        # v0.19 (0022): usage counts and security yanks find the runs pinned to a version
+        Index(
+            "ix_runs_overlays",
+            "overlays",
+            postgresql_using="gin",
+            postgresql_ops={"overlays": "jsonb_path_ops"},
+        ),
         CheckConstraint("priority in ('interactive','batch')", name="priority"),
         CheckConstraint("task_count >= 1", name="task_count"),
+        CheckConstraint("jsonb_typeof(overlays) = 'array'", name="overlays_array"),
+        CheckConstraint("overlays = '[]'::jsonb OR untrusted_code", name="overlays_untrusted"),
     )
 
 
@@ -2283,4 +2315,301 @@ class TenantSample(Base):
             "state",
             postgresql_where=text("state in ('provisioning','ingesting','fitting')"),
         ),
+    )
+
+
+# ================================================================== uploaded code (v0.19)
+
+TENANT_CODE_RE = "^[a-z2-7]{6}$"
+"""``mapi_spec.plugins.TENANT_CODE_RE``."""
+PLUGIN_SHORT_RE = "^[a-z][a-z0-9]{1,15}$"
+"""``mapi_spec.plugins.PLUGIN_SHORT_RE``."""
+UPLOAD_NAMESPACE_RE = "^t_[a-z2-7]{6}_[a-z][a-z0-9]{1,15}$"
+"""``mapi_spec.plugins.UPLOAD_NAMESPACE_RE`` (without its capture groups)."""
+SHA256_RE = "^sha256:[0-9a-f]{64}$"
+"""``mapi_spec._dto.Sha256``."""
+WHEEL_FILENAME_RE = r"^[A-Za-z0-9._-]+\.whl$"
+"""``mapi_spec.plugins.PluginUploadTicketRequest.filename``."""
+USER_VERIFICATION_METHODS: tuple[str, ...] = ("admin_attested", "provider")
+"""``mapi_spec.plugins.VerifiedUploader.method``."""
+PLUGIN_UPLOAD_STATES: tuple[str, ...] = ("pending", "completed", "expired")
+"""The states of an upload ticket (``plugin_uploads.state``)."""
+PLUGIN_VERSION_STATES: tuple[str, ...] = (
+    "uploaded",
+    "inspecting",
+    "inspect_failed",
+    "describing",
+    "kit_failed",
+    "kit_passed",
+    "awaiting_approval",
+    "approved",
+    "rejected",
+    "yanked",
+    "purged",
+)
+"""``mapi_spec.plugins.PluginVersionState``."""
+PLUGIN_VERSION_SCOPES: tuple[str, ...] = ("private", "tenant", "none")
+"""``mapi_spec.plugins.PluginVersionSummary.scope``."""
+PLUGIN_YANK_REASONS: tuple[str, ...] = ("withdrawn", "security", "superseded", "rekit_failed")
+"""``mapi_spec.plugins.YankReason``."""
+PLUGIN_DECISIONS: tuple[str, ...] = ("approve", "reject")
+"""``mapi_spec.plugins.PluginDecisionRecord.decision``."""
+PLUGIN_UPLOAD_MAX_BYTES = 20_971_520
+"""``mapi_spec.plugins.ArchiveLimits.max_bytes``: the cap on one uploaded wheel."""
+PLUGIN_INSPECTION_MAX_BYTES = 1_100_000
+"""The database's cap on ``plugin_versions.inspection`` as text. The contract's own cap
+(``mapi_spec.plugins.INSPECTION_MAX_BYTES``, 1 MiB) is lower."""
+PLUGIN_EXPORTS_MAX_BYTES = 2_200_000
+"""The database's cap on ``plugin_describes.exports`` as text. The contract's own cap on the
+whole describe result (``mapi_spec.plugins.DESCRIBE_MAX_BYTES``, 2 MiB) is lower."""
+
+
+class TenantPluginSettings(Base):
+    """A tenant's uploaded-code settings (:class:`mapi_spec.plugins.PluginSettings`), created
+    on the tenant's first plugin claim. ``tenant_code`` is the platform-assigned code in every
+    uploaded namespace of the tenant (``t_<code>_<short>``), unique across tenants (a
+    collision on insert is retried with a new code). ``private_use`` lets an uploader use
+    their own kit-passed version before approval."""
+
+    __tablename__ = "tenant_plugin_settings"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    tenant_code: Mapped[str] = mapped_column(String(6), unique=True)
+    private_use: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (CheckConstraint(f"tenant_code ~ '{TENANT_CODE_RE}'", name="tenant_code"),)
+
+
+class UserVerification(Base):
+    """A tenant admin's attestation that a member may upload code
+    (:class:`mapi_spec.plugins.VerifiedUploader`). Nobody attests themselves. A revocation
+    sets ``revoked_at``/``revoked_by`` and keeps the row; attesting again clears them."""
+
+    __tablename__ = "user_verifications"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    method: Mapped[str] = mapped_column(String(16))
+    verified_by: Mapped[str] = mapped_column(String(64))
+    verified_at: Mapped[datetime] = mapped_column(server_default=_now())
+    revoked_at: Mapped[datetime | None] = mapped_column()
+    revoked_by: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        CheckConstraint(f"method in ({_in(USER_VERIFICATION_METHODS)})", name="method"),
+        CheckConstraint("verified_by <> user_id", name="not_self"),
+        CheckConstraint("(revoked_at IS NULL) = (revoked_by IS NULL)", name="revoked"),
+    )
+
+
+class Plugin(Base):
+    """A claimed plugin (:class:`mapi_spec.plugins.Plugin`): its uploaded namespace
+    ``t_<code>_<short>`` (unique on the platform; the namespace ends with the short name) and
+    its short name (unique per tenant). Plugins are tenant-wide, not project-scoped."""
+
+    __tablename__ = "plugins"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    namespace: Mapped[str] = mapped_column(String(40), unique=True)
+    short_name: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(120))
+    created_by: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        CheckConstraint(f"namespace ~ '{UPLOAD_NAMESPACE_RE}'", name="namespace"),
+        CheckConstraint(f"short_name ~ '{PLUGIN_SHORT_RE}'", name="short_name"),
+        CheckConstraint("split_part(namespace, '_', 3) = short_name", name="namespace_short"),
+        UniqueConstraint("tenant_id", "short_name"),
+        # the target of the uploads' and versions' tenant-pinned foreign keys
+        UniqueConstraint("tenant_id", "id"),
+    )
+
+
+class PluginUpload(Base):
+    """An upload ticket (:class:`mapi_spec.plugins.PluginUploadTicket`): one wheel posted to
+    the quarantine bucket at exactly ``object_key``. ``pending`` until ``:complete``
+    (``completed``) or the ticket sweep (``expired``)."""
+
+    __tablename__ = "plugin_uploads"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    plugin_id: Mapped[str] = mapped_column(String(32))
+    project_id: Mapped[str] = mapped_column(String(64))
+    created_by: Mapped[str] = mapped_column(String(64))
+    filename: Mapped[str] = mapped_column(String(255))
+    declared_size: Mapped[int] = mapped_column(BigInteger)
+    object_key: Mapped[str] = mapped_column(String(512))
+    state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    expires_at: Mapped[datetime] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "plugin_id"], ["plugins.tenant_id", "plugins.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(f"state in ({_in(PLUGIN_UPLOAD_STATES)})", name="state"),
+        CheckConstraint(f"filename ~ '{WHEEL_FILENAME_RE}'", name="filename"),
+        CheckConstraint(
+            f"declared_size >= 1 AND declared_size <= {PLUGIN_UPLOAD_MAX_BYTES}",
+            name="declared_size",
+        ),
+        Index("ix_plugin_uploads_expiry", "state", "expires_at"),
+    )
+
+
+class PluginVersion(Base):
+    """One uploaded wheel of a plugin (:class:`mapi_spec.plugins.PluginVersion`).
+
+    ``state`` follows ``mapi_spec.plugins.PLUGIN_TRANSITIONS`` and is written only by
+    ``services.plugins.store.set_state``; ``scope`` is who may mount it (``tenant`` only
+    while ``approved``). ``upload_sha256`` is the hash of the bytes as uploaded; the overlay
+    copy in the ``plugins`` bucket (``overlay_key``/``overlay_generation``, set together)
+    has the same hash. ``yanked_at`` and ``yank_reason`` are set together, and
+    ``purged_at`` is set exactly when the state is ``purged`` (the row stays; only the
+    object goes). ``(id, upload_sha256)`` is unique so an approval pins the bytes it saw."""
+
+    __tablename__ = "plugin_versions"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    plugin_id: Mapped[str] = mapped_column(String(32))
+    version: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(24), default="uploaded", server_default="uploaded")
+    scope: Mapped[str] = mapped_column(String(8), default="none", server_default="none")
+    project_id: Mapped[str] = mapped_column(String(64))  # billing project of pipeline runs
+    uploaded_by: Mapped[str] = mapped_column(String(64))
+    uploaded_at: Mapped[datetime] = mapped_column(server_default=_now())
+    upload_sha256: Mapped[str] = mapped_column(String(71))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    quarantine_key: Mapped[str] = mapped_column(String(512))
+    quarantine_generation: Mapped[int] = mapped_column(BigInteger)
+    overlay_key: Mapped[str | None] = mapped_column(String(512))
+    overlay_generation: Mapped[int | None] = mapped_column(BigInteger)
+    inspect_run_id: Mapped[str | None] = mapped_column(String(64))
+    inspection: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # PluginInspection
+    sbom: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # PluginSbom
+    problem: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # Problem
+    requested_by: Mapped[str | None] = mapped_column(String(64))
+    requested_at: Mapped[datetime | None] = mapped_column()
+    decided_at: Mapped[datetime | None] = mapped_column()
+    yanked_at: Mapped[datetime | None] = mapped_column()
+    yanked_by: Mapped[str | None] = mapped_column(String(64))
+    yank_reason: Mapped[str | None] = mapped_column(String(16))
+    yank_note: Mapped[str | None] = mapped_column(Text)
+    purge_after: Mapped[datetime | None] = mapped_column()
+    purged_at: Mapped[datetime | None] = mapped_column()
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "plugin_id"], ["plugins.tenant_id", "plugins.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(f"state in ({_in(PLUGIN_VERSION_STATES)})", name="state"),
+        CheckConstraint(f"scope in ({_in(PLUGIN_VERSION_SCOPES)})", name="scope"),
+        CheckConstraint("scope <> 'tenant' OR state = 'approved'", name="tenant_scope"),
+        CheckConstraint(f"upload_sha256 ~ '{SHA256_RE}'", name="upload_sha256"),
+        CheckConstraint(
+            f"size_bytes >= 1 AND size_bytes <= {PLUGIN_UPLOAD_MAX_BYTES}", name="size_bytes"
+        ),
+        CheckConstraint(
+            "(overlay_key IS NULL) = (overlay_generation IS NULL)", name="overlay_object"
+        ),
+        CheckConstraint(
+            f"octet_length(inspection::text) <= {PLUGIN_INSPECTION_MAX_BYTES}",
+            name="inspection_size",
+        ),
+        CheckConstraint(
+            f"yank_reason IS NULL OR yank_reason in ({_in(PLUGIN_YANK_REASONS)})",
+            name="yank_reason",
+        ),
+        CheckConstraint("(yanked_at IS NULL) = (yank_reason IS NULL)", name="yanked"),
+        CheckConstraint("(state = 'purged') = (purged_at IS NOT NULL)", name="purged"),
+        UniqueConstraint("plugin_id", "version"),
+        # the targets of the approvals' sha-pinned and the describes' tenant-pinned keys
+        UniqueConstraint("id", "upload_sha256"),
+        UniqueConstraint("tenant_id", "id"),
+        Index("ix_plugin_versions_state", "tenant_id", "state"),
+        Index(
+            "ix_plugin_versions_purge",
+            "purge_after",
+            postgresql_where=text("purged_at IS NULL"),
+        ),
+    )
+
+
+class PluginDescribe(Base):
+    """The control-plane-checked describe result of a version for one base image digest
+    (:class:`mapi_spec.plugins.PluginDescribe`): its exports (``PluginExports``), their
+    ``describe_digest``, the sanitized recipe examples, the kit report and the issues of
+    ``check_describe``. The tenant catalog view reads these rows; describe output never
+    reaches the platform-wide ``catalogs`` table."""
+
+    __tablename__ = "plugin_describes"
+
+    version_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    base_image_digest: Mapped[str] = mapped_column(String(71), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64))
+    run_id: Mapped[str] = mapped_column(String(64))
+    describe_digest: Mapped[str] = mapped_column(String(71))
+    exports: Mapped[dict[str, Any]] = mapped_column()
+    plot_examples: Mapped[dict[str, Any]] = mapped_column(default=dict, server_default=text("'{}'"))
+    kit: Mapped[dict[str, Any]] = mapped_column()
+    issues: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    ok: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "version_id"],
+            ["plugin_versions.tenant_id", "plugin_versions.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            f"octet_length(exports::text) <= {PLUGIN_EXPORTS_MAX_BYTES}", name="exports_size"
+        ),
+        CheckConstraint(f"base_image_digest ~ '{SHA256_RE}'", name="base_image_digest"),
+        CheckConstraint(f"describe_digest ~ '{SHA256_RE}'", name="describe_digest"),
+    )
+
+
+class PluginApproval(Base):
+    """One approve/reject decision on a version (:class:`mapi_spec.plugins
+    .PluginDecisionRecord`), append-only. It names the bytes (``overlay_sha256``, a composite
+    foreign key into the version), the exports (``describe_digest``) and the base image it
+    saw. The approver is never the uploader; a rejection always has a note."""
+
+    __tablename__ = "plugin_approvals"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), ForeignKey("tenants.id", ondelete="CASCADE"))
+    version_id: Mapped[str] = mapped_column(String(32))
+    overlay_sha256: Mapped[str] = mapped_column(String(71))
+    describe_digest: Mapped[str] = mapped_column(String(71))
+    base_image_digest: Mapped[str] = mapped_column(String(71))
+    decision: Mapped[str] = mapped_column(String(8))
+    approver_id: Mapped[str] = mapped_column(String(64))
+    uploader_id: Mapped[str] = mapped_column(String(64))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["version_id", "overlay_sha256"],
+            ["plugin_versions.id", "plugin_versions.upload_sha256"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(f"decision in ({_in(PLUGIN_DECISIONS)})", name="decision"),
+        CheckConstraint("approver_id <> uploader_id", name="not_self"),
+        CheckConstraint("decision <> 'reject' OR note IS NOT NULL", name="reject_note"),
+        Index("ix_plugin_approvals_version", "version_id", "created_at"),
     )

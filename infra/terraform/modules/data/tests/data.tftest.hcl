@@ -25,8 +25,8 @@ run "buckets_are_private_and_uniform" {
   command = apply
 
   assert {
-    condition     = length(google_storage_bucket.this) == 5
-    error_message = "Exactly the five buckets of plan §8.6."
+    condition     = length(google_storage_bucket.this) == 6
+    error_message = "Exactly the six buckets of plan §8.6 (plugins added in v0.19)."
   }
 
   assert {
@@ -119,6 +119,30 @@ run "bundles_are_write_once" {
   assert {
     condition     = length([for k, m in google_storage_bucket_iam_member.this : m if m.bucket == "mapi-test-bundles" && contains(["roles/storage.objectUser", "roles/storage.objectAdmin", "roles/storage.admin"], m.role)]) == 0
     error_message = "Nobody holds a role on bundles that can delete or overwrite objects."
+  }
+}
+
+run "plugins_are_purgeable_and_private" {
+  command = apply
+
+  assert {
+    condition     = length(google_storage_bucket.this["plugins"].retention_policy) == 0
+    error_message = "The plugins bucket has no retention policy: refused and withdrawn uploads are purged."
+  }
+
+  assert {
+    condition     = google_storage_bucket.this["plugins"].soft_delete_policy[0].retention_duration_seconds == 0
+    error_message = "A purged upload must really be gone (no soft delete on plugins)."
+  }
+
+  assert {
+    condition     = length(google_storage_bucket.this["plugins"].cors) == 0
+    error_message = "No browser reads the plugins bucket."
+  }
+
+  assert {
+    condition     = toset([for k, m in google_storage_bucket_iam_member.this : m.member if m.bucket == "mapi-test-plugins"]) == toset(["serviceAccount:mapi-test-orch@acme-test-control.iam.gserviceaccount.com", "serviceAccount:mapi-test-signer@acme-test-control.iam.gserviceaccount.com"])
+    error_message = "Only the orchestrator (copy, purge) and url_signer (signed GETs for overlays) hold roles on plugins."
   }
 }
 

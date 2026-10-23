@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { env } from "@/env";
 import { createHandlers } from "@/mocks/handlers";
 import { MOCK_EXTENSIONS_KEY } from "@/mocks/library";
+import { TEMPLATES } from "@/mocks/workflows";
 import { renderApp } from "@/test/render-app";
 
 const server = setupServer(...createHandlers());
@@ -79,6 +80,23 @@ describe("Catalog", () => {
     expect(installed).toHaveTextContent("Installed from acme-mapi-extras");
     expect(await within(yours).findByTestId("diagnostics-list", undefined, T)).toBeInTheDocument();
     expect(within(yours).getByRole("button", { name: "Describe the catalog again" })).toBeInTheDocument();
+  });
+
+  it("lists an uploaded workflow template under Uploaded, not under Installed by your team", async () => {
+    // v0.19 live: the uploaded template (source "plugin") showed as an installed plugin
+    localStorage.setItem(MOCK_EXTENSIONS_KEY, "1");
+    const base = TEMPLATES[0]!;
+    const uploaded = { ...base, id: "t_yqll4c_acme_weekly_check", version: "0.1.0", source: "plugin", about: { ...base.about, title: "Weekly data check" } };
+    const installedTpl = { ...base, id: "acme_lab_check", version: "0.2.0", source: "plugin", about: { ...base.about, title: "Installed lab check" } };
+    server.use(http.get(new RegExp(`^${env.apiBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/v1/workflow-templates$`), () => HttpResponse.json({ items: [...TEMPLATES, uploaded, installedTpl], next_cursor: null })));
+    const user = userEvent.setup();
+    renderApp("/catalog", "ana");
+    await user.click(await screen.findByRole("tab", { name: /Yours/ }, T));
+    const yours = await screen.findByTestId("catalog-yours", undefined, T);
+    const installed = await within(yours).findByRole("list", { name: "Installed by your team" }, T);
+    await waitFor(() => expect(installed).toHaveTextContent("Installed lab check"));
+    expect(installed).not.toHaveTextContent("Weekly data check");
+    expect(installed).not.toHaveTextContent("t_yqll4c_acme_weekly_check");
   });
 
   it("shows a failed load of the team's items with Retry, not the empty state", async () => {

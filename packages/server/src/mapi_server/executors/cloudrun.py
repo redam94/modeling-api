@@ -548,6 +548,7 @@ class CloudRunJobsExecutor:
             max_tasks=MAX_TASK_COUNT,
             regions=(self.inventory.region,),
             checkpoint_storage=True,
+            runs_untrusted_code=True,  # v0.19 (D6): one microVM sandbox per execution
         )
 
     def _timeout_s(self, rs: RunSubmit) -> int:

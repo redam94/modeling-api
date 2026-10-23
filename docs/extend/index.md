@@ -13,6 +13,9 @@ ways to do it:
 - **With Python.** Write a plugin package with one command to start from, test it with the
   contract kit, and install it on a stack that you run. This is for developers and the
   operators of a deployment.
+- **Upload your Python** (v0.19). Push the same kind of package to a shared deployment with
+  `mapi plugin push`. The platform checks it in the sandbox, and a second admin approves it
+  for your team. See [Upload your own code](upload.md).
 
 New here? Start with the tutorial: [Your first extensions](../tutorials/your-first-extensions.md).
 It makes one of each in the app, then the same kinds as a plugin, and ends with all of them in
@@ -40,13 +43,14 @@ point group, namespace rule and limit, generated from the code.
 | Plugin in the platform checkout (`make plugin-new`) | The operator of the deployment | In the runner sandbox, like the built-in plugins | Your own code review |
 | Out-of-tree plugin on a dev stack (`make plugin-dev`) | A developer on their own `make dev` stack | In the runner sandbox of that stack | Your own code review |
 | Custom runner image (`make plugin-image`) | The operator of a Docker or Cloud Run deployment | In the runner sandbox of that image | Your own code review |
-| Upload a plugin to a shared deployment | Not in v0.18 | — | [Coming in 0.19](upload-roadmap.md): a second person approves |
+| [Upload your own code](upload.md) (v0.19) | Tenant admins, and editors that a tenant admin confirmed | In the runner sandbox of a Docker, gVisor or Cloud Run executor, as an untrusted run | The platform checks the file and runs the kits; you use it privately; a second tenant admin [approves it](review-uploads.md) for the team |
 
-!!! info "Nothing in v0.18 accepts code from a tenant"
+!!! info "Library items are data; uploads are code"
     A library item is a JSON document. Pure code in `mapi_spec` checks and compiles it to
     things the platform already runs: a spec pipeline and a model block, a list of steps, a
-    sanitized chart, or a workflow document. Only an operator installs plugin code, and it
-    runs in the runner sandbox. See [Run your plugin on your stack](develop/run-on-your-stack.md).
+    sanitized chart, or a workflow document. Plugin code runs only in the runner sandbox: an
+    operator installs it ([Run your plugin on your stack](develop/run-on-your-stack.md)), or,
+    from v0.19, a confirmed uploader [uploads it](upload.md) and a second admin approves it.
 
 ## Where your extensions show up
 
@@ -86,5 +90,11 @@ rows, so a choice is always yours.
     [Workflow templates](develop/workflow-templates.md) ·
     [Contract kits](develop/contract-kits.md) ·
     [Run on your stack](develop/run-on-your-stack.md)
+
+-   :material-cloud-upload-outline:{ .lg .middle } **Upload (v0.19)**
+
+    ---
+
+    [Upload your own code](upload.md) · [Review uploaded code](review-uploads.md)
 
 </div>

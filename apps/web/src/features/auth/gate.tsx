@@ -12,6 +12,7 @@
  * A `client` in the selected project gets the client portal (its own lazy chunk and router)
  * instead of the app: the main router is never mounted for them (plan D15).
  */
+import { useQueryClient } from "@tanstack/react-query";
 import { LogIn, LogOut, RefreshCw } from "lucide-react";
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -59,6 +60,18 @@ export function WorkspaceGate({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     if (workspace && resolvedKey !== activeKey) setActive(resolved);
   });
+
+  // v0.19 (D11): the catalog routes answer with the selected tenant's view (uploaded entries)
+  // and their cache keys are global, so a tenant switch refetches them.
+  const queryClient = useQueryClient();
+  const activeTenant = active?.tenantId ?? null;
+  const lastTenant = useRef(activeTenant);
+  useEffect(() => {
+    if (lastTenant.current === activeTenant) return;
+    const switched = lastTenant.current !== null;
+    lastTenant.current = activeTenant;
+    if (switched) void queryClient.invalidateQueries({ queryKey: ["catalog"] });
+  }, [activeTenant, queryClient]);
 
   // A session that ends after the app rendered: keep the page, ask to sign in again.
   const signedOutLater = sessionMode && info && !info.authenticated && entered.current;

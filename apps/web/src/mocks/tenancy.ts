@@ -33,6 +33,7 @@ import type {
 import { env } from "@/env";
 
 import { PRICE_VERSION, T0 } from "./fixtures";
+import { mockPluginFlags } from "./plugins";
 
 const API = env.apiBase;
 const AUTH = env.authBase;
@@ -338,6 +339,8 @@ function meFor(p: Persona, state: TenancyState): Me {
     principal: { kind: "user", id: p.id, issuer: "https://accounts.google.com", subject: p.id.slice(4), email: p.email, email_verified: true, name: p.name },
     auth: "session",
     operator: p.operator,
+    // v0.19: the uploaded-code flags (the mocks/plugins.ts localStorage switches).
+    ...mockPluginFlags(),
     tenants: tenantIds.flatMap((tid) => {
       const tenant = state.tenants.find((t) => t.id === tid);
       if (!tenant) return [];

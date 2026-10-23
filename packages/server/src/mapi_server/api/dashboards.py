@@ -87,6 +87,7 @@ from mapi_server.services.dashboards.shares import create_share, revoke_share
 from mapi_server.services.dashboards.sources import version_sources
 from mapi_server.services.dashboards.upgrade import review_issues
 from mapi_server.services.runs import now
+from mapi_server.services.sharing import dashboard_uses_uploaded_code
 
 __all__ = ["DashboardId", "router"]
 
@@ -133,7 +134,9 @@ async def list_dashboards(
     status_: Annotated[StatusFilter | None, Query(alias="status")] = None,
 ) -> Page[DashboardSummary]:
     """Dashboards of the project, newest first. A client sees only the published ones
-    granted to them; viewers do not see drafts (editors do)."""
+    granted to them, less those made with uploaded code (v0.19 D16: opening one answers
+    ``403 UPLOADED_CODE_NOT_SHAREABLE``, so the list leaves it out); viewers do not see
+    drafts (editors do)."""
     sc = ctx.scope
     client = caller_is_client(auth)
     stmt = select(m.Dashboard).where(
@@ -162,6 +165,8 @@ async def list_dashboards(
         rev = await load_revision(session, row)
         if client:
             if rev is None:  # pragma: no cover - published rows have a revision
+                continue
+            if await dashboard_uses_uploaded_code(session, row):
                 continue
             spec = any_revision_spec(rev)
         else:

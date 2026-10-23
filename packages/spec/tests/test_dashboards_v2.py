@@ -670,7 +670,7 @@ def test_output_decl_meaning_is_optional_and_hash_neutral() -> None:
 
 
 def test_v017_table_conventions_and_access() -> None:
-    v018 = len(api.V018_ENDPOINTS)  # the v0.18 rows follow
+    v018 = len(api.V018_ENDPOINTS) + len(api.V019_ENDPOINTS)  # the v0.18 and v0.19 rows follow
     assert api.ENDPOINTS[-len(V017_ENDPOINTS) - v018 : -v018] == V017_ENDPOINTS
     ops = {e.operation_id for e in V017_ENDPOINTS}
     assert len(ops) == len(V017_ENDPOINTS) == 14

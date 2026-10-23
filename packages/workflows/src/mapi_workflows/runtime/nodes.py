@@ -23,6 +23,14 @@ Other distributions add nodes and templates through two entry-point groups (v0.1
 Nothing an entry point exports is dropped silently: every refusal is a
 :class:`~mapi_spec.catalog.CatalogDiagnostic` (at most :data:`MAX_DIAGNOSTICS_PER_DISTRIBUTION`
 per distribution and loader). Built-ins always win an id collision.
+
+Uploaded code (v0.19) follows the SDK registry's path rule
+(:func:`mapi_sdk.registry.plugin_entry_points`): an entry point whose distribution lives under
+a mounted overlay directory is an upload whatever its name. Its nodes must name the overlay's
+namespace in ``plugin`` (``<kind>.<namespace>_<name>``), its templates must be
+``<namespace>_<name>`` and carry the provider ``upload:<pvid>``; a legacy mapping export from
+an upload is refused (it would fill built-in contract ids). The overlays default to the ones
+the worker recorded (:func:`mapi_sdk.registry.process_overlays`).
 """
 
 from __future__ import annotations
@@ -33,10 +41,11 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final
 
+from mapi_sdk.registry import EntryPointOrigin, UploadOverlay, plugin_entry_points
 from mapi_spec.about import about_issues
 from mapi_spec.catalog import CatalogDiagnostic, DiagnosticCode, TemplateCatalogEntry
 from mapi_spec.errors import ErrorCode, Issue, Severity
-from mapi_spec.namespaces import check_namespace, is_builtin_distribution
+from mapi_spec.namespaces import check_namespace, is_builtin_distribution, uploaded_namespace_of
 from mapi_spec.workflow import validate_workflow
 from mapi_spec.workflow_nodes import (
     NODE_IMPLEMENTATIONS,
@@ -68,9 +77,11 @@ __all__ = [
     "builtin_nodes",
     "load_node_exports",
     "load_plugin_templates",
+    "node_origins",
     "node_registry",
     "plugin_node_contracts",
     "sandbox_node_ids",
+    "template_namespace_problem",
 ]
 
 _log = logging.getLogger(__name__)
@@ -95,6 +106,13 @@ _MESSAGES: Final[dict[DiagnosticCode, str]] = {
     "deprecated": "The entry point exports a mapping of node ids to functions. Export "
     "NodeExport objects instead.",
 }
+_UPLOAD_NAMESPACE_MESSAGE: Final = (
+    "An upload may export nodes and templates only in its own namespace. It is not available."
+)
+_UPLOAD_MAPPING_MESSAGE: Final = (
+    "Uploaded code cannot export a mapping of node ids to functions. Export NodeExport "
+    "objects instead. The entry point is ignored."
+)
 """Trusted, platform-authored text of each diagnostic; plugin text goes in ``untrusted_text``."""
 
 
@@ -151,13 +169,10 @@ def _clip(text: str | None, limit: int) -> str | None:
     return text[: limit - 1] + "…"
 
 
-def _dist_of(ep: importlib.metadata.EntryPoint) -> str | None:
-    return getattr(getattr(ep, "dist", None), "name", None)
-
-
 @dataclass(slots=True)
 class _Diagnostics:
-    """Collects diagnostics, at most :data:`MAX_DIAGNOSTICS_PER_DISTRIBUTION` per distribution."""
+    """Collects diagnostics, at most :data:`MAX_DIAGNOSTICS_PER_DISTRIBUTION` per origin (a
+    distribution, or one upload)."""
 
     group: str
     rows: list[CatalogDiagnostic] = field(default_factory=list)
@@ -166,24 +181,25 @@ class _Diagnostics:
     def add(
         self,
         code: DiagnosticCode,
-        ep: importlib.metadata.EntryPoint,
+        found: EntryPointOrigin,
         *,
         id_: str | None = None,
         untrusted: str | None = None,
+        message: str | None = None,
     ) -> None:
-        dist = _dist_of(ep)
-        n = self.per_dist.get(dist, 0)
-        self.per_dist[dist] = n + 1
+        key = found.origin
+        n = self.per_dist.get(key, 0)
+        self.per_dist[key] = n + 1
         if n >= MAX_DIAGNOSTICS_PER_DISTRIBUTION:
             return
         self.rows.append(
             CatalogDiagnostic(
                 code=code,
                 group=self.group,
-                entry_point=_clip(ep.name, 128),
-                distribution=_clip(dist, 128),
+                entry_point=_clip(found.entry_point.name, 128),
+                distribution=_clip(found.distribution, 128),
                 id=_clip(id_, 128),
-                message=_MESSAGES[code],
+                message=message or _MESSAGES[code],
                 untrusted_text=_clip(untrusted, 500),
             )
         )
@@ -197,12 +213,37 @@ def _issues_text(issues: Sequence[Issue]) -> str:
     return "; ".join(i.message for i in issues)
 
 
-def _plugin_entry_points(group: str) -> list[importlib.metadata.EntryPoint]:
+def _plugin_entry_points(
+    group: str, overlays: Sequence[UploadOverlay] | None, only: str | None
+) -> list[EntryPointOrigin]:
+    """The plugin entry points of ``group`` (installed ones, then each overlay's), without
+    this distribution's own table; ``only`` keeps those of one origin (a PEP 503
+    distribution name or ``upload:<pvid>``)."""
     return [
-        ep
-        for ep in importlib.metadata.entry_points(group=group)
-        if not ep.value.startswith(_BUILTIN_PREFIX)
+        found
+        for found in plugin_entry_points(group, overlays)
+        if (found.overlay is not None or not found.entry_point.value.startswith(_BUILTIN_PREFIX))
+        and (only is None or found.origin == only)
     ]
+
+
+def _upload_contract_issues(c: NodeImplementation, found: EntryPointOrigin) -> list[Issue]:
+    """:func:`plugin_contract_issues` for a node from an overlay: the generic namespace rule
+    (which refuses every ``t_`` namespace) is replaced by the upload's own: ``plugin`` is the
+    overlay's namespace and the id is ``<kind>.<namespace>_<name>``."""
+    ov = found.overlay
+    assert ov is not None
+    out = [
+        i
+        for i in plugin_contract_issues(c, distribution=found.distribution)
+        if i.pointer != "/plugin"
+    ]
+    reason = check_namespace(c.id, found.distribution, plugin=c.plugin, claimed=ov.namespace)
+    if reason is None and uploaded_namespace_of(c.id) != ov.namespace:
+        reason = f"{c.id!r}: the node id must be '<kind>.{ov.namespace}_<name>'."
+    if reason is not None:
+        out.insert(0, Issue(code=ErrorCode.WORKFLOW_INVALID, pointer="/plugin", message=reason))
+    return out
 
 
 def _load(ep: importlib.metadata.EntryPoint) -> Any:
@@ -245,27 +286,34 @@ class _NodeLoad:
     exports: dict[str, NodeExport] = field(default_factory=dict)
     legacy: dict[str, NodeFn] = field(default_factory=dict)
     diagnostics: list[CatalogDiagnostic] = field(default_factory=list)
+    origins: dict[str, str] = field(default_factory=dict)
+    """v0.19: node id -> origin (PEP 503 distribution name or ``upload:<pvid>``)."""
 
 
-def _load_nodes() -> _NodeLoad:
+def _load_nodes(
+    overlays: Sequence[UploadOverlay] | None = None, only: str | None = None
+) -> _NodeLoad:
     out = _NodeLoad()
     diags = _Diagnostics(ENTRY_POINT_GROUP)
     builtin = builtin_nodes()
-    for ep in _plugin_entry_points(ENTRY_POINT_GROUP):
-        dist = _dist_of(ep)
+    for found in _plugin_entry_points(ENTRY_POINT_GROUP, overlays, only):
+        ep, uploaded = found.entry_point, found.overlay is not None
         try:
             obj = _load(ep)
         except Exception as exc:  # report and keep going: one bad plugin
-            diags.add("load_error", ep, untrusted=_exc_text(exc))
+            diags.add("load_error", found, untrusted=_exc_text(exc))
             continue
         if isinstance(obj, Mapping):
-            _legacy(obj, ep, builtin, out, diags)
+            if uploaded:  # a mapping fills built-in contract ids: never from an upload
+                diags.add("node_contract_invalid", found, message=_UPLOAD_MAPPING_MESSAGE)
+            else:
+                _legacy(obj, found, builtin, out, diags)
             continue
         items = _items(obj)
         if items is None:
             diags.add(
                 "node_contract_invalid",
-                ep,
+                found,
                 untrusted=f"exported {type(obj).__name__}, not NodeExport objects",
             )
             continue
@@ -275,65 +323,92 @@ def _load_nodes() -> _NodeLoad:
             ):
                 diags.add(
                     "node_contract_invalid",
-                    ep,
+                    found,
                     untrusted=f"exported {type(item).__name__}, not a NodeExport with a "
                     "NodeImplementation contract",
                 )
                 continue
             c = item.contract
             if not callable(item.fn):
-                diags.add("node_contract_invalid", ep, id_=c.id, untrusted="fn is not callable")
+                diags.add("node_contract_invalid", found, id_=c.id, untrusted="fn is not callable")
                 continue
-            issues = plugin_contract_issues(c, distribution=dist)
+            issues = (
+                _upload_contract_issues(c, found)
+                if uploaded
+                else plugin_contract_issues(c, distribution=found.distribution)
+            )
             if issues:
-                diags.add(_contract_code(c, issues), ep, id_=c.id, untrusted=_issues_text(issues))
+                code = _contract_code(c, issues)
+                diags.add(
+                    code,
+                    found,
+                    id_=c.id,
+                    untrusted=_issues_text(issues),
+                    message=_UPLOAD_NAMESPACE_MESSAGE
+                    if uploaded and code == "namespace_reserved"
+                    else None,
+                )
                 continue
             if c.id in out.exports:
-                diags.add("id_collision", ep, id_=c.id)
+                diags.add("id_collision", found, id_=c.id)
                 continue
             out.exports[c.id] = item
+            if found.origin is not None:
+                out.origins[c.id] = found.origin
     out.diagnostics = diags.rows
     return out
 
 
 def _legacy(
     table: Mapping[Any, Any],
-    ep: importlib.metadata.EntryPoint,
+    found: EntryPointOrigin,
     builtin: Mapping[str, NodeFn],
     out: _NodeLoad,
     diags: _Diagnostics,
 ) -> None:
     """A pre-v0.18 ``{node id: fn}`` export: fills built-in contract ids only."""
-    diags.add("deprecated", ep)
+    diags.add("deprecated", found)
     for k, v in table.items():
         if not isinstance(k, str) or not callable(v):
             diags.add(
-                "node_contract_invalid", ep, untrusted=f"{k!r} is not a node id with a function"
+                "node_contract_invalid", found, untrusted=f"{k!r} is not a node id with a function"
             )
         elif k not in NODE_IMPLEMENTATIONS:
             diags.add(
                 "node_contract_invalid",
-                ep,
+                found,
                 id_=k,
                 untrusted="no contract declares this id; export a NodeExport with its contract",
             )
         elif k in builtin or k in out.legacy:
-            diags.add("id_collision", ep, id_=k)
+            diags.add("id_collision", found, id_=k)
         else:
             out.legacy[k] = v
 
 
-def load_node_exports() -> tuple[dict[str, NodeExport], list[CatalogDiagnostic]]:
+def load_node_exports(
+    *, overlays: Sequence[UploadOverlay] | None = None, only: str | None = None
+) -> tuple[dict[str, NodeExport], list[CatalogDiagnostic]]:
     """The valid plugin node exports by id and a diagnostic for everything refused (load
-    errors, invalid contracts, reserved namespaces, collisions, legacy mapping exports)."""
-    loaded = _load_nodes()
+    errors, invalid contracts, reserved namespaces, collisions, legacy mapping exports).
+
+    ``overlays`` (v0.19, default: the process's) are the mounted uploads; ``only`` keeps the
+    entry points of one origin (a PEP 503 distribution name or ``upload:<pvid>``)."""
+    loaded = _load_nodes(overlays, only)
     return loaded.exports, loaded.diagnostics
 
 
-def plugin_node_contracts() -> list[NodeImplementation]:
+def node_origins(*, overlays: Sequence[UploadOverlay] | None = None) -> dict[str, str]:
+    """``{node id: origin}`` of every valid plugin node export (v0.19)."""
+    return dict(_load_nodes(overlays).origins)
+
+
+def plugin_node_contracts(
+    *, overlays: Sequence[UploadOverlay] | None = None, only: str | None = None
+) -> list[NodeImplementation]:
     """The contracts of the valid plugin nodes (what the runner exports into
     ``Catalog.workflow_nodes``), by id."""
-    exports, _ = load_node_exports()
+    exports, _ = load_node_exports(overlays=overlays, only=only)
     return [exports[k].contract for k in sorted(exports)]
 
 
@@ -349,11 +424,15 @@ def all_node_contracts(
     return merged
 
 
-def node_registry(extra: Mapping[str, NodeFn] | None = None) -> dict[str, NodeFn]:
+def node_registry(
+    extra: Mapping[str, NodeFn] | None = None,
+    *,
+    overlays: Sequence[UploadOverlay] | None = None,
+) -> dict[str, NodeFn]:
     """Built-ins, valid plugin exports and legacy fills (built-ins win), then ``extra``
     (which wins: tests and drivers can override). What is refused is logged here and
     reported as catalog diagnostics by the runner's ``describe``."""
-    loaded = _load_nodes()
+    loaded = _load_nodes(overlays)
     for d in loaded.diagnostics:
         _log.warning(
             "workflow node entry point %s (%s) refused: %s %s",
@@ -378,80 +457,105 @@ def _template_namespace(id_: str) -> str:
     return id_.partition("_")[0]
 
 
+def template_namespace_problem(id_: str, found: EntryPointOrigin) -> str | None:
+    """Why ``found`` may not export a template with ``id_`` (``None``: it may). An upload's
+    template id is ``<its namespace>_<name>``; anyone else's follows the v0.18 rules."""
+    if found.overlay is None:
+        return check_namespace(id_, found.distribution, plugin=_template_namespace(id_))
+    ns = found.overlay.namespace
+    plugin = uploaded_namespace_of(id_) or _template_namespace(id_)
+    reason = check_namespace(id_, found.distribution, plugin=plugin, claimed=ns)
+    if reason is None and not id_.startswith(f"{ns}_"):
+        reason = f"{id_!r}: a template id of this upload must start with '{ns}_'."
+    return reason
+
+
 def _template(
     item: Any,
-    ep: importlib.metadata.EntryPoint,
+    found: EntryPointOrigin,
     nodes: Mapping[str, NodeImplementation],
     taken: set[str],
     diags: _Diagnostics,
 ) -> TemplateCatalogEntry | None:
-    dist = _dist_of(ep)
+    dist = found.distribution
     if isinstance(item, Mapping):
         try:
             item = TemplateCatalogEntry.model_validate(dict(item))
         except ValidationError as exc:
-            diags.add("template_invalid", ep, untrusted=str(exc))
+            diags.add("template_invalid", found, untrusted=str(exc))
             return None
     if not isinstance(item, TemplateCatalogEntry):
         diags.add(
             "template_invalid",
-            ep,
+            found,
             untrusted=f"exported {type(item).__name__}, not a TemplateCatalogEntry",
         )
         return None
-    reason = check_namespace(item.id, dist, plugin=_template_namespace(item.id))
+    reason = template_namespace_problem(item.id, found)
     if reason is not None:
-        diags.add("namespace_reserved", ep, id_=item.id, untrusted=reason)
+        diags.add(
+            "namespace_reserved",
+            found,
+            id_=item.id,
+            untrusted=reason,
+            message=_UPLOAD_NAMESPACE_MESSAGE if found.overlay is not None else None,
+        )
         return None
     if item.id in taken:
-        diags.add("id_collision", ep, id_=item.id)
+        diags.add("id_collision", found, id_=item.id)
         return None
-    problems = about_issues(item.about)
+    problems = about_issues(item.about, uploaded=found.overlay is not None)
     if problems:
-        diags.add("about_incomplete", ep, id_=item.id, untrusted="; ".join(problems))
+        diags.add("about_incomplete", found, id_=item.id, untrusted="; ".join(problems))
         return None
     result = validate_workflow(item.document, nodes=nodes)
     if not result.valid:
         errors = [i for i in result.issues if i.severity is Severity.ERROR] or result.issues
         diags.add(
             "template_invalid",
-            ep,
+            found,
             id_=item.id,
             untrusted="; ".join(f"{i.pointer or '/'}: {i.message}" for i in errors),
         )
         return None
+    if found.overlay is not None:  # the path decided: uploaded, whatever the name
+        return item.model_copy(update={"provider": found.overlay.provider})
     provider = None if dist is None or is_builtin_distribution(dist) else _clip(dist, 128)
     return item.model_copy(update={"provider": provider}) if provider else item
 
 
 def load_plugin_templates(
     nodes: Mapping[str, NodeImplementation],
+    *,
+    overlays: Sequence[UploadOverlay] | None = None,
+    only: str | None = None,
 ) -> tuple[list[TemplateCatalogEntry], list[CatalogDiagnostic]]:
     """The valid plugin workflow templates (``provider`` set for non-built-in
-    distributions) and a diagnostic for each refused one.
+    distributions, ``upload:<pvid>`` for an upload) and a diagnostic for each refused one.
 
     Each document is validated against ``nodes`` (the built-in contracts merged with the
     plugin ones: :func:`all_node_contracts`). An id a built-in template or an earlier
-    export already has is refused (``id_collision``)."""
+    export already has is refused (``id_collision``). ``overlays`` and ``only`` as in
+    :func:`load_node_exports`."""
     diags = _Diagnostics(TEMPLATE_ENTRY_POINT_GROUP)
     out: list[TemplateCatalogEntry] = []
     taken = set(WORKFLOW_TEMPLATES)
-    for ep in _plugin_entry_points(TEMPLATE_ENTRY_POINT_GROUP):
+    for found in _plugin_entry_points(TEMPLATE_ENTRY_POINT_GROUP, overlays, only):
         try:
-            obj = _load(ep)
+            obj = _load(found.entry_point)
         except Exception as exc:  # report and keep going: one bad plugin
-            diags.add("load_error", ep, untrusted=_exc_text(exc))
+            diags.add("load_error", found, untrusted=_exc_text(exc))
             continue
         items = [obj] if isinstance(obj, Mapping) else _items(obj)
         if items is None:
             diags.add(
                 "template_invalid",
-                ep,
+                found,
                 untrusted=f"exported {type(obj).__name__}, not TemplateCatalogEntry objects",
             )
             continue
         for item in items:
-            entry = _template(item, ep, nodes, taken, diags)
+            entry = _template(item, found, nodes, taken, diags)
             if entry is not None:
                 taken.add(entry.id)
                 out.append(entry)

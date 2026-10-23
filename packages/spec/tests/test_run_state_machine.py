@@ -40,6 +40,7 @@ EXPECTED: dict[tuple[RunState, RunTrigger], RunState] = {
     (S.DISPATCHING, T.SUBMITTED): S.PROVISIONING,
     (S.DISPATCHING, T.INFRA_RETRY): S.QUEUED,
     (S.DISPATCHING, T.FAIL_INFRA): S.FAILED,
+    (S.DISPATCHING, T.FAIL_INTEGRITY): S.FAILED,  # v0.19: a pinned overlay object is gone
     (S.DISPATCHING, T.CANCEL): S.CANCELLING,
     (S.RUNNING, T.SILENCE): S.STALLED,
     (S.STALLED, T.SILENCE): S.STALLED,
@@ -62,6 +63,7 @@ for _live in LIVE:
     EXPECTED[(_live, T.CANCEL)] = S.CANCELLING
     for _trig in EXEC_FAILS:
         EXPECTED[(_live, _trig)] = S.FAILED
+    EXPECTED[(_live, T.FAIL_INTEGRITY)] = S.FAILED  # the supervisor's exit 13
 
 ALL_PAIRS = list(itertools.product(RunState, RunTrigger))
 
@@ -94,10 +96,19 @@ def test_failure_class_is_set_exactly_on_failures() -> None:
             assert trig.value == f"fail_{rule.failure_class.value}"
         else:
             assert rule.failure_class is None, (src, trig)
-    # integrity failures only come from the finalizer
-    integrity = [r for r in TRANSITIONS.values() if r.failure_class is FailureClass.INTEGRITY]
-    assert [r.source for r in integrity] == [S.FINALIZING]
-    assert all(r.actors == {Actor.FINALIZER} for r in integrity)
+    # integrity failures come from the control plane's own checks: the finalizer (the
+    # bundle), the dispatcher (a pinned overlay object is gone) and the reconciler (the
+    # supervisor's exit code 13, which the worker cannot set)
+    integrity = {
+        r.source: r.actors
+        for r in TRANSITIONS.values()
+        if r.failure_class is FailureClass.INTEGRITY
+    }
+    assert integrity == {
+        S.FINALIZING: {Actor.FINALIZER},
+        S.DISPATCHING: {Actor.DISPATCHER},
+        **{live: {Actor.RECONCILER} for live in LIVE},
+    }
 
 
 def test_new_attempt_only_when_requeued_after_an_execution() -> None:

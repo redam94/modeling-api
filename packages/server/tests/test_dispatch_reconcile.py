@@ -194,6 +194,7 @@ async def _provisioned(ctx: ServerContext, dispatcher: Dispatcher) -> tuple[str,
     [
         (10, "user", "plugin raised"),
         (137, "resource_exhausted", "retry at class M"),
+        (13, "integrity", "CRC32C"),  # v0.19: the reconciler's live → fail_integrity edge
         (14, "timeout", "exit 14"),
         (15, "sandbox", "exit 15"),
     ],

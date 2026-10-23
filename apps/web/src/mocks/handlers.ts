@@ -27,6 +27,7 @@ import { createIntegrationHandlers, createIntegrationsState } from "./integratio
 import { createLibraryHandlers, createLibraryState, mockCatalog, seedSampleLibrary } from "./library";
 import { createMediaHandlers, createMediaState } from "./media";
 import { createOnboardingHandlers, createOnboardingState, restoreSampleProjects } from "./onboarding";
+import { createPluginAuthHandlers, createPluginHandlers, createPluginsState, withUploadedEntries } from "./plugins";
 import { createShapeHandlers, SHAPE_RUNS } from "./score-shapes";
 import { createTenancyHandlers, createTenancyState } from "./tenancy";
 import { advanceTracking, createTrackingHandlers, createTrackingState } from "./tracking";
@@ -71,6 +72,8 @@ interface MockState {
   library: ReturnType<typeof createLibraryState>;
   /** v0.18: onboarding progress and sample projects (mocks/onboarding.ts; survive a reload). */
   onboarding: ReturnType<typeof createOnboardingState>;
+  /** v0.19: uploaded code (plugins, versions, tickets, tenant settings; mocks/plugins.ts). */
+  plugins: ReturnType<typeof createPluginsState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -112,6 +115,7 @@ export function createState(): MockState {
     dashboards: createDashboardsState(() => tenancy.members),
     library: createLibraryState(),
     onboarding,
+    plugins: createPluginsState(),
     runs: new Map([...fx.runs, ...SHAPE_RUNS, dlRun].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -220,6 +224,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
   // load after a reload (the session's ids do not change).
   for (const tenant of state.onboarding.samples.keys()) sampleSession(tenant);
   return [
+    // v0.19: a mock sign-in also answers a pending reauth of the plugin review (falls through).
+    ...createPluginAuthHandlers(),
     // v0.3: session, tenancy and the per-request checks (first, so they guard every /v1 route).
     ...createTenancyHandlers(state.tenancy),
     // v0.18: onboarding progress and sample projects (tenant routes), the library, recipe
@@ -230,6 +236,8 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
       session: sampleSession,
     }),
     ...createLibraryHandlers(state.library),
+    // v0.19: uploaded code (claim, upload, checks, review, yank, tenant settings).
+    ...createPluginHandlers(state.plugins),
     // v0.10: score results by output shape (grid summary table, classifier, areal output).
     ...createShapeHandlers({ artifacts: state.artifacts }),
     // M4: the tree dataset and upload inspection (before the generic dataset routes).
@@ -265,8 +273,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     ),
     http.get(`${API}/healthz`, () => HttpResponse.json({ status: "ok", version: "0.16.0-mock", contract_version: "0.2" })),
     // The real catalog and ModelSpec schema (editor.gen.json), so the editor's hints are real
-    // (v0.18: plus a team's plugin step with `mapi.mock.extensions=1`, mocks/library.ts).
-    http.get(`${API}/v1/catalog`, () => HttpResponse.json(mockCatalog())),
+    // (v0.18: plus a team's plugin step with `mapi.mock.extensions=1`, mocks/library.ts;
+    // v0.19: plus the uploads the caller may use in the tenant `X-Mapi-Project` names).
+    http.get(`${API}/v1/catalog`, ({ request }) => HttpResponse.json(withUploadedEntries(mockCatalog(), state.plugins, request))),
     // What each plot looks like (plot-examples.gen.json, loaded on first use: it is large).
     http.get(`${API}/v1/catalog/plots/:id/:version/example`, async ({ params }) => {
       const { plots } = (await import("./plot-examples.gen.json")).default as { plots: Record<string, unknown> };

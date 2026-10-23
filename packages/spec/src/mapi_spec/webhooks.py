@@ -106,6 +106,19 @@ class WebhookEventType(StrEnum):
     # --- v0.16 (additive) --------------------------------------------------------------------
     DASHBOARD_READOUT_PUBLISHED = "dashboard.readout.published"
     """A dashboard readout became ready and published (it joined the client history)."""
+    # --- v0.19 (additive; tenant-scoped, sent with emit_tenant_event) ------------------------
+    # payload: plugin and version ids, namespace, version, state and digests; never the
+    # uploaded titles, About text or kit messages
+    PLUGIN_VERSION_KIT_PASSED = "plugin.version.kit_passed"
+    """An uploaded version passed its checks and tests (usable privately by its uploader)."""
+    PLUGIN_VERSION_KIT_FAILED = "plugin.version.kit_failed"
+    """An uploaded version was refused by inspect or failed its tests."""
+    PLUGIN_VERSION_AWAITING_APPROVAL = "plugin.version.awaiting_approval"
+    """Someone asked a tenant admin to review an uploaded version."""
+    PLUGIN_VERSION_APPROVED = "plugin.version.approved"
+    PLUGIN_VERSION_REJECTED = "plugin.version.rejected"
+    PLUGIN_VERSION_YANKED = "plugin.version.yanked"
+    """An uploaded version was withdrawn (by a person, or by a failed rekit)."""
 
 
 # ========================================================================================= DTOs

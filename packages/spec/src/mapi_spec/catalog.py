@@ -8,6 +8,10 @@ catalog without extensions does not change): ``provider`` on entries (the distri
 non-built-in plugin), plot ``settings_schema``/``tags``/``pack_label``, plugin workflow node
 contracts and templates (:class:`TemplateCatalogEntry`), and :class:`CatalogDiagnostic`
 rows for everything that could not be loaded.
+
+v0.19 (additive, left out when ``None``): ``overlay_hash`` on step, plot and template entries
+(models had it already) - the sha256 of the uploaded wheel an entry of the tenant catalog view
+comes from; its ``provider`` is then ``upload:<plugin version id>``.
 """
 
 from __future__ import annotations
@@ -29,7 +33,7 @@ from mapi_spec.effects import (
     resolve_effect,
 )
 from mapi_spec.errors import ErrorCode, Issue, Severity, json_pointer
-from mapi_spec.namespaces import PLATFORM_RESERVED
+from mapi_spec.namespaces import PLATFORM_RESERVED, uploaded_namespace_of
 from mapi_spec.refs import UseRef, Version
 from mapi_spec.workflow_nodes import NodeImplementation
 
@@ -106,6 +110,7 @@ class CatalogDiagnostic(StrictModel):
 
 
 _TEMPLATE_ID = r"^[a-z][a-z0-9_]{0,63}$"
+_SHA256 = r"^sha256:[0-9a-f]{64}$"
 
 
 class TemplateCatalogEntry(StrictModel):
@@ -123,6 +128,7 @@ class TemplateCatalogEntry(StrictModel):
     document: dict[str, JsonValue]
     tags: list[Slug] = Field(default_factory=list, max_length=8, exclude_if=_empty)
     provider: str | None = Field(None, max_length=128, exclude_if=_none)
+    overlay_hash: str | None = Field(None, pattern=_SHA256, exclude_if=_none)
 
     @field_validator("id")
     @classmethod
@@ -130,6 +136,10 @@ class TemplateCatalogEntry(StrictModel):
         head, sep, name = v.partition("_")
         if not sep or not name:
             raise ValueError("a plugin template id is '<namespace>_<name>'")
+        # v0.19: an uploaded template ('t_<code>_<short>_<name>'); whether the exporter may
+        # use that namespace is decided by the loader (check_namespace(..., claimed=...))
+        if uploaded_namespace_of(v) is not None:
+            return v
         if head in PLATFORM_RESERVED:
             raise ValueError(f"the namespace {head!r} is reserved for the platform")
         return v
@@ -199,6 +209,12 @@ class StepCatalogEntry(StrictModel):
         None,
         max_length=128,
         description="v0.18: the distribution that installed a non-built-in step",
+        exclude_if=_none,
+    )
+    overlay_hash: str | None = Field(
+        None,
+        pattern=_SHA256,
+        description="v0.19: the sha256 of the uploaded wheel the step comes from",
         exclude_if=_none,
     )
 
@@ -304,6 +320,12 @@ class PlotCatalogEntry(StrictModel):
         None,
         max_length=40,
         description="v0.18: the name of the recipe pack shown on the catalog card",
+        exclude_if=_none,
+    )
+    overlay_hash: str | None = Field(
+        None,
+        pattern=_SHA256,
+        description="v0.19: the sha256 of the uploaded wheel the recipe comes from",
         exclude_if=_none,
     )
 

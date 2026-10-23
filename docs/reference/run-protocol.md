@@ -72,10 +72,12 @@ the code for all 13 × 19 pairs of state and trigger.
 | `DISPATCHING` | `submitted` | `PROVISIONING` | dispatcher, reconciler (orphan adoption) | | |
 | `DISPATCHING` | `infra_retry` | `QUEUED` | dispatcher, reconciler | | yes |
 | `DISPATCHING` | `fail_infra` | `FAILED` | dispatcher, reconciler | infra | |
+| `DISPATCHING` | `fail_integrity` | `FAILED` | dispatcher | integrity (a pinned uploaded wheel no longer exists at its generation; the version is withdrawn) | |
 | `PROVISIONING`, `RUNNING`, `STALLED` | `event` | `RUNNING` | events | | |
 | `PROVISIONING`, `RUNNING`, `STALLED` | `complete` | `FINALIZING` | reconciler | | |
 | `PROVISIONING`, `RUNNING`, `STALLED` | `infra_retry` | `QUEUED` | reconciler | | yes |
 | `PROVISIONING`, `RUNNING`, `STALLED` | `fail_user` / `fail_resource_exhausted` / `fail_infra` / `fail_timeout` / `fail_sandbox` | `FAILED` | reconciler | user / resource_exhausted / infra / timeout / sandbox | |
+| `PROVISIONING`, `RUNNING`, `STALLED` | `fail_integrity` | `FAILED` | reconciler | integrity (the supervisor exited with `13 INTEGRITY_ERROR`: an input or an uploaded wheel is not the pinned bytes) | |
 | `RUNNING` | `silence` | `STALLED` | reconciler | | |
 | `STALLED` | `silence` | `STALLED` (no-op) | reconciler | | |
 | `FINALIZING` | `event` | `FINALIZING` (no-op) | events | | |

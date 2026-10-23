@@ -1456,7 +1456,15 @@
             "SCHEMA_UNSAFE",
             "EXTENSION_UNAVAILABLE",
             "SAMPLES_DISABLED",
-            "PREVIEW_DISABLED"
+            "PREVIEW_DISABLED",
+            "PLUGIN_REFUSED",
+            "PLUGIN_NAMESPACE_TAKEN",
+            "PLUGIN_VERSION_EXISTS",
+            "PLUGIN_STATE_CONFLICT",
+            "PLUGIN_UNAVAILABLE",
+            "UPLOADED_CODE_NOT_SHAREABLE",
+            "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+            "REAUTH_REQUIRED"
           ],
           "title": "ErrorCode",
           "type": "string"
@@ -5845,7 +5853,15 @@
             "SCHEMA_UNSAFE",
             "EXTENSION_UNAVAILABLE",
             "SAMPLES_DISABLED",
-            "PREVIEW_DISABLED"
+            "PREVIEW_DISABLED",
+            "PLUGIN_REFUSED",
+            "PLUGIN_NAMESPACE_TAKEN",
+            "PLUGIN_VERSION_EXISTS",
+            "PLUGIN_STATE_CONFLICT",
+            "PLUGIN_UNAVAILABLE",
+            "UPLOADED_CODE_NOT_SHAREABLE",
+            "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+            "REAUTH_REQUIRED"
           ],
           "title": "ErrorCode",
           "type": "string"
@@ -9628,7 +9644,15 @@
             "SCHEMA_UNSAFE",
             "EXTENSION_UNAVAILABLE",
             "SAMPLES_DISABLED",
-            "PREVIEW_DISABLED"
+            "PREVIEW_DISABLED",
+            "PLUGIN_REFUSED",
+            "PLUGIN_NAMESPACE_TAKEN",
+            "PLUGIN_VERSION_EXISTS",
+            "PLUGIN_STATE_CONFLICT",
+            "PLUGIN_UNAVAILABLE",
+            "UPLOADED_CODE_NOT_SHAREABLE",
+            "UNTRUSTED_PLACEMENT_UNAVAILABLE",
+            "REAUTH_REQUIRED"
           ],
           "title": "ErrorCode",
           "type": "string"

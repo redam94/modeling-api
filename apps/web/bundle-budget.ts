@@ -66,7 +66,8 @@ export const MOTION_PATTERNS: RegExp[] = [pkgPattern("motion|framer-motion|motio
 
 /**
  * v0.18: what a share link and the client portal must never load: the animation library, the
- * onboarding, library and extension features, the interactive controls and the illustrations.
+ * onboarding, library and extension features, the interactive controls and the illustrations
+ * (v0.19: and the uploaded-code feature).
  */
 export const SIGNED_IN_ONLY: RegExp[] = [
   ...MOTION_PATTERNS,
@@ -75,6 +76,8 @@ export const SIGNED_IN_ONLY: RegExp[] = [
   /\/src\/features\/extend\//,
   /\/src\/components\/interactive\//,
   /\/src\/components\/illustrations\//,
+  // v0.19 (D20, I-8): uploaded code (the upload, version and review pages, the settings card).
+  /\/src\/features\/plugins\//,
 ];
 
 /** The chunk and every chunk it reaches through static imports. */

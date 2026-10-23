@@ -84,6 +84,16 @@ class CatalogSnapshot:
     catalog: Catalog
     generated_at: datetime | None
     source: str
+    overlay_key: str = ""
+    """v0.19: empty for the base catalog of the image digest; the view key of a tenant
+    catalog view (:mod:`mapi_server.services.plugins.view`), whose ``catalog`` adds the
+    caller's visible uploads under the same base ``digest``. Caches keyed by the digest
+    alone must add it."""
+
+    @property
+    def cache_key(self) -> str:
+        """``digest`` for the base catalog, ``digest + overlay_key`` for a tenant view."""
+        return self.digest if not self.overlay_key else f"{self.digest}+{self.overlay_key}"
 
     @property
     def diagnostics(self) -> list[CatalogDiagnostic]:

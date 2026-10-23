@@ -41,6 +41,8 @@ const page = {
   governance: () => import("@/routes/governance"),
   // v0.18: Make your own (the no-code library; its chunk is `library-*`).
   library: () => import("@/routes/library"),
+  // v0.19: uploaded code (upload, versions, review; its chunk is `plugins-*`).
+  plugins: () => import("@/routes/plugins"),
 };
 
 export interface RouterContext {
@@ -524,6 +526,33 @@ const dashboardRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { tab?: DashboardTab | undefined } => ({ tab: oneOf(s.tab, DASHBOARD_TABS) }),
 });
 
+// ----------------------------------------------------------------------------- v0.19
+
+/** A plugin id (`plg_` + ULID) or version id (`plv_` + ULID), as `mapi_spec.plugins` mints them. */
+function pluginIdParam(v: unknown, prefix: "plg_" | "plv_"): string | undefined {
+  return typeof v === "string" && v.length === 30 && v.startsWith(prefix) && /^[0-9a-z]{26}$/.test(v.slice(4)) ? v : undefined;
+}
+
+const pluginNewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/new",
+  component: lazyRouteComponent(page.plugins, "PluginUploadPage"),
+  // the plugin to upload a new version of (from a plugin page)
+  validateSearch: (s: Record<string, unknown>): { plugin?: string | undefined } => ({ plugin: pluginIdParam(s.plugin, "plg_") }),
+});
+
+const pluginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/$pluginId",
+  component: lazyRouteComponent(page.plugins, "PluginPage"),
+});
+
+const pluginVersionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/$pluginId/versions/$versionId",
+  component: lazyRouteComponent(page.plugins, "PluginVersionPage"),
+});
+
 export const routeTree = rootRoute.addChildren([
   homeRoute,
   datasetsRoute,
@@ -572,6 +601,9 @@ export const routeTree = rootRoute.addChildren([
   dashboardsRoute,
   dashboardRoute,
   libraryRoute,
+  pluginNewRoute,
+  pluginRoute,
+  pluginVersionRoute,
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

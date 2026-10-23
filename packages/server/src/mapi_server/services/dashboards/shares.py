@@ -15,6 +15,11 @@ tenant not active), the per-link limit, then (sessions: the session version; exc
 lock and the passcode) and a re-check in a session pinned to the link's tenant. Revoking a
 link bumps its ``session_version``, so its sessions fail on their next request.
 
+v0.19 (plan D16): a dashboard whose published revision, or any readout it shows, was made
+with uploaded code is never shared: making the link answers ``403
+UPLOADED_CODE_NOT_SHAREABLE``, and so do opening it and every later read with its session
+(:func:`_published`), so a refresh that adds such a readout ends the link's use at once.
+
 Passcodes (optional, 8-128 characters) are stored as
 ``scrypt$14$8$1$<salt>$<hash>`` of ``HMAC(pepper, passcode)`` and compared in constant time.
 After ``share_passcode_max_failures`` wrong ones the link is locked for ``share_lockout_s``
@@ -67,6 +72,7 @@ from mapi_server.services.dashboards.access import (
 )
 from mapi_server.services.quotas import count_requests
 from mapi_server.services.runs import now
+from mapi_server.services.sharing import require_shareable
 
 __all__ = [
     "PASSCODE_SCHEME",
@@ -162,6 +168,7 @@ async def create_share(
         raise MapiError(
             "publish the dashboard before you share it", code=ErrorCode.DASHBOARD_NOT_PUBLISHED
         )
+    await require_shareable(session, dashboard=row)
     if body.allowed_inputs and not _may_run(ctx):
         raise MapiError(
             "a share link with what-ifs or uploads needs the runner role: its results run as "
@@ -389,12 +396,16 @@ def _session_claims(ctx: ServerContext, header: str | None, at: datetime) -> tup
 async def _published(
     session: AsyncSession, dashboard_id: str
 ) -> tuple[m.Dashboard, m.DashboardRevision]:
+    """The published dashboard and revision a link shows (``410`` once unpublished), checked
+    again on every exchange and read: ``403 UPLOADED_CODE_NOT_SHAREABLE`` as soon as any of
+    it was made with uploaded code (D16)."""
     row = await session.get(m.Dashboard, dashboard_id)
     if row is None or row.status != "published":
         raise _expired()
     rev = await load_revision(session, row)
     if rev is None:
         raise _expired()
+    await require_shareable(session, dashboard=row)
     return row, rev
 
 

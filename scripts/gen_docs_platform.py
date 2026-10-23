@@ -69,6 +69,7 @@ RESOURCE_LABELS: dict[str, str] = {
     "endpoint": "Endpoints and aliases",
     "plot": "Saved plots and renders",
     "plugin": "Plugins",
+    "plugin_settings": "Uploaded-code settings and confirmed uploaders of the tenant",
     "usage": "Cost and quota use of a project",
     "billing": "Cost and quota use of the whole tenant",
     "audit": "The tenant's audit log",

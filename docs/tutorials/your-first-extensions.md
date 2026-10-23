@@ -263,4 +263,4 @@ Then restart `make dev`. Your library items from Part 1 stay: they are data, not
 - Put your plugin into a Docker or Cloud Run deployment:
   [a custom runner image](../extend/develop/run-on-your-stack.md#c-a-custom-runner-image).
 - Each no-code kind in depth: [Make it yours](../extend/index.md).
-- What's next for plugins: [Coming in 0.19](../extend/upload-roadmap.md).
+- Share it with your team: [Upload your own code](../extend/upload.md).

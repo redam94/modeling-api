@@ -226,12 +226,40 @@ describe("the v0.18 budgets (vite.config.ts)", () => {
       ["recipe-playground-", 32, "features\\/plots\\/recipe-playground"],
       ["library-", 160, "routes\\/library"],
       ["checklist)-", 48, "features\\/onboarding\\/(?:start-here|checklist)"],
+      ["plugins-", 96, "routes\\/plugins"], // v0.19 (I-8)
     ];
     for (const [name, kib, module] of budgets) {
       const at = config.indexOf(`${name}[^/]*\\.js$/`);
       expect([name, at >= 0]).toEqual([name, true]);
       const entry = config.slice(at, config.indexOf("}", at));
       expect([name, entry.includes(`maxBytes: ${kib} * 1024`), entry.includes(module)]).toEqual([name, true, true]);
+    }
+  });
+});
+
+describe("v0.19 uploaded code (I-8)", () => {
+  const plugins = "/r/apps/web/src/features/plugins/upload-page.tsx";
+
+  it("the uploaded-code feature is signed-in only (share links and the portal never load it)", () => {
+    expect(SIGNED_IN_ONLY.some((p) => p.test(plugins))).toBe(true);
+    expect(SIGNED_IN_ONLY.some((p) => p.test("/r/apps/web/src/mocks/plugins.ts"))).toBe(false);
+    expect(SIGNED_IN_ONLY.some((p) => p.test("/r/apps/web/src/routes/plugins.tsx"))).toBe(false);
+  });
+
+  it("a client portal that reached the uploaded-code feature fails its budget", () => {
+    const portal: ChunkBudget = { match: /client-app-/, maxBytes: 100_000, forbidden: SIGNED_IN_ONLY };
+    const chunks = [
+      chunk("index.js", { isEntry: true, dynamicImports: ["client-app-a.js"] }),
+      chunk("client-app-a.js", { imports: ["index.js", "y.js"] }),
+      chunk("y.js", { moduleIds: [plugins] }),
+    ];
+    expect(checkChunkBudgets(chunks, [portal])[0]).toContain("features/plugins/upload-page.tsx");
+  });
+
+  it("the about card and the run page never import the feature statically (the chip and badge are inline)", () => {
+    for (const file of ["features/about/about-card.tsx", "routes/run-detail.tsx"]) {
+      const src = readFileSync(resolve(__dirname, file), "utf8");
+      expect([file, /from "@\/features\/plugins\//.test(src)]).toEqual([file, false]);
     }
   });
 });

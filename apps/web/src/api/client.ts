@@ -33,6 +33,14 @@ export function isProjectScoped(pathname: string): boolean {
   return !/^\/v1\/(?:me|tenants|admin|projects|catalog|schemas|shared|share-sessions)(?:[/:]|$)/.test(pathname);
 }
 
+/**
+ * v0.19 (D11): the catalog routes answer with the tenant view (uploaded entries) of the tenant
+ * that `X-Mapi-Project` names. The server reads the header as sent and never answers 422 for it.
+ */
+export function wantsCatalogTenant(pathname: string): boolean {
+  return /^\/v1\/(?:catalog|workflow-templates)(?:[/:]|$)/.test(pathname);
+}
+
 /** Headers naming the project for `scope` (none outside a v0.3 session). */
 export function projectHeaders(scope: string | null): Record<string, string> {
   return scope && useAuth.getState().mode === "session" ? { [PROJECT_HEADER]: scope } : {};
@@ -48,15 +56,21 @@ export const sessionMiddleware: Middleware = {
     const path = new URL(request.url).pathname;
     const csrf = useAuth.getState().csrf;
     if (csrf && !SAFE_METHODS.has(request.method.toUpperCase())) request.headers.set(CSRF_HEADER, csrf);
-    if (isProjectScoped(path) && !request.headers.has(PROJECT_HEADER)) {
+    if ((isProjectScoped(path) || wantsCatalogTenant(path)) && !request.headers.has(PROJECT_HEADER)) {
       const scope = activeScopeKey();
       if (scope) request.headers.set(PROJECT_HEADER, scope);
     }
     return request;
   },
-  onResponse({ request, response }) {
+  async onResponse({ request, response }) {
     if (response.status === 401 && !new URL(request.url).pathname.startsWith("/auth/")) {
-      useAuth.getState().markExpired();
+      // v0.19 D13: a stale sign-in on a plugin decision is 401 REAUTH_REQUIRED, not an ended
+      // session; the reviewer panel sends the user through sign-in itself.
+      const body = (await response
+        .clone()
+        .json()
+        .catch(() => null)) as { code?: unknown } | null;
+      if (body?.code !== "REAUTH_REQUIRED") useAuth.getState().markExpired();
     }
     return undefined;
   },

@@ -121,6 +121,9 @@ class LoginTransaction(StrictModel):
     code_verifier: str = Field(..., pattern=_VERIFIER_RE.pattern)
     return_to: str = "/"
     created_at: AwareDatetime
+    reauth: bool = False
+    """v0.19: ask the identity provider to authenticate the person again (``max_age=0``,
+    ``prompt=login``); the callback then needs an ID token with a fresh ``auth_time``."""
 
     @field_validator("return_to")
     @classmethod
@@ -130,13 +133,16 @@ class LoginTransaction(StrictModel):
         return v
 
     @classmethod
-    def start(cls, *, now: datetime, return_to: str | None = None) -> LoginTransaction:
+    def start(
+        cls, *, now: datetime, return_to: str | None = None, reauth: bool = False
+    ) -> LoginTransaction:
         return cls(
             state=random_state(),
             nonce=random_state(),
             code_verifier=pkce_verifier(),
             return_to=safe_return_to(return_to),
             created_at=now,
+            reauth=reauth,
         )
 
     def expired(self, now: datetime) -> bool:
@@ -148,6 +154,12 @@ class LoginTransaction(StrictModel):
 
     def __repr__(self) -> str:
         return f"LoginTransaction(return_to={self.return_to!r}, created_at={self.created_at!r})"
+
+
+def reauth_params(tx: LoginTransaction) -> dict[str, str]:
+    """The authorization parameters that make the IdP authenticate the person again (OIDC
+    Core 3.1.2.1), for a sign-in that must prove a fresh authentication; else none."""
+    return {"max_age": "0", "prompt": "login"} if tx.reauth else {}
 
 
 def build_authorize_url(
@@ -171,6 +183,7 @@ def build_authorize_url(
         "nonce": tx.nonce,
         "code_challenge": tx.code_challenge,
         "code_challenge_method": "S256",
+        **reauth_params(tx),
     }
     for key, value in (extra or {}).items():
         if key in params:

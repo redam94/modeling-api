@@ -100,5 +100,19 @@ def run_kind(ctx: WorkerContext) -> None:
 
         assert isinstance(job, GovernanceJob)
         run_governance(ctx, job)
+    elif kind is RunKind.PLUGIN_INSPECT:
+        from mapi_spec.jobs import PluginInspectJob
+
+        from mapi_runner.worker.plugin_inspect import run_plugin_inspect
+
+        assert isinstance(job, PluginInspectJob)
+        run_plugin_inspect(ctx, job)
+    elif kind is RunKind.PLUGIN_DESCRIBE:
+        from mapi_spec.jobs import PluginDescribeJob
+
+        from mapi_runner.worker.plugin_describe import run_plugin_describe
+
+        assert isinstance(job, PluginDescribeJob)
+        run_plugin_describe(ctx, job)
     else:  # pragma: no cover - parse_job raises first
         raise NotImplementedError(f"the runner does not execute {kind.value!r} runs")

@@ -19,12 +19,14 @@ from __future__ import annotations
 
 import re
 import secrets
+from collections.abc import Iterable
 from typing import Final, Literal
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from mapi_spec._dto import EXAMPLE_TS, Id, RequestModel, ResponseModel, TenantId, dto_examples
 from mapi_spec.errors import ErrorCode, MapiError
+from mapi_spec.namespaces import RESERVED_PREFIXES, uploaded_namespace_of
 from mapi_spec.plots import PlotSpec
 
 __all__ = [
@@ -45,6 +47,7 @@ __all__ = [
     "embeddable",
     "generate_embed_token",
     "is_platform_recipe",
+    "uses_uploaded_ids",
 ]
 
 PLATFORM_RECIPE_NAMESPACES: Final = ("core", "mmm", "ml", "ts", "choice", "causal")
@@ -87,6 +90,26 @@ def is_platform_recipe(recipe: str | None) -> bool:
     name = recipe.split("@", 1)[0]
     ns, dot, rest = name.partition(".")
     return bool(dot and rest) and ns in PLATFORM_RECIPE_NAMESPACES
+
+
+def uses_uploaded_ids(ids: Iterable[str]) -> bool:
+    """True if any catalog id or ref in ``ids`` names uploaded code (v0.19).
+
+    An id in an uploaded namespace (any of the five id forms) counts, and so does a model,
+    step, plot or template id whose namespace starts with a reserved upload prefix (``t_``,
+    ``tenant_``) without being well formed: only uploads can produce such ids, so they are
+    refused rather than shared (fail closed). Used by every share, client and embed gate.
+    """
+    for id_ in ids:
+        if not id_:
+            continue
+        if uploaded_namespace_of(id_) is not None:
+            return True
+        bare = id_.partition("@")[0]
+        head, dot, _ = bare.partition(".")
+        if (head if dot else bare).startswith(RESERVED_PREFIXES):
+            return True
+    return False
 
 
 class ModelPlotRef(RequestModel):

@@ -227,6 +227,21 @@ class AuditAction(StrEnum):
     """The installer or a tenant admin retried a failed sample (details ``{"attempt": n}``)."""
     SAMPLE_RETIRE = "sample.retire"
     """A tenant admin retired a sample: it is hidden and its sample grants are removed."""
+    # --- v0.19 (additive; details carry ids, digests and ``dev_untrusted``, never file
+    # contents or uploaded text). PLUGIN_PUBLISH (a version uploaded) and PLUGIN_YANK are reused
+    PLUGIN_CLAIM = "plugin.claim"
+    """A plugin short name was claimed (details ``{"plugin_id": id, "namespace": ns}``)."""
+    PLUGIN_APPROVAL_REQUEST = "plugin.approval_request"
+    PLUGIN_APPROVE = "plugin.approve"
+    """A tenant admin approved a version (details: version id, uploader and approver ids,
+    ``overlay_sha256``, ``describe_digest``, ``base_image_digest``)."""
+    PLUGIN_REJECT = "plugin.reject"
+    PLUGIN_PURGE = "plugin.purge"
+    """The purge sweep deleted a refused, rejected or yanked version's stored wheel."""
+    PLUGIN_SETTINGS_UPDATE = "plugin.settings_update"
+    PLUGIN_UPLOADER_ATTEST = "plugin.uploader_attest"
+    """A tenant admin attested an editor's identity for uploads."""
+    PLUGIN_UPLOADER_REVOKE = "plugin.uploader_revoke"
 
 
 class AuditEvent(ResponseModel):

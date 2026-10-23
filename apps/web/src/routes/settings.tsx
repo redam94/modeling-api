@@ -1,4 +1,5 @@
 import { LogOut, RotateCcw } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 import { can, ROLE_META } from "@/api/access";
 import { errorMessage } from "@/api/client";
@@ -17,6 +18,9 @@ import { env } from "@/env";
 import { absoluteTime, formatNumber } from "@/lib/format";
 import { toast } from "@/stores/toast";
 import { useUi, type Persona, type ThemePreference } from "@/stores/ui";
+
+/** v0.19 (D20): Settings › Workspace › Uploaded code, for tenant admins (lazy; signed-in only). */
+const PluginSettingsCard = lazy(() => import("@/features/plugins/plugin-settings-card"));
 
 /** The project's persona lock (`Project.guided_locked`), for its admins. */
 function GuidedLockSwitch({ locked }: { locked: boolean }) {
@@ -245,6 +249,11 @@ export function SettingsPage() {
           </CardContent>
         </Card>
         {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant ? <DataSettings tenant={ws.current.tenant} /> : null}
+        {ws.mode === "session" && ws.current?.tenantRole === "admin" && "trust_tier" in ws.current.tenant && ws.current.tenant.trust_tier !== "public" ? (
+          <Suspense fallback={null}>
+            <PluginSettingsCard tenantId={ws.current.tenant.id} />
+          </Suspense>
+        ) : null}
       </div>
     </>
   );

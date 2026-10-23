@@ -5,6 +5,8 @@
  *   presets, chart templates, workflow templates) with who made them, when, and Use / Edit.
  * - **Installed by your team**: catalog entries from a non-built-in distribution (`provider`)
  *   and plugin workflow templates (`source: plugin`).
+ * - **Uploaded** (v0.19 D20): the plugins your workspace uploaded, with state chips (a lazy
+ *   chunk from `features/plugins`).
  * - **Problems** (tenant admins and operators only): the catalog diagnostics.
  *
  * Every title, summary and name here is untrusted user or plugin text: React text only.
@@ -12,7 +14,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Pencil, Play, Plug } from "lucide-react";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 
 import { can } from "@/api/access";
 import { EmptyState, ErrorNotice, LoadingRows } from "@/components/common";
@@ -23,6 +25,8 @@ import { useWorkspace } from "@/features/auth/workspace";
 import { useLibraryItems } from "@/features/library/api";
 import { TAB_OF_KIND, type LibrarySearch } from "@/features/library/search";
 import { KIND_LABEL, type LibraryItem } from "@/features/library/types";
+import { isUploadedId } from "@/features/plugins/states";
+import { useUploadedCount } from "@/features/plugins/uploaded-count";
 import { useWorkflowTemplates } from "@/features/workflows/api";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +36,14 @@ import { itemByline, teamItems } from "./team";
 
 const PILL_SM = "h-auto min-h-9 rounded-full px-4 text-xs";
 
+/** v0.19: the Uploaded section (lazy; the plugins feature is signed-in only). */
+const UploadedSection = lazy(() => import("@/features/plugins/uploaded-section"));
+
+/** Uploaded entries (`provider: upload:<version id>`) are listed under Uploaded, not Installed. */
+function isUploadProvider(provider: string | null | undefined): boolean {
+  return typeof provider === "string" && provider.startsWith("upload:");
+}
+
 function LibLink({ search, className, children, label }: { search: LibrarySearch; className?: string; children: React.ReactNode; label?: string }) {
   return (
     <Link to="/library" search={search} className={className} aria-label={label}>
@@ -40,11 +52,12 @@ function LibLink({ search, className, children, label }: { search: LibrarySearch
   );
 }
 
-/** How many things Yours lists: library items and installed entries (the tab goes first when > 0). */
+/** How many things Yours lists: library items, installed entries and uploaded plugins (the tab goes first when > 0). */
 export function useTeamCount(): { count: number; isPending: boolean } {
   const library = useLibraryItems({});
   const installed = useInstalledExtensions();
-  const count = teamItems(library.data ?? []).length + installed.items.length;
+  const uploaded = useUploadedCount();
+  const count = teamItems(library.data ?? []).length + installed.items.filter((x) => !isUploadProvider(x.provider)).length + uploaded.count;
   return { count, isPending: library.isPending };
 }
 
@@ -165,15 +178,17 @@ export function YoursTab() {
   const items = useMemo(() => teamItems(library.data ?? []), [library.data]);
   const installedRows = useMemo<InstalledRow[]>(
     () => [
-      ...installed.items.map((x) => ({ kind: x.kind, id: x.id, version: x.version, title: x.title, provider: x.provider })),
+      ...installed.items.filter((x) => !isUploadProvider(x.provider)).map((x) => ({ kind: x.kind, id: x.id, version: x.version, title: x.title, provider: x.provider })),
       ...(templates.data?.items ?? [])
-        .filter((t) => t.source === "plugin")
+        // v0.19 live: an uploaded template is also `source: "plugin"`; it is listed under Uploaded
+        .filter((t) => t.source === "plugin" && !isUploadedId(t.id))
         .map((t) => ({ kind: "workflow_template" as const, id: t.id, version: t.version ?? "", title: t.about.title, provider: null })),
     ],
     [installed.items, templates.data],
   );
+  const uploaded = useUploadedCount();
   // a failed load is not "nothing": it shows the error and Retry below
-  const nothing = !library.isPending && !library.isError && !items.length && !installedRows.length;
+  const nothing = !library.isPending && !library.isError && !items.length && !installedRows.length && !uploaded.count;
   return (
     <div className="grid gap-10" data-testid="catalog-yours">
       {nothing ? (
@@ -224,6 +239,9 @@ export function YoursTab() {
           <InstalledList rows={installedRows} />
         </section>
       ) : null}
+      <Suspense fallback={null}>
+        <UploadedSection />
+      </Suspense>
       {admin ? <CatalogProblems operator={ws.operator} /> : null}
       <AddYourOwn kind="any" />
     </div>

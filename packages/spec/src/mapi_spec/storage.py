@@ -25,7 +25,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, timedelta
 from enum import StrEnum
-from typing import Annotated, Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Final, Literal, Protocol, runtime_checkable
 
 from pydantic import (
     AwareDatetime,
@@ -45,6 +45,7 @@ __all__ = [
     "BUNDLE_OBJECTS",
     "DATASET_OBJECTS",
     "MAX_SIGNED_URL_TTL",
+    "PLUGIN_QUARANTINE_OBJECT",
     "SEGMENT_RE",
     "AccessDenied",
     "BucketName",
@@ -73,6 +74,9 @@ __all__ = [
     "crc32c_to_base64",
     "dataset_prefix",
     "md5_base64",
+    "plugin_key",
+    "plugin_quarantine_key",
+    "plugin_quarantine_prefix",
     "quarantine_key",
     "run_checkpoint_prefix",
     "run_media_prefix",
@@ -619,13 +623,14 @@ class ObjectStore(Protocol):
 
 
 class BucketPurpose(StrEnum):
-    """The five buckets of the data project (plan §8.6)."""
+    """The buckets of the data project (plan §8.6; ``plugins`` added in v0.19)."""
 
     QUARANTINE = "quarantine"  # raw uploads; 7-day lifecycle
     BOOTSTRAP = "bootstrap"  # RunSpec objects keyed by nonce; exec SA get+delete, no list
     RUNS = "runs"  # per-attempt scratch, written only via signed URLs
     BUNDLES = "bundles"  # verified, write-once bundles; exec SA has no access
     DATA = "data"  # content-addressed dataset versions
+    PLUGINS = "plugins"  # v0.19: inspected uploaded wheels; write-once, purged, no retention lock
 
 
 _ENV_RE = re.compile(r"^[a-z][a-z0-9-]{0,15}$")
@@ -667,6 +672,10 @@ class Buckets:
     def data(self) -> str:
         return bucket_name(self.env, BucketPurpose.DATA)
 
+    @property
+    def plugins(self) -> str:
+        return bucket_name(self.env, BucketPurpose.PLUGINS)
+
     def all(self) -> dict[BucketPurpose, str]:
         return {p: bucket_name(self.env, p) for p in BucketPurpose}
 
@@ -678,6 +687,40 @@ _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 def quarantine_key(tenant_id: str, upload_id: str) -> str:
     """``t/{tenant}/uploads/{upload_id}`` in the quarantine bucket."""
     return f"t/{check_segment(tenant_id, 'tenant_id')}/uploads/{check_segment(upload_id)}"
+
+
+PLUGIN_QUARANTINE_OBJECT: Final = "plugin.whl"
+"""The one object name under :func:`plugin_quarantine_prefix` that ``:complete`` reads."""
+
+
+def plugin_quarantine_prefix(tenant_id: str, upload_id: str) -> str:
+    """``t/{tenant}/plugins/{upload_id}/`` in the quarantine bucket (v0.19): the prefix of the
+    upload ticket's POST policy (a POST policy prefix always ends with ``/``)."""
+    return (
+        f"t/{check_segment(tenant_id, 'tenant_id')}/plugins/"
+        f"{check_segment(upload_id, 'upload_id')}/"
+    )
+
+
+def plugin_quarantine_key(tenant_id: str, upload_id: str) -> str:
+    """``t/{tenant}/plugins/{upload_id}/plugin.whl`` in the quarantine bucket (v0.19).
+
+    The upload ticket's POST policy is scoped to :func:`plugin_quarantine_prefix` and its form
+    fields name exactly this key; ``:complete`` reads exactly this key (anything else under the
+    prefix is ignored and left to the 7-day lifecycle).
+    """
+    return plugin_quarantine_prefix(tenant_id, upload_id) + PLUGIN_QUARANTINE_OBJECT
+
+
+def plugin_key(tenant_id: str, plugin_id: str, version_id: str) -> str:
+    """``t/{tenant}/plugins/{plugin_id}/{version_id}.whl`` in the plugins bucket (v0.19).
+
+    The inspected wheel that overlays are mounted from (write-once, re-hashed on copy).
+    """
+    return (
+        f"t/{check_segment(tenant_id, 'tenant_id')}/plugins/"
+        f"{check_segment(plugin_id, 'plugin_id')}/{check_segment(version_id, 'version_id')}.whl"
+    )
 
 
 def bootstrap_key(nonce: str) -> str:

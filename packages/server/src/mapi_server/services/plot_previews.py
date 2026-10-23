@@ -9,8 +9,9 @@ options, sanitizes the result and writes :data:`~mapi_spec.jobs.PREVIEW_OUTPUT`.
 Before any run (cheapest refusal first):
 
 1. the kill switch ``plot_preview_enabled`` (``PREVIEW_DISABLED``, 409);
-2. the recipe must be in the current catalog (``NOT_FOUND``) and have an example
-   (``MODE_NOT_SUPPORTED``);
+2. the recipe must be in the caller's tenant catalog view (v0.19: the base catalog plus the
+   uploads they may use; ``NOT_FOUND``) and have an example (``MODE_NOT_SUPPORTED``); an
+   uploaded recipe's run mounts its version (``runs.overlays``, untrusted);
 3. the settings are validated with ``jsonschema`` against the recipe's sanitized catalog
    ``settings_schema`` (``SCHEMA_INVALID`` with pointers ``/settings/…``; settings for a
    recipe without a schema are ``MODE_NOT_SUPPORTED``). Empty settings are the catalog
@@ -36,6 +37,7 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Final
 
@@ -54,6 +56,7 @@ from mapi_spec.jobs import (
 )
 from mapi_spec.loader import spec_hash
 from mapi_spec.plots import PlotSpec
+from mapi_spec.plugins import OverlayPin
 from mapi_spec.resources import ResourceClass
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.validate import validate_settings
@@ -65,6 +68,7 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, ProblemWithHeaders
 from mapi_server.jsonlimits import JsonTooDeep, loads_limited
+from mapi_server.services.plugins.view import catalog_view
 from mapi_server.services.quotas import count_requests
 from mapi_server.services.runs import apply_transition, create_run, load_run, now
 from mapi_server.services.submit import admit
@@ -301,25 +305,41 @@ async def _wait(
 # --------------------------------------------------------------------------------- API
 
 
-async def _entry(ctx: ServerContext, plot_id: str, version: str) -> tuple[PlotCatalogEntry, str]:
-    """The catalog entry of the recipe and the catalog digest."""
+@dataclass(frozen=True, slots=True)
+class _Recipe:
+    """A recipe as the caller's tenant catalog view shows it (v0.19)."""
+
+    entry: PlotCatalogEntry
+    example: PlotSpec
+    digest: str
+    """The cache digest: the base catalog digest, plus the wheel's hash for an upload."""
+    pins: list[OverlayPin]
+
+
+async def _entry(ctx: ServerContext, plot_id: str, version: str) -> _Recipe:
+    """The recipe in the caller's tenant catalog view, its example and its overlay pins
+    (an uploaded recipe runs its own code: its version is mounted)."""
     async with ctx.db.session() as system:
-        snap = await ctx.catalogs.require(system)
-        for entry in snap.catalog.plots:
+        view = await catalog_view(
+            ctx,
+            system,
+            tenant_id=ctx.scope.tenant_id,
+            user_id=ctx.request.user_id if ctx.request is not None else None,
+        )
+        catalogs = view.service(ctx.catalogs)
+        for entry in view.catalog.plots:
             if entry.id == plot_id and entry.version == version:
-                example = await ctx.catalogs.example(system, f"{plot_id}@{version}")
+                example = await catalogs.example(system, f"{plot_id}@{version}")
                 if example is None:
                     raise MapiError(
                         f"the plot recipe {plot_id}@{version} has no example to preview",
                         code=ErrorCode.MODE_NOT_SUPPORTED,
                     )
-                return entry, snap.digest
+                digest = view.base.digest
+                if entry.overlay_hash is not None:
+                    digest = f"{digest}+{entry.overlay_hash}"
+                return _Recipe(entry, example, digest, view.pins_for([plot_id]))
     raise NotFoundError("catalog plot", f"{plot_id}@{version}")
-
-
-async def _example(ctx: ServerContext, ref: str) -> PlotSpec | None:
-    async with ctx.db.session() as system:
-        return await ctx.catalogs.example(system, ref)
 
 
 async def request_preview(
@@ -338,21 +358,20 @@ async def request_preview(
     :func:`preview_result`)."""
     if not ctx.settings.plot_preview_enabled:
         raise _disabled()
-    entry, digest = await _entry(ctx, plot_id, version)
+    recipe = await _entry(ctx, plot_id, version)
     ref = f"{plot_id}@{version}"
     settings = dict(body.settings)
     # off the event loop: the schema comes from an image catalog (schema_safety bounds it)
-    await asyncio.to_thread(_check_settings, entry, settings)
+    await asyncio.to_thread(_check_settings, recipe.entry, settings)
     if not settings:
-        example = await _example(ctx, ref)
-        return RecipePreviewResult(run_id=None, cached=True, done=True, plot=example)
-    key = preview_key(ref, settings, digest)
+        return RecipePreviewResult(run_id=None, cached=True, done=True, plot=recipe.example)
+    key = preview_key(ref, settings, recipe.digest)
     at = now()
     async with ctx.data_session() as session:
         found = await _cached(ctx, session, key, at)
         if found is None:
             await _check_rate(ctx, session, at)
-            run = await _start(ctx, session, ref, settings, key, digest)
+            run = await _start(ctx, session, ref, settings, key, recipe)
             found = RecipePreviewResult(run_id=run.id, cached=False, done=False)
     if found.done or wait <= 0 or found.run_id is None:
         return found
@@ -367,9 +386,10 @@ async def _start(
     ref: str,
     settings: dict[str, JsonValue],
     key: str,
-    digest: str,
+    recipe: _Recipe,
 ) -> m.Run:
-    """Queue the render run of a preview (admission: kill switches, placement, quotas)."""
+    """Queue the render run of a preview (admission: kill switches, placement, quotas and,
+    for an uploaded recipe, its overlay pin)."""
     job = RenderJob(recipe=RecipePreview(ref=ref, settings=settings))
     payload = job.model_dump(mode="json", exclude_none=True)
     run = await create_run(
@@ -380,11 +400,11 @@ async def _start(
         timeout_s=ctx.settings.render_timeout_s,
         payload=payload,
         labels={PREVIEW_LABEL: key, "mapi.plot": ref.split("@", 1)[0][:63]},
-        spec_hash=spec_hash({"job": payload, "catalog": digest}),
-        catalog_digest=digest,
+        spec_hash=spec_hash({"job": payload, "catalog": recipe.digest}),
+        catalog_digest=recipe.digest.split("+", 1)[0],
     )
     await session.flush()
-    await admit(session, ctx, run)
+    await admit(session, ctx, run, overlays=recipe.pins)
     await apply_transition(session, run, RunTrigger.ACCEPT, Actor.API)
     return run
 
