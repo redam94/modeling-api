@@ -9,10 +9,10 @@
     2. **Python plugins on a stack you run** (delivered): scaffolds and contract kits for
        models, steps, plot recipes, workflow nodes and workflow templates, and three ways to
        [run them on your stack](../extend/develop/run-on-your-stack.md).
-    3. **Upload to a shared deployment** (planned for v0.19): tenant admins and verified users
+    3. **Upload to a shared deployment** (v0.19): tenant admins and verified users
        upload a plugin; it is built and checked in the sandbox; a second person approves it
        before the whole tenant can use it. The public tier stays blocked.
-       [Coming in 0.19](../extend/upload-roadmap.md).
+       [Upload your own code](../extend/upload.md).
 
     The dashboard chat and the MCP server, planned for v0.18 before, moved to v0.20.
 

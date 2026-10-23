@@ -9,6 +9,7 @@ import {
   Info,
   Radio,
   Stethoscope,
+  Upload,
   WifiOff,
   Workflow as WorkflowIcon,
 } from "lucide-react";
@@ -45,7 +46,7 @@ import { RunPlotsCard } from "@/features/runs/run-plots";
 import { useRunEvents } from "@/hooks/use-run-events";
 import { absoluteTime, elapsedSeconds, formatBytes, formatDuration, formatNumber, relativeTime, shortId } from "@/lib/format";
 import { runCostView } from "@/lib/cost";
-import { isTerminal, STATE_META } from "@/lib/run-state";
+import { isPluginRunKind, isTerminal, STATE_META } from "@/lib/run-state";
 import { cn } from "@/lib/utils";
 import type { RunTab } from "@/router";
 
@@ -156,6 +157,32 @@ function OutputLink({ mvId }: { mvId: string }) {
   );
 }
 
+/**
+ * v0.19 (D20): the "Uploaded code" badge. A run counts when it is an upload check
+ * (`plugin_inspect`/`plugin_describe`), when the model version it made or used was built with
+ * an upload (`lineage.overlays`), or when the server ran it without a sandbox in development
+ * (`DEV_MODE_ISOLATION`). Inline string tests: this page never imports `features/plugins`.
+ */
+function UploadedCodeBadge({ run, events }: { run: Run; events: readonly RunEventView[] }) {
+  const mv = useModelVersionById(run.output_model_version_id ?? run.model_version_id);
+  const dev = events.some((e) => (e.payload as Record<string, unknown>)?.code === "DEV_MODE_ISOLATION");
+  const overlays = (mv.data?.lineage as { overlays?: unknown[] } | undefined)?.overlays ?? [];
+  if (!isPluginRunKind(run.kind) && !dev && overlays.length === 0) return null;
+  return (
+    <span
+      data-testid="run-uploaded-badge"
+      title={dev ? "This run used uploaded code without a sandbox (development only)." : "This run used code uploaded by your workspace. It ran in a sandbox."}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+        dev ? "bg-attention-soft text-attention" : "bg-accent text-accent-foreground",
+      )}
+    >
+      <Upload aria-hidden className="size-3" />
+      Uploaded code{dev ? " · no sandbox" : ""}
+    </span>
+  );
+}
+
 /** M3.5: a workflow run opens in its run monitor; a step of a workflow links to its workflow run. */
 function WorkflowRunLink({ run }: { run: Run }) {
   const target = run.kind === "workflow" ? run.id : run.parent_run_id && run.labels?.["workflow"] ? run.parent_run_id : null;
@@ -207,6 +234,7 @@ export function RunDetailPage() {
             {runCostView(r.cost) ? <span title={runCostView(r.cost)?.detail}>cost {runCostView(r.cost)?.text}</span> : null}
             <StreamStatus status={stream.status} terminal={terminal} />
             {Object.keys(tags).length ? <TagBadges tags={tags} max={5} /> : null}
+            <UploadedCodeBadge run={r} events={stream.events} />
           </>
         }
         actions={

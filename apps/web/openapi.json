@@ -48850,7 +48850,7 @@
     },
     "/v1/dashboards": {
       "get": {
-        "description": "Dashboards of the project, newest first. A client sees only the published ones\ngranted to them; viewers do not see drafts (editors do).",
+        "description": "Dashboards of the project, newest first. A client sees only the published ones\ngranted to them, less those made with uploaded code (v0.19 D16: opening one answers\n``403 UPLOADED_CODE_NOT_SHAREABLE``, so the list leaves it out); viewers do not see\ndrafts (editors do).",
         "operationId": "list_dashboards",
         "parameters": [
           {

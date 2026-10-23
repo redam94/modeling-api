@@ -16,8 +16,8 @@ kind explain the code. For a guided walk through all of it, follow part 2 of
     Plugin code runs in the runner sandbox with the same rights as the built-in plugins. In
     v0.18 only the operator of a deployment installs it, on a stack they run
     ([three ways](run-on-your-stack.md)). Analysts who want their own pieces with no code use
-    [Make your own](../index.md). Upload to a shared deployment is
-    [coming in 0.19](../upload-roadmap.md).
+    [Make your own](../index.md). From v0.19 you can also upload a package to a shared
+    deployment: see [Upload your own code](../upload.md).
 
 ## 1. Scaffold
 

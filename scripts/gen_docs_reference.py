@@ -9,7 +9,9 @@ Writes into ``docs/reference/generated/`` (git-ignored):
 * ``extension-points.md`` - v0.18: the entry-point groups a plugin exports, the reserved and
   built-in namespaces, the plugin node kinds and port types, the schema-safety limits, the
   catalog diagnostic codes and the closed choices of the library documents, read from
-  ``mapi_spec`` and the loaders, so the page always matches the code;
+  ``mapi_spec`` and the loaders, so the page always matches the code; v0.19 adds the
+  uploaded plugins: namespaces, version states, archive limits, the file checks, the
+  ``/v1/plugins`` routes and their error codes (``mapi_spec.plugins``, ``V019_ENDPOINTS``);
 * ``openapi.json``       - a copy of the committed OpenAPI 3.1 document
   (``apps/web/openapi.json``) that the OpenAPI explorer page loads.
 
@@ -345,7 +347,167 @@ def extension_points_page() -> str:
         "when the model is fitted.",
         "",
     ]
+    lines += uploaded_plugins_section()
     return "\n".join(lines)
+
+
+# ------------------------------------------------------------------------ uploaded plugins
+
+_STATES: dict[str, str] = {
+    "uploaded": "The file is stored and hashed.",
+    "inspecting": "The file check (`plugin_inspect`) runs.",
+    "inspect_failed": "The file check found problems. The version is refused.",
+    "describing": "The test run (`plugin_describe`) runs.",
+    "kit_failed": "A test or a check of the exports failed.",
+    "kit_passed": "The checks passed. The uploader can use it (private use).",
+    "awaiting_approval": "The uploader asked for a review. The uploader can still use it.",
+    "approved": "A second tenant admin approved it. The tenant can use it.",
+    "rejected": "A tenant admin did not approve it.",
+    "yanked": "Withdrawn. No new run can use it.",
+    "purged": "The file is deleted. The row and the audit log stay.",
+}
+
+_INSPECT_CHECKS: dict[str, str] = {
+    "archive_size": "The wheel, or its total size after decompression, is too large.",
+    "member_count": "The wheel has too many files.",
+    "member_size": "One file is too large after decompression.",
+    "ratio": "A file, or the wheel, expands too much (a zip bomb).",
+    "path_unsafe": "A file name is absolute, has `..`, a backslash, NUL or is too long or deep.",
+    "link_member": "An entry is a symbolic link.",
+    "special_member": "An entry is a device, pipe or socket.",
+    "duplicate_name": "Two entries have the same name.",
+    "case_collision": "Two names differ only in case.",
+    "zip_structure": "The zip structure is not correct (overlaps, bad headers, data before "
+    "the first entry, ZIP64 not necessary).",
+    "encrypted": "A file is encrypted.",
+    "compression_method": "A file uses a compression method other than stored or deflate.",
+    "nested_archive": "The wheel holds another archive.",
+    "native_code": "The wheel holds compiled native code (by name or by magic bytes).",
+    "bytecode": "The wheel holds compiled Python bytecode or `__pycache__`.",
+    "pth_file": "The wheel holds a `.pth` file.",
+    "site_hook": "The wheel holds `sitecustomize`, `usercustomize`, an `.egg-link` or a "
+    "top-level `__main__.py`.",
+    "top_level_name": "The wheel has a top-level name other than the namespace package, or "
+    "the package hides a package of the base image.",
+    "namespace_package": "The namespace package has no `__init__.py`.",
+    "dist_name": "The distribution name is not the namespace with dashes, or is the name of "
+    "a package of the base image.",
+    "dist_info": "The `.dist-info` directory is missing, doubled or misnamed, or a metadata "
+    "file is missing.",
+    "wheel_tag": "The `WHEEL` file is not for pure Python 3 (`py3-none-any`, "
+    "`Root-Is-Purelib: true`).",
+    "data_dir": "The wheel has a `.data` directory.",
+    "entry_point_group": "An entry point group is not allowed, or there is no entry point.",
+    "entry_point_target": "An entry point target is not `module:attribute` in the namespace "
+    "package.",
+    "requirement_unlocked": "A requirement is not installed in the base image, or not in a "
+    "version that fits.",
+    "requirement_url": "A requirement is a URL or a path.",
+    "requires_python": "`Requires-Python` excludes the Python of the base image.",
+    "metadata_invalid": "`METADATA` or `entry_points.txt` cannot be read, or the version is "
+    "not the uploaded version.",
+    "text_unsafe": "A name has invisible, control or direction-changing characters.",
+    "sha_mismatch": "The file is not the file that was uploaded (sha256).",
+}
+
+
+def _cell(text: object) -> str:
+    """Plain text for a table cell (no pipes, no HTML)."""
+    out = str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return out.replace("|", "\\|")
+
+
+def uploaded_plugins_section() -> list[str]:
+    """The v0.19 section of the extension points page (``#uploaded-plugins``)."""
+    from typing import get_args
+
+    from mapi_spec import plugins
+    from mapi_spec.api import V019_ENDPOINTS
+    from mapi_spec.errors import ERROR_INFO, PLUGIN_ERROR_CODES, ErrorCode
+
+    assert set(plugins.PLUGIN_VERSION_STATES) == set(_STATES), plugins.PLUGIN_VERSION_STATES
+    assert set(get_args(plugins.InspectCheck)) == set(_INSPECT_CHECKS)
+    limits = plugins.ArchiveLimits()
+    codes = sorted(
+        {c for e in V019_ENDPOINTS for c in e.errors if c.value.startswith("PLUGIN_")}
+        | {
+            ErrorCode.PLUGIN_UNAVAILABLE,
+            ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
+            ErrorCode.UNTRUSTED_PLACEMENT_UNAVAILABLE,
+            ErrorCode.REAUTH_REQUIRED,
+        },
+        key=lambda c: c.value,
+    )
+    assert not set(codes) & set(PLUGIN_ERROR_CODES)
+
+    lines = [
+        "## Uploaded plugins\n",
+        "v0.19. A tenant admin or a confirmed uploader uploads a pure-Python wheel "
+        "([Upload your own code](../../extend/upload.md)); a second tenant admin approves it "
+        "([Review uploaded code](../../extend/review-uploads.md)). Generated from "
+        "`mapi_spec.plugins` and `mapi_spec.api.V019_ENDPOINTS`.\n",
+        "### Namespaces and ids\n",
+        f"- Namespace: `t_<tenant code>_<short name>`, pattern `{plugins.UPLOAD_NAMESPACE_RE}`. "
+        f"Tenant code `{plugins.TENANT_CODE_RE}` (given by the platform); short name "
+        f"`{plugins.PLUGIN_SHORT_RE}` (no underscore).",
+        "- Ids: `<ns>.<name>` for models, steps and plot recipes, `<kind>.<ns>_<name>` for "
+        "workflow nodes and `<ns>_<name>` for workflow templates.",
+        "- Distribution name: the namespace with dashes (`t-k3vq7m-acme`); one top-level "
+        "package named the namespace.",
+        f"- Entry-point groups an upload may use: {_codes(plugins.PLUGIN_ENTRY_POINT_GROUPS)}.",
+        f"- Overlays mounted in one run: at most {plugins.OVERLAYS_MAX}.",
+        "",
+        "### Version states\n",
+        "| State | Meaning | Next states |",
+        "|---|---|---|",
+    ]
+    for state in plugins.PLUGIN_VERSION_STATES:
+        after = plugins.PLUGIN_TRANSITIONS[state]
+        mark = " (can run)" if state in plugins.MOUNTABLE_STATES else ""
+        lines.append(f"| `{state}`{mark} | {_STATES[state]} | {_codes(after) if after else '-'} |")
+    lines += [
+        "",
+        "### Archive limits\n",
+        "Defaults; the operator changes them with the settings in "
+        "[Uploaded code](../../operations/uploaded-code.md#limits).\n",
+        "| Limit | Value |",
+        "|---|---|",
+        f"| Wheel size | {limits.max_bytes:,} B |",
+        f"| Total size after decompression | {limits.max_uncompressed:,} B |",
+        f"| One file after decompression | {limits.max_member:,} B |",
+        f"| Files | {limits.max_members:,} |",
+        f"| Compression ratio | {limits.max_ratio} |",
+        f"| Path depth | {limits.max_depth} |",
+        f"| Path length | {limits.max_path} characters |",
+        f"| `describe.json` | {plugins.DESCRIBE_MAX_BYTES:,} B |",
+        f"| `inspection.json` | {plugins.INSPECTION_MAX_BYTES:,} B |",
+        "",
+        "### File checks\n",
+        "`plugin_inspect` reads the wheel as an archive and imports nothing. Each problem has "
+        "one of these `check` values (`InspectProblem.check`).\n",
+        "| Check | The wheel is refused when |",
+        "|---|---|",
+    ]
+    lines += [f"| `{c}` | {_INSPECT_CHECKS[c]} |" for c in get_args(plugins.InspectCheck)]
+    lines += [
+        "",
+        "### Routes\n",
+        "| Method | Path | Success | Errors | Summary |",
+        "|---|---|---|---|---|",
+    ]
+    for e in V019_ENDPOINTS:
+        errors = ", ".join(f"`{c.value}`" for c in e.errors) or "-"
+        lines.append(f"| `{e.method}` | `{e.path}` | {e.success} | {errors} | {_cell(e.summary)} |")
+    lines += [
+        "",
+        "### Error codes\n",
+        "Plugin code can never raise these codes itself.\n",
+        "| Code | Status | Title |",
+        "|---|---|---|",
+    ]
+    lines += [f"| `{c.value}` | {ERROR_INFO[c].status} | {ERROR_INFO[c].title} |" for c in codes]
+    lines.append("")
+    return lines
 
 
 # ---------------------------------------------------------------------------------- driver

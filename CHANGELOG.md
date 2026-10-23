@@ -5,6 +5,87 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Upload your own code (v0.19)
+
+Tenant admins, and editors that a tenant admin confirmed, can upload pure-Python wheels with
+models, preprocessing steps, plot recipes, workflow nodes and workflow templates. The
+platform checks each wheel in the runner sandbox and runs the contract kits. The uploader
+can use a version that passed the checks. A second tenant admin approves it before the
+workspace can use it. The control plane never opens or imports an upload. The public tier
+cannot upload.
+
+#### Added
+- Uploaded plugins (`mapi_spec.plugins`): namespaces `t_<tenant code>_<short name>`
+  (`upload_namespace`, `is_uploaded_id`), the version states (`uploaded` to `approved`,
+  `rejected`, `yanked`, `purged`), the inspect and describe results, overlay pins and the
+  DTOs. `mapi_spec.text_safety` normalizes all text from uploads.
+- Routes: `/v1/plugins` (claim, list, versions, upload tickets, `:complete`,
+  `:request-approval`, `:approve`, `:reject`, `:yank`, `/usage`, `/examples/{plot_id}`) and
+  `/v1/tenants/{tenant_id}/plugin-settings` and `/plugin-uploaders`.
+- Run kinds `plugin_inspect` (reads the wheel as an archive and imports nothing) and
+  `plugin_describe` (mounts the wheel, exports its catalog entries and runs the kits). Both
+  are untrusted runs.
+- Overlay mounting: a run that uses an uploaded id gets pins in `runs.overlays` and
+  `untrusted_code = true`. The supervisor makes sure that the sha256 is correct before it
+  extracts the wheel read-only. `Lineage.overlays` and `BundleManifest.overlay_hashes` record
+  the files that a model version used.
+- The catalog of each tenant: the base catalog plus the approved uploads of the tenant and
+  the private uploads of the caller (`ETag` for each tenant and user).
+- Review: approval by a second tenant admin with a web sign-in from the last 15 minutes; no
+  approval by the uploader or by a membership that the uploader made in the last 7 days; the
+  decision repeats the digests that the reviewer saw. Confirmed uploaders
+  (`user_verifications`) and a private-use setting for each tenant.
+- Error codes `PLUGIN_REFUSED`, `PLUGIN_NAMESPACE_TAKEN`, `PLUGIN_VERSION_EXISTS`,
+  `PLUGIN_STATE_CONFLICT`, `PLUGIN_UNAVAILABLE`, `UPLOADED_CODE_NOT_SHAREABLE`,
+  `UNTRUSTED_PLACEMENT_UNAVAILABLE` and `REAUTH_REQUIRED`; the run event
+  `DEV_MODE_ISOLATION`; eight audit actions (`plugin.claim`, `plugin.approve` and others);
+  six webhook events `plugin.version.*`.
+- The `plugins` bucket (`BucketPurpose.PLUGINS`, Terraform and the local GCS shim).
+- Housekeeping sweeps: ticket expiry, purge after 30 days, and a rekit when the base image
+  digest changes.
+- CLI: `mapi plugin init NAME --upload`, `mapi plugin push`, `mapi plugin status` and
+  `mapi plugin yank`. The token scope `plugins:publish` can push and ask for approval.
+- The web app: the upload page (`/plugins/new`), the plugin and version pages with the
+  reviewer panel, "Uploaded" in Catalog › Yours, the "Uploaded code" card in Settings ›
+  Workspace and the "Uploaded code" badge on run pages.
+- `make plugin-push` and `make security-uploads`; the hostile-upload corpus
+  (`security/plugin-uploads`, `tests/security`).
+- Docs: "Upload your own code", "Review uploaded code", "Uploaded code" for operators, the
+  uploaded plugins section of the extension points reference and "What's new in 0.19".
+- Settings: `MAPI_PLUGINS_ENABLED`, `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED`, the limits
+  `MAPI_PLUGIN_*` and `GET /v1/me` fields `plugins_enabled` and `dev_untrusted_code`.
+- Migration `0022_plugins`.
+
+#### Changed
+- Executors report `runs_untrusted_code`. Uploaded code runs only on `docker`,
+  `docker-gvisor` and `cloudrun-jobs`. In the multi-tenant profile it also needs gVisor (or
+  stronger) isolation with egress and DNS enforced.
+- `local-process` runs uploaded code only with `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED=1`. The server
+  does not start with this flag in the multi-tenant profile, with `cloudrun-jobs`, with the
+  `gcs` object store or on Cloud Run.
+- Share links, client portals, embeds and picture panels refuse each result that used
+  uploaded code of any kind (`UPLOADED_CODE_NOT_SHAREABLE`), not only uploaded models.
+  A client's dashboard list leaves out a granted dashboard that uploaded code made.
+- The worker sets `RLIMIT_NOFILE` and `RLIMIT_FSIZE`, and `RLIMIT_NPROC` only where the user
+  id is private to the run.
+- The catalog routes (`/v1/catalog`, `/v1/catalog/*`, `/v1/workflow-templates`,
+  `/v1/catalog/workflow-nodes`) return the catalog of the tenant of the project in
+  `X-Mapi-Project`.
+- `make security-suite` uses the `mapi/base-bayes` image of this version.
+- "Coming in 0.19: upload" (`docs/extend/upload-roadmap.md`) is now a pointer to
+  "Upload your own code".
+
+#### Known gaps
+- The isolation of uploaded code on `docker-gvisor` and Cloud Run is not verified (no gVisor
+  on the development computers). The `metadata_token` probe on Cloud Run, the `plugins`
+  bucket IAM in a real project and real GCS write-once behaviour are not verified. Do the
+  cloud gates in `docs/operations/uploaded-code.md` before verified-tier tenants upload
+  code on a hosted deployment.
+- Uploads target the default base image only. No dependencies outside that image, no native
+  code and no source archives.
+- A workspace with one tenant admin, and a single-tenant deployment, can use uploads
+  privately only.
+
 ### Make it yours (v0.18)
 
 You can now add your own models, preprocessing steps, charts and workflows. Analysts make

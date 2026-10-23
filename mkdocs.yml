@@ -7,6 +7,9 @@ exclude_docs: |
   architecture-plan.md
   snippets/
   reference/generated/fragments/
+# v0.19: the old "Coming in 0.19" page stays as a short pointer for old links
+not_in_nav: |
+  extend/upload-roadmap.md
 
 theme:
   name: material
@@ -122,6 +125,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.19": whats-new-0.19.md
       - "What's new in 0.18": whats-new-0.18.md
       - "What's new in 0.17": whats-new-0.17.md
       - "What's new in 0.16": whats-new-0.16.md
@@ -242,7 +246,9 @@ nav:
           - Workflow templates: extend/develop/workflow-templates.md
           - Contract kits: extend/develop/contract-kits.md
           - Run on your stack: extend/develop/run-on-your-stack.md
-      - "Coming in 0.19: upload": extend/upload-roadmap.md
+      - Upload your code:
+          - Upload your own code: extend/upload.md
+          - Review uploaded code: extend/review-uploads.md
   - Reference:
       - Spec format: reference/spec-format.md
       - Spec schema: reference/generated/spec-schema.md
@@ -292,6 +298,7 @@ nav:
       - Cloud Run Jobs executor: operations/cloud-run.md
       - Observability: operations/observability.md
       - Security suite: operations/security-suite.md
+      - Uploaded code: operations/uploaded-code.md
       - M2 verification: operations/m2-verification.md
       - M3 verification: operations/m3-verification.md
       - M3.5 verification: operations/m35-verification.md

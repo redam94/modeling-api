@@ -177,6 +177,22 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_PLOT_PREVIEW_PER_MINUTE` | `20` | The new preview runs that one user can start in each minute. A cached preview does not count. More requests get `429` |
 | `MAPI_PLOT_PREVIEW_PER_DAY` | `200` | The new preview runs that one tenant can start in each 24 hours |
 | `MAPI_PLOT_PREVIEW_WAIT_S` | `15.0` | The longest `Prefer: wait` that a recipe preview request can hold |
+| `MAPI_PLUGINS_ENABLED` | `true` | Accept uploaded plugins (v0.19) on the tiers that allow uploaded code. Off, the plugin routes refuse uploads and the catalog shows no uploaded entries. See [Uploaded code](uploaded-code.md) |
+| `MAPI_DEV_ALLOW_LOCAL_UNTRUSTED` | `false` | **Development only.** Lets the `local-process` executor run uploaded code without a sandbox. The server does not start with it in the `multi-tenant` profile, with `cloudrun-jobs`, with the `gcs` object store or on Cloud Run (`K_SERVICE`, `CLOUD_RUN_JOB`) |
+| `MAPI_PLUGIN_UPLOAD_MAX_BYTES` | `20971520` | The largest uploaded wheel (bytes) |
+| `MAPI_PLUGIN_UNCOMPRESSED_MAX_BYTES` | `104857600` | The largest total size of the files of a wheel after decompression |
+| `MAPI_PLUGIN_MEMBER_MAX_BYTES` | `20971520` | The largest size of one file of a wheel after decompression |
+| `MAPI_PLUGIN_MAX_MEMBERS` | `2000` | The most files in one wheel |
+| `MAPI_PLUGIN_MAX_RATIO` | `100` | The highest compression ratio of one file and of the wheel (zip bombs) |
+| `MAPI_PLUGIN_UPLOADS_PER_USER_PER_DAY` | `20` | The upload tickets that one user can take each day. More requests get `429 RATE_LIMITED` |
+| `MAPI_PLUGIN_PIPELINE_CONCURRENCY_PER_TENANT` | `2` | The check runs (`plugin_inspect`, `plugin_describe`) of one tenant that run at the same time. The others stay queued |
+| `MAPI_PLUGIN_INSPECT_TIMEOUT_S` | `60` | The time limit of a `plugin_inspect` run |
+| `MAPI_PLUGIN_DESCRIBE_TIMEOUT_S` | `600` | The time limit of a `plugin_describe` run |
+| `MAPI_PLUGIN_DATA_CHECK_TIMEOUT_S` | `120` | The time limit of one data test in a `plugin_describe` run |
+| `MAPI_PLUGIN_TICKET_TTL_S` | `900` | The life of an upload ticket (a POST policy) |
+| `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay |
+| `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | `900` | An approval or a rejection needs a sign-in that is not older than this |
+| `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | `7` | A tenant admin whose membership the uploader made fewer days ago than this cannot approve the uploader's versions |
 
 **Object storage**
 

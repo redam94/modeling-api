@@ -801,7 +801,9 @@ export interface paths {
         /**
          * List Dashboards
          * @description Dashboards of the project, newest first. A client sees only the published ones
-         *     granted to them; viewers do not see drafts (editors do).
+         *     granted to them, less those made with uploaded code (v0.19 D16: opening one answers
+         *     ``403 UPLOADED_CODE_NOT_SHAREABLE``, so the list leaves it out); viewers do not see
+         *     drafts (editors do).
          */
         get: operations["list_dashboards"];
         put?: never;

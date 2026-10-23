@@ -21,4 +21,4 @@ def test_the_template_is_exported() -> None:
 @pytest.mark.mapi_contract
 def test_contract_kit() -> None:
     issues = check_template(WEEKLY_CHECK, nodes=all_node_contracts({{template_plugins}}))
-    assert issues == [], [f"{i.pointer}: {i.message}" for i in issues]
+{{template_kit_assert}}

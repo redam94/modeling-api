@@ -149,6 +149,15 @@ security-suite: ## Run the sandbox-escape probe suite (EXECUTOR=docker-gvisor fo
 		--image mapi/base-bayes:$(VERSION) --metrics .local/security-$(EXECUTOR).prom
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run pytest -q security/tests -m sandbox
 
+.PHONY: security-uploads
+security-uploads: ## Run the hostile-upload corpus for uploaded code (RUNTIME=1 also runs the docker-marked runtime cases)
+	$(UV) run pytest -q tests/security -m "not docker"
+	@if [ -n "$(filter 1 yes true,$(RUNTIME))" ]; then \
+		$(UV) run pytest -q tests/security -m docker; rc=$$?; \
+		if [ $$rc -eq 5 ]; then echo "security-uploads: no docker-marked cases are collected"; \
+		elif [ $$rc -ne 0 ]; then exit $$rc; fi; \
+	fi
+
 .PHONY: security-list
 security-list: ## List the security probe corpus
 	PYTHONPATH=$(SECURITY_PYTHONPATH) $(UV) run python -m mapi_security list
@@ -295,6 +304,15 @@ plugin-undev: ## Remove a plugin that plugin-dev installed (PLUGIN=../acme)
 plugin-doctor: ## Check every installed extension: load problems, routing, digest (SERVER=1 compares with the server, JSON=1)
 	$(UV) run mapi $(if $(JSON),--json) plugin doctor $(if $(SERVER),--server)
 
+# PLUGIN_CLI runs the mapi CLI (tests set it to `echo mapi` for a dry run).
+PLUGIN_CLI ?= $(UV) run mapi
+
+.PHONY: plugin-push
+plugin-push: ## Build a plugin's wheel and upload it to your workspace, then wait for its checks (PLUGIN=../acme; PROJECT=<tenant>/<project>, APPROVAL=1 asks for a review, WAIT=0 does not wait, JSON=1)
+	@test -n "$(PLUGIN)" || { echo "error: set PLUGIN, for example: make plugin-push PLUGIN=../acme PROJECT=acme/growth" >&2; exit 2; }
+	@test -f "$(PLUGIN)/pyproject.toml" -o -f "$(PLUGIN)" || { echo "error: $(PLUGIN) is not a plugin package or a wheel" >&2; exit 2; }
+	$(PLUGIN_CLI) $(if $(JSON),--json) plugin push "$(PLUGIN)" $(if $(PROJECT),--project $(PROJECT)) $(if $(APPROVAL),--request-approval) $(if $(filter 0 no false,$(WAIT)),,--wait)
+
 .PHONY: plugin-image
 plugin-image: _docker-check ## Build mapi/<NAME>:<TAG> (TAG=dev): a runner image with your wheels (BASE=base-bayes NAME=acme WHEELS="../acme/dist/*.whl" or a directory with a hashed requirements.txt)
 	@test -n "$(BASE)" -a -n "$(NAME)" -a -n "$(WHEELS)" || { \
@@ -351,7 +369,7 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 docs-test: ## Run every documentation snippet and check every include
 	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py \
 		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py \
-		conformance/tests/test_docs_extend.py
+		conformance/tests/test_docs_extend.py conformance/tests/test_docs_upload.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)

@@ -92,9 +92,12 @@ async def test_a_client_cannot_read_or_run_a_dashboard_made_with_uploaded_code(
     ):
         _refused(r)
     assert await _score_runs(ctx) == before  # nothing was submitted
-    # the dashboard stays in the client's list (no data); the analysts keep their view
+    # the dashboard leaves the client's list (consistent with the 403 on open); the analysts
+    # keep their view and their list
     listed = (await cleo.get("/v1/dashboards")).json()["items"]
-    assert [d["id"] for d in listed] == [kit["dash_id"]]
+    assert listed == []
+    analyst_list = (await kit["vic"].get("/v1/dashboards")).json()["items"]
+    assert [d["id"] for d in analyst_list] == [kit["dash_id"]]
     assert (await kit["vic"].get(base)).status_code == 200
     assert (await kit["vic"].get(f"{base}/readouts")).status_code == 200
 
@@ -115,10 +118,13 @@ async def test_a_client_is_refused_once_a_readout_ran_uploaded_code(
         )
     _refused(await cleo.get(base))
     _refused(await cleo.post(f"{base}/whatif:evaluate", json=PLAN))
+    assert (await cleo.get("/v1/dashboards")).json()["items"] == []
     # an analyst hides the readout: it leaves the clients' view, and the gate with it
     r = await kit["ana"].post(f"{base}/readouts/1:hide")
     assert r.status_code == 200, r.text
     assert (await cleo.get(base)).status_code == 200
+    listed = (await cleo.get("/v1/dashboards")).json()["items"]
+    assert [d["id"] for d in listed] == [kit["dash_id"]]
 
 
 async def test_a_spec_naming_an_uploaded_recipe_is_refused_to_clients(

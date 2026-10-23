@@ -2,9 +2,15 @@
  * The About card of a catalog item (M3.5): plain language first (what it does, when to use it
  * and when not, what it needs and gives, how hard and how long), the expert detail (maths and
  * references) one click away. Every field is untrusted catalog text, rendered as text only.
+ *
+ * v0.19 (D19): an uploaded entry (`t_<code>_<short>` id) always shows an "Uploaded by" chip,
+ * and its references are links only when they pass the upload URL rules (https, a DNS host,
+ * no `user@`), with the punycode host beside the link, an external-link marker and
+ * `rel="noopener noreferrer nofollow ugc"`. The checks are inline string tests: this module
+ * never imports `features/plugins` (the catalog, workflows and guided pages use it).
  */
 import { Link } from "@tanstack/react-router";
-import { BookOpen, CheckCircle2, Clock, Database, Info, Lightbulb, PackageOpen, Scale, XCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, Database, ExternalLink, Info, Lightbulb, PackageOpen, Scale, Upload, XCircle } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -66,6 +72,43 @@ function safeHttps(url: string | null | undefined): string | null {
   }
 }
 
+/**
+ * `mapi_spec.plugins.is_uploaded_id`: models/steps/plots `t_<code>_<short>.x`, workflow nodes
+ * `<kind>.t_<code>_<short>_x`, templates `t_<code>_<short>_x`.
+ */
+export function isUploadedCatalogId(id: string | null | undefined): boolean {
+  return typeof id === "string" && /^(?:[a-z]+\.)?t_[a-z2-7]{6}_[a-z][a-z0-9]{1,15}(?:[._][a-z0-9_.]*)?$/.test(id) && id.length <= 128;
+}
+
+/** An uploaded entry's reference (D19): `{href, host}` when it may be a link, else `null`. */
+export function uploadedReferenceLink(url: string | null | undefined): { href: string; host: string } | null {
+  if (!url || url.length > 500 || !url.toLowerCase().startsWith("https://")) return null;
+  for (const ch of url) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (c <= 0x20 || (c >= 0x7f && c <= 0x9f) || (c >= 0x200b && c <= 0x200f) || (c >= 0x202a && c <= 0x202e) || (c >= 0x2066 && c <= 0x2069) || c === 0xfeff) return null;
+  }
+  const authority = url.slice(8).split(/[/?#\\]/, 1)[0] ?? "";
+  if (authority.includes("@") || /[^\x21-\x7e]/.test(authority)) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (u.protocol !== "https:" || u.username || u.password || !host.includes(".") || /^[\d.]+$/.test(host) || host.startsWith("[")) return null;
+    return { href: u.href, host };
+  } catch {
+    return null;
+  }
+}
+
+/** The always-visible chip of an uploaded entry (D19). */
+export function UploadedChip({ by }: { by?: string | null | undefined }) {
+  return (
+    <span data-testid="uploaded-by-chip" className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-accent-foreground">
+      <Upload aria-hidden className="size-3" />
+      Uploaded by {by || "your team"}
+    </span>
+  );
+}
+
 function RelatedChips({ ids, onRelated }: { ids: readonly string[]; onRelated?: ((id: string) => void) | undefined }) {
   const index = useAboutIndex();
   if (!ids.length) return null;
@@ -121,6 +164,8 @@ export interface AboutCardProps {
   /** Draw the card's own border and padding (lists of cards); off inside dialogs and panels. */
   framed?: boolean;
   className?: string;
+  /** v0.19: who uploaded it (an uploaded entry shows "Uploaded by your team" without it). */
+  uploadedBy?: string | null | undefined;
 }
 
 const HEADING_TAG = { 2: "h2", 3: "h3", 4: "h4" } as const;
@@ -140,10 +185,16 @@ export function AboutCard({
   compact = false,
   framed = false,
   className,
+  uploadedBy,
 }: AboutCardProps) {
   const titleId = useId();
   const Heading = as ?? (headingLevel ? HEADING_TAG[headingLevel] : "h3");
-  const refs = (about.references ?? []).map((r) => ({ ...r, href: safeHttps(r.url) }));
+  const uploaded = isUploadedCatalogId(id) || Boolean(uploadedBy);
+  const refs = (about.references ?? []).map((r) => {
+    if (!uploaded) return { ...r, href: safeHttps(r.url), host: null as string | null };
+    const link = uploadedReferenceLink(r.url);
+    return { ...r, href: link?.href ?? null, host: link?.host ?? null };
+  });
   const hasExpert = Boolean(about.expert_notes) || refs.length > 0 || (compact && about.assumptions.length > 0);
   return (
     <article
@@ -159,6 +210,7 @@ export function AboutCard({
             {heading ?? about.title}
           </Heading>
           <div className="flex flex-wrap items-center gap-1.5">
+            {uploaded ? <UploadedChip by={uploadedBy} /> : null}
             <DifficultyBadge difficulty={about.difficulty} />
             <RuntimeBadge runtime={about.typical_runtime} />
           </div>
@@ -206,7 +258,15 @@ export function AboutCard({
                 <ul className="grid gap-1 text-sm">
                   {refs.map((r) => (
                     <li key={r.title}>
-                      {r.href ? (
+                      {r.href && uploaded ? (
+                        <>
+                          <a href={r.href} target="_blank" rel="noopener noreferrer nofollow ugc" referrerPolicy="no-referrer" className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline">
+                            {r.title}
+                            <ExternalLink aria-label="(opens an outside site)" className="size-3" />
+                          </a>{" "}
+                          <span className="font-mono text-xs text-muted-foreground">{r.host}</span>
+                        </>
+                      ) : r.href ? (
                         <a href={r.href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">
                           {r.title}
                         </a>
@@ -293,6 +353,7 @@ export function AboutTile({
         </span>
       ) : null}
       <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+        {isUploadedCatalogId(id) ? <UploadedChip /> : null}
         <DifficultyChip difficulty={about.difficulty} />
         <RuntimeChip runtime={about.typical_runtime} />
         {id ? <span className="min-w-0 truncate font-mono text-xs text-hint">{id}</span> : null}
