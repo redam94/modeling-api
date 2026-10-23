@@ -242,6 +242,18 @@ class AuditAction(StrEnum):
     PLUGIN_UPLOADER_ATTEST = "plugin.uploader_attest"
     """A tenant admin attested an editor's identity for uploads."""
     PLUGIN_UPLOADER_REVOKE = "plugin.uploader_revoke"
+    # --- v0.20 (additive). Chat turns and MCP calls are not audited (usage rows and rate
+    # counters only); details never contain prompt or answer text
+    DASHBOARD_CHAT_SETTINGS = "dashboard.chat_settings"
+    """An editor changed a dashboard's chat settings (details: the new ``enabled``,
+    ``audiences``, ``keep_transcripts``, budgets and ``version``)."""
+    DASHBOARD_CHAT_TRANSCRIPT_DELETE = "dashboard.chat_transcript_delete"
+    """An editor deleted a kept conversation (details ``{"conversation_id": id, "turns": n}``)."""
+    DASHBOARD_READ_TOKEN_CREATE = "dashboard.read_token_create"
+    """A member or client minted a dashboard read token (details: token id, prefix,
+    ``expires_at``; never the secret)."""
+    DASHBOARD_READ_TOKEN_REVOKE = "dashboard.read_token_revoke"
+    """A read token was revoked by its owner or an editor (details: token id, owner id)."""
 
 
 class AuditEvent(ResponseModel):

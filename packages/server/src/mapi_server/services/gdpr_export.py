@@ -25,7 +25,11 @@ Contents (``include`` selects the parts):
   YAML, runs, models and versions, plots, v0.18 library items and revisions, onboarding
   progress and sample rows, ...), discovered from the catalog so tables added later are
   exported too. Columns that hold credentials (token hashes, HMAC keys, nonces,
-  webhook secrets) are redacted;
+  webhook secrets) are redacted. v0.20 dashboard chat: the settings, the usage rows (token
+  counts, never text) and the kept conversation turns of the workspace's own people
+  (members and client users) are exported; turns typed through a share link
+  (:data:`ROW_FILTERS`) are not, because they come from anonymous viewers outside the
+  workspace (editors still see them in the app until they expire);
 * ``datasets/<dataset>/v<n>/<object>``: the stored objects of every ready dataset version,
   copied byte for byte (never decoded), up to ``MAPI_EXPORT_MAX_INLINE_BYTES`` in total;
   the rest is listed with size and checksums in ``manifest.json``;
@@ -81,6 +85,7 @@ __all__ = [
     "INTERRUPTED",
     "LEASE_SLACK",
     "REDACTED",
+    "ROW_FILTERS",
     "ExportBuilder",
     "create_export",
     "expire_exports",
@@ -96,6 +101,10 @@ REDACTED: Final = "[redacted]"
 _SECRET_COLUMN: Final = re.compile(r"(secret|hmac|nonce|password|token_hash|^key$|_key$)")
 _SPLIT_TABLES: Final = {"audit_events": "audit", "cost_ledger": "usage"}
 """Tables exported under their own part instead of ``metadata``."""
+ROW_FILTERS: Final[dict[str, str]] = {
+    "dashboard_chat_transcripts": "principal_kind <> 'share'",
+}
+"""Extra ``WHERE`` terms (fixed SQL, no input) of tables exported only in part."""
 INTERRUPTED: Final = "interrupted: built again"
 """``error`` of an export whose first build died: a second death fails it."""
 LEASE_SLACK: Final = timedelta(minutes=5)
@@ -122,6 +131,9 @@ This archive holds everything your workspace stored on modeling-api when the exp
   datasets/...               your uploaded data as stored (zarr zip archives and sidecars)
   models/...                 the signed manifest and metadata of every model version
   plugins/...                the code packages (wheels) your workspace uploaded
+  metadata/dashboard_chat_*  dashboard chat settings, usage (token counts) and the kept
+                             conversations of your workspace's people (not those typed
+                             through share links)
   audit/audit_events.jsonl   your workspace's audit log
   usage/cost_ledger.jsonl    metered compute usage
 
@@ -520,10 +532,11 @@ class ExportBuilder:
         """Rows written, and whether the metadata budget (``budget[0]`` bytes left) cut the
         table short: the archive is built in memory, so its size is bounded."""
         quoted = '"' + table.replace('"', '""') + '"'
+        extra = f" AND ({ROW_FILTERS[table]})" if table in ROW_FILTERS else ""
         n = 0
         async with self._session(tenant_id, through_rls) as s, archive.stream(path) as out:
             result = await s.stream(
-                text(f"SELECT * FROM {quoted} WHERE tenant_id = :t"),
+                text(f"SELECT * FROM {quoted} WHERE tenant_id = :t{extra}"),
                 {"t": tenant_id},
             )
             async for part in result.mappings().partitions(ROW_BATCH):

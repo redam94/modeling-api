@@ -121,11 +121,11 @@ def _v019_seed(conn: psycopg.Connection[tuple[object, ...]]) -> None:
     conn.execute("UPDATE runs SET overlays = %s::jsonb WHERE id = 'run_2'", (pin,))
 
 
-def test_0022_chains_off_0021_and_0023_is_the_head(scratch_db: str) -> None:
-    """0022 steps from 0021; 0023 (session auth_time, v0.19) steps from 0022 and is the single
-    head (v0.20's next migration must step from it)."""
+def test_0022_chains_off_0021_and_0023_steps_from_it(scratch_db: str) -> None:
+    """0022 steps from 0021; 0023 (session auth_time, v0.19) steps from 0022, and v0.20's 0024
+    steps from 0023 (the single head is checked by test_infra's chain test)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
-    assert script.get_heads() == ["0023_session_auth_time"]
+    assert script.get_revision("0024_dashboard_chat").down_revision == "0023_session_auth_time"
     assert script.get_revision("0023_session_auth_time").down_revision == "0022_plugins"
     assert script.get_revision("0022_plugins").down_revision == BEFORE
 

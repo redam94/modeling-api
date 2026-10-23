@@ -80,7 +80,7 @@ fmt: ## Auto-format Python code
 # their contract: e.g. untyped third-party calls need explicit ignores only under --strict).
 STRICT_PY := packages/spec/src packages/sdk/src packages/gcs-shim/src packages/runner/src packages/server/src \
 	packages/workflows/src \
-	packages/client/src packages/cli/src
+	packages/client/src packages/cli/src packages/mcp/src
 
 .PHONY: typecheck
 typecheck: ## mypy over every type-checked package, the dev scripts and the image helpers
@@ -369,7 +369,8 @@ docs-build: docs-catalog ## Build the documentation site into ./site (strict)
 docs-test: ## Run every documentation snippet and check every include
 	$(UV) run pytest -q conformance/tests/test_docs_snippets.py conformance/tests/test_docs_platform.py conformance/tests/test_docs_tutorials.py \
 		conformance/tests/test_docs_v05.py packages/server/tests/test_docs_client_v05.py \
-		conformance/tests/test_docs_extend.py conformance/tests/test_docs_upload.py
+		conformance/tests/test_docs_extend.py conformance/tests/test_docs_upload.py \
+		conformance/tests/test_docs_chat_mcp.py
 
 .PHONY: docs-screenshots
 docs-screenshots: ## Recapture docs/assets/screenshots from a running, seeded stack (see the script)

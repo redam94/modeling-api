@@ -1,0 +1,31 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "A candidate stopped by a safety rule.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": []
+        },
+        "finishReason": "SAFETY",
+        "index": 0,
+        "safetyRatings": [
+          {
+            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "probability": "HIGH",
+            "blocked": true
+          }
+        ]
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1500,
+      "candidatesTokenCount": 0,
+      "totalTokenCount": 1500
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-safety_block"
+  }
+}

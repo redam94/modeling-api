@@ -1,0 +1,41 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "A thought part and a function call with a thought signature: the turn must be sent back unchanged.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "The user asks about TV, so I read the channel.",
+              "thought": true
+            },
+            {
+              "functionCall": {
+                "id": "call_b2",
+                "name": "get_channel",
+                "args": {
+                  "name": "tv",
+                  "last_n": 4
+                }
+              },
+              "thoughtSignature": "CiQBVKhc7xT0dGhvdWdodC1zaWduYXR1cmUtb3BhcXVlLWJ5dGVzAA=="
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1610,
+      "candidatesTokenCount": 18,
+      "thoughtsTokenCount": 64,
+      "totalTokenCount": 1692
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-function_call_thought_signature"
+  }
+}

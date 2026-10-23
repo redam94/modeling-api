@@ -98,6 +98,18 @@ from mapi_spec.catalog import (
     PlotCatalogEntry,
     StepCatalogEntry,
 )
+from mapi_spec.chat import (
+    ChatAvailability,
+    ChatRequest,
+    ChatResponse,
+    ChatSettingsUpdate,
+    ChatSettingsView,
+    ChatTranscript,
+    ChatTranscriptSummary,
+    ReadToken,
+    ReadTokenCreate,
+    ReadTokenCreated,
+)
 from mapi_spec.collection import MAX_BLOB_QUERY, CollectionInfo, CollectionSource
 from mapi_spec.coords import DataSummary
 from mapi_spec.cost import CostTotals, RunCost
@@ -342,6 +354,7 @@ __all__ = [
     "API_PREFIX",
     "ARTIFACT_LINK_TTL",
     "CLIENT_OPERATIONS",
+    "DASHBOARD_TOKEN_ROUTES",
     "DEFAULT_PROJECT_ID",
     "DEFAULT_TENANT_ID",
     "ENDPOINTS",
@@ -365,6 +378,7 @@ __all__ = [
     "SCORE_SUMMARY_MAX_BYTES",
     "SCORE_SUMMARY_MAX_CELLS",
     "SCORE_SUMMARY_OUTPUT",
+    "SESSION_ONLY_OPERATIONS",
     "SSE_HEARTBEAT",
     "SSE_HEARTBEAT_SECONDS",
     "SSE_RETRY_MS",
@@ -376,6 +390,7 @@ __all__ = [
     "V017_ENDPOINTS",
     "V018_ENDPOINTS",
     "V019_ENDPOINTS",
+    "V020_ENDPOINTS",
     "V03_ENDPOINTS",
     "V04_ENDPOINTS",
     "About",
@@ -397,6 +412,13 @@ __all__ = [
     "CatalogResponse",
     "ChartPreview",
     "ChartPreviewRequest",
+    "ChatAvailability",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatSettingsUpdate",
+    "ChatSettingsView",
+    "ChatTranscript",
+    "ChatTranscriptSummary",
     "CheckResult",
     "ChooserQuestionnaire",
     "ChooserResult",
@@ -553,6 +575,9 @@ __all__ = [
     "QuotaLimitStatus",
     "QuotaPolicy",
     "QuotaPolicyUpsert",
+    "ReadToken",
+    "ReadTokenCreate",
+    "ReadTokenCreated",
     "Readout",
     "ReadoutHeader",
     "ReadoutList",
@@ -5230,6 +5255,106 @@ V019_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
 examples, tenant settings and attested uploaders; part of :data:`ENDPOINTS`). Every route is
 limited to 8 KiB request bodies."""
 
+# ==================================================================================== v0.20 table
+# DTOs: mapi_spec.chat (ChatRequest, ChatResponse, ChatSettingsView, ReadToken, ...),
+# re-exported here. Chat runs in the control plane over the read-only dashboard tools;
+# /v1/shared/chat is a public route authorised by a share session (X-Mapi-Share) and is
+# covered by the share CORS rules. POST /v1/mcp is public: it takes a dashboard read token
+# (Authorization: Bearer) or a share session and checks it itself; its body is JSON-RPC 2.0.
+
+_CHAT_ERRORS = (
+    _E.CHAT_DISABLED, _E.CHAT_UNAVAILABLE, _E.CHAT_BUDGET_EXHAUSTED, _E.CHAT_HISTORY_INVALID,
+    _E.RATE_LIMITED, _E.PAYLOAD_TOO_LARGE,
+)  # fmt: skip
+_CNV = _DSH + "/chat/transcripts/{conversation_id}"
+_RTK = _DSH + "/read-tokens"
+_MCP_VERSION = "MCP-Protocol-Version"
+_AUTHZ = "Authorization"
+
+V020_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
+    # chat: members and clients (session only for a turn)
+    EndpointDecl(
+        "GET", _DSH + "/chat", "get_dashboard_chat",
+        "Whether you can chat about this dashboard, and the suggested questions",
+        "ChatAvailability", 200, errors=(*_NF, _E.DASHBOARD_NOT_PUBLISHED, _UC), headers=_PH,
+    ),
+    EndpointDecl(
+        "POST", _DSH + "/chat", "post_dashboard_chat",
+        "Ask the assistant about this dashboard (web session only; one answer per request)",
+        "ChatResponse", 200, request="ChatRequest",
+        errors=(*_BODY, *_NF, *_FB, *_CHAT_ERRORS, _E.DASHBOARD_NOT_PUBLISHED, _UC),
+        headers=_PH,
+    ),
+    # chat settings and kept conversations: editors
+    EndpointDecl(
+        "GET", _DSH + "/chat/settings", "get_dashboard_chat_settings",
+        "Chat settings of the dashboard and the tokens used today (ETag)", "ChatSettingsView",
+        200, errors=_NF, headers=_PH,
+    ),
+    EndpointDecl(
+        "PUT", _DSH + "/chat/settings", "put_dashboard_chat_settings",
+        "Change the chat settings (If-Match: the etag)", "ChatSettingsView", 200,
+        request="ChatSettingsUpdate", errors=(*_BODY, *_NF, _E.PRECONDITION_FAILED),
+        headers=(*_PH, _IF_MATCH),
+    ),
+    EndpointDecl(
+        "GET", _DSH + "/chat/transcripts", "list_dashboard_chat_transcripts",
+        "Kept conversations, newest first (web session only)",
+        "Page[ChatTranscriptSummary]", 200, errors=(*_NF, *_FB), headers=_PH, paginated=True,
+        query=_PAGE,
+    ),
+    EndpointDecl(
+        "GET", _CNV, "get_dashboard_chat_transcript",
+        "One kept conversation (web session only)", "ChatTranscript", 200,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _CNV, "delete_dashboard_chat_transcript",
+        "Delete a kept conversation (web session only)", None, 204, errors=(*_NF, *_FB),
+        headers=_PH,
+    ),
+    # chat over a share link
+    EndpointDecl(
+        "GET", "/v1/shared/chat", "get_shared_chat",
+        "Public: whether this link can chat, and the suggested questions", "ChatAvailability",
+        200, errors=_SHARE_ERRORS, headers=_SH,
+    ),
+    EndpointDecl(
+        "POST", "/v1/shared/chat", "post_shared_chat",
+        "Public: ask the assistant about the shared dashboard", "ChatResponse", 200,
+        request="ChatRequest", errors=(*_BODY, *_SHARE_ERRORS, *_CHAT_ERRORS), headers=_SH,
+    ),
+    # dashboard read tokens (to connect a chat tool over MCP): web session only
+    EndpointDecl(
+        "GET", _RTK, "list_dashboard_read_tokens",
+        "Your read tokens for this dashboard (all=true: every owner's, editors)",
+        "list[ReadToken]", 200, errors=(*_NF, *_FB), headers=_PH, query=("all",),
+    ),
+    EndpointDecl(
+        "POST", _RTK, "create_dashboard_read_token",
+        "Make a read token for this dashboard (its secret is shown once; at most 5 active)",
+        "ReadTokenCreated", 201, request="ReadTokenCreate",
+        errors=(*_BODY, *_NF, *_FB, _E.READ_TOKEN_LIMIT, _E.DASHBOARD_NOT_PUBLISHED),
+        headers=_PH,
+    ),
+    EndpointDecl(
+        "DELETE", _RTK + "/{token_id}", "revoke_dashboard_read_token",
+        "Revoke a read token (yours, or any of the dashboard's as an editor)", None, 204,
+        errors=(*_NF, *_FB), headers=_PH,
+    ),
+    # MCP (streamable HTTP, stateless, JSON responses)
+    EndpointDecl(
+        "POST", "/v1/mcp", "mcp_endpoint",
+        "Public: the MCP server of one dashboard (JSON-RPC 2.0; a dashboard read token or a "
+        "share session; 202 for a notification)", None, 200,
+        errors=(_E.UNAUTHENTICATED, *_FB, *_NF, _E.LINK_EXPIRED, _E.RATE_LIMITED,
+                _E.PAYLOAD_TOO_LARGE, _E.SCHEMA_INVALID, _UC),
+        headers=(_AUTHZ, SHARE_SESSION_HEADER, _MCP_VERSION),
+    ),
+)  # fmt: skip
+"""The v0.20 endpoint table (dashboard chat, chat settings and kept conversations, dashboard
+read tokens and the MCP endpoint; part of :data:`ENDPOINTS`)."""
+
 V04_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = V03_ENDPOINTS + M3_ENDPOINTS
 """Every endpoint of the v0.4 API (M1 + M2 + M3)."""
 
@@ -5244,9 +5369,10 @@ ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     + V017_ENDPOINTS
     + V018_ENDPOINTS
     + V019_ENDPOINTS
+    + V020_ENDPOINTS
 )
 """Every endpoint of the API (M1 + M2 + M3 + M3.5 + M4 + v0.11 + v0.14 + v0.15 + v0.16 +
-v0.17 + v0.18 + v0.19); the server serves every row."""
+v0.17 + v0.18 + v0.19 + v0.20); the server serves every row."""
 
 ALL_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = ENDPOINTS
 """Every endpoint of the contract (an alias of :data:`ENDPOINTS`, kept for the components
@@ -5554,6 +5680,30 @@ _V019_ACCESS: Final[dict[str, RouteAccess]] = {
 (:data:`CLIENT_OPERATIONS` is unchanged); tokens never approve, reject, yank or change the
 settings (:data:`~mapi_spec.tokens.TOKEN_NEVER`)."""
 
+_V020_ACCESS: Final[dict[str, RouteAccess]] = {
+    # a chat turn reads what the caller could read by clicking: clients too (with a grant)
+    "get_dashboard_chat": _dash(_AC.READ),
+    "post_dashboard_chat": _dash(_AC.READ),
+    "get_dashboard_chat_settings": _dash(_AC.UPDATE),
+    "put_dashboard_chat_settings": _dash(_AC.UPDATE),
+    "list_dashboard_chat_transcripts": _dash(_AC.UPDATE),
+    "get_dashboard_chat_transcript": _dash(_AC.UPDATE),
+    "delete_dashboard_chat_transcript": _dash(_AC.UPDATE),
+    "get_shared_chat": _PUBLIC,
+    "post_shared_chat": _PUBLIC,
+    # own tokens with read; all=true and other owners' tokens need update (handler checks)
+    "list_dashboard_read_tokens": _dash(_AC.READ),
+    "create_dashboard_read_token": _dash(_AC.READ),
+    "revoke_dashboard_read_token": _dash(_AC.READ),
+    # the handler checks the read token or the share session itself (D14)
+    "mcp_endpoint": _PUBLIC,
+}
+"""Access rules of :data:`V020_ENDPOINTS`. Chat and read tokens need ``read`` on
+``dashboard`` (clients too, for a published dashboard granted to them); settings and kept
+conversations need an editor. :data:`SESSION_ONLY_OPERATIONS` refuses API tokens on a chat
+turn, on kept conversations and on read-token management; :data:`DASHBOARD_TOKEN_ROUTES`
+limits read tokens to the MCP endpoint."""
+
 ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # M1 (project-scoped from v0.3)
     "health": _PUBLIC,
@@ -5719,6 +5869,8 @@ ROUTE_ACCESS: Final[dict[str, RouteAccess]] = {
     # v0.18 the library, catalog extensions, recipe previews, onboarding and samples
     **_V018_ACCESS,
     **_V019_ACCESS,
+    # v0.20 dashboard chat, read tokens and MCP
+    **_V020_ACCESS,
 }
 """Tenant/project scoping and the permission checked for every operation in
 :data:`ALL_ENDPOINTS` (keyed by ``operation_id``; M3.5 rows from :data:`_M35_ACCESS`).
@@ -5760,6 +5912,12 @@ CLIENT_OPERATIONS: Final[frozenset[str]] = frozenset(
         "submit_dashboard_batch",
         "download_dashboard_predictions",
         "get_dashboard_asset",
+        # v0.20: chat about a granted dashboard, and read tokens for it (own tokens only)
+        "get_dashboard_chat",
+        "post_dashboard_chat",
+        "list_dashboard_read_tokens",
+        "create_dashboard_read_token",
+        "revoke_dashboard_read_token",
         # the caller and the browser session (the portal's project switcher reads /v1/me)
         "get_me",
         "auth_login",
@@ -5773,7 +5931,33 @@ case; fail closed). The server refuses any other project-scoped operation (``404
 caller's effective role in the project is ``client``, and any other signed-in or tenant
 operation when every membership of the caller is ``client``. Refit-request decisions,
 drafts, grants and share-link management are not in the set; neither are the catalog,
-guided, workflow, governance, project and tenant listings."""
+guided, workflow, governance, project and tenant listings. v0.20 adds chat and the client's
+own dashboard read tokens; chat settings and kept conversations stay with editors."""
+
+
+DASHBOARD_TOKEN_ROUTES: Final[frozenset[str]] = frozenset({"mcp_endpoint"})
+"""The only operations a dashboard read token (scope ``dashboard:<id>``) may call (v0.20).
+
+The server refuses a read token with ``403 FORBIDDEN`` on every other route that resolves a
+credential. ``mcp_endpoint`` is a public route, so the generic resolver never reads its
+bearer: the MCP handler resolves the read token itself.
+"""
+
+SESSION_ONLY_OPERATIONS: Final[frozenset[str]] = frozenset(
+    {
+        "post_dashboard_chat",
+        "create_dashboard_read_token",
+        "list_dashboard_chat_transcripts",
+        "get_dashboard_chat_transcript",
+        "delete_dashboard_chat_transcript",
+        "list_dashboard_read_tokens",
+        "revoke_dashboard_read_token",
+    }
+)
+"""Operations that need a signed-in web session (v0.20): any API token, whatever its scopes,
+gets ``403 FORBIDDEN``. A chat turn spends model tokens on behalf of a person, kept
+conversations hold their words, and read tokens are credentials (a token must not mint or
+manage another)."""
 
 
 def route_access(operation_id: str) -> RouteAccess:

@@ -8,6 +8,7 @@ import { Archive, LayoutDashboard, Plus, RotateCcw, Save, Send } from "lucide-re
 import { useEffect, useMemo, useState } from "react";
 
 import { can } from "@/api/access";
+import { useProjectScope } from "@/api/queries";
 import type { Issue } from "@/api/types";
 import { EmptyState, ErrorNotice, PageHeader, QueryView, Spinner } from "@/components/common";
 import { InlineMessage, TagWord, type TagTone } from "@/components/ods";
@@ -16,7 +17,7 @@ import { FilterPills } from "@/components/ui/filter-pills";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/overlays";
 import { Card, CardContent, TBody, TD, TH, THead, TR, Table } from "@/components/ui/primitives";
 import { useWorkspace } from "@/features/auth/workspace";
-import { useArchiveDashboard, useDashboard, useDashboards } from "@/features/dashboards/api";
+import { useArchiveDashboard, useDashboard, useDashboards, useMemberClient } from "@/features/dashboards/api";
 import { AccessTab } from "@/features/dashboards/builder/access";
 import { HistoryTab } from "@/features/dashboards/builder/history";
 import { InputsTab } from "@/features/dashboards/builder/inputs";
@@ -28,6 +29,9 @@ import { UpgradeBanner } from "@/features/dashboards/builder/upgrade-banner";
 import { useSourceGrid } from "@/features/dashboards/builder/source";
 import { publishPermission, specIssues, tabOfIssue } from "@/features/dashboards/builder/spec-form";
 import { useDraft } from "@/features/dashboards/builder/use-draft";
+import { ChatLauncher } from "@/features/dashboards/chat/chat-launcher";
+import { memberChatTransport } from "@/features/dashboards/chat/transport-member";
+import { ConnectChatToolButton } from "@/features/dashboards/connect/connect-button";
 import { STATUS_WORD } from "@/features/dashboards/readout/readout-model";
 import { dashboardProblemText, type Dashboard, type DashboardStatus, type DashboardSummary } from "@/features/dashboards/types";
 import { absoluteTime, relativeTime } from "@/lib/format";
@@ -306,7 +310,13 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
             <HistoryTab dashboard={dashboard} />
           </TabsContent>
           <TabsContent value="preview">
+            {dashboard.status === "published" ? (
+              <div className="mb-3 flex justify-end">
+                <ConnectChatToolButton dashboardId={dashboard.id} title={dashboard.published_revision?.spec.title ?? dashboard.name} />
+              </div>
+            ) : null}
             <PreviewTab dashboardId={dashboard.id} dirty={draft.dirty} />
+            {dashboard.status === "published" && open === "preview" ? <BuilderChat dashboardId={dashboard.id} /> : null}
           </TabsContent>
         </Tabs>
       </div>
@@ -314,6 +324,17 @@ function Builder({ dashboard }: { dashboard: Dashboard }) {
       {archiving ? <ArchiveDialog dashboard={dashboard} onClose={() => setArchiving(false)} /> : null}
     </>
   );
+}
+
+/**
+ * v0.20: "Ask about your dashboard" beside the preview, as the signed-in member (chat reads
+ * the published revision; the launcher shows nothing until an editor turns chat on).
+ */
+function BuilderChat({ dashboardId }: { dashboardId: string }) {
+  const scope = useProjectScope();
+  const client = useMemberClient(dashboardId);
+  const transport = useMemo(() => memberChatTransport(dashboardId, { scopeKey: scope.key }), [dashboardId, scope.key]);
+  return <ChatLauncher transport={transport} cacheKey={client.cacheKey} />;
 }
 
 function ArchiveDialog({ dashboard, onClose }: { dashboard: Dashboard; onClose: () => void }) {

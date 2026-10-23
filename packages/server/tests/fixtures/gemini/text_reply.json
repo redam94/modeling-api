@@ -1,0 +1,31 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "A plain text answer in two parts.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Readout 12 shows 4,210 orders from media. "
+            },
+            {
+              "text": "That is 120 more than readout 11."
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1840,
+      "candidatesTokenCount": 22,
+      "totalTokenCount": 1862
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-text_reply"
+  }
+}

@@ -231,6 +231,15 @@ Select a result to see it.
 **Download summary (.csv)** at the top saves the key numbers (and, on a media spend
 dashboard, the channels) of the result that you see.
 
+## Ask about the dashboard
+
+If your analyst turned on the chat, select **Ask about this dashboard** and ask a question in
+plain words. An AI assistant answers with the numbers of the dashboard. It can make mistakes,
+so compare important numbers with the dashboard
+([Ask about your dashboard](ask-about-your-dashboard.md)). To read the dashboard from your
+own chat tool, select **Connect a chat tool**
+([Connect a chat tool with MCP](connect-a-chat-tool-with-mcp.md)).
+
 ## If something does not work
 
 | Message | What to do |

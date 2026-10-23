@@ -33,6 +33,7 @@ variables {
   # `terraform test` needs every ephemeral input set in both phases; with
   # oidc.client_secret_version = 0 (the default) the value is never read.
   oidc_client_secret = "unused"
+  gemini_api_key     = "unused"
 }
 
 run "events_path" {
@@ -536,4 +537,129 @@ run "no_collector_without_an_image" {
     ])
     error_message = "The orchestrator serves its metrics either way (a collector can be added later)."
   }
+}
+
+# ------------------------------------------------------------------------ dashboard chat (v0.20)
+
+run "chat_is_off_without_a_key" {
+  command = apply
+
+  assert {
+    condition = length([
+      for e in google_cloud_run_v2_service.api[0].template[0].containers[0].env : e
+      if e.name == "MAPI_GEMINI_API_KEY" || e.name == "MAPI_CHAT_PROVIDER"
+    ]) == 0
+    error_message = "No chat provider and no Gemini key reference until a key version exists."
+  }
+
+  assert {
+    condition     = length(google_secret_manager_secret_version.gemini_api_key) == 0
+    error_message = "No Gemini key version is written by default."
+  }
+
+  assert {
+    condition = toset([
+      for k, g in google_secret_manager_secret_iam_member.access : g.member
+      if startswith(k, "gemini-api-key|")
+    ]) == toset(["serviceAccount:${google_service_account.sa["api"].email}"])
+    error_message = "Only the API identity may read the Gemini key."
+  }
+}
+
+run "chat_key_comes_from_secret_manager" {
+  command = apply
+
+  variables {
+    chat           = { provider = "gemini", gemini_api_key_version = 1 }
+    gemini_api_key = "test-only-not-a-key"
+  }
+
+  assert {
+    condition = length([
+      for e in google_cloud_run_v2_service.api[0].template[0].containers[0].env : e
+      if e.name == "MAPI_GEMINI_API_KEY" && e.value == null &&
+      e.value_source[0].secret_key_ref[0].secret == google_secret_manager_secret.this["gemini-api-key"].secret_id &&
+      e.value_source[0].secret_key_ref[0].version == "latest"
+    ]) == 1
+    error_message = "The API reads MAPI_GEMINI_API_KEY from Secret Manager, never as a literal value."
+  }
+
+  assert {
+    condition = anytrue([
+      for e in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      e.name == "MAPI_CHAT_PROVIDER" && e.value == "gemini"
+    ])
+    error_message = "chat.provider reaches the API as MAPI_CHAT_PROVIDER."
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for svc in [google_cloud_run_v2_service.events[0]] : [
+        for c in svc.template[0].containers : [
+          for e in c.env : e.name != "MAPI_GEMINI_API_KEY" && e.name != "MAPI_CHAT_PROVIDER"
+        ]
+      ]
+    ]))
+    error_message = "Only the API service gets the chat settings."
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for c in google_cloud_run_v2_worker_pool.orchestrator[0].template[0].containers : [
+        for e in c.env : e.name != "MAPI_GEMINI_API_KEY"
+      ]
+    ]))
+    error_message = "The orchestrator never gets the Gemini key."
+  }
+
+  assert {
+    condition     = google_secret_manager_secret_version.gemini_api_key[0].secret_data == null
+    error_message = "The Gemini key is write-only: never in state."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].template[0].vpc_access[0].egress == "PRIVATE_RANGES_ONLY"
+    error_message = "API egress stays PRIVATE_RANGES_ONLY (the model endpoint is public; nothing else changes)."
+  }
+}
+
+run "gemini_needs_a_key_version" {
+  command = plan
+
+  variables {
+    chat = { provider = "gemini" }
+  }
+
+  expect_failures = [var.chat]
+}
+
+run "the_fake_chat_model_is_refused_in_the_cloud" {
+  command = plan
+
+  variables {
+    chat = { provider = "fake" }
+  }
+
+  expect_failures = [var.chat]
+}
+
+run "the_gemini_key_is_never_a_plain_env_value" {
+  command = plan
+
+  variables {
+    extra_env = { api = { MAPI_GEMINI_API_KEY = "AIza-not-a-key" } }
+  }
+
+  expect_failures = [var.extra_env]
+}
+
+run "a_gemini_key_version_needs_the_key" {
+  command = plan
+
+  variables {
+    chat           = { provider = "gemini", gemini_api_key_version = 1 }
+    gemini_api_key = " "
+  }
+
+  expect_failures = [google_secret_manager_secret_version.gemini_api_key]
 }

@@ -299,6 +299,13 @@ tomorrow or ask your analyst." (`429 DASHBOARD_RUN_LIMIT`). Over an hourly limit
 "this hour's limit" and "Try again later" instead. `Retry-After` gives the seconds to wait. The same case, the same file or
 the same numbers within 24 hours give the cached readout, not a new run.
 
+## Chat and MCP { #chat-and-mcp }
+
+From v0.20, readers can ask an AI assistant about the numbers on a dashboard with the panels
+layout. The chat is off until you turn it on in **Setup › Chat**
+([Ask about your dashboard](ask-about-your-dashboard.md)). Readers can also connect their own
+chat tools with a read token ([Connect a chat tool with MCP](connect-a-chat-tool-with-mcp.md)).
+
 ## Archive
 
 **Archive the dashboard** (the icon next to **Publish changes**) hides it from clients and

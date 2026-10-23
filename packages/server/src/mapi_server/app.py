@@ -14,6 +14,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
 from mapi_spec.api import IDEMPOTENCY_KEY_HEADER, LAST_EVENT_ID_HEADER, PREFER_HEADER, MediaWrite
 from mapi_spec.capabilities import Diagnostic
+from mapi_spec.chat import ChatRequest
 from mapi_spec.dashboards import ShareSessionCreate
 from mapi_spec.errors import MapiError, Problem
 from mapi_spec.onboarding import MAX_ONBOARDING_PATCH_BYTES
@@ -38,6 +39,8 @@ import mapi_server
 from mapi_server.api import (
     admin,
     compare,
+    dashboard_chat,
+    dashboard_read_tokens,
     dashboard_readouts,
     dashboards,
     datasets,
@@ -48,6 +51,7 @@ from mapi_server.api import (
     guided,
     internal,
     library,
+    mcp,
     media,
     meta,
     models,
@@ -59,6 +63,7 @@ from mapi_server.api import (
     run_views,
     runs,
     samples,
+    shared_chat,
     shares,
     specs,
     tenancy,
@@ -70,6 +75,7 @@ from mapi_server.api import (
     workflows,
 )
 from mapi_server.api import auth as auth_routes
+from mapi_server.api.mcp_middleware import McpMiddleware
 from mapi_server.api.problems import JsonBodyLimit
 from mapi_server.api.share_cors import ShareCorsMiddleware
 from mapi_server.auth.oidc import HttpOidcProvider, OidcClient
@@ -80,6 +86,7 @@ from mapi_server.db import Database, acting_as_gateway, resolve_database_url
 from mapi_server.devidp import DevIdP, mount_devidp
 from mapi_server.errors import install_error_handlers
 from mapi_server.services.catalog import CatalogService
+from mapi_server.services.chat.model import build_chat_model
 from mapi_server.services.cost import PRICE_TABLE_INFO_KEY, load_price_table
 from mapi_server.services.notify import NotificationHub
 from mapi_server.services.secrets import ServerSecrets, load_server_secrets
@@ -97,6 +104,7 @@ from mapi_server.storage import build_object_store
 
 __all__ = [
     "EVENT_PAYLOAD_MODELS",
+    "V020_BODY_LIMITS",
     "build_context",
     "build_oidc",
     "check_route_access",
@@ -128,7 +136,7 @@ PROBLEM_MODELS: tuple[type[BaseModel], ...] = (Problem,)
 """The RFC 7807 problem document, referenced by the routes' documented error responses
 (:func:`mapi_server.api.problems.problem_responses`)."""
 
-RAW_BODY_MODELS: tuple[type[BaseModel], ...] = (MediaWrite, ShareSessionCreate)
+RAW_BODY_MODELS: tuple[type[BaseModel], ...] = (MediaWrite, ShareSessionCreate, ChatRequest)
 """Request bodies a route reads itself (size-capped before parsing); their routes reference
 these components in ``openapi_extra``."""
 
@@ -174,6 +182,25 @@ V019_BODY_LIMITS: tuple[tuple[tuple[str, ...], int, tuple[str, ...]], ...] = (
     ),
 )
 """JSON body caps of the v0.19 routes (plan I-5: 8 KiB), with the methods they cover."""
+
+_DASHBOARD = r"/v1/dashboards/[^/]+"
+V020_BODY_LIMITS: tuple[tuple[tuple[str, ...], int, tuple[str, ...]], ...] = (
+    # a chat turn: at most 20 turns of text (members, clients and share links)
+    (dashboard_chat.CHAT_BODY_PATHS, dashboard_chat.CHAT_BODY_MAX_BYTES, ("POST",)),
+    # the chat settings: a few flags and two numbers
+    (
+        dashboard_chat.CHAT_SETTINGS_BODY_PATHS,
+        dashboard_chat.CHAT_SETTINGS_BODY_MAX_BYTES,
+        ("PUT",),
+    ),
+    # a read token: a name and a lifetime
+    ((_DASHBOARD + r"/read-tokens",), 2 * 1024, ("POST",)),
+    # one JSON-RPC message (the MCP endpoint also stops reading past it)
+    ((r"/v1/mcp",), 64 * 1024, ("POST",)),
+)
+"""JSON body caps of the v0.20 routes (plan I-3), with the methods they cover. The chat and
+MCP routes take anonymous callers until their own credential check, so their bodies are
+capped and depth-checked before FastAPI reads them."""
 
 
 def _with_event_payloads(doc: dict[str, Any]) -> dict[str, Any]:
@@ -416,6 +443,9 @@ def create_app(
     )
     if ctx is not None:
         app.state.ctx = ctx
+    # v0.20: the chat model, built once (no I/O); None when MAPI_CHAT_PROVIDER=off. The chat
+    # routes read it with dashboard_chat.get_chat_model (tests replace it with a fake).
+    app.state.chat_model = build_chat_model(settings)
     base_openapi = app.openapi
 
     def openapi() -> dict[str, Any]:
@@ -474,12 +504,18 @@ def create_app(
     # v0.19: uploaded code (claims, tickets, `:complete`, review, yank, settings, uploaders)
     for paths, max_bytes, methods in V019_BODY_LIMITS:
         app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes, methods=methods)
+    # v0.20: chat turns, chat settings, read tokens and MCP messages
+    for paths, max_bytes, methods in V020_BODY_LIMITS:
+        app.add_middleware(JsonBodyLimit, paths=paths, max_bytes=max_bytes, methods=methods)
     # Public embed views: no credentials, readable cross-origin by the plot sandbox only
     # (outside the app's CORS policy, which is the web origin's, with credentials).
     app.add_middleware(plots.EmbedCorsMiddleware, allowed_origin=settings.plots_origin)
     # Public share-link routes (v0.16): no credentials, readable by the web origin only, never
     # cached (a revoked link must stop working on the next request).
     app.add_middleware(ShareCorsMiddleware, allowed_origin=settings.web_origin)
+    # The MCP endpoint (v0.20): agents, not the web app. Cookie and Origin dropped, query
+    # credentials refused, unknown origins 403, other hosts 421, never credentialed CORS.
+    app.add_middleware(McpMiddleware, settings=settings)
     # Outermost: DNS rebinding makes a hostile page same-origin with 127.0.0.1, so CORS never
     # applies; the Host header is the only tell (plan §9). 400 for any unexpected host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts())
@@ -534,6 +570,11 @@ def create_app(
         # v0.19 uploaded code and the tenant's plugin settings
         plugins.router,
         plugins.tenant_router,
+        # v0.20 dashboard chat (members, clients, share links), read tokens and MCP
+        dashboard_chat.router,
+        shared_chat.router,
+        dashboard_read_tokens.router,
+        mcp.router,
         internal.router,
         *trust.ROUTERS,
     ):

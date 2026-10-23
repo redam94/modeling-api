@@ -1,0 +1,322 @@
+{
+ "created_at": "2026-10-15T09:30:00Z",
+ "endpoint_revision": null,
+ "kind": "refresh",
+ "mine": null,
+ "model_ref": "model://growth/eu-geo-mmm@v3",
+ "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+ "period": [
+  "2026-10-12",
+  "2026-10-18"
+ ],
+ "problem": null,
+ "ready_at": "2026-10-15T09:30:00Z",
+ "refit_status": null,
+ "seq": 12,
+ "snapshot": {
+  "accuracy": null,
+  "accuracy_detail": null,
+  "accuracy_history": [],
+  "batch": null,
+  "channels": [],
+  "conditioning": null,
+  "input_fingerprint": null,
+  "inputs_echo": [],
+  "lead": "The model gives a 55% chance of a positive result for this case.",
+  "notes_plain": [],
+  "panels": [
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "chance",
+    "tile": {
+     "approximate": false,
+     "caption": "For store s0, sku k0, week 2024-09-22",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": null,
+     "key": "panel",
+     "label": "Chance of a positive",
+     "low": null,
+     "panel_id": "chance",
+     "unit": "probability",
+     "value": 0.5468910259296506
+    },
+    "title": "Chance of a positive"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "m_auc",
+    "tile": {
+     "approximate": false,
+     "caption": "When the model was built",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": null,
+     "key": "panel",
+     "label": "How well the model ranks cases (AUC)",
+     "low": null,
+     "panel_id": "m_auc",
+     "unit": "probability",
+     "value": 0.8673469387755102
+    },
+    "title": "How well the model ranks cases (AUC)"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "m_accuracy",
+    "tile": {
+     "approximate": false,
+     "caption": "When the model was built",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": null,
+     "key": "panel",
+     "label": "How often the model is right",
+     "low": null,
+     "panel_id": "m_accuracy",
+     "unit": "probability",
+     "value": 0.5666666666666667
+    },
+    "title": "How often the model is right"
+   },
+   {
+    "approximate": false,
+    "caption": "The first 20 of 45.",
+    "intent": "probability_bars",
+    "kind": "bars",
+    "panel_id": "chances",
+    "rows": [
+     {
+      "high": null,
+      "label": "s0 · k0 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.5468910259296506
+     },
+     {
+      "high": null,
+      "label": "s0 · k0 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.16230879462806866
+     },
+     {
+      "high": null,
+      "label": "s0 · k0 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.1536941905214257
+     },
+     {
+      "high": null,
+      "label": "s0 · k1 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.4628074515640738
+     },
+     {
+      "high": null,
+      "label": "s0 · k1 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.4810227110910162
+     },
+     {
+      "high": null,
+      "label": "s0 · k1 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.48242046436042557
+     },
+     {
+      "high": null,
+      "label": "s0 · k2 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.712665494465267
+     },
+     {
+      "high": null,
+      "label": "s0 · k2 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.7861360220645115
+     },
+     {
+      "high": null,
+      "label": "s0 · k2 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.710518186725197
+     },
+     {
+      "high": null,
+      "label": "s1 · k0 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.12059327978493924
+     },
+     {
+      "high": null,
+      "label": "s1 · k0 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.1542928586472919
+     },
+     {
+      "high": null,
+      "label": "s1 · k0 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.13538188721631256
+     },
+     {
+      "high": null,
+      "label": "s1 · k1 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.2909987696792894
+     },
+     {
+      "high": null,
+      "label": "s1 · k1 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.7734568181131334
+     },
+     {
+      "high": null,
+      "label": "s1 · k1 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.18825495092799857
+     },
+     {
+      "high": null,
+      "label": "s1 · k2 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.6244298210938577
+     },
+     {
+      "high": null,
+      "label": "s1 · k2 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.6525290379385073
+     },
+     {
+      "high": null,
+      "label": "s1 · k2 · 2024-10-06",
+      "low": null,
+      "tag": null,
+      "value": 0.5484650795465529
+     },
+     {
+      "high": null,
+      "label": "s2 · k0 · 2024-09-22",
+      "low": null,
+      "tag": null,
+      "value": 0.38192861255242955
+     },
+     {
+      "high": null,
+      "label": "s2 · k0 · 2024-09-29",
+      "low": null,
+      "tag": null,
+      "value": 0.3990896565929522
+     }
+    ],
+    "title": "Chance of each result"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "calibration",
+    "reason": "This shows after you send actual results.",
+    "title": "Predicted and observed chances"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "confusion",
+    "reason": "This shows after you send actual results.",
+    "title": "Right and wrong results"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "accuracy",
+    "reason": "This shows after you send actual results.",
+    "title": "How often the model was right"
+   }
+  ],
+  "prediction": null,
+  "preset": "classifier",
+  "scenario": null,
+  "schema_version": 2,
+  "series": [],
+  "source_run_ids": [],
+  "technical": {},
+  "tiles": [
+   {
+    "approximate": false,
+    "caption": "For store s0, sku k0, week 2024-09-22",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": null,
+    "key": "panel",
+    "label": "Chance of a positive",
+    "low": null,
+    "panel_id": "chance",
+    "unit": "probability",
+    "value": 0.5468910259296506
+   },
+   {
+    "approximate": false,
+    "caption": "When the model was built",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": null,
+    "key": "panel",
+    "label": "How well the model ranks cases (AUC)",
+    "low": null,
+    "panel_id": "m_auc",
+    "unit": "probability",
+    "value": 0.8673469387755102
+   },
+   {
+    "approximate": false,
+    "caption": "When the model was built",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": null,
+    "key": "panel",
+    "label": "How often the model is right",
+    "low": null,
+    "panel_id": "m_accuracy",
+    "unit": "probability",
+    "value": 0.5666666666666667
+   }
+  ]
+ },
+ "status": "ready",
+ "title": "Week ending 18/10/2026",
+ "trigger": "workflow",
+ "visibility": "published"
+}

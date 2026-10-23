@@ -405,8 +405,9 @@ key number between two readouts.
 
 The member, client and share read routes call these same functions. `tools_json_schema()`
 exports the declarations as JSON Schemas, the shape that Gemini function declarations and
-MCP tools use. A later release adds a chat and an MCP server on these tools
-([roadmap](../roadmap/expert-plugins.md)).
+MCP tools use. v0.20 adds a chat
+([Ask about your dashboard](../guides/ask-about-your-dashboard.md)) and an MCP server
+([Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md)) on these tools.
 
 ```python
 --8<-- "concepts_dashboards.py:tools"

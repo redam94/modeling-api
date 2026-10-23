@@ -15,7 +15,13 @@ The orchestrator runs :meth:`Housekeeper.run_forever` every ``housekeeping_inter
   ``/auth/login`` and ``/auth/callback``, are deleted (a request with an expired cookie
   deletes its own row; this catches the cookies that never come back);
 * **rate counters** of past windows (each subject's own old windows are only deleted when
-  it is counted again, and failure counters of unknown token prefixes never are);
+  it is counted again, and failure counters of unknown token prefixes never are). Per-minute
+  counters go once their minute is over; the accumulators of a UTC day (v0.20 chat token
+  budgets, :data:`DAILY_COUNTER_PREFIXES`) and of a UTC month (download egress,
+  :data:`MONTHLY_COUNTER_PREFIXES`) only once their day or month is over;
+* **kept chat conversations** (v0.20, plan D8) past their ``expires_at`` (30 days after the
+  turn), at most once per :data:`TRANSCRIPT_PURGE_EVERY`
+  (:func:`~mapi_server.services.chat.transcripts.purge_expired`);
 * **run tracking points** (``MAPI_TRACKING_RETENTION_DAYS``, off by default): metric points
   and ``user`` log lines of runs that finished longer ago than the retention are deleted, at
   most :data:`TRACKING_PRUNE_BATCH` rows per table and pass. Metric summaries, params, tags,
@@ -36,17 +42,28 @@ import asyncio
 import contextlib
 import logging
 from datetime import datetime, timedelta
+from typing import Final
 
 from mapi_spec.storage import NotFound
 from mapi_spec.tracking import SCALAR_STEP
-from sqlalchemy import delete, select, text
+from sqlalchemy import ColumnElement, and_, delete, not_, or_, select, text
 
 from mapi_server.auth.identity import sweep_expired_logins
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
+from mapi_server.services.quotas import window_starts
 from mapi_server.services.runs import now as utcnow
 
-__all__ = ["TRACKING_PRUNE_BATCH", "UPLOAD_EXPIRE_BATCH", "UPLOAD_KEEP", "Housekeeper"]
+__all__ = [
+    "DAILY_COUNTER_PREFIXES",
+    "MONTHLY_COUNTER_PREFIXES",
+    "TRACKING_PRUNE_BATCH",
+    "TRANSCRIPT_PURGE_EVERY",
+    "UPLOAD_EXPIRE_BATCH",
+    "UPLOAD_KEEP",
+    "Housekeeper",
+    "stale_rate_counters",
+]
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +75,40 @@ UPLOAD_EXPIRE_BATCH = 500
 
 TRACKING_PRUNE_BATCH = 10_000
 """Rows of one table the tracking retention deletes per pass (a backlog takes more passes)."""
+
+TRANSCRIPT_PURGE_EVERY: Final = timedelta(hours=1)
+"""How often expired chat transcript turns are deleted (the first pass always purges)."""
+
+DAILY_COUNTER_PREFIXES: Final = ("chattok:", "chattokshare:")
+"""Rate-counter subjects that accumulate over a UTC day (v0.20 chat token budgets,
+:func:`~mapi_server.services.quotas.charge_daily`)."""
+
+MONTHLY_COUNTER_PREFIXES: Final = ("egress:",)
+"""Rate-counter subjects that accumulate over a UTC month (download egress,
+:func:`~mapi_server.services.quotas.charge_egress`)."""
+
+_MINUTE_SLACK: Final = timedelta(minutes=2)
+
+
+def _prefixed(prefixes: tuple[str, ...]) -> ColumnElement[bool]:
+    return or_(*(m.RateCounter.subject.startswith(p, autoescape=True) for p in prefixes))
+
+
+def stale_rate_counters(at: datetime) -> ColumnElement[bool]:
+    """The rate-counter rows whose window is over at ``at``: fixed one-minute windows older
+    than the previous one, daily accumulators of an earlier UTC day and monthly ones of an
+    earlier UTC month. A budget that is still counting is never reset by the sweep."""
+    day, month = window_starts(at)
+    daily, monthly = _prefixed(DAILY_COUNTER_PREFIXES), _prefixed(MONTHLY_COUNTER_PREFIXES)
+    return or_(
+        and_(daily, m.RateCounter.window_start < day),
+        and_(monthly, m.RateCounter.window_start < month),
+        and_(
+            not_(or_(daily, monthly)),
+            m.RateCounter.window_start < at - _MINUTE_SLACK,
+        ),
+    )
+
 
 _PRUNE_SQL = {
     # the point of a metric without a step is its only value: it stays
@@ -71,6 +122,7 @@ class Housekeeper:
 
     def __init__(self, ctx: ServerContext) -> None:
         self.ctx = ctx
+        self._transcripts_purged_at: datetime | None = None
 
     async def run_forever(self, stop: asyncio.Event) -> None:
         interval = self.ctx.settings.housekeeping_interval_s
@@ -91,14 +143,34 @@ class Housekeeper:
         uploads = await self.expire_uploads(now=at)
         tracking = await self.prune_tracking(now=at)
         plugins = await self.plugin_sweeps(now=at)
+        transcripts = await self.purge_transcripts(now=at)
         async with self.ctx.db.session() as s:
             logins = await sweep_expired_logins(s, at=at)
-            # fixed one-minute windows: anything older than the previous one is dead weight
-            # (failure counters of random token prefixes are never touched again)
-            stale = await s.execute(
-                delete(m.RateCounter).where(m.RateCounter.window_start < at - timedelta(minutes=2))
-            )
-        return uploads + logins + tracking + plugins + int(getattr(stale, "rowcount", 0) or 0)
+            # windows that are over are dead weight (failure counters of random token
+            # prefixes are never touched again); running day/month budgets stay
+            stale = await s.execute(delete(m.RateCounter).where(stale_rate_counters(at)))
+        return (
+            uploads
+            + logins
+            + tracking
+            + plugins
+            + transcripts
+            + int(getattr(stale, "rowcount", 0) or 0)
+        )
+
+    async def purge_transcripts(self, *, now: datetime, force: bool = False) -> int:
+        """Delete kept chat turns past their ``expires_at`` (all tenants), at most once per
+        :data:`TRANSCRIPT_PURGE_EVERY` unless ``force``. Logs counts only, never text."""
+        last = self._transcripts_purged_at
+        if not force and last is not None and now - last < TRANSCRIPT_PURGE_EVERY:
+            return 0
+        from mapi_server.services.chat.transcripts import purge_expired
+
+        removed = await purge_expired(self.ctx, now)
+        self._transcripts_purged_at = now
+        if removed:
+            log.info("deleted %d expired chat transcript turn(s)", removed)
+        return removed
 
     async def plugin_sweeps(self, *, now: datetime) -> int:
         """The uploaded-plugin sweeps (each one logs and skips its own failure)."""

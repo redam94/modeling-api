@@ -7,7 +7,7 @@ write models and integrations. The copyleft licence protects the hosted platform
 |---|---|---|
 | **SDK and contracts**: `mapi-spec`, `mapi-sdk`, `mapi-pymc`, `mapi-sklearn`, `mapi-jax` | `packages/spec`, `packages/sdk`, `packages/sdk-pymc`, `packages/sdk-sklearn`, `packages/sdk-jax` | Apache-2.0 |
 | **Built-ins**: steps, plots, model plugins, workflow runtime, conformance corpus | `packages/steps-core`, `packages/plots-core`, `plugins/*`, `packages/workflows`, `conformance/` | Apache-2.0 |
-| **Tools**: CLI, Python client, GCS emulator | `packages/cli`, `packages/client`, `packages/gcs-shim` | Apache-2.0 |
+| **Tools**: CLI, Python client, MCP bridge, GCS emulator | `packages/cli`, `packages/client`, `packages/mcp`, `packages/gcs-shim` | Apache-2.0 |
 | **Platform**: API server, run harness, web apps, images, infrastructure | `packages/server`, `packages/runner`, `apps/*`, `images/`, `infra/`, `ops/`, `security/` | AGPLv3 **or** a commercial licence |
 | **Documentation** | `docs/` | CC BY 4.0 |
 

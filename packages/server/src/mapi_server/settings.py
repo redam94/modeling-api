@@ -27,9 +27,22 @@ from mapi_spec.localdev import (
     WEB_PORT,
 )
 from mapi_spec.storage import Buckets
-from mapi_spec.tenancy import DEFAULT_RESIDENCY, TrustTier, residency_of_region
+from mapi_spec.tenancy import (
+    DEFAULT_RESIDENCY,
+    ResidencyRegion,
+    TrustTier,
+    residency_of_region,
+)
 from mapi_spec.trust import SHARED_EMAIL_DOMAINS
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from mapi_server import __version__
@@ -41,6 +54,7 @@ __all__ = [
     "DEFAULT_DEV_USERS",
     "DEFAULT_DOCKER_IMAGES",
     "DEFAULT_ESTIMATE_WALL_S",
+    "GEMINI_DEFAULT_ENDPOINT",
     "ExecutorName",
     "MailerKind",
     "ObjectStoreKind",
@@ -72,6 +86,11 @@ DEFAULT_DOCKER_IMAGES: dict[str, str] = {
     "dl": f"mapi/base-dl:{__version__}",
 }
 """Plugin namespace → the runner image ``make docker-build`` tags that ships it."""
+
+GEMINI_DEFAULT_ENDPOINT: Final = "https://generativelanguage.googleapis.com"
+"""The Gemini Developer API (``MAPI_GEMINI_ENDPOINT`` default; the only one multi-tenant)."""
+
+_RESIDENCY: TypeAdapter[str] = TypeAdapter(ResidencyRegion)
 
 DEFAULT_DEV_USERS: tuple[str, ...] = ("admin@dev.local", "analyst@dev.local", "viewer@dev.local")
 """Accounts of the development identity provider: the first is a platform operator and the
@@ -1037,6 +1056,96 @@ class Settings(BaseSettings):
         description="An approver whose membership the uploader created more recently than "
         "this may not approve the uploader's versions",
     )
+    # ------------------------------------------------- dashboard chat and MCP (v0.20)
+    chat_provider: Literal["off", "gemini", "fake"] = Field(
+        "off",
+        description="The chat model: off (no dashboard chat), gemini (needs "
+        "MAPI_GEMINI_API_KEY) or fake (a fixed local model for development and tests; "
+        "refused in the multi-tenant profile, with cloudrun-jobs, with gcs and on Cloud Run)",
+    )
+    gemini_api_key: SecretStr | None = Field(
+        None,
+        repr=False,
+        description="Gemini Developer API key (a paid-tier key). Sent only in the "
+        "x-goog-api-key header; never logged, stored or shown",
+    )
+    gemini_endpoint: str = Field(
+        GEMINI_DEFAULT_ENDPOINT,
+        description="Base URL of the Gemini API (the multi-tenant profile allows only the default)",
+    )
+    chat_model: str = Field(
+        "gemini-3.1-flash-lite",
+        pattern=r"^[a-z0-9][a-z0-9.\-]{1,62}$",
+        description="The pinned Gemini model id",
+    )
+    chat_thinking_level: Literal["omit", "minimal", "low"] = Field(
+        "omit",
+        description="Thinking level sent to the model; omit sends none (the model default, "
+        "minimal for gemini-3.1-flash-lite)",
+    )
+    chat_function_mode: Literal["VALIDATED", "AUTO"] = Field(
+        "VALIDATED",
+        description="Function-calling mode: VALIDATED (calls follow the tool schemas) or AUTO",
+    )
+    chat_max_output_tokens: int = Field(
+        1024, ge=64, le=8192, description="Most answer tokens of one model call"
+    )
+    chat_temperature: float = Field(0.2, ge=0, le=2, description="Sampling temperature")
+    chat_request_timeout_s: float = Field(
+        20.0, gt=0, le=120, description="Time limit of one model call (seconds)"
+    )
+    chat_turn_deadline_s: float = Field(
+        45.0,
+        gt=0,
+        le=300,
+        description="Time limit of one chat turn, all model and tool calls included (seconds)",
+    )
+    chat_allowed_residencies: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [DEFAULT_RESIDENCY],
+        description="Tenant data residencies that may use chat (comma-separated; exact "
+        "match). The Gemini Developer API is a global endpoint",
+    )
+    chat_price_in_micros_per_mtok: int = Field(
+        250_000, ge=0, description="Price of one million input tokens (micro-dollars)"
+    )
+    chat_price_out_micros_per_mtok: int = Field(
+        1_500_000,
+        ge=0,
+        description="Price of one million output tokens, thoughts included (micro-dollars)",
+    )
+    chat_price_version: str = Field(
+        "gemini-3.1-flash-lite@2026-10-22",
+        min_length=1,
+        max_length=64,
+        description="Name of the price table above (stored on each usage row)",
+    )
+    chat_member_turns_per_minute: int = Field(
+        10, ge=1, description="Chat turns per minute of one member or client on one dashboard"
+    )
+    chat_share_turns_per_minute: int = Field(
+        6, ge=1, description="Chat turns per minute of one share link"
+    )
+    chat_share_ip_turns_per_minute: int = Field(
+        12, ge=1, description="Share-link chat turns per minute from one client address"
+    )
+    chat_transcript_ttl_days: int = Field(
+        30, ge=1, le=365, description="Days a kept chat transcript is stored"
+    )
+    mcp_enabled: bool = Field(True, description="Serve the MCP endpoint POST /v1/mcp")
+    mcp_allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Browser origins allowed to call /v1/mcp (comma-separated; empty: a "
+        "request with an Origin header is refused)",
+    )
+    mcp_rate_per_minute: int = Field(
+        120, ge=1, description="MCP requests per minute of one read token or share link"
+    )
+    dashboard_read_token_max_days: int = Field(
+        90, ge=1, le=90, description="Longest lifetime of a dashboard read token (days)"
+    )
+    dashboard_read_tokens_per_user: int = Field(
+        5, ge=1, le=100, description="Active read tokens of one user on one dashboard"
+    )
     tenant_deletion_grace_s: float = Field(
         7 * 86400.0,
         ge=0,
@@ -1128,6 +1237,8 @@ class Settings(BaseSettings):
         "webhook_dev_allowlist",
         "signup_blocked_domains",
         "signup_shared_email_domains",
+        "chat_allowed_residencies",
+        "mcp_allowed_origins",
         mode="before",
     )
     @classmethod
@@ -1216,6 +1327,19 @@ class Settings(BaseSettings):
         # must never be honoured where other people's code or data could be reached
         if not self.dev_allow_local_untrusted:
             return self
+        reasons = self._cloud_deployment_reasons()
+        if reasons:
+            raise ValueError(
+                "MAPI_DEV_ALLOW_LOCAL_UNTRUSTED is for local development only and runs "
+                "uploaded code without a sandbox. It is refused because "
+                + "; ".join(reasons)
+                + ". Remove MAPI_DEV_ALLOW_LOCAL_UNTRUSTED."
+            )
+        return self
+
+    def _cloud_deployment_reasons(self) -> list[str]:
+        """Why this server may be a shared or cloud deployment (empty: a local one). The
+        development-only allowances (v0.19 D7, v0.20 fake chat model) are refused then."""
         reasons: list[str] = []
         if self.profile is Profile.MULTI_TENANT:
             reasons.append("the profile is multi-tenant")
@@ -1226,13 +1350,69 @@ class Settings(BaseSettings):
         cloud = [k for k in ("K_SERVICE", "CLOUD_RUN_JOB") if os.environ.get(k)]
         if cloud:
             reasons.append(f"the server runs on Cloud Run ({', '.join(cloud)} is set)")
-        if reasons:
+        return reasons
+
+    @model_validator(mode="after")
+    def _chat(self) -> Settings:
+        # v0.20 D2/D20: the model provider, its secret and endpoint, and the chat limits
+        if self.chat_provider == "fake":
+            reasons = self._cloud_deployment_reasons()
+            if reasons:
+                raise ValueError(
+                    "MAPI_CHAT_PROVIDER=fake is for local development and tests only. It is "
+                    "refused because " + "; ".join(reasons) + ". Use gemini or off."
+                )
+        if self.chat_provider == "gemini" and (
+            self.gemini_api_key is None or not self.gemini_api_key.get_secret_value().strip()
+        ):
+            raise ValueError("MAPI_CHAT_PROVIDER=gemini needs MAPI_GEMINI_API_KEY")
+        endpoint = urlsplit(self.gemini_endpoint)
+        if (
+            endpoint.scheme not in ("https", "http")
+            or not endpoint.hostname
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.path not in ("", "/")
+            or endpoint.query
+            or endpoint.fragment
+        ):
             raise ValueError(
-                "MAPI_DEV_ALLOW_LOCAL_UNTRUSTED is for local development only and runs "
-                "uploaded code without a sandbox. It is refused because "
-                + "; ".join(reasons)
-                + ". Remove MAPI_DEV_ALLOW_LOCAL_UNTRUSTED."
+                "MAPI_GEMINI_ENDPOINT must be a base URL (scheme and host only, no path, "
+                "query or credentials)"
             )
+        if self.profile is Profile.MULTI_TENANT and (
+            self.gemini_endpoint.rstrip("/") != GEMINI_DEFAULT_ENDPOINT
+        ):
+            raise ValueError(
+                "the multi-tenant profile allows only the default MAPI_GEMINI_ENDPOINT "
+                f"({GEMINI_DEFAULT_ENDPOINT})"
+            )
+        if self.chat_request_timeout_s > self.chat_turn_deadline_s:
+            raise ValueError(
+                "MAPI_CHAT_REQUEST_TIMEOUT_S must not exceed MAPI_CHAT_TURN_DEADLINE_S"
+            )
+        try:
+            for residency in self.chat_allowed_residencies:
+                _RESIDENCY.validate_python(residency)
+        except ValidationError:
+            raise ValueError(
+                "MAPI_CHAT_ALLOWED_RESIDENCIES takes residencies such as us, eu or europe-west1"
+            ) from None
+        for origin in self.mcp_allowed_origins:
+            parts = urlsplit(origin)
+            if (
+                parts.scheme not in ("https", "http")
+                or not parts.hostname
+                or parts.path
+                or parts.query
+                or parts.fragment
+                or parts.username is not None
+                or origin == "*"
+            ):
+                raise ValueError(
+                    "MAPI_MCP_ALLOWED_ORIGINS takes origins such as https://app.example.com "
+                    "(scheme, host and port only)"
+                )
         return self
 
     @model_validator(mode="after")
@@ -1328,6 +1508,11 @@ class Settings(BaseSettings):
         if self.executor is ExecutorName.CLOUDRUN_JOBS:
             return residency_of_region(self.cloudrun_region)
         return DEFAULT_RESIDENCY
+
+    def chat_residency_allowed(self, residency: str) -> bool:
+        """May a tenant with this data residency use chat (``chat_allowed_residencies``,
+        exact match: a single-region residency is not covered by its multi-region)?"""
+        return residency in self.chat_allowed_residencies
 
     def effective_operator_emails(self) -> list[str]:
         """``operator_emails`` plus, in the dev profile, the first development account."""

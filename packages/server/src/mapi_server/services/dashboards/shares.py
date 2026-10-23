@@ -328,9 +328,10 @@ async def _ip_limit(ctx: ServerContext, client_ip: str | None, at: datetime) -> 
         await _limit(s, f"shareip:{who[:32]}", settings.share_ip_rate_per_minute, at)
 
 
-async def _lookup(ctx: ServerContext, at: datetime, **where: str) -> _Found:
+async def _lookup(ctx: ServerContext, at: datetime, *, count: bool = True, **where: str) -> _Found:
     """Find a live link as the gateway role (``404`` unknown, ``410`` ended), then count it
-    against the per-link limit."""
+    against the per-link limit (not when ``count`` is false: a re-check inside a request that
+    was counted already)."""
     cols = (
         m.DashboardShare.id,
         m.DashboardShare.tenant_id,
@@ -355,7 +356,7 @@ async def _lookup(ctx: ServerContext, at: datetime, **where: str) -> _Found:
         tenant = await s.get(m.Tenant, tenant_id)
         if tenant is None or tenant.status != TenantStatus.ACTIVE.value:
             raise _expired()
-        if ctx.settings.rate_limits_enabled:
+        if count and ctx.settings.rate_limits_enabled:
             await _limit(s, f"share:{share_id}", ctx.settings.share_rate_per_minute, at)
     return _Found(share_id, tenant_id, project_id, dashboard_id, expires_at, int(version))
 
@@ -544,22 +545,27 @@ async def open_session(
 
 
 async def resolve_session(
-    ctx: ServerContext, header: str | None, client_ip: str | None
+    ctx: ServerContext, header: str | None, client_ip: str | None, *, count: bool = True
 ) -> DashboardContext:
     """The dashboard context of a share session (``X-Mapi-Share``), checked again on every
     request: ``401`` for a missing, forged, expired or superseded session, ``410`` once the
-    link is revoked or expired, its tenant is not active or the dashboard is unpublished."""
-    return (await resolve_shared(ctx, header, client_ip)).context
+    link is revoked or expired, its tenant is not active or the dashboard is unpublished.
+
+    ``count=False`` (v0.20, plan D9) skips the per-address and per-link request limits and
+    keeps every other check: the chat loop re-checks the session before each model and tool
+    call of one request, and only the request's first check counts."""
+    return (await resolve_shared(ctx, header, client_ip, count=count)).context
 
 
 async def resolve_shared(
-    ctx: ServerContext, header: str | None, client_ip: str | None
+    ctx: ServerContext, header: str | None, client_ip: str | None, *, count: bool = True
 ) -> SharedView:
     """:func:`resolve_session` with the link's expiry (``ClientDashboard.ends_at``)."""
     at = now()
-    await _ip_limit(ctx, client_ip, at)
+    if count:
+        await _ip_limit(ctx, client_ip, at)
     share_id, version = _session_claims(ctx, header, at)
-    found = await _lookup(ctx, at, share_id=share_id)
+    found = await _lookup(ctx, at, count=count, share_id=share_id)
     if found.session_version != version:
         raise unauthenticated("the share session has ended; open the link again")
     async with ctx.db.tenant_session(found.tenant_id) as session:

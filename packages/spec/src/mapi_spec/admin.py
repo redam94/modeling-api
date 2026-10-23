@@ -5,7 +5,9 @@ pure check the API (at submit) and the dispatcher (at lease) both apply: when
 ``untrusted_execution_enabled`` is off, no run of uploaded (tenant) code is accepted or
 leased; when the global spend in the current window reaches ``global_spend_cap_micros``,
 no new compute is accepted for anyone except ``internal`` tenants. Both denials use the
-``QUOTA_EXCEEDED`` problem code at the ``global`` scope.
+``QUOTA_EXCEEDED`` problem code at the ``global`` scope. v0.20: when ``chat_enabled`` is off,
+no dashboard chat turn reaches a model (``CHAT_DISABLED``, reason ``killswitch``); MCP spends
+no model tokens and is not affected.
 """
 
 from __future__ import annotations
@@ -59,6 +61,7 @@ class KillSwitches(ResponseModel):
     )
     spend_cap_currency: str = Field("USD", pattern=r"^[A-Z]{3}$")
     spend_cap_period: Literal["day", "month"] = "day"
+    chat_enabled: bool = Field(True, description="Off: no dashboard chat turn reaches a model")
     reason: str | None = Field(None, max_length=500)
     updated_at: AwareDatetime | None = None
     updated_by: Id | None = None
@@ -84,6 +87,9 @@ class KillSwitchUpdate(RequestModel):
     required so the audit log says why."""
 
     untrusted_execution_enabled: bool | None = None
+    chat_enabled: bool | None = Field(
+        None, description="v0.20: turn dashboard chat off (or on again) for every tenant"
+    )
     global_spend_cap_micros: int | None = Field(None, ge=0)
     clear_spend_cap: bool = Field(False, description="Remove the spend cap")
     spend_cap_period: Literal["day", "month"] | None = None
@@ -105,6 +111,7 @@ class KillSwitchUpdate(RequestModel):
             "reason": "incident 2026-10-15: confirmed sandbox escape",
         },
         {"global_spend_cap_micros": 500_000_000, "reason": "daily cap for the beta"},
+        {"chat_enabled": False, "reason": "model provider incident"},
     )
 
     @model_validator(mode="after")
@@ -120,6 +127,8 @@ class KillSwitchUpdate(RequestModel):
         data = current.model_dump()
         if self.untrusted_execution_enabled is not None:
             data["untrusted_execution_enabled"] = self.untrusted_execution_enabled
+        if self.chat_enabled is not None:
+            data["chat_enabled"] = self.chat_enabled
         if self.global_spend_cap_micros is not None:
             data["global_spend_cap_micros"] = self.global_spend_cap_micros
         if self.clear_spend_cap:

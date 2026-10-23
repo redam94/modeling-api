@@ -1,0 +1,11 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "Server error.",
+  "status": 500,
+  "body": {
+    "error": {
+      "code": "api_error",
+      "message": "An internal error has occurred. SECRET-ECHO-500"
+    }
+  }
+}

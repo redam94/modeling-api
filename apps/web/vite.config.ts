@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
-import { bundleBudget, MOTION_PATTERNS, SIGNED_IN_ONLY } from "./bundle-budget";
+import { bundleBudget, CHAT_PANEL_ONLY, MOTION_PATTERNS, SIGNED_IN_ONLY } from "./bundle-budget";
 import { canonicalHost } from "./canonical-host";
 import { buildAppCsp, type AppCspOptions } from "./csp";
 import { DEV_PREBUNDLE } from "./dev-prebundle";
@@ -39,6 +39,9 @@ const SHARE_FORBIDDEN = [
   ...SIGNED_IN_ONLY,
 ];
 
+/** v0.20: what the share link and the portal may load only with the lazy chat panel. */
+const SHARE_STATIC_FORBIDDEN = [...SHARE_FORBIDDEN, ...CHAT_PANEL_ONLY];
+
 /**
  * What every page may download before first paint: the entry chunk and its static imports.
  * Monaco, monaco-yaml and Arrow load only on the pages that use them (lazy routes + import()).
@@ -48,16 +51,27 @@ const ENTRY_BUDGET = {
   maxEntryBytes: 640 * 1024,
   // M3.5: React Flow (the workflow canvas) loads only with the workflow editor and run graph.
   // v0.18 (critic, D27): the animation library is in lazy signed-in chunks only.
-  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//, ...MOTION_PATTERNS],
+  forbidden: [/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(?:monaco-editor|monaco-yaml|apache-arrow|@xyflow)\//, ...MOTION_PATTERNS, ...CHAT_PANEL_ONLY],
   chunkBudgets: [
     // The readout page, the dashboards client and the shared radix/tailwind-merge chunk; 263 KiB at v0.16.
-    { match: /(?:^|\/)share-app-[^/]*\.js$/, maxBytes: 288 * 1024, forbidden: SHARE_FORBIDDEN },
+    // v0.20 (plan D22): 288 → 292 KiB, the one deliberate change, for the chat launcher, the share
+    // chat transport and the lazy import of the panel (the chunk had ≈ 380 B free at v0.19).
+    { match: /(?:^|\/)share-app-[^/]*\.js$/, maxBytes: 292 * 1024, forbidden: SHARE_STATIC_FORBIDDEN },
     // The portal brings its own small router; it loads from the workspace gate, which already
     // holds the session client and `api/queries.ts` (so neither is forbidden here).
     {
       match: /(?:^|\/)client-app-[^/]*\.js$/,
       maxBytes: 260 * 1024,
-      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow"), ...SIGNED_IN_ONLY],
+      forbidden: [pkg("@tanstack\\/react-table"), /\/src\/components\/shell\//, pkg("monaco-editor|monaco-yaml"), pkg("apache-arrow"), pkg("@xyflow"), ...SIGNED_IN_ONLY, ...CHAT_PANEL_ONLY],
+    },
+    // v0.20 (plan D21): "Ask about your dashboard", one lazy chunk for the readout route, the
+    // portal and share links, so it has the share link's forbidden list (no session client, no
+    // app queries).
+    {
+      match: /(?:^|\/)chat-panel-[^/]*\.js$/,
+      maxBytes: 40 * 1024,
+      forbidden: SHARE_FORBIDDEN,
+      requiredWhen: /\/src\/features\/dashboards\/chat\/chat-panel\.tsx$/,
     },
     // v0.17: the lazy parts of the layout 2 readout (plan D18): the heavy panels and the
     // results of the inputs, then each input section with what it adds (the shared charts

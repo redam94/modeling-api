@@ -213,7 +213,7 @@ def test_generated_platform_pages(tmp_path: Path) -> None:
     assert "`kill_switch`" in matrix and "internal services only" in matrix
     scopes = (frag / "token-scopes.md").read_text("utf-8")
     for scope in ScopeName:
-        if scope is not ScopeName.ADMIN:
+        if scope not in (ScopeName.ADMIN, ScopeName.DASHBOARD):
             assert ("`score:*`" if scope is ScopeName.SCORE else f"`{scope.value}`") in scopes
     # M3.5: approving needs the reviewer capability, which the matrix and its section name
     assert "✓ with `reviewer`" in matrix

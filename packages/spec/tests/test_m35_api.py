@@ -53,6 +53,7 @@ def test_the_table_is_additive_and_unique() -> None:
         + len(api.V017_ENDPOINTS)
         + len(api.V018_ENDPOINTS)
         + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
     )
     assert ENDPOINTS[-len(M35_ENDPOINTS) - after : -after] == M35_ENDPOINTS
     assert len(M35_ENDPOINTS) >= 55

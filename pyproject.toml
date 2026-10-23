@@ -9,7 +9,7 @@ dependencies = [
   "mapi-runner", "mapi-server[docker,otlp]", "mapi-gcs-shim", "mapi-cli", "mapi-client",
   "mapi-plugin-mmm", "mapi-plugin-ts", "mapi-plugin-tabular", "mapi-plugin-statsmodels",
   "mapi-plugin-science", "mapi-plugin-causal", "mapi-conformance", "mapi-workflows[runtime,testing]",
-  "mapi-jax",
+  "mapi-jax", "mapi-mcp",
 ]
 
 [dependency-groups]
@@ -49,6 +49,7 @@ mapi-plugin-causal = { workspace = true }
 mapi-conformance = { workspace = true }
 mapi-workflows = { workspace = true }
 mapi-jax = { workspace = true }
+mapi-mcp = { workspace = true }
 
 [tool.ruff]
 line-length = 100
@@ -83,7 +84,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.importlinter]
-root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner", "mapi_workflows"]
+root_packages = ["mapi_server", "mapi_spec", "mapi_plots", "mapi_runner", "mapi_workflows", "mapi_mcp"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -112,10 +113,22 @@ source_modules = [
   "mapi_spec.namespaces", "mapi_spec.schema_safety", "mapi_spec.node_authoring",
   "mapi_spec.library_workflows", "mapi_spec.library", "mapi_spec.model_recipes",
   "mapi_spec.prep_presets", "mapi_spec.onboarding", "mapi_spec.samples",
+  # v0.20: chat DTOs, tool-result capping and the MCP protocol core
+  "mapi_spec.chat", "mapi_spec.tool_results", "mapi_spec.mcp",
 ]
 forbidden_modules = [
   "numpy", "xarray", "pandas", "pyarrow", "scipy", "mapi_plots", "mapi_sdk",
   "mapi_runner", "mapi_workflows", "mapi_server",
+]
+
+[[tool.importlinter.contracts]]
+# v0.20: the MCP stdio bridge is a thin client of POST /v1/mcp (mapi_spec + httpx only)
+name = "The MCP bridge never imports the control plane or array libraries"
+type = "forbidden"
+source_modules = ["mapi_mcp"]
+forbidden_modules = [
+  "mapi_server", "mapi_runner", "mapi_sdk", "mapi_plots", "mapi_workflows",
+  "numpy", "pandas", "pyarrow", "xarray",
 ]
 
 [[tool.importlinter.contracts]]

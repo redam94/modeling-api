@@ -394,6 +394,7 @@ async def admin_put_kill_switches(
                     "untrusted_execution_enabled": updated.untrusted_execution_enabled,
                     "global_spend_cap_micros": updated.global_spend_cap_micros,
                     "spend_cap_period": updated.spend_cap_period,
+                    "chat_enabled": updated.chat_enabled,
                     "reason": body.reason,
                     **({} if cancelled is None else {"cancelled_runs": len(cancelled)}),
                 },

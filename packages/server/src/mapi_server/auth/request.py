@@ -33,12 +33,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from fastapi import Request
 from mapi_spec.api import (
     CLIENT_OPERATIONS,
+    DASHBOARD_TOKEN_ROUTES,
     ROUTE_ACCESS,
+    SESSION_ONLY_OPERATIONS,
     TOKEN_TENANT_ROUTES,
     RouteAccess,
     RouteScope,
@@ -68,6 +70,7 @@ from mapi_spec.tokens import (
     TokenRecord,
     TokenStatus,
     bearer_token,
+    dashboard_scope_target,
     hash_token,
     looks_like_token,
     parse_token,
@@ -97,6 +100,9 @@ from mapi_server.services.audit import write_audit, write_failure_audit
 from mapi_server.services.quotas import global_policy, rate_limit, tenant_policy, token_policy
 from mapi_server.services.runs import Scope, now
 
+if TYPE_CHECKING:
+    from mapi_server.services.dashboards.access import DashboardTokenAuth
+
 __all__ = [
     "CSRF_COOKIE",
     "CSRF_HEADER",
@@ -109,6 +115,7 @@ __all__ = [
     "authenticate",
     "client_only",
     "csrf_cookie",
+    "resolve_dashboard_token",
     "session_cookie",
     "still_authorized",
 ]
@@ -325,7 +332,12 @@ def _request_id(request: Request) -> str:
 
 
 def _token_failure(
-    ctx: ServerContext, request: Request, row: m.ApiToken, reason: str
+    ctx: ServerContext,
+    request: Request,
+    row: m.ApiToken,
+    reason: str,
+    *,
+    detail: str | None = None,
 ) -> _AuthFailure:
     ev = make_audit_event(
         action=AuditAction.TOKEN_AUTH_FAILED,
@@ -342,7 +354,9 @@ def _token_failure(
         details={"reason": reason, "prefix": row.prefix},
     )
     return _AuthFailure(
-        unauthenticated(f"the API token is {reason}"), [ev], audit_subject=_failures(row.prefix)
+        unauthenticated(detail or f"the API token is {reason}"),
+        [ev],
+        audit_subject=_failures(row.prefix),
     )
 
 
@@ -513,6 +527,30 @@ def _local_memberships(ctx: ServerContext, at: datetime) -> list[Membership]:
     ]
 
 
+def _token_gate(operation_id: str, token: TokenRecord | None) -> None:
+    """v0.20 (plan D12-D13): what an API token may not reach, whatever its scopes say.
+
+    A dashboard read token (scope ``dashboard:<id>``) works on
+    :data:`mapi_spec.api.DASHBOARD_TOKEN_ROUTES` only, and those are public routes that check
+    the token themselves (:func:`resolve_dashboard_token`), so on every route resolved here
+    it is ``403``. No API token reaches :data:`mapi_spec.api.SESSION_ONLY_OPERATIONS`."""
+    if token is None:
+        return
+    if (
+        dashboard_scope_target(token.scopes) is not None
+        and operation_id not in DASHBOARD_TOKEN_ROUTES
+    ):
+        raise MapiError(
+            "a dashboard read token works only with the MCP endpoint (POST /v1/mcp)",
+            code=ErrorCode.FORBIDDEN,
+        )
+    if operation_id in SESSION_ONLY_OPERATIONS:
+        raise MapiError(
+            "this operation needs a signed-in session: API tokens cannot use it",
+            code=ErrorCode.FORBIDDEN,
+        )
+
+
 async def _resolve(
     s: AsyncSession,
     ctx: ServerContext,
@@ -526,6 +564,7 @@ async def _resolve(
     who = await _credentials(s, ctx, request, at)
     auth.credential = who.credential
     auth.token = who.token
+    _token_gate(auth.operation_id, who.token)
     if who.session is not None:
         auth.session_key = who.session.id
         auth.csrf_token = who.session.csrf_token
@@ -665,13 +704,7 @@ async def authenticate(request: Request) -> RequestAuth:
         async with ctx.db.session() as s:
             await _resolve(s, ctx, request, auth, now())
     except _AuthFailure as failure:
-        if failure.audit_subject is not None:  # anyone can cause these: bounded
-            await write_failure_audit(ctx.db, failure.audit, failure.audit_subject, now=now())
-        elif failure.audit:
-            await write_audit(ctx.db, failure.audit)
-        if failure.expired_session is not None:
-            async with ctx.db.session() as s:
-                await delete_expired_session(s, failure.expired_session)
+        await _record_failure(ctx, failure)
         raise failure.error from None
     except MapiError as exc:
         denied = _DENIED_AUDIT.get(auth.operation_id)
@@ -685,6 +718,73 @@ async def authenticate(request: Request) -> RequestAuth:
         raise
     request.state.auth = auth
     return auth
+
+
+async def _record_failure(ctx: ServerContext, failure: _AuthFailure) -> None:
+    """After the lookup transaction rolled back: the failure's audit rows and the delete of
+    an expired session."""
+    if failure.audit_subject is not None:  # anyone can cause these: bounded
+        await write_failure_audit(ctx.db, failure.audit, failure.audit_subject, now=now())
+    elif failure.audit:
+        await write_audit(ctx.db, failure.audit)
+    if failure.expired_session is not None:
+        async with ctx.db.session() as s:
+            await delete_expired_session(s, failure.expired_session)
+
+
+async def resolve_dashboard_token(ctx: ServerContext, request: Request) -> DashboardTokenAuth:
+    """The dashboard read token of a request to a public route that takes one (the MCP
+    endpoint, :data:`mapi_spec.api.DASHBOARD_TOKEN_ROUTES`; plan D12).
+
+    The same checks as an API token on any other route (checksum, constant-time hash
+    comparison, expiry, revocation, the owner still active, ``last_used_at``, failures
+    audited with a per-prefix bound), plus: the token's tenant is ``active``, and the token
+    is a read token (its one scope is ``dashboard:<id>`` and its row names that dashboard).
+
+    ``401`` for a missing, malformed, unknown, expired or revoked token, a disabled owner or
+    a tenant that is not active; ``403`` for a valid ordinary API token (MCP takes read
+    tokens and share sessions only, plan D14). The owner's access to the dashboard *now* is
+    the caller's next check (:func:`mapi_server.services.dashboards.access.token_context`).
+    """
+    from mapi_server.services.dashboards.access import DashboardTokenAuth
+
+    raw = bearer_token(request.headers.get("authorization"))
+    if raw is None or not looks_like_token(raw):
+        raise unauthenticated("send a dashboard read token: Authorization: Bearer mapi_…")
+    try:
+        async with ctx.db.session() as s:
+            who = await _from_token(s, ctx, request, raw, now())
+            token = who.token
+            assert token is not None
+            row = await s.get(m.ApiToken, token.id)
+            assert row is not None
+            tenant = await s.get(m.Tenant, row.tenant_id)
+            if tenant is None or tenant.status != TenantStatus.ACTIVE.value:
+                raise _token_failure(
+                    ctx,
+                    request,
+                    row,
+                    "tenant_inactive",
+                    detail="the organisation of this token is not active",
+                )
+            target = dashboard_scope_target(token.scopes)
+            if target is None or row.dashboard_id != target or len(token.scopes) != 1:
+                raise MapiError(
+                    "this endpoint accepts dashboard read tokens and share sessions only",
+                    code=ErrorCode.FORBIDDEN,
+                )
+            resolved = DashboardTokenAuth(
+                token_id=row.id,
+                tenant_id=row.tenant_id,
+                project_id=row.project_id,
+                owner_id=row.owner_id,
+                owner_kind=row.owner_kind,
+                dashboard_id=target,
+            )
+    except _AuthFailure as failure:
+        await _record_failure(ctx, failure)
+        raise failure.error from None
+    return resolved
 
 
 async def still_authorized(request: Request, auth: RequestAuth) -> bool:

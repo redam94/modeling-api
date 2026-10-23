@@ -190,6 +190,11 @@ The platform shows the secret **one time** only. The server stores only an HMAC 
 if you lose a token, you revoke and replace it. You cannot get it back. A revocation has an
 effect on the next request.
 
+A **read token** is a different kind of token. It reads one dashboard over MCP only, has
+the scope `dashboard:<dashboard_id>` and does not show on the Tokens page. People make
+read tokens on the dashboard
+([Connect a chat tool with MCP](connect-a-chat-tool-with-mcp.md)).
+
 ### Scopes
 
 Scopes can only make a token more limited. A token can never do more than the role of its
@@ -264,12 +269,13 @@ The amounts are an estimate of compute cost at list prices. They are not an invo
 
 ## Kill switches
 
-Two platform-wide switches stop compute quickly. The platform audits both, and both need a
-reason:
+These platform-wide switches stop compute or the dashboard chat quickly. The platform audits
+each change, and each change needs a reason:
 
 | Switch | Effect |
 |---|---|
 | **Uploaded code** (`untrusted_execution_enabled`) | Off: the platform does not accept or lease runs of plugin code that a tenant uploaded. Built-in models continue to work. |
+| **Dashboard chat** (`chat_enabled`) | Off: no chat question reaches a model, on all dashboards ([Ask about your dashboard](ask-about-your-dashboard.md#for-operators)). MCP continues to work. |
 | **Global spend cap** | When the spend of the platform in the current UTC day or month gets to the cap, no new compute starts. Only `internal` tenants can still start compute. |
 
 ```bash

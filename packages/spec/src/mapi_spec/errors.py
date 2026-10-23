@@ -148,6 +148,12 @@ class ErrorCode(StrEnum):
     UPLOADED_CODE_NOT_SHAREABLE = "UPLOADED_CODE_NOT_SHAREABLE"
     UNTRUSTED_PLACEMENT_UNAVAILABLE = "UNTRUSTED_PLACEMENT_UNAVAILABLE"
     REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    # --- v0.20: dashboard chat and read tokens ------------------------------------------
+    CHAT_DISABLED = "CHAT_DISABLED"
+    CHAT_UNAVAILABLE = "CHAT_UNAVAILABLE"
+    CHAT_BUDGET_EXHAUSTED = "CHAT_BUDGET_EXHAUSTED"
+    CHAT_HISTORY_INVALID = "CHAT_HISTORY_INVALID"
+    READ_TOKEN_LIMIT = "READ_TOKEN_LIMIT"
 
 
 Category = Literal["spec", "coords", "capability", "quota", "api", "run", "internal"]
@@ -341,6 +347,22 @@ ERROR_INFO: dict[ErrorCode, ErrorInfo] = {
         409, "No executor in this deployment can run uploaded code", "api"
     ),
     ErrorCode.REAUTH_REQUIRED: ErrorInfo(401, "Sign in again to do this", "api"),
+    # v0.20: dashboard chat and read tokens. CHAT_DISABLED carries details.reason (off,
+    # audience, layout, region, provider, killswitch, budget); CHAT_UNAVAILABLE never echoes
+    # the model provider's text
+    ErrorCode.CHAT_DISABLED: ErrorInfo(409, "Chat is off for this dashboard", "api"),
+    ErrorCode.CHAT_UNAVAILABLE: ErrorInfo(
+        503, "The chat assistant is not available now. Try again later", "api", retryable=True
+    ),
+    ErrorCode.CHAT_BUDGET_EXHAUSTED: ErrorInfo(
+        429, "The chat budget of this dashboard is spent for today", "quota"
+    ),
+    ErrorCode.CHAT_HISTORY_INVALID: ErrorInfo(
+        400, "The conversation history was changed or is not from this chat", "api"
+    ),
+    ErrorCode.READ_TOKEN_LIMIT: ErrorInfo(
+        409, "You have the maximum number of active read tokens for this dashboard", "quota"
+    ),
 }
 
 

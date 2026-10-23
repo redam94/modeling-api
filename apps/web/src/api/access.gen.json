@@ -487,6 +487,7 @@
     "models:validate",
     "policies:manage",
     "runs:write",
+    "dashboard",
     "admin"
   ]
 }

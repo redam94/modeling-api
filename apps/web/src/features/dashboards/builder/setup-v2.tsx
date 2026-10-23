@@ -17,6 +17,7 @@ import { useDashboardPresets } from "../api";
 import type { PresetRef } from "../keys";
 import { Section } from "../readout/parts";
 import { MAX_TILES, PRESET_KEYS, TILE_KEYS, type DashboardSpecV2, type PresetKey, type SourceCatalog, type SubjectUnit } from "../types";
+import { ChatSettingsSection } from "./chat-settings";
 import { PanelsEditor } from "./panels-editor";
 import { ChannelsSection, SourceSection, WordsSection, type SpecEditorProps } from "./setup";
 import { issueAt, TILE_LABEL, toggleTile, type FormIssue } from "./spec-form";
@@ -63,6 +64,7 @@ export function SetupV2({ spec, onChange, issues, grid, readOnly = false }: V2Pr
           </span>
         </div>
       </fieldset>
+      <ChatSettingsSection />
     </div>
   );
 }

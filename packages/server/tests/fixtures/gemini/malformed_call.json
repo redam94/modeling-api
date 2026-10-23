@@ -1,0 +1,24 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "The model produced a function call that does not parse.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": []
+        },
+        "finishReason": "MALFORMED_FUNCTION_CALL",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1500,
+      "candidatesTokenCount": 7,
+      "totalTokenCount": 1507
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-malformed_call"
+  }
+}

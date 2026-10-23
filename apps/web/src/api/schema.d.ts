@@ -950,6 +950,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards/{dashboard_id}/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat
+         * @description Whether you can chat about this dashboard now (``reason`` when not), whether it keeps
+         *     conversations, and the suggested questions.
+         */
+        get: operations["get_dashboard_chat"];
+        put?: never;
+        /**
+         * Post Dashboard Chat
+         * @description Ask the assistant about this dashboard: one answer per request. Send the earlier
+         *     turns of the conversation as they were returned (assistant turns with their ``sig``).
+         *     ``409 CHAT_DISABLED``, ``429 CHAT_BUDGET_EXHAUSTED`` or ``RATE_LIMITED`` (with
+         *     ``Retry-After``), ``400 CHAT_HISTORY_INVALID``, ``503 CHAT_UNAVAILABLE``.
+         */
+        post: operations["post_dashboard_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat Settings
+         * @description The chat settings of the dashboard and the tokens used today (``ETag``: send it back
+         *     in ``If-Match`` to change them).
+         */
+        get: operations["get_dashboard_chat_settings"];
+        /**
+         * Put Dashboard Chat Settings
+         * @description Change the chat settings. ``If-Match`` must be the ``etag`` you read (``412
+         *     PRECONDITION_FAILED`` when it is missing or the settings changed). Audited.
+         */
+        put: operations["put_dashboard_chat_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/transcripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Chat Transcripts
+         * @description The kept conversations of the dashboard, newest first.
+         */
+        get: operations["list_dashboard_chat_transcripts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/chat/transcripts/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard Chat Transcript
+         * @description One kept conversation, oldest turn first (``404`` when nothing is kept).
+         */
+        get: operations["get_dashboard_chat_transcript"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Dashboard Chat Transcript
+         * @description Delete a kept conversation (every turn of it). Audited with the number of turns.
+         */
+        delete: operations["delete_dashboard_chat_transcript"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboards/{dashboard_id}/draft": {
         parameters: {
             query?: never;
@@ -1056,6 +1154,51 @@ export interface paths {
          */
         post: operations["submit_dashboard_predictions"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/read-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dashboard Read Tokens
+         * @description Your read tokens for this dashboard, newest first (``all=true``: every owner's, for
+         *     editors). Never a secret.
+         */
+        get: operations["list_dashboard_read_tokens"];
+        put?: never;
+        /**
+         * Create Dashboard Read Token
+         * @description Make a read token for this dashboard. ``secret`` is returned now and never again.
+         */
+        post: operations["create_dashboard_read_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}/read-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Dashboard Read Token
+         * @description Revoke a read token (idempotent): yours, or any of the dashboard's as an editor.
+         */
+        delete: operations["revoke_dashboard_read_token"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2530,6 +2673,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mcp Endpoint
+         * @description Public: the MCP server of one dashboard. Send one JSON-RPC 2.0 message with a
+         *     dashboard read token (``Authorization: Bearer``) or a share session
+         *     (``X-Mapi-Share``). Methods: ``initialize``, ``ping``, ``tools/list``, ``tools/call``
+         *     and the ``notifications/initialized`` notification (``202``, no body).
+         */
+        post: operations["mcp_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -3911,6 +4077,33 @@ export interface paths {
         get: operations["get_shared_batch_template"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shared/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Shared Chat
+         * @description Public: whether this link can chat now (``reason`` when not), and the suggested
+         *     questions.
+         */
+        get: operations["get_shared_chat"];
+        put?: never;
+        /**
+         * Post Shared Chat
+         * @description Public: ask the assistant about the shared dashboard (one answer per request). ``410
+         *     LINK_EXPIRED`` once the link ended; ``409 CHAT_DISABLED`` when the dashboard does not
+         *     open chat to share links.
+         */
+        post: operations["post_shared_chat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6150,7 +6343,7 @@ export interface components {
          * @description Audited actions (``<resource>.<verb>``). New actions are additive.
          * @enum {string}
          */
-        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire" | "plugin.claim" | "plugin.approval_request" | "plugin.approve" | "plugin.reject" | "plugin.purge" | "plugin.settings_update" | "plugin.uploader_attest" | "plugin.uploader_revoke";
+        AuditAction: "auth.login" | "auth.login_failed" | "auth.logout" | "tenant.create" | "tenant.update" | "tenant.suspend" | "tenant.reactivate" | "tenant.delete" | "project.create" | "project.update" | "project.delete" | "member.add" | "member.update" | "member.remove" | "token.create" | "token.revoke" | "token.auth_failed" | "quota.update" | "quota.delete" | "quota.denied" | "kill_switch.update" | "executor.evidence_update" | "executor.update" | "run.create" | "run.cancel" | "run.integrity_failure" | "dataset.download" | "model.artifact_link" | "endpoint.promote" | "plugin.publish" | "plugin.yank" | "event.rejected" | "auth.signup" | "auth.signup_rejected" | "auth.email_verified" | "auth.signup_flagged" | "auth.signup_review" | "tenant.verification_update" | "tenant.deletion_request" | "tenant.deletion_cancel" | "tenant.deletion_retry" | "tenant.purged" | "tenant.export" | "project.guided_lock" | "endpoint.create" | "endpoint.promote_override" | "endpoint.rollback" | "endpoint.delete" | "webhook.create" | "webhook.update" | "webhook.delete" | "webhook.secret_rotate" | "webhook.replay" | "webhook.disabled" | "webhook.url_blocked" | "plot.embed_create" | "plot.embed_revoke" | "workflow.create" | "workflow.revision" | "workflow.update" | "workflow.delete" | "workflow.run" | "workflow.run_cancel" | "workflow.schedule_create" | "workflow.schedule_update" | "workflow.schedule_delete" | "workflow.trigger_create" | "workflow.trigger_delete" | "policy.create" | "policy.update" | "policy.delete" | "model.validation_request" | "model.validation_transition" | "model.approve" | "model.reject" | "model.deprecate" | "model.evidence_export" | "endpoint.promote_not_validated" | "dataset.about_update" | "run.update" | "run.log" | "experiment.create" | "experiment.update" | "experiment.delete" | "run_view.save" | "run_view.delete" | "dashboard.create" | "dashboard.publish" | "dashboard.archive" | "dashboard.grant" | "dashboard.ungrant" | "dashboard.share_create" | "dashboard.share_revoke" | "dashboard.share_unlock_failed" | "dashboard.actuals_submit" | "dashboard.readout_review" | "dashboard.refit_request" | "dashboard.refit_decide" | "dashboard.upgraded" | "dashboard.readout_keep" | "dashboard.batch_download" | "library.create" | "library.revise" | "library.archive" | "library.promote" | "catalog.describe" | "sample.install" | "sample.join" | "sample.retry" | "sample.retire" | "plugin.claim" | "plugin.approval_request" | "plugin.approve" | "plugin.reject" | "plugin.purge" | "plugin.settings_update" | "plugin.uploader_attest" | "plugin.uploader_revoke" | "dashboard.chat_settings" | "dashboard.chat_transcript_delete" | "dashboard.read_token_create" | "dashboard.read_token_revoke";
         /**
          * AuditEvent
          * @description One audit row. ``tenant_id`` is ``None`` for platform-level actions.
@@ -7510,6 +7703,428 @@ export interface components {
             document: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+        };
+        /**
+         * ChatAudiences
+         * @description Who may chat when chat is on: members, client users with a grant, share links.
+         */
+        ChatAudiences: {
+            /**
+             * Clients
+             * @default true
+             */
+            clients?: boolean;
+            /**
+             * Members
+             * @default true
+             */
+            members?: boolean;
+            /**
+             * Share Links
+             * @default false
+             */
+            share_links?: boolean;
+        };
+        /**
+         * ChatAvailability
+         * @description ``GET …/chat``: may the caller chat on this dashboard, and what to show first.
+         * @example {
+         *       "enabled_for_me": true,
+         *       "keeps_transcripts": false,
+         *       "model": "gemini-3.1-flash-lite",
+         *       "suggestions": [
+         *         "What does the latest readout show?",
+         *         "What changed since the last readout?",
+         *         "How accurate is the model?",
+         *         "Explain the main numbers in plain words."
+         *       ],
+         *       "transcript_days": 30
+         *     }
+         * @example {
+         *       "enabled_for_me": false,
+         *       "reason": "off",
+         *       "suggestions": []
+         *     }
+         */
+        ChatAvailability: {
+            /** Enabled For Me */
+            enabled_for_me: boolean;
+            /**
+             * Keeps Transcripts
+             * @default false
+             */
+            keeps_transcripts?: boolean;
+            /** Model */
+            model?: string | null;
+            /** Reason */
+            reason?: ("off" | "audience" | "layout" | "region" | "provider" | "killswitch" | "budget") | null;
+            /** Suggestions */
+            suggestions?: string[];
+            /**
+             * Transcript Days
+             * @default 30
+             */
+            transcript_days?: number;
+        };
+        /**
+         * ChatRequest
+         * @description ``POST /v1/dashboards/{dashboard_id}/chat`` and ``POST /v1/shared/chat``.
+         *
+         *     ``messages`` is the conversation so far plus the new question: it starts and ends with a
+         *     ``user`` turn and the roles alternate. ``conversation_id`` is ``None`` on the first
+         *     message (the server makes one). ``readout_seq`` tells the assistant which readout the
+         *     person is looking at.
+         * @example {
+         *       "messages": [
+         *         {
+         *           "role": "user",
+         *           "text": "What changed since the last readout?"
+         *         }
+         *       ]
+         *     }
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "messages": [
+         *         {
+         *           "role": "user",
+         *           "text": "What changed since the last readout?"
+         *         },
+         *         {
+         *           "role": "assistant",
+         *           "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *           "text": "Revenue went up by 4%."
+         *         },
+         *         {
+         *           "role": "user",
+         *           "text": "Which tile changed most?"
+         *         }
+         *       ],
+         *       "readout_seq": 12
+         *     }
+         */
+        ChatRequest: {
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Messages */
+            messages: components["schemas"]["ChatTurn"][];
+            /** Readout Seq */
+            readout_seq?: number | null;
+        };
+        /**
+         * ChatResponse
+         * @description The answer to a :class:`ChatRequest`. Send ``reply`` back unchanged in the next
+         *     request's ``messages``.
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "notices": [],
+         *       "reply": {
+         *         "role": "assistant",
+         *         "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *         "text": "Revenue went up by 4% from readout 11 to readout 12."
+         *       },
+         *       "tool_calls": [
+         *         {
+         *           "args": {
+         *             "a_seq": 11,
+         *             "b_seq": 12
+         *           },
+         *           "ms": 38,
+         *           "name": "compare_readouts",
+         *           "ok": true
+         *         }
+         *       ],
+         *       "transcript_kept": false,
+         *       "usage": {
+         *         "input_tokens": 3120,
+         *         "model": "gemini-3.1-flash-lite",
+         *         "output_tokens": 96,
+         *         "thought_tokens": 0,
+         *         "total_tokens": 3216
+         *       }
+         *     }
+         */
+        ChatResponse: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Notices */
+            notices?: ("unverified_numbers" | "tool_limit" | "truncated" | "budget_low" | "transcript_kept")[];
+            reply: components["schemas"]["ChatTurn"];
+            /** Tool Calls */
+            tool_calls?: components["schemas"]["ToolCallSummary"][];
+            /**
+             * Transcript Kept
+             * @default false
+             */
+            transcript_kept?: boolean;
+            usage: components["schemas"]["ChatUsage"];
+        };
+        /**
+         * ChatSettingsUpdate
+         * @description ``PUT …/chat/settings`` with ``If-Match: <etag>``: the whole settings document.
+         * @example {
+         *       "audiences": {
+         *         "clients": true,
+         *         "members": true,
+         *         "share_links": false
+         *       },
+         *       "enabled": true,
+         *       "keep_transcripts": false,
+         *       "share_tokens_per_day": 50000,
+         *       "tokens_per_day": 200000
+         *     }
+         */
+        ChatSettingsUpdate: {
+            audiences: components["schemas"]["ChatAudiences"];
+            /** Enabled */
+            enabled: boolean;
+            /** Keep Transcripts */
+            keep_transcripts: boolean;
+            /** Share Tokens Per Day */
+            share_tokens_per_day: number;
+            /** Tokens Per Day */
+            tokens_per_day: number;
+        };
+        /**
+         * ChatSettingsView
+         * @description ``GET``/``PUT …/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the
+         *     next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day.
+         * @example {
+         *       "audiences": {
+         *         "clients": true,
+         *         "members": true,
+         *         "share_links": false
+         *       },
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "enabled": true,
+         *       "est_micros_today": 4210,
+         *       "etag": "\"c3\"",
+         *       "keep_transcripts": false,
+         *       "share_tokens_per_day": 50000,
+         *       "tokens_per_day": 200000,
+         *       "updated_at": "2026-10-15T09:30:00Z",
+         *       "updated_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "used_today_tokens": 12480,
+         *       "version": 3
+         *     }
+         */
+        ChatSettingsView: {
+            audiences?: components["schemas"]["ChatAudiences"];
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled?: boolean;
+            /**
+             * Est Micros Today
+             * @default 0
+             */
+            est_micros_today?: number;
+            /** Etag */
+            etag: string;
+            /**
+             * Keep Transcripts
+             * @default false
+             */
+            keep_transcripts?: boolean;
+            /**
+             * Share Tokens Per Day
+             * @default 50000
+             */
+            share_tokens_per_day?: number;
+            /**
+             * Tokens Per Day
+             * @default 200000
+             */
+            tokens_per_day?: number;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+            /**
+             * Used Today Tokens
+             * @default 0
+             */
+            used_today_tokens?: number;
+            /**
+             * Version
+             * @default 1
+             */
+            version?: number;
+        };
+        /**
+         * ChatTranscript
+         * @description ``GET …/chat/transcripts/{conversation_id}``: a kept conversation, oldest turn first.
+         * @example {
+         *       "summary": {
+         *         "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *         "expires_at": "2026-11-14T09:34:00Z",
+         *         "first_at": "2026-10-15T09:30:00Z",
+         *         "last_at": "2026-10-15T09:34:00Z",
+         *         "principal_kind": "client",
+         *         "principal_label": "Dana Client",
+         *         "turns": 4
+         *       },
+         *       "turns": [
+         *         {
+         *           "at": "2026-10-15T09:30:00Z",
+         *           "index": 0,
+         *           "role": "user",
+         *           "text": "What changed?"
+         *         },
+         *         {
+         *           "at": "2026-10-15T09:30:00Z",
+         *           "index": 1,
+         *           "ok": true,
+         *           "role": "assistant",
+         *           "text": "Revenue went up by 4%.",
+         *           "tool_calls": [
+         *             "compare_readouts"
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        ChatTranscript: {
+            summary: components["schemas"]["ChatTranscriptSummary"];
+            /** Turns */
+            turns: components["schemas"]["ChatTranscriptTurn"][];
+        };
+        /**
+         * ChatTranscriptSummary
+         * @description One kept conversation (editors). ``principal_label`` is a user's display name or
+         *     ``Share link <name>``; it is never an IP address.
+         * @example {
+         *       "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+         *       "expires_at": "2026-11-14T09:34:00Z",
+         *       "first_at": "2026-10-15T09:30:00Z",
+         *       "last_at": "2026-10-15T09:34:00Z",
+         *       "principal_kind": "client",
+         *       "principal_label": "Dana Client",
+         *       "turns": 4
+         *     }
+         */
+        ChatTranscriptSummary: {
+            /** Conversation Id */
+            conversation_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * First At
+             * Format: date-time
+             */
+            first_at: string;
+            /**
+             * Last At
+             * Format: date-time
+             */
+            last_at: string;
+            /**
+             * Principal Kind
+             * @enum {string}
+             */
+            principal_kind: "member" | "client" | "share";
+            /** Principal Label */
+            principal_label: string;
+            /** Turns */
+            turns: number;
+        };
+        /**
+         * ChatTranscriptTurn
+         * @description One kept turn: its text and the names of the tools called (never their results).
+         * @example {
+         *       "at": "2026-10-15T09:30:00Z",
+         *       "index": 1,
+         *       "ok": true,
+         *       "role": "assistant",
+         *       "text": "Revenue went up by 4%.",
+         *       "tool_calls": [
+         *         "compare_readouts"
+         *       ]
+         *     }
+         */
+        ChatTranscriptTurn: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Index */
+            index: number;
+            /**
+             * Ok
+             * @default true
+             */
+            ok?: boolean;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Text */
+            text: string;
+            /** Tool Calls */
+            tool_calls?: string[];
+        };
+        /**
+         * ChatTurn
+         * @description One turn of a conversation: plain text.
+         *
+         *     A ``user`` turn has no ``sig`` and at most :data:`CHAT_MAX_USER_CHARS` characters. An
+         *     ``assistant`` turn carries the ``sig`` the server returned with it, unchanged.
+         * @example {
+         *       "role": "user",
+         *       "text": "What changed since the last readout?"
+         *     }
+         * @example {
+         *       "role": "assistant",
+         *       "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+         *       "text": "Revenue went up by 4% (readout 12)."
+         *     }
+         */
+        ChatTurn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Sig */
+            sig?: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ChatUsage
+         * @description Model tokens spent by one turn (all model calls of the turn together).
+         * @example {
+         *       "input_tokens": 3120,
+         *       "model": "gemini-3.1-flash-lite",
+         *       "output_tokens": 96,
+         *       "thought_tokens": 0,
+         *       "total_tokens": 3216
+         *     }
+         */
+        ChatUsage: {
+            /** Input Tokens */
+            input_tokens: number;
+            /** Model */
+            model: string;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Thought Tokens */
+            thought_tokens: number;
+            /**
+             * Total Tokens
+             * @description What the daily budgets count
+             */
+            total_tokens: number;
         };
         /**
          * CheckDirection
@@ -12115,7 +12730,7 @@ export interface components {
          * @description Stable error codes. See :data:`ERROR_INFO` for HTTP status and titles.
          * @enum {string}
          */
-        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED" | "PLUGIN_REFUSED" | "PLUGIN_NAMESPACE_TAKEN" | "PLUGIN_VERSION_EXISTS" | "PLUGIN_STATE_CONFLICT" | "PLUGIN_UNAVAILABLE" | "UPLOADED_CODE_NOT_SHAREABLE" | "UNTRUSTED_PLACEMENT_UNAVAILABLE" | "REAUTH_REQUIRED";
+        ErrorCode: "SCHEMA_INVALID" | "SPEC_PARSE_ERROR" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_API_VERSION" | "REF_UNRESOLVED" | "SETTINGS_INVALID" | "BINDING_INVALID" | "SPLIT_INVALID" | "LEAKAGE_RISK" | "DIM_POLICY_LOOSENED" | "SCHEMA_DYNAMIC" | "SIDE_TABLE_COVERAGE" | "PLOT_UNSAFE" | "UNSEEN_LEVELS" | "COORD_NOT_ALLOWED" | "HORIZON_EXCEEDS_FIT" | "MISSING_FUTURE_COVARIATE" | "NON_CONTIGUOUS_EXTENSION" | "CAPABILITY_UNSUPPORTED" | "RECURSIVE_UNSUPPORTED" | "MODE_NOT_SUPPORTED" | "QUOTA_EXCEEDED" | "RATE_LIMITED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "IDEMPOTENCY_CONFLICT" | "PRECONDITION_FAILED" | "USER_CODE_ERROR" | "RESOURCE_EXHAUSTED" | "INFRA_ERROR" | "INTEGRITY_FAILURE" | "TIMEOUT" | "SANDBOX_VIOLATION" | "CANCELLED" | "INTERNAL_ERROR" | "GUIDED_ANSWERS_INVALID" | "BUSINESS_PRIORS_INVALID" | "CALIBRATION_UNSUPPORTED" | "IMPORT_UNSUPPORTED" | "SCENARIO_OUT_OF_RANGE" | "PROMOTION_BLOCKED" | "OVERRIDE_REQUIRED" | "WEBHOOK_URL_BLOCKED" | "WEBHOOK_SIGNATURE_INVALID" | "EMBED_NOT_ALLOWED" | "LINK_EXPIRED" | "EMAIL_NOT_ALLOWED" | "TERMS_NOT_ACCEPTED" | "EMAIL_NOT_VERIFIED" | "IDENTITY_VERIFICATION_REQUIRED" | "ABOUT_INCOMPLETE" | "CHOOSER_ANSWER_INVALID" | "WORKFLOW_INVALID" | "EXPRESSION_INVALID" | "EXPRESSION_ERROR" | "NODE_UNKNOWN" | "SCHEDULE_INVALID" | "WORKFLOW_NOT_RUNNABLE" | "POLICY_INVALID" | "VALIDATION_TRANSITION_INVALID" | "SELF_APPROVAL_FORBIDDEN" | "NOT_VALIDATED" | "EXPLORE_INVALID" | "OPTIMIZE_INFEASIBLE" | "ACTUALS_NOT_SUPPORTED" | "ACTUALS_INVALID" | "NOT_READY" | "INGEST_UNSAFE_FILE" | "DASHBOARD_NOT_PUBLISHED" | "DASHBOARD_INPUT_DISABLED" | "DASHBOARD_LIVE_PAUSED" | "DASHBOARD_RUN_LIMIT" | "DASHBOARD_SPEC_STALE" | "SHARE_PASSCODE_REQUIRED" | "SHARE_PASSCODE_INVALID" | "SHARE_LOCKED" | "INVALID_ROLE_SCOPE" | "DASHBOARD_INPUT_INVALID" | "DASHBOARD_BATCH_TOO_LARGE" | "DASHBOARD_DOWNLOAD_GONE" | "DASHBOARD_LAYOUT_RETIRED" | "LIBRARY_INVALID" | "LIBRARY_DATA_SHAPE" | "SCHEMA_UNSAFE" | "EXTENSION_UNAVAILABLE" | "SAMPLES_DISABLED" | "PREVIEW_DISABLED" | "PLUGIN_REFUSED" | "PLUGIN_NAMESPACE_TAKEN" | "PLUGIN_VERSION_EXISTS" | "PLUGIN_STATE_CONFLICT" | "PLUGIN_UNAVAILABLE" | "UPLOADED_CODE_NOT_SHAREABLE" | "UNTRUSTED_PLACEMENT_UNAVAILABLE" | "REAUTH_REQUIRED" | "CHAT_DISABLED" | "CHAT_UNAVAILABLE" | "CHAT_BUDGET_EXHAUSTED" | "CHAT_HISTORY_INVALID" | "READ_TOKEN_LIMIT";
         /**
          * ErrorPayload
          * @description ``error``: the run failed; ``message`` is platform-authored, plugin text is untrusted.
@@ -15219,6 +15834,10 @@ export interface components {
          *       "global_spend_cap_micros": 500000000,
          *       "reason": "daily cap for the beta"
          *     }
+         * @example {
+         *       "chat_enabled": false,
+         *       "reason": "model provider incident"
+         *     }
          */
         KillSwitchUpdate: {
             /**
@@ -15227,6 +15846,11 @@ export interface components {
              * @default false
              */
             cancel_untrusted_runs?: boolean;
+            /**
+             * Chat Enabled
+             * @description v0.20: turn dashboard chat off (or on again) for every tenant
+             */
+            chat_enabled?: boolean | null;
             /**
              * Clear Spend Cap
              * @description Remove the spend cap
@@ -15256,6 +15880,12 @@ export interface components {
          *     }
          */
         KillSwitches: {
+            /**
+             * Chat Enabled
+             * @description Off: no dashboard chat turn reaches a model
+             * @default true
+             */
+            chat_enabled?: boolean;
             /**
              * Global Spend Cap Micros
              * @description Stop new compute once the platform spent this much
@@ -18682,6 +19312,19 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * Page[ChatTranscriptSummary]
+         * @example {
+         *       "items": [],
+         *       "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+         *     }
+         */
+        Page_ChatTranscriptSummary_: {
+            /** Items */
+            items: components["schemas"]["ChatTranscriptSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /**
          * Page[CheckResult]
          * @example {
          *       "items": [],
@@ -21531,6 +22174,140 @@ export interface components {
             mask_var?: string | null;
             /** Within Dim */
             within_dim: string;
+        };
+        /**
+         * ReadToken
+         * @description A dashboard read token as listed (never its secret or hash).
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "expires_at": "2026-11-14T09:30:00Z",
+         *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "last_used_at": "2026-10-16T08:00:00Z",
+         *       "name": "Claude Desktop",
+         *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "owner_label": "Dana Client",
+         *       "prefix": "7k2m9q4x"
+         *     }
+         */
+        ReadToken: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Owner Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /** Owner Label */
+            owner_label: string;
+            /**
+             * Prefix
+             * @example 7k2m9q4x
+             */
+            prefix: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+        };
+        /**
+         * ReadTokenCreate
+         * @description ``POST …/read-tokens``: a read token for this dashboard, owned by the caller. The
+         *     server sets the scope (``dashboard:<dashboard_id>``) and the owner.
+         * @example {
+         *       "expires_in_days": 30,
+         *       "name": "Claude Desktop"
+         *     }
+         */
+        ReadTokenCreate: {
+            /**
+             * Expires In Days
+             * @default 30
+             */
+            expires_in_days?: number;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ReadTokenCreated
+         * @description ``201`` body of ``POST …/read-tokens``: the only time ``secret`` is returned.
+         * @example {
+         *       "created_at": "2026-10-15T09:30:00Z",
+         *       "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+         *       "expires_at": "2026-11-14T09:30:00Z",
+         *       "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+         *       "last_used_at": "2026-10-16T08:00:00Z",
+         *       "name": "Claude Desktop",
+         *       "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+         *       "owner_label": "Dana Client",
+         *       "prefix": "7k2m9q4x",
+         *       "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d"
+         *     }
+         */
+        ReadTokenCreated: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dashboard Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            dashboard_id: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            id: string;
+            /** Last Used At */
+            last_used_at?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Owner Id
+             * @example run_01jaf3q2x8m9v7k5h4g3f2e1d0
+             */
+            owner_id: string;
+            /** Owner Label */
+            owner_label: string;
+            /**
+             * Prefix
+             * @example 7k2m9q4x
+             */
+            prefix: string;
+            /** Revoked At */
+            revoked_at?: string | null;
+            /**
+             * Secret
+             * @description The full token. Store it now; it is not shown again.
+             */
+            secret: string;
         };
         /**
          * Readout
@@ -25909,6 +26686,49 @@ export interface components {
          * @enum {string}
          */
         TokenStatus: "active" | "expired" | "revoked";
+        /**
+         * ToolCallSummary
+         * @description One tool call the assistant made in a turn (shown as a chip; never the result).
+         *
+         *     ``args`` larger than :data:`CHAT_MAX_TOOL_ARGS_BYTES` are replaced by
+         *     ``{"_truncated": true}``.
+         * @example {
+         *       "args": {
+         *         "seq": 12
+         *       },
+         *       "ms": 41,
+         *       "name": "get_readout",
+         *       "ok": true
+         *     }
+         * @example {
+         *       "args": {
+         *         "panel_id": "nope"
+         *       },
+         *       "code": "NOT_FOUND",
+         *       "ms": 12,
+         *       "name": "get_panel",
+         *       "ok": false
+         *     }
+         */
+        ToolCallSummary: {
+            /** Args */
+            args?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            code?: components["schemas"]["ErrorCode"] | null;
+            /** Ms */
+            ms: number;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Truncated
+             * @description The result was trimmed to fit the budget
+             * @default false
+             */
+            truncated?: boolean;
+        };
         /**
          * TourProgress
          * @description Where the user is in one tour. ``updated_at`` is set by the server on merge.
@@ -30579,6 +31399,542 @@ export interface operations {
             };
         };
     };
+    get_dashboard_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAvailability"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    post_dashboard_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Problem: CHAT_HISTORY_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_DISABLED, DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_UNAVAILABLE */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_chat_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsView"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    put_dashboard_chat_settings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatSettingsView"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PRECONDITION_FAILED */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_chat_transcripts: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ChatTranscriptSummary_"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_dashboard_chat_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatTranscript"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_dashboard_chat_transcript: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     update_dashboard_draft: {
         parameters: {
             query?: never;
@@ -31032,6 +32388,221 @@ export interface operations {
                 };
             };
             /** @description Problem: RATE_LIMITED, DASHBOARD_RUN_LIMIT, QUOTA_EXCEEDED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_dashboard_read_tokens: {
+        parameters: {
+            query?: {
+                all?: boolean;
+            };
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadToken"][];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_dashboard_read_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadTokenCreated"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: READ_TOKEN_LIMIT, DASHBOARD_NOT_PUBLISHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke_dashboard_read_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -36211,6 +37782,101 @@ export interface operations {
             };
         };
     };
+    mcp_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description One JSON-RPC 2.0 message (MCP 2025-11-25, 2025-06-18 or 2025-03-26) */
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description The JSON-RPC response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Accepted (a notification; no body) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     get_me: {
         parameters: {
             query?: never;
@@ -40219,6 +41885,198 @@ export interface operations {
             };
             /** @description Problem: RATE_LIMITED */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_shared_chat: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatAvailability"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    post_shared_chat: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Mapi-Share"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Problem: CHAT_HISTORY_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: UNAUTHENTICATED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_DISABLED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: LINK_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: SCHEMA_INVALID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Problem: CHAT_UNAVAILABLE */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
