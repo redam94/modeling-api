@@ -122,13 +122,22 @@ MODEL_ERROR_MESSAGES: Final[dict[str, str]] = {
 
 class ChatModelError(Exception):
     """A model call failed. ``kind`` says how; ``status`` is the provider's HTTP status
-    when there was one. The message is fixed per kind: provider bodies, prompts and keys are
-    never part of it."""
+    when there was one. ``usage`` is the token count the provider billed for the failed call
+    (a blocked or unusable ``200`` answer carries one; a timed-out call gets an estimate from
+    the loop) so the budgets are charged for it. The message is fixed per kind: provider
+    bodies, prompts and keys are never part of it."""
 
-    def __init__(self, kind: ModelErrorKind, *, status: int | None = None) -> None:
+    def __init__(
+        self,
+        kind: ModelErrorKind,
+        *,
+        status: int | None = None,
+        usage: ModelUsage | None = None,
+    ) -> None:
         super().__init__(MODEL_ERROR_MESSAGES[kind])
         self.kind: ModelErrorKind = kind
         self.status = status
+        self.usage = usage
 
     def __repr__(self) -> str:
         return f"ChatModelError(kind={self.kind!r}, status={self.status!r})"

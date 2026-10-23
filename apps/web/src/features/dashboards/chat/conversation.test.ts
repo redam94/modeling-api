@@ -105,7 +105,8 @@ describe("chatReducer", () => {
     const s1 = chatReducer(before, { type: "send", text: "Why?" });
     const s2 = chatReducer(s1, { type: "failed", error: httpError(503, "CHAT_UNAVAILABLE", 5) });
     expect(s2.pending).toBeNull();
-    expect(s2.failed).toEqual({ text: "Why?", error: { kind: "unavailable", status: 503, code: "CHAT_UNAVAILABLE", retryAfter: 5 } });
+    expect(s2.failed).toEqual({ text: "Why?", error: { kind: "unavailable", status: 503, code: "CHAT_UNAVAILABLE", retryAfter: 5, retryAt: s2.failed?.error.retryAt } });
+    expect(typeof s2.failed?.error.retryAt).toBe("number");
     expect(s2.turns).toEqual(before.turns);
     expect(canRetry(s2.failed!.error)).toBe(true);
     const s3 = chatReducer(s2, { type: "retry" });
@@ -151,7 +152,10 @@ describe("chatReducer", () => {
 
 describe("chatErrorOf", () => {
   it("reads the problems a chat request can answer", () => {
-    expect(chatErrorOf(httpError(429, "CHAT_BUDGET_EXHAUSTED", 3600))).toEqual({ kind: "budget", status: 429, code: "CHAT_BUDGET_EXHAUSTED", retryAfter: 3600 });
+    const before = Date.now();
+    const budget = chatErrorOf(httpError(429, "CHAT_BUDGET_EXHAUSTED", 3600));
+    expect(budget).toMatchObject({ kind: "budget", status: 429, code: "CHAT_BUDGET_EXHAUSTED", retryAfter: 3600 });
+    expect(budget.retryAt).toBeGreaterThanOrEqual(before + 3_600_000);
     expect(chatErrorOf(httpError(429, "RATE_LIMITED", 20)).kind).toBe("rate");
     expect(chatErrorOf(httpError(409, "CHAT_DISABLED")).kind).toBe("disabled");
     expect(chatErrorOf(httpError(400, "CHAT_HISTORY_INVALID")).kind).toBe("history");

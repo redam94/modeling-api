@@ -15,6 +15,8 @@ import { createHandlers } from "@/mocks/handlers";
 
 import { ChatLauncher } from "./chat-launcher";
 import { errorText, NOTICE_TEXT, toolLabel } from "./chat-panel";
+import { chatErrorOf } from "./conversation";
+import { setViewedReadout } from "./viewed-readout";
 import type { ChatAvailability, ChatRequest, ChatResponse, ChatTransport } from "./types";
 
 const SIG = "s".repeat(43);
@@ -106,6 +108,20 @@ describe("ChatLauncher", () => {
     expect(panel.className).toContain("max-sm:w-full");
     // Not modal: the dashboard stays readable beside it.
     expect(screen.getByText("The readout")).toBeVisible();
+  });
+
+  it("sends the readout the history shows as readout_seq (web+docs-1)", async () => {
+    const { user, transport } = setup();
+    setViewedReadout(["test", "dash"], 11);
+    setViewedReadout(["other", "dash"], 3); // another viewer's client: never this one's
+    try {
+      await openPanel(user);
+      await user.click(screen.getByRole("button", { name: "What does the latest readout show?" }));
+      expect(sent(transport).readout_seq).toBe(11);
+    } finally {
+      setViewedReadout(["test", "dash"], null);
+      setViewedReadout(["other", "dash"], null);
+    }
   });
 
   it("says the dashboard keeps chats before the first question", async () => {
@@ -253,6 +269,21 @@ describe("copy", () => {
     expect(errorText({ ...e, kind: "budget" })).toBe("This dashboard has used its chat allowance for today. You can ask again tomorrow.");
     expect(errorText({ ...e, kind: "rate" })).toBe("You asked many questions in a short time. Wait a minute, then try again.");
     expect(errorText({ ...e, kind: "link_ended" })).toBe("This link has ended or was removed.");
+  });
+
+  it("shows a reset time that does not move as time passes (web+docs-8)", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 9, 23, 23, 0, 0));
+      const error = chatErrorOf(Object.assign(new Error("x"), { status: 429, problem: { code: "CHAT_BUDGET_EXHAUSTED" }, retryAfter: 3600 }));
+      const first = errorText(error);
+      vi.setSystemTime(new Date(2026, 9, 23, 23, 7, 0));
+      expect(errorText(error)).toBe(first);
+      const midnight = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(2026, 9, 24, 0, 0, 0));
+      expect(first).toContain(`after ${midnight}`);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -9,6 +9,8 @@
  * - `VITE_TERMS_URL`, `VITE_ACCEPTABLE_USE_URL`: the documents sign-up asks people to accept
  *   (default: the summaries the app ships at `/terms` and `/acceptable-use`). An `http(s)` URL
  *   or a path on the app's own origin.
+ * - `VITE_DOCS_URL`: the root of the documentation site (an `http(s)` URL). The chat panel's
+ *   "Learn more" links go to its guide pages; without it the panel shows no such links.
  */
 
 const ORIGIN_RE = /^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$|^https?:\/\/\[[0-9a-fA-F:]+\](?::\d{1,5})?$/;
@@ -38,6 +40,19 @@ export function normaliseDocUrl(value: string | undefined, fallback: string): st
   return url.toString();
 }
 
+/** The documentation site root (an `http(s)` URL, with a trailing `/`), or `null` when unset or not valid. */
+export function normaliseDocsBase(value: string | undefined): string | null {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.href.endsWith("/") ? url.href : `${url.href}/`;
+  } catch {
+    return null;
+  }
+}
+
 export const env = {
   apiBase: normaliseBase(import.meta.env.VITE_API_BASE, "http://127.0.0.1:8000"),
   plotsOrigin: normaliseOrigin(import.meta.env.VITE_PLOTS_ORIGIN, "http://127.0.0.1:5174"),
@@ -45,6 +60,7 @@ export const env = {
   mock: import.meta.env.MODE === "mock",
   termsUrl: normaliseDocUrl(import.meta.env.VITE_TERMS_URL, "/terms"),
   acceptableUseUrl: normaliseDocUrl(import.meta.env.VITE_ACCEPTABLE_USE_URL, "/acceptable-use"),
+  docsUrl: normaliseDocsBase(import.meta.env.VITE_DOCS_URL),
 } as const;
 
 if (typeof window !== "undefined" && window.location.origin === env.plotsOrigin) {

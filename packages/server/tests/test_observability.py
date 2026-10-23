@@ -199,3 +199,122 @@ async def test_worker_serves_its_own_metrics_on_request() -> None:
     finally:
         server.should_exit = True
         await task
+
+
+async def test_mcp_request_spans_never_carry_the_query_string() -> None:
+    """The residual of mcp-5: a read token in ``/v1/mcp?token=`` never reaches a span."""
+    from fastapi import FastAPI
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    app = FastAPI()
+
+    @app.post("/v1/mcp")
+    async def mcp() -> dict[str, str]:
+        return {}
+
+    @app.post("/v1/other")
+    async def other() -> dict[str, str]:
+        return {}
+
+    secret = "mapi_abcdefgh_" + "x" * 39
+    obs_tracing.shutdown_tracing()
+    obs_tracing.instrument_app(app, tracer_provider=provider)
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            await c.post(f"/v1/mcp?token={secret}&x=Bearer%20{secret}")
+            await c.post("/v1/other?page=2")
+    finally:
+        obs_tracing.shutdown_tracing()
+    spans = exporter.get_finished_spans()
+    mcp_spans = [s for s in spans if "/v1/mcp" in str(dict(s.attributes or {}))]
+    assert mcp_spans
+    for span in spans:
+        assert secret not in str(dict(span.attributes or {})), span.name
+    # other routes keep their query
+    assert any("page=2" in str(dict(s.attributes or {})) for s in spans)
+
+
+def test_scrub_mcp_query_rewrites_the_stable_attributes_too() -> None:
+    from opentelemetry.sdk.trace import TracerProvider
+
+    span = TracerProvider().get_tracer("t").start_span(
+        "x", attributes={"url.query": "token=mapi_x", "http.url": "http://h/v1/mcp?token=mapi_x",
+                         "http.target": "/v1/mcp?token=mapi_x", "url.path": "/v1/mcp"},
+    )  # fmt: skip
+    obs_tracing.scrub_mcp_query(span, {"type": "http", "path": "/v1/mcp", "query_string": b"t"})
+    attrs = dict(span.attributes or {})
+    assert "mapi_x" not in str(attrs) and attrs["url.query"] == "REDACTED"
+    assert attrs["http.url"] == "http://h/v1/mcp?REDACTED"
+    span.end()
+
+
+async def test_mcp_query_never_reaches_the_access_log() -> None:
+    """v0.20 live: ``POST /v1/mcp?token=mapi_…`` was refused (401) but uvicorn's access log
+    printed the whole query, read token included (plan D19). The filter that the app
+    attaches must survive uvicorn's own logging ``dictConfig`` (as in ``mapi-server api``);
+    other paths keep their query."""
+    import asyncio
+    import socket
+
+    import uvicorn
+    from fastapi import FastAPI
+
+    app = FastAPI()
+
+    @app.post("/v1/mcp")
+    async def mcp() -> dict[str, str]:
+        return {}
+
+    @app.post("/v1/other")
+    async def other() -> dict[str, str]:
+        return {}
+
+    obs_logging.redact_access_log()  # the app factory does this before uvicorn.run
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, lifespan="off"))
+    lines: list[str] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            lines.append(record.getMessage())
+
+    access = logging.getLogger("uvicorn.access")
+    capture = _Capture()
+    access.addHandler(capture)
+    task = asyncio.create_task(server.serve())
+    secret = "mapi_abcdefgh_" + "x" * 39
+    try:
+        for _ in range(100):
+            if server.started:
+                break
+            await asyncio.sleep(0.02)
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}") as c:
+            await c.post(f"/v1/mcp?token={secret}&key={secret}")
+            await c.post("/v1/mcp/?x=Bearer%20" + secret)
+            await c.post("/v1/other?page=2")
+    finally:
+        server.should_exit = True
+        await task
+        access.removeHandler(capture)
+    assert any("/v1/mcp?REDACTED" in line for line in lines), lines
+    assert all(secret not in line for line in lines), lines
+    assert any("/v1/other?page=2" in line for line in lines), lines
+
+
+def test_mcp_query_redactor_leaves_other_records_alone() -> None:
+    f = obs_logging.McpQueryRedactor()
+    rec = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, "%s %s", ("a", "b"), None)
+    assert f.filter(rec) and rec.args == ("a", "b")
+    rec = logging.LogRecord(
+        "uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+        ("1.2.3.4:5", "POST", "/v1/mcpx?token=a", "1.1", 401), None,
+    )  # fmt: skip
+    assert f.filter(rec) and rec.args[2] == "/v1/mcpx?token=a"

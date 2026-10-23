@@ -35,7 +35,7 @@ link. The chat is off on each dashboard until an editor turns it on.
 - Tool results are shortened to a byte budget (`mapi_spec.tool_results.cap_tool_result`):
   24 KiB for the chat, 64 KiB for MCP.
 - MCP: `POST /v1/mcp` (stateless streamable HTTP, JSON answers; `initialize`, `ping`,
-  `tools/list`, `tools/call`; revisions `2025-11-25`, `2025-06-18` and `2025-03-26`) and the
+  `tools/list`, `tools/call`; revisions `2025-11-25` and `2025-06-18`) and the
   pure protocol core `mapi_spec.mcp`. No MCP SDK.
 - The package `mapi-mcp` (version 0.16.0, Apache-2.0): a stdio bridge to `POST /v1/mcp`. It
   reads its credential from the environment or from `~/.config/mapi/mcp.json` (mode 0600
@@ -53,8 +53,10 @@ link. The chat is off on each dashboard until an editor turns it on.
   `CHAT_HISTORY_INVALID` and `READ_TOKEN_LIMIT`; audit actions `dashboard.chat_settings`,
   `dashboard.chat_transcript_delete`, `dashboard.read_token_create` and
   `dashboard.read_token_revoke`.
-- The kill switch `chat_enabled` (`PUT /v1/admin/kill-switches`) stops all chats. MCP
-  continues.
+- The kill switch `chat_enabled` (`PUT /v1/admin/kill-switches`, or "Dashboard chat" in
+  Admin console › Kill switches) stops all chats. MCP continues.
+- A query string on `/v1/mcp` (for example a misplaced `?token=mapi_…`) is written as
+  `?REDACTED` in the access log and in request spans.
 - Settings: `MAPI_CHAT_PROVIDER` (`off`, `gemini` or `fake`), `MAPI_GEMINI_API_KEY`,
   `MAPI_GEMINI_ENDPOINT`, `MAPI_CHAT_*`, `MAPI_MCP_ENABLED`, `MAPI_MCP_ALLOWED_ORIGINS`,
   `MAPI_MCP_RATE_PER_MINUTE`, `MAPI_DASHBOARD_READ_TOKEN_MAX_DAYS` and

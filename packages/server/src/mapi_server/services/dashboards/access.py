@@ -372,6 +372,24 @@ async def _token_owner_role(ctx: ServerContext, tok: DashboardTokenAuth) -> Proj
     return role
 
 
+async def require_read_token_target(
+    session: AsyncSession, row: m.Dashboard, rev: m.DashboardRevision
+) -> DashboardSpecV2:
+    """The checks a dashboard read token needs of its dashboard's published revision, on
+    every use (:func:`token_context`) and when it is made (so no token is made that can never
+    work): ``403 FORBIDDEN`` for layout 1, ``403 UPLOADED_CODE_NOT_SHAREABLE`` when anything
+    the dashboard shows was made with uploaded code. Returns the layout 2 spec."""
+    spec = any_revision_spec(rev)
+    if not isinstance(spec, DashboardSpecV2):
+        raise MapiError(
+            "this dashboard uses layout 1: chat tools connect to layout 2 dashboards only. "
+            "Ask your analyst to upgrade the layout",
+            code=ErrorCode.FORBIDDEN,
+        )
+    await require_shareable(session, dashboard=row)
+    return spec
+
+
 async def token_context(ctx: ServerContext, tok: DashboardTokenAuth) -> DashboardContext:
     """The :class:`DashboardContext` of a dashboard read token, checked again on every use
     (plan I-6, D11-D13).
@@ -398,14 +416,7 @@ async def token_context(ctx: ServerContext, tok: DashboardTokenAuth) -> Dashboar
         rev = await load_revision(session, row)
         if rev is None:
             raise NotFoundError("dashboard", tok.dashboard_id)
-        spec = any_revision_spec(rev)
-        if not isinstance(spec, DashboardSpecV2):
-            raise MapiError(
-                "this dashboard uses layout 1: chat tools connect to layout 2 dashboards only. "
-                "Ask your analyst to upgrade the layout",
-                code=ErrorCode.FORBIDDEN,
-            )
-        await require_shareable(session, dashboard=row)
+        spec = await require_read_token_target(session, row, rev)
         mode = (
             await actuals_mode(session, ctx, rev.model_version_id) if spec.actuals.enabled else None
         )

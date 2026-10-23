@@ -31,7 +31,9 @@ You need one of these credentials. Each credential is for one dashboard:
 
 The dashboard must be published with the panels layout (layout 2). A dashboard that uses
 uploaded code refuses all read tokens and share links (`403 UPLOADED_CODE_NOT_SHAREABLE`),
-also the tokens of team members ([Upload your own code](../extend/upload.md)).
+also the tokens of team members ([Upload your own code](../extend/upload.md)). The app does
+not make a token for such a dashboard: **Make token** says why (uploaded code, layout 1, or
+not published now).
 
 ## Make a read token
 
@@ -39,7 +41,7 @@ also the tokens of team members ([Upload your own code](../extend/upload.md)).
 2. Select **Connect a chat tool**.
 3. Under **Make a read token**, type a name, for example the name of the tool. Select how
    long the token works in **Ends after** (a maximum of 90 days).
-4. Select **Make a read token**.
+4. Select **Make token**.
 5. Select **Copy read token**. The app shows the token **one time** only. If you lose it,
    revoke it and make a new one.
 6. Under **Add it to your chat tool**, select **Desktop app (stdio)** or
@@ -55,7 +57,8 @@ The rules of a read token:
 - It sees the **published** readouts only, also when a team member made it. It never sees
   private readouts.
 - It acts as you. If you lose access to the dashboard, or the dashboard is unpublished, the
-  token stops at the next request. You do not need to revoke it.
+  token stops at the next request. It works again when the access comes back, so revoke a
+  token that you do not use. You can revoke your own tokens also after you lost access.
 - You can have 5 active tokens for each dashboard. Make one token for each tool.
 - Only a web sign-in can make a token. A token cannot make a different token.
 
@@ -152,7 +155,9 @@ who used that link ([Share links and privacy](ask-about-your-dashboard.md#share-
 
 The next request with the token fails. Editors can select **Show everyone's tokens** to see
 and revoke the tokens of all persons on the dashboard. A token also stops when it ends, and
-when its owner loses access to the dashboard.
+while its owner has no access to the dashboard. A revoked token never works again. You can
+list and revoke your own tokens also when you no longer have access to the dashboard
+(`GET` and `DELETE /v1/dashboards/{id}/read-tokens…`).
 
 The audit log records each token that is made or revoked (`dashboard.read_token_create`,
 `dashboard.read_token_revoke`).
@@ -170,8 +175,10 @@ Other methods (`resources/*`, `prompts/*`, `sampling/*`) answer the JSON-RPC err
 The tool descriptions are fixed text. They never contain a dashboard title or a channel
 name.
 
-The supported protocol revisions are `2025-11-25`, `2025-06-18` and `2025-03-26`. After
-`initialize`, send the revision in the `MCP-Protocol-Version` header. The endpoint answers
+The supported protocol revisions are `2025-11-25` and `2025-06-18`. A client that asks for
+an older revision (such as `2025-03-26`, which needs batches) gets `2025-11-25` in the
+`initialize` answer. After `initialize`, send the revision in the `MCP-Protocol-Version`
+header. A request without the header is answered as `2025-06-18`. The endpoint answers
 `GET` and `DELETE` with `405`: there is no event stream and no session to end.
 
 ## Limits and errors

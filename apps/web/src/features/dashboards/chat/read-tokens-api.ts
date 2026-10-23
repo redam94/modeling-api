@@ -20,6 +20,19 @@ export function isReadTokenLimit(err: unknown): boolean {
   return err instanceof ApiError && err.code === "READ_TOKEN_LIMIT";
 }
 
+/**
+ * Why a chat tool can never connect to this dashboard (the server refuses to make a token for
+ * it), in plain words, or `null` for any other error: it uses uploaded code, it uses layout 1,
+ * or it is not published now.
+ */
+export function notConnectableText(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null;
+  if (err.code === "UPLOADED_CODE_NOT_SHAREABLE") return "This dashboard uses uploaded code, so no chat tool can connect to it. Read tokens and share links do not work for it.";
+  if (err.code === "DASHBOARD_NOT_PUBLISHED") return "This dashboard is not published now. Publish it before you connect a chat tool.";
+  if (err.code === "FORBIDDEN" && err.status === 403) return "Chat tools connect to layout 2 dashboards only. Upgrade the layout of this dashboard first.";
+  return null;
+}
+
 /** Whether a listed token can still be used now (not revoked, not expired). */
 export function isActiveToken(t: ReadToken, now: number = Date.now()): boolean {
   return !t.revoked_at && Date.parse(t.expires_at) > now;
@@ -64,7 +77,9 @@ export function useCreateReadToken(id: string) {
           body: { name: body.name.trim(), expires_in_days: body.expires_in_days ?? READ_TOKEN_DEFAULT_DAYS },
         }),
       ),
-    // The list is read again (never seeded from this answer, which holds the secret).
+    // The list is read again (never seeded from this answer, which holds the secret), and the
+    // finished mutation is not kept in the mutation cache.
+    gcTime: 0,
     onSuccess: () => qc.invalidateQueries({ queryKey: ck.readTokens(s.key, id) }),
   });
 }

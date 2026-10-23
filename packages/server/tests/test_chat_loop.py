@@ -360,6 +360,97 @@ async def test_a_blocked_answer_is_a_fixed_reply(ctx: ServerContext, kit: dict[s
     assert [(r.outcome, r.input_tokens + r.output_tokens) for r in rows] == [("refused", 0)]
 
 
+async def daily_tokens(ctx: ServerContext, subject: str) -> int:
+    async with ctx.db.session() as s:
+        count = (
+            await s.execute(select(m.RateCounter.count).where(m.RateCounter.subject == subject))
+        ).scalar_one_or_none()
+    return int(count or 0)
+
+
+GEMINI_FIXTURES: Final = Path(__file__).resolve().parent / "fixtures" / "gemini"
+
+
+def gemini_serving(*names: str) -> Any:
+    """The real Gemini adapter over a mock transport that serves fixtures in order (no
+    network: ``conftest.py`` guards the Gemini host)."""
+    from mapi_server.services.chat.gemini import GeminiChatModel
+    from pydantic import SecretStr
+
+    queue = list(names)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        doc = json.loads((GEMINI_FIXTURES / f"{queue.pop(0)}.json").read_text("utf-8"))
+        return httpx.Response(doc["status"], json=doc["body"])
+
+    return GeminiChatModel(
+        SecretStr("AIzaTEST-not-a-real-key"),
+        "gemini-3.1-flash-lite",
+        transport=httpx.MockTransport(handler),
+    )
+
+
+@pytest.mark.parametrize(("fixture", "billed"), [("safety_block", 1500), ("prompt_blocked", 900)])
+async def test_a_blocked_answer_charges_its_billed_tokens(
+    ctx: ServerContext, kit: dict[str, Any], fixture: str, billed: int
+) -> None:
+    # chat-security-1 / backend-1: a provider-blocked 200 is billed; the budgets see it
+    res = await run_chat_turn(
+        ctx, share(ctx, kit), kit["dash_id"], request("hi"), model=gemini_serving(fixture)
+    )
+    assert res.reply.text == BLOCKED_REPLY
+    assert await daily_tokens(ctx, f"chattok:{kit['dash_id']}") == billed
+    assert await daily_tokens(ctx, f"chattokshare:{kit['share_id']}") == billed
+    rows = await usage_rows(ctx)
+    assert [(r.outcome, r.input_tokens + r.output_tokens) for r in rows] == [("refused", billed)]
+
+
+async def test_a_malformed_call_charges_its_billed_tokens(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    with pytest.raises(MapiError) as err:
+        await run_chat_turn(
+            ctx, await member(ctx, kit), kit["dash_id"], request("hi"),
+            model=gemini_serving("malformed_call"),
+        )  # fmt: skip
+    assert err.value.code.value == "CHAT_UNAVAILABLE"
+    assert await daily_tokens(ctx, f"chattok:{kit['dash_id']}") == 1507
+    rows = await usage_rows(ctx)
+    assert [r.outcome for r in rows] == ["error"]
+    assert rows[0].input_tokens + rows[0].output_tokens > 0
+
+
+async def test_a_billed_fake_error_after_tool_rounds_is_charged(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    script = [
+        FakeStep(call=("get_latest_readout", {}), usage=100),
+        FakeStep(error="blocked", billed=True, usage=700),
+    ]
+    res = await ask(ctx, await member(ctx, kit), kit, model=FakeChatModel(script))
+    assert res.reply.text == BLOCKED_REPLY
+    assert await daily_tokens(ctx, f"chattok:{kit['dash_id']}") == 800
+
+
+async def test_a_timed_out_model_call_charges_an_estimate(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    ctx.settings = ctx.settings.model_copy(
+        update={"chat_turn_deadline_s": 0.3, "chat_request_timeout_s": 0.3}
+    )
+
+    async def slow(n: int) -> None:
+        await asyncio.sleep(0.6)
+
+    with pytest.raises(MapiError) as err:
+        await ask(ctx, await member(ctx, kit), kit,
+                  model=FakeChatModel([FakeStep(text="late")], on_generate=slow))  # fmt: skip
+    assert err.value.code.value == "CHAT_UNAVAILABLE"
+    charged = await daily_tokens(ctx, f"chattok:{kit['dash_id']}")
+    # at least the request's input (system + tools, / 4) plus the output limit
+    assert charged >= len(system_prompt()) // 4 + ctx.settings.chat_max_output_tokens
+
+
 async def test_max_tokens_marks_the_answer_truncated(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:

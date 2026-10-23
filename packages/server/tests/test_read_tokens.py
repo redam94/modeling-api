@@ -26,6 +26,8 @@ from mapi_spec.chat import ReadToken, ReadTokenCreated
 from mapi_spec.tokens import dashboard_scope
 from sqlalchemy import select, update
 from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit, dashboard_spec
+from test_dashboards_crud_v2 import create_v2
+from test_token_context import pin_uploaded
 
 pytestmark = pytest.mark.integration
 
@@ -54,9 +56,21 @@ async def client(ctx: ServerContext) -> AsyncIterator[httpx.AsyncClient]:
 @pytest.fixture
 async def kit(ctx: ServerContext, client: httpx.AsyncClient) -> dict[str, Any]:
     kit = await dashboard_kit(ctx, client)
-    kit["dash"] = await create_published(kit)
+    kit["dash"] = await published_v2(kit)
     kit["ctx"] = ctx
     return kit
+
+
+async def published_v2(kit: dict[str, Any], name: str = "acme-weekly", grant: bool = True) -> str:
+    """A layout 2 dashboard published by ``ana`` (and granted to ``cleo``): read tokens are
+    made for layout 2 dashboards only."""
+    dash_id, _ = await create_v2(kit, name)
+    r = await kit["ana"].post(f"/v1/dashboards/{dash_id}:publish")
+    assert r.status_code == 200, r.text
+    if grant:
+        r = await kit["ana"].put(f"/v1/dashboards/{dash_id}/grants/{kit['users']['cleo'].id}")
+        assert r.status_code == 200, r.text
+    return dash_id
 
 
 def _url(dash_id: str, token_id: str | None = None) -> str:
@@ -111,7 +125,7 @@ async def test_a_client_mints_a_token_for_a_granted_dashboard(kit: dict[str, Any
 
 async def test_mint_is_refused_where_the_caller_cannot_read(kit: dict[str, Any]) -> None:
     cleo: Caller = kit["cleo"]
-    ungranted = await create_published(kit, "other", grant=False)
+    ungranted = await published_v2(kit, "other", grant=False)
     for dash in (ungranted, "dsh_" + "0" * 26):
         r = await _mint(cleo, dash)
         assert r.status_code == 404, (dash, r.text)
@@ -180,7 +194,7 @@ async def test_at_most_five_active_tokens_per_user_and_dashboard(
     assert r.status_code == 409 and r.json()["code"] == "READ_TOKEN_LIMIT", r.text
     # another user and another dashboard have their own count
     assert (await _mint(kit["vic"], dash)).status_code == 201
-    other = await create_published(kit, "other")
+    other = await published_v2(kit, "other")
     assert (await _mint(cleo, other)).status_code == 201
     # a revoked or expired token no longer counts
     assert (await cleo.delete(_url(dash, ids[0]))).status_code == 204
@@ -242,7 +256,7 @@ async def test_revoke_own_and_editors_revoke_any(ctx: ServerContext, kit: dict[s
     eve_id = kit["users"]["eve"].id
     assert {a.actor_id for a in audits if a.resource_id in (c2, v1)} == {eve_id}
     # a token of another dashboard is not found under this one
-    other = await create_published(kit, "other")
+    other = await published_v2(kit, "other")
     o1 = (await _mint(cleo, other, "o1")).json()["id"]
     assert (await eve.delete(_url(dash, o1))).status_code == 404
     assert (await cleo.delete(_url(other, o1))).status_code == 204
@@ -282,3 +296,52 @@ async def test_deleting_the_dashboard_deletes_its_tokens(
         await s.execute(m.Dashboard.__table__.delete().where(m.Dashboard.id == dash))
     async with ctx.db.session() as s:
         assert await s.get(m.ApiToken, rt) is None
+
+
+# ======================================================== tokens that could never work
+
+
+async def test_mint_refuses_dashboards_a_token_could_never_read(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    # mcp-4 / web+docs-5: the checks token_context makes on every use are made at mint
+    eve: Caller = kit["eve"]
+    v1 = await create_published(kit, "layout-one")
+    r = await _mint(eve, v1)
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", r.text
+    archived = await published_v2(kit, "archived")
+    r = await kit["ana"].post(f"/v1/dashboards/{archived}:archive")
+    assert r.status_code == 200, r.text
+    r = await _mint(eve, archived)
+    assert r.status_code == 409 and r.json()["code"] == "DASHBOARD_NOT_PUBLISHED", r.text
+    await pin_uploaded(ctx, {**kit, "dash_id": kit["dash"]})
+    r = await _mint(eve, kit["dash"])
+    assert r.status_code == 403 and r.json()["code"] == "UPLOADED_CODE_NOT_SHAREABLE", r.text
+    async with ctx.db.session() as s:
+        assert list((await s.execute(select(m.ApiToken.id))).scalars()) == []
+
+
+async def test_an_owner_who_lost_access_still_lists_and_revokes_their_tokens(
+    ctx: ServerContext, kit: dict[str, Any]
+) -> None:
+    # mcp-3: a revoke must not wait for the grant to come back
+    cleo: Caller = kit["cleo"]
+    dash = kit["dash"]
+    own = (await _mint(cleo, dash, "laptop")).json()["id"]
+    other = (await _mint(kit["vic"], dash, "vic")).json()["id"]
+    r = await kit["ana"].delete(f"/v1/dashboards/{dash}/grants/{kit['users']['cleo'].id}")
+    assert r.status_code in (200, 204), r.text
+    r = await cleo.get(_url(dash))
+    assert r.status_code == 200 and [t["id"] for t in r.json()] == [own], r.text
+    assert (await cleo.delete(_url(dash, own))).status_code == 204
+    # never another owner's token, and never every token without the editor role
+    assert (await cleo.delete(_url(dash, other))).status_code == 404
+    assert (await cleo.get(_url(dash) + "?all=true")).status_code == 403
+    async with ctx.db.session() as s:
+        row = await s.get(m.ApiToken, own)
+        assert row is not None and row.revoked_at is not None
+    # the grant comes back: the revoked token stays revoked
+    r = await kit["ana"].put(f"/v1/dashboards/{dash}/grants/{kit['users']['cleo'].id}")
+    assert r.status_code == 200, r.text
+    listed = (await cleo.get(_url(dash))).json()
+    assert listed[0]["id"] == own and listed[0]["revoked_at"] is not None

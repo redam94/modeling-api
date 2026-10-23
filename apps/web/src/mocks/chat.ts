@@ -571,6 +571,7 @@ export function createChatHandlers(state: ChatMockState, deps: ChatDeps): HttpHa
       share_tokens_per_day: s.share_tokens_per_day,
       used_today_tokens: u.tokens,
       est_micros_today: u.micros,
+      transcript_days: CHAT_TRANSCRIPT_DAYS,
       version: s.version,
       etag: `"c${s.version}"`,
       updated_by: s.updated_by,

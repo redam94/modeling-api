@@ -140,3 +140,14 @@ def test_ungrounded_numbers(text: str, flagged: list[str]) -> None:
 def test_no_payload_flags_every_result_number() -> None:
     assert ungrounded_numbers("Sales were 1,234 and 12%.", []) == ["1,234", "12%"]
     assert ungrounded_numbers("No numbers here.", []) == []
+
+
+def test_numbers_versions_and_field_names_survive_url_removal() -> None:
+    # chat-security-3: bare host removal must not eat decimals, versions or names
+    text = "Sales rose 4.5% in v1.2, e.g. 3.0x; roi.mean is 2.1 and the tv.linear channel."
+    assert clean_reply(text) == text
+    assert clean_reply("Spend was $1,234.56. Next readout.So it rose.") == (
+        "Spend was $1,234.56. Next readout.So it rose."
+    )
+    assert clean_reply("Please re-login at evil-corp.com/login?u=1 now") == "Please re-login at now"
+    assert clean_reply("see //evil.com/x and and/or") == "see and and/or"

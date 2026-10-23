@@ -28,6 +28,7 @@ text are never logged; the log line of a turn holds counts only.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -120,6 +121,7 @@ class _Turn:
 
     deadline: float
     request_timeout: float
+    max_output_tokens: int = 0
     model_calls: int = 0
     tool_calls: int = 0
     limit_rounds: int = 0
@@ -198,10 +200,28 @@ def _model_turns(req: ChatRequest) -> list[ModelTurn]:
     return turns
 
 
+def _estimated_usage(turns: Sequence[ModelTurn], state: _Turn) -> ModelUsage:
+    """A conservative token count for a model call that timed out after it was sent: the
+    provider may still bill it, and the daily budgets must stay a hard bound. Input is the
+    request's characters / 4 (system, turns and tool declarations); output is the most the
+    model may write."""
+    chars = len(system_prompt())
+    chars += sum(len(json.dumps(list(t.parts), ensure_ascii=False)) for t in turns)
+    chars += sum(
+        len(d.name) + len(d.description) + len(json.dumps(d.parameters_json_schema))
+        for d in dashboard_function_decls()
+    )
+    tokens_in = chars // 4 + 1
+    tokens_out = max(0, state.max_output_tokens)
+    return ModelUsage(
+        input=tokens_in, output=tokens_out, thoughts=0, cached=0, total=tokens_in + tokens_out
+    )
+
+
 async def _generate(model: ChatModel, turns: Sequence[ModelTurn], state: _Turn) -> ModelReply:
     remaining = state.remaining()
     if remaining <= 0:
-        raise ChatModelError("timeout")
+        raise ChatModelError("timeout")  # nothing was sent: nothing to charge
     timeout = min(state.request_timeout, remaining)
     try:
         return await asyncio.wait_for(
@@ -214,7 +234,12 @@ async def _generate(model: ChatModel, turns: Sequence[ModelTurn], state: _Turn) 
             timeout=min(timeout + _MODEL_GRACE_S, remaining),
         )
     except TimeoutError:
-        raise ChatModelError("timeout") from None
+        raise ChatModelError("timeout", usage=_estimated_usage(turns, state)) from None
+    except ChatModelError as exc:
+        # a client-side timeout (no HTTP status): the request was sent and may be billed
+        if exc.kind == "timeout" and exc.status is None and exc.usage is None:
+            exc.usage = _estimated_usage(turns, state)
+        raise
 
 
 def _tool_args(call: FunctionCall) -> dict[str, JsonValue]:
@@ -276,6 +301,12 @@ async def _loop(
         try:
             reply = await _generate(model, turns, state)
         except ChatModelError as exc:
+            if exc.usage is not None:
+                # a blocked, unusable or timed-out call is still billed: charge it so the
+                # daily budgets bound what failing turns spend too
+                state.model_calls += 1
+                state.add(exc.usage)
+                await budget.charge(ctx, dctx, principal, exc.usage)
             if exc.kind == "blocked":
                 state.outcome = "refused"
                 return BLOCKED_REPLY, dctx, row
@@ -359,6 +390,7 @@ async def run_chat_turn(
     state = _Turn(
         deadline=time.monotonic() + settings.chat_turn_deadline_s,
         request_timeout=settings.chat_request_timeout_s,
+        max_output_tokens=settings.chat_max_output_tokens,
     )
     dctx = await principal.recheck()
     if dashboard_id and dctx.dashboard_id != dashboard_id:

@@ -27,9 +27,10 @@ Register it outside the app's ``CORSMiddleware`` (so the preflight and the dropp
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Sequence
 from typing import Final
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, unquote_plus
 
 from mapi_spec.dashboards import SHARE_SESSION_HEADER
 from mapi_spec.errors import ERROR_INFO, PROBLEM_CONTENT_TYPE, ErrorCode, Problem
@@ -73,8 +74,9 @@ QUERY_CREDENTIAL_NAMES: Final = frozenset(
     }
 )
 """Query parameter names refused as credentials (compared in lower case)."""
-_TOKEN_PREFIXES: Final = ("mapi_", "mps_", "mpd_")
-"""Token-shaped values (API tokens, share sessions, share links) refused in any parameter."""
+_TOKEN_PATTERN: Final = re.compile(r"(?:mapi|mps|mpd)_[0-9a-z]|\bbearer\s", re.IGNORECASE)
+"""Token-shaped text (API and read tokens, share sessions, share links, a ``Bearer`` value)
+refused anywhere in a parameter's name or value, or in the decoded query as a whole."""
 
 _ALLOW_METHODS: Final = b"POST"
 _ALLOW_HEADERS: Final = ", ".join(
@@ -118,9 +120,10 @@ def _query_has_credentials(raw: bytes) -> bool:
     for name, value in pairs:
         if name.strip().lower() in QUERY_CREDENTIAL_NAMES:
             return True
-        if value.strip().lower().startswith(_TOKEN_PREFIXES):
+        if _TOKEN_PATTERN.search(name) or _TOKEN_PATTERN.search(value):
             return True
-    return False
+    # also the query as one string ("x=a;mapi_…" or a value parse_qsl splits oddly)
+    return _TOKEN_PATTERN.search(unquote_plus(raw.decode("latin-1"))) is not None
 
 
 def _normal_origin(origin: str) -> str:

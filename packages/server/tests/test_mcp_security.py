@@ -96,6 +96,13 @@ async def test_credentials_in_the_query_string_are_refused(kit: dict[str, Any]) 
     # even next to a valid header (the URL may already be in a log)
     r = await post_mcp(client, bearer(secret), PING, params={"token": secret})
     assert r.status_code == 401
+    # mcp-5: a token anywhere in a value (not only at its start), or a Bearer value
+    for params in ({"x": f"Bearer {secret}"}, {"q": f"foo,{secret}"},
+                   {"config": '{"env": {"MAPI_DASHBOARD_TOKEN": "' + secret + '"}}'},
+                   {"x": "Bearer abc"}, {f"k{secret}": "1"}):  # fmt: skip
+        r = await post_mcp(client, bearer(secret), PING, params=params)
+        assert r.status_code == 401 and _code(r) == "UNAUTHENTICATED", params
+        assert secret not in r.text
     # an unrelated parameter is ignored
     r = await post_mcp(client, bearer(secret), PING, params={"trace": "1"})
     assert r.status_code == 200, r.text

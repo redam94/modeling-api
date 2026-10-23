@@ -62,7 +62,7 @@ If the published dashboard still has the old layout (layout 1), the section says
 4. Ask a follow-up question in the same chat, or select **New chat** to start again.
 
 The assistant knows which readout you look at. A question about "this readout" is about the
-readout on the page.
+readout that you opened in **History**, or else the latest readout.
 
 ![The chat panel in the builder preview: two answers with their numbers and the tools that the assistant used](../assets/screenshots/chat-panel.png){ .mapi-shot }
 
@@ -137,20 +137,23 @@ records one usage row for each question, with token counts only.
 ## Kept chats { #kept-chats }
 
 By default, the platform keeps no chat. The browser holds the messages. When you close the
-panel or the page, the chat is gone.
+panel, the chat stays: open the panel again to continue it. The chat is gone when you select
+**New chat**, or when you leave or reload the page. On a shared computer, select **New
+chat** before you go.
 
-When the analyst selects **Keep conversations for 30 days**:
+When the analyst selects **Keep conversations for 30 days** (the number of days is the
+server's `MAPI_CHAT_TRANSCRIPT_TTL_DAYS`; 30 by default):
 
 - Before the first question, the panel says "This dashboard keeps chats for 30 days. Its
-  analysts can read them."
+  analysts can read them." (with the configured number of days)
 - The server keeps the questions, the answers and the names of the tools used. It does not
   keep the tool results.
 - Editors see the chats under **Kept conversations** in the **Chat** section. A chat from a
   share link shows as "Share link" with the name of the link, never with an address.
 - An editor can delete a chat. The audit log records the deletion
   (`dashboard.chat_transcript_delete`), without the text.
-- The server deletes each kept message 30 days after it was written
-  (`MAPI_CHAT_TRANSCRIPT_TTL_DAYS`).
+- The server deletes each kept message after the configured number of days
+  (`MAPI_CHAT_TRANSCRIPT_TTL_DAYS`, 30 by default).
 
 A data export of the workspace contains the kept chats of its members and client users. It
 does not contain the chats from share links. The deletion of a workspace deletes its chat

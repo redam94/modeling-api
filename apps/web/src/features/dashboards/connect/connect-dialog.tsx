@@ -6,7 +6,10 @@
  * MCP endpoint. A member or a client user makes their own; the server forces the scope, the
  * owner and the lifetime (at most 90 days), and re-checks the person's access on every use.
  * The secret is in this dialog's state only: it is shown once, it is never put in the query
- * cache or in browser storage, and it is gone when the dialog closes. Editors can also list and
+ * or mutation cache or in browser storage, and it is gone when the dialog closes. Closing or
+ * "Make another token" asks first unless the token (or a configuration holding it) was copied.
+ * A dashboard no chat tool can read (uploaded code, layout 1, not published) is explained when
+ * the server refuses the token. Editors can also list and
  * revoke everyone's tokens of the dashboard.
  */
 import { KeyRound, Plug, Trash2 } from "lucide-react";
@@ -25,7 +28,7 @@ import { env } from "@/env";
 import { absoluteTime, relativeTime } from "@/lib/format";
 import { toast } from "@/stores/toast";
 
-import { isActiveToken, isReadTokenLimit, readTokenInputProblem, useCreateReadToken, useReadTokens, useRevokeReadToken } from "../chat/read-tokens-api";
+import { isActiveToken, isReadTokenLimit, notConnectableText, readTokenInputProblem, useCreateReadToken, useReadTokens, useRevokeReadToken } from "../chat/read-tokens-api";
 import { READ_TOKEN_DEFAULT_DAYS, READ_TOKEN_MAX_DAYS, READ_TOKEN_NAME_MAX, READ_TOKENS_PER_USER, type ReadToken, type ReadTokenCreated } from "../chat/types";
 import { SNIPPET_KINDS, SNIPPET_WORDS, snippetOf, type SnippetKind } from "./mcp-snippets";
 
@@ -44,8 +47,16 @@ export function ConnectDialog({ dashboardId, title, onClose }: { dashboardId: st
   const editor = can(ws.grants, "update", "dashboard");
   const [created, setCreated] = useState<ReadTokenCreated | null>(null);
   const [copied, setCopied] = useState(false);
+  // the secret is gone after a close or "Make another token": ask first when it was not copied
+  // (copying the token itself or a configuration that holds it both count)
+  const unsaved = () => created !== null && !copied;
   const close = () => {
-    if (!created || copied || window.confirm("Close the window? You did not copy the token, and the app cannot show it again.")) onClose();
+    if (!unsaved() || window.confirm("Close the window? You did not copy the token, and the app cannot show it again.")) onClose();
+  };
+  const another = () => {
+    if (unsaved() && !window.confirm("Make another token? You did not copy this one, and the app cannot show it again.")) return;
+    setCreated(null);
+    setCopied(false);
   };
   return (
     <Dialog open onOpenChange={(o) => !o && close()}>
@@ -61,15 +72,12 @@ export function ConnectDialog({ dashboardId, title, onClose }: { dashboardId: st
           <CreatedToken
             created={created}
             onCopied={() => setCopied(true)}
-            onDismiss={() => {
-              setCreated(null);
-              setCopied(false);
-            }}
+            onDismiss={another}
           />
         ) : (
           <CreateTokenForm dashboardId={dashboardId} onCreated={setCreated} />
         )}
-        <Snippets secret={created?.secret ?? null} title={title} />
+        <Snippets secret={created?.secret ?? null} title={title} onCopied={() => setCopied(true)} />
         <TokenList dashboardId={dashboardId} editor={editor} />
         <DialogFooter>
           <Button variant="ghost" onClick={close}>
@@ -100,6 +108,8 @@ function CreateTokenForm({ dashboardId, onCreated }: { dashboardId: string; onCr
           setName("");
           setSubmitted(false);
           onCreated(t);
+          // the secret now lives in the dialog's state only, not in the mutation cache
+          create.reset();
         },
       },
     );
@@ -130,6 +140,10 @@ function CreateTokenForm({ dashboardId, onCreated }: { dashboardId: string; onCr
       {create.isError ? (
         isReadTokenLimit(create.error) ? (
           <InlineMessage tone="error">You have {READ_TOKENS_PER_USER} active tokens for this dashboard. Revoke one before you make a new one.</InlineMessage>
+        ) : notConnectableText(create.error) ? (
+          <div data-testid="read-token-not-connectable">
+            <InlineMessage tone="warning">{notConnectableText(create.error)}</InlineMessage>
+          </div>
         ) : (
           <ErrorNotice error={create.error} title="The app could not make the token" />
         )
@@ -157,7 +171,7 @@ function CreatedToken({ created, onCopied, onDismiss }: { created: ReadTokenCrea
 
 // ------------------------------------------------------------------------------ snippets
 
-function Snippets({ secret, title }: { secret: string | null; title?: string | null | undefined }) {
+function Snippets({ secret, title, onCopied }: { secret: string | null; title?: string | null | undefined; onCopied?: () => void }) {
   const [kind, setKind] = useState<SnippetKind>("stdio");
   const text = snippetOf(kind, { apiUrl: env.apiBase, secret, title: title ?? null });
   return (
@@ -177,7 +191,14 @@ function Snippets({ secret, title }: { secret: string | null; title?: string | n
           {text}
         </pre>
         <div className="absolute top-1.5 right-1.5">
-          <CopyButton value={text} label="Copy configuration" onCopied={() => toast.success("Copied to the clipboard")} />
+          <CopyButton
+            value={text}
+            label="Copy configuration"
+            onCopied={() => {
+              toast.success("Copied to the clipboard");
+              if (secret) onCopied?.(); // this configuration holds the new token
+            }}
+          />
         </div>
       </div>
     </section>

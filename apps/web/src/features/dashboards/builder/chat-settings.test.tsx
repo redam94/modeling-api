@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -98,6 +99,30 @@ describe("builder › chat settings", () => {
     expect(within(section).getByTestId("chat-used-today").textContent).toContain("of 150,000 tokens");
     // the transcripts list follows the saved setting
     expect(within(section).getByTestId("chat-transcripts")).toBeTruthy();
+  });
+
+  it("says the server's kept-chats period, not a fixed 30 days (web+docs-9)", async () => {
+    server.use(
+      http.get(`${env.apiBase}/v1/dashboards/${FORECAST}/chat/settings`, () =>
+        HttpResponse.json({
+          dashboard_id: FORECAST,
+          enabled: true,
+          audiences: { members: true, clients: true, share_links: false },
+          keep_transcripts: true,
+          tokens_per_day: 200_000,
+          share_tokens_per_day: 50_000,
+          used_today_tokens: 0,
+          est_micros_today: 0,
+          transcript_days: 7,
+          version: 1,
+          etag: '"c1"',
+          updated_by: null,
+          updated_at: null,
+        } satisfies ChatSettingsView),
+      ),
+    );
+    const section = await openBuilder();
+    expect(within(section).getByRole("switch", { name: /Keep conversations for 7 days/ })).toBeTruthy();
   });
 
   it("shows the other person's settings after a 412 conflict", async () => {

@@ -480,6 +480,7 @@ build, set them yourself.
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | The origins that can frame the sandbox and send messages to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | The location of the sign-in routes (`/auth/*`), when they are not on the API base |
 | `VITE_TERMS_URL` | `/terms` | The terms of service that sign-up links to (an `http(s)` URL or a path on the origin of the app). The default is the plain-language summary in the app |
+| `VITE_DOCS_URL` | none | The root of the documentation site (an `http(s)` URL). The "Learn more" links of the chat panel go to its guide pages. Without it, the panel shows no "Learn more" links |
 | `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy that sign-up links to, in the same way. A public installation must publish its own versions of the two documents |
 
 The Playwright smoke suite of the web app serves the app on 5173 and the sandbox on 5174. If

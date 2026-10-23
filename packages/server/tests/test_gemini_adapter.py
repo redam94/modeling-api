@@ -329,7 +329,6 @@ async def test_transport_failures(exc: Exception, kind: str) -> None:
         b'{"candidates": []}',
         b'{"candidates": ["x"]}',
         b'{"candidates": [{"content": {"parts": "x"}, "finishReason": "STOP"}]}',
-        b'{"candidates": [{"content": {"parts": []}, "finishReason": "STOP"}]}',
         b'{"candidates": [{"content": {"parts": [{"functionCall": {"name": 3}}]}}]}',
         b'{"candidates": [{"content": {"parts": [{"functionCall": {"name": "x", "args": [1]}}]}}]}',
         b'{"candidates": [{"content": {"parts": [{"text": "a"}]}, "finishReason": '
@@ -341,6 +340,44 @@ async def test_invalid_responses(body: bytes) -> None:
     with pytest.raises(ChatModelError) as info:
         await generate(model(transport))
     assert info.value.kind == "bad_response"
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        {"content": {"role": "model", "parts": []}, "finishReason": "STOP"},
+        {"finishReason": "STOP"},
+        {"content": {"role": "model"}, "finishReason": "OTHER"},
+    ],
+)
+async def test_a_candidate_with_no_parts_is_an_empty_answer(candidate: dict[str, Any]) -> None:
+    # backend-2: an empty STOP after function results is an empty answer, not a 503
+    body = {"candidates": [candidate], "usageMetadata": {"promptTokenCount": 40,
+                                                        "totalTokenCount": 40}}  # fmt: skip
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json=body))
+    reply = await generate(model(transport))
+    assert reply.text == "" and reply.calls == () and reply.usage.total == 40
+
+
+@pytest.mark.parametrize(
+    ("name", "kind", "total"),
+    [("safety_block", "blocked", 1500), ("prompt_blocked", "blocked", 900),
+     ("malformed_call", "bad_response", 1507)],
+)  # fmt: skip
+async def test_a_failed_200_answer_carries_its_billed_usage(
+    name: str, kind: str, total: int
+) -> None:
+    with pytest.raises(ChatModelError) as info:
+        await generate(model(Recorder(name).transport))
+    assert info.value.kind == kind
+    assert info.value.usage is not None and info.value.usage.total == total
+    assert "usage" not in str(info.value)  # the message stays fixed
+
+
+async def test_http_errors_carry_no_usage() -> None:
+    with pytest.raises(ChatModelError) as info:
+        await generate(model(Recorder("error_500").transport))
+    assert info.value.usage is None
 
 
 async def test_oversized_response_is_refused() -> None:

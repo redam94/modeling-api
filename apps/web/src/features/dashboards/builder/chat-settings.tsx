@@ -138,7 +138,7 @@ function ChatSettingsBody({ dashboard }: { dashboard: Dashboard }) {
   return (
     <>
       <ChatSettingsForm dashboard={dashboard} view={q.data} />
-      <ChatTranscripts dashboardId={dashboard.id} keeping={q.data.keep_transcripts ?? false} />
+      <ChatTranscripts dashboardId={dashboard.id} keeping={q.data.keep_transcripts ?? false} days={q.data.transcript_days ?? CHAT_TRANSCRIPT_DAYS} />
     </>
   );
 }
@@ -220,7 +220,7 @@ function ChatSettingsForm({ dashboard, view }: { dashboard: Dashboard; view: Cha
       <div className="flex items-start gap-3">
         <Switch id="chat-keep" checked={form.keep_transcripts} onCheckedChange={(on) => set({ keep_transcripts: on })} />
         <span className="grid gap-0.5">
-          <Label htmlFor="chat-keep">Keep conversations for {CHAT_TRANSCRIPT_DAYS} days</Label>
+          <Label htmlFor="chat-keep">Keep conversations for {view.transcript_days ?? CHAT_TRANSCRIPT_DAYS} days</Label>
           <span className="text-xs text-muted-foreground">
             People see a notice before they send their first message. Editors can read and delete the conversations below. When this is off, the app keeps no conversation.
           </span>

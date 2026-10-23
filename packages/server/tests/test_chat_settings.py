@@ -81,9 +81,16 @@ async def test_defaults_without_a_row(ctx: ServerContext, kit: dict[str, Any]) -
     assert view.enabled is False and view.etag == '"c1"' and view.version == 1
     assert view.used_today_tokens == 0 and view.est_micros_today == 0
     assert view.updated_by is None and view.updated_at is None
+    assert view.transcript_days == ctx.settings.chat_transcript_ttl_days
     async with ctx.db.session() as s:
         n = await s.execute(select(func.count()).select_from(m.DashboardChatSettings))
         assert n.scalar_one() == 0  # reading writes nothing
+    # web+docs-9: the editors see the server's configured lifetime, not a fixed 30
+    ctx.settings = ctx.settings.model_copy(update={"chat_transcript_ttl_days": 7})
+    view = await cs.read_settings(ctx, await _auth(ctx, kit, "eve"), kit["dash_id"])
+    assert view.transcript_days == 7
+    put = await cs.put_settings(ctx, await _auth(ctx, kit, "eve"), kit["dash_id"], UPDATE, '"c1"')
+    assert put.transcript_days == 7
 
 
 async def test_put_needs_the_current_etag(ctx: ServerContext, kit: dict[str, Any]) -> None:

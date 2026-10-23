@@ -7887,7 +7887,8 @@ export interface components {
         /**
          * ChatSettingsView
          * @description ``GET``/``PUT …/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the
-         *     next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day.
+         *     next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day;
+         *     ``transcript_days`` is how long the server keeps chats (``MAPI_CHAT_TRANSCRIPT_TTL_DAYS``).
          * @example {
          *       "audiences": {
          *         "clients": true,
@@ -7901,6 +7902,7 @@ export interface components {
          *       "keep_transcripts": false,
          *       "share_tokens_per_day": 50000,
          *       "tokens_per_day": 200000,
+         *       "transcript_days": 30,
          *       "updated_at": "2026-10-15T09:30:00Z",
          *       "updated_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
          *       "used_today_tokens": 12480,
@@ -7941,6 +7943,11 @@ export interface components {
              * @default 200000
              */
             tokens_per_day?: number;
+            /**
+             * Transcript Days
+             * @default 30
+             */
+            transcript_days?: number;
             /** Updated At */
             updated_at?: string | null;
             /** Updated By */
@@ -37789,7 +37796,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description One JSON-RPC 2.0 message (MCP 2025-11-25, 2025-06-18 or 2025-03-26) */
+        /** @description One JSON-RPC 2.0 message (MCP 2025-11-25 or 2025-06-18) */
         requestBody: {
             content: {
                 "application/json": Record<string, never>;

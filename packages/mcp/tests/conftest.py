@@ -49,6 +49,7 @@ class FakeApi:
     tool_calls: list[tuple[str, dict[str, JsonValue]]] = field(default_factory=list)
     status_override: int | None = None
     redirect: bool = False
+    note: str = "line\nbreak"
 
     def clock(self) -> float:
         return self.now
@@ -128,7 +129,7 @@ class FakeApi:
             self.tool_calls.append((name, args))
             if name == "get_readout" and not isinstance(args.get("seq"), int):
                 return ToolOutcome(None, "", False, ("SCHEMA_INVALID", "seq: integer"))
-            payload: dict[str, JsonValue] = {"tool": name, "seq": 12, "note": "line\nbreak"}
+            payload: dict[str, JsonValue] = {"tool": name, "seq": 12, "note": self.note}
             return ToolOutcome(payload, json.dumps(payload), False)
 
         reply = await dispatch(msg, call=call, version=version)

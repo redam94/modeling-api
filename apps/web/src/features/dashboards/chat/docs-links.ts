@@ -6,6 +6,8 @@
  *
  * Paths are relative to the documentation site root and end with `/` (the MkDocs page URLs).
  */
+import { env } from "@/env";
+
 import type { ChatNoticeKind } from "./types";
 
 const ASK = "guides/ask-about-your-dashboard/";
@@ -28,19 +30,7 @@ export const PAGE_DOCS = {
 
 export type DocsKey = ChatNoticeKind | keyof typeof PAGE_DOCS;
 
-function docsBase(): string | null {
-  const raw = ((import.meta.env as Record<string, unknown>).VITE_DOCS_URL as string | undefined)?.trim();
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return url.href.endsWith("/") ? url.href : `${url.href}/`;
-  } catch {
-    return null;
-  }
-}
-
-const BASE = docsBase();
+const BASE = env.docsUrl;
 
 /** The absolute URL of the guide page for `key`, or `null` (no documentation site configured, or not on the list). */
 export function docsHref(key: DocsKey, base: string | null = BASE): string | null {

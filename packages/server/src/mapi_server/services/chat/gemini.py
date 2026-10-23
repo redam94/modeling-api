@@ -21,8 +21,9 @@ Error mapping (``docs/api-errors``, plan probe (c)): 401, 403 and a 400 whose re
 ``failed_precondition``, other 5xx, connection errors and redirects → ``unavailable``; any
 other 4xx and a body that is not a valid response → ``bad_response``. A candidate stopped by
 a safety rule → ``blocked``; a malformed function call or a missing thought signature →
-``bad_response``. ``MAX_TOKENS`` and ``TOO_MANY_TOOL_CALLS`` are returned as the
-``finish_reason`` for the loop to handle.
+``bad_response`` (both carry the billed ``usageMetadata`` as :attr:`ChatModelError.usage`); a
+candidate with no parts and a normal finish reason is an empty answer. ``MAX_TOKENS`` and
+``TOO_MANY_TOOL_CALLS`` are returned as the ``finish_reason`` for the loop to handle.
 """
 
 from __future__ import annotations
@@ -238,6 +239,15 @@ class GeminiChatModel(ChatModel):
         if not isinstance(doc, dict):
             raise self._fail("bad_response")
         usage = _usage(doc.get("usageMetadata"))
+        try:
+            return self._parse_doc(doc, usage)
+        except ChatModelError as exc:
+            # a blocked or unusable 200 answer is still billed: carry its usage to the budgets
+            if exc.usage is None and usage.total > 0:
+                exc.usage = usage
+            raise
+
+    def _parse_doc(self, doc: dict[str, Any], usage: ModelUsage) -> ModelReply:
         candidates = doc.get("candidates")
         if not isinstance(candidates, list) or not candidates:
             feedback = doc.get("promptFeedback")
@@ -268,8 +278,8 @@ class GeminiChatModel(ChatModel):
                 calls.append(self._call(part["functionCall"]))
             elif isinstance(part.get("text"), str) and part.get("thought") is not True:
                 texts.append(part["text"])
-        if not parts and finish_reason not in ("MAX_TOKENS", "CONTINUATION"):
-            raise self._fail("bad_response")
+        # a candidate with no parts and a normal finish (STOP after function results, for
+        # example) is an empty answer, not a broken body: the loop answers EMPTY_REPLY
         return ModelReply(
             turn=ModelTurn(role="model", parts=tuple(parts)),
             text="".join(texts),

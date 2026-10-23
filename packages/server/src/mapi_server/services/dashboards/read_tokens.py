@@ -41,7 +41,12 @@ from mapi_server.context import ServerContext
 from mapi_server.db import models as m
 from mapi_server.errors import NotFoundError, unauthenticated
 from mapi_server.services.audit import write_audit
-from mapi_server.services.dashboards.access import load_dashboard, member_context
+from mapi_server.services.dashboards.access import (
+    load_dashboard,
+    load_revision,
+    member_context,
+    require_read_token_target,
+)
 from mapi_server.services.runs import now
 
 __all__ = ["LIST_LIMIT", "list_tokens", "mint", "read_token_dto", "revoke"]
@@ -139,8 +144,11 @@ async def mint(
     """Mint a read token for the caller on a published dashboard they can read now.
 
     ``404`` for a dashboard the caller cannot see, ``DASHBOARD_NOT_PUBLISHED`` (409) before
-    the first publish, ``READ_TOKEN_LIMIT`` (409) when the caller already holds the maximum
-    of active tokens on it. The secret is in the result and nowhere else."""
+    the first publish or while it is not published (archived), ``403 FORBIDDEN`` for a layout
+    1 dashboard, ``403 UPLOADED_CODE_NOT_SHAREABLE`` for one made with uploaded code (the
+    checks :func:`~.access.token_context` makes on every use, so no token is made that can
+    never work), ``READ_TOKEN_LIMIT`` (409) when the caller already holds the maximum of
+    active tokens on it. The secret is in the result and nowhere else."""
     owner_id = _session_user(auth)
     rctx = _bound(ctx, auth)
     settings = ctx.settings
@@ -159,6 +167,14 @@ async def mint(
     assert auth.tenant_id is not None
     async with ctx.db.tenant_session(auth.tenant_id) as session:
         dctx = await member_context(rctx, auth, dashboard_id, session=session)
+        dash = await session.get(m.Dashboard, dctx.dashboard_id)
+        rev = await load_revision(session, dash) if dash is not None else None
+        if dash is None or rev is None or dash.status != "published":
+            raise MapiError(
+                "the dashboard is not published: a chat tool can read published dashboards only",
+                code=ErrorCode.DASHBOARD_NOT_PUBLISHED,
+            )
+        await require_read_token_target(session, dash, rev)
         await _serialize_mints(session, dctx.dashboard_id, owner_id)
         ts = now()
         limit = settings.dashboard_read_tokens_per_user
@@ -231,13 +247,17 @@ async def list_tokens(
     if all_:
         auth.require(Action.UPDATE, ResourceKind.DASHBOARD)
     rctx = _bound(ctx, auth)
+    sc = rctx.scope
     assert auth.tenant_id is not None
     async with ctx.db.tenant_session(auth.tenant_id) as session:
-        dash = await load_dashboard(session, rctx, dashboard_id)
+        if all_:
+            await load_dashboard(session, rctx, dashboard_id)
+        # the caller's own tokens need no sight of the dashboard: an owner who lost access
+        # (a removed grant, an archived dashboard) still sees and revokes their credentials
         stmt = select(m.ApiToken).where(
-            m.ApiToken.tenant_id == dash.tenant_id,
-            m.ApiToken.project_id == dash.project_id,
-            m.ApiToken.dashboard_id == dash.id,
+            m.ApiToken.tenant_id == sc.tenant_id,
+            m.ApiToken.project_id == sc.project_id,
+            m.ApiToken.dashboard_id == dashboard_id,
         )
         if not all_:
             stmt = stmt.where(m.ApiToken.owner_id == owner_id)
@@ -246,27 +266,33 @@ async def list_tokens(
             .scalars()
             .all()
         )
-        labels = await _labels(session, dash.tenant_id, dash.project_id, (r.owner_id for r in rows))
+        labels = await _labels(session, sc.tenant_id, sc.project_id, (r.owner_id for r in rows))
     return [read_token_dto(r, labels.get(r.owner_id)) for r in rows]
 
 
 async def revoke(ctx: ServerContext, auth: RequestAuth, dashboard_id: str, token_id: str) -> None:
     """Revoke a read token of the dashboard (idempotent): the caller's own, or anyone's for
-    an editor. Any other token answers ``404``. The next MCP request with it is ``401``."""
+    an editor. Any other token answers ``404``. The next MCP request with it is ``401``.
+
+    The caller's own token needs no sight of the dashboard: an owner whose grant was removed
+    (or whose dashboard was archived) can still revoke it, so it never works again when the
+    access comes back."""
     owner_id = _session_user(auth)
     rctx = _bound(ctx, auth)
+    sc = rctx.scope
     assert auth.tenant_id is not None
     async with ctx.db.tenant_session(auth.tenant_id) as session:
-        dash = await load_dashboard(session, rctx, dashboard_id)
         row = await session.get(m.ApiToken, token_id, with_for_update=True)
         if (
             row is None
-            or (row.tenant_id, row.project_id) != (dash.tenant_id, dash.project_id)
-            or row.dashboard_id != dash.id
+            or (row.tenant_id, row.project_id) != (sc.tenant_id, sc.project_id)
+            or row.dashboard_id != dashboard_id
         ):
             raise NotFoundError("read token", token_id)
-        if row.owner_id != owner_id and not auth.allows(Action.UPDATE, ResourceKind.DASHBOARD):
-            raise NotFoundError("read token", token_id)
+        if row.owner_id != owner_id:
+            if not auth.allows(Action.UPDATE, ResourceKind.DASHBOARD):
+                raise NotFoundError("read token", token_id)
+            await load_dashboard(session, rctx, dashboard_id)  # an editor acts on the dashboard
         if row.revoked_at is not None:
             return
         row.revoked_at = now()
@@ -278,10 +304,10 @@ async def revoke(ctx: ServerContext, auth: RequestAuth, dashboard_id: str, token
                     AuditAction.DASHBOARD_READ_TOKEN_REVOKE,
                     ResourceKind.TOKEN,
                     resource_id=row.id,
-                    tenant_id=dash.tenant_id,
-                    project_id=dash.project_id,
+                    tenant_id=row.tenant_id,
+                    project_id=row.project_id,
                     details={
-                        "dashboard_id": dash.id,
+                        "dashboard_id": dashboard_id,
                         "prefix": row.prefix,
                         "owner_id": row.owner_id,
                     },

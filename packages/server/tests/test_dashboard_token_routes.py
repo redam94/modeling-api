@@ -39,7 +39,7 @@ from mapi_spec.tokens import (
     token_checksum,
 )
 from sqlalchemy import func, select, update
-from test_dashboards_crud import LAYOUT1, create_published, dashboard_kit
+from test_dashboards_crud import LAYOUT1, dashboard_kit
 from test_dashboards_crud_v2 import create_v2
 
 pytestmark = pytest.mark.integration
@@ -133,7 +133,7 @@ async def test_a_read_token_is_refused_on_every_resolved_route(
     """Driven by the route table, so new routes are covered: every signed-in, tenant,
     project and platform route answers ``403`` to a dashboard read token (members' and
     clients' tokens alike)."""
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     app = _app(ctx)
     for who in ("ana", "cleo"):
         _, secret = await _read_token(kit, who, dash)
@@ -163,7 +163,7 @@ async def test_a_read_token_is_refused_on_every_resolved_route(
 async def test_public_routes_ignore_a_read_token(
     client: httpx.AsyncClient, kit: dict[str, Any]
 ) -> None:
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     _, secret = await _read_token(kit, "cleo", dash)
     tok = token_caller(client, secret)
     for path in ("/healthz", "/auth/session"):
@@ -180,7 +180,7 @@ async def test_api_tokens_never_reach_session_only_operations(
 ) -> None:
     """An ordinary token that the owner's role and the scope would allow (``admin``) still
     gets ``403`` on every session-only operation the app serves."""
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     secret = await make_token(ctx, kit["users"]["ana"], "default", "default", ["admin"])
     tok = token_caller(client, secret)
     vals = {
@@ -234,7 +234,7 @@ def test_token_never_is_unchanged() -> None:
 
 
 async def test_resolve_a_valid_read_token(ctx: ServerContext, kit: dict[str, Any]) -> None:
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     token_id, secret = await _read_token(kit, "cleo", dash)
     async with ctx.db.session() as s:
         assert (await s.get(m.ApiToken, token_id)).last_used_at is None  # type: ignore[union-attr]
@@ -253,7 +253,7 @@ async def test_resolve_a_valid_read_token(ctx: ServerContext, kit: dict[str, Any
 
 
 async def test_resolve_refuses_bad_and_dead_tokens(ctx: ServerContext, kit: dict[str, Any]) -> None:
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     token_id, secret = await _read_token(kit, "cleo", dash)
     # missing, other schemes, malformed, unknown
     await _refused(ctx, None, 401)
@@ -304,7 +304,7 @@ async def test_resolve_refuses_bad_and_dead_tokens(ctx: ServerContext, kit: dict
 
 
 async def test_failures_are_audited_with_a_bound(ctx: ServerContext, kit: dict[str, Any]) -> None:
-    dash = await create_published(kit)
+    dash = await _v2_published(kit)  # read tokens are made for layout 2 only
     token_id, secret = await _read_token(kit, "cleo", dash)
     parsed = parse_token(secret)
     other = str(generate_token())

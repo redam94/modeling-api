@@ -10,6 +10,7 @@ import { InlineMessage } from "@/components/ods";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { setViewedReadout } from "../chat/viewed-readout";
 import { dashboardErrorMessage, useKeepReadout, useReadout, useReadoutList } from "../client";
 import { hasPanels, isLayout2Dashboard, type ClientDashboard, type DashboardClient, type DashboardClientV2, type Readout } from "../types";
 import { LazyPart } from "./load-boundary";
@@ -166,6 +167,12 @@ export function History({
     el?.scrollIntoView?.({ block: "start", behavior: "smooth" });
     el?.focus({ preventScroll: true });
   }, [jump]);
+  // the chat's "this readout" is the one shown here; back to the latest when history closes
+  const viewKey = client.cacheKey;
+  useEffect(() => {
+    setViewedReadout(viewKey, selected);
+  }, [viewKey, selected]);
+  useEffect(() => () => setViewedReadout(viewKey, null), [viewKey]);
   const choose = (seq: number) => {
     setSelected(seq);
     if (stacked()) setJump((j) => j + 1);

@@ -238,12 +238,10 @@ async def test_a_tool_call_returns_text_and_structured_content(kit: dict[str, An
     payload = text_of(result)
     assert payload["seq"] == 2 and payload["title"] == "Readout 2"
     assert result["structuredContent"] == payload
-    # 2025-06-18 has structured content too; 2025-03-26 (or no header) has text only
-    result = await call(client, headers, "get_readout", {"seq": 2}, version="2025-06-18")
-    assert result["structuredContent"]["seq"] == 2
-    for version in ("2025-03-26", None):
+    # 2025-06-18 (also assumed with no header) has structured content too
+    for version in ("2025-06-18", None):
         result = await call(client, headers, "get_readout", {"seq": 2}, version=version)
-        assert "structuredContent" not in result and text_of(result)["seq"] == 2
+        assert result["structuredContent"]["seq"] == 2 and text_of(result)["seq"] == 2
 
 
 async def test_a_large_result_is_truncated_without_structured_content(
@@ -325,6 +323,25 @@ async def test_the_protocol_version_header_is_checked(kit: dict[str, Any]) -> No
             "params": {"protocolVersion": "2025-06-18"}}  # fmt: skip
     r = await post_mcp(client, headers, init, version="2099-01-01")
     assert r.status_code == 200 and r.json()["result"]["protocolVersion"] == "2025-06-18"
+
+
+async def test_2025_03_26_which_needs_batches_is_not_offered(kit: dict[str, Any]) -> None:
+    # mcp-1: batches are refused under every revision in effect, so the revision that
+    # requires them is neither negotiated nor accepted in the header
+    client: httpx.AsyncClient = kit["client"]
+    headers = bearer(await read_token(kit["cleo"], kit["dash_id"]))
+    init = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-03-26"}}  # fmt: skip
+    r = await post_mcp(client, headers, init, version=None)
+    assert r.status_code == 200 and r.json()["result"]["protocolVersion"] == MCP_LATEST
+    ping = {"jsonrpc": "2.0", "id": 5, "method": "ping"}
+    r = await post_mcp(client, headers, ping, version="2025-03-26")
+    assert r.status_code == 400 and r.json()["error"]["code"] == -32600
+    batch = [{"jsonrpc": "2.0", "method": "notifications/initialized"},
+             {"jsonrpc": "2.0", "id": 5, "method": "tools/list"}]  # fmt: skip
+    for version in (*MCP_PROTOCOL_VERSIONS, None):
+        r = await post_mcp(client, headers, batch, version=version)
+        assert r.status_code == 400 and r.json()["error"]["code"] == -32600, version
 
 
 async def test_share_sessions_reach_the_same_tools(kit: dict[str, Any]) -> None:

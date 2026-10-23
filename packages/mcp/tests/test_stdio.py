@@ -190,3 +190,42 @@ async def test_share_bridge_logs_are_redacted(
     assert "share session opened" in text
     for secret in (SHARE_TOKEN, PASSCODE, "mps_"):
         assert secret not in text
+
+
+UNICODE_NOTE = "spend \u2192 sales \u2265 2 \u6771\u4eac \U0001f600"
+
+
+async def test_stdio_survives_a_legacy_encoded_writer(
+    api: FakeApi, transport: httpx.MockTransport
+) -> None:
+    # mcp-2: a cp1252 stdout (Windows pipes) must not end the session on a non-ASCII answer
+    api.note = UNICODE_NOTE
+    lines = [rpc("tools/call", {"name": "get_dashboard"}, rid=1), rpc("ping", rid=2)]
+    stdin = io.BytesIO(("\n".join(lines) + "\n").encode("utf-8"))
+    raw = io.BytesIO()
+    out = io.TextIOWrapper(raw, encoding="cp1252", newline="\n")
+    async with Bridge(API, DashboardTokenCredential(api.token), transport) as bridge:
+        await run_stdio(bridge, stdin.readline, out.write)
+    out.flush()
+    replies = _all_jsonrpc(raw.getvalue().decode("ascii"))
+    assert [r["id"] for r in replies] == [1, 2]
+    text = replies[0]["result"]["content"][0]["text"]  # type: ignore[index]
+    assert json.loads(text)["note"] == UNICODE_NOTE
+
+
+async def test_stdio_serve_writes_utf8_bytes(
+    api: FakeApi, transport: httpx.MockTransport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mapi_mcp import __main__ as entry
+
+    api.note = UNICODE_NOTE
+    stdin = io.TextIOWrapper(
+        io.BytesIO((rpc("tools/call", {"name": "get_dashboard"}) + "\n").encode("utf-8")),
+        encoding="utf-8",
+    )
+    raw = io.BytesIO()
+    monkeypatch.setattr(sys, "stdin", stdin)
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw, encoding="cp1252"))
+    await entry._serve(Bridge(API, DashboardTokenCredential(api.token), transport))
+    (reply,) = _all_jsonrpc(raw.getvalue().decode("utf-8"))
+    assert reply["result"]["structuredContent"]["note"] == UNICODE_NOTE  # type: ignore[index]

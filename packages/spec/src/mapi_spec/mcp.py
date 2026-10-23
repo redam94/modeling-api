@@ -10,7 +10,8 @@ bridge use it without a new dependency. There is no MCP SDK (decision D17).
 Rules (decisions D15-D18):
 
 * One message per request. A JSON array (a batch) is refused with ``-32600``; so is a
-  message that is not JSON-RPC 2.0 or is larger than :data:`MCP_MAX_MESSAGE_BYTES`.
+  message that is not JSON-RPC 2.0 or is larger than :data:`MCP_MAX_MESSAGE_BYTES`. No
+  supported revision has batches (``2025-03-26``, which requires them, is not offered).
 * Methods other than :data:`MCP_METHODS` answer ``-32601`` (``resources/*``, ``prompts/*``,
   ``sampling/*`` and others are not offered). Notifications never get an answer.
 * ``tools/list`` is the tool surface in :data:`~mapi_spec.dashboard_tools.DASHBOARD_TOOLS`
@@ -71,12 +72,16 @@ __all__ = [
 # ============================================================================ constants
 
 JSONRPC_VERSION: Final = "2.0"
-MCP_PROTOCOL_VERSIONS: Final = ("2025-11-25", "2025-06-18", "2025-03-26")
-"""Supported protocol revisions, newest first (all have the ``initialize`` handshake)."""
+MCP_PROTOCOL_VERSIONS: Final = ("2025-11-25", "2025-06-18")
+"""Supported protocol revisions, newest first (all have the ``initialize`` handshake).
+``2025-03-26`` is not offered: that revision requires servers to accept JSON-RPC batches, and
+this server takes one message per request (a client asking for it is answered with the
+latest revision at ``initialize``)."""
 MCP_LATEST: Final = "2025-11-25"
-MCP_HTTP_DEFAULT_VERSION: Final = "2025-03-26"
-"""The revision an HTTP server assumes when a request has no ``MCP-Protocol-Version``
-header (MCP 2025-11-25, "Protocol Version Header")."""
+MCP_HTTP_DEFAULT_VERSION: Final = "2025-06-18"
+"""The revision an HTTP request without an ``MCP-Protocol-Version`` header is answered with:
+the oldest supported one (the specification's own fallback, ``2025-03-26``, is not
+supported; see :data:`MCP_PROTOCOL_VERSIONS`)."""
 MCP_METHODS: Final = frozenset(
     {"initialize", "notifications/initialized", "ping", "tools/list", "tools/call"}
 )

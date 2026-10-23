@@ -358,7 +358,8 @@ class ChatAudiences(StrictModel):
 
 class ChatSettingsView(ResponseModel):
     """``GET``/``PUT …/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the
-    next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day."""
+    next update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day;
+    ``transcript_days`` is how long the server keeps chats (``MAPI_CHAT_TRANSCRIPT_TTL_DAYS``)."""
 
     dashboard_id: Id
     enabled: bool = False
@@ -370,6 +371,7 @@ class ChatSettingsView(ResponseModel):
     )
     used_today_tokens: int = Field(0, ge=0)
     est_micros_today: int = Field(0, ge=0)
+    transcript_days: int = Field(CHAT_TRANSCRIPT_DAYS, ge=0)
     version: int = Field(1, ge=1)
     etag: str = Field(..., pattern=r'^"c[0-9]+"$')
     updated_by: Id | None = None
@@ -385,6 +387,7 @@ class ChatSettingsView(ResponseModel):
             "share_tokens_per_day": CHAT_DEFAULT_SHARE_TOKENS_PER_DAY,
             "used_today_tokens": 12_480,
             "est_micros_today": 4_210,
+            "transcript_days": CHAT_TRANSCRIPT_DAYS,
             "version": 3,
             "etag": '"c3"',
             "updated_by": _EX_USER,

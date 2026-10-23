@@ -26,6 +26,7 @@ from mapi_spec.audit import AuditAction
 from mapi_spec.chat import (
     CHAT_DEFAULT_SHARE_TOKENS_PER_DAY,
     CHAT_DEFAULT_TOKENS_PER_DAY,
+    CHAT_TRANSCRIPT_DAYS,
     ChatAudiences,
     ChatSettingsUpdate,
     ChatSettingsView,
@@ -181,9 +182,14 @@ async def usage_today(
 
 
 async def settings_view(
-    s: AsyncSession, settings: ChatSettingsRow, at: datetime | None = None
+    s: AsyncSession,
+    settings: ChatSettingsRow,
+    at: datetime | None = None,
+    *,
+    transcript_days: int = CHAT_TRANSCRIPT_DAYS,
 ) -> ChatSettingsView:
-    """The editors' view of the settings, with today's usage."""
+    """The editors' view of the settings, with today's usage and the server's transcript
+    lifetime (``chat_transcript_ttl_days``)."""
     tokens, micros = await usage_today(s, settings, at)
     return ChatSettingsView(
         dashboard_id=settings.dashboard_id,
@@ -194,6 +200,7 @@ async def settings_view(
         share_tokens_per_day=settings.share_tokens_per_day,
         used_today_tokens=tokens,
         est_micros_today=micros,
+        transcript_days=transcript_days,
         version=settings.version,
         etag=settings.etag,
         updated_by=settings.updated_by,
@@ -226,7 +233,11 @@ async def read_settings(
     async with ctx.db.tenant_session(auth.tenant_id) as session:
         row = await load_dashboard(session, rctx, dashboard_id)
         key = DashboardIds(row.tenant_id, row.project_id, row.id)
-        return await settings_view(session, await get_settings(session, key))
+        return await settings_view(
+            session,
+            await get_settings(session, key),
+            transcript_days=ctx.settings.chat_transcript_ttl_days,
+        )
 
 
 def _matches(if_match: str, etag: str) -> bool:
@@ -304,4 +315,6 @@ async def put_settings(
             ],
             session=session,
         )
-        return await settings_view(session, _from_row(row), at)
+        return await settings_view(
+            session, _from_row(row), at, transcript_days=ctx.settings.chat_transcript_ttl_days
+        )

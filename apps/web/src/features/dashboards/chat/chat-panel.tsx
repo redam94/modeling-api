@@ -108,15 +108,15 @@ export function toolLabel(call: Pick<ToolCallSummary, "name" | "args">): string 
   }
 }
 
-function clock(seconds: number): string {
-  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(Date.now() + seconds * 1000));
+function clock(at: number): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(at));
 }
 
 /** What the panel says when a question failed. */
 export function errorText(e: ChatError): string {
   switch (e.kind) {
     case "budget":
-      return `This dashboard has used its chat allowance for today. You can ask again ${e.retryAfter !== null ? `after ${clock(e.retryAfter)}` : "tomorrow"}.`;
+      return `This dashboard has used its chat allowance for today. You can ask again ${e.retryAt !== undefined ? `after ${clock(e.retryAt)}` : e.retryAfter !== null ? `after ${clock(Date.now() + e.retryAfter * 1000)}` : "tomorrow"}.`;
     case "rate":
       return "You asked many questions in a short time. Wait a minute, then try again.";
     case "disabled":

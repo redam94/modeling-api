@@ -351,6 +351,8 @@ test.describe("the analyst", () => {
   test("the limit of active tokens is said in plain words", async ({ page }) => {
     expectFailures(page, new RegExp(`^409 POST /v1/dashboards/${FORECAST}/read-tokens$`));
     await as(page, "ana");
+    // "Make another token" asks first when the shown token was not copied
+    page.on("dialog", (d) => void d.accept());
     const dialog = await openFromPreview(page);
     // One seeded token, four more: five active.
     for (const n of [1, 2, 3, 4]) {

@@ -65,7 +65,7 @@ async def _run(msg: dict[str, Any], *, version: str = MCP_LATEST, outcome: ToolO
 
 
 def test_constants() -> None:
-    assert MCP_PROTOCOL_VERSIONS == ("2025-11-25", "2025-06-18", "2025-03-26")
+    assert MCP_PROTOCOL_VERSIONS == ("2025-11-25", "2025-06-18")
     assert MCP_PROTOCOL_VERSIONS[0] == MCP_LATEST
     assert {
         "initialize", "notifications/initialized", "ping", "tools/list", "tools/call",
@@ -147,7 +147,10 @@ def test_negotiate() -> None:
 
 
 def test_protocol_version_from_header() -> None:
-    assert protocol_version_from_header(None) == MCP_HTTP_DEFAULT_VERSION == "2025-03-26"
+    assert protocol_version_from_header(None) == MCP_HTTP_DEFAULT_VERSION == "2025-06-18"
+    # mcp-1: 2025-03-26 requires batches, which this server refuses: it is not offered
+    assert protocol_version_from_header("2025-03-26") is None
+    assert negotiate("2025-03-26") == MCP_LATEST
     assert protocol_version_from_header("2025-11-25") == "2025-11-25"
     assert protocol_version_from_header(" 2025-06-18 ") == "2025-06-18"
     assert protocol_version_from_header("2024-11-05") is None
@@ -283,9 +286,10 @@ async def test_tools_call_without_arguments() -> None:
     assert calls == [("get_dashboard", {}), ("get_dashboard", {})]
 
 
-async def test_old_revision_gets_no_structured_content() -> None:
-    reply = await _run(_req("tools/call", {"name": "get_dashboard"}), version="2025-03-26")
-    assert reply is not None and "structuredContent" not in reply["result"]
+async def test_every_supported_revision_gets_structured_content() -> None:
+    for version in MCP_PROTOCOL_VERSIONS:
+        reply = await _run(_req("tools/call", {"name": "get_dashboard"}), version=version)
+        assert reply is not None and "structuredContent" in reply["result"], version
 
 
 async def test_truncated_result_has_no_structured_content() -> None:

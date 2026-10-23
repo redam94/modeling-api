@@ -74,6 +74,11 @@ export interface ChatError {
   code: string | null;
   /** Seconds to wait before asking again (`Retry-After`), when the server said. */
   retryAfter: number | null;
+  /**
+   * When asking again is possible, as epoch milliseconds: fixed once when the error arrived, so
+   * the time shown does not move later on every render. Set when `retryAfter` is.
+   */
+  retryAt?: number | undefined;
 }
 
 export interface ChatState {
@@ -168,7 +173,7 @@ export function chatErrorOf(err: unknown): ChatError {
                         : status === 429
                           ? "rate"
                           : "other";
-  return { kind, status, code, retryAfter };
+  return retryAfter !== null ? { kind, status, code, retryAfter, retryAt: Date.now() + retryAfter * 1000 } : { kind, status, code, retryAfter };
 }
 
 /** Whether asking the same question again may work (the panel shows "Try again"). */

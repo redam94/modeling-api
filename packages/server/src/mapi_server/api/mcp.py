@@ -86,7 +86,7 @@ _PYDANTIC_URL: Final = re.compile(r"\s*For further information visit \S+")
 _BODY: Final[dict[str, Any]] = {
     "requestBody": {
         "required": True,
-        "description": "One JSON-RPC 2.0 message (MCP 2025-11-25, 2025-06-18 or 2025-03-26)",
+        "description": "One JSON-RPC 2.0 message (MCP 2025-11-25 or 2025-06-18)",
         "content": {_JSON: {"schema": {"type": "object"}}},
     }
 }

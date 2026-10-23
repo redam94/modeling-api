@@ -8,8 +8,12 @@ signed, stored or counted:
 * HTML is removed (comments, ``<script>``/``<style>`` blocks with their content, every tag,
   and the ``<`` of an unclosed tag);
 * markdown images become their alt text, markdown links their text, reference definitions
-  are removed; bare URLs (``scheme://...``, ``www....``) and ``javascript:``/``data:``-style
-  targets are removed;
+  are removed; bare URLs (``scheme://...``, ``www....``, protocol-relative ``//host/...``,
+  bare host names such as ``evil-corp.com/login`` or ``bit.ly/x``) and
+  ``javascript:``/``data:``-style targets are removed. URLs are matched on a copy in which
+  look-alike colons, slashes and dots (full-width ``：``, ``／``, ``．``, ``。`` and other NFKC
+  or confusable forms) are folded to ASCII, so ``https：//evil.com`` is removed too; numbers
+  such as ``4.5%`` and versions such as ``v1.2`` stay;
 * the result is at most :data:`~mapi_spec.chat.CHAT_MAX_REPLY_CHARS` characters.
 
 The web renders the cleaned text as React text with a tiny markdown subset, so a link or an
@@ -66,6 +70,66 @@ _DATA_SCHEME: Final = re.compile(
     r"[^\s<>\"'`]*",
     re.IGNORECASE,
 )
+_PROTOCOL_RELATIVE: Final = re.compile(r"(?<![\w:/])//[A-Za-z0-9][^\s<>\"'`]*")
+_COMMON_TLDS: Final = (
+    "com|net|org|info|biz|edu|gov|mil|int|io|co|ly|me|ai|app|dev|xyz|top|site|online|link|"
+    "click|live|help|support|login|secure|account|page|web|website|cloud|tech|store|shop|"
+    "example|test|invalid|localhost|zip|mov|icu|club|vip|win|work|pro|today|news|email"
+)
+_BARE_HOST: Final = re.compile(
+    r"(?<![\w.@\-])"
+    r"(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+"
+    r"(?:"
+    # a letters-only TLD followed by a port, path, query or fragment: always a URL
+    r"[A-Za-z]{2,24}(?=(?::\d{1,5})?[/?#])(?::\d{1,5})?[/?#][^\s<>\"'`]*"
+    # or a known or two-letter TLD on its own ("evil.com", "login.example.de")
+    # (a two-letter TLD only in lower case, so "the readout.So" is not taken for a host)
+    rf"|(?:{_COMMON_TLDS}|(?-i:[a-z]{{2}}))(?::\d{{1,5}})?(?![\w\-])"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _fold_table() -> dict[int, str]:
+    """Full-width ASCII and characters that read as ``:``, ``/`` or ``.`` (NFKC forms and
+    common confusables) mapped to ASCII. Every entry is one character to one, so spans
+    match the original."""
+    # full-width ASCII ("ｗｗｗ．evil．com") reads as ASCII
+    table: dict[int, str] = {code: chr(code - 0xFEE0) for code in range(0xFF01, 0xFF5F)}
+    for code in range(0x80, 0x10000):
+        folded = unicodedata.normalize("NFKC", chr(code))
+        if folded in (":", "/", "."):
+            table[code] = folded
+    extra = {
+        "\u2236": ":", "\ua789": ":", "\u02d0": ":", "\u0589": ":", "\u05c3": ":",
+        "\u2215": "/", "\u2044": "/", "\u29f8": "/", "\u2571": "/", "\u3033": "/",
+        "\u3002": ".", "\uff61": ".", "\u2024": ".", "\u0701": ".", "\ua4f8": ".",
+    }  # fmt: skip
+    table.update({ord(k): v for k, v in extra.items()})
+    return table
+
+
+_FOLD: Final = _fold_table()
+_URL_PATTERNS: Final = (_URL, _WWW, _PROTOCOL_RELATIVE, _BARE_HOST)
+
+
+def _strip_urls(text: str) -> str:
+    """Remove every URL, matched on a copy with look-alike ``:``/``/``/``.`` folded."""
+    folded = text.translate(_FOLD)
+    spans = sorted(mt.span() for pat in _URL_PATTERNS for mt in pat.finditer(folded))
+    if not spans:
+        return text
+    out: list[str] = []
+    pos = 0
+    for start, end in spans:
+        if end <= pos:
+            continue
+        out.append(text[pos : max(pos, start)])
+        pos = max(pos, end)
+    out.append(text[pos:])
+    return "".join(out)
+
+
 _SPACES: Final = re.compile(r"[ \t\f\v]+")
 _BLANK_LINES: Final = re.compile(r"\n{3,}")
 _EMPTY_LINK_PARENS: Final = re.compile(r"\(\s*\)")
@@ -105,8 +169,7 @@ def _strip_markup(text: str) -> str:
             break
     text = _MD_REF_DEF.sub("", text)
     text = _HTML_TAG.sub("", text)
-    text = _URL.sub("", text)
-    text = _WWW.sub("", text)
+    text = _strip_urls(text)
     text = _SCRIPT_SCHEME.sub("", text)
     text = _DATA_SCHEME.sub("", text)
     text = _EMPTY_LINK_PARENS.sub("", text)

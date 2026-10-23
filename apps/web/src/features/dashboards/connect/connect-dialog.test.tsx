@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,6 +46,8 @@ afterAll(() => server.close());
 const FORECAST = V2_DASHBOARD_IDS.forecast;
 const T = { timeout: 10_000 };
 
+let lastQc: QueryClient | null = null;
+
 /** The button as `persona` with `role` in acme/retail (the forecast dashboard's project). */
 function renderAs(persona: "ana" | "cleo", role: ProjectRole, ui: ReactNode = <ConnectChatToolButton dashboardId={FORECAST} title="Weekly visits" />) {
   localStorage.setItem(MOCK_SESSION_KEY, persona);
@@ -53,6 +56,7 @@ function renderAs(persona: "ana" | "cleo", role: ProjectRole, ui: ReactNode = <C
   const base = buildWorkspace(localMe(), "session", null);
   const ws: Workspace = { ...base, grants: { projectRole: role, tenantRole: null, operator: false, tenantStatus: "active" } };
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  lastQc = qc;
   return render(
     <QueryClientProvider client={qc}>
       <TooltipProvider>
@@ -169,6 +173,7 @@ describe("connect a chat tool", () => {
     expect(seen.some((r) => r.method === "POST")).toBe(false);
 
     // Ana has one active token; 4 more reach the limit of 5, the 6th is refused
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     for (let i = 0; i < 5; i += 1) {
       const f = within(dialog).queryByTestId("read-token-create");
       if (!f) await user.click(within(dialog).getByRole("button", { name: "Make another token" }));
@@ -178,5 +183,64 @@ describe("connect a chat tool", () => {
       if (i < 4) await within(dialog).findByTestId("read-token-secret", undefined, T);
     }
     expect(await within(dialog).findByText(/You have 5 active tokens for this dashboard/, undefined, T)).toBeTruthy();
+  });
+
+  async function makeToken(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement, name = "Laptop assistant") {
+    const form = within(dialog).getByTestId("read-token-create");
+    await user.type(within(form).getByLabelText("Name"), name);
+    await user.click(within(form).getByRole("button", { name: /Make token/ }));
+    const box = await within(dialog).findByTestId("read-token-secret", undefined, T);
+    return within(box).getByLabelText<HTMLInputElement>(/Read token/).value;
+  }
+
+  it("counts copying the configuration as copying the token (web+docs-6)", async () => {
+    const user = userEvent.setup();
+    renderAs("ana", "admin");
+    const dialog = await open(user);
+    await makeToken(user, dialog);
+    await user.click(within(dialog).getByRole("button", { name: "Copy configuration" }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await user.click(within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!);
+    expect(confirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("asks before 'Make another token' drops a token that was not copied (web+docs-6)", async () => {
+    const user = userEvent.setup();
+    renderAs("ana", "admin");
+    const dialog = await open(user);
+    const secret = await makeToken(user, dialog);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await user.click(within(dialog).getByRole("button", { name: "Make another token" }));
+    expect(confirm).toHaveBeenCalledOnce();
+    const box = within(dialog).getByTestId("read-token-secret");
+    expect(within(box).getByLabelText<HTMLInputElement>(/Read token/).value).toBe(secret);
+    confirm.mockReturnValue(true);
+    await user.click(within(dialog).getByRole("button", { name: "Make another token" }));
+    expect(within(dialog).queryByTestId("read-token-secret")).toBeNull();
+  });
+
+  it("keeps the secret out of the mutation cache (web+docs-7)", async () => {
+    const user = userEvent.setup();
+    renderAs("ana", "admin");
+    const dialog = await open(user);
+    const secret = await makeToken(user, dialog);
+    await waitFor(() => expect(JSON.stringify(lastQc!.getMutationCache().getAll().map((m) => m.state))).not.toContain(secret));
+  });
+
+  it("explains a dashboard no chat tool can read (web+docs-5)", async () => {
+    server.use(
+      http.post("*/v1/dashboards/:id/read-tokens", () =>
+        HttpResponse.json({ type: "about:blank", title: "Forbidden", status: 403, code: "UPLOADED_CODE_NOT_SHAREABLE", detail: "uploaded code" }, { status: 403, headers: { "content-type": "application/problem+json" } }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderAs("ana", "admin");
+    const dialog = await open(user);
+    const form = within(dialog).getByTestId("read-token-create");
+    await user.type(within(form).getByLabelText("Name"), "Laptop assistant");
+    await user.click(within(form).getByRole("button", { name: /Make token/ }));
+    const note = await within(dialog).findByTestId("read-token-not-connectable", undefined, T);
+    expect(note.textContent).toMatch(/uses uploaded code/);
   });
 });

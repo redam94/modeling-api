@@ -14,6 +14,7 @@ import { lazy, Suspense, useId, useRef, useState } from "react";
 
 import { ck } from "./keys";
 import type { ChatTransport } from "./types";
+import { useViewedReadout } from "./viewed-readout";
 
 const loadPanel = () => import("./chat-panel");
 const ChatPanel = lazy(loadPanel);
@@ -25,12 +26,17 @@ export interface ChatLauncherProps {
    * client user and a share link never share an availability answer. Default: one per launcher.
    */
   cacheKey?: readonly string[] | undefined;
-  /** The readout the viewer is looking at (a hint the question carries). */
+  /**
+   * The readout the viewer is looking at (a hint the question carries). Left out: the readout
+   * the history shows for this `cacheKey` ({@link setViewedReadout}), else the latest one.
+   */
   readoutSeq?: number | null | undefined;
 }
 
-export function ChatLauncher({ transport, cacheKey, readoutSeq = null }: ChatLauncherProps) {
+export function ChatLauncher({ transport, cacheKey, readoutSeq: given }: ChatLauncherProps) {
   const own = useId();
+  const viewed = useViewedReadout(cacheKey);
+  const readoutSeq = given !== undefined ? given : viewed;
   const availability = useQuery({
     queryKey: ck.availability(cacheKey ?? ["chat", own]),
     queryFn: ({ signal }) => transport.availability(signal),

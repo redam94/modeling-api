@@ -638,12 +638,14 @@ def _install_observability(app: FastAPI, settings: Settings, ctx: ServerContext 
     build apps directly still get ``/metrics`` and request metrics.
     """
     from mapi_server.observability import metrics as obs_metrics
+    from mapi_server.observability.logging import redact_access_log
     from mapi_server.observability.middleware import (
         ObservabilityMiddleware,
         add_metrics_endpoint,
     )
     from mapi_server.observability.tracing import instrument_app
 
+    redact_access_log()
     if settings.metrics_enabled:
         add_metrics_endpoint(
             app,

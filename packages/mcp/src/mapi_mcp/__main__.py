@@ -11,6 +11,7 @@ or a shell history: it reads ``MAPI_API_URL`` and ``MAPI_DASHBOARD_TOKEN`` (or
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -71,6 +72,16 @@ def _setup_logging(credential: Credential | None) -> None:
     httpx_log.setLevel(logging.WARNING)
 
 
+def _emit(write: Callable[[str], None], line: str) -> None:
+    """Write one message line. A writer that cannot encode the text (a stream in a legacy
+    encoding) gets the same message with every non-ASCII character escaped, so one answer
+    never ends the session."""
+    try:
+        write(line + "\n")
+    except UnicodeEncodeError:
+        write(json.dumps(json.loads(line), ensure_ascii=True, separators=(",", ":")) + "\n")
+
+
 async def run_stdio(
     bridge: Bridge, readline: Callable[[], bytes], write: Callable[[str], None]
 ) -> None:
@@ -82,19 +93,21 @@ async def run_stdio(
         try:
             line = raw.decode("utf-8")
         except UnicodeDecodeError:
-            write(json_line(error_response(JsonRpcError(PARSE_ERROR, "Parse error"))) + "\n")
+            _emit(write, json_line(error_response(JsonRpcError(PARSE_ERROR, "Parse error"))))
             continue
         reply = await bridge.forward(line)
         if reply is not None:
-            write(reply + "\n")
+            _emit(write, reply)
 
 
 async def _serve(bridge: Bridge) -> None:
     stdin = sys.stdin.buffer
-    stdout = sys.stdout
+    # MCP stdio messages are UTF-8 whatever the locale (Windows pipes default to cp1252):
+    # write bytes, never through the text layer
+    stdout = sys.stdout.buffer
 
     def write(text: str) -> None:
-        stdout.write(text)
+        stdout.write(text.encode("utf-8"))
         stdout.flush()
 
     async with bridge:

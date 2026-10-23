@@ -50,4 +50,4 @@ Example client configuration (stdio):
 - Results larger than 64 KiB are trimmed by the server; a trimmed result has no
   `structuredContent`.
 
-Supported protocol revisions: `2025-11-25`, `2025-06-18`, `2025-03-26`.
+Supported protocol revisions: `2025-11-25`, `2025-06-18` (`2025-03-26` is not offered: it requires JSON-RPC batches, and the server takes one message per request).

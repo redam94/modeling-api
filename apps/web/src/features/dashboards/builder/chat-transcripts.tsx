@@ -24,7 +24,7 @@ import { CHAT_TRANSCRIPT_DAYS, type ChatTranscriptSummary, type ChatTranscriptTu
 
 const KIND_WORD: Record<ChatTranscriptSummary["principal_kind"], string> = { member: "Team", client: "Client", share: "Share link" };
 
-export function ChatTranscripts({ dashboardId, keeping }: { dashboardId: string; keeping: boolean }) {
+export function ChatTranscripts({ dashboardId, keeping, days = CHAT_TRANSCRIPT_DAYS }: { dashboardId: string; keeping: boolean; /** How long the server keeps chats (its `transcript_days`). */ days?: number }) {
   const list = useChatTranscripts(dashboardId);
   const [open, setOpen] = useState<ChatTranscriptSummary | null>(null);
   const items = list.data?.pages.flatMap((p) => p.items ?? []) ?? [];
@@ -82,7 +82,7 @@ export function ChatTranscripts({ dashboardId, keeping }: { dashboardId: string;
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {keeping ? `No kept conversations yet. New conversations show here for ${CHAT_TRANSCRIPT_DAYS} days.` : "This dashboard keeps no conversations. Turn on “Keep conversations” to see them here."}
+          {keeping ? `No kept conversations yet. New conversations show here for ${days} days.` : "This dashboard keeps no conversations. Turn on “Keep conversations” to see them here."}
         </p>
       )}
       {open ? <TranscriptDialog dashboardId={dashboardId} summary={open} onClose={() => setOpen(null)} /> : null}

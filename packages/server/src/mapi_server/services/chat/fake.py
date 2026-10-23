@@ -52,7 +52,9 @@ class FakeStep:
     ``call`` is a function call ``(name, args)``; ``text`` the answer text (a step may have
     both, like a real model). ``usage`` is the prompt plus answer tokens and ``thoughts`` the
     thinking tokens; the charged total is their sum. ``finish_reason`` defaults to ``STOP``.
-    ``error`` makes the call fail with that :class:`ChatModelError` kind instead."""
+    ``error`` makes the call fail with that :class:`ChatModelError` kind instead; with
+    ``billed`` the error carries the step's usage (a blocked or unusable answer the provider
+    still charged)."""
 
     call: tuple[str, dict[str, Any]] | None = None
     text: str | None = None
@@ -60,6 +62,7 @@ class FakeStep:
     thoughts: int = 0
     finish_reason: str = "STOP"
     error: ModelErrorKind | None = None
+    billed: bool = False
 
 
 class FakeChatModel(ChatModel):
@@ -102,7 +105,8 @@ class FakeChatModel(ChatModel):
         else:
             raise ChatModelError("bad_response")
         if step.error is not None:
-            raise ChatModelError(step.error)
+            usage = _reply(step, n).usage if step.billed else None
+            raise ChatModelError(step.error, usage=usage)
         return _reply(step, n)
 
 
