@@ -130,7 +130,8 @@ def test_a_tenant_admin_token_cannot_approve() -> None:
 
 
 def test_v019_table() -> None:
-    assert api.ENDPOINTS[-len(V019_ENDPOINTS) :] == V019_ENDPOINTS
+    v020 = len(api.V020_ENDPOINTS)  # the v0.20 rows follow
+    assert api.ENDPOINTS[-len(V019_ENDPOINTS) - v020 : -v020] == V019_ENDPOINTS
     ops = [e.operation_id for e in V019_ENDPOINTS]
     assert len(ops) == len(set(ops)) == 18
     assert "V019_ENDPOINTS" in api.__all__

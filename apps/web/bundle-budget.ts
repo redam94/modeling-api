@@ -80,6 +80,14 @@ export const SIGNED_IN_ONLY: RegExp[] = [
   /\/src\/features\/plugins\//,
 ];
 
+/**
+ * v0.20 (plan D21/D23): the chat panel and the modules only it uses (the conversation reducer,
+ * the safe renderer, the docs allow-list). They load lazily in the shared `chat-panel` chunk on
+ * the first "Ask about this dashboard", so they must never be in the entry, a share link's or
+ * the portal's static closure (only the small launcher and the transports are).
+ */
+export const CHAT_PANEL_ONLY: RegExp[] = [/\/src\/features\/dashboards\/chat\/(?:chat-panel|render-safe|docs-links|conversation)\.tsx?$/];
+
 /** The chunk and every chunk it reaches through static imports. */
 export function staticClosure(chunks: ChunkInfo[], fileName: string): Set<string> {
   const byName = new Map(chunks.map((c) => [c.fileName, c]));
@@ -102,6 +110,29 @@ export function loadedBefore(chunks: ChunkInfo[], fileName: string): Set<string>
   const [first, ...rest] = closures;
   for (const name of first ?? []) if (rest.every((closure) => closure.has(name))) loaded.add(name);
   return loaded;
+}
+
+/** What loading a budgeted chunk adds (its static closure minus what is already loaded), in bytes. */
+export function chunkAddedBytes(chunks: ChunkInfo[], fileName: string): number {
+  const byName = new Map(chunks.map((c) => [c.fileName, c]));
+  const before = loadedBefore(chunks, fileName);
+  let added = 0;
+  for (const name of staticClosure(chunks, fileName)) {
+    if (!before.has(name) || name === fileName) added += byName.get(name)?.size ?? 0;
+  }
+  return added;
+}
+
+/** One line per budget (`MAPI_BUDGET_REPORT=1 vite build`): the chunk, the bytes it adds and its budget. */
+export function budgetReport(chunks: ChunkInfo[], opts: BudgetOptions): string[] {
+  const entry = new Set(chunks.filter((c) => c.isEntry).flatMap((c) => [...staticClosure(chunks, c.fileName)]));
+  const entryBytes = chunks.filter((c) => entry.has(c.fileName)).reduce((n, c) => n + c.size, 0);
+  const lines = [`entry closure: ${entryBytes} / ${opts.maxEntryBytes} bytes`];
+  for (const budget of opts.chunkBudgets ?? []) {
+    const root = chunks.find((c) => budget.match.test(c.fileName));
+    lines.push(root ? `${root.fileName}: ${chunkAddedBytes(chunks, root.fileName)} / ${budget.maxBytes} bytes` : `${budget.match}: no chunk`);
+  }
+  return lines;
 }
 
 /** Problems with the {@link BudgetOptions.chunkBudgets}; an empty list means every chunk is within budget. */
@@ -198,6 +229,7 @@ export function bundleBudget(opts: BudgetOptions): Plugin {
           size: Buffer.byteLength(out.code, "utf8"),
         });
       }
+      if (process.env.MAPI_BUDGET_REPORT === "1") this.info(`bundle budgets:\n  ${budgetReport(chunks, opts).join("\n  ")}`);
       const problems = checkEntryBudget(chunks, opts);
       if (problems.length) this.error(`bundle budget exceeded:\n  - ${problems.join("\n  - ")}`);
     },

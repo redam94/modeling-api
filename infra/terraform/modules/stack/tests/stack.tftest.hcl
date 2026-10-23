@@ -39,6 +39,7 @@ variables {
     metrics_collector = { image = "europe-west4-docker.pkg.dev/acme-test-build/mirror/otelcol-google@sha256:6666666666666666666666666666666666666666666666666666666666666666" }
   }
   oidc_client_secret = "mock-oauth-client-secret"
+  gemini_api_key     = "mock-gemini-api-key"
 }
 
 run "full_environment" {

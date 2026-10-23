@@ -101,7 +101,7 @@ def test_client_operations_exist_in_route_access() -> None:
 
 
 def test_client_operations_are_only_dashboards_me_and_session() -> None:
-    v016 = {e.operation_id for e in V016_ENDPOINTS + V017_ENDPOINTS}
+    v016 = {e.operation_id for e in V016_ENDPOINTS + V017_ENDPOINTS + api.V020_ENDPOINTS}
     session = {"auth_login", "auth_callback", "auth_logout", "auth_session"}
     for op in CLIENT_OPERATIONS:
         acc = ROUTE_ACCESS[op]
@@ -130,6 +130,9 @@ def test_client_operations_are_only_dashboards_me_and_session() -> None:
         # v0.17 inputs (and keeping a tried case), downloads and pictures
         "submit_dashboard_predictions", "keep_dashboard_readout", "get_dashboard_batch_template",
         "submit_dashboard_batch", "download_dashboard_predictions", "get_dashboard_asset",
+        # v0.20 chat and the client's own read tokens
+        "get_dashboard_chat", "post_dashboard_chat", "list_dashboard_read_tokens",
+        "create_dashboard_read_token", "revoke_dashboard_read_token",
     }  # fmt: skip
     # membership-only routes and listings stay closed to clients (D4)
     for op in ("list_projects", "list_tenants", "get_catalog", "list_guided_templates",
@@ -187,7 +190,12 @@ def test_v016_rows_follow_the_conventions(e: api.EndpointDecl) -> None:
 
 def test_v016_table_is_last_unique_and_exported() -> None:
     # the v0.17, v0.18 and v0.19 rows follow
-    v017 = len(V017_ENDPOINTS) + len(api.V018_ENDPOINTS) + len(api.V019_ENDPOINTS)
+    v017 = (
+        len(V017_ENDPOINTS)
+        + len(api.V018_ENDPOINTS)
+        + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
+    )
     assert api.ENDPOINTS[-len(V016_ENDPOINTS) - v017 : -v017] == V016_ENDPOINTS
     keys = [(e.method, e.path) for e in api.ENDPOINTS]
     assert len(keys) == len(set(keys))

@@ -1,0 +1,19 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "Older error surface: a bad key is 400 INVALID_ARGUMENT with reason API_KEY_INVALID.",
+  "status": 400,
+  "body": {
+    "error": {
+      "code": 400,
+      "message": "API key not valid. Please pass a valid API key. SECRET-ECHO-400",
+      "status": "INVALID_ARGUMENT",
+      "details": [
+        {
+          "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+          "reason": "API_KEY_INVALID",
+          "domain": "googleapis.com"
+        }
+      ]
+    }
+  }
+}

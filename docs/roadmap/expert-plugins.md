@@ -14,9 +14,9 @@
        before the whole tenant can use it. The public tier stays blocked.
        [Upload your own code](../extend/upload.md).
 
-    The dashboard chat and the MCP server, planned for v0.18 before, moved to v0.20.
+    The dashboard chat and the MCP server, planned for v0.18 before, are in v0.20.
 
-## Planned for v0.20: dashboard chat and MCP { #planned-for-v020 }
+## Delivered in v0.20: dashboard chat and MCP { #planned-for-v020 }
 
 <span id="planned-for-v018"></span>
 
@@ -24,7 +24,7 @@ v0.16 shipped client dashboards with a read-only tool surface
 (`mapi_spec.dashboard_tools.DASHBOARD_TOOLS`). v0.17 made dashboards work for any model type
 and added six tools (`list_panels`, `get_panel`, `get_accuracy`, `list_inputs`,
 `get_prediction` and `get_batch_summary`), 14 in all. The member, client and share routes
-already call these tools. The plan adds:
+already call these tools. v0.20 adds ([what's new](../whats-new-0.20.md)):
 
 - **A chat explainer on a dashboard.** A Gemini flash-class model answers questions about a
   dashboard in plain words. The control plane is the proxy. The API keys stay on the server,
@@ -36,7 +36,9 @@ already call these tools. The plan adds:
 - **Spend caps for each dashboard.** The chat has its own limits, as the exact results of
   v0.16 have.
 
-See [Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
+See [Ask about your dashboard](../guides/ask-about-your-dashboard.md),
+[Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md) and
+[Client dashboards: the tool surface](../concepts/client-dashboards.md#tools).
 
 ## Plugin upload (v0.19)
 

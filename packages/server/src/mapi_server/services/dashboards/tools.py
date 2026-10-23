@@ -4,7 +4,7 @@
 :class:`~mapi_server.services.dashboards.access.DashboardContext` (a member, a client user or
 a share-link session). No tool submits a run or writes a row; private readouts are seen only
 by their actor and by analysts. The results are the DTOs the HTTP routes return - the
-member, client and share read routes call these functions, so the surface v0.17's chat and
+member, client and share read routes call these functions, so the surface v0.20's chat and
 MCP adapters map onto is the one the portal uses now.
 
 v0.17 (plan I-5, D19) serves either layout: ``compare_readouts`` adds the change of each KPI
@@ -12,7 +12,7 @@ panel (``panel_deltas``); ``list_panels``, ``get_panel``, ``get_accuracy``, ``li
 ``get_prediction`` and ``get_batch_summary`` read layout 2 readouts (the last two only the
 caller's own); the media tools (``get_channel``, ``evaluate_whatif``) answer
 ``DASHBOARD_INPUT_DISABLED`` on a dashboard without the media planner. These are what the
-v0.18 adapters (chat and MCP) map onto, 1:1.
+v0.20 adapters (chat and MCP) map onto, 1:1.
 
 v0.19 (plan D16): for a client user or a share link every tool first checks that nothing
 the dashboard shows was made with uploaded code (``403 UPLOADED_CODE_NOT_SHAREABLE``), so a

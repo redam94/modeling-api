@@ -95,3 +95,23 @@ variable "cloud_armor_waf_mode" {
   type        = string
   default     = "preview"
 }
+
+variable "chat_provider" {
+  description = "Dashboard chat model (v0.20): \"off\" (default) or \"gemini\" (needs gemini_api_key_version >= 1)."
+  type        = string
+  default     = "off"
+}
+
+variable "gemini_api_key_version" {
+  description = "Raise to write var.gemini_api_key as a new secret version (0 = none yet)."
+  type        = number
+  default     = 0
+}
+
+variable "gemini_api_key" {
+  description = "Gemini API key (TF_VAR_gemini_api_key). Ephemeral: never stored in state or plan files."
+  type        = string
+  default     = null
+  sensitive   = true
+  ephemeral   = true
+}

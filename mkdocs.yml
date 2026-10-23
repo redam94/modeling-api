@@ -125,6 +125,7 @@ markdown_extensions:
 nav:
   - Home:
       - index.md
+      - "What's new in 0.20": whats-new-0.20.md
       - "What's new in 0.19": whats-new-0.19.md
       - "What's new in 0.18": whats-new-0.18.md
       - "What's new in 0.17": whats-new-0.17.md
@@ -205,6 +206,8 @@ nav:
           - Build a client dashboard: guides/client-dashboards.md
           - Share dashboards securely: guides/sharing-dashboards-securely.md
           - "For clients: read your dashboard": guides/for-clients.md
+          - Ask about your dashboard: guides/ask-about-your-dashboard.md
+          - Connect a chat tool with MCP: guides/connect-a-chat-tool-with-mcp.md
           - Explore a dataset: guides/data-explorer.md
           - Explore a model: guides/model-explorer.md
           - Validate models with governance policies: guides/governance.md

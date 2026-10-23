@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/overlays";
 
+import { useViewedReadout } from "../chat/viewed-readout";
 import type { ClientDashboard } from "../types";
 import { resetUpgradeNoteMemory } from "./panel-model";
 import { PanelReadout } from "./panel-readout";
@@ -320,6 +321,33 @@ describe("History", () => {
     expect(await within(detail()).findByRole("list", { name: "Key numbers of Readout 3" })).toBeInTheDocument();
     await userEvent.click(within(list).getByRole("button", { name: /Old readout/ }));
     expect(await within(detail()).findByText("Expected churn")).toBeInTheDocument();
+  });
+
+  it("tells the chat which readout it shows, and the latest again when it closes (web+docs-1)", async () => {
+    const d = classifierDashboard();
+    const client = fakeClient(d);
+    client.readouts_.set(1, readout(1, { title: "Old readout", snapshot: { lead: "Old.", tiles: [], series: [], channels: [] } }));
+    function Probe() {
+      return <output data-testid="viewed">{String(useViewedReadout(client.cacheKey))}</output>;
+    }
+    const v = view(
+      <>
+        <PanelReadout client={client} dashboard={d} section="history" />
+        <Probe />
+      </>,
+    );
+    expect(screen.getByTestId("viewed")).toHaveTextContent("null");
+    const list = await screen.findByRole("list", { name: "Readouts" });
+    await userEvent.click(await within(list).findByRole("button", { name: /Old readout/ }));
+    await waitFor(() => expect(screen.getByTestId("viewed")).toHaveTextContent("1"));
+    v.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <Probe />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("viewed")).toHaveTextContent("null"));
   });
 
   it("offers Keep on the viewer's own private tried case, never on somebody else's", async () => {

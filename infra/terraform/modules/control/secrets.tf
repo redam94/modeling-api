@@ -1,5 +1,5 @@
 # Secret Manager. Every value is written with a write-only argument from an ephemeral source
-# (generated here, or the ephemeral oidc_client_secret variable): nothing secret is ever in the
+# (generated here, or the ephemeral oidc_client_secret / gemini_api_key variables): nothing secret is ever in the
 # Terraform state, a plan file or a Cloud Run revision spec (services reference secrets by
 # name). Secrets are replicated only in the control region (data residency).
 #
@@ -19,6 +19,9 @@
 #                         process, rotating it invalidates every API token
 #   metrics-token         MAPI_METRICS_TOKEN: the bearer Prometheus presents on GET /metrics
 #   oidc-client-secret    OAuth client secret (only when oidc.client_secret_version > 0)
+#   gemini-api-key        MAPI_GEMINI_API_KEY of the api service only (v0.20 dashboard chat;
+#                         only when chat.gemini_api_key_version > 0). The chat runs in the API
+#                         request path; no other workload, no job and no browser ever sees it.
 
 locals {
   secret_ids = toset([
@@ -30,6 +33,7 @@ locals {
     "server-secret",
     "metrics-token",
     "oidc-client-secret",
+    "gemini-api-key",
   ])
 
   # Which workload may read which secret.
@@ -42,6 +46,7 @@ locals {
     "server-secret"       = ["api", "events", "orchestrator", "migrate"]
     "metrics-token"       = ["api", "events", "orchestrator"]
     "oidc-client-secret"  = ["api"]
+    "gemini-api-key"      = ["api"]
   }
 
   secret_grants = merge([
@@ -139,6 +144,23 @@ resource "google_secret_manager_secret_version" "oidc_client_secret" {
     precondition {
       condition     = var.oidc.client_id != null
       error_message = "oidc.client_secret_version > 0 needs oidc.client_id as well."
+    }
+  }
+}
+
+# ------------------------------------------------------------------- Gemini API key (chat)
+
+resource "google_secret_manager_secret_version" "gemini_api_key" {
+  count = var.chat.gemini_api_key_version > 0 ? 1 : 0
+
+  secret                 = google_secret_manager_secret.this["gemini-api-key"].id
+  secret_data_wo         = var.gemini_api_key
+  secret_data_wo_version = var.chat.gemini_api_key_version
+
+  lifecycle {
+    precondition {
+      condition     = var.gemini_api_key != null && trimspace(coalesce(var.gemini_api_key, "")) != ""
+      error_message = "chat.gemini_api_key_version > 0 needs the key in TF_VAR_gemini_api_key (ephemeral)."
     }
   }
 }

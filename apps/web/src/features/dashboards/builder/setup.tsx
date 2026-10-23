@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { Section } from "../readout/parts";
 import { isLayout2, MAX_CHANNELS, MAX_TILES, TAB_KEYS, TILE_KEYS, type AnyDashboardSpec, type ChannelDef, type DashboardSource, type DashboardSpec, type KpiDef } from "../types";
+import { ChatSettingsSection } from "./chat-settings";
 import { SetupV2 } from "./setup-v2";
 import type { SourceGrid } from "./source";
 import {
@@ -80,6 +81,8 @@ export function SetupTab({ spec, onChange, issues, grid, readOnly = false }: Spe
           grid={grid}
         />
       </fieldset>
+      {/* v0.20: a layout 1 draft shows "Upgrade the layout to use chat." here */}
+      <ChatSettingsSection />
     </div>
   );
 }

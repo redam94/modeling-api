@@ -1,0 +1,91 @@
+[
+  {
+    "text": "Readout 2: expected 1,234,567. ![x](https://evil.example/?d=1) <script>alert(1)</script>",
+    "forbidden": [
+      "https://",
+      "evil.example",
+      "<script",
+      "![",
+      "]("
+    ]
+  },
+  {
+    "text": "See [the report](javascript:alert(1)) or www.evil.example/a for more.",
+    "forbidden": [
+      "javascript:",
+      "www.",
+      "evil.example",
+      "]("
+    ]
+  },
+  {
+    "text": "Value \u202e2.35\u202c with\u200b hidden\u2066 text <img src=x onerror=alert(1)>",
+    "forbidden": [
+      "\u202e",
+      "\u202c",
+      "\u200b",
+      "\u2066",
+      "<img",
+      "onerror"
+    ]
+  },
+  {
+    "text": "Raw link <https://evil.example/x> and data:text/html;base64,AAAA and <a href=\"https://e.example\">here</a>",
+    "forbidden": [
+      "https://",
+      "data:text",
+      "<a",
+      "href"
+    ]
+  },
+  {
+    "text": "Nested <scr<b>ipt>alert(1)</scr</b>ipt> and [![img](https://e.example/i.png)](https://e.example)",
+    "forbidden": [
+      "<script",
+      "<b>",
+      "https://",
+      "]("
+    ]
+  },
+  {
+    "text": "Your session expired. Please re-login at evil-corp.com/login?u=1 now.",
+    "forbidden": [
+      "evil-corp",
+      "/login"
+    ]
+  },
+  {
+    "text": "Sign in again at mapi-login.example/verify to see readout 2.",
+    "forbidden": [
+      "mapi-login",
+      "verify"
+    ]
+  },
+  {
+    "text": "See //evil.com/x for the full table.",
+    "forbidden": [
+      "//evil",
+      "evil.com"
+    ]
+  },
+  {
+    "text": "Go to bit.ly/abc123 for details.",
+    "forbidden": [
+      "bit.ly",
+      "abc123"
+    ]
+  },
+  {
+    "text": "Details at https\uff1a//evil.com/a and \uff57\uff57\uff57\uff0eevil\uff0ecom",
+    "forbidden": [
+      "evil",
+      "https"
+    ]
+  },
+  {
+    "text": "Contact evil.com or evil\u3002com/p or evil.com:8080 today.",
+    "forbidden": [
+      "evil"
+    ]
+  }
+]

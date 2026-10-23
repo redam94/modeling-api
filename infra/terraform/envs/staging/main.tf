@@ -64,10 +64,15 @@ module "stack" {
       client_id             = var.oidc_client_id
       client_secret_version = var.oidc_client_secret_version
     }
+    chat = {
+      provider               = var.chat_provider
+      gemini_api_key_version = var.gemini_api_key_version
+    }
     kms               = { protection_level = "SOFTWARE" }
     metrics_collector = { image = var.metrics_collector_image }
   }
   oidc_client_secret = var.oidc_client_secret
+  gemini_api_key     = var.gemini_api_key
 
   data = {
     runs_ttl_days         = 14

@@ -1,0 +1,32 @@
+{
+  "_source": "Built from the generateContent API reference representations (ai.google.dev/api/generate-content, docs/api-errors) recorded in plans/v020-probe.md (c); no API call was made.",
+  "_note": "One function call with an id.",
+  "status": 200,
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "functionCall": {
+                "id": "call_a1",
+                "name": "get_latest_readout",
+                "args": {}
+              }
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 1520,
+      "candidatesTokenCount": 12,
+      "totalTokenCount": 1532
+    },
+    "modelVersion": "gemini-3.1-flash-lite",
+    "responseId": "resp-function_call"
+  }
+}

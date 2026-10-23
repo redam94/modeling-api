@@ -20,6 +20,14 @@ v0.17: a stored spec is either layout (:func:`any_spec`, :func:`any_revision_spe
 the grid, refits of v0.16) and answers ``DASHBOARD_INPUT_DISABLED`` for a layout 2 revision.
 :func:`effective_inputs` and :func:`client_dashboard` take either layout; image batch
 scoring is for members only (plan §10.3).
+
+v0.20 (plan I-6, D11-D13): :func:`token_context` is the :class:`DashboardContext` of a
+dashboard read token (:class:`DashboardTokenAuth`, resolved by the MCP endpoint). The owner's
+membership and grant are checked again on every use, so removing them ends the token without
+a revoke. A token context never sees private readouts (``is_analyst=False``), needs a
+published layout 2 dashboard, and is refused a dashboard made with uploaded code even when
+the owner is a member: the results leave the platform for an external agent.
+:func:`chat_layout_ok` is the layout test of dashboard chat.
 """
 
 from __future__ import annotations
@@ -56,11 +64,19 @@ from mapi_spec.dashboards import (
     TabKey,
 )
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Problem
-from mapi_spec.tenancy import Action, ProjectRole, ResourceKind
+from mapi_spec.tenancy import (
+    Action,
+    Membership,
+    ProjectRole,
+    ResourceKind,
+    TenantStatus,
+    effective_role,
+)
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mapi_server.auth.identity import LOCAL_USER_ID, memberships_of
 from mapi_server.auth.request import RequestAuth
 from mapi_server.context import ServerContext
 from mapi_server.db import models as m
@@ -74,10 +90,12 @@ __all__ = [
     "ActualsMode",
     "AnySpec",
     "DashboardContext",
+    "DashboardTokenAuth",
     "actuals_mode",
     "any_revision_spec",
     "any_spec",
     "caller_is_client",
+    "chat_layout_ok",
     "client_dashboard",
     "dashboard_dto",
     "effective_inputs",
@@ -95,6 +113,7 @@ __all__ = [
     "share_dto",
     "share_status",
     "summary_dto",
+    "token_context",
     "viewer_problem",
 ]
 
@@ -119,6 +138,21 @@ class DashboardContext:
     principal_id: str
     inputs: EffectiveInputs
     is_analyst: bool
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardTokenAuth:
+    """A verified dashboard read token (plan I-6): the token row's ids and the dashboard of
+    its single ``dashboard:<id>`` scope. Made by
+    :func:`mapi_server.auth.request.resolve_dashboard_token`; :func:`token_context` turns it
+    into a :class:`DashboardContext`."""
+
+    token_id: str
+    tenant_id: str
+    project_id: str
+    owner_id: str
+    owner_kind: str
+    dashboard_id: str
 
 
 # ================================================================================== callers
@@ -312,6 +346,99 @@ async def member_context(
         inputs=effective_inputs(spec, mode, client=client),
         is_analyst=not client and _is_analyst(auth),
     )
+
+
+async def _token_owner_role(ctx: ServerContext, tok: DashboardTokenAuth) -> ProjectRole:
+    """The token owner's role in the token's project now, read as the gateway role (identity
+    tables): ``401`` when the owner or the tenant is no longer active, ``404`` when the owner
+    holds no grant in the project."""
+    async with ctx.db.session() as s:
+        tenant = await s.get(m.Tenant, tok.tenant_id)
+        if tenant is None or tenant.status != TenantStatus.ACTIVE.value:
+            raise unauthenticated("the read token's workspace is not active")
+        grants: list[Membership] = await memberships_of(s, tok.owner_id, tenant_ids=[tok.tenant_id])
+        local = tok.owner_id == LOCAL_USER_ID and not ctx.settings.multi_tenant
+        if local and not grants:  # the single-tenant local admin (never a stored grant)
+            return ProjectRole.ADMIN
+        if not local:
+            if tok.owner_kind != "user":
+                raise unauthenticated("the read token is not valid")
+            user = await s.get(m.User, tok.owner_id)
+            if user is None or user.status != "active":
+                raise unauthenticated("the read token's owner is not active")
+    role = effective_role(grants, tok.owner_id, tok.tenant_id, tok.project_id)
+    if role is None:
+        raise NotFoundError("dashboard", tok.dashboard_id)
+    return role
+
+
+async def require_read_token_target(
+    session: AsyncSession, row: m.Dashboard, rev: m.DashboardRevision
+) -> DashboardSpecV2:
+    """The checks a dashboard read token needs of its dashboard's published revision, on
+    every use (:func:`token_context`) and when it is made (so no token is made that can never
+    work): ``403 FORBIDDEN`` for layout 1, ``403 UPLOADED_CODE_NOT_SHAREABLE`` when anything
+    the dashboard shows was made with uploaded code. Returns the layout 2 spec."""
+    spec = any_revision_spec(rev)
+    if not isinstance(spec, DashboardSpecV2):
+        raise MapiError(
+            "this dashboard uses layout 1: chat tools connect to layout 2 dashboards only. "
+            "Ask your analyst to upgrade the layout",
+            code=ErrorCode.FORBIDDEN,
+        )
+    await require_shareable(session, dashboard=row)
+    return spec
+
+
+async def token_context(ctx: ServerContext, tok: DashboardTokenAuth) -> DashboardContext:
+    """The :class:`DashboardContext` of a dashboard read token, checked again on every use
+    (plan I-6, D11-D13).
+
+    ``404`` when the dashboard is not in the token's project, is not published, or the owner
+    lost their membership (or, for a client owner, the grant); ``401`` when the owner or the
+    tenant is no longer active; ``403 FORBIDDEN`` for a layout 1 dashboard; ``403
+    UPLOADED_CODE_NOT_SHAREABLE`` when anything the dashboard shows was made with uploaded
+    code, for member owners too. The context sees published readouts only
+    (``is_analyst=False``), and the inputs a client user may use."""
+    role = await _token_owner_role(ctx, tok)
+    client = role is ProjectRole.CLIENT
+    async with ctx.db.tenant_session(tok.tenant_id) as session:
+        row = await session.get(m.Dashboard, tok.dashboard_id)
+        if (
+            row is None
+            or row.tenant_id != tok.tenant_id
+            or row.project_id != tok.project_id
+            or row.status != "published"
+        ):
+            raise NotFoundError("dashboard", tok.dashboard_id)
+        if client and await session.get(m.DashboardGrant, (row.id, tok.owner_id)) is None:
+            raise NotFoundError("dashboard", tok.dashboard_id)
+        rev = await load_revision(session, row)
+        if rev is None:
+            raise NotFoundError("dashboard", tok.dashboard_id)
+        spec = await require_read_token_target(session, row, rev)
+        mode = (
+            await actuals_mode(session, ctx, rev.model_version_id) if spec.actuals.enabled else None
+        )
+        return DashboardContext(
+            tenant_id=row.tenant_id,
+            project_id=row.project_id,
+            dashboard_id=row.id,
+            revision_id=rev.id,
+            principal_kind="client" if client else "member",
+            principal_id=tok.owner_id,
+            inputs=effective_inputs(spec, mode, client=True),
+            is_analyst=False,
+        )
+
+
+async def chat_layout_ok(s: AsyncSession, dctx: DashboardContext) -> bool:
+    """Whether the context's published revision is layout 2 (chat needs it; plan D4)."""
+    rev = await s.get(m.DashboardRevision, dctx.revision_id)
+    if rev is None or rev.dashboard_id != dctx.dashboard_id:
+        return False
+    spec: object = rev.spec
+    return isinstance(spec, dict) and spec.get("layout_version", 1) == 2
 
 
 # ================================================================================== readouts

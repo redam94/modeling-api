@@ -14,7 +14,8 @@ v0.17 contracts: layout 2 dashboards for any model type, with presets, panels, s
 actuals tracking and batch scoring; and the v0.18 contracts: id namespaces, JSON-Schema
 safety, catalog diagnostics, plugin workflow nodes and templates, and recipe previews; and the
 v0.19 contracts: uploaded plugins (namespaces, version states, inspect and describe results,
-overlay pins) and untrusted-text safety).
+overlay pins) and untrusted-text safety; and the v0.20 contracts: dashboard chat, chat
+settings and transcripts, dashboard read tokens and tool-result caps).
 
 This package never imports numpy, xarray or pandas: the control plane depends on it and
 must stay JSON-only. Public names are re-exported here; see the submodules for details.
@@ -73,6 +74,14 @@ from mapi_spec.catalog import (
     StepCatalogEntry,
     TemplateCatalogEntry,
     catalog_about_issues,
+)
+from mapi_spec.chat import (
+    CHAT_MAX_TOOL_CALLS,
+    ChatAvailability,
+    ChatRequest,
+    ChatResponse,
+    ChatTurn,
+    ReadToken,
 )
 from mapi_spec.collection import (
     BASE_INFO_INPUT,
@@ -371,7 +380,15 @@ from mapi_spec.text_safety import (
     has_unsafe_text,
     normalize_untrusted_text,
 )
-from mapi_spec.tokens import ApiToken, ScopeName, generate_token, parse_token, scope_allows
+from mapi_spec.tokens import (
+    ApiToken,
+    ScopeName,
+    dashboard_scope,
+    generate_token,
+    parse_token,
+    scope_allows,
+)
+from mapi_spec.tool_results import CappedResult, cap_tool_result
 from mapi_spec.tracking import (
     LogLevel,
     RunFilter,
@@ -454,6 +471,7 @@ __all__ = [
     "BASE_MANIFEST_INPUT",
     "BUILTIN_DISTRIBUTIONS",
     "BUILTIN_NAMESPACES",
+    "CHAT_MAX_TOOL_CALLS",
     "COLLECTION_FORMAT",
     "COLLECTION_INFO",
     "COLLECTION_MANIFEST",
@@ -518,9 +536,14 @@ __all__ = [
     "Campaign",
     "Capabilities",
     "Capability",
+    "CappedResult",
     "Catalog",
     "CatalogDiagnostic",
     "ChannelBelief",
+    "ChatAvailability",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatTurn",
     "CheckResult",
     "ChooserAnswer",
     "ChooserResult",
@@ -648,6 +671,7 @@ __all__ = [
     "QuotaPolicy",
     "QuotaScope",
     "RaggedSpec",
+    "ReadToken",
     "Readout",
     "ReadoutSnapshot",
     "Representation",
@@ -729,6 +753,7 @@ __all__ = [
     "can",
     "can_aggregate",
     "canonical_json",
+    "cap_tool_result",
     "catalog_about_issues",
     "check_describe",
     "check_labels",
@@ -740,6 +765,7 @@ __all__ = [
     "check_reference_url",
     "check_tag_key",
     "check_webhook_url",
+    "dashboard_scope",
     "default_summary",
     "describe_dataset",
     "describe_digest",

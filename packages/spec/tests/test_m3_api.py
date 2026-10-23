@@ -49,6 +49,7 @@ def test_the_served_table_is_m1_m2_m3_and_m3_is_additive() -> None:
         + api.V017_ENDPOINTS
         + api.V018_ENDPOINTS
         + api.V019_ENDPOINTS
+        + api.V020_ENDPOINTS
     )
     assert ALL_ENDPOINTS == ENDPOINTS
     keys = [(e.method, e.path) for e in ALL_ENDPOINTS]

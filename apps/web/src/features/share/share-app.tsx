@@ -18,10 +18,12 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/overlays";
+import { shareChatTransport } from "@/features/dashboards/chat/transport-share";
+import type { ChatTransport } from "@/features/dashboards/chat/types";
 import { dashboardErrorMessage, openShareSession, problemOf, shareClient } from "@/features/dashboards/client";
 import { dk } from "@/features/dashboards/keys";
 import { ReadoutPage } from "@/features/dashboards/readout/readout-page";
-import type { DashboardClient } from "@/features/dashboards/types";
+import type { DashboardClient, ShareSessionHandle } from "@/features/dashboards/types";
 import { useApplyTheme } from "@/hooks/use-theme";
 
 import { LinkEnded, LinkProblem } from "./link-ended";
@@ -33,7 +35,7 @@ import { createShareSession, type ShareSessionController } from "./share-session
 export type SharePhase =
   | { kind: "opening" }
   | { kind: "passcode"; busy: boolean; error: string | null; locked: boolean; retryAfter?: number | null }
-  | { kind: "open"; client: DashboardClient; endsAt: string | null }
+  | { kind: "open"; client: DashboardClient; chat: ChatTransport; endsAt: string | null }
   | { kind: "ended"; reason: "ended" | "incomplete" | "timeout" }
   | { kind: "problem"; message: string; retry: boolean };
 
@@ -127,14 +129,12 @@ export function ShareApp() {
       try {
         const s = await openShareSession(t, passcode);
         controller.current?.stop();
-        const client = shareClient(
-          {
-            current: () => controller.current?.handle.current() ?? s.session,
-            expired: () => controller.current?.handle.expired() ?? true,
-            refresh: () => controller.current?.handle.refresh() ?? Promise.reject(new Error("the share session was closed")),
-          },
-          s.dashboard.id,
-        );
+        const handle: ShareSessionHandle = {
+          current: () => controller.current?.handle.current() ?? s.session,
+          expired: () => controller.current?.handle.expired() ?? true,
+          refresh: () => controller.current?.handle.refresh() ?? Promise.reject(new Error("the share session was closed")),
+        };
+        const client = shareClient(handle, s.dashboard.id);
         controller.current = createShareSession(s, {
           onEnded: () => lose.current("ended"),
           onDashboard: (d) => queryClient.setQueryData(dk.viewDashboard(client.cacheKey), d),
@@ -142,7 +142,9 @@ export function ShareApp() {
         // The token was sent once; the session replaces it.
         token.current = null;
         queryClient.setQueryData(dk.viewDashboard(client.cacheKey), s.dashboard);
-        setPhase({ kind: "open", client, endsAt: s.dashboard.ends_at ?? null });
+        // v0.20: chat rides on the same session (`X-Mapi-Share`); the launcher shows only when
+        // the analyst opened chat to share links.
+        setPhase({ kind: "open", client, chat: shareChatTransport(handle), endsAt: s.dashboard.ends_at ?? null });
       } catch (err) {
         setPhase(phaseOfOpenError(err, passcode !== null));
       }
@@ -182,7 +184,7 @@ export function ShareApp() {
       <TooltipProvider delayDuration={300}>
         {phase.kind === "open" ? (
           <ShareFrame endsAt={phase.endsAt}>
-            <ReadoutPage client={phase.client} />
+            <ReadoutPage client={phase.client} chat={phase.chat} />
           </ShareFrame>
         ) : (
           <ShareFrame narrow>

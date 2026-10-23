@@ -1,0 +1,1387 @@
+{
+ "created_at": "2026-10-15T09:30:00Z",
+ "endpoint_revision": null,
+ "kind": "refresh",
+ "mine": null,
+ "model_ref": "model://growth/eu-geo-mmm@v3",
+ "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+ "period": [
+  "2026-10-12",
+  "2026-10-18"
+ ],
+ "problem": null,
+ "ready_at": "2026-10-15T09:30:00Z",
+ "refit_status": null,
+ "seq": 12,
+ "snapshot": {
+  "accuracy": null,
+  "accuracy_detail": null,
+  "accuracy_history": [],
+  "batch": null,
+  "channels": [],
+  "conditioning": {
+   "actuals_through": null,
+   "conditioned": false,
+   "dim": "t",
+   "fit_end": "2019-12-01",
+   "horizon_source": "rows",
+   "message": "Forecast from the end of the fitted history (2019-12-01); no actuals were supplied. 12 periods forecast from 2020-01-01 to 2020-12-01.",
+   "n_actuals": 0,
+   "n_series": 1,
+   "parameters": "fitted",
+   "periods": 12,
+   "revised": 0,
+   "series": [
+    {
+     "actuals_through": null,
+     "first_actual": null,
+     "forecast_from": "2020-01-01",
+     "forecast_to": "2020-12-01",
+     "missing": 0,
+     "n_actuals": 0,
+     "n_forecast": 12,
+     "origin": "2019-12-01",
+     "revised": 0,
+     "series": {}
+    }
+   ],
+   "series_conditioned": 0,
+   "truncated": false
+  },
+  "input_fingerprint": null,
+  "inputs_echo": [],
+  "lead": "We expect 1,074.0 next period, likely between 1,067.8 and 1,079.9.",
+  "notes_plain": [],
+  "panels": [
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "next",
+    "tile": {
+     "approximate": false,
+     "caption": "Period 2020-01-01. The range shows the average, not single results.",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": 1079.921945471403,
+     "key": "panel",
+     "label": "Prediction next period",
+     "low": 1067.82676999615,
+     "panel_id": "next",
+     "unit": "number",
+     "value": 1073.9931930129897
+    },
+    "title": "Prediction next period"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "horizon_total",
+    "tile": {
+     "approximate": false,
+     "caption": "The total over the next 12 periods. The range shows the average, not single results.",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": 13411.8639356,
+     "key": "panel",
+     "label": "Prediction over the forecast",
+     "low": 13239.9462566,
+     "panel_id": "horizon_total",
+     "unit": "number",
+     "value": 13326.275916
+    },
+    "title": "Prediction over the forecast"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "typical_error",
+    "reason": "This shows after you send actual results.",
+    "title": "Typical error"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "inside_range",
+    "reason": "This shows after you send actual results.",
+    "title": "Results inside the likely range"
+   },
+   {
+    "approximate": false,
+    "caption": "The range shows the average, not single results.",
+    "intent": "fan",
+    "kind": "series",
+    "panel_id": "fan",
+    "series": [
+     {
+      "label": "Prediction and forecast",
+      "name": "y_hat",
+      "points": [
+       {
+        "actual": 996.728101503,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-01-01"
+       },
+       {
+        "actual": 1023.86643052,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-02-01"
+       },
+       {
+        "actual": 1097.29149245,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-03-01"
+       },
+       {
+        "actual": null,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-04-01"
+       },
+       {
+        "actual": 1094.09606458,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-05-01"
+       },
+       {
+        "actual": 1002.02440288,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-06-01"
+       },
+       {
+        "actual": 1038.7994589,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-07-01"
+       },
+       {
+        "actual": 1016.75857887,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-08-01"
+       },
+       {
+        "actual": 994.118221584,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-09-01"
+       },
+       {
+        "actual": 993.67320557,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-10-01"
+       },
+       {
+        "actual": 985.838005169,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-11-01"
+       },
+       {
+        "actual": 1049.71263107,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2015-12-01"
+       },
+       {
+        "actual": 1027.60439119,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-01-01"
+       },
+       {
+        "actual": 1071.01402219,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-02-01"
+       },
+       {
+        "actual": 1126.19839901,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-03-01"
+       },
+       {
+        "actual": 1152.01568417,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-04-01"
+       },
+       {
+        "actual": 1075.846709,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-05-01"
+       },
+       {
+        "actual": 1095.61294281,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-06-01"
+       },
+       {
+        "actual": 1042.83198217,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-07-01"
+       },
+       {
+        "actual": 1029.61995559,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-08-01"
+       },
+       {
+        "actual": 939.79025903,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-09-01"
+       },
+       {
+        "actual": 995.159139234,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-10-01"
+       },
+       {
+        "actual": 953.298149184,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-11-01"
+       },
+       {
+        "actual": 1046.8945686,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2016-12-01"
+       },
+       {
+        "actual": 1012.22030143,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-01-01"
+       },
+       {
+        "actual": 1049.81288362,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-02-01"
+       },
+       {
+        "actual": 1096.22440987,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-03-01"
+       },
+       {
+        "actual": 1122.12113698,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-04-01"
+       },
+       {
+        "actual": 1121.594526,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-05-01"
+       },
+       {
+        "actual": 1085.78978736,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-06-01"
+       },
+       {
+        "actual": null,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-07-01"
+       },
+       {
+        "actual": 1049.36012054,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-08-01"
+       },
+       {
+        "actual": 1038.02206478,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-09-01"
+       },
+       {
+        "actual": 946.619767927,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-10-01"
+       },
+       {
+        "actual": 1082.12991788,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-11-01"
+       },
+       {
+        "actual": 1052.6630894,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2017-12-01"
+       },
+       {
+        "actual": 1076.60295723,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-01-01"
+       },
+       {
+        "actual": 1089.44952584,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-02-01"
+       },
+       {
+        "actual": 1071.36640594,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-03-01"
+       },
+       {
+        "actual": 1110.49825972,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-04-01"
+       },
+       {
+        "actual": 1101.90264315,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-05-01"
+       },
+       {
+        "actual": 1080.10239838,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-06-01"
+       },
+       {
+        "actual": 1078.94366972,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-07-01"
+       },
+       {
+        "actual": 1027.80057154,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-08-01"
+       },
+       {
+        "actual": 986.31580862,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-09-01"
+       },
+       {
+        "actual": null,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-10-01"
+       },
+       {
+        "actual": 1051.00654172,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-11-01"
+       },
+       {
+        "actual": 1083.61666814,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2018-12-01"
+       },
+       {
+        "actual": 1066.23767235,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-01-01"
+       },
+       {
+        "actual": 1162.7251832,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-02-01"
+       },
+       {
+        "actual": 1172.67762393,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-03-01"
+       },
+       {
+        "actual": 1107.49975886,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-04-01"
+       },
+       {
+        "actual": 1161.94764561,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-05-01"
+       },
+       {
+        "actual": 1120.59531079,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-06-01"
+       },
+       {
+        "actual": 1145.03349988,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-07-01"
+       },
+       {
+        "actual": 1076.62612328,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-08-01"
+       },
+       {
+        "actual": 1081.52601915,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-09-01"
+       },
+       {
+        "actual": 1063.3913039,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-10-01"
+       },
+       {
+        "actual": 1095.01459886,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-11-01"
+       },
+       {
+        "actual": 1044.66789964,
+        "high": null,
+        "low": null,
+        "mean": null,
+        "t": "2019-12-01"
+       },
+       {
+        "actual": null,
+        "high": 1079.921945471403,
+        "low": 1067.82676999615,
+        "mean": 1073.9931930129897,
+        "t": "2020-01-01"
+       },
+       {
+        "actual": null,
+        "high": 1140.1146035033344,
+        "low": 1129.0413141508423,
+        "mean": 1134.962328239705,
+        "t": "2020-02-01"
+       },
+       {
+        "actual": null,
+        "high": 1164.9877476827025,
+        "low": 1152.3058379434442,
+        "mean": 1159.5954033110243,
+        "t": "2020-03-01"
+       },
+       {
+        "actual": null,
+        "high": 1221.3695394654803,
+        "low": 1201.5320231477167,
+        "mean": 1211.2854364245704,
+        "t": "2020-04-01"
+       },
+       {
+        "actual": null,
+        "high": 1202.5989969366972,
+        "low": 1184.8151206829705,
+        "mean": 1194.7856642701015,
+        "t": "2020-05-01"
+       },
+       {
+        "actual": null,
+        "high": 1123.9048288407005,
+        "low": 1109.5429751866086,
+        "mean": 1116.1226413679435,
+        "t": "2020-06-01"
+       },
+       {
+        "actual": null,
+        "high": 1121.2850786099712,
+        "low": 1108.3548019353184,
+        "mean": 1114.1635443335313,
+        "t": "2020-07-01"
+       },
+       {
+        "actual": null,
+        "high": 1047.2833254061977,
+        "low": 1021.9322514849381,
+        "mean": 1032.6081398320293,
+        "t": "2020-08-01"
+       },
+       {
+        "actual": null,
+        "high": 1076.390145536751,
+        "low": 1059.7963574034886,
+        "mean": 1068.360933049417,
+        "t": "2020-09-01"
+       },
+       {
+        "actual": null,
+        "high": 1048.3572628489605,
+        "low": 1031.763463285488,
+        "mean": 1039.3931002278018,
+        "t": "2020-10-01"
+       },
+       {
+        "actual": null,
+        "high": 1092.0825670181057,
+        "low": 1074.55595941724,
+        "mean": 1081.5297093097017,
+        "t": "2020-11-01"
+       },
+       {
+        "actual": null,
+        "high": 1109.380356845696,
+        "low": 1091.506238472758,
+        "mean": 1099.4758226520246,
+        "t": "2020-12-01"
+       }
+      ]
+     }
+    ],
+    "split_at": "2020-01-01",
+    "title": "Prediction and forecast",
+    "x_kind": "time"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "unavailable",
+    "panel_id": "accuracy",
+    "reason": "This shows after you send actual results.",
+    "title": "Accuracy over time"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "columns": [
+     "Period",
+     "Expected",
+     "Likely low",
+     "Likely high"
+    ],
+    "kind": "table",
+    "panel_id": "next_periods",
+    "rows": [
+     [
+      "2020-01-01",
+      1073.9931930129897,
+      1067.82676999615,
+      1079.921945471403
+     ],
+     [
+      "2020-02-01",
+      1134.962328239705,
+      1129.0413141508423,
+      1140.1146035033344
+     ],
+     [
+      "2020-03-01",
+      1159.5954033110243,
+      1152.3058379434442,
+      1164.9877476827025
+     ],
+     [
+      "2020-04-01",
+      1211.2854364245704,
+      1201.5320231477167,
+      1221.3695394654803
+     ],
+     [
+      "2020-05-01",
+      1194.7856642701015,
+      1184.8151206829705,
+      1202.5989969366972
+     ],
+     [
+      "2020-06-01",
+      1116.1226413679435,
+      1109.5429751866086,
+      1123.9048288407005
+     ],
+     [
+      "2020-07-01",
+      1114.1635443335313,
+      1108.3548019353184,
+      1121.2850786099712
+     ],
+     [
+      "2020-08-01",
+      1032.6081398320293,
+      1021.9322514849381,
+      1047.2833254061977
+     ],
+     [
+      "2020-09-01",
+      1068.360933049417,
+      1059.7963574034886,
+      1076.390145536751
+     ],
+     [
+      "2020-10-01",
+      1039.3931002278018,
+      1031.763463285488,
+      1048.3572628489605
+     ],
+     [
+      "2020-11-01",
+      1081.5297093097017,
+      1074.55595941724,
+      1092.0825670181057
+     ],
+     [
+      "2020-12-01",
+      1099.4758226520246,
+      1091.506238472758,
+      1109.380356845696
+     ]
+    ],
+    "title": "The next periods"
+   },
+   {
+    "approximate": false,
+    "caption": "The range shows the average, not single results.",
+    "intent": "decomposition",
+    "kind": "series",
+    "panel_id": "o_level",
+    "series": [
+     {
+      "label": "Parts of the forecast",
+      "name": "level",
+      "points": [
+       {
+        "actual": null,
+        "high": 1116.8804252526058,
+        "low": 1107.5942820219186,
+        "mean": 1112.1826822788132,
+        "t": "2020-01-01"
+       },
+       {
+        "actual": null,
+        "high": 1118.587597931803,
+        "low": 1108.3269800656244,
+        "mean": 1113.813072954206,
+        "t": "2020-02-01"
+       },
+       {
+        "actual": null,
+        "high": 1120.6976602133022,
+        "low": 1109.7168111706644,
+        "mean": 1115.4434636295994,
+        "t": "2020-03-01"
+       },
+       {
+        "actual": null,
+        "high": 1123.7252217467733,
+        "low": 1111.432381228033,
+        "mean": 1117.0738543049922,
+        "t": "2020-04-01"
+       },
+       {
+        "actual": null,
+        "high": 1126.7426116415618,
+        "low": 1113.242997065143,
+        "mean": 1118.7042449803855,
+        "t": "2020-05-01"
+       },
+       {
+        "actual": null,
+        "high": 1128.7715438149885,
+        "low": 1114.4752941443714,
+        "mean": 1120.3346356557784,
+        "t": "2020-06-01"
+       },
+       {
+        "actual": null,
+        "high": 1131.5919276578784,
+        "low": 1116.3549478771808,
+        "mean": 1121.9650263311714,
+        "t": "2020-07-01"
+       },
+       {
+        "actual": null,
+        "high": 1133.7190153385095,
+        "low": 1117.549451183745,
+        "mean": 1123.5954170065647,
+        "t": "2020-08-01"
+       },
+       {
+        "actual": null,
+        "high": 1136.2740217177281,
+        "low": 1119.2708121974006,
+        "mean": 1125.2258076819576,
+        "t": "2020-09-01"
+       },
+       {
+        "actual": null,
+        "high": 1138.5121730971873,
+        "low": 1120.718732191234,
+        "mean": 1126.8561983573506,
+        "t": "2020-10-01"
+       },
+       {
+        "actual": null,
+        "high": 1140.8092587197254,
+        "low": 1122.1666521850677,
+        "mean": 1128.4865890327437,
+        "t": "2020-11-01"
+       },
+       {
+        "actual": null,
+        "high": 1143.1226812080702,
+        "low": 1123.4378946789054,
+        "mean": 1130.116979708137,
+        "t": "2020-12-01"
+       }
+      ]
+     }
+    ],
+    "split_at": "2020-01-01",
+    "title": "Parts of the forecast",
+    "x_kind": "time"
+   }
+  ],
+  "prediction": null,
+  "preset": "forecast",
+  "scenario": null,
+  "schema_version": 2,
+  "series": [
+   {
+    "label": "Prediction",
+    "name": "y_hat",
+    "points": [
+     {
+      "actual": 996.728101503,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-01-01"
+     },
+     {
+      "actual": 1023.86643052,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-02-01"
+     },
+     {
+      "actual": 1097.29149245,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-03-01"
+     },
+     {
+      "actual": null,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-04-01"
+     },
+     {
+      "actual": 1094.09606458,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-05-01"
+     },
+     {
+      "actual": 1002.02440288,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-06-01"
+     },
+     {
+      "actual": 1038.7994589,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-07-01"
+     },
+     {
+      "actual": 1016.75857887,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-08-01"
+     },
+     {
+      "actual": 994.118221584,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-09-01"
+     },
+     {
+      "actual": 993.67320557,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-10-01"
+     },
+     {
+      "actual": 985.838005169,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-11-01"
+     },
+     {
+      "actual": 1049.71263107,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2015-12-01"
+     },
+     {
+      "actual": 1027.60439119,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-01-01"
+     },
+     {
+      "actual": 1071.01402219,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-02-01"
+     },
+     {
+      "actual": 1126.19839901,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-03-01"
+     },
+     {
+      "actual": 1152.01568417,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-04-01"
+     },
+     {
+      "actual": 1075.846709,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-05-01"
+     },
+     {
+      "actual": 1095.61294281,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-06-01"
+     },
+     {
+      "actual": 1042.83198217,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-07-01"
+     },
+     {
+      "actual": 1029.61995559,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-08-01"
+     },
+     {
+      "actual": 939.79025903,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-09-01"
+     },
+     {
+      "actual": 995.159139234,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-10-01"
+     },
+     {
+      "actual": 953.298149184,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-11-01"
+     },
+     {
+      "actual": 1046.8945686,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2016-12-01"
+     },
+     {
+      "actual": 1012.22030143,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-01-01"
+     },
+     {
+      "actual": 1049.81288362,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-02-01"
+     },
+     {
+      "actual": 1096.22440987,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-03-01"
+     },
+     {
+      "actual": 1122.12113698,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-04-01"
+     },
+     {
+      "actual": 1121.594526,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-05-01"
+     },
+     {
+      "actual": 1085.78978736,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-06-01"
+     },
+     {
+      "actual": null,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-07-01"
+     },
+     {
+      "actual": 1049.36012054,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-08-01"
+     },
+     {
+      "actual": 1038.02206478,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-09-01"
+     },
+     {
+      "actual": 946.619767927,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-10-01"
+     },
+     {
+      "actual": 1082.12991788,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-11-01"
+     },
+     {
+      "actual": 1052.6630894,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2017-12-01"
+     },
+     {
+      "actual": 1076.60295723,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-01-01"
+     },
+     {
+      "actual": 1089.44952584,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-02-01"
+     },
+     {
+      "actual": 1071.36640594,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-03-01"
+     },
+     {
+      "actual": 1110.49825972,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-04-01"
+     },
+     {
+      "actual": 1101.90264315,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-05-01"
+     },
+     {
+      "actual": 1080.10239838,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-06-01"
+     },
+     {
+      "actual": 1078.94366972,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-07-01"
+     },
+     {
+      "actual": 1027.80057154,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-08-01"
+     },
+     {
+      "actual": 986.31580862,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-09-01"
+     },
+     {
+      "actual": null,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-10-01"
+     },
+     {
+      "actual": 1051.00654172,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-11-01"
+     },
+     {
+      "actual": 1083.61666814,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2018-12-01"
+     },
+     {
+      "actual": 1066.23767235,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-01-01"
+     },
+     {
+      "actual": 1162.7251832,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-02-01"
+     },
+     {
+      "actual": 1172.67762393,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-03-01"
+     },
+     {
+      "actual": 1107.49975886,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-04-01"
+     },
+     {
+      "actual": 1161.94764561,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-05-01"
+     },
+     {
+      "actual": 1120.59531079,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-06-01"
+     },
+     {
+      "actual": 1145.03349988,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-07-01"
+     },
+     {
+      "actual": 1076.62612328,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-08-01"
+     },
+     {
+      "actual": 1081.52601915,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-09-01"
+     },
+     {
+      "actual": 1063.3913039,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-10-01"
+     },
+     {
+      "actual": 1095.01459886,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-11-01"
+     },
+     {
+      "actual": 1044.66789964,
+      "high": null,
+      "low": null,
+      "mean": null,
+      "t": "2019-12-01"
+     },
+     {
+      "actual": null,
+      "high": 1079.921945471403,
+      "low": 1067.82676999615,
+      "mean": 1073.9931930129897,
+      "t": "2020-01-01"
+     },
+     {
+      "actual": null,
+      "high": 1140.1146035033344,
+      "low": 1129.0413141508423,
+      "mean": 1134.962328239705,
+      "t": "2020-02-01"
+     },
+     {
+      "actual": null,
+      "high": 1164.9877476827025,
+      "low": 1152.3058379434442,
+      "mean": 1159.5954033110243,
+      "t": "2020-03-01"
+     },
+     {
+      "actual": null,
+      "high": 1221.3695394654803,
+      "low": 1201.5320231477167,
+      "mean": 1211.2854364245704,
+      "t": "2020-04-01"
+     },
+     {
+      "actual": null,
+      "high": 1202.5989969366972,
+      "low": 1184.8151206829705,
+      "mean": 1194.7856642701015,
+      "t": "2020-05-01"
+     },
+     {
+      "actual": null,
+      "high": 1123.9048288407005,
+      "low": 1109.5429751866086,
+      "mean": 1116.1226413679435,
+      "t": "2020-06-01"
+     },
+     {
+      "actual": null,
+      "high": 1121.2850786099712,
+      "low": 1108.3548019353184,
+      "mean": 1114.1635443335313,
+      "t": "2020-07-01"
+     },
+     {
+      "actual": null,
+      "high": 1047.2833254061977,
+      "low": 1021.9322514849381,
+      "mean": 1032.6081398320293,
+      "t": "2020-08-01"
+     },
+     {
+      "actual": null,
+      "high": 1076.390145536751,
+      "low": 1059.7963574034886,
+      "mean": 1068.360933049417,
+      "t": "2020-09-01"
+     },
+     {
+      "actual": null,
+      "high": 1048.3572628489605,
+      "low": 1031.763463285488,
+      "mean": 1039.3931002278018,
+      "t": "2020-10-01"
+     },
+     {
+      "actual": null,
+      "high": 1092.0825670181057,
+      "low": 1074.55595941724,
+      "mean": 1081.5297093097017,
+      "t": "2020-11-01"
+     },
+     {
+      "actual": null,
+      "high": 1109.380356845696,
+      "low": 1091.506238472758,
+      "mean": 1099.4758226520246,
+      "t": "2020-12-01"
+     }
+    ]
+   }
+  ],
+  "source_run_ids": [],
+  "technical": {},
+  "tiles": [
+   {
+    "approximate": false,
+    "caption": "Period 2020-01-01. The range shows the average, not single results.",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": 1079.921945471403,
+    "key": "panel",
+    "label": "Prediction next period",
+    "low": 1067.82676999615,
+    "panel_id": "next",
+    "unit": "number",
+    "value": 1073.9931930129897
+   },
+   {
+    "approximate": false,
+    "caption": "The total over the next 12 periods. The range shows the average, not single results.",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": 13411.8639356,
+    "key": "panel",
+    "label": "Prediction over the forecast",
+    "low": 13239.9462566,
+    "panel_id": "horizon_total",
+    "unit": "number",
+    "value": 13326.275916
+   }
+  ]
+ },
+ "status": "ready",
+ "title": "Week ending 18/10/2026",
+ "trigger": "workflow",
+ "visibility": "published"
+}

@@ -1,0 +1,159 @@
+{
+ "created_at": "2026-10-15T09:30:00Z",
+ "endpoint_revision": null,
+ "kind": "refresh",
+ "mine": null,
+ "model_ref": "model://growth/eu-geo-mmm@v3",
+ "model_version_id": "mv_01jaf3e1f2g3h4j5k6m7n8p9q0",
+ "period": [
+  "2026-10-12",
+  "2026-10-18"
+ ],
+ "problem": null,
+ "ready_at": "2026-10-15T09:30:00Z",
+ "refit_status": null,
+ "seq": 12,
+ "snapshot": {
+  "accuracy": null,
+  "accuracy_detail": null,
+  "accuracy_history": [],
+  "batch": null,
+  "channels": [],
+  "conditioning": null,
+  "input_fingerprint": null,
+  "inputs_echo": [],
+  "lead": "The map shows the rate that the model expects in each place.",
+  "notes_plain": [],
+  "panels": [
+   {
+    "approximate": false,
+    "caption": null,
+    "kind": "kpi",
+    "panel_id": "k_last_total",
+    "tile": {
+     "approximate": false,
+     "caption": "Period 2012-10-01. The range shows the average, not single results.",
+     "delta": null,
+     "delta_basis": null,
+     "delta_dir": "flat",
+     "high": 38.99014195492696,
+     "key": "panel",
+     "label": "Latest total",
+     "low": 22.68698558772449,
+     "panel_id": "k_last_total",
+     "unit": "number",
+     "value": 31.503232606357006
+    },
+    "title": "Latest total"
+   },
+   {
+    "approximate": false,
+    "caption": null,
+    "colormap": "magma",
+    "frames": [
+     {
+      "codes_b64": "ISgVV5cAMUqAsAx3g3BWW9PVgyNxte+7UjQ9h6Jk",
+      "label": "2012-01-01"
+     },
+     {
+      "codes_b64": "KTAfYKAIOlOIuRV/i3lfZNzejCx5vvjFWzxFkKtt",
+      "label": "2012-04-01"
+     },
+     {
+      "codes_b64": "JS0cXZ0EN0+FtRF8iHVbYNjbhyh1uvTAVjhCjKdo",
+      "label": "2012-07-01"
+     },
+     {
+      "codes_b64": "LzYlZ6cOQFmPwBuFkn9mauLkkjJ/xP7LYUJLlrFz",
+      "label": "2012-10-01"
+     }
+    ],
+    "height": 6,
+    "kind": "field",
+    "log": true,
+    "missing_code": 255,
+    "panel_id": "map",
+    "title": "Rate",
+    "units": null,
+    "vmax": 0.719261313586934,
+    "vmin": -1.053871238670609,
+    "width": 5,
+    "x_label": "col",
+    "y_label": "row"
+   },
+   {
+    "approximate": false,
+    "caption": "The range shows the average, not single results.",
+    "intent": "fan",
+    "kind": "series",
+    "panel_id": "over_time",
+    "series": [
+     {
+      "label": "Total over time",
+      "name": "total",
+      "points": [
+       {
+        "actual": null,
+        "high": 32.230223284266344,
+        "low": 17.202360821740317,
+        "mean": 24.734793119922653,
+        "t": "2012-01-01"
+       },
+       {
+        "actual": null,
+        "high": 35.028634115037676,
+        "low": 21.64414072728894,
+        "mean": 28.538354148717055,
+        "t": "2012-04-01"
+       },
+       {
+        "actual": null,
+        "high": 33.75229452432893,
+        "low": 17.6934577187987,
+        "mean": 26.8539759802657,
+        "t": "2012-07-01"
+       },
+       {
+        "actual": null,
+        "high": 38.99014195492696,
+        "low": 22.68698558772449,
+        "mean": 31.503232606357006,
+        "t": "2012-10-01"
+       }
+      ]
+     }
+    ],
+    "split_at": null,
+    "title": "Total over time",
+    "x_kind": "time"
+   }
+  ],
+  "prediction": null,
+  "preset": "field_map",
+  "scenario": null,
+  "schema_version": 2,
+  "series": [],
+  "source_run_ids": [],
+  "technical": {},
+  "tiles": [
+   {
+    "approximate": false,
+    "caption": "Period 2012-10-01. The range shows the average, not single results.",
+    "delta": null,
+    "delta_basis": null,
+    "delta_dir": "flat",
+    "high": 38.99014195492696,
+    "key": "panel",
+    "label": "Latest total",
+    "low": 22.68698558772449,
+    "panel_id": "k_last_total",
+    "unit": "number",
+    "value": 31.503232606357006
+   }
+  ]
+ },
+ "status": "ready",
+ "title": "Week ending 18/10/2026",
+ "trigger": "workflow",
+ "visibility": "published"
+}

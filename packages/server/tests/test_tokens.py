@@ -23,6 +23,7 @@ from mapi_server_testkit.identity import (
 )
 from mapi_spec.api import (
     ENDPOINTS,
+    SESSION_ONLY_OPERATIONS,
     TOKEN_TENANT_ROUTES,
     ApiToken,
     Me,
@@ -315,6 +316,10 @@ async def test_token_scopes_gate_every_endpoint(
         r = await tok.request(e.method, path, json=body)
         if access.scope is RouteScope.PLATFORM:
             assert r.status_code == 403, (scope, e.operation_id, r.status_code)
+            continue
+        if e.operation_id in SESSION_ONLY_OPERATIONS:
+            assert r.status_code == 403, (scope, e.operation_id, r.status_code)
+            checked += 1
             continue
         if access.scope is RouteScope.TENANT and e.operation_id not in TOKEN_TENANT_ROUTES:
             assert r.status_code == 403, (scope, e.operation_id, r.status_code)

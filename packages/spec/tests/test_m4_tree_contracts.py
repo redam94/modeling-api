@@ -594,6 +594,7 @@ def test_m4_endpoints_and_access() -> None:
         - len(api.V017_ENDPOINTS)
         - len(api.V018_ENDPOINTS)
         - len(api.V019_ENDPOINTS)
+        - len(api.V020_ENDPOINTS)
     )
     assert ENDPOINTS[m4_end - len(M4_ENDPOINTS) : m4_end] == M4_ENDPOINTS
     by_op = {e.operation_id: e for e in M4_ENDPOINTS}

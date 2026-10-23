@@ -19,6 +19,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     MetaData,
@@ -42,6 +43,9 @@ __all__ = [
     "CostLedgerEntry",
     "Dashboard",
     "DashboardAsset",
+    "DashboardChatSettings",
+    "DashboardChatTranscript",
+    "DashboardChatUsage",
     "DashboardGrant",
     "DashboardReadout",
     "DashboardRefitRequest",
@@ -188,6 +192,10 @@ TENANT_TABLES: tuple[str, ...] = (
     "plugin_versions",
     "plugin_describes",
     "plugin_approvals",
+    # v0.20 dashboard chat (0024_dashboard_chat)
+    "dashboard_chat_settings",
+    "dashboard_chat_transcripts",
+    "dashboard_chat_usage",
 )
 """Tables with row-level security on ``tenant_id = current_setting('app.tenant_id')``
 (``tenants`` itself is isolated on ``id``). New tenant tables must be added here and get
@@ -365,7 +373,11 @@ class Membership(Base):
 
 
 class ApiToken(Base):
-    """An API token. Only ``secret_hash`` (HMAC-SHA256 under the server pepper) is stored."""
+    """An API token. Only ``secret_hash`` (HMAC-SHA256 under the server pepper) is stored.
+
+    ``dashboard_id`` (0024) is set only on a dashboard read token (scope
+    ``dashboard:<dashboard_id>``, the token's only scope): it counts the active tokens per
+    owner and dashboard and the token goes with its dashboard."""
 
     __tablename__ = "api_tokens"
 
@@ -385,6 +397,9 @@ class ApiToken(Base):
     expires_at: Mapped[datetime] = mapped_column()
     last_used_at: Mapped[datetime | None] = mapped_column()
     revoked_at: Mapped[datetime | None] = mapped_column()
+    dashboard_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -394,6 +409,7 @@ class ApiToken(Base):
         ),
         CheckConstraint("budget_period in ('day','month')", name="budget_period"),
         Index("ix_api_tokens_owner", "tenant_id", "project_id", "owner_id"),
+        Index("ix_api_tokens_dashboard", "tenant_id", "dashboard_id", "owner_id"),
     )
 
 
@@ -2612,4 +2628,156 @@ class PluginApproval(Base):
         CheckConstraint("approver_id <> uploader_id", name="not_self"),
         CheckConstraint("decision <> 'reject' OR note IS NOT NULL", name="reject_note"),
         Index("ix_plugin_approvals_version", "version_id", "created_at"),
+    )
+
+
+# ====================================================================== dashboard chat (v0.20)
+
+CHAT_PRINCIPAL_KINDS: tuple[str, ...] = ("member", "client", "share")
+"""``mapi_spec.chat.ChatTranscriptSummary.principal_kind``: who asked."""
+CHAT_ROLES: tuple[str, ...] = ("user", "assistant")
+"""``mapi_spec.chat.ChatRole``."""
+CHAT_USAGE_OUTCOMES: tuple[str, ...] = ("ok", "budget", "error", "refused")
+"""How a chat turn ended, for ``dashboard_chat_usage.outcome``."""
+CHAT_TEXT_MAX_CHARS = 4000
+"""``mapi_spec.chat.CHAT_MAX_REPLY_CHARS``: the cap on one stored turn's text."""
+CHAT_MAX_TURN_INDEX = 63
+"""The highest ``turn_index`` of a kept conversation (``ChatTranscriptTurn.index``)."""
+CHAT_MAX_TOOL_CALLS = 6
+"""``mapi_spec.chat.CHAT_MAX_TOOL_CALLS``: function calls in one turn."""
+CHAT_MAX_TOKENS_PER_DAY = 5_000_000
+"""``mapi_spec.chat.CHAT_MAX_TOKENS_PER_DAY``."""
+CHAT_MAX_SHARE_TOKENS_PER_DAY = 1_000_000
+"""``mapi_spec.chat.CHAT_MAX_SHARE_TOKENS_PER_DAY``."""
+CHAT_TOOL_CALLS_MAX_BYTES = 4096
+"""The cap on a stored turn's ``tool_calls`` (names and ok flags only) as text."""
+CONVERSATION_ID_RE = "^cnv_[0-9a-z]{26}$"
+"""``mapi_spec.chat.CONVERSATION_ID_RE``."""
+
+
+class DashboardChatSettings(_Scoped, Base):
+    """Whether a dashboard's chat is on, for which audiences, whether it keeps transcripts
+    and its daily token budgets (:class:`mapi_spec.chat.ChatSettingsView`). No row means the
+    defaults (chat off). Kept apart from the spec, so a toggle never makes a revision or
+    changes a ``spec_hash``; ``version`` backs the ETag. The row goes with its dashboard."""
+
+    __tablename__ = "dashboard_chat_settings"
+
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE"), primary_key=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    aud_members: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    aud_clients: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    aud_share: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    keep_transcripts: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    tokens_per_day: Mapped[int] = mapped_column(Integer, default=200_000, server_default="200000")
+    share_tokens_per_day: Mapped[int] = mapped_column(
+        Integer, default=50_000, server_default="50000"
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint(
+            f"tokens_per_day >= 0 AND tokens_per_day <= {CHAT_MAX_TOKENS_PER_DAY}",
+            name="tokens_per_day",
+        ),
+        CheckConstraint(
+            "share_tokens_per_day >= 0 AND share_tokens_per_day <= "
+            f"{CHAT_MAX_SHARE_TOKENS_PER_DAY}",
+            name="share_tokens_per_day",
+        ),
+        CheckConstraint("version >= 1", name="version"),
+    )
+
+
+class DashboardChatTranscript(_Scoped, Base):
+    """One turn of a kept chat conversation (only when the dashboard's settings keep
+    transcripts): the user's or the assistant's text and, for an assistant turn, the names
+    and outcomes of the tools it called (never their arguments or results). Rows expire
+    (``expires_at``, 30 days) and the housekeeping loop purges them; they go with their
+    dashboard. Never copied to logs, spans, webhooks or audit."""
+
+    __tablename__ = "dashboard_chat_transcripts"
+
+    id: Mapped[str] = mapped_column(String(30), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
+    conversation_id: Mapped[str] = mapped_column(String(30))
+    principal_kind: Mapped[str] = mapped_column(String(8))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    turn_index: Mapped[int] = mapped_column(Integer)
+    role: Mapped[str] = mapped_column(String(9))
+    tool_calls: Mapped[list[Any]] = mapped_column(default=list, server_default=text("'[]'"))
+    ok: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # declared after the columns above: the attribute shadows ``sqlalchemy.text`` in this body
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(server_default=_now())
+    expires_at: Mapped[datetime] = mapped_column()
+
+    __table_args__ = (
+        _scope_fk(),
+        UniqueConstraint(
+            "tenant_id", "conversation_id", "turn_index", name="uq_dashboard_chat_transcripts_turn"
+        ),
+        CheckConstraint(f"conversation_id ~ '{CONVERSATION_ID_RE}'", name="conversation_id"),
+        CheckConstraint(f"principal_kind in ({_in(CHAT_PRINCIPAL_KINDS)})", name="principal_kind"),
+        CheckConstraint(
+            f"turn_index >= 0 AND turn_index <= {CHAT_MAX_TURN_INDEX}", name="turn_index"
+        ),
+        CheckConstraint(f"role in ({_in(CHAT_ROLES)})", name="role"),
+        CheckConstraint(f"char_length(text) <= {CHAT_TEXT_MAX_CHARS}", name="text_length"),
+        CheckConstraint("jsonb_typeof(tool_calls) = 'array'", name="tool_calls_array"),
+        CheckConstraint(
+            f"octet_length(tool_calls::text) <= {CHAT_TOOL_CALLS_MAX_BYTES}",
+            name="tool_calls_size",
+        ),
+        Index("ix_dashboard_chat_transcripts_dashboard", "tenant_id", "dashboard_id", "created_at"),
+        Index("ix_dashboard_chat_transcripts_expiry", "expires_at"),
+    )
+
+
+class DashboardChatUsage(_Scoped, Base):
+    """One row per chat turn: the model, the tokens it used (thoughts included in the
+    budgets), the tool calls, the estimated cost under ``price_version`` and how the turn
+    ended. Never holds prompt or answer text. Chat cost is kept here, not in ``cost_ledger``
+    (which is per run attempt); the daily budgets are rate counters."""
+
+    __tablename__ = "dashboard_chat_usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    dashboard_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("dashboards.id", ondelete="CASCADE")
+    )
+    principal_kind: Mapped[str] = mapped_column(String(8))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    share_id: Mapped[str | None] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(64))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    thought_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tool_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    est_micros: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    price_version: Mapped[str] = mapped_column(String(64))
+    outcome: Mapped[str] = mapped_column(String(16))
+    at: Mapped[datetime] = mapped_column(server_default=_now())
+
+    __table_args__ = (
+        _scope_fk(),
+        CheckConstraint(f"principal_kind in ({_in(CHAT_PRINCIPAL_KINDS)})", name="principal_kind"),
+        CheckConstraint("(principal_kind = 'share') = (share_id IS NOT NULL)", name="share_id"),
+        CheckConstraint(
+            "input_tokens >= 0 AND output_tokens >= 0 AND thought_tokens >= 0", name="tokens"
+        ),
+        CheckConstraint(
+            f"tool_calls >= 0 AND tool_calls <= {CHAT_MAX_TOOL_CALLS}", name="tool_calls"
+        ),
+        CheckConstraint("est_micros >= 0", name="est_micros"),
+        CheckConstraint(f"outcome in ({_in(CHAT_USAGE_OUTCOMES)})", name="outcome"),
+        Index("ix_dashboard_chat_usage_dashboard", "tenant_id", "dashboard_id", "at"),
     )

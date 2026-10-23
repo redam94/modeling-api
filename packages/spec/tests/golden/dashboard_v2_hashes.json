@@ -1,0 +1,728 @@
+{
+ "_comment": "v0.17 layout 2 DashboardSpecV2 hashes (compile_preset over the v0.17 golden fixtures), frozen on the v0.19 tree before the v0.20 edits (WP0 (g)); never regenerate.",
+ "cases": [
+  {
+   "canonical": "{\"layout_version\":2,\"panels\":[{\"id\":\"next\",\"reduce\":{\"how\":\"next\"},\"source\":{\"variable\":\"y_hat\"},\"title\":\"Prediction next period\"},{\"id\":\"horizon_total\",\"source\":{\"view\":\"forecast_total\"},\"title\":\"Prediction over the forecast\"},{\"band\":\"none\",\"good\":\"down\",\"id\":\"typical_error\",\"source\":{\"metric\":\"mae\"},\"stat\":\"value\",\"title\":\"Typical error\"},{\"band\":\"none\",\"good\":\"none\",\"id\":\"inside_range\",\"source\":{\"metric\":\"band_hit_rate\"},\"stat\":\"value\",\"title\":\"Results inside the likely range\"},{\"id\":\"fan\",\"intent\":\"fan\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Prediction and forecast\"},{\"id\":\"accuracy\",\"intent\":\"accuracy_history\",\"source\":{\"metric\":\"mape\"},\"title\":\"Accuracy over time\"},{\"columns\":[\"date\",\"centre\",\"low\",\"high\"],\"id\":\"next_periods\",\"max_rows\":12,\"source\":{\"variable\":\"y_hat\"},\"title\":\"The next periods\"},{\"id\":\"o_level\",\"intent\":\"decomposition\",\"source\":{\"variable\":\"level\"},\"title\":\"Parts of the forecast\"}],\"preset\":\"forecast\",\"refresh\":{\"horizon\":6},\"source\":{\"alias\":\"client-model\",\"kind\":\"endpoint\"},\"subject\":{\"decimals\":1,\"label\":\"Prediction\",\"unit\":\"number\",\"variable\":\"y_hat\"},\"title\":\"Client readout\"}",
+   "hash": "sha256:e72d4034530388b474706f143b317c73ad21a5edbd2c14ffb798f4de224fc715",
+   "name": "forecast_bsts",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": false,
+     "enabled": false,
+     "id_column": null,
+     "label_column": null,
+     "match": "time",
+     "publish": "review",
+     "refit_workflow_id": null,
+     "threshold": 0.5
+    },
+    "batch": null,
+    "client_name": null,
+    "layout_version": 2,
+    "limits": {
+     "batch_runs_per_day": 3,
+     "exact_runs_per_day": 20
+    },
+    "mmm": null,
+    "note": null,
+    "panels": [
+     {
+      "band": "outcome",
+      "caption": null,
+      "compare": "previous",
+      "good": "up",
+      "id": "next",
+      "kind": "kpi",
+      "reduce": {
+       "how": "next",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "stat": "centre",
+      "title": "Prediction next period"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "compare": "previous",
+      "good": "up",
+      "id": "horizon_total",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "view",
+       "view": "forecast_total"
+      },
+      "stat": "centre",
+      "title": "Prediction over the forecast"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "previous",
+      "good": "down",
+      "id": "typical_error",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "accuracy",
+       "metric": "mae"
+      },
+      "stat": "value",
+      "title": "Typical error"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "previous",
+      "good": "none",
+      "id": "inside_range",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "accuracy",
+       "metric": "band_hit_rate"
+      },
+      "stat": "value",
+      "title": "Results inside the likely range"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "fan",
+      "intent": "fan",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "Prediction and forecast"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "accuracy",
+      "intent": "accuracy_history",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "accuracy",
+       "metric": "mape"
+      },
+      "title": "Accuracy over time"
+     },
+     {
+      "caption": null,
+      "columns": [
+       "date",
+       "centre",
+       "low",
+       "high"
+      ],
+      "id": "next_periods",
+      "kind": "table",
+      "max_rows": 12,
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "The next periods"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "o_level",
+      "intent": "decomposition",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "level"
+      },
+      "title": "Parts of the forecast"
+     }
+    ],
+    "period_label": "period",
+    "preset": "forecast",
+    "refresh": {
+     "follow_endpoint": false,
+     "horizon": 6,
+     "workflow_id": null
+    },
+    "scenario_rows": {
+     "enabled": false,
+     "fixed": {},
+     "horizon": null,
+     "inputs": [],
+     "max_rows": 5,
+     "outputs": []
+    },
+    "show_technical": false,
+    "source": {
+     "alias": "client-model",
+     "kind": "endpoint",
+     "model_id": null,
+     "version": null
+    },
+    "subject": {
+     "currency": null,
+     "decimals": 1,
+     "label": "Prediction",
+     "positive_label": null,
+     "unit": "number",
+     "value_per_unit": null,
+     "variable": "y_hat"
+    },
+    "summary": null,
+    "title": "Client readout"
+   }
+  },
+  {
+   "canonical": "{\"layout_version\":2,\"panels\":[{\"band\":\"none\",\"id\":\"chance\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Chance of a positive\"},{\"band\":\"none\",\"compare\":\"none\",\"id\":\"m_auc\",\"source\":{\"key\":\"auc\"},\"stat\":\"value\",\"title\":\"How well the model ranks cases (AUC)\"},{\"band\":\"none\",\"compare\":\"none\",\"id\":\"m_accuracy\",\"source\":{\"key\":\"accuracy\"},\"stat\":\"value\",\"title\":\"How often the model is right\"},{\"band\":\"none\",\"id\":\"chances\",\"intent\":\"probability_bars\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Chance of each result\"},{\"band\":\"none\",\"id\":\"calibration\",\"intent\":\"calibration\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Predicted and observed chances\"},{\"band\":\"none\",\"id\":\"confusion\",\"intent\":\"confusion\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Right and wrong results\"},{\"id\":\"accuracy\",\"intent\":\"accuracy_history\",\"source\":{\"metric\":\"accuracy\"},\"title\":\"How often the model was right\"}],\"period_label\":\"case\",\"preset\":\"classifier\",\"source\":{\"alias\":\"client-model\",\"kind\":\"endpoint\"},\"subject\":{\"decimals\":2,\"label\":\"Chance\",\"unit\":\"probability\",\"variable\":\"y_hat\"},\"title\":\"Client readout\"}",
+   "hash": "sha256:a3292f831bd62725a731056f0ac4ed5fce7a7583cd67e55d8d1661c8ac80fdd8",
+   "name": "classifier_binary",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": false,
+     "enabled": false,
+     "id_column": null,
+     "label_column": null,
+     "match": "time",
+     "publish": "review",
+     "refit_workflow_id": null,
+     "threshold": 0.5
+    },
+    "batch": null,
+    "client_name": null,
+    "layout_version": 2,
+    "limits": {
+     "batch_runs_per_day": 3,
+     "exact_runs_per_day": 20
+    },
+    "mmm": null,
+    "note": null,
+    "panels": [
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "previous",
+      "good": "up",
+      "id": "chance",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "stat": "centre",
+      "title": "Chance of a positive"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "up",
+      "id": "m_auc",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "auc",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "How well the model ranks cases (AUC)"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "up",
+      "id": "m_accuracy",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "accuracy",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "How often the model is right"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "facet": null,
+      "id": "chances",
+      "intent": "probability_bars",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "Chance of each result"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "facet": null,
+      "id": "calibration",
+      "intent": "calibration",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "Predicted and observed chances"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "facet": null,
+      "id": "confusion",
+      "intent": "confusion",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "Right and wrong results"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "accuracy",
+      "intent": "accuracy_history",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "accuracy",
+       "metric": "accuracy"
+      },
+      "title": "How often the model was right"
+     }
+    ],
+    "period_label": "case",
+    "preset": "classifier",
+    "refresh": {
+     "follow_endpoint": false,
+     "horizon": null,
+     "workflow_id": null
+    },
+    "scenario_rows": {
+     "enabled": false,
+     "fixed": {},
+     "horizon": null,
+     "inputs": [],
+     "max_rows": 5,
+     "outputs": []
+    },
+    "show_technical": false,
+    "source": {
+     "alias": "client-model",
+     "kind": "endpoint",
+     "model_id": null,
+     "version": null
+    },
+    "subject": {
+     "currency": null,
+     "decimals": 2,
+     "label": "Chance",
+     "positive_label": null,
+     "unit": "probability",
+     "value_per_unit": null,
+     "variable": "y_hat"
+    },
+    "summary": null,
+    "title": "Client readout"
+   }
+  },
+  {
+   "canonical": "{\"layout_version\":2,\"panels\":[{\"id\":\"k_last_total\",\"reduce\":{\"how\":\"last\"},\"source\":{\"variable\":\"total\"},\"title\":\"Latest total\"},{\"band\":\"none\",\"id\":\"map\",\"intent\":\"field\",\"source\":{\"variable\":\"rate\"},\"title\":\"Rate\"},{\"id\":\"over_time\",\"intent\":\"fan\",\"source\":{\"variable\":\"total\"},\"title\":\"Total over time\"}],\"preset\":\"field_map\",\"source\":{\"alias\":\"client-model\",\"kind\":\"endpoint\"},\"subject\":{\"decimals\":1,\"label\":\"Rate\",\"unit\":\"number\",\"variable\":\"rate\"},\"title\":\"Client readout\"}",
+   "hash": "sha256:8cae6c98bcd1d7452f487e2a3a888e76e74975656984660916001e61d24b3e25",
+   "name": "field_lgcp",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": false,
+     "enabled": false,
+     "id_column": null,
+     "label_column": null,
+     "match": "time",
+     "publish": "review",
+     "refit_workflow_id": null,
+     "threshold": 0.5
+    },
+    "batch": null,
+    "client_name": null,
+    "layout_version": 2,
+    "limits": {
+     "batch_runs_per_day": 3,
+     "exact_runs_per_day": 20
+    },
+    "mmm": null,
+    "note": null,
+    "panels": [
+     {
+      "band": "outcome",
+      "caption": null,
+      "compare": "previous",
+      "good": "up",
+      "id": "k_last_total",
+      "kind": "kpi",
+      "reduce": {
+       "how": "last",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "total"
+      },
+      "stat": "centre",
+      "title": "Latest total"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "facet": null,
+      "id": "map",
+      "intent": "field",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "rate"
+      },
+      "title": "Rate"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "over_time",
+      "intent": "fan",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "total"
+      },
+      "title": "Total over time"
+     }
+    ],
+    "period_label": "period",
+    "preset": "field_map",
+    "refresh": {
+     "follow_endpoint": false,
+     "horizon": null,
+     "workflow_id": null
+    },
+    "scenario_rows": {
+     "enabled": false,
+     "fixed": {},
+     "horizon": null,
+     "inputs": [],
+     "max_rows": 5,
+     "outputs": []
+    },
+    "show_technical": false,
+    "source": {
+     "alias": "client-model",
+     "kind": "endpoint",
+     "model_id": null,
+     "version": null
+    },
+    "subject": {
+     "currency": null,
+     "decimals": 1,
+     "label": "Rate",
+     "positive_label": null,
+     "unit": "number",
+     "value_per_unit": null,
+     "variable": "rate"
+    },
+    "summary": null,
+    "title": "Client readout"
+   }
+  },
+  {
+   "canonical": "{\"layout_version\":2,\"panels\":[{\"band\":\"none\",\"compare\":\"none\",\"id\":\"m_effect_total\",\"source\":{\"key\":\"effect_total\"},\"stat\":\"value\",\"title\":\"Total effect of the change\"},{\"band\":\"none\",\"compare\":\"none\",\"id\":\"m_effect_relative\",\"source\":{\"key\":\"effect_relative\"},\"stat\":\"value\",\"title\":\"Effect in percent\"},{\"band\":\"none\",\"compare\":\"none\",\"id\":\"m_p_effect_positive\",\"source\":{\"key\":\"p_effect_positive\"},\"stat\":\"value\",\"title\":\"Chance that the effect is positive\"},{\"band\":\"none\",\"compare\":\"none\",\"good\":\"down\",\"id\":\"m_pre_mape\",\"source\":{\"key\":\"pre_mape\"},\"stat\":\"value\",\"title\":\"Fit before the change (error in percent)\"},{\"id\":\"effect\",\"intent\":\"effect\",\"source\":{\"variable\":\"effect\"},\"title\":\"Effect of the change over time\"},{\"id\":\"outcome\",\"intent\":\"fan\",\"source\":{\"variable\":\"y_hat\"},\"title\":\"Prediction over time\"}],\"preset\":\"causal_impact\",\"source\":{\"alias\":\"client-model\",\"kind\":\"endpoint\"},\"subject\":{\"decimals\":1,\"label\":\"Prediction\",\"unit\":\"number\",\"variable\":\"y_hat\"},\"title\":\"Client readout\"}",
+   "hash": "sha256:d627a5abe7e8ef4674cb9921d62b92a11ffbdcbe00ea8fd00a385c640c9e3ab8",
+   "name": "causal_impact",
+   "spec": {
+    "actuals": {
+     "allow_refit_requests": false,
+     "enabled": false,
+     "id_column": null,
+     "label_column": null,
+     "match": "time",
+     "publish": "review",
+     "refit_workflow_id": null,
+     "threshold": 0.5
+    },
+    "batch": null,
+    "client_name": null,
+    "layout_version": 2,
+    "limits": {
+     "batch_runs_per_day": 3,
+     "exact_runs_per_day": 20
+    },
+    "mmm": null,
+    "note": null,
+    "panels": [
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "up",
+      "id": "m_effect_total",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "effect_total",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "Total effect of the change"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "up",
+      "id": "m_effect_relative",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "effect_relative",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "Effect in percent"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "up",
+      "id": "m_p_effect_positive",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "p_effect_positive",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "Chance that the effect is positive"
+     },
+     {
+      "band": "none",
+      "caption": null,
+      "compare": "none",
+      "good": "down",
+      "id": "m_pre_mape",
+      "kind": "kpi",
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "key": "pre_mape",
+       "kind": "metric",
+       "labels": {},
+       "run": "fit"
+      },
+      "stat": "value",
+      "title": "Fit before the change (error in percent)"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "effect",
+      "intent": "effect",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "effect"
+      },
+      "title": "Effect of the change over time"
+     },
+     {
+      "band": "outcome",
+      "caption": null,
+      "facet": null,
+      "id": "outcome",
+      "intent": "fan",
+      "kind": "chart",
+      "max_items": 20,
+      "reduce": {
+       "how": "none",
+       "over": [],
+       "threshold": null
+      },
+      "source": {
+       "kind": "output",
+       "select": {},
+       "variable": "y_hat"
+      },
+      "title": "Prediction over time"
+     }
+    ],
+    "period_label": "period",
+    "preset": "causal_impact",
+    "refresh": {
+     "follow_endpoint": false,
+     "horizon": null,
+     "workflow_id": null
+    },
+    "scenario_rows": {
+     "enabled": false,
+     "fixed": {},
+     "horizon": null,
+     "inputs": [],
+     "max_rows": 5,
+     "outputs": []
+    },
+    "show_technical": false,
+    "source": {
+     "alias": "client-model",
+     "kind": "endpoint",
+     "model_id": null,
+     "version": null
+    },
+    "subject": {
+     "currency": null,
+     "decimals": 1,
+     "label": "Prediction",
+     "positive_label": null,
+     "unit": "number",
+     "value_per_unit": null,
+     "variable": "y_hat"
+    },
+    "summary": null,
+    "title": "Client readout"
+   }
+  }
+ ]
+}

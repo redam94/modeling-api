@@ -1,4 +1,4 @@
-"""The read-only dashboard tool surface (v0.16; the v0.17 chat and MCP contract).
+"""The read-only dashboard tool surface (v0.16; the v0.20 chat and MCP contract).
 
 :data:`DASHBOARD_TOOLS` declares what an assistant may ask of one dashboard: read it, read
 its readouts, compare two readouts, follow one channel over time, explain a word, and
@@ -16,7 +16,7 @@ own predictions and batch summaries) and ``panel_deltas`` on :class:`ReadoutComp
 The media tools (``get_channel``, ``evaluate_whatif``) answer ``DASHBOARD_INPUT_DISABLED`` on
 dashboards without the media planner.
 
-Do not rename or remove a tool, or remove an argument: the v0.18 adapters (chat and MCP) map
+Do not rename or remove a tool, or remove an argument: the v0.20 adapters (chat and MCP) map
 onto these 1:1. New tools and new optional arguments are additive.
 """
 

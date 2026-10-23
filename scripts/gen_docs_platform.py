@@ -169,13 +169,14 @@ def roles_matrix() -> str:
 
 
 def _scope_columns() -> tuple[str, ...]:
-    """Every scope family but ``admin`` (which covers everything); ``score`` as ``score:*``."""
+    """Every scope family but ``admin`` (which covers everything) and ``dashboard`` (a
+    dashboard read token, described in the text); ``score`` as ``score:*``."""
     from mapi_spec.tokens import ScopeName
 
     return tuple(
         "score:*" if s is ScopeName.SCORE else s.value
         for s in ScopeName
-        if s is not ScopeName.ADMIN
+        if s not in (ScopeName.ADMIN, ScopeName.DASHBOARD)
     )
 
 
@@ -313,7 +314,9 @@ def permissions_page() -> str:
         + "\n## Token scopes\n\n"
         + "A token acts as its owner, narrowed by its scopes: both the owner's role and a "
         + "scope must allow an action. `admin` covers everything the owner's role allows; "
-        + "`score:<alias>` covers one endpoint (`score:*` every endpoint of the project).\n\n"
+        + "`score:<alias>` covers one endpoint (`score:*` every endpoint of the project). "
+        + "`dashboard:<id>` is the scope of a dashboard read token: it reads that one "
+        + "dashboard through MCP and nothing else.\n\n"
         + scopes_matrix()
         + "\n## Trust tiers\n\n"
         + trust_tiers()

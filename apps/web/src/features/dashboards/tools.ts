@@ -1,7 +1,7 @@
 /**
  * The read-only dashboard tool surface in the browser (plan I-3, I-5, §3.7): the names,
  * arguments and results of `mapi_spec.dashboard_tools.DASHBOARD_TOOLS`, answered over any
- * {@link DashboardClient}, so the chat and MCP adapters of v0.18 can run the same tools in
+ * {@link DashboardClient}, so the chat and MCP adapters of v0.20 can run the same tools in
  * the portal, the analyst's preview and a share link, for a dashboard of either layout.
  *
  * No tool submits a run or writes: `evaluate_whatif` is the grid evaluation, and the client

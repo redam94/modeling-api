@@ -1464,7 +1464,12 @@
             "PLUGIN_UNAVAILABLE",
             "UPLOADED_CODE_NOT_SHAREABLE",
             "UNTRUSTED_PLACEMENT_UNAVAILABLE",
-            "REAUTH_REQUIRED"
+            "REAUTH_REQUIRED",
+            "CHAT_DISABLED",
+            "CHAT_UNAVAILABLE",
+            "CHAT_BUDGET_EXHAUSTED",
+            "CHAT_HISTORY_INVALID",
+            "READ_TOKEN_LIMIT"
           ],
           "title": "ErrorCode",
           "type": "string"
@@ -5861,7 +5866,12 @@
             "PLUGIN_UNAVAILABLE",
             "UPLOADED_CODE_NOT_SHAREABLE",
             "UNTRUSTED_PLACEMENT_UNAVAILABLE",
-            "REAUTH_REQUIRED"
+            "REAUTH_REQUIRED",
+            "CHAT_DISABLED",
+            "CHAT_UNAVAILABLE",
+            "CHAT_BUDGET_EXHAUSTED",
+            "CHAT_HISTORY_INVALID",
+            "READ_TOKEN_LIMIT"
           ],
           "title": "ErrorCode",
           "type": "string"
@@ -9652,7 +9662,12 @@
             "PLUGIN_UNAVAILABLE",
             "UPLOADED_CODE_NOT_SHAREABLE",
             "UNTRUSTED_PLACEMENT_UNAVAILABLE",
-            "REAUTH_REQUIRED"
+            "REAUTH_REQUIRED",
+            "CHAT_DISABLED",
+            "CHAT_UNAVAILABLE",
+            "CHAT_BUDGET_EXHAUSTED",
+            "CHAT_HISTORY_INVALID",
+            "READ_TOKEN_LIMIT"
           ],
           "title": "ErrorCode",
           "type": "string"

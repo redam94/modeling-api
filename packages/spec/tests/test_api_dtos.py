@@ -361,7 +361,8 @@ def test_every_operation_has_route_access_and_a_real_permission() -> None:
         if acc.scope is RouteScope.TENANT:
             assert e.path.startswith("/v1/tenants/{tenant_id}"), e.path
         if acc.scope is RouteScope.PUBLIC:
-            assert e.path in ("/healthz", "/readyz", "/v1/schemas/{name}") or e.path.startswith(
+            fixed = ("/healthz", "/readyz", "/v1/schemas/{name}", "/v1/mcp")
+            assert e.path in fixed or e.path.startswith(
                 ("/auth/", "/v1/embeds/", "/v1/shared/", "/v1/share-sessions")
             ), e.path
         if acc.scope is RouteScope.PROJECT and acc.resource is not None:

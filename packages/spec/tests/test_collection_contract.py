@@ -276,6 +276,7 @@ def test_v015_endpoints_and_access() -> None:
         + len(api.V017_ENDPOINTS)
         + len(api.V018_ENDPOINTS)
         + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
     )
     assert api.ENDPOINTS[-len(V015_ENDPOINTS) - v016 : -v016] == V015_ENDPOINTS
     by_op = {e.operation_id: e for e in V015_ENDPOINTS}

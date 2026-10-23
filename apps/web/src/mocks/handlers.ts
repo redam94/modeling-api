@@ -10,6 +10,7 @@ import { LOG_LEVELS, type LogLevel } from "@/api/tracking";
 import type { DatasetVersion, Problem, Run, RunEventView, SpecRevision, UploadSession } from "@/api/types";
 import { env } from "@/env";
 
+import { createChatHandlers, createChatState } from "./chat";
 import { collectionDataset, createCollectionHandlers, createCollectionState } from "./collections";
 import { createDashboardHandlers, createDashboardsState } from "./dashboards";
 import { addDlMedia, createDlHandlers, DL_RUN_ID, dlRun, dlTracking } from "./dl";
@@ -74,6 +75,8 @@ interface MockState {
   onboarding: ReturnType<typeof createOnboardingState>;
   /** v0.19: uploaded code (plugins, versions, tickets, tenant settings; mocks/plugins.ts). */
   plugins: ReturnType<typeof createPluginsState>;
+  /** v0.20: dashboard chat settings, budgets, kept conversations and read tokens (mocks/chat.ts). */
+  chat: ReturnType<typeof createChatState>;
   runs: Map<string, Run>;
   revisions: SpecRevision[];
   artifacts: Map<string, { bytes: Uint8Array; type: string }>;
@@ -116,6 +119,7 @@ export function createState(): MockState {
     library: createLibraryState(),
     onboarding,
     plugins: createPluginsState(),
+    chat: createChatState(),
     runs: new Map([...fx.runs, ...SHAPE_RUNS, dlRun].map((r) => [r.id, structuredClone(r)])),
     revisions: [fx.specRevision1, fx.specRevision].map((r) => structuredClone(r)),
     versions: [structuredClone(fx.datasetVersion)],
@@ -265,6 +269,9 @@ export function createHandlers(state: MockState = createState()): HttpHandler[] 
     // v0.16: client dashboards and the public share-link routes; v0.17: layout 2 dashboards of
     // any model type, presets, sources, upgrade, tried cases, scored files, pictures (mocks/dashboards.ts).
     ...createDashboardHandlers(state.dashboards),
+    // v0.20: "Ask about your dashboard" (members, client users, share links), the chat settings
+    // and kept conversations, and dashboard read tokens (mocks/chat.ts).
+    ...createChatHandlers(state.chat, { dashboards: state.dashboards, killSwitches: () => state.tenancy.killSwitches, members: () => state.tenancy.members }),
     // v0.4: endpoints, webhooks, sharing (mocks/integrations.ts) and the trust lifecycle (mocks/trust.ts).
     ...createIntegrationHandlers(state.integrations, { artifacts: state.artifacts }),
     ...createTrustHandlers(state.trust, { tenancy: state.tenancy, artifacts: state.artifacts }),

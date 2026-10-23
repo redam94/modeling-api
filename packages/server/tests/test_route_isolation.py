@@ -136,4 +136,4 @@ async def test_share_routes_take_no_credential_and_need_a_share_session(
         assert r.status_code in want, f"{method} {path} ({op}) -> {r.status_code} {r.text}"
         assert r.headers["cache-control"] == "private, no-store"
         checked += 1
-    assert checked == 15  # v0.17: predictions, batches, downloads and assets
+    assert checked == 17  # v0.17: predictions, batches, downloads and assets; v0.20: shared chat

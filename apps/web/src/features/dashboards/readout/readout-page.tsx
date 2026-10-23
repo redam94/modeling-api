@@ -9,12 +9,19 @@
  * `v1/`. Layout 2 (v0.17: a `schema_version` 2 snapshot or a layout 2 dashboard, plan §3.7)
  * renders {@link PanelReadout}. History mixes both after the upgrade; each readout there is
  * drawn by its own shape.
+ *
+ * v0.20: a surface that offers "Ask about your dashboard" passes its {@link ChatTransport}
+ * (`chat`); the page then shows the chat launcher on a layout 2 dashboard (the launcher shows
+ * nothing when chat is not available to this viewer). `connect` is the signed-in "Connect a
+ * chat tool" button. Without either prop the page renders exactly as before.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { InlineMessage } from "@/components/ods";
 import { Skeleton } from "@/components/ui/primitives";
 
+import { ChatLauncher } from "../chat/chat-launcher";
+import type { ChatTransport } from "../chat/types";
 import { dashboardErrorMessage, problemOf, useDashboardView } from "../client";
 import { readoutLayout, type DashboardClient, type SectionKey, type TabKey } from "../types";
 import { PanelReadout } from "./panel-readout";
@@ -30,6 +37,10 @@ export interface ReadoutPageProps {
   /** The open layout 2 section (controlled); a layout 1 `tab` is mapped when left out. */
   section?: SectionKey | undefined;
   onSectionChange?: ((section: SectionKey) => void) | undefined;
+  /** v0.20: how this surface asks about the dashboard; no chat when left out. */
+  chat?: ChatTransport | undefined;
+  /** v0.20: the "Connect a chat tool" button (signed-in surfaces only). */
+  connect?: ReactNode;
 }
 
 function PageSkeleton() {
@@ -47,7 +58,7 @@ function PageSkeleton() {
   );
 }
 
-export function ReadoutPage({ client, preview = false, tab, onTabChange, section, onSectionChange }: ReadoutPageProps) {
+export function ReadoutPage({ client, preview = false, tab, onTabChange, section, onSectionChange, chat, connect }: ReadoutPageProps) {
   const q = useDashboardView(client);
   const [own, setOwn] = useState<TabKey>("this_period");
   const current = tab ?? own;
@@ -64,8 +75,19 @@ export function ReadoutPage({ client, preview = false, tab, onTabChange, section
       </InlineMessage>
     );
   }
-  if (readoutLayout(q.data, q.data.latest_readout ?? null) === 2 || q.data.layout_version === 2) {
-    return <PanelReadout client={client} dashboard={q.data} preview={preview} tab={current} onTabChange={onTab} section={section} onSectionChange={onSectionChange} />;
-  }
-  return <PlannerBody client={client} dashboard={q.data} preview={preview} tab={current} onTab={onTab} />;
+  const layout2 = readoutLayout(q.data, q.data.latest_readout ?? null) === 2 || q.data.layout_version === 2;
+  const body = layout2 ? (
+    <PanelReadout client={client} dashboard={q.data} preview={preview} tab={current} onTabChange={onTab} section={section} onSectionChange={onSectionChange} />
+  ) : (
+    <PlannerBody client={client} dashboard={q.data} preview={preview} tab={current} onTab={onTab} />
+  );
+  if (!connect && !chat) return body;
+  return (
+    <>
+      {connect ? <div className="mb-3 flex justify-end">{connect}</div> : null}
+      {body}
+      {/* Chat needs a layout 2 dashboard (plan decision 5); the server says the same. */}
+      {chat && layout2 ? <ChatLauncher transport={chat} cacheKey={client.cacheKey} /> : null}
+    </>
+  );
 }

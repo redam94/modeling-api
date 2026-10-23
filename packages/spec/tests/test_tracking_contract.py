@@ -433,6 +433,7 @@ def test_v011_rows_are_part_of_the_table_with_access() -> None:
         + len(api.V017_ENDPOINTS)
         + len(api.V018_ENDPOINTS)
         + len(api.V019_ENDPOINTS)
+        + len(api.V020_ENDPOINTS)
     )
     assert ENDPOINTS[-len(V011_ENDPOINTS) - v014 : -v014] == V011_ENDPOINTS
     by_op = {e.operation_id: e for e in V011_ENDPOINTS}

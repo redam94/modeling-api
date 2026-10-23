@@ -54,6 +54,7 @@ __all__ = [
     "KILL_SWITCHES_KEY",
     "admit_run",
     "admit_storage",
+    "charge_daily",
     "charge_egress",
     "count_requests",
     "egress_subject",
@@ -64,6 +65,7 @@ __all__ = [
     "in_flight_spend",
     "kill_switch_check",
     "kill_switches",
+    "peek_daily",
     "policy_dto",
     "quota_usage",
     "rate_limit",
@@ -519,6 +521,47 @@ async def count_requests(s: AsyncSession, subject: str, *, now: datetime) -> int
         )
     ).scalar_one()
     return int(count) - 1
+
+
+async def charge_daily(s: AsyncSession, subject: str, n: int, now: datetime) -> int:
+    """Add ``n`` to ``subject``'s counter of the current UTC day (v0.20 chat token budgets)
+    and return the new total. Older days of the subject are deleted; the count saturates at
+    the column's maximum. ``n <= 0`` charges nothing and returns the current total."""
+    if n <= 0:
+        return await peek_daily(s, subject, now)
+    day, _ = window_starts(now)
+    await s.execute(
+        delete(m.RateCounter).where(
+            m.RateCounter.subject == subject, m.RateCounter.window_start < day
+        )
+    )
+    units = min(int(n), _COUNT_MAX)
+    total = (
+        await s.execute(
+            insert(m.RateCounter)
+            .values(subject=subject, window_start=day, count=units)
+            .on_conflict_do_update(
+                index_elements=["subject", "window_start"],
+                set_={"count": func.least(m.RateCounter.count + units, _COUNT_MAX)},
+            )
+            .returning(m.RateCounter.count)
+        )
+    ).scalar_one()
+    return int(total)
+
+
+async def peek_daily(s: AsyncSession, subject: str, now: datetime) -> int:
+    """``subject``'s counter of the current UTC day (``0`` when nothing was charged yet);
+    reads only."""
+    day, _ = window_starts(now)
+    n = (
+        await s.execute(
+            select(m.RateCounter.count).where(
+                m.RateCounter.subject == subject, m.RateCounter.window_start == day
+            )
+        )
+    ).scalar_one_or_none()
+    return int(n or 0)
 
 
 async def rate_limit(

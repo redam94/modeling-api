@@ -1491,7 +1491,11 @@
           "plugin.purge",
           "plugin.settings_update",
           "plugin.uploader_attest",
-          "plugin.uploader_revoke"
+          "plugin.uploader_revoke",
+          "dashboard.chat_settings",
+          "dashboard.chat_transcript_delete",
+          "dashboard.read_token_create",
+          "dashboard.read_token_revoke"
         ],
         "title": "AuditAction",
         "type": "string"
@@ -4506,6 +4510,718 @@
           "document"
         ],
         "title": "ChartPreviewRequest",
+        "type": "object"
+      },
+      "ChatAudiences": {
+        "additionalProperties": false,
+        "description": "Who may chat when chat is on: members, client users with a grant, share links.",
+        "properties": {
+          "clients": {
+            "default": true,
+            "title": "Clients",
+            "type": "boolean"
+          },
+          "members": {
+            "default": true,
+            "title": "Members",
+            "type": "boolean"
+          },
+          "share_links": {
+            "default": false,
+            "title": "Share Links",
+            "type": "boolean"
+          }
+        },
+        "title": "ChatAudiences",
+        "type": "object"
+      },
+      "ChatAvailability": {
+        "description": "``GET …/chat``: may the caller chat on this dashboard, and what to show first.",
+        "examples": [
+          {
+            "enabled_for_me": true,
+            "keeps_transcripts": false,
+            "model": "gemini-3.1-flash-lite",
+            "suggestions": [
+              "What does the latest readout show?",
+              "What changed since the last readout?",
+              "How accurate is the model?",
+              "Explain the main numbers in plain words."
+            ],
+            "transcript_days": 30
+          },
+          {
+            "enabled_for_me": false,
+            "reason": "off",
+            "suggestions": []
+          }
+        ],
+        "properties": {
+          "enabled_for_me": {
+            "title": "Enabled For Me",
+            "type": "boolean"
+          },
+          "keeps_transcripts": {
+            "default": false,
+            "title": "Keeps Transcripts",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "off",
+                  "audience",
+                  "layout",
+                  "region",
+                  "provider",
+                  "killswitch",
+                  "budget"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "transcript_days": {
+            "default": 30,
+            "minimum": 0.0,
+            "title": "Transcript Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled_for_me"
+        ],
+        "title": "ChatAvailability",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "additionalProperties": false,
+        "description": "``POST /v1/dashboards/{dashboard_id}/chat`` and ``POST /v1/shared/chat``.\n\n``messages`` is the conversation so far plus the new question: it starts and ends with a\n``user`` turn and the roles alternate. ``conversation_id`` is ``None`` on the first\nmessage (the server makes one). ``readout_seq`` tells the assistant which readout the\nperson is looking at.",
+        "examples": [
+          {
+            "messages": [
+              {
+                "role": "user",
+                "text": "What changed since the last readout?"
+              }
+            ]
+          },
+          {
+            "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+            "messages": [
+              {
+                "role": "user",
+                "text": "What changed since the last readout?"
+              },
+              {
+                "role": "assistant",
+                "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+                "text": "Revenue went up by 4%."
+              },
+              {
+                "role": "user",
+                "text": "Which tile changed most?"
+              }
+            ],
+            "readout_seq": 12
+          }
+        ],
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "pattern": "^cnv_[0-9a-z]{26}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatTurn"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "readout_seq": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readout Seq"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "ChatResponse": {
+        "description": "The answer to a :class:`ChatRequest`. Send ``reply`` back unchanged in the next\nrequest's ``messages``.",
+        "examples": [
+          {
+            "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+            "notices": [],
+            "reply": {
+              "role": "assistant",
+              "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+              "text": "Revenue went up by 4% from readout 11 to readout 12."
+            },
+            "tool_calls": [
+              {
+                "args": {
+                  "a_seq": 11,
+                  "b_seq": 12
+                },
+                "ms": 38,
+                "name": "compare_readouts",
+                "ok": true
+              }
+            ],
+            "transcript_kept": false,
+            "usage": {
+              "input_tokens": 3120,
+              "model": "gemini-3.1-flash-lite",
+              "output_tokens": 96,
+              "thought_tokens": 0,
+              "total_tokens": 3216
+            }
+          }
+        ],
+        "properties": {
+          "conversation_id": {
+            "pattern": "^cnv_[0-9a-z]{26}$",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "notices": {
+            "items": {
+              "enum": [
+                "unverified_numbers",
+                "tool_limit",
+                "truncated",
+                "budget_low",
+                "transcript_kept"
+              ],
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "reply": {
+            "$ref": "#/components/schemas/ChatTurn"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCallSummary"
+            },
+            "maxItems": 6,
+            "title": "Tool Calls",
+            "type": "array"
+          },
+          "transcript_kept": {
+            "default": false,
+            "title": "Transcript Kept",
+            "type": "boolean"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/ChatUsage"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "reply",
+          "usage"
+        ],
+        "title": "ChatResponse",
+        "type": "object"
+      },
+      "ChatSettingsUpdate": {
+        "additionalProperties": false,
+        "description": "``PUT …/chat/settings`` with ``If-Match: <etag>``: the whole settings document.",
+        "examples": [
+          {
+            "audiences": {
+              "clients": true,
+              "members": true,
+              "share_links": false
+            },
+            "enabled": true,
+            "keep_transcripts": false,
+            "share_tokens_per_day": 50000,
+            "tokens_per_day": 200000
+          }
+        ],
+        "properties": {
+          "audiences": {
+            "$ref": "#/components/schemas/ChatAudiences"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "keep_transcripts": {
+            "title": "Keep Transcripts",
+            "type": "boolean"
+          },
+          "share_tokens_per_day": {
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Share Tokens Per Day",
+            "type": "integer"
+          },
+          "tokens_per_day": {
+            "maximum": 5000000.0,
+            "minimum": 0.0,
+            "title": "Tokens Per Day",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "audiences",
+          "keep_transcripts",
+          "tokens_per_day",
+          "share_tokens_per_day"
+        ],
+        "title": "ChatSettingsUpdate",
+        "type": "object"
+      },
+      "ChatSettingsView": {
+        "description": "``GET``/``PUT …/chat/settings`` (editors). ``etag`` is the ``If-Match`` value of the\nnext update; ``used_today_tokens`` and ``est_micros_today`` cover the current UTC day;\n``transcript_days`` is how long the server keeps chats (``MAPI_CHAT_TRANSCRIPT_TTL_DAYS``).",
+        "examples": [
+          {
+            "audiences": {
+              "clients": true,
+              "members": true,
+              "share_links": false
+            },
+            "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+            "enabled": true,
+            "est_micros_today": 4210,
+            "etag": "\"c3\"",
+            "keep_transcripts": false,
+            "share_tokens_per_day": 50000,
+            "tokens_per_day": 200000,
+            "transcript_days": 30,
+            "updated_at": "2026-10-15T09:30:00Z",
+            "updated_by": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "used_today_tokens": 12480,
+            "version": 3
+          }
+        ],
+        "properties": {
+          "audiences": {
+            "$ref": "#/components/schemas/ChatAudiences"
+          },
+          "dashboard_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dashboard Id",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "est_micros_today": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Est Micros Today",
+            "type": "integer"
+          },
+          "etag": {
+            "pattern": "^\"c[0-9]+\"$",
+            "title": "Etag",
+            "type": "string"
+          },
+          "keep_transcripts": {
+            "default": false,
+            "title": "Keep Transcripts",
+            "type": "boolean"
+          },
+          "share_tokens_per_day": {
+            "default": 50000,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Share Tokens Per Day",
+            "type": "integer"
+          },
+          "tokens_per_day": {
+            "default": 200000,
+            "maximum": 5000000.0,
+            "minimum": 0.0,
+            "title": "Tokens Per Day",
+            "type": "integer"
+          },
+          "transcript_days": {
+            "default": 30,
+            "minimum": 0.0,
+            "title": "Transcript Days",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "examples": [
+                  "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+                ],
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "used_today_tokens": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Used Today Tokens",
+            "type": "integer"
+          },
+          "version": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dashboard_id",
+          "etag"
+        ],
+        "title": "ChatSettingsView",
+        "type": "object"
+      },
+      "ChatTranscript": {
+        "description": "``GET …/chat/transcripts/{conversation_id}``: a kept conversation, oldest turn first.",
+        "examples": [
+          {
+            "summary": {
+              "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+              "expires_at": "2026-11-14T09:34:00Z",
+              "first_at": "2026-10-15T09:30:00Z",
+              "last_at": "2026-10-15T09:34:00Z",
+              "principal_kind": "client",
+              "principal_label": "Dana Client",
+              "turns": 4
+            },
+            "turns": [
+              {
+                "at": "2026-10-15T09:30:00Z",
+                "index": 0,
+                "role": "user",
+                "text": "What changed?"
+              },
+              {
+                "at": "2026-10-15T09:30:00Z",
+                "index": 1,
+                "ok": true,
+                "role": "assistant",
+                "text": "Revenue went up by 4%.",
+                "tool_calls": [
+                  "compare_readouts"
+                ]
+              }
+            ]
+          }
+        ],
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ChatTranscriptSummary"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/ChatTranscriptTurn"
+            },
+            "title": "Turns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "turns"
+        ],
+        "title": "ChatTranscript",
+        "type": "object"
+      },
+      "ChatTranscriptSummary": {
+        "description": "One kept conversation (editors). ``principal_label`` is a user's display name or\n``Share link <name>``; it is never an IP address.",
+        "examples": [
+          {
+            "conversation_id": "cnv_01jaf3t1v2w3x4y5z6a7b8c9d0",
+            "expires_at": "2026-11-14T09:34:00Z",
+            "first_at": "2026-10-15T09:30:00Z",
+            "last_at": "2026-10-15T09:34:00Z",
+            "principal_kind": "client",
+            "principal_label": "Dana Client",
+            "turns": 4
+          }
+        ],
+        "properties": {
+          "conversation_id": {
+            "pattern": "^cnv_[0-9a-z]{26}$",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "first_at": {
+            "format": "date-time",
+            "title": "First At",
+            "type": "string"
+          },
+          "last_at": {
+            "format": "date-time",
+            "title": "Last At",
+            "type": "string"
+          },
+          "principal_kind": {
+            "enum": [
+              "member",
+              "client",
+              "share"
+            ],
+            "title": "Principal Kind",
+            "type": "string"
+          },
+          "principal_label": {
+            "maxLength": 200,
+            "title": "Principal Label",
+            "type": "string"
+          },
+          "turns": {
+            "minimum": 0.0,
+            "title": "Turns",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "principal_kind",
+          "principal_label",
+          "turns",
+          "first_at",
+          "last_at",
+          "expires_at"
+        ],
+        "title": "ChatTranscriptSummary",
+        "type": "object"
+      },
+      "ChatTranscriptTurn": {
+        "description": "One kept turn: its text and the names of the tools called (never their results).",
+        "examples": [
+          {
+            "at": "2026-10-15T09:30:00Z",
+            "index": 1,
+            "ok": true,
+            "role": "assistant",
+            "text": "Revenue went up by 4%.",
+            "tool_calls": [
+              "compare_readouts"
+            ]
+          }
+        ],
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "index": {
+            "maximum": 63.0,
+            "minimum": 0.0,
+            "title": "Index",
+            "type": "integer"
+          },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Tool Calls",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "role",
+          "text",
+          "at"
+        ],
+        "title": "ChatTranscriptTurn",
+        "type": "object"
+      },
+      "ChatTurn": {
+        "additionalProperties": false,
+        "description": "One turn of a conversation: plain text.\n\nA ``user`` turn has no ``sig`` and at most :data:`CHAT_MAX_USER_CHARS` characters. An\n``assistant`` turn carries the ``sig`` the server returned with it, unchanged.",
+        "examples": [
+          {
+            "role": "user",
+            "text": "What changed since the last readout?"
+          },
+          {
+            "role": "assistant",
+            "sig": "q3Jx8m1V0bYH7kQf2nTzL5cWd9pR4sAe6uGiOjKvXyw",
+            "text": "Revenue went up by 4% (readout 12)."
+          }
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "sig": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{43}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sig"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "ChatTurn",
+        "type": "object"
+      },
+      "ChatUsage": {
+        "description": "Model tokens spent by one turn (all model calls of the turn together).",
+        "examples": [
+          {
+            "input_tokens": 3120,
+            "model": "gemini-3.1-flash-lite",
+            "output_tokens": 96,
+            "thought_tokens": 0,
+            "total_tokens": 3216
+          }
+        ],
+        "properties": {
+          "input_tokens": {
+            "minimum": 0.0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "maxLength": 64,
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "minimum": 0.0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "thought_tokens": {
+            "minimum": 0.0,
+            "title": "Thought Tokens",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "description": "What the daily budgets count",
+            "minimum": 0.0,
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "thought_tokens",
+          "total_tokens",
+          "model"
+        ],
+        "title": "ChatUsage",
         "type": "object"
       },
       "CheckDirection": {
@@ -13066,7 +13782,12 @@
           "PLUGIN_UNAVAILABLE",
           "UPLOADED_CODE_NOT_SHAREABLE",
           "UNTRUSTED_PLACEMENT_UNAVAILABLE",
-          "REAUTH_REQUIRED"
+          "REAUTH_REQUIRED",
+          "CHAT_DISABLED",
+          "CHAT_UNAVAILABLE",
+          "CHAT_BUDGET_EXHAUSTED",
+          "CHAT_HISTORY_INVALID",
+          "READ_TOKEN_LIMIT"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -18770,6 +19491,10 @@
           {
             "global_spend_cap_micros": 500000000,
             "reason": "daily cap for the beta"
+          },
+          {
+            "chat_enabled": false,
+            "reason": "model provider incident"
           }
         ],
         "properties": {
@@ -18778,6 +19503,18 @@
             "description": "Also cancel every unfinished run of tenant-uploaded code, queued or already placed on an executor. Requires untrusted_execution_enabled=false in the same update. Without it, pausing only holds new work and in-flight runs continue",
             "title": "Cancel Untrusted Runs",
             "type": "boolean"
+          },
+          "chat_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "v0.20: turn dashboard chat off (or on again) for every tenant",
+            "title": "Chat Enabled"
           },
           "clear_spend_cap": {
             "default": false,
@@ -18850,6 +19587,12 @@
           }
         ],
         "properties": {
+          "chat_enabled": {
+            "default": true,
+            "description": "Off: no dashboard chat turn reaches a model",
+            "title": "Chat Enabled",
+            "type": "boolean"
+          },
           "global_spend_cap_micros": {
             "anyOf": [
               {
@@ -25636,6 +26379,39 @@
         "title": "Page[CatalogAbout]",
         "type": "object"
       },
+      "Page_ChatTranscriptSummary_": {
+        "examples": [
+          {
+            "items": [],
+            "next_cursor": "eyJpZCI6InJ1bl8wMWphZiJ9"
+          }
+        ],
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChatTranscriptSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ChatTranscriptSummary]",
+        "type": "object"
+      },
       "Page_CheckResult_": {
         "examples": [
           {
@@ -31845,6 +32621,255 @@
           "form"
         ],
         "title": "RaggedSpec",
+        "type": "object"
+      },
+      "ReadToken": {
+        "description": "A dashboard read token as listed (never its secret or hash).",
+        "examples": [
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+            "expires_at": "2026-11-14T09:30:00Z",
+            "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "last_used_at": "2026-10-16T08:00:00Z",
+            "name": "Claude Desktop",
+            "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "owner_label": "Dana Client",
+            "prefix": "7k2m9q4x"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dashboard_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dashboard Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "owner_label": {
+            "maxLength": 200,
+            "title": "Owner Label",
+            "type": "string"
+          },
+          "prefix": {
+            "examples": [
+              "7k2m9q4x"
+            ],
+            "pattern": "^[0-9a-hjkmnp-tv-z]{8}$",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "dashboard_id",
+          "owner_id",
+          "owner_label",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "ReadToken",
+        "type": "object"
+      },
+      "ReadTokenCreate": {
+        "additionalProperties": false,
+        "description": "``POST …/read-tokens``: a read token for this dashboard, owned by the caller. The\nserver sets the scope (``dashboard:<dashboard_id>``) and the owner.",
+        "examples": [
+          {
+            "expires_in_days": 30,
+            "name": "Claude Desktop"
+          }
+        ],
+        "properties": {
+          "expires_in_days": {
+            "default": 30,
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Expires In Days",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ReadTokenCreate",
+        "type": "object"
+      },
+      "ReadTokenCreated": {
+        "description": "``201`` body of ``POST …/read-tokens``: the only time ``secret`` is returned.",
+        "examples": [
+          {
+            "created_at": "2026-10-15T09:30:00Z",
+            "dashboard_id": "dsh_01jaf3k1m2n3p4q5r6s7t8v9w0",
+            "expires_at": "2026-11-14T09:30:00Z",
+            "id": "tok_01jaf3r1s2t3v4w5x6y7z8a9b0",
+            "last_used_at": "2026-10-16T08:00:00Z",
+            "name": "Claude Desktop",
+            "owner_id": "usr_01jaf3a9b8c7d6e5f4g3h2j1k0",
+            "owner_label": "Dana Client",
+            "prefix": "7k2m9q4x",
+            "secret": "mapi_7k2m9q4x_0123456789abcdefghjkmnpqrstvwxyz072gj7d"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dashboard_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Dashboard Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_id": {
+            "examples": [
+              "run_01jaf3q2x8m9v7k5h4g3f2e1d0"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,127}$",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "owner_label": {
+            "maxLength": 200,
+            "title": "Owner Label",
+            "type": "string"
+          },
+          "prefix": {
+            "examples": [
+              "7k2m9q4x"
+            ],
+            "pattern": "^[0-9a-hjkmnp-tv-z]{8}$",
+            "title": "Prefix",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "secret": {
+            "description": "The full token. Store it now; it is not shown again.",
+            "pattern": "^mapi_(?P<prefix>[0123456789abcdefghjkmnpqrstvwxyz]{8})_(?P<secret>[0123456789abcdefghjkmnpqrstvwxyz]{32})(?P<checksum>[0123456789abcdefghjkmnpqrstvwxyz]{7})$",
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "dashboard_id",
+          "owner_id",
+          "owner_label",
+          "created_at",
+          "expires_at",
+          "secret"
+        ],
+        "title": "ReadTokenCreated",
         "type": "object"
       },
       "Readout": {
@@ -41248,6 +42273,75 @@
         "title": "TokenStatus",
         "type": "string"
       },
+      "ToolCallSummary": {
+        "description": "One tool call the assistant made in a turn (shown as a chip; never the result).\n\n``args`` larger than :data:`CHAT_MAX_TOOL_ARGS_BYTES` are replaced by\n``{\"_truncated\": true}``.",
+        "examples": [
+          {
+            "args": {
+              "seq": 12
+            },
+            "ms": 41,
+            "name": "get_readout",
+            "ok": true
+          },
+          {
+            "args": {
+              "panel_id": "nope"
+            },
+            "code": "NOT_FOUND",
+            "ms": 12,
+            "name": "get_panel",
+            "ok": false
+          }
+        ],
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Args",
+            "type": "object"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ms": {
+            "minimum": 0.0,
+            "title": "Ms",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "truncated": {
+            "default": false,
+            "description": "The result was trimmed to fit the budget",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "ok",
+          "ms"
+        ],
+        "title": "ToolCallSummary",
+        "type": "object"
+      },
       "TourProgress": {
         "additionalProperties": false,
         "description": "Where the user is in one tour. ``updated_at`` is set by the server on merge.",
@@ -50480,6 +51574,1238 @@
         ]
       }
     },
+    "/v1/dashboards/{dashboard_id}/chat": {
+      "get": {
+        "description": "Whether you can chat about this dashboard now (``reason`` when not), whether it keeps\nconversations, and the suggested questions.",
+        "operationId": "get_dashboard_chat",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatAvailability"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "DASHBOARD_NOT_PUBLISHED": {
+                    "summary": "The dashboard is not published",
+                    "value": {
+                      "code": "DASHBOARD_NOT_PUBLISHED",
+                      "detail": "The dashboard is not published",
+                      "errors": [],
+                      "status": 409,
+                      "title": "The dashboard is not published",
+                      "type": "urn:mapi:error:DASHBOARD_NOT_PUBLISHED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: DASHBOARD_NOT_PUBLISHED"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Dashboard Chat",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "post": {
+        "description": "Ask the assistant about this dashboard: one answer per request. Send the earlier\nturns of the conversation as they were returned (assistant turns with their ``sig``).\n``409 CHAT_DISABLED``, ``429 CHAT_BUDGET_EXHAUSTED`` or ``RATE_LIMITED`` (with\n``Retry-After``), ``400 CHAT_HISTORY_INVALID``, ``503 CHAT_UNAVAILABLE``.",
+        "operationId": "post_dashboard_chat",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_HISTORY_INVALID": {
+                    "summary": "The conversation history was changed or is not from this chat",
+                    "value": {
+                      "code": "CHAT_HISTORY_INVALID",
+                      "detail": "The conversation history was changed or is not from this chat",
+                      "errors": [],
+                      "status": 400,
+                      "title": "The conversation history was changed or is not from this chat",
+                      "type": "urn:mapi:error:CHAT_HISTORY_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_HISTORY_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_DISABLED": {
+                    "summary": "Chat is off for this dashboard",
+                    "value": {
+                      "code": "CHAT_DISABLED",
+                      "detail": "Chat is off for this dashboard",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Chat is off for this dashboard",
+                      "type": "urn:mapi:error:CHAT_DISABLED"
+                    }
+                  },
+                  "DASHBOARD_NOT_PUBLISHED": {
+                    "summary": "The dashboard is not published",
+                    "value": {
+                      "code": "DASHBOARD_NOT_PUBLISHED",
+                      "detail": "The dashboard is not published",
+                      "errors": [],
+                      "status": 409,
+                      "title": "The dashboard is not published",
+                      "type": "urn:mapi:error:DASHBOARD_NOT_PUBLISHED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_DISABLED, DASHBOARD_NOT_PUBLISHED"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_BUDGET_EXHAUSTED": {
+                    "summary": "The chat budget of this dashboard is spent for today",
+                    "value": {
+                      "code": "CHAT_BUDGET_EXHAUSTED",
+                      "detail": "The chat budget of this dashboard is spent for today",
+                      "errors": [],
+                      "status": 429,
+                      "title": "The chat budget of this dashboard is spent for today",
+                      "type": "urn:mapi:error:CHAT_BUDGET_EXHAUSTED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_UNAVAILABLE": {
+                    "summary": "The chat assistant is not available now. Try again later",
+                    "value": {
+                      "code": "CHAT_UNAVAILABLE",
+                      "detail": "The chat assistant is not available now. Try again later",
+                      "errors": [],
+                      "status": 503,
+                      "title": "The chat assistant is not available now. Try again later",
+                      "type": "urn:mapi:error:CHAT_UNAVAILABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_UNAVAILABLE"
+          }
+        },
+        "summary": "Post Dashboard Chat",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}/chat/settings": {
+      "get": {
+        "description": "The chat settings of the dashboard and the tokens used today (``ETag``: send it back\nin ``If-Match`` to change them).",
+        "operationId": "get_dashboard_chat_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Dashboard Chat Settings",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "put": {
+        "description": "Change the chat settings. ``If-Match`` must be the ``etag`` you read (``412\nPRECONDITION_FAILED`` when it is missing or the settings changed). Audited.",
+        "operationId": "put_dashboard_chat_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 130,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PRECONDITION_FAILED": {
+                    "summary": "Precondition failed",
+                    "value": {
+                      "code": "PRECONDITION_FAILED",
+                      "detail": "Precondition failed",
+                      "errors": [],
+                      "status": 412,
+                      "title": "Precondition failed",
+                      "type": "urn:mapi:error:PRECONDITION_FAILED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PRECONDITION_FAILED"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Put Dashboard Chat Settings",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}/chat/transcripts": {
+      "get": {
+        "description": "The kept conversations of the dashboard, newest first.",
+        "operationId": "list_dashboard_chat_transcripts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ChatTranscriptSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "List Dashboard Chat Transcripts",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}/chat/transcripts/{conversation_id}": {
+      "delete": {
+        "description": "Delete a kept conversation (every turn of it). Audited with the number of turns.",
+        "operationId": "delete_dashboard_chat_transcript",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "pattern": "^cnv_[0-9a-z]{26}$",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Delete Dashboard Chat Transcript",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "get": {
+        "description": "One kept conversation, oldest turn first (``404`` when nothing is kept).",
+        "operationId": "get_dashboard_chat_transcript",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "pattern": "^cnv_[0-9a-z]{26}$",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatTranscript"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Dashboard Chat Transcript",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
     "/v1/dashboards/{dashboard_id}/draft": {
       "put": {
         "description": "Replace the draft spec. ``If-Match`` must be the ``draft_etag`` you read\n(``DASHBOARD_SPEC_STALE`` when it changed since, ``PRECONDITION_FAILED`` without it).",
@@ -51652,6 +53978,486 @@
           }
         },
         "summary": "Submit Dashboard Predictions",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}/read-tokens": {
+      "get": {
+        "description": "Your read tokens for this dashboard, newest first (``all=true``: every owner's, for\neditors). Never a secret.",
+        "operationId": "list_dashboard_read_tokens",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "all",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "All",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReadToken"
+                  },
+                  "title": "Response List Dashboard Read Tokens",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "List Dashboard Read Tokens",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "post": {
+        "description": "Make a read token for this dashboard. ``secret`` is returned now and never again.",
+        "operationId": "create_dashboard_read_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadTokenCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "DASHBOARD_NOT_PUBLISHED": {
+                    "summary": "The dashboard is not published",
+                    "value": {
+                      "code": "DASHBOARD_NOT_PUBLISHED",
+                      "detail": "The dashboard is not published",
+                      "errors": [],
+                      "status": 409,
+                      "title": "The dashboard is not published",
+                      "type": "urn:mapi:error:DASHBOARD_NOT_PUBLISHED"
+                    }
+                  },
+                  "READ_TOKEN_LIMIT": {
+                    "summary": "You have the maximum number of active read tokens for this dashboard",
+                    "value": {
+                      "code": "READ_TOKEN_LIMIT",
+                      "detail": "You have the maximum number of active read tokens for this dashboard",
+                      "errors": [],
+                      "status": 409,
+                      "title": "You have the maximum number of active read tokens for this dashboard",
+                      "type": "urn:mapi:error:READ_TOKEN_LIMIT"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: READ_TOKEN_LIMIT, DASHBOARD_NOT_PUBLISHED"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Create Dashboard Read Token",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}/read-tokens/{token_id}": {
+      "delete": {
+        "description": "Revoke a read token (idempotent): yours, or any of the dashboard's as an editor.",
+        "operationId": "revoke_dashboard_read_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^dsh_[0-9a-z]{26}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "pattern": "^tok_[0-9a-hjkmnp-tv-z]{26}$",
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Revoke Dashboard Read Token",
         "tags": [
           "dashboards"
         ]
@@ -63162,6 +65968,214 @@
         ]
       }
     },
+    "/v1/mcp": {
+      "post": {
+        "description": "Public: the MCP server of one dashboard. Send one JSON-RPC 2.0 message with a\ndashboard read token (``Authorization: Bearer``) or a share session\n(``X-Mapi-Share``). Methods: ``initialize``, ``ping``, ``tools/list``, ``tools/call``\nand the ``notifications/initialized`` notification (``202``, no body).",
+        "operationId": "mcp_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "One JSON-RPC 2.0 message (MCP 2025-11-25 or 2025-06-18)",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The JSON-RPC response"
+          },
+          "202": {
+            "description": "Accepted (a notification; no body)"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LINK_EXPIRED": {
+                    "summary": "The link has expired or was revoked",
+                    "value": {
+                      "code": "LINK_EXPIRED",
+                      "detail": "The link has expired or was revoked",
+                      "errors": [],
+                      "status": 410,
+                      "title": "The link has expired or was revoked",
+                      "type": "urn:mapi:error:LINK_EXPIRED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: LINK_EXPIRED"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Mcp Endpoint",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
     "/v1/me": {
       "get": {
         "description": "Who is calling, and the tenants, projects and roles they can act in. For a token:\nonly its own project (its scopes narrow every role shown).",
@@ -71672,6 +74686,484 @@
           }
         },
         "summary": "Get Shared Batch Template",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/shared/chat": {
+      "get": {
+        "description": "Public: whether this link can chat now (``reason`` when not), and the suggested\nquestions.",
+        "operationId": "get_shared_chat",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Mapi-Share",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Mapi-Share"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatAvailability"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LINK_EXPIRED": {
+                    "summary": "The link has expired or was revoked",
+                    "value": {
+                      "code": "LINK_EXPIRED",
+                      "detail": "The link has expired or was revoked",
+                      "errors": [],
+                      "status": 410,
+                      "title": "The link has expired or was revoked",
+                      "type": "urn:mapi:error:LINK_EXPIRED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: LINK_EXPIRED"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED"
+          }
+        },
+        "summary": "Get Shared Chat",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "post": {
+        "description": "Public: ask the assistant about the shared dashboard (one answer per request). ``410\nLINK_EXPIRED`` once the link ended; ``409 CHAT_DISABLED`` when the dashboard does not\nopen chat to share links.",
+        "operationId": "post_shared_chat",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Mapi-Share",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Mapi-Share"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_HISTORY_INVALID": {
+                    "summary": "The conversation history was changed or is not from this chat",
+                    "value": {
+                      "code": "CHAT_HISTORY_INVALID",
+                      "detail": "The conversation history was changed or is not from this chat",
+                      "errors": [],
+                      "status": 400,
+                      "title": "The conversation history was changed or is not from this chat",
+                      "type": "urn:mapi:error:CHAT_HISTORY_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_HISTORY_INVALID"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNAUTHENTICATED": {
+                    "summary": "Authentication required",
+                    "value": {
+                      "code": "UNAUTHENTICATED",
+                      "detail": "Authentication required",
+                      "errors": [],
+                      "status": 401,
+                      "title": "Authentication required",
+                      "type": "urn:mapi:error:UNAUTHENTICATED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: UNAUTHENTICATED"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Not allowed",
+                    "value": {
+                      "code": "FORBIDDEN",
+                      "detail": "Not allowed",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Not allowed",
+                      "type": "urn:mapi:error:FORBIDDEN"
+                    }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Not found",
+                    "value": {
+                      "code": "NOT_FOUND",
+                      "detail": "Not found",
+                      "errors": [],
+                      "status": 404,
+                      "title": "Not found",
+                      "type": "urn:mapi:error:NOT_FOUND"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_DISABLED": {
+                    "summary": "Chat is off for this dashboard",
+                    "value": {
+                      "code": "CHAT_DISABLED",
+                      "detail": "Chat is off for this dashboard",
+                      "errors": [],
+                      "status": 409,
+                      "title": "Chat is off for this dashboard",
+                      "type": "urn:mapi:error:CHAT_DISABLED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_DISABLED"
+          },
+          "410": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "LINK_EXPIRED": {
+                    "summary": "The link has expired or was revoked",
+                    "value": {
+                      "code": "LINK_EXPIRED",
+                      "detail": "The link has expired or was revoked",
+                      "errors": [],
+                      "status": 410,
+                      "title": "The link has expired or was revoked",
+                      "type": "urn:mapi:error:LINK_EXPIRED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: LINK_EXPIRED"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "The document exceeds a size limit",
+                    "value": {
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "detail": "The document exceeds a size limit",
+                      "errors": [],
+                      "status": 413,
+                      "title": "The document exceeds a size limit",
+                      "type": "urn:mapi:error:PAYLOAD_TOO_LARGE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SCHEMA_INVALID": {
+                    "summary": "The document does not match its schema",
+                    "value": {
+                      "code": "SCHEMA_INVALID",
+                      "detail": "The document does not match its schema",
+                      "errors": [],
+                      "status": 422,
+                      "title": "The document does not match its schema",
+                      "type": "urn:mapi:error:SCHEMA_INVALID"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: SCHEMA_INVALID"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_BUDGET_EXHAUSTED": {
+                    "summary": "The chat budget of this dashboard is spent for today",
+                    "value": {
+                      "code": "CHAT_BUDGET_EXHAUSTED",
+                      "detail": "The chat budget of this dashboard is spent for today",
+                      "errors": [],
+                      "status": 429,
+                      "title": "The chat budget of this dashboard is spent for today",
+                      "type": "urn:mapi:error:CHAT_BUDGET_EXHAUSTED"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "code": "RATE_LIMITED",
+                      "detail": "Too many requests",
+                      "errors": [],
+                      "status": 429,
+                      "title": "Too many requests",
+                      "type": "urn:mapi:error:RATE_LIMITED"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: RATE_LIMITED, CHAT_BUDGET_EXHAUSTED"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CHAT_UNAVAILABLE": {
+                    "summary": "The chat assistant is not available now. Try again later",
+                    "value": {
+                      "code": "CHAT_UNAVAILABLE",
+                      "detail": "The chat assistant is not available now. Try again later",
+                      "errors": [],
+                      "status": 503,
+                      "title": "The chat assistant is not available now. Try again later",
+                      "type": "urn:mapi:error:CHAT_UNAVAILABLE"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Problem: CHAT_UNAVAILABLE"
+          }
+        },
+        "summary": "Post Shared Chat",
         "tags": [
           "dashboards"
         ]

@@ -193,6 +193,29 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay. The server applies it when a version fails or is withdrawn and stores the purge date then: a later change does not move the purge date of earlier versions |
 | `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | `900` | An approval or a rejection needs a sign-in that is not older than this (the ID token's `auth_time`) |
 | `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | `7` | A tenant admin whom the uploader added or promoted fewer days ago than this (directly or through someone they added) cannot approve the uploader's versions |
+| `MAPI_CHAT_PROVIDER` | `off` | The model of the dashboard chat (v0.20): `off`, `gemini` or `fake`. `fake` is a fixed local model that makes no network call, for development and tests. The server does not start with `fake` in the `multi-tenant` profile, with `cloudrun-jobs`, with the `gcs` object store or on Cloud Run. See [Ask about your dashboard](../guides/ask-about-your-dashboard.md#for-operators) |
+| `MAPI_GEMINI_API_KEY` | (none) | A secret: the Gemini Developer API key (a paid-tier key). Necessary with `gemini`. The server sends it only in the `x-goog-api-key` header and never logs or stores it |
+| `MAPI_GEMINI_ENDPOINT` | `https://generativelanguage.googleapis.com` | The base URL of the Gemini API. The `multi-tenant` profile allows only the default |
+| `MAPI_CHAT_MODEL` | `gemini-3.1-flash-lite` | The pinned model |
+| `MAPI_CHAT_THINKING_LEVEL` | `omit` | The thinking level sent to the model: `omit` (the model default), `minimal` or `low` |
+| `MAPI_CHAT_FUNCTION_MODE` | `VALIDATED` | The function-calling mode: `VALIDATED` or `AUTO` |
+| `MAPI_CHAT_MAX_OUTPUT_TOKENS` | `1024` | The most answer tokens of one model call |
+| `MAPI_CHAT_TEMPERATURE` | `0.2` | The sampling temperature |
+| `MAPI_CHAT_REQUEST_TIMEOUT_S` | `20.0` | The time limit of one model call |
+| `MAPI_CHAT_TURN_DEADLINE_S` | `45.0` | The time limit of one question, with all its model and tool calls. Over it, the answer is `503 CHAT_UNAVAILABLE` |
+| `MAPI_CHAT_ALLOWED_RESIDENCIES` | `us` | The data residencies (comma-separated) of the tenants that can use the chat. The Gemini Developer API is a global endpoint |
+| `MAPI_CHAT_PRICE_IN_MICROS_PER_MTOK` | `250000` | The price of one million input tokens (micro-dollars), for the cost estimate of the usage rows |
+| `MAPI_CHAT_PRICE_OUT_MICROS_PER_MTOK` | `1500000` | The price of one million output tokens, thoughts included (micro-dollars) |
+| `MAPI_CHAT_PRICE_VERSION` | `gemini-3.1-flash-lite@2026-10-22` | The name of the price table, stored on each usage row |
+| `MAPI_CHAT_MEMBER_TURNS_PER_MINUTE` | `10` | The questions that one member or client user can ask on one dashboard in each minute |
+| `MAPI_CHAT_SHARE_TURNS_PER_MINUTE` | `6` | The questions through one share link in each minute |
+| `MAPI_CHAT_SHARE_IP_TURNS_PER_MINUTE` | `12` | The share-link questions from one client address in each minute |
+| `MAPI_CHAT_TRANSCRIPT_TTL_DAYS` | `30` | The days that a kept chat message stays (only on dashboards that keep conversations) |
+| `MAPI_MCP_ENABLED` | `true` | Serve the MCP endpoint `POST /v1/mcp`. See [Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md) |
+| `MAPI_MCP_ALLOWED_ORIGINS` | (empty) | The browser origins (comma-separated) that can call `/v1/mcp`. Empty: a request with an `Origin` header gets `403` |
+| `MAPI_MCP_RATE_PER_MINUTE` | `120` | The MCP requests of one read token or share link in each minute |
+| `MAPI_DASHBOARD_READ_TOKEN_MAX_DAYS` | `90` | The longest life of a dashboard read token |
+| `MAPI_DASHBOARD_READ_TOKENS_PER_USER` | `5` | The active read tokens of one person on one dashboard. More get `409 READ_TOKEN_LIMIT` |
 
 **Object storage**
 
@@ -410,6 +433,20 @@ project=…)`) have priority over the environment. The environment has priority 
 `mapi config show` prints the result and the source of each value. `mapi login`, `mapi use`
 and `mapi config set` write the config file again atomically with mode `0600`.
 
+## The MCP bridge (`mapi-mcp`)
+
+`mapi-mcp` reads its settings from the environment of the chat tool that starts it, never
+from its command line ([Connect a chat tool with MCP](../guides/connect-a-chat-tool-with-mcp.md)).
+
+| Variable | Meaning |
+|---|---|
+| `MAPI_API_URL` | The API (`https://`, or `http://` for `localhost` only) |
+| `MAPI_DASHBOARD_TOKEN` | A dashboard read token, sent as `Authorization: Bearer` |
+| `MAPI_SHARE_LINK` | A share link (or its `mpd_…` token), in place of a read token. The bridge opens a share session and gets a new one before it ends |
+| `MAPI_SHARE_PASSCODE` | The passcode of the share link |
+| `MAPI_MCP_CONFIG` | The configuration file (default `~/.config/mapi/mcp.json`, mode `0600` only) |
+| `MAPI_MCP_LOG` | The log level on the standard error (default `WARNING`; `INFO` writes one line for each request) |
+
 ## `make dev`
 
 `scripts/dev.py` reads the topology variables and these variables:
@@ -443,6 +480,7 @@ build, set them yourself.
 | `VITE_APP_ORIGINS` (sandbox) | `http://127.0.0.1:5173,http://localhost:5173` | The origins that can frame the sandbox and send messages to it |
 | `VITE_AUTH_BASE` | `VITE_API_BASE` | The location of the sign-in routes (`/auth/*`), when they are not on the API base |
 | `VITE_TERMS_URL` | `/terms` | The terms of service that sign-up links to (an `http(s)` URL or a path on the origin of the app). The default is the plain-language summary in the app |
+| `VITE_DOCS_URL` | none | The root of the documentation site (an `http(s)` URL). The "Learn more" links of the chat panel go to its guide pages. Without it, the panel shows no "Learn more" links |
 | `VITE_ACCEPTABLE_USE_URL` | `/acceptable-use` | The acceptable-use policy that sign-up links to, in the same way. A public installation must publish its own versions of the two documents |
 
 The Playwright smoke suite of the web app serves the app on 5173 and the sandbox on 5174. If
@@ -524,6 +562,7 @@ variables that Terraform sets on the Cloud Run services (the deployment contract
 | `MAPI_E2E_GUIDED_ACCOUNT` | The address that the M3 journey (`tests/e2e/test_m3_guided_stack.py`) uses to sign up. It is a development-IdP account (default `viewer@dev.local`) |
 | `MAPI_E2E_KEEP` | `1` keeps the project that the M3.5 journeys make (`tests/e2e/test_m35_stack.py`, `apps/web/e2e/m35-live.e2e.spec.ts`). It also keeps the project of the forecasts-with-actuals journey (`tests/e2e/test_forecast_actuals_stack.py`). Thus you can look at the project in the app ([M3.5 verification](m35-verification.md)) |
 | `MAPI_E2E_WEBHOOK_TLS_DIR` | The location where the webhook receiver of the M3 journey finds `cert.pem` and `key.pem` (default `$MAPI_DATA_DIR/dev/webhook-tls`) |
+| `MAPI_BUDGET_REPORT` | `1` makes `vite build` print each bundle budget of the web app: the chunk, the bytes that it adds and its budget |
 | `MAPI_UPDATE_SNAPSHOTS` | `1` makes the contract snapshot of `mapi_spec` and the Guided catalog fixture of the server tests again (`make snapshots`) |
 | `MAPI_REGEN_GOLDEN` | `1` makes the golden of the recipe examples (`packages/plots-core/tests/golden/recipe_examples.json`) again after a deliberate change to an example |
 | `MAPI_HYPOTHESIS_EXAMPLES` | The examples for each property in the wire-format round-trip tests (default 60) |

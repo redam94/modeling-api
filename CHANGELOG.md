@@ -5,6 +5,85 @@ milestone releases are tagged on `main`.
 
 ## [Unreleased]
 
+### Ask about your dashboard (v0.20)
+
+Readers can ask an AI assistant about the numbers on a dashboard. The assistant reads the
+dashboard with the read-only dashboard tools and answers with the numbers that it found.
+Chat tools and agents can use the same tools over MCP with a dashboard read token or a share
+link. The chat is off on each dashboard until an editor turns it on.
+
+#### Added
+- Dashboard chat: `GET`/`POST /v1/dashboards/{dashboard_id}/chat` (team members and client
+  users, web sign-in only) and `GET`/`POST /v1/shared/chat` (share sessions). The API server
+  runs the chat. It calls the Gemini Developer API (`gemini-3.1-flash-lite`, REST through
+  `httpx`, no Google SDK) with the 14 tools of `DASHBOARD_TOOLS`, at most 6 tool calls for
+  each question, and answers in one message (no stream).
+- Chat settings for each dashboard (`dashboard_chat_settings`, `GET`/`PUT
+  .../chat/settings` with `If-Match`): on or off, the readers (team members, client users,
+  share links; links are off by default), kept conversations, and daily token limits for
+  the dashboard (200,000) and for each share link (50,000). A change makes no new revision.
+- Kept conversations (opt-in, 30 days, `MAPI_CHAT_TRANSCRIPT_TTL_DAYS`): editors list, read
+  and delete them under `.../chat/transcripts`. Housekeeping deletes expired turns each hour.
+  The workspace export contains them, except turns from share links. Tenant deletion
+  deletes them.
+- Usage rows (`dashboard_chat_usage`): one for each question, with token counts, the tool
+  calls and a cost estimate from a pinned price table (`MAPI_CHAT_PRICE_*`). No text.
+- Protection of the answers: a fixed system instruction with no workspace text, signed
+  chat history (`CHAT_HISTORY_INVALID`), a check of the credential before each model call and
+  each tool call, removal of links, images, HTML and control characters from answers, and the
+  notice `unverified_numbers` for numbers that are not in a tool result.
+- Tool results are shortened to a byte budget (`mapi_spec.tool_results.cap_tool_result`):
+  24 KiB for the chat, 64 KiB for MCP.
+- MCP: `POST /v1/mcp` (stateless streamable HTTP, JSON answers; `initialize`, `ping`,
+  `tools/list`, `tools/call`; revisions `2025-11-25` and `2025-06-18`) and the
+  pure protocol core `mapi_spec.mcp`. No MCP SDK.
+- The package `mapi-mcp` (version 0.16.0, Apache-2.0): a stdio bridge to `POST /v1/mcp`. It
+  reads its credential from the environment or from `~/.config/mapi/mcp.json` (mode 0600
+  only), refuses command-line arguments and removes secrets from its log.
+- Dashboard read tokens: the scope `dashboard:<dashboard_id>`, made with a web sign-in
+  under `/v1/dashboards/{dashboard_id}/read-tokens` (client users too), at most 90 days and
+  5 active tokens for each person and dashboard (`READ_TOKEN_LIMIT`). They work only on
+  `POST /v1/mcp` and see published readouts only. Access to the dashboard is checked on each
+  request.
+- The web app: **Ask about this dashboard** on the readout page, the client portal and the
+  share page (a lazy `chat-panel` chunk, a renderer that makes React elements only), the
+  **Chat** section and **Kept conversations** in the builder, and **Connect a chat tool**
+  (make, list and revoke read tokens; copy a stdio or HTTP configuration).
+- Error codes `CHAT_DISABLED`, `CHAT_UNAVAILABLE`, `CHAT_BUDGET_EXHAUSTED`,
+  `CHAT_HISTORY_INVALID` and `READ_TOKEN_LIMIT`; audit actions `dashboard.chat_settings`,
+  `dashboard.chat_transcript_delete`, `dashboard.read_token_create` and
+  `dashboard.read_token_revoke`.
+- The kill switch `chat_enabled` (`PUT /v1/admin/kill-switches`, or "Dashboard chat" in
+  Admin console › Kill switches) stops all chats. MCP continues.
+- A query string on `/v1/mcp` (for example a misplaced `?token=mapi_…`) is written as
+  `?REDACTED` in the access log and in request spans.
+- Settings: `MAPI_CHAT_PROVIDER` (`off`, `gemini` or `fake`), `MAPI_GEMINI_API_KEY`,
+  `MAPI_GEMINI_ENDPOINT`, `MAPI_CHAT_*`, `MAPI_MCP_ENABLED`, `MAPI_MCP_ALLOWED_ORIGINS`,
+  `MAPI_MCP_RATE_PER_MINUTE`, `MAPI_DASHBOARD_READ_TOKEN_MAX_DAYS` and
+  `MAPI_DASHBOARD_READ_TOKENS_PER_USER`. The fake model makes no network call. The server
+  does not start with it in the multi-tenant profile, with `cloudrun-jobs`, with `gcs` or on
+  Cloud Run.
+- Terraform: the `chat` variable and the `gemini-api-key` secret (written with a
+  write-only argument, read by the API service only).
+- Docs: "Ask about your dashboard", "Connect a chat tool with MCP" and "What's new in 0.20".
+- Migration `0024_dashboard_chat`.
+
+#### Changed
+- The budget of the `share-app` chunk is 292 KiB (was 288 KiB), for the chat button and the
+  lazy import of the chat panel.
+- The generic token routes (`/v1/tokens`) do not list or make dashboard read tokens. A
+  dashboard read token on any route other than `POST /v1/mcp` gets `403 FORBIDDEN`.
+- Share sessions: an internal check of a session can skip the request counters, so that
+  the checks before each step of a chat do not use the limits of the link.
+
+#### Known gaps
+- No real Gemini call was made. The adapter is tested with recorded answers built from the
+  API reference. Do a check with a real key before you turn on the chat for clients.
+- No real MCP desktop client was tested. The secret injection on Cloud Run is validated by
+  Terraform only.
+- The chat works only for workspaces with the data residency `us` by default (the Gemini
+  Developer API is a global endpoint). Regional endpoints are not available.
+
 ### Upload your own code (v0.19)
 
 Tenant admins, and editors that a tenant admin confirmed, can upload pure-Python wheels with

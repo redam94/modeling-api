@@ -24,14 +24,43 @@ import structlog
 from structlog.types import EventDict, WrappedLogger
 
 __all__ = [
+    "McpQueryRedactor",
     "bind_context",
     "bound_context",
     "clear_context",
     "configure_logging",
     "get_logger",
+    "redact_access_log",
 ]
 
 _CONFIGURED = False
+_MCP_PATH = "/v1/mcp"
+_REDACTED = "REDACTED"
+
+
+class McpQueryRedactor(logging.Filter):
+    """A filter for the ``uvicorn.access`` logger: on ``/v1/mcp`` the logged path keeps
+    only ``?REDACTED`` of its query string (plan D19, "bearer values redacted from access
+    logs"). The endpoint takes no query parameters, so a query there can only be a
+    misplaced credential (``?token=mapi_…``), which the middleware refuses but uvicorn
+    would still print. Other paths are left as they are."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            path = args[2]
+            base, sep, _query = path.partition("?")
+            if sep and base.rstrip("/") == _MCP_PATH:
+                record.args = (*args[:2], f"{base}?{_REDACTED}", *args[3:])
+        return True
+
+
+def redact_access_log() -> None:
+    """Attach :class:`McpQueryRedactor` to ``uvicorn.access`` (idempotent). A logger
+    filter survives uvicorn's own ``dictConfig``, which replaces handlers, not filters."""
+    access = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, McpQueryRedactor) for f in access.filters):
+        access.addFilter(McpQueryRedactor())
 
 
 def add_trace_context(_logger: WrappedLogger, _name: str, event: EventDict) -> EventDict:
