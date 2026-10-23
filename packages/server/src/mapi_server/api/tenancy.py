@@ -57,6 +57,7 @@ from mapi_server.auth.request import Credential, RequestAuth, client_only
 from mapi_server.db import models as m
 from mapi_server.errors import Conflict, NotFoundError
 from mapi_server.services.audit import audit_dto, audit_query, write_audit
+from mapi_server.services.quotas import kill_switches
 from mapi_server.services.runs import now
 from mapi_server.services.tenancy import add_member, change_role, remove_member
 
@@ -167,6 +168,10 @@ async def get_me(ctx: Ctx, auth: Auth, system: SystemSession) -> Me:
     if auth.token is not None:
         token = auth.token.to_public(now())
     kind = "token" if auth.credential is Credential.TOKEN else "session"
+    paused = False
+    if ctx.settings.plugins_enabled:
+        async with ctx.db.session() as system:  # platform_settings is a platform table
+            paused = not (await kill_switches(system)).untrusted_execution_enabled
     return Me(
         principal=principal,
         auth=kind,
@@ -175,6 +180,7 @@ async def get_me(ctx: Ctx, auth: Auth, system: SystemSession) -> Me:
         token=token,
         plugins_enabled=ctx.settings.plugins_enabled,
         dev_untrusted_code=ctx.settings.dev_untrusted_code,
+        plugins_paused=paused,
     )
 
 
@@ -598,7 +604,9 @@ async def _audit_member(
             kind,
             resource_id=row.principal_id,
             project_id=row.project_id,
-            details={"role": row.role, "project_id": row.project_id},
+            # v0.19: who granted the role (a token acts for its owner), read by the
+            # second-person rule for uploaded code (plugins.review._sock_puppet)
+            details={"role": row.role, "project_id": row.project_id, "by": auth.user_id},
         )
     ]
     reason = "member_removed" if action is AuditAction.MEMBER_REMOVE else "role_changed"

@@ -60,6 +60,8 @@ const ID = "([^/:?]+)";
 export const MOCK_PLUGIN_MS_KEY = "mapi.mock.pluginMs";
 export const MOCK_PLUGINS_OFF_KEY = "mapi.mock.pluginsOff";
 export const MOCK_DEV_UNTRUSTED_KEY = "mapi.mock.devUntrusted";
+/** "1": the operator paused uploaded code (`GET /v1/me` `plugins_paused`). */
+export const MOCK_PLUGINS_PAUSED_KEY = "mapi.mock.pluginsPaused";
 export const MOCK_PLUGIN_REAUTH_KEY = "mapi.mock.pluginReauth";
 
 /** Where the fake quarantine bucket takes POSTs (the GCS shim origin of the other mocks). */
@@ -132,8 +134,9 @@ function write(key: string, value: string | null): void {
 }
 
 /** `/v1/me` additions (v0.19): read by mocks/tenancy.ts. */
-export function mockPluginFlags(): Pick<Me, "plugins_enabled" | "dev_untrusted_code"> {
-  return { plugins_enabled: read(MOCK_PLUGINS_OFF_KEY) !== "1", dev_untrusted_code: read(MOCK_DEV_UNTRUSTED_KEY) === "1" };
+export function mockPluginFlags(): Pick<Me, "plugins_enabled" | "dev_untrusted_code" | "plugins_paused"> {
+  const enabled = read(MOCK_PLUGINS_OFF_KEY) !== "1";
+  return { plugins_enabled: enabled, dev_untrusted_code: read(MOCK_DEV_UNTRUSTED_KEY) === "1", plugins_paused: enabled && read(MOCK_PLUGINS_PAUSED_KEY) === "1" };
 }
 
 function pluginMs(): number {

@@ -48,6 +48,10 @@ module is in `sys.modules`. The corpus tests also replace `ZipFile.extract` and
 
 - Built and tested: all `archive`, `content`, `metadata`, `text` and `review` cases, and the
   two `upload` stage ticket cases.
-- Not built: the eight `runtime` cases (docker) and the probes-as-upload run. `build_case`
-  raises `NotBuilt` for them. `test_plugin_upload_runtime.py` and
-  `test_probes_as_upload.py` do not exist yet.
+- Probes as an upload (docker): `tests/security/test_probes_as_upload.py` re-packages the
+  security suite's existing probes (`security/plugin`, `security/src/mapi_security`) as an
+  uploaded plugin, a rename only, and runs them through the real pipeline on a running
+  stack B. It also covers `overlay_swap_after_approve` and `two_overlays_mount_minimal`.
+  See the module docstring for the environment it needs.
+- Not built: the other `runtime` cases. `build_case` raises `NotBuilt` for them.
+  `test_plugin_upload_runtime.py` does not exist yet.

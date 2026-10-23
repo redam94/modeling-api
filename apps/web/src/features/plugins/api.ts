@@ -51,10 +51,12 @@ export interface PluginFlags {
   enabled: boolean;
   /** Uploaded code runs without a sandbox (dev only: show the banner, D7). */
   devUntrusted: boolean;
+  /** The operator paused uploaded code (kill switch): checks wait, "Paused by the platform". */
+  paused: boolean;
 }
 
 export function pluginFlags(me: Me | null | undefined): PluginFlags {
-  return { enabled: me?.plugins_enabled ?? true, devUntrusted: me?.dev_untrusted_code ?? false };
+  return { enabled: me?.plugins_enabled ?? true, devUntrusted: me?.dev_untrusted_code ?? false, paused: me?.plugins_paused ?? false };
 }
 
 // ------------------------------------------------------------------------------ problems
@@ -64,14 +66,29 @@ export function isReauthRequired(err: unknown): boolean {
   return err instanceof ApiError && err.code === "REAUTH_REQUIRED";
 }
 
+/**
+ * The server refused this reviewer (403: the uploader themselves, or an admin the uploader
+ * brought in recently). Another admin must review; a higher role would not help, so the
+ * panel shows the server's reason alone, without the generic "ask for a higher role" advice.
+ */
+export function reviewRefusal(err: unknown): string | null {
+  if (!(err instanceof ApiError) || err.status !== 403) return null;
+  if (err.code !== "FORBIDDEN" && err.code !== "SELF_APPROVAL_FORBIDDEN") return null;
+  return err.problem?.detail ?? "You cannot review this version. Ask another tenant admin.";
+}
+
 /** The page's digests are stale or the state moved on (409 `PLUGIN_STATE_CONFLICT`): reload. */
 export function isStateConflict(err: unknown): boolean {
   return err instanceof ApiError && err.code === "PLUGIN_STATE_CONFLICT";
 }
 
-/** Where the reauth round trip goes: sign in, then back to this page. */
+/**
+ * Where the reauth round trip goes: sign in, then back to this page. `reauth=1` makes the
+ * server ask the identity provider to authenticate the person again (`max_age=0`), so a
+ * silent SSO redirect does not count as a fresh sign-in.
+ */
 export function reauthHref(returnTo: string = currentPath()): string {
-  return loginHref(returnTo);
+  return `${loginHref(returnTo)}&reauth=1`;
 }
 
 // ------------------------------------------------------------------------------ plugins

@@ -121,11 +121,27 @@ def _v019_seed(conn: psycopg.Connection[tuple[object, ...]]) -> None:
     conn.execute("UPDATE runs SET overlays = %s::jsonb WHERE id = 'run_2'", (pin,))
 
 
-def test_0022_chains_off_0021_and_is_the_head(scratch_db: str) -> None:
-    """0022 is the single head and steps from 0021 (v0.20's 0023 must step from it)."""
+def test_0022_chains_off_0021_and_0023_is_the_head(scratch_db: str) -> None:
+    """0022 steps from 0021; 0023 (session auth_time, v0.19) steps from 0022 and is the single
+    head (v0.20's next migration must step from it)."""
     script = ScriptDirectory.from_config(alembic_config(scratch_db))
-    assert script.get_heads() == ["0022_plugins"]
+    assert script.get_heads() == ["0023_session_auth_time"]
+    assert script.get_revision("0023_session_auth_time").down_revision == "0022_plugins"
     assert script.get_revision("0022_plugins").down_revision == BEFORE
+
+
+def test_0023_adds_session_auth_time_and_steps_down(scratch_db: str) -> None:
+    """review-flow-3: ``web_sessions.auth_time`` and ``login_transactions.reauth`` come and
+    go with 0023; the models and the migrations agree."""
+    upgrade(scratch_db)
+    assert "auth_time" in _columns(scratch_db, "web_sessions")
+    assert "reauth" in _columns(scratch_db, "login_transactions")
+    command.check(alembic_config(scratch_db))
+    downgrade(scratch_db, "0022_plugins")
+    assert "auth_time" not in _columns(scratch_db, "web_sessions")
+    assert "reauth" not in _columns(scratch_db, "login_transactions")
+    upgrade(scratch_db)
+    assert "auth_time" in _columns(scratch_db, "web_sessions")
 
 
 def test_upgrade_keeps_v018_rows_and_downgrade_refuses_with_uploaded_code(

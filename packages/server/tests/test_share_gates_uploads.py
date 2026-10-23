@@ -280,6 +280,91 @@ async def test_a_workflow_that_ran_uploaded_code_never_refreshes_a_dashboard(
         assert await on_workflow_succeeded(s, row) == 1
 
 
+async def test_an_uploaded_node_inside_a_sub_workflow_blocks_refresh_and_sharing(
+    ctx: ServerContext, wf_kit: dict[str, Any]
+) -> None:
+    """trust-2: D16 follows sub-workflows. An uploaded node (or an untrusted run) inside a
+    sub-workflow the refresh workflow called refuses the refresh, and a readout whose
+    workflow ran uploaded code two levels down is never shared."""
+    from mapi_server.services.sharing import dashboard_uses_uploaded_code
+
+    kit = wf_kit
+    dash_id = await create_published(kit, name="nested", refresh={"workflow_id": kit["wf_id"]})
+
+    async def nest(parent: str) -> str:
+        """A run that ``parent`` calls as a sub-workflow (``subworkflow.run`` node)."""
+        sub = await _linked_run(kit, ctx, kit["model"]["mv_id"])
+        async with ctx.db.session() as s:
+            await s.execute(update(m.Run).where(m.Run.id == sub).values(parent_run_id=parent))
+            s.add(
+                m.WorkflowNodeRunRow(
+                    run_id=parent, tenant_id="default", project_id="default", node_id="sub",
+                    position=0, use="subworkflow.run@1", kind="workflow", status="succeeded",
+                    child_run_id=sub,
+                )
+            )  # fmt: skip
+        return sub
+
+    # an uploaded node id inside the sub-workflow
+    wr = await _linked_run(kit, ctx, kit["model"]["mv_id"])
+    sub = await nest(wr)
+    async with ctx.db.session() as s:
+        s.add(
+            m.WorkflowNodeRunRow(
+                run_id=sub, tenant_id="default", project_id="default", node_id="clean",
+                position=0, use=f"transform.{NS}_clean@0.1.0", kind="transform",
+                status="succeeded",
+            )
+        )  # fmt: skip
+    await _refused_refresh(ctx, kit, dash_id, wr)
+    # an untrusted run two sub-workflows down
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Dashboard).where(m.Dashboard.id == dash_id).values(problem=None))
+    wr = await _linked_run(kit, ctx, kit["model"]["mv_id"])
+    deep = await nest(await nest(wr))
+    async with ctx.db.session() as s:
+        node = (
+            await s.execute(
+                select(m.WorkflowNodeRunRow).where(
+                    m.WorkflowNodeRunRow.run_id == deep, m.WorkflowNodeRunRow.node_id == "score"
+                )
+            )
+        ).scalar_one()
+        await s.execute(
+            update(m.Run).where(m.Run.id == node.child_run_id).values(untrusted_code=True)
+        )
+    await _refused_refresh(ctx, kit, dash_id, wr)
+    # read time: a refresh published before the run was found out is refused too
+    async with ctx.db.session() as s:
+        await s.execute(update(m.Dashboard).where(m.Dashboard.id == dash_id).values(problem=None))
+    wr = await _linked_run(kit, ctx, kit["model"]["mv_id"])
+    deep = await nest(await nest(wr))
+    async with ctx.db.session() as s:
+        row = await s.get(m.WorkflowRunRow, wr)
+        assert row is not None
+        assert await on_workflow_succeeded(s, row) == 1
+    async with ctx.db.session() as s:
+        dash = await s.get(m.Dashboard, dash_id)
+        assert dash is not None
+        assert not await dashboard_uses_uploaded_code(s, dash)
+        node = (
+            await s.execute(
+                select(m.WorkflowNodeRunRow).where(
+                    m.WorkflowNodeRunRow.run_id == deep, m.WorkflowNodeRunRow.node_id == "score"
+                )
+            )
+        ).scalar_one()
+        await s.execute(
+            update(m.Run)
+            .where(m.Run.id == node.child_run_id)
+            .values(untrusted_code=True, parent_run_id=deep)
+        )
+    async with ctx.db.session() as s:
+        dash = await s.get(m.Dashboard, dash_id)
+        assert dash is not None
+        assert await dashboard_uses_uploaded_code(s, dash)
+
+
 async def test_a_readout_whose_run_ran_uploaded_code_never_materialises(
     ctx: ServerContext, kit: dict[str, Any]
 ) -> None:

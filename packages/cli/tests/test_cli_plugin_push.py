@@ -24,6 +24,7 @@ import pytest
 import respx
 from mapi_cli.commands import plugin
 from mapi_cli.commands.plugin import Kind, check_wheel
+from mapi_spec.api import Me
 from mapi_spec.errors import ErrorCode, MapiError
 from mapi_spec.plugins import (
     Plugin,
@@ -53,6 +54,12 @@ WHEEL_NAME = f"{NS}-0.1.0-py3-none-any.whl"
 
 
 # ================================================================================ helpers
+
+
+@pytest.fixture(autouse=True)
+def _me(api: respx.MockRouter, example: Ex) -> respx.Route:
+    """``GET /v1/me`` (the caller; uploaded code not paused) for every test."""
+    return api.get(f"{V1}/me").respond(200, json=example(Me))
 
 
 def _page(items: list[Any], cursor: str | None = None) -> dict[str, Any]:
@@ -226,12 +233,33 @@ def test_init_upload_reads_your_earlier_claim(
         409, json=_problem(ErrorCode.PLUGIN_NAMESPACE_TAKEN, "The short name is taken.")
     )
     api.get(f"{V1}/plugins").respond(200, json=_page([_plugin(example)]))
+    api.get(f"{V1}/me").respond(200, json=example(Me))  # the plugin's created_by
     res = mapi(
         "--url", URL, "--project", PROJECT, "--json", "plugin", "init", "acme", "--upload",
         "--dir", str(tmp_path),
     )  # fmt: skip
     assert res.exit_code == 0, res.output
     assert as_json(res)["upload"]["claimed"] is False
+
+
+def test_init_upload_refuses_a_colleagues_plugin_you_can_see(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, tmp_path: Path
+) -> None:
+    """web+cli+docs-2: a tenant admin (or a teammate of an approved version) sees Bea's
+    plugin; ``init --upload`` must not adopt it as theirs."""
+    api.post(f"{V1}/plugins").respond(
+        409, json=_problem(ErrorCode.PLUGIN_NAMESPACE_TAKEN, "The short name is taken.")
+    )
+    theirs = _plugin(example) | {"created_by": "usr_01jbz3q2x8m9v7k5h4g3f2e1d9"}
+    api.get(f"{V1}/plugins").respond(200, json=_page([theirs]))
+    api.get(f"{V1}/me").respond(200, json=example(Me))
+    res = mapi(
+        "--url", URL, "--project", PROJECT, "plugin", "init", "acme", "--upload",
+        "--dir", str(tmp_path),
+    )  # fmt: skip
+    assert res.exit_code == 1 and "PLUGIN_NAMESPACE_TAKEN" in res.stderr
+    assert "Somebody else" in res.stderr
+    assert not (tmp_path / "acme").exists()
 
 
 def test_init_upload_refuses_a_name_taken_by_someone_else(
@@ -554,6 +582,35 @@ def test_wait_gives_up_after_the_timeout(
     assert "mapi plugin status acme@0.1.0" in res.stderr
 
 
+def test_wait_and_status_say_when_the_platform_paused_uploaded_code(
+    mapi: Invoke, api: respx.MockRouter, example: Ex, tmp_path: Path, _me: respx.Route,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:  # fmt: skip
+    """web+cli+docs-3: the operator's pause (``GET /v1/me`` ``plugins_paused``) is said, so a
+    check waiting in the queue does not look stuck."""
+    ticks = iter(float(t) for t in range(0, 10_000, 100))
+    monkeypatch.setattr(plugin, "_clock", lambda: next(ticks))
+    monkeypatch.setattr(plugin, "_sleep", lambda _s: None)
+    _me.respond(200, json=example(Me) | {"plugins_paused": True})
+    routes = _upload_routes(api, example)
+    routes["poll"].respond(200, json=_version(example, "inspecting"))
+    res = mapi(
+        "--url", URL, "--project", PROJECT, "plugin", "push", str(make_wheel(tmp_path)),
+        "--wait", "--timeout", "250",
+    )  # fmt: skip
+    assert "Paused by the platform" in res.stderr
+    api.get(f"{V1}/plugins").respond(200, json=_page([_plugin(example)]))
+    api.get(f"{V1}/plugins/{PLG}/versions").respond(
+        200, json=_page([example(PluginVersionSummary)])
+    )
+    api.get(f"{V1}/plugins/{PLG}/versions/{PLV}").respond(200, json=_version(example, "describing"))
+    res = mapi("--url", URL, "--project", PROJECT, "plugin", "status", "acme@0.1.0")
+    assert res.exit_code == 0 and "Paused by the platform" in res.stderr
+    _me.respond(200, json=example(Me))
+    res = mapi("--url", URL, "--project", PROJECT, "plugin", "status", "acme@0.1.0")
+    assert res.exit_code == 0 and "Paused" not in res.stderr
+
+
 def test_the_token_never_appears_in_the_output(
     mapi: Invoke, api: respx.MockRouter, example: Ex, tmp_path: Path, no_sleep: None,
     token: str,
@@ -579,8 +636,6 @@ def test_the_token_never_appears_in_the_output(
 def test_push_picks_your_only_project(
     mapi: Invoke, api: respx.MockRouter, example: Ex, tmp_path: Path
 ) -> None:
-    from mapi_spec.api import Me
-
     api.get(f"{V1}/me").respond(200, json=example(Me))  # one tenant, one project: acme/growth
     routes = _upload_routes(api, example)
     res = mapi("--url", URL, "plugin", "push", str(make_wheel(tmp_path)))

@@ -9,6 +9,7 @@ import hashlib
 import itertools
 import json
 import os
+import stat
 import struct
 import sys
 import time
@@ -539,7 +540,7 @@ def test_metadata_must_be_utf8_and_small(tmp_path: Path) -> None:
 def test_problem_list_is_capped(tmp_path: Path) -> None:
     extra = {f"{NS}/m{i}.pth": b"" for i in range(400)}
     insp = run(build(tmp_path, extra=extra))
-    assert len(insp.problems) == 200
+    assert len(insp.problems) <= 200
     assert "more problems" in insp.problems[-1].message
 
 
@@ -749,3 +750,152 @@ def test_hostile_inputs_stay_cheap(tmp_path: Path) -> None:
     insp = run(build(tmp_path, "w2.whl", extra={deep: b""}))
     assert time.perf_counter() - started < 2.0
     refused(insp, "path_unsafe")
+
+
+# ------------------------------------------------------------- review fixes (inspect-1..6)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"[mapi.models]\nok = {NS}.model:MODELS\n;evil = os:getcwd\n",
+        f"[mapi.models]\nok = {NS}.model:MODELS\n  ;evil = os:getcwd\n",
+        f"[mapi.models]\nok = {NS}.model:MODELS\n  evil = os:getcwd\n",
+        f"stray = os:getcwd\n[mapi.models]\nok = {NS}.model:MODELS\n",
+        f"[mapi.models]\nok = {NS}.model:MODELS\nno equals sign\n",
+        f"[mapi.models]\nok = {NS}.model:MODELS\nok = {NS}.steps:STEPS\n",
+    ],
+)
+def test_entry_points_the_loader_reads_differently_are_refused(tmp_path: Path, text: str) -> None:
+    """inspect-1: a ';' line is a comment for configparser but an entry point for
+    importlib.metadata; an indented line is a continuation for one and a new line for the
+    other. Such files are refused, so the reviewed list is the loaded list."""
+    insp = run(build(tmp_path, entry_points=text))
+    refused(insp, "metadata_invalid", f"{DIST_INFO}/entry_points.txt")
+
+
+def test_a_default_section_is_an_ordinary_group(tmp_path: Path) -> None:
+    """inspect-1: ``[DEFAULT]`` is an ordinary group for the loader, not defaults folded into
+    every group: it is refused as a group, and no phantom mapi.models entry appears."""
+    text = f"[DEFAULT]\nx = {NS}.model:MODELS\n[mapi.models]\nok = {NS}.model:MODELS\n"
+    insp = run(build(tmp_path, entry_points=text))
+    refused(insp, "entry_point_group")
+    assert {(e.group, e.name) for e in insp.entry_points} == {
+        ("DEFAULT", "x"),
+        ("mapi.models", "ok"),
+    }
+
+
+def test_the_reviewed_entry_points_are_the_loaded_ones(tmp_path: Path) -> None:
+    """inspect-1: the inspector reads entry_points.txt exactly as importlib.metadata does."""
+    import importlib.metadata as im
+
+    insp = run(build(tmp_path))
+    assert insp.ok
+    loaded = {(e.group, e.name, e.value) for e in im.EntryPoints._from_text(ENTRY_POINTS)}
+    assert {(e.group, e.name, e.value) for e in insp.entry_points} == loaded
+
+
+def _dir_mode(info: zipfile.ZipInfo) -> None:
+    info.external_attr = (stat.S_IFDIR | 0o755) << 16 | 0x10
+
+
+def test_a_directory_mode_on_a_file_name_is_refused_and_never_skipped(tmp_path: Path) -> None:
+    """inspect-2: an entry whose mode says directory but whose name has no '/' is a file
+    for name-based tools (zipfile, pip): it is refused, never skipped unread."""
+    so, pth = f"{NS}/evil.so", f"{NS}/x.pth"
+    members = wheel_members(extra={so: b"\x7fELF\x02\x01\x01" + b"\x00" * 60, pth: b"x\n"})
+    path = write_wheel(tmp_path / "w.whl", members, tweaks={so: _dir_mode, pth: _dir_mode})
+    insp = run(path)
+    refused(insp, "special_member", so)
+    refused(insp, "special_member", pth)
+
+
+def test_a_file_mode_on_a_directory_name_and_a_directory_with_data_are_refused(
+    tmp_path: Path,
+) -> None:
+    """inspect-2/5: the mount extractor refuses a file mode on a name ending in '/'; a
+    directory entry that holds bytes hides them from every check."""
+
+    def reg(info: zipfile.ZipInfo) -> None:
+        info.external_attr = (stat.S_IFREG | 0o644) << 16
+
+    path = build(tmp_path, extra={f"{NS}/sub/": b""}, tweaks={f"{NS}/sub/": reg})
+    refused(run(path), "special_member", f"{NS}/sub/")
+    path = build(tmp_path, "d.whl", extra={f"{NS}/data/": b"hidden bytes"})
+    refused(run(path), "zip_structure", f"{NS}/data/")
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {f"{NS}/x": b"x = 1\n", f"{NS}/x/": b""},
+        {f"{NS}/x": b"x = 1\n", f"{NS}/x/y.py": b"y = 1\n"},
+    ],
+)
+def test_a_path_that_is_a_file_and_a_directory_is_refused(
+    tmp_path: Path, extra: dict[str, bytes]
+) -> None:
+    """inspect-5: what the inspector passes, the mount extractor can extract."""
+    insp = run(build(tmp_path, extra=extra))
+    assert not insp.ok
+    assert checks(insp) & {"duplicate_name", "path_unsafe"}
+
+
+def test_padding_the_problem_list_never_hides_a_bomb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """inspect-3: 200 cheap problems first, then a high-ratio member: the report still names
+    the bomb, and no member data is inflated."""
+    import mapi_runner.plugin_inspect as pi
+
+    streamed: list[int] = []
+    real = pi._stream
+
+    def spy(*args: Any, **kw: Any) -> Any:
+        streamed.append(1)
+        return real(*args, **kw)
+
+    monkeypatch.setattr(pi, "_stream", spy)
+    pad = {}
+    for i in range(200):
+        pad[f"{NS}/c{i}.py"] = b""
+        pad[f"{NS}/C{i}.py"] = b""
+    pad[f"{NS}/zeros.py"] = b"\x00" * (5 * 1024 * 1024)
+    insp = run(build(tmp_path, extra=pad))
+    assert len(insp.problems) <= 200
+    assert {"case_collision", "ratio"} <= checks(insp)
+    assert streamed == []
+
+
+@pytest.mark.parametrize(
+    "meta",
+    [
+        metadata(version="1." + "9" * 5000),
+        metadata(requires_python=">=" + "9" * 5000),
+        metadata(requires_python=">=3." + "9" * 200),
+    ],
+)
+def test_huge_version_numbers_are_refused_not_a_crash(tmp_path: Path, meta: bytes) -> None:
+    """inspect-4: int() of thousands of digits raises ValueError; the inspector refuses the
+    wheel with a metadata problem instead of failing the run."""
+    insp = run(build(tmp_path, meta=meta))
+    assert not insp.ok
+    assert checks(insp) & {"metadata_invalid", "dist_info", "requires_python"}
+
+
+def test_huge_versions_raise_invalid_version() -> None:
+    with pytest.raises(InvalidVersion):
+        Version.parse("1." + "9" * 5000)
+    with pytest.raises(InvalidVersion):
+        specifier_contains(">=" + "9" * 5000, "3.12.0")
+
+
+def test_only_the_dist_info_record_signatures_skip_the_hash(tmp_path: Path) -> None:
+    """inspect-6: a package file called RECORD.jws is hashed like any other file."""
+    members = wheel_members(extra={f"{NS}/RECORD.jws": b"x = 1\n"})
+    record = members[f"{DIST_INFO}/RECORD"].replace(
+        f"{NS}/RECORD.jws,sha256=".encode(), f"{NS}/RECORD.jws,bogus=".encode()
+    )
+    members[f"{DIST_INFO}/RECORD"] = record
+    refused(run(write_wheel(tmp_path / "w.whl", members)), "dist_info", f"{NS}/RECORD.jws")

@@ -132,6 +132,10 @@ class KillSwitchUpdate(RequestModel):
 
 _ADJ: Final = {"day": "daily", "month": "monthly"}
 
+UNTRUSTED_PAUSED_MESSAGE: Final = "running uploaded plugin code is paused platform-wide"
+"""The refusal while the uploaded-code kill switch is off (clients match it to say "paused",
+not "quota")."""
+
 
 def kill_switch_decision(
     switches: KillSwitches,
@@ -150,7 +154,7 @@ def kill_switch_decision(
             scope=QuotaScope.GLOBAL,
             subject_id=GLOBAL_SUBJECT,
             limit_name=LimitName.UNTRUSTED_EXECUTION,
-            message="running uploaded plugin code is paused platform-wide",
+            message=UNTRUSTED_PAUSED_MESSAGE,
         )
     cap = switches.global_spend_cap_micros
     if cap is not None and tier is not TrustTier.INTERNAL and spent_micros >= cap:

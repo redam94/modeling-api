@@ -187,6 +187,24 @@ def test_the_pages_name_what_the_app_shows(page: Path) -> None:
         assert label in web, f"{page.name} names {label!r}, which the web app does not show"
 
 
+def test_the_review_checklist_is_the_one_the_panel_shows() -> None:
+    """web+cli+docs-6: the page says "The panel shows this checklist"; the panel's CHECKLIST
+    (reviewer-panel.tsx) has the same items, in the same order."""
+    page = _text(REVIEW).split("## The review checklist", 1)[1].split("\n## ", 1)[0]
+    items = [
+        re.sub(r"\s+", " ", m.group(1)).strip()
+        for m in re.finditer(r"^- \[ \] \*\*(.+?)\*\*", page, flags=re.M | re.S)
+    ]
+    panel = (WEB / "features" / "plugins" / "reviewer-panel.tsx").read_text("utf-8")
+    block = panel.split("export const CHECKLIST = [", 1)[1].split("];", 1)[0]
+    shown = re.findall(r'^\s*"(.+)",$', block, flags=re.M)
+    assert len(items) == len(shown) == 6, (items, shown)
+    for doc, app in zip(items, shown, strict=True):
+        words = [w for w in re.findall(r"[a-z]+", doc.lower()) if len(w) > 3]
+        assert all(w in app.lower() for w in words), (doc, app)
+    assert "necessary" in shown[1] and "What changed" in shown[5]
+
+
 def test_error_codes_named_by_the_pages_exist() -> None:
     from mapi_spec.errors import ErrorCode
 

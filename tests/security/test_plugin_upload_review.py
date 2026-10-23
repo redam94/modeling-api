@@ -105,7 +105,7 @@ async def stale_session_approve(w: World) -> Outcome:
         await s.execute(
             update(m.WebSession)
             .where(m.WebSession.user_id == w.uid("admin2"))
-            .values(created_at=now() - timedelta(minutes=16))
+            .values(auth_time=now() - timedelta(minutes=16))
         )
     r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
     return await outcome(w, r, v)

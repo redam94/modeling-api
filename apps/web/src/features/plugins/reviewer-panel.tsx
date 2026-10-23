@@ -20,7 +20,7 @@ import { useWorkspace } from "@/features/auth/workspace";
 import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
-import { isReauthRequired, isStateConflict, reauthHref, useDecide } from "./api";
+import { isReauthRequired, isStateConflict, reauthHref, reviewRefusal, useDecide } from "./api";
 import { ExportsDiff } from "./exports-list";
 import { InspectFacts } from "./inspect-facts";
 import { KitReport } from "./kit-report";
@@ -50,12 +50,14 @@ function writeDraft(versionId: string, note: string | null) {
   }
 }
 
-const CHECKLIST = [
+/** The review checklist; docs/extend/review-uploads.md lists the same items in the same order (a conformance test checks it). */
+export const CHECKLIST = [
   "The file facts look right: one package with the plugin's name, entry points only to that package.",
-  "Every requirement is one the platform already has.",
+  "Every requirement is one the platform already has, and each one is necessary for what the plugin does.",
   "You know where each link goes.",
   "The tests that failed or were skipped don't matter for how the team will use it.",
   "You know who uploaded it and why.",
+  "The changes are what you expect: What changed matches what the uploader told you. A new model or recipe that nobody told you about is a reason to reject.",
 ];
 
 export function ReviewerPanel({
@@ -64,6 +66,7 @@ export function ReviewerPanel({
   tenantId,
   uploader,
   previous,
+  previousStatus,
   onReload,
 }: {
   version: PluginVersion;
@@ -73,6 +76,8 @@ export function ReviewerPanel({
   uploader: string;
   /** The last approved version of the plugin (for the diff), if any. */
   previous: { version: string; exports: PluginExports | null | undefined } | null;
+  /** Whether the versions list or the last approved version is still loading, or failed. */
+  previousStatus?: { loading: boolean; error: unknown; onRetry: () => void };
   onReload: () => void;
 }) {
   const ws = useWorkspace();
@@ -126,7 +131,15 @@ export function ReviewerPanel({
       <SbomSummary sbom={version.inspection?.sbom} />
       <UrlList urls={version.urls ?? []} />
       <KitReport report={version.kit} />
-      <ExportsDiff current={version.exports_detail} previous={previous?.exports} previousVersion={previous?.version ?? null} uploader={uploader} />
+      <ExportsDiff
+        current={version.exports_detail}
+        previous={previous?.exports}
+        previousVersion={previous?.version ?? null}
+        uploader={uploader}
+        loading={previousStatus?.loading}
+        error={previousStatus?.error}
+        onRetry={previousStatus?.onRetry}
+      />
 
       <div className="grid gap-4 rounded-2xl border-2 border-primary/30 bg-card p-5" aria-labelledby="plugin-decision-title">
         <div className="grid gap-1">
@@ -192,6 +205,10 @@ export function ReviewerPanel({
             }
           >
             This version changed while you were looking at it, so nothing was decided. Reload and check it again.
+          </InlineMessage>
+        ) : err && reviewRefusal(err) ? (
+          <InlineMessage tone="warning" role="alert">
+            <span data-testid="plugin-review-refused">{reviewRefusal(err)}</span>
           </InlineMessage>
         ) : err ? (
           <ErrorNotice error={err} title="The decision was not saved" />

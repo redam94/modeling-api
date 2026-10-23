@@ -69,6 +69,8 @@ class _Grant:
     nonce: str | None
     code_challenge: str
     expires: float
+    auth_time: int = 0
+    """When the account was picked on the sign-in page (the ``auth_time`` claim)."""
 
 
 def _b64(data: bytes) -> str:
@@ -152,8 +154,9 @@ class DevIdP:
         self._codes = {c: g for c, g in self._codes.items() if g.expires > now}
         code = secrets.token_urlsafe(32)
         self._codes[code] = _Grant(
-            email, client_id, redirect_uri, nonce, code_challenge, now + CODE_TTL_S
-        )
+            email, client_id, redirect_uri, nonce, code_challenge, now + CODE_TTL_S,
+            auth_time=int(time.time()),
+        )  # fmt: skip
         return code
 
     def _known(self, client_id: str, redirect_uri: str) -> bool:
@@ -178,10 +181,19 @@ class DevIdP:
             "access_token": secrets.token_urlsafe(24),
             "token_type": "Bearer",
             "expires_in": TOKEN_TTL_S,
-            "id_token": self.id_token(grant.email, nonce=grant.nonce, audience=grant.client_id),
+            "id_token": self.id_token(
+                grant.email, nonce=grant.nonce, audience=grant.client_id, auth_time=grant.auth_time
+            ),
         }
 
-    def id_token(self, email: str, *, nonce: str | None, audience: str | None = None) -> str:
+    def id_token(
+        self,
+        email: str,
+        *,
+        nonce: str | None,
+        audience: str | None = None,
+        auth_time: int | None = None,
+    ) -> str:
         now = int(time.time())
         claims: dict[str, Any] = {
             "iss": DEV_ISSUER,
@@ -195,6 +207,8 @@ class DevIdP:
         }
         if nonce is not None:
             claims["nonce"] = nonce
+        if auth_time:
+            claims["auth_time"] = auth_time
         return jwt.encode(claims, self._key, algorithm="RS256", headers={"kid": self.kid})
 
 

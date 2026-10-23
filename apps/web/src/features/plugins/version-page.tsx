@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/stores/toast";
 
 import { pk } from "./keys";
-import { usePlugin, usePluginVersion, usePluginVersions, useRequestApproval } from "./api";
+import { pluginFlags, usePlugin, usePluginVersion, usePluginVersions, useRequestApproval } from "./api";
 import { DevBanner } from "./dev-banner";
 import { ExportsList } from "./exports-list";
 import { InspectFacts } from "./inspect-facts";
@@ -31,7 +31,7 @@ import { ProblemsList } from "./problems-list";
 import { ReviewerPanel } from "./reviewer-panel";
 import { SbomSummary } from "./sbom-summary";
 import { OnlyYouChip, PluginStateChip } from "./state-chip";
-import { canRequestApproval, canYank, displayText, isChecking, singleAdminNote, STATE_DESCRIPTION } from "./states";
+import { canRequestApproval, canYank, displayText, isChecking, PAUSED_DESCRIPTION, PAUSED_LABEL, singleAdminNote, stateDescription } from "./states";
 import type { Plugin, PluginDecisionRecord, PluginVersion } from "./types";
 import { UrlList } from "./url-list";
 import { YankDialog } from "./yank-dialog";
@@ -64,34 +64,48 @@ export function useRefreshOnStateChange(v: Pick<PluginVersion, "id" | "state"> |
   }, [key, qc, s.key]);
 }
 
-/** The live checks: file check, then tests (the step that runs is the active one). */
+/**
+ * The live checks: file check, then tests (the step that runs is the active one). While the
+ * operator has paused uploaded code (`GET /v1/me` `plugins_paused`), the checks wait in the
+ * queue: the steps say so instead of pulsing.
+ */
 export function CheckSteps({ state }: { state: PluginVersion["state"] }) {
+  const paused = pluginFlags(useWorkspace().me).paused;
   const steps = [
     { key: "files", label: "Checking the files", done: state !== "uploaded" && state !== "inspecting", active: state === "uploaded" || state === "inspecting" },
     { key: "tests", label: "Running the tests", done: !isChecking({ state } as PluginVersion), active: state === "describing" },
   ];
   return (
-    <ol className="grid gap-2 sm:grid-cols-2" aria-label="Checks" data-testid="plugin-check-steps">
-      {steps.map((s, i) => (
-        <li
-          key={s.key}
-          aria-current={s.active ? "step" : undefined}
-          className={cn("flex items-center gap-3 rounded-xl border px-4 py-3 text-sm", s.active ? "border-primary bg-accent font-semibold" : s.done ? "bg-card" : "bg-card text-muted-foreground")}
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "grid size-6 flex-none place-items-center rounded-full text-xs font-bold",
-              s.done ? "bg-success/15 text-success" : s.active ? "bg-primary text-primary-foreground animate-pulse" : "bg-muted text-muted-foreground",
-            )}
+    <div className="grid gap-2">
+      {paused ? (
+        <div data-testid="plugin-checks-paused">
+          <InlineMessage tone="warning">
+            <span className="font-semibold">{PAUSED_LABEL}.</span> {PAUSED_DESCRIPTION}
+          </InlineMessage>
+        </div>
+      ) : null}
+      <ol className="grid gap-2 sm:grid-cols-2" aria-label="Checks" data-testid="plugin-check-steps" data-paused={paused || undefined}>
+        {steps.map((s, i) => (
+          <li
+            key={s.key}
+            aria-current={s.active ? "step" : undefined}
+            className={cn("flex items-center gap-3 rounded-xl border px-4 py-3 text-sm", s.active ? "border-primary bg-accent font-semibold" : s.done ? "bg-card" : "bg-card text-muted-foreground")}
           >
-            {s.done ? "✓" : i + 1}
-          </span>
-          {s.label}
-          <span className="sr-only">{s.done ? "(done)" : s.active ? "(running)" : "(waiting)"}</span>
-        </li>
-      ))}
-    </ol>
+            <span
+              aria-hidden
+              className={cn(
+                "grid size-6 flex-none place-items-center rounded-full text-xs font-bold",
+                s.done ? "bg-success/15 text-success" : s.active ? cn("bg-primary text-primary-foreground", !paused && "animate-pulse") : "bg-muted text-muted-foreground",
+              )}
+            >
+              {s.done ? "✓" : i + 1}
+            </span>
+            {s.label}
+            <span className="sr-only">{s.done ? "(done)" : s.active ? (paused ? "(paused)" : "(running)") : "(waiting)"}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -172,7 +186,7 @@ function Header({ plugin, version, uploader, onYank }: { plugin: Plugin; version
             </time>
           </span>
         </div>
-        <p className="max-w-[64ch] text-base text-block-muted">{STATE_DESCRIPTION[version.state]}</p>
+        <p className="max-w-[64ch] text-base text-block-muted">{stateDescription(version)}</p>
       </div>
       {canAsk || onYank ? (
         <div className="flex flex-wrap gap-2">
@@ -259,6 +273,11 @@ export function VersionPage({ pluginId, versionId }: { pluginId: string; version
           tenantId={tenantId}
           uploader={uploader}
           previous={previousSummary ? { version: previousSummary.version, exports: previous.data?.exports_detail } : null}
+          previousStatus={{
+            loading: versions.isPending || (Boolean(previousSummary) && previous.isPending),
+            error: versions.error ?? (previousSummary ? previous.error : null),
+            onRetry: () => void (versions.isError ? versions.refetch() : previous.refetch()),
+          }}
           onReload={() => void version.refetch()}
         />
       ) : (
@@ -279,8 +298,11 @@ export function VersionPage({ pluginId, versionId }: { pluginId: string; version
           <h3 className="font-display text-lg font-bold">Issues found in the description</h3>
           <ul className="grid gap-1 text-sm">
             {(v.issues ?? []).map((i, n) => (
-              <li key={`${i.code}:${n}`} className={cn(i.severity === "error" ? "text-destructive" : "text-muted-foreground")}>
-                {displayText(i.message)}
+              <li key={`${i.code}:${n}`} className="grid min-w-0 gap-0.5" data-testid="plugin-issue">
+                <span className={cn(i.severity === "error" ? "text-destructive" : "text-muted-foreground")}>{displayText(i.message)}</span>
+                {/* where it is, and the uploaded text itself (as text, normalized), as the CLI shows them */}
+                {i.pointer ? <code className="font-mono text-xs [overflow-wrap:anywhere] text-muted-foreground">{displayText(i.pointer)}</code> : null}
+                {i.untrusted_text ? <span className="text-xs [overflow-wrap:anywhere] text-muted-foreground">{displayText(i.untrusted_text)}</span> : null}
               </li>
             ))}
           </ul>

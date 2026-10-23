@@ -38,6 +38,8 @@ import {
   isRejected,
   isState,
   isUploadedId,
+  KIT_FAILED_ISSUES_DESCRIPTION,
+  stateDescription,
   isUploadedNamespace,
   isYanked,
   kitCounts,
@@ -293,7 +295,7 @@ describe("plugin fixtures (mock)", () => {
   it("refuse a public workspace and a deployment with uploads turned off", async () => {
     expect((await call("ana", "GET", "/v1/plugins", undefined, { "X-Mapi-Project": "globex/sandbox" })).status).toBe(403);
     localStorage.setItem(MOCK_PLUGINS_OFF_KEY, "1");
-    expect(mockPluginFlags()).toEqual({ plugins_enabled: false, dev_untrusted_code: false });
+    expect(mockPluginFlags()).toEqual({ plugins_enabled: false, dev_untrusted_code: false, plugins_paused: false });
     expect((await call("ana", "GET", "/v1/plugins")).status).toBe(403);
     localStorage.setItem(MOCK_DEV_UNTRUSTED_KEY, "1");
     expect(mockPluginFlags().dev_untrusted_code).toBe(true);
@@ -448,11 +450,24 @@ describe("tenant settings (mock)", () => {
 
 describe("api helpers", () => {
   it("read the /v1/me flags with their defaults and classify problems", () => {
-    expect(pluginFlags(undefined)).toEqual({ enabled: true, devUntrusted: false });
-    expect(pluginFlags({ ...meOf("ana"), plugins_enabled: false, dev_untrusted_code: true })).toEqual({ enabled: false, devUntrusted: true });
+    expect(pluginFlags(undefined)).toEqual({ enabled: true, devUntrusted: false, paused: false });
+    expect(pluginFlags({ ...meOf("ana"), plugins_enabled: false, dev_untrusted_code: true })).toEqual({ enabled: false, devUntrusted: true, paused: false });
+    expect(pluginFlags({ ...meOf("ana"), plugins_paused: true }).paused).toBe(true);
     expect(isReauthRequired(new Error("x"))).toBe(false);
     expect(isStateConflict(null)).toBe(false);
     expect(pk.version("acme/growth", "plg", "plv")).toEqual(["p", "acme/growth", "plugins", "item", "plg", "versions", "plv"]);
     expect(BEA_ID).not.toBe(ANA_ID);
+  });
+});
+
+describe("stateDescription (v0.19 live)", () => {
+  it("does not say tests failed when only the description of the exports was refused", async () => {
+    const v = await version(V.kitFailed);
+    expect(stateDescription(v)).toBe(STATE_DESCRIPTION.kit_failed);
+    const passing = { ...v, kit: { ok: true, checks: (v.kit?.checks ?? []).map((c) => ({ ...c, status: "pass" as const })) } };
+    const issue = { code: "PLUGIN_REFUSED", severity: "error", pointer: "/exports/steps/0/about/title", message: "The text holds hidden characters." };
+    expect(stateDescription({ ...passing, issues: [issue] } as PluginVersion)).toBe(KIT_FAILED_ISSUES_DESCRIPTION);
+    expect(stateDescription({ ...passing, issues: [] })).toBe(STATE_DESCRIPTION.kit_failed);
+    expect(stateDescription({ ...passing, state: "kit_passed", issues: [issue] } as PluginVersion)).toBe(STATE_DESCRIPTION.kit_passed);
   });
 });

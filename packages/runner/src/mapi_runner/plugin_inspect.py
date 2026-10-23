@@ -40,7 +40,6 @@ declared dependency of the runner.
 from __future__ import annotations
 
 import base64
-import configparser
 import csv
 import hashlib
 import io
@@ -161,6 +160,12 @@ _EP_VALUE: Final = re.compile(
 # ================================================================================ versions
 
 
+_VERSION_MAX_LEN: Final = 256
+"""The longest version (or specifier version) the inspector parses."""
+_SPECIFIER_MAX_LEN: Final = 1024
+"""The longest ``Requires-Python`` specifier the inspector reads."""
+
+
 class InvalidVersion(ValueError):
     """A string that is not a PEP 440 version, specifier, requirement or marker."""
 
@@ -205,9 +210,20 @@ class Version:
 
     @classmethod
     def parse(cls, text: str) -> Version:
+        # bounded before int(): a run of thousands of digits makes int() raise ValueError
+        # (not InvalidVersion), which would crash the check instead of refusing the wheel
+        if len(text) > _VERSION_MAX_LEN:
+            raise InvalidVersion(f"a version is longer than {_VERSION_MAX_LEN} characters")
         m = _VERSION_RE.match(text)
         if m is None:
             raise InvalidVersion(f"{text!r} is not a PEP 440 version")
+        try:
+            return cls._from_match(m)
+        except ValueError as exc:
+            raise InvalidVersion(f"{text[:64]!r} is not a PEP 440 version") from exc
+
+    @classmethod
+    def _from_match(cls, m: re.Match[str]) -> Version:
         pre = None
         if m.group("pre"):
             pre = (_PRE_LETTER[m.group("pre_l").lower()], int(m.group("pre_n") or 0))
@@ -746,12 +762,36 @@ def installed_index() -> InstalledIndex:
 # ================================================================================ problems
 
 
+_SAFETY_CHECKS: Final[frozenset[InspectCheck]] = frozenset(
+    {
+        "member_count",
+        "member_size",
+        "archive_size",
+        "ratio",
+        "zip_structure",
+        "encrypted",
+        "compression_method",
+        "link_member",
+        "special_member",
+        "duplicate_name",
+    }
+)
+"""The archive checks that stop member data from being read (any one of them found)."""
+
+
 class _Problems:
-    """The problems found so far: one per (check, path, message), at most 200."""
+    """The problems found so far: one per (check, path, message), at most 200.
+
+    Every check found is remembered (``checks``) even when its problem is not listed, so
+    the stream gate never misses one; and each archive-safety check keeps one place in the
+    list, so padding the archive with cheap problems cannot hide a bomb from the report."""
 
     def __init__(self) -> None:
         self.items: list[InspectProblem] = []
         self._seen: set[tuple[str, str | None, str]] = set()
+        self.checks: set[str] = set()
+        self._listed: set[str] = set()
+        self._noted = False
         self.dropped = 0
 
     def add(self, check: InspectCheck, message: str, path: str | None = None) -> None:
@@ -759,9 +799,12 @@ class _Problems:
         if key in self._seen:
             return
         self._seen.add(key)
-        if len(self.items) >= _PROBLEMS_MAX - 1:
+        self.checks.add(check)
+        full = len(self.items) >= _PROBLEMS_MAX - 1 - len(_SAFETY_CHECKS)
+        if full and not (check in _SAFETY_CHECKS and check not in self._listed):
             self.dropped += 1
-            if len(self.items) == _PROBLEMS_MAX - 1:
+            if not self._noted:
+                self._noted = True
                 self.items.append(
                     InspectProblem(
                         check=check,
@@ -771,6 +814,7 @@ class _Problems:
                     )
                 )
             return
+        self._listed.add(check)
         self.items.append(
             InspectProblem(
                 check=check,
@@ -780,7 +824,8 @@ class _Problems:
         )
 
     def has(self, *checks: InspectCheck) -> bool:
-        return any(p.check in checks for p in self.items)
+        """Was any of ``checks`` found (listed or not)?"""
+        return any(c in self.checks for c in checks)
 
     def __bool__(self) -> bool:
         return bool(self.items)
@@ -928,16 +973,50 @@ def _unsafe_path(name: str, limits_path: int, limits_depth: int) -> str | None:
 
 
 def _file_kind(info: zipfile.ZipInfo) -> str:
-    """``"file"``, ``"dir"``, ``"link"`` or ``"special"`` from the Unix mode bits."""
+    """``"file"``, ``"dir"``, ``"link"`` or ``"special"`` from the Unix mode bits and the
+    name, read like the mount extractor (``overlay._check_type``) reads them: with no mode,
+    the trailing ``/`` decides; a directory mode needs the ``/`` (``"dir_no_slash"``
+    otherwise) and a file mode must not have it (``"file_slash"``). Name-based tools
+    (``zipfile``, pip) would treat either as the other kind."""
     mode = info.external_attr >> 16
     fmt = stat.S_IFMT(mode)
+    slash = info.orig_filename.endswith("/")
     if fmt == stat.S_IFLNK:
         return "link"
-    if fmt in (0, stat.S_IFREG):
-        return "dir" if info.orig_filename.endswith("/") else "file"
+    if fmt == 0:
+        return "dir" if slash else "file"
+    if fmt == stat.S_IFREG:
+        return "file_slash" if slash else "file"
     if fmt == stat.S_IFDIR:
-        return "dir"
+        return "dir" if slash else "dir_no_slash"
     return "special"
+
+
+_EMPTY_DEFLATE: Final = 2
+"""The compressed size of an empty deflate stream (a directory entry some tools deflate)."""
+
+
+def _check_file_paths(members: Sequence[_Member], problems: _Problems) -> None:
+    """The rules of the mount extractor (``overlay._plan``): no name is both a file and a
+    directory, and nothing is inside a path that is a file."""
+    files = {m.name for m in members if not m.is_dir}
+    for m in members:
+        if m.is_dir and m.name in files:
+            problems.add(
+                "duplicate_name",
+                "The archive has a file and a directory with this name.",
+                m.info.orig_filename,
+            )
+        parts = m.name.split("/")
+        for i in range(1, len(parts)):
+            parent = "/".join(parts[:i])
+            if parent in files:
+                problems.add(
+                    "path_unsafe",
+                    f"The entry is inside {_show(parent)}, which is a file.",
+                    m.info.orig_filename,
+                )
+                break
 
 
 def _scan_directory(
@@ -1016,6 +1095,21 @@ def _scan_directory(
                 "The entry is a device, pipe or socket, not a file or a directory.",
                 orig,
             )
+        elif kind == "dir_no_slash":
+            problems.add(
+                "special_member",
+                "The entry is marked as a directory, but its name does not end with '/'. "
+                "Tools that go by the name would write it as a file.",
+                orig,
+            )
+        elif kind == "file_slash":
+            problems.add(
+                "special_member",
+                "The entry is marked as a file, but its name ends with '/'.",
+                orig,
+            )
+        elif kind == "dir" and (info.file_size > 0 or info.compress_size > _EMPTY_DEFLATE):
+            problems.add("zip_structure", "A directory entry holds data.", orig)
         seen[orig] = seen.get(orig, 0) + 1
         if seen[orig] == 2:
             problems.add(
@@ -1024,7 +1118,8 @@ def _scan_directory(
                 orig,
             )
         name = info.filename.rstrip("/")
-        is_dir = kind == "dir"
+        # anything not plainly a directory is read as a file (sniffed, hashed, checked)
+        is_dir = kind in ("dir", "file_slash")
         # every path and every directory it implies, compared without case (macOS and
         # Windows file systems would merge them); an unsafe name is already refused, and
         # its prefixes could be very many
@@ -1042,6 +1137,7 @@ def _scan_directory(
                 )
         if seen[orig] == 1:
             members.append(_Member(info=info, name=name, is_dir=is_dir))
+    _check_file_paths(members, problems)
     if total > limits.max_uncompressed:
         problems.add(
             "archive_size",
@@ -1054,18 +1150,7 @@ def _scan_directory(
             "data with less compression, or leave it out of the wheel.",
         )
     _check_layout_on_disk(path, zf, infos, problems)
-    safe = not problems.has(
-        "member_count",
-        "member_size",
-        "archive_size",
-        "ratio",
-        "zip_structure",
-        "encrypted",
-        "compression_method",
-        "link_member",
-        "special_member",
-        "duplicate_name",
-    )
+    safe = not problems.has(*_SAFETY_CHECKS)
     return members, total, safe
 
 
@@ -1454,6 +1539,48 @@ def _check_metadata(
     return out
 
 
+def _entry_point_pairs(
+    text: str, where: str, problems: _Problems
+) -> list[tuple[str, str, str]] | None:
+    """``(group, name, value)`` of every entry point, read exactly as the loader reads them
+    (``importlib.metadata``'s ``Sectioned``: each line stripped, blank lines and ``#`` lines
+    skipped, ``[group]`` headers, ``name = value`` split on the first ``=``), so the reviewed
+    list is the loaded list. Anything a ``configparser`` would read differently is refused
+    (``None``): a ``;`` line (a comment there, an entry point for the loader), an indented
+    line (a continuation there), a line before the first group, a line without ``=`` and a
+    name declared twice in one group."""
+    pairs: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    group: str | None = None
+    why: str | None = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(";"):
+            why = "a line starts with ';' (Python loads it as an entry point)"
+        elif raw[:1].isspace():
+            why = "a line is indented"
+        elif line.startswith("[") and line.endswith("]"):
+            group = line.strip("[]")
+            continue
+        elif group is None:
+            why = "a line comes before the first [group]"
+        elif "=" not in line:
+            why = "a line has no '='"
+        else:
+            name, value = (part.strip() for part in line.split("=", 1))
+            if (group, name) in seen:
+                why = f"the entry point {_show(name, 60)} is declared twice"
+            else:
+                seen.add((group, name))
+                pairs.append((group, name, value))
+                continue
+        problems.add("metadata_invalid", f"entry_points.txt cannot be read: {why}.", where)
+        return None
+    return pairs
+
+
 def _parse_entry_points(
     text: str | None,
     job: PluginInspectJob,
@@ -1470,72 +1597,60 @@ def _parse_entry_points(
             where,
         )
         return []
-    parser = configparser.ConfigParser(
-        interpolation=None, delimiters=("=",), strict=True, comment_prefixes=("#", ";")
-    )
-    parser.optionxform = str  # type: ignore[assignment,method-assign]
-    try:
-        parser.read_string(text)
-    except configparser.Error as exc:
-        problems.add(
-            "metadata_invalid",
-            f"entry_points.txt cannot be read ({type(exc).__name__}).",
-            where,
-        )
+    pairs = _entry_point_pairs(text, where, problems)
+    if pairs is None:
         return []
     ns = job.namespace
     out: list[EntryPointDecl] = []
     total = 0
-    for group in parser.sections():
-        for name, value in parser.items(group):
-            total += 1
-            value = value.strip()
-            if group not in PLUGIN_ENTRY_POINT_GROUPS:
-                if group == "mapi.governance_checks":
-                    why = "Uploads cannot add governance checks."
-                elif group in ("console_scripts", "gui_scripts"):
-                    why = "Uploads cannot install commands."
-                else:
-                    why = f"Uploads can use only {allowed}."
-                problems.add(
-                    "entry_point_group",
-                    f"The entry point group {_show(group, 64)} is not allowed. {why}",
-                    where,
-                )
-            if not _EP_NAME.match(name) or has_unsafe_text(name):
+    for group, name, value in pairs:
+        total += 1
+        if group not in PLUGIN_ENTRY_POINT_GROUPS:
+            if group == "mapi.governance_checks":
+                why = "Uploads cannot add governance checks."
+            elif group in ("console_scripts", "gui_scripts"):
+                why = "Uploads cannot install commands."
+            else:
+                why = f"Uploads can use only {allowed}."
+            problems.add(
+                "entry_point_group",
+                f"The entry point group {_show(group, 64)} is not allowed. {why}",
+                where,
+            )
+        if not _EP_NAME.match(name) or has_unsafe_text(name):
+            problems.add(
+                "entry_point_target",
+                f"The entry point name {_show(name, 60)} is not valid.",
+                where,
+            )
+        m = _EP_VALUE.match(value) if len(value) <= 256 else None
+        if m is None:
+            problems.add(
+                "entry_point_target",
+                f"The entry point {_show(name, 60)} has the target {_show(value, 80)}. "
+                "Use 'module:attribute' without extras.",
+                where,
+            )
+        else:
+            module = m.group("module")
+            if module != ns and not module.startswith(ns + "."):
                 problems.add(
                     "entry_point_target",
-                    f"The entry point name {_show(name, 60)} is not valid.",
-                    where,
-                )
-            m = _EP_VALUE.match(value) if len(value) <= 256 else None
-            if m is None:
-                problems.add(
-                    "entry_point_target",
-                    f"The entry point {_show(name, 60)} has the target {_show(value, 80)}. "
-                    "Use 'module:attribute' without extras.",
+                    f"The entry point {_show(name, 60)} points to {_show(module, 80)}, "
+                    f"outside the package {ns}. Entry points must point into it.",
                     where,
                 )
             else:
-                module = m.group("module")
-                if module != ns and not module.startswith(ns + "."):
+                rel = module.replace(".", "/")
+                if f"{rel}.py" not in files and f"{rel}/__init__.py" not in files:
                     problems.add(
                         "entry_point_target",
-                        f"The entry point {_show(name, 60)} points to {_show(module, 80)}, "
-                        f"outside the package {ns}. Entry points must point into it.",
+                        f"The entry point {_show(name, 60)} points to the module "
+                        f"{_show(module, 80)}, which is not in the wheel.",
                         where,
                     )
-                else:
-                    rel = module.replace(".", "/")
-                    if f"{rel}.py" not in files and f"{rel}/__init__.py" not in files:
-                        problems.add(
-                            "entry_point_target",
-                            f"The entry point {_show(name, 60)} points to the module "
-                            f"{_show(module, 80)}, which is not in the wheel.",
-                            where,
-                        )
-            if len(out) < _ENTRY_POINTS_MAX:
-                out.append(EntryPointDecl(group=group, name=name, value=value))
+        if len(out) < _ENTRY_POINTS_MAX:
+            out.append(EntryPointDecl(group=group, name=name, value=value))
     if total > _ENTRY_POINTS_MAX:
         problems.add(
             "metadata_invalid",
@@ -1560,6 +1675,9 @@ def _check_record(
         problems.add("dist_info", "The wheel has no RECORD file.", where)
         return
     files = {m.name: m for m in members if not m.is_dir}
+    # only the RECORD itself and its signatures in the .dist-info go unhashed (not any file
+    # that happens to be called RECORD.jws)
+    unhashed = {where, *(f"{dist_info}/{sig}" for sig in _RECORD_SIGNATURES)}
     listed: set[str] = set()
     try:
         rows = list(csv.reader(io.StringIO(text)))
@@ -1578,7 +1696,7 @@ def _check_record(
         if m is None:
             problems.add("dist_info", "RECORD lists a file that the wheel does not have.", path)
             continue
-        if path == where or path.rsplit("/", 1)[-1] in _RECORD_SIGNATURES:
+        if path in unhashed:
             continue
         algo, _, value = digest.partition("=")
         if algo != "sha256" or m.sha256 is None:
@@ -1705,6 +1823,13 @@ def _check_requires_python(
     spec: str | None, index: InstalledIndex, dist_info: str, problems: _Problems
 ) -> None:
     if spec is None:
+        return
+    if len(spec) > _SPECIFIER_MAX_LEN:
+        problems.add(
+            "requires_python",
+            f"Requires-Python is longer than {_SPECIFIER_MAX_LEN} characters.",
+            f"{dist_info}/METADATA",
+        )
         return
     try:
         ok = specifier_contains(spec, index.requires_python)

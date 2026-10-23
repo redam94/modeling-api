@@ -166,6 +166,28 @@ async def test_asked_for_approval_at_upload_goes_on_to_the_reviewers(
     assert (vid, "plugin.version.awaiting_approval", "admins") in events
 
 
+async def test_a_review_asked_for_at_upload_is_not_mailed_to_the_uploader(
+    ctx: ServerContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """review-flow-4 (D14): tenant admins except the uploader (an admin who pushed with
+    ``--request-approval`` cannot approve their own upload)."""
+    seen: list[tuple[str, str, tuple[str, ...]]] = []
+
+    async def record(
+        session: Any, ctx: Any, version: m.PluginVersion, event: str, *, to: str, **kw: Any
+    ) -> None:
+        seen.append((event, to, tuple(kw.get("exclude", ()))))
+
+    monkeypatch.setattr(plugin_finalize, "notify_plugin_event", record)
+    _, vid = await seed_version(ctx, requested=True)
+    await _through_inspect(ctx, vid, inspection())
+    (drun,) = await runs_of(ctx, RunKind.PLUGIN_DESCRIBE)
+    run, att = await to_finalizing(ctx, drun.id)
+    await write_outputs(ctx, run, att, {PLUGIN_DESCRIBE_OUTPUT: describe(vid)})
+    await finalize(ctx, run, att)
+    assert ("plugin.version.awaiting_approval", "admins", (UPLOADER,)) in seen
+
+
 @pytest.mark.parametrize(
     ("body", "check"),
     [

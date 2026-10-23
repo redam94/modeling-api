@@ -152,12 +152,15 @@ async def test_the_kill_switch_holds_untrusted_runs(
         "/v1/admin/kill-switches", json={"untrusted_execution_enabled": False, "reason": "drill"}
     )
     assert r.status_code == 200
+    # web+cli+docs-3: the pause is visible (the web and the CLI say "Paused by the platform")
+    assert (await client.get("/v1/me")).json()["plugins_paused"] is True
     ex = UntrustedFakeExecutor()
     await Dispatcher(ctx, ex).dispatch_once()
     assert (await _run(ctx, run_id)).state == RunState.QUEUED.value and not ex.executions
     await client.put(
         "/v1/admin/kill-switches", json={"untrusted_execution_enabled": True, "reason": "drill"}
     )
+    assert (await client.get("/v1/me")).json()["plugins_paused"] is False
     await Dispatcher(ctx, ex).dispatch_once()
     assert (await _run(ctx, run_id)).state == RunState.PROVISIONING.value
 
@@ -185,12 +188,47 @@ async def test_a_describe_run_may_mount_the_version_it_checks(ctx: ServerContext
 
     pin = OverlayPin(plugin_version_id=vid, namespace=NS, sha256=WHEEL_SHA)
     async with ctx.db.session() as s:
-        run = m.Run(tenant_id="default", payload={"plugin_version_id": vid})
+        run = m.Run(tenant_id="default", payload={"plugin_version_id": vid}, created_by=UPLOADER)
         assert await describe_pin_problem(s, run, [pin]) is None
         other = m.Run(tenant_id="default", payload={"plugin_version_id": "plv_x"})
         assert await describe_pin_problem(s, other, [pin]) is not None
-        foreign = m.Run(tenant_id="acme", payload={"plugin_version_id": vid})
+        foreign = m.Run(tenant_id="acme", payload={"plugin_version_id": vid}, created_by=UPLOADER)
         assert await describe_pin_problem(s, foreign, [pin]) is not None
         wrong = OverlayPin(plugin_version_id=vid, namespace=NS, sha256="sha256:" + "0" * 64)
         assert await describe_pin_problem(s, run, [wrong]) is not None
     assert (await load_version(ctx, vid)).state == "describing"
+
+
+async def test_a_describe_run_mounts_its_version_only_for_the_uploader(
+    ctx: ServerContext,
+) -> None:
+    """trust-1: a describe run that acts for anyone but the uploader (a teammate's retry of
+    a rekit run) may not mount the version, approved or not."""
+    from mapi_server.services.plugins.pipeline import describe_pin_problem
+    from mapi_spec.plugins import OverlayPin
+
+    for i, state in enumerate(("describing", "approved", "kit_passed")):
+        _, vid = await seed_version(ctx, state=state, overlay=True, version=f"0.{i + 1}.0")
+        pin = OverlayPin(plugin_version_id=vid, namespace=NS, sha256=WHEEL_SHA)
+        async with ctx.db.session() as s:
+            theirs = m.Run(
+                tenant_id="default", payload={"plugin_version_id": vid}, created_by=TEAMMATE
+            )
+            assert await describe_pin_problem(s, theirs, [pin]) is not None
+            nobody = m.Run(tenant_id="default", payload={"plugin_version_id": vid})
+            assert await describe_pin_problem(s, nobody, [pin]) is not None
+            assert await describe_pin_problem(s, theirs, [pin], created_by=UPLOADER) is None
+
+
+@pytest.mark.parametrize("kind", ["plugin_inspect", "plugin_describe"])
+async def test_plugin_check_runs_are_not_retried_one_by_one(ctx: ServerContext, kind: str) -> None:
+    """trust-1: a stand-alone retry of a plugin check run is refused (409), so nobody can
+    re-run (or, on a rekit, yank) someone else's upload."""
+    from mapi_server.errors import Conflict
+    from mapi_server.services.submit import _refuse_orchestrated_retry
+
+    old = m.Run(tenant_id="default", kind=kind, state=RunState.FAILED.value, created_by=UPLOADER)
+    async with ctx.db.session() as s:
+        with pytest.raises(Conflict) as err:
+            await _refuse_orchestrated_retry(s, old)
+    assert "upload the plugin again" in err.value.detail

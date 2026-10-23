@@ -93,7 +93,8 @@ console, open **Kill switches**:
   "Running the tests" stays there, and the page says "Paused by the platform".
 - **Cancel runs of uploaded code**: pause, and cancel each unfinished untrusted run of each
   tenant. A cancelled check moves the version to `inspect_failed` or `kit_failed` with a plain
-  reason. The uploader pushes the same file again later.
+  reason. The uploader raises the version number and pushes it again later (a version number
+  is never uploaded twice).
 
 Use the cancel action to contain a possible sandbox escape. Then withdraw the version with the
 reason `security` (this also cancels its runs) and look at its usage
@@ -112,8 +113,8 @@ reason `security` (this also cancels its runs) and look at its usage
 | `MAPI_PLUGIN_UPLOADS_PER_USER_PER_DAY` | 20 | Upload tickets of one user each day (429 `RATE_LIMITED`) |
 | `MAPI_PLUGIN_PIPELINE_CONCURRENCY_PER_TENANT` | 2 | Check runs of one tenant at the same time (the others stay queued) |
 | `MAPI_PLUGIN_TICKET_TTL_S` | 900 | Life of an upload ticket |
-| `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | 900 | Maximum age of the reviewer's sign-in |
-| `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | 7 | A membership that the uploader made more recently cannot approve |
+| `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | 900 | Maximum age of the reviewer's sign-in, from the ID token's `auth_time`. The re-sign-in asks the identity provider for `max_age=0` and `prompt=login`; an identity provider that sends no `auth_time` cannot approve |
+| `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | 7 | A tenant admin whom the uploader added or promoted more recently (directly or through someone they added) cannot approve |
 | `MAPI_PLUGIN_RETENTION_DAYS` | 30 | Days before the purge deletes refused, failed, rejected and withdrawn files |
 
 The [server settings reference](../reference/generated/server-settings.md) lists them all.

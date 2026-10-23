@@ -695,6 +695,24 @@ artifact = "wheel"
 summary = "A pytest11 plugin (loaded by any pytest run in the image)."
 
 [[case]]
+name = "ep_semicolon_hidden"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "metadata_invalid"
+artifact = "wheel"
+summary = "A ';' line: a comment for configparser, an entry point for importlib.metadata."
+
+[[case]]
+name = "ep_default_section"
+group = "metadata"
+threat = "T19.8"
+stage = "inspect"
+expect = "entry_point_group"
+artifact = "wheel"
+summary = "A [DEFAULT] group: an ordinary group for the loader, defaults for configparser."
+
+[[case]]
 name = "ep_none"
 group = "metadata"
 threat = "T19.8"

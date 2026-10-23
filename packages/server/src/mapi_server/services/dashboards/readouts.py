@@ -79,7 +79,6 @@ from mapi_spec.dashboards import (
 )
 from mapi_spec.errors import ERROR_INFO, ErrorCode, MapiError, Problem, Severity
 from mapi_spec.run import RunState
-from mapi_spec.sharing import uses_uploaded_ids
 from mapi_spec.tenancy import ResourceKind
 from mapi_spec.views import ResponseGridView
 from mapi_spec.webhooks import WebhookEventType
@@ -562,11 +561,11 @@ async def on_workflow_succeeded(session: AsyncSession, wr: m.WorkflowRunRow) -> 
     if child is None:
         log.info("workflow run %s has no succeeded score node: no dashboard refresh", wr.run_id)
         return 0
-    from mapi_server.services.sharing import runs_used_uploaded_code
+    from mapi_server.services.sharing import runs_used_uploaded_code, workflow_used_uploaded_code
 
-    node_runs = [n.child_run_id or n.cached_from for n in nodes]
-    if any(uses_uploaded_ids([n.use]) for n in nodes) or await runs_used_uploaded_code(
-        session, [child.id, *node_runs]
+    # through sub-workflows too: an uploaded node inside one taints what the parent scores
+    if await runs_used_uploaded_code(session, [child.id]) or await workflow_used_uploaded_code(
+        session, nodes
     ):
         log.warning("workflow run %s ran uploaded code: no dashboard refresh (D16)", wr.run_id)
         for dash, _rev in linked:

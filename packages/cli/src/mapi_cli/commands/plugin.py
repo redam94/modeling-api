@@ -1117,7 +1117,10 @@ def _version_of(api: Client, plugin: Plugin, version: str) -> PluginVersion:
 
 
 def _claim_or_read(st: AppState, short: str, title: str | None) -> tuple[Plugin, bool]:
-    """Claim ``short`` (``True``), or read the plugin you claimed before (``False``)."""
+    """Claim ``short`` (``True``), or read the plugin you claimed before (``False``). A short
+    name somebody else claimed stays ``PLUGIN_NAMESPACE_TAKEN``, even when you can see their
+    plugin (a tenant admin, or a teammate of an approved version): new versions would join
+    their plugin."""
     if not _SHORT.match(short):
         raise _invalid(
             f"The short name {short!r} is not valid. Use 2 to 16 lowercase letters and digits, "
@@ -1133,6 +1136,14 @@ def _claim_or_read(st: AppState, short: str, title: str | None) -> tuple[Plugin,
             found = _find_plugin(api, short)
             if found is None:
                 raise
+            principal = api.me().principal
+            me = getattr(principal, "owner_id", None) or principal.id  # a token: its owner
+            if found.created_by != me:
+                raise MapiError(
+                    f"Somebody else in your workspace claimed the short name {short!r}. "
+                    "Pick another one.",
+                    code=ErrorCode.PLUGIN_NAMESPACE_TAKEN,
+                ) from None
             return found, False
 
 
@@ -1337,12 +1348,26 @@ def _resolve_plugin(
     )
 
 
+PAUSED_TEXT: Final = (
+    "Paused by the platform: the operator paused uploaded code. Your checks continue when "
+    "they resume it."
+)
+
+
+def _say_if_paused(api: Client, out: Output, v: PluginVersion) -> None:
+    """A version still being checked while the operator paused uploaded code (``GET /v1/me``
+    ``plugins_paused``) waits in the queue: say so instead of looking stuck."""
+    if v.state in _WORKING_STATES and api.me().plugins_paused:
+        out.warn(PAUSED_TEXT)
+
+
 def _wait(
     api: Client, out: Output, plugin: Plugin, version: PluginVersion, timeout: float
 ) -> PluginVersion:
     deadline = _clock() + timeout
     last = version.state
     out.info(f"{plugin.short_name} {version.version}: {STATE_TEXT.get(last, last)}")
+    _say_if_paused(api, out, version)
     while version.state in _WORKING_STATES:
         if _clock() >= deadline:
             out.fail(
@@ -1638,6 +1663,9 @@ def status(
         )
         return
     _print_version(out, plugin, detail)
+    if detail.state in _WORKING_STATES:
+        with _api(st, project) as api:
+            _say_if_paused(api, out, detail)
     _next_step(out, plugin, detail)
 
 

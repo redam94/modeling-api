@@ -66,7 +66,7 @@ M35_CHAIN = ("0011_workflows", "0012_governance")
 V016_CHAIN = ("0018_client_dashboards", "0019_dashboard_hardening")
 V017_CHAIN = ("0020_any_model_dashboards",)
 V018_CHAIN = ("0021_v018_library_onboarding",)
-V019_CHAIN = ("0022_plugins",)
+V019_CHAIN = ("0022_plugins", "0023_session_auth_time")
 CHAIN = (
     *M3_CHAIN,
     *M35_CHAIN,

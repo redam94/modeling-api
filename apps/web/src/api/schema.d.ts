@@ -34,6 +34,8 @@ export interface paths {
         /**
          * Auth Login
          * @description Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.
+         *     ``reauth=1`` (v0.19) asks the identity provider to authenticate the person again
+         *     (``max_age=0``, ``prompt=login``), as approving uploaded code needs.
          */
         get: operations["auth_login"];
         put?: never;
@@ -16363,6 +16365,11 @@ export interface components {
              * @default true
              */
             plugins_enabled?: boolean;
+            /**
+             * Plugins Paused
+             * @default false
+             */
+            plugins_paused?: boolean;
             /** Principal */
             principal: components["schemas"]["UserPrincipal"] | components["schemas"]["TokenPrincipal"] | components["schemas"]["ServicePrincipal"];
             /** Tenants */
@@ -28139,6 +28146,7 @@ export interface operations {
         parameters: {
             query?: {
                 return_to?: string | null;
+                reauth?: boolean;
             };
             header?: never;
             path?: never;

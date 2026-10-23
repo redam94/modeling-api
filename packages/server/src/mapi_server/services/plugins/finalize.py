@@ -27,7 +27,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any, Final
 
@@ -82,7 +82,9 @@ log = logging.getLogger(__name__)
 HASH_CHUNK_BYTES: Final = 4 * 1024 * 1024
 """The overlay copy is re-hashed in ranged reads of this size (never parsed)."""
 
-_UPLOAD_AGAIN: Final = "Upload the same file again."
+_UPLOAD_AGAIN: Final = "Raise the version number and upload it again."
+"""A version string is never uploaded twice (``uq_plugin_versions_plugin_id_version``), so
+even a check the platform lost needs a new version number."""
 
 
 # ================================================================================= helpers
@@ -245,9 +247,11 @@ async def _notify(
     event: PluginEvent,
     *,
     to: Recipients,
+    exclude: Sequence[str] = (),
 ) -> None:
-    """Mail + webhook through the one notifier (never uploaded text)."""
-    await notify_plugin_event(session, ctx, version, event, to=to)
+    """Mail + webhook through the one notifier (never uploaded text); ``exclude`` are people
+    not mailed (the uploader, for a review request: D14)."""
+    await notify_plugin_event(session, ctx, version, event, to=to, exclude=exclude)
 
 
 def _move(
@@ -587,6 +591,7 @@ async def finalize_plugin_describe(
                 version,
                 "plugin.version.awaiting_approval",
                 to="admins",
+                exclude=(version.uploaded_by,),
             )
         return
     # rekit (D12)
@@ -607,7 +612,14 @@ async def finalize_plugin_describe(
     if version.state == "approved" and digest != await _approved_digest(session, version.id):
         _move(ctx, version, "awaiting_approval", at=at)
         version.updated_at = at
-        await _notify(session, ctx, version, "plugin.version.awaiting_approval", to="admins")
+        await _notify(
+            session,
+            ctx,
+            version,
+            "plugin.version.awaiting_approval",
+            to="admins",
+            exclude=(version.uploaded_by,),
+        )
 
 
 async def _approved_digest(session: AsyncSession, version_id: str) -> str | None:

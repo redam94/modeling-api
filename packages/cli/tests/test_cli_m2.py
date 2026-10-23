@@ -508,6 +508,20 @@ def test_quota_errors_say_when_to_retry(
     assert doc["error"]["code"] == "QUOTA_EXCEEDED" and doc["retry_after_seconds"] == 5400
 
 
+def test_the_uploaded_code_kill_switch_is_not_called_a_quota(
+    mapi: Invoke, api: respx.MockRouter
+) -> None:
+    # v0.19 live: a push while the operators paused uploaded code said "see `mapi usage`"
+    from mapi_spec.admin import UNTRUSTED_PAUSED_MESSAGE
+
+    api.post(f"{V1}/tokens").respond(
+        429, json=problem(ErrorCode.QUOTA_EXCEEDED, UNTRUSTED_PAUSED_MESSAGE)
+    )
+    res = mapi("--url", URL, "tokens", "create", "x", "-s", "models:read")
+    assert res.exit_code == 1
+    assert "paused all uploaded code" in res.stderr and "mapi usage" not in res.stderr
+
+
 # ------------------------------------------------------------------------------- admin
 
 

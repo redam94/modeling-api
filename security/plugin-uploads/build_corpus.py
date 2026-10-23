@@ -219,7 +219,13 @@ def write_wheel(
             for name, data in rows:
                 info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
                 info.compress_type = compression
-                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                # a directory entry the way zipfile.mkdir writes one (the mount extractor
+                # refuses a file mode on a name that ends with '/')
+                info.external_attr = (
+                    (stat.S_IFDIR | 0o755) << 16 | 0x10
+                    if name.endswith("/")
+                    else (stat.S_IFREG | 0o644) << 16
+                )
                 if tweaks and name in tweaks:
                     tweaks[name](info)
                 zf.writestr(info, data)
@@ -472,6 +478,10 @@ def _wheel_case(c: Corpus, case: Case, out: Path) -> Artifact:
         w(entry_points=f"[console_scripts]\nacme = {ns}.model:MODELS\n")
     elif n == "ep_pytest_plugin":
         w(entry_points=f"[pytest11]\nacme = {ns}.model\n")
+    elif n == "ep_semicolon_hidden":
+        w(entry_points=f"[mapi.models]\nok = {ns}.model:MODELS\n;x = os:getcwd\n")
+    elif n == "ep_default_section":
+        w(entry_points=f"[DEFAULT]\nx = {ns}.model:MODELS\n[mapi.models]\nok = {ns}.model:MODELS\n")
     elif n == "ep_none":
         w(entry_points=None)
     elif n == "req_not_installed":

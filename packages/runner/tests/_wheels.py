@@ -168,7 +168,13 @@ def write_wheel(
             for name, data in items:
                 info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
                 info.compress_type = compression
-                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                # a directory entry the way zipfile.mkdir writes one (the mount extractor
+                # refuses a file mode on a name that ends with '/')
+                info.external_attr = (
+                    (stat.S_IFDIR | 0o755) << 16 | 0x10
+                    if name.endswith("/")
+                    else (stat.S_IFREG | 0o644) << 16
+                )
                 if tweaks and name in tweaks:
                     tweaks[name](info)
                 zf.writestr(info, data)

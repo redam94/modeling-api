@@ -51,6 +51,22 @@ def events(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, str]]:
     return seen
 
 
+@pytest.fixture
+def excluded(
+    events: list[tuple[str, str, str]], monkeypatch: pytest.MonkeyPatch
+) -> list[tuple[str, ...]]:
+    """The ``exclude`` of every plugin notification (beside ``events``)."""
+    seen: list[tuple[str, ...]] = []
+    inner = plugin_finalize.notify_plugin_event
+
+    async def record(*args: Any, **kw: Any) -> None:
+        seen.append(tuple(kw.get("exclude", ())))
+        await inner(*args, **kw)
+
+    monkeypatch.setattr(plugin_finalize, "notify_plugin_event", record)
+    return seen
+
+
 async def _gone(ctx: ServerContext, bucket: str, key: str) -> bool:
     try:
         await ctx.store.stat(bucket, key)
@@ -235,13 +251,14 @@ async def test_rekit_with_the_same_exports_keeps_the_approval(
 
 
 async def test_rekit_with_changed_exports_goes_back_to_the_reviewers(
-    ctx: ServerContext, events: list[tuple[str, str, str]]
+    ctx: ServerContext, events: list[tuple[str, str, str]], excluded: list[tuple[str, ...]]
 ) -> None:
     _, vid = await seed_version(ctx, state="approved", overlay=True)
     await _approve(ctx, vid, _digest(describe(vid)))
     version = await _rekit_result(ctx, vid, describe(vid, step_name="clip"))
     assert version.state == "awaiting_approval" and version.scope == "private"
     assert events == [(vid, "plugin.version.awaiting_approval", "admins")]
+    assert excluded == [(UPLOADER,)]  # review-flow-4: never the uploader (D14)
 
 
 async def test_rekit_with_failing_kits_withdraws_the_version(

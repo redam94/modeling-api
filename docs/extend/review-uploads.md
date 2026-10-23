@@ -21,8 +21,8 @@ The platform does a check of these rules for each approval and each rejection:
 | You are a tenant admin. | `FORBIDDEN` |
 | You are not the uploader. Nobody approves their own upload. | `SELF_APPROVAL_FORBIDDEN` |
 | You use a web sign-in. API tokens cannot approve, reject or withdraw. | `FORBIDDEN` |
-| You signed in during the last 15 minutes. | `REAUTH_REQUIRED`: the app sends you to sign in and back to the page, with your note. |
-| The uploader did not add you to the workspace during the last 7 days. | `FORBIDDEN`, with the reason. Both user ids go to the audit log. |
+| You signed in at your identity provider during the last 15 minutes. | `REAUTH_REQUIRED`: the app sends you to sign in and back to the page, with your note. The identity provider asks for your credentials again, even when you are still signed in there. |
+| During the last 7 days, the uploader did not add you to the workspace or make you a tenant admin, directly or through someone they added or promoted in that time. | `FORBIDDEN`, with the reason. Both user ids go to the audit log. |
 | The version did not change after you opened the page. | `PLUGIN_STATE_CONFLICT`: reload the page and do the review again. |
 
 A workspace with one tenant admin cannot approve uploads. In that workspace, uploads are for

@@ -269,8 +269,6 @@ async def admit(
             await require_uploaded_code_allowed(session, ctx, run.tenant_id)
             await _refuse_public_tier(session, run.tenant_id)
             if pins and kind not in PLUGIN_KINDS:
-                # a pipeline run mounts the version it checks (not mountable for anyone
-                # yet); the dispatcher checks that pin against the version itself
                 refused = await pins_problem(
                     session, tenant_id=run.tenant_id, created_by=acting_for, pins=pins
                 )
@@ -278,6 +276,14 @@ async def admit(
                     raise MapiError(
                         refused.detail or refused.title, code=ErrorCode.PLUGIN_UNAVAILABLE
                     )
+            elif pins and kind is RunKind.PLUGIN_DESCRIBE:
+                # a describe run mounts the version it checks (not mountable for anyone
+                # yet): its pin is checked against the version itself, for its uploader
+                from mapi_server.services.plugins.pipeline import describe_pin_problem
+
+                reason = await describe_pin_problem(session, run, pins, created_by=acting_for)
+                if reason is not None:
+                    raise MapiError(reason, code=ErrorCode.PLUGIN_UNAVAILABLE)
             await _check_untrusted_placement(ctx)
         except MapiError as exc:
             if auth is not None:
@@ -765,8 +771,9 @@ async def submit_run(session: AsyncSession, ctx: ServerContext, body: RunCreate)
 
 
 async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
-    """Workflow runs, their node runs, governance runs and (M4) inspect runs are driven by
-    their owner (the workflow orchestrator, a validation, an upload): a stand-alone retry
+    """Workflow runs, their node runs, governance runs, (M4) inspect runs and (v0.19) plugin
+    check runs are driven by their owner (the workflow orchestrator, a validation, an
+    upload): a stand-alone retry
     would be a run nobody collects, so it is refused (``CONFLICT``) with where to start
     again instead."""
     kind = RunKind(old.kind)
@@ -787,6 +794,13 @@ async def _refuse_orchestrated_retry(session: AsyncSession, old: m.Run) -> None:
         raise Conflict(
             "inspect runs are not retried one by one: inspect the upload again "
             f"(POST /v1/datasets/{old.dataset_id or '{dataset_id}'}/uploads/{upload}/inspect)"
+        )
+    if kind in (RunKind.PLUGIN_INSPECT, RunKind.PLUGIN_DESCRIBE):
+        # v0.19: the pipeline queues these for the uploader (and the rekit sweep queues a
+        # describe again by itself); a retry by anyone else would run the upload as theirs
+        raise Conflict(
+            f"{kind.value} runs are not retried one by one: upload the plugin again "
+            "(a new version), or wait for the platform to check it again"
         )
     if kind is RunKind.GOVERNANCE:
         validation = (old.labels or {}).get("validation")

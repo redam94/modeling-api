@@ -112,6 +112,29 @@ def test_every_kind_and_base_renders(tmp_path: Path, kinds: list[str], base: str
         assert ("test.acme_lab_zero_share" in templates) == ("node" in kinds)
 
 
+@pytest.mark.parametrize("base", list(Base))
+def test_scaffold_titles_do_not_look_like_built_in_titles(tmp_path: Path, base: Base) -> None:
+    # v0.19 live: the upload kit refuses a title whose skeleton matches a built-in title
+    # (title_confusable), so a fresh `mapi plugin init --upload` scaffold must not use one
+    from mapi_spec.abouts import builtin_abouts
+    from mapi_spec.text_safety import skeleton
+
+    builtin = {skeleton(a.title): a.title for a in builtin_abouts().values() if a is not None}
+    kinds = tuple(Kind)
+    names = plugin_names("acme-lab", None, kinds, base)
+    files = render_plugin(tmp_path, names, kinds, base)
+    titles: list[str] = []
+    for f in files:
+        if f.suffix != ".py" or f.parent.name == "tests":
+            continue
+        text = f.read_text(encoding="utf-8")
+        titles += re.findall(r'\btitle="([^"{}]+)"', text)
+        titles += re.findall(r'\babout\(\s*"([^"]+)"', text)
+    assert len(titles) >= 4, titles
+    clashes = {t: builtin[skeleton(t)] for t in titles if skeleton(t) in builtin}
+    assert not clashes, f"scaffold titles that look like built-in titles: {clashes}"
+
+
 def test_every_template_file_is_used(tmp_path: Path) -> None:
     root = Path(plugin.__file__).parents[1] / "plugin_template"
     on_disk = {

@@ -25,6 +25,7 @@ import { useWorkspace } from "@/features/auth/workspace";
 import { useLibraryItems } from "@/features/library/api";
 import { TAB_OF_KIND, type LibrarySearch } from "@/features/library/search";
 import { KIND_LABEL, type LibraryItem } from "@/features/library/types";
+import { isUploadedId } from "@/features/plugins/states";
 import { useUploadedCount } from "@/features/plugins/uploaded-count";
 import { useWorkflowTemplates } from "@/features/workflows/api";
 import { cn } from "@/lib/utils";
@@ -179,7 +180,8 @@ export function YoursTab() {
     () => [
       ...installed.items.filter((x) => !isUploadProvider(x.provider)).map((x) => ({ kind: x.kind, id: x.id, version: x.version, title: x.title, provider: x.provider })),
       ...(templates.data?.items ?? [])
-        .filter((t) => t.source === "plugin")
+        // v0.19 live: an uploaded template is also `source: "plugin"`; it is listed under Uploaded
+        .filter((t) => t.source === "plugin" && !isUploadedId(t.id))
         .map((t) => ({ kind: "workflow_template" as const, id: t.id, version: t.version ?? "", title: t.about.title, provider: null })),
     ],
     [installed.items, templates.data],

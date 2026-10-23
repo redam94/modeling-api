@@ -10,7 +10,7 @@ import { File as NodeFile } from "node:buffer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getResponse, http, HttpResponse } from "msw";
+import { delay, getResponse, http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 
@@ -18,7 +18,7 @@ import { env } from "@/env";
 import { AboutCard, isUploadedCatalogId, uploadedReferenceLink } from "@/features/about/about-card";
 import * as fx from "@/mocks/fixtures";
 import { createHandlers } from "@/mocks/handlers";
-import { MOCK_PLUGIN_MS_KEY, MOCK_PLUGIN_REAUTH_KEY, PLUGIN_ACME, V } from "@/mocks/plugins";
+import { BEA_ID, MOCK_PLUGIN_MS_KEY, MOCK_PLUGIN_REAUTH_KEY, MOCK_PLUGINS_PAUSED_KEY, PLUGIN_ACME, PLUGIN_GEO, V } from "@/mocks/plugins";
 import { renderApp } from "@/test/render-app";
 
 import { exportsDiff } from "./exports-list";
@@ -63,6 +63,10 @@ describe("the reviewer panel", () => {
   it("shows the file facts first, every URL safely, and untrusted text as text", async () => {
     const { container } = renderApp(versionUrl(V.awaiting));
     const panel = await screen.findByTestId("plugin-reviewer-panel", {}, { timeout: 5000 });
+    // web+cli+docs-6: the checklist the review docs list, including the "What changed" item
+    const checklist = within(within(panel).getByRole("list", { name: "Review checklist" })).getAllByRole("listitem");
+    expect(checklist).toHaveLength(6);
+    expect(checklist[5]).toHaveTextContent("What changed matches what the uploader told you");
     // inspect facts come before the SBOM, the URLs and the test report
     const order = ["plugin-inspect-facts", "plugin-sbom", "plugin-urls", "plugin-kit-report", "plugin-exports-diff"].map((id) => within(panel).getByTestId(id));
     for (let i = 1; i < order.length; i++) expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -78,9 +82,32 @@ describe("the reviewer panel", () => {
 
     // the hostile step title is text: no <img> anywhere, no bidi override left
     expect(container.querySelector("img")).toBeNull();
-    expect(panel).toHaveTextContent("<img src=x onerror=alert(1)>Winsorize");
+    // (the diff shows once the last approved version has loaded)
+    await waitFor(() => expect(panel).toHaveTextContent("<img src=x onerror=alert(1)>Winsorize"));
     expect(panel.textContent ?? "").not.toContain("‮");
   });
+
+  it("what changed waits for the last approved version, and says when it cannot load it", async () => {
+    // web+cli+docs-5: never "every entry is new" because the comparison is missing
+    let fail = false;
+    server.use(
+      http.get(new RegExp(`${V.approved}$`), async () => {
+        if (fail) return HttpResponse.json({ type: "urn:x", title: "Down", status: 503, code: "UNAVAILABLE", detail: "down", errors: [] }, { status: 503, headers: { "content-type": "application/problem+json" } });
+        await delay("infinite");
+        return undefined;
+      }),
+    );
+    const first = renderApp(versionUrl(V.awaiting));
+    let diff = await screen.findByTestId("plugin-exports-diff", {}, { timeout: 5000 });
+    expect(diff).toHaveAttribute("data-loading", "true");
+    expect(diff).not.toHaveTextContent(/Compared with|everything is new/);
+    first.unmount();
+    fail = true;
+    renderApp(versionUrl(V.awaiting));
+    await waitFor(() => expect(screen.getByTestId("plugin-exports-diff")).toHaveTextContent("could not load the last approved version"), { timeout: 8000 });
+    diff = screen.getByTestId("plugin-exports-diff");
+    expect(diff).not.toHaveTextContent(/Compared with|everything is new/);
+  }, 15_000);
 
   it("approve sends the digests the page showed", async () => {
     const user = userEvent.setup();
@@ -125,6 +152,22 @@ describe("the reviewer panel", () => {
     await waitFor(() => expect(calls.filter((c) => c.method === "GET" && c.path.endsWith(V.awaiting)).length).toBeGreaterThan(before));
   });
 
+  it("an admin the uploader brought in sees the server's reason, not 'ask for a higher role'", async () => {
+    // v0.19 live: the 403 showed the generic role advice and "See project members" to an admin
+    const detail = "The person who uploaded this version made you a tenant admin less than 7 days ago, so you cannot review it. Ask another tenant admin.";
+    server.use(
+      http.post(new RegExp(`${V.awaiting}:approve$`), () =>
+        HttpResponse.json({ type: "urn:x", title: "Not allowed", status: 403, code: "FORBIDDEN", detail, errors: [] }, { status: 403, headers: { "content-type": "application/problem+json" } }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp(versionUrl(V.awaiting));
+    await user.click(await screen.findByTestId("plugin-approve", {}, { timeout: 5000 }));
+    expect(await screen.findByTestId("plugin-review-refused")).toHaveTextContent(detail);
+    expect(screen.queryByText(/higher role/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "See project members" })).toBeNull();
+  });
+
   it("a stale sign-in sends the reviewer through sign-in and back, keeping the note", async () => {
     localStorage.setItem(MOCK_PLUGIN_REAUTH_KEY, "1");
     const user = userEvent.setup();
@@ -133,6 +176,8 @@ describe("the reviewer panel", () => {
     await user.click(screen.getByTestId("plugin-approve"));
     const link = await screen.findByTestId("plugin-reauth");
     expect(link.getAttribute("href")).toContain("/auth/login?return_to=");
+    // review-flow-3: the server asks the identity provider to authenticate again
+    expect(link.getAttribute("href")).toMatch(/[?&]reauth=1$/);
     expect(sessionStorage.getItem(`mapi.plugins.reviewNote.${V.awaiting}`)).toBe("Looks fine");
   });
 });
@@ -145,6 +190,26 @@ describe("version pages", () => {
     expect(problems).toHaveTextContent("Compiled code");
     expect(problems).toHaveTextContent("Path configuration file (.pth)");
     expect(screen.getByTestId("plugin-state-chip")).toHaveTextContent("Refused");
+  });
+
+  it("each description issue says where it is and shows the uploaded text as text", async () => {
+    // web+cli+docs-4: the message is generic by design; the pointer and the text locate it
+    const base = createHandlers();
+    server.use(
+      http.get(new RegExp(`${V.kitFailed}$`), async ({ request }) => {
+        const res = await getResponse(base, request.clone());
+        const v = (await res!.json()) as Record<string, unknown>;
+        const issue = { code: "SCHEMA_INVALID", severity: "error", message: "The text holds hidden characters. Remove them.", pointer: "/models/0/about/title", untrusted_text: "<b>Store‮ mean</b>" };
+        return HttpResponse.json({ ...v, issues: [issue] });
+      }),
+    );
+    const { container } = renderApp(versionUrl(V.kitFailed));
+    const [item] = await screen.findAllByTestId("plugin-issue", {}, { timeout: 5000 });
+    expect(item).toHaveTextContent("The text holds hidden characters. Remove them.");
+    expect(item).toHaveTextContent("/models/0/about/title");
+    expect(item).toHaveTextContent("<b>Store");
+    expect(item!.textContent ?? "").not.toContain("‮");
+    expect(container.querySelector("li b")).toBeNull();
   });
 
   it("a failed test run groups the report and shows the SBOM", async () => {
@@ -176,6 +241,24 @@ describe("version pages", () => {
   });
 });
 
+describe("paused by the platform", () => {
+  it("a version waiting for its checks says the platform paused uploaded code", async () => {
+    // web+cli+docs-3: GET /v1/me plugins_paused (kill switch "Allow uploaded code to run" off)
+    localStorage.setItem(MOCK_PLUGINS_PAUSED_KEY, "1");
+    onTestFinished(() => localStorage.removeItem(MOCK_PLUGINS_PAUSED_KEY));
+    renderApp(`/plugins/${PLUGIN_GEO}/versions/${V.inspecting}`);
+    const paused = await screen.findByTestId("plugin-checks-paused", {}, { timeout: 5000 });
+    expect(paused).toHaveTextContent("Paused by the platform");
+    expect(screen.getByTestId("plugin-check-steps")).toHaveAttribute("data-paused", "true");
+  });
+
+  it("says nothing about a pause while uploaded code runs", async () => {
+    renderApp(`/plugins/${PLUGIN_GEO}/versions/${V.inspecting}`);
+    await screen.findByTestId("plugin-check-steps", {}, { timeout: 5000 });
+    expect(screen.queryByTestId("plugin-checks-paused")).toBeNull();
+  });
+});
+
 describe("Catalog › Yours › Uploaded", () => {
   it("lists the plugins with state chips and who uploaded them", async () => {
     renderApp("/catalog?tab=yours");
@@ -185,6 +268,20 @@ describe("Catalog › Yours › Uploaded", () => {
     const acme = cards.find((c) => c.getAttribute("data-plugin") === "acme")!;
     expect(within(acme).getByTestId("plugin-state-chip")).toHaveAttribute("data-state", "kit_failed");
     expect(within(acme).getByTestId("uploaded-by-chip")).toHaveTextContent("Uploaded by you");
+  });
+});
+
+describe("people on uploaded code", () => {
+  it("names an attested uploader who is only a project member (admins read the uploader list)", async () => {
+    // v0.19 live: an editor attested to upload showed as "user usr_…" to the tenant admins
+    server.use(
+      http.get(`${API}/v1/tenants/acme/members`, () => HttpResponse.json({ items: [], next_cursor: null })),
+      http.get(`${API}/v1/tenants/acme/plugin-uploaders`, () =>
+        HttpResponse.json([{ user_id: BEA_ID, display_name: "Bea Builder", email: "bea@acme.example", method: "admin_attested", verified_by: "usr_x", verified_at: "2026-10-01T00:00:00Z" }]),
+      ),
+    );
+    renderApp(`/plugins/${PLUGIN_ACME}`);
+    expect(await screen.findByText(/Started by Bea Builder/, {}, { timeout: 8000 })).toBeInTheDocument();
   });
 });
 
@@ -247,6 +344,41 @@ describe("the upload page", () => {
       expect.arrayContaining([`POST /v1/plugins/${PLUGIN_ACME}/uploads`, expect.stringMatching(/^POST \/v1\/plugins\/.+:complete$/)]),
     );
   }, 15_000);
+
+  it("after the first claim the picker shows the new plugin and the claim form closes", async () => {
+    // web+cli+docs-1: no plugin yet; the list has the new one only after the claim
+    let claimed = false;
+    server.use(
+      http.post(`${API}/v1/plugins`, () => {
+        claimed = true;
+      }),
+      http.get(`${API}/v1/plugins`, () => (claimed ? undefined : HttpResponse.json({ items: [], next_cursor: null }))),
+    );
+    const user = userEvent.setup();
+    renderApp("/plugins/new");
+    const form = await screen.findByRole("form", { name: "Start a new plugin" }, { timeout: 5000 });
+    await user.type(within(form).getByLabelText("Short name"), "zeta");
+    await user.type(within(form).getByLabelText("Title"), "Zeta tools");
+    await user.click(within(form).getByRole("button", { name: "Create the plugin" }));
+    await screen.findByText(/Namespace t_[a-z2-7]{6}_zeta/, {}, { timeout: 5000 });
+    expect(screen.getByLabelText("Plugin")).not.toHaveValue("__new");
+    expect(screen.queryByRole("form", { name: "Start a new plugin" })).toBeNull();
+  });
+
+  it("names the wheel file the way build tools write it (underscores), and warns on another name", async () => {
+    // v0.19 live: the hint said `t-k3vq7m-acme-<version>-…whl`, but `uv build` writes `t_k3vq7m_acme-…`
+    const user = userEvent.setup({ applyAccept: false });
+    renderApp(`/plugins/new?plugin=${PLUGIN_ACME}`);
+    const drop = await screen.findByTestId("plugin-upload-drop", {}, { timeout: 5000 });
+    expect(await screen.findByText(/Namespace t_k3vq7m_acme/, {}, { timeout: 5000 })).toHaveTextContent(
+      "The package must be named t-k3vq7m-acme, so its wheel is t_k3vq7m_acme-<version>-py3-none-any.whl.",
+    );
+    const input = drop.querySelector("input[type=file]") as HTMLInputElement;
+    await user.upload(input, new File(["x"], "t_k3vq7m_acme-0.4.0-py3-none-any.whl"));
+    expect(screen.queryByText(/doesn't start with/)).toBeNull();
+    await user.upload(input, new File(["x"], "other_pkg-0.4.0-py3-none-any.whl"));
+    expect(await screen.findByText(/doesn't start with/)).toHaveTextContent("This wheel's name doesn't start with t_k3vq7m_acme");
+  });
 
   it("refuses a file that is not a pure-Python wheel before asking for a ticket", async () => {
     const user = userEvent.setup({ applyAccept: false });

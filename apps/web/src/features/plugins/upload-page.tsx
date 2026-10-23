@@ -27,7 +27,7 @@ import { KitReport } from "./kit-report";
 import { ProblemsList } from "./problems-list";
 import { SbomSummary } from "./sbom-summary";
 import { PluginStateChip } from "./state-chip";
-import { displayText, initUploadCommand, isChecking, parseWheelName, pushCommand, STATE_DESCRIPTION, uploadDistName, wheelFileProblem } from "./states";
+import { displayText, initUploadCommand, isChecking, parseWheelName, pushCommand, stateDescription, uploadDistName, wheelFileProblem } from "./states";
 import type { Plugin, UploadPhase } from "./types";
 import { SHORT_NAME_MAX, SHORT_NAME_MIN, TITLE_MAX, UPLOAD_MAX_BYTES } from "./types";
 import { CheckSteps, useRefreshOnStateChange } from "./version-page";
@@ -134,7 +134,7 @@ function LiveResult({ pluginId, versionId }: { pluginId: string; versionId: stri
     <div className="grid gap-4" data-testid="plugin-upload-result" data-state={v.state}>
       <div className="flex flex-wrap items-center gap-3" aria-live="polite">
         <PluginStateChip state={v.state} />
-        <p className="text-sm text-muted-foreground">{STATE_DESCRIPTION[v.state]}</p>
+        <p className="text-sm text-muted-foreground">{stateDescription(v)}</p>
       </div>
       {isChecking(v) ? <CheckSteps state={v.state} /> : null}
       <ProblemsList problems={v.inspection?.problems ?? []} />
@@ -171,8 +171,12 @@ export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefin
   const list = useMemo(() => plugins.data ?? [], [plugins.data]);
   useEffect(() => {
     if (!pluginId && list.length === 1 && list[0]) setPluginId(list[0].id);
-    if (plugins.isSuccess && list.length === 0) setCreating(true);
-  }, [list, pluginId, plugins.isSuccess]);
+    // Follow the data instead of latching: open the claim form only while nothing is picked
+    // and the fresh list is empty, and close it once the picked plugin shows up (the page
+    // remounts on the just-claimed plugin while the cached list is still empty).
+    if (pluginId && list.some((p) => p.id === pluginId)) setCreating(false);
+    else if (!pluginId && plugins.isSuccess && !plugins.isFetching && list.length === 0) setCreating(true);
+  }, [list, pluginId, plugins.isSuccess, plugins.isFetching]);
   const plugin = list.find((p) => p.id === pluginId) ?? null;
 
   if (!flags.enabled || tier === "public") {
@@ -209,7 +213,7 @@ export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefin
       <Step n={1} title="Pick a plugin" done={Boolean(plugin)}>
         {plugins.isError ? <ErrorNotice error={plugins.error} title="The app could not load your plugins" onRetry={() => void plugins.refetch()} /> : null}
         {list.length ? (
-          <Field label="Plugin" htmlFor="upload-plugin" hint={plugin ? `Namespace ${plugin.namespace}. The wheel must be named ${uploadDistName(plugin.namespace)}-<version>-py3-none-any.whl.` : undefined}>
+          <Field label="Plugin" htmlFor="upload-plugin" hint={plugin ? `Namespace ${plugin.namespace}. The package must be named ${uploadDistName(plugin.namespace)}, so its wheel is ${plugin.namespace}-<version>-py3-none-any.whl.` : undefined}>
             <NativeSelect
               id="upload-plugin"
               value={creating ? "__new" : pluginId}
@@ -262,7 +266,7 @@ export function UploadPage({ initialPlugin }: { initialPlugin?: string | undefin
             {fileProblem ? <InlineMessage tone="error">{fileProblem}</InlineMessage> : null}
             {!fileProblem && distMismatch ? (
               <InlineMessage tone="warning">
-                This wheel's name doesn't start with {distMismatch}, so the file check will refuse it. Build it with <code className="font-mono text-xs">mapi plugin push</code>.
+                This wheel's name doesn't start with {plugin?.namespace}, so the file check will refuse it. Build it with <code className="font-mono text-xs">mapi plugin push</code>.
               </InlineMessage>
             ) : null}
             <div className="flex items-start gap-2">

@@ -46,7 +46,7 @@ class WinsorizeStep(Step[WinsorizeSettings, StepState]):
     summary_plain = "Caps extreme values so one unusual week does not drag a model"
     # The card analysts read in the pipeline palette and the Catalog.
     about: ClassVar[About | None] = About(
-        title="Cap extreme values",
+        title="Clip to training quantiles",
         summary_plain="Caps values that are far above or below the usual range. One "
         "unusual week then does not pull the model away from the rest.",
         use_when=["A few weeks have values far outside the usual range"],

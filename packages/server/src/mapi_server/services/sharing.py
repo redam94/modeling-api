@@ -67,7 +67,7 @@ from mapi_spec.sharing import (
 from mapi_spec.storage import NotFound, PreconditionFailed, check_segment
 from mapi_spec.tenancy import Action, ResourceKind, TenantStatus
 from pydantic import ValidationError
-from sqlalchemy import any_, select, update
+from sqlalchemy import any_, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.context import ServerContext
@@ -214,6 +214,47 @@ async def runs_used_uploaded_code(session: AsyncSession, run_ids: Iterable[str |
     return found.first() is not None
 
 
+_MAX_WORKFLOW_DEPTH: Final = 16
+"""How deep the D16 checks follow sub-workflow runs (nesting is capped at 8 when started)."""
+
+
+async def workflow_used_uploaded_code(
+    session: AsyncSession, nodes: Iterable[m.WorkflowNodeRunRow]
+) -> bool:
+    """Did a workflow run with these node runs use uploaded code, through its sub-workflows
+    too? A node naming an uploaded id, or any node's run (its child run, the run it was
+    cached from, its fan-out children) that is ``untrusted_code``; a node whose run is a
+    sub-workflow run is followed into that run's own node runs (D16)."""
+    level = list(nodes)
+    seen: set[str] = set()
+    for _ in range(_MAX_WORKFLOW_DEPTH):
+        if any(uses_uploaded_ids([n.use]) for n in level):
+            return True
+        runs = {
+            str(r)
+            for n in level
+            for r in (n.child_run_id, n.cached_from, *(n.child_runs or []))
+            if r
+        } - seen
+        if not runs:
+            return False
+        if await runs_used_uploaded_code(session, runs):
+            return True
+        seen |= runs
+        level = list(
+            (
+                await session.execute(
+                    select(m.WorkflowNodeRunRow).where(
+                        m.WorkflowNodeRunRow.run_id.in_(sorted(runs))
+                    )
+                )
+            ).scalars()
+        )
+        if not level:
+            return False
+    return True  # deeper than any workflow may nest: refuse rather than guess
+
+
 def _spec_recipes(spec: Any) -> list[str]:
     """The recipe ids a stored dashboard spec names (every ``recipe`` value, read from the
     JSON as stored, so either layout and any panel kind)."""
@@ -237,7 +278,8 @@ async def dashboard_uses_uploaded_code(session: AsyncSession, row: m.Dashboard) 
 
     Its published revision: the pinned model version's lineage and the recipes its spec names;
     and every readout an analyst has not hidden: its model version's lineage, its runs
-    (``untrusted_code``) and, for a workflow refresh, the workflow's node runs. A refresh
+    (``untrusted_code``) and, for a workflow refresh, every run below the workflow run
+    (through its sub-workflow runs). A refresh
     that adds such a readout later makes the next shared or client read fail (D16)."""
     rev = (
         await session.get(m.DashboardRevision, row.published_revision_id)
@@ -268,10 +310,21 @@ async def dashboard_uses_uploaded_code(session: AsyncSession, row: m.Dashboard) 
     )
     if (await session.execute(direct)).first() is not None:
         return True
+    # a workflow refresh: every run below the workflow run, through sub-workflow runs
+    tree = (
+        select(m.DashboardReadout.workflow_run_id.label("id"), literal(0).label("depth"))
+        .where(live, m.DashboardReadout.workflow_run_id.is_not(None))
+        .cte("workflow_tree", recursive=True)
+    )
+    tree = tree.union_all(
+        select(m.Run.id, tree.c.depth + 1).where(
+            m.Run.parent_run_id == tree.c.id, tree.c.depth < _MAX_WORKFLOW_DEPTH
+        )
+    )
     nodes = (
-        select(m.DashboardReadout.seq)
-        .join(m.Run, m.Run.parent_run_id == m.DashboardReadout.workflow_run_id)
-        .where(live, m.Run.untrusted_code.is_(True))
+        select(m.Run.id)
+        .join(tree, m.Run.parent_run_id == tree.c.id)
+        .where(m.Run.untrusted_code.is_(True))
         .limit(1)
     )
     return (await session.execute(nodes)).first() is not None

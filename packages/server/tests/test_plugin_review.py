@@ -181,7 +181,17 @@ async def test_a_stale_sign_in_must_reauthenticate(
         await s.execute(
             update(m.WebSession)
             .where(m.WebSession.user_id == w.uid("admin2"))
-            .values(created_at=now() - timedelta(minutes=16))
+            .values(auth_time=now() - timedelta(minutes=16))
+        )
+    r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
+    assert r.status_code == 401 and r.json()["code"] == "REAUTH_REQUIRED", r.text
+    # review-flow-3: a session made just now by a silent SSO round trip (no fresh auth_time,
+    # or none at all) is not a recent sign-in
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.WebSession)
+            .where(m.WebSession.user_id == w.uid("admin2"))
+            .values(created_at=now(), auth_time=None)
         )
     r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
     assert r.status_code == 401 and r.json()["code"] == "REAUTH_REQUIRED", r.text
@@ -217,6 +227,54 @@ async def test_an_admin_the_uploader_just_added_cannot_review(
         await s.execute(
             update(m.Membership)
             .where(m.Membership.principal_id == w.uid("admin2"))
+            .values(created_at=now() - timedelta(days=8))
+        )
+    r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
+    assert r.status_code == 200, r.text
+
+
+async def test_a_fresh_promotion_by_the_uploader_cannot_review(
+    ctx: ServerContext, client: httpx.AsyncClient, fake_inspect: list[str]
+) -> None:
+    """review-flow-2 (a): an old membership the uploader promoted to tenant admin today."""
+    w = await make_world(ctx, client)
+    plugin, v, digest = await waiting(w, uploader="admin")
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Membership)
+            .where(m.Membership.principal_id == w.uid("admin2"))
+            .values(role="viewer", created_at=now() - timedelta(days=60), created_by=None)
+        )
+    r = await w["admin"].patch(f"/v1/tenants/acme/members/{w.uid('admin2')}",
+                               json={"role": "admin"})  # fmt: skip
+    assert r.status_code == 200, r.text
+    r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", r.text
+    # an admin the uploader did not bring in still approves
+    r = await w["admin3"].post(path(plugin, v, ":approve"), json=decision(v, digest))
+    assert r.status_code == 200, r.text
+
+
+async def test_an_admin_added_through_a_chain_cannot_review(
+    ctx: ServerContext, client: httpx.AsyncClient, fake_inspect: list[str]
+) -> None:
+    """review-flow-2 (b): the uploader adds C, C adds B, B approves at once."""
+    w = await make_world(ctx, client)
+    plugin, v, digest = await waiting(w, uploader="admin")
+    async with ctx.db.session() as s:
+        for who, by in (("admin3", "admin"), ("admin2", "admin3")):
+            await s.execute(
+                update(m.Membership)
+                .where(m.Membership.principal_id == w.uid(who))
+                .values(created_by=w.uid(by), created_at=now() - timedelta(minutes=5))
+            )
+    r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))
+    assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", r.text
+    # C's own grant is old: the chain is broken
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Membership)
+            .where(m.Membership.principal_id == w.uid("admin3"))
             .values(created_at=now() - timedelta(days=8))
         )
     r = await w["admin2"].post(path(plugin, v, ":approve"), json=decision(v, digest))

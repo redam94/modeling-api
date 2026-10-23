@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mapi_client.errors import retry_after_of
+from mapi_spec.admin import UNTRUSTED_PAUSED_MESSAGE
 from mapi_spec.cost import format_micros
 from mapi_spec.errors import ErrorCode, Issue, MapiError, Severity
 from pydantic import BaseModel
@@ -188,9 +189,17 @@ class Output:
                 )
             )
         hint = _HINTS.get(exc.code)
+        if exc.code is ErrorCode.QUOTA_EXCEEDED and UNTRUSTED_PAUSED_MESSAGE in (exc.detail or ""):
+            # v0.19 live: the kill switch is not a quota; `mapi usage` cannot explain it
+            hint = _PAUSED_HINT
         if hint:
             self.err.print(Text(hint, style="italic"))
 
+
+_PAUSED_HINT: Final = (
+    "hint: the platform operators paused all uploaded code (a kill switch, not your quota); "
+    "nothing was uploaded or run. Push again when they resume it"
+)
 
 _HINTS: Final[dict[ErrorCode, str]] = {
     ErrorCode.RESOURCE_EXHAUSTED: "hint: retry at a larger resource class (mapi runs retry)",

@@ -21093,6 +21093,11 @@
             "title": "Plugins Enabled",
             "type": "boolean"
           },
+          "plugins_paused": {
+            "default": false,
+            "title": "Plugins Paused",
+            "type": "boolean"
+          },
           "principal": {
             "discriminator": {
               "mapping": {
@@ -45426,7 +45431,7 @@
     },
     "/auth/login": {
       "get": {
-        "description": "Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.",
+        "description": "Start sign-in: Authorization Code + PKCE (S256) + nonce, state kept server-side.\n``reauth=1`` (v0.19) asks the identity provider to authenticate the person again\n(``max_age=0``, ``prompt=login``), as approving uploaded code needs.",
         "operationId": "auth_login",
         "parameters": [
           {
@@ -45444,6 +45449,16 @@
                 }
               ],
               "title": "Return To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reauth",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Reauth",
+              "type": "boolean"
             }
           }
         ],

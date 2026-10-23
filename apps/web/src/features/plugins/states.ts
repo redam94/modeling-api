@@ -77,6 +77,23 @@ export const STATE_DESCRIPTION: Record<PluginVersionState, string> = {
   purged: "The file was removed after 30 days. This record stays.",
 };
 
+/** `kit_failed` when every test passed but the description of the exports was refused (an error issue). */
+export const KIT_FAILED_ISSUES_DESCRIPTION = "The tests passed, but the description of what it adds has problems. The list below shows them.";
+
+/**
+ * The state's sentence for this version. v0.19 live: a version refused only for its exports'
+ * description (`check_describe` issues: a hidden character in a title, a title like a built-in
+ * one) said "Some tests failed" over a test report with 0 failed.
+ */
+export function stateDescription(v: PluginVersion): string {
+  if (v.state === "kit_failed") {
+    const failed = (v.kit?.checks ?? []).some((c) => c.status === "fail") || v.kit?.ok === false;
+    const issues = (v.issues ?? []).some((i) => (i.severity ?? "error") === "error");
+    if (!failed && issues) return KIT_FAILED_ISSUES_DESCRIPTION;
+  }
+  return STATE_DESCRIPTION[v.state];
+}
+
 /** Shown instead of the state's sentence while the platform holds uploaded-code runs (kill switch). */
 export const PAUSED_LABEL = "Paused by the platform";
 export const PAUSED_DESCRIPTION = "Runs of uploaded code are paused for now. Checks continue when they start again.";

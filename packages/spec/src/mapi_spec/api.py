@@ -2371,6 +2371,9 @@ class Me(_Response):
     # then shows a dev banner: that isolation is a process, not a sandbox)
     plugins_enabled: bool = True
     dev_untrusted_code: bool = False
+    # v0.19: the operator paused uploaded code (kill switch "Allow uploaded code to run" off):
+    # checks of uploads stay queued, and the web and the CLI say "Paused by the platform"
+    plugins_paused: bool = False
 
     model_config = _examples(
         {

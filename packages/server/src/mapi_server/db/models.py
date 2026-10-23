@@ -410,6 +410,9 @@ class WebSession(Base):
     expires_at: Mapped[datetime] = mapped_column()
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+    auth_time: Mapped[datetime | None] = mapped_column()
+    """v0.19: the ID token's ``auth_time`` (when the person last authenticated at the IdP);
+    approving uploaded code needs it recent (``created_at`` is only when the row was made)."""
 
     __table_args__ = (Index("ix_web_sessions_user", "user_id"),)
 
@@ -426,6 +429,8 @@ class LoginTransactionRow(Base):
     code_verifier: Mapped[str] = mapped_column(String(128))
     return_to: Mapped[str] = mapped_column(String(2048))
     created_at: Mapped[datetime] = mapped_column()
+    reauth: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    """v0.19: the IdP was asked to authenticate the person again (``max_age=0``)."""
 
 
 # ====================================================================== datasets

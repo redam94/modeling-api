@@ -147,3 +147,19 @@ async def test_a_held_check_stays_checking(ctx: ServerContext) -> None:
     assert await PluginSweeps(ctx).reconcile(now()) == 0
     assert (await load_version(ctx, vid)).state == "inspecting"
     assert [r.state for r in await runs_of(ctx, RunKind.PLUGIN_INSPECT)] == ["queued"]
+
+
+async def test_a_cancelled_check_asks_for_a_new_version_number(ctx: ServerContext) -> None:
+    """review-flow-1: a version number is never uploaded twice, so a check the platform
+    cancelled (or lost) asks for a new version number, not for the same file again."""
+    from mapi_server.services.plugins.store import _version_exists
+
+    vid, run_id = await _checking(ctx, RunKind.PLUGIN_INSPECT)
+    await _end_by_reconciler(ctx, run_id, RunTrigger.CANCEL)
+    assert await PluginSweeps(ctx).reconcile(now()) == 1
+    version = await load_version(ctx, vid)
+    assert version.state == "inspect_failed" and version.problem is not None
+    assert "Raise the version number" in version.problem["detail"]
+    assert "same file" not in version.problem["detail"]
+    async with ctx.db.session() as s:  # pushing the same wheel again is refused (409)
+        assert await _version_exists(s, version.plugin_id, version.version)

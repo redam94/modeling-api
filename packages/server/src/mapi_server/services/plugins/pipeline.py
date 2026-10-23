@@ -244,14 +244,20 @@ def is_pipeline_run(run: m.Run) -> bool:
 
 
 async def describe_pin_problem(
-    session: AsyncSession, run: m.Run, pins: Sequence[OverlayPin]
+    session: AsyncSession,
+    run: m.Run,
+    pins: Sequence[OverlayPin],
+    *,
+    created_by: str | None = None,
 ) -> str | None:
     """Why a ``plugin_describe`` run may not mount its one pin (plain text), else ``None``.
 
     A describe run mounts the version it checks, which is not mountable for anyone else yet
     (``describing``), or a mountable version described again for a new base image (rekit).
     The version must be the run's own (the ``plugin_version_id`` of its job), in the run's
-    tenant, with the same sha256 and an inspected copy.
+    tenant, with the same sha256 and an inspected copy, and the run must act for the
+    version's uploader (``created_by``, else ``run.created_by``; the pipeline always queues
+    it for them), so nobody else runs code that was not approved for them.
 
     Admission (``submit.admit``) and the dispatcher use this instead of
     :func:`~mapi_server.services.plugins.gate.pins_problem` for ``plugin_describe`` runs.
@@ -267,6 +273,9 @@ async def describe_pin_problem(
         or version.overlay_key is None
     ):
         return "The plugin version to check is not available."
+    acting_for = created_by if created_by is not None else run.created_by
+    if acting_for is None or acting_for != version.uploaded_by:
+        return "Only the person who uploaded this plugin version can run its checks."
     if version.state != "describing" and version.state not in MOUNTABLE_STATES:
         return f"The plugin version to check is {version.state.replace('_', ' ')}."
     return None

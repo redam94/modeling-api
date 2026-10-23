@@ -6,6 +6,7 @@
  */
 import { Upload } from "lucide-react";
 
+import { ErrorNotice, LoadingRows } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 import { displayText, EXPORT_LABEL } from "./states";
@@ -123,12 +124,30 @@ export function ExportsDiff({
   previous,
   previousVersion,
   uploader,
+  loading = false,
+  error = null,
+  onRetry,
 }: {
   current: PluginExports | null | undefined;
   previous: PluginExports | null | undefined;
   previousVersion: string | null;
   uploader: string;
+  /** The last approved version is still loading: never compare against nothing meanwhile. */
+  loading?: boolean;
+  /** It could not be loaded: say so (with a retry) instead of calling everything new. */
+  error?: unknown;
+  onRetry?: () => void;
 }) {
+  if (loading || error) {
+    return (
+      <section data-testid="plugin-exports-diff" data-loading={loading || undefined} aria-labelledby="plugin-diff-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-5">
+        <h3 id="plugin-diff-title" className="font-display text-lg leading-tight font-bold">
+          What changed
+        </h3>
+        {error ? <ErrorNotice error={error} title="The app could not load the last approved version to compare with" onRetry={onRetry} /> : <LoadingRows rows={3} />}
+      </section>
+    );
+  }
   const rows = previousVersion ? exportsDiff(current, previous) : exportRows(current).map((r) => ({ ...r, mark: "added" as const }));
   const changed = rows.filter((r) => r.mark !== "same").length;
   return (

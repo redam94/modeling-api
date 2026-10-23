@@ -18,7 +18,7 @@ the state); ``security`` also cancels the queued and running runs pinned to it.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Literal
+from typing import Final, Literal
 
 from mapi_spec.api import new_id
 from mapi_spec.audit import AuditAction, AuditOutcome
@@ -27,7 +27,7 @@ from mapi_spec.governance import check_approver
 from mapi_spec.plugins import PluginDecision, PluginYank
 from mapi_spec.run import Actor, RunState, RunTrigger
 from mapi_spec.tenancy import Action, ResourceKind
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapi_server.auth.request import Credential, RequestAuth
@@ -105,9 +105,10 @@ async def request_approval(
 
 
 async def _require_recent_session(ctx: ServerContext, auth: RequestAuth) -> str:
-    """A web session signed in at most ``plugin_approve_max_auth_age_s`` ago; returns the
-    person. A token or the single-tenant local administrator has no session (``FORBIDDEN``,
-    before the age check); an older sign-in is ``REAUTH_REQUIRED``."""
+    """A web session whose person authenticated at the identity provider (the ID token's
+    ``auth_time``) at most ``plugin_approve_max_auth_age_s`` ago; returns the person. A token
+    or the single-tenant local administrator has no session (``FORBIDDEN``, before the age
+    check); an older (or unknown) authentication is ``REAUTH_REQUIRED``."""
     if auth.credential is not Credential.SESSION or auth.session_key is None:
         raise MapiError(
             "Approving or rejecting uploaded code needs a person signed in to the web app. API "
@@ -115,9 +116,11 @@ async def _require_recent_session(ctx: ServerContext, auth: RequestAuth) -> str:
             code=ErrorCode.FORBIDDEN,
         )
     async with ctx.db.session() as s:  # web_sessions is a platform table
+        # the IdP's auth_time, not when the row was made: a silent SSO round trip makes a
+        # new session without anyone typing a password (re-auth asks for max_age=0)
         signed_in = (
             await s.execute(
-                select(m.WebSession.created_at).where(m.WebSession.id == auth.session_key)
+                select(m.WebSession.auth_time).where(m.WebSession.id == auth.session_key)
             )
         ).scalar_one_or_none()
     max_age = timedelta(seconds=int(ctx.settings.plugin_approve_max_auth_age_s))
@@ -130,24 +133,54 @@ async def _require_recent_session(ctx: ServerContext, auth: RequestAuth) -> str:
     return caller_id(auth)
 
 
+_GRANTS: Final = (AuditAction.MEMBER_ADD.value, AuditAction.MEMBER_UPDATE.value)
+_SOCK_PUPPET_CHAIN: Final = 32
+"""How many grant hops the second-person rule follows (more than any real chain)."""
+
+
 async def _sock_puppet(
     session: AsyncSession, ctx: ServerContext, *, tenant_id: str, approver: str, uploader: str
 ) -> bool:
-    """Did the uploader create one of the approver's memberships in the last
-    ``plugin_approver_min_membership_age_days`` days?"""
+    """Did the approver get into the tenant, or become a tenant admin, through the uploader
+    in the last ``plugin_approver_min_membership_age_days`` days?
+
+    A grant is a membership created in the window (``created_by``) or a tenant-wide admin role
+    given in the window (the ``member.add``/``member.update`` audit rows, so a promotion of an
+    old membership counts). The grants are followed in a chain: someone who got in through
+    the uploader in the window counts as the uploader, so a second account added by a third
+    one the uploader added is refused as well."""
     days = int(ctx.settings.plugin_approver_min_membership_age_days)
     since = now() - timedelta(days=days)
-    row = (
-        await session.execute(
-            select(m.Membership.id).where(
-                m.Membership.tenant_id == tenant_id,
-                m.Membership.principal_id == approver,
-                m.Membership.created_by == uploader,
-                m.Membership.created_at > since,
-            )
+    edges: set[tuple[str, str]] = set()  # (granter, grantee)
+    created = await session.execute(
+        select(m.Membership.created_by, m.Membership.principal_id).where(
+            m.Membership.tenant_id == tenant_id,
+            m.Membership.created_at > since,
+            m.Membership.created_by.is_not(None),
         )
-    ).first()
-    return row is not None
+    )
+    edges.update((str(by), str(to)) for by, to in created)
+    by = func.coalesce(m.AuditEvent.details["by"].astext, m.AuditEvent.actor_id)
+    granted = await session.execute(
+        select(by, m.AuditEvent.resource_id).where(
+            m.AuditEvent.tenant_id == tenant_id,
+            m.AuditEvent.ts > since,
+            m.AuditEvent.action.in_(_GRANTS),
+            m.AuditEvent.resource_kind == ResourceKind.TENANT_MEMBER.value,
+            m.AuditEvent.outcome == AuditOutcome.SUCCESS.value,
+            m.AuditEvent.details["role"].astext == "admin",
+            m.AuditEvent.resource_id.is_not(None),
+            by.is_not(None),
+        )
+    )
+    edges.update((str(granter), str(to)) for granter, to in granted)
+    tainted = {uploader}
+    for _ in range(_SOCK_PUPPET_CHAIN):
+        more = {to for granter, to in edges if granter in tainted} - tainted
+        if not more:
+            break
+        tainted |= more
+    return approver in tainted
 
 
 async def decide(
@@ -212,8 +245,9 @@ async def decide(
             ],
         )
         raise MapiError(
-            f"The person who uploaded this version added you to the workspace less than {days} "
-            "days ago, so you cannot review it. Ask another tenant admin.",
+            "The person who uploaded this version added you to the workspace, or made you a "
+            f"tenant admin, less than {days} days ago (directly or through someone they added), "
+            "so you cannot review it. Ask another tenant admin.",
             code=ErrorCode.FORBIDDEN,
         )
     if version.state != "awaiting_approval":

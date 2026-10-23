@@ -136,7 +136,8 @@ class PluginSweeps:
                                 version,
                                 Problem.from_code(
                                     ErrorCode.INFRA_ERROR,
-                                    "The platform lost the check run. Upload the same file again.",
+                                    "The platform lost the check run. Raise the version number "
+                                    "and upload it again.",
                                 ),
                             )
                         elif RunState(run.state).terminal and run.state != "succeeded":
