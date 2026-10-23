@@ -508,3 +508,103 @@ async def test_a_built_in_only_dashboard_and_plot_still_share(
     r = await client.get("/v1/shared/readouts", headers=_hdr(opened.json()["session"]))
     assert r.status_code == 200, r.text
     assert (await kit["cleo"].get(f"/v1/dashboards/{kit['dash_id']}")).status_code == 200
+
+
+# ============================================ internal dashboards on uploaded code (L-F1)
+
+
+async def test_an_analyst_publishes_a_dashboard_on_a_version_with_an_uploaded_step(
+    ctx: ServerContext, client: httpx.AsyncClient, kit: dict[str, Any]
+) -> None:
+    """Plan D9/D16, §6 item 6: a version fitted with uploaded code backs an *internal*
+    dashboard (published through the API, its what-ifs read the grid and its runs mount the
+    version's pins again); nothing of it leaves the workspace: share link create, client
+    grants and client reads are refused with ``UPLOADED_CODE_NOT_SHAREABLE``."""
+    await _pin_version(ctx, kit["model"]["mv_id"])
+    dash_id = await create_published(kit, name="uploaded-step", grant=False)
+    ana: Caller = kit["ana"]
+    base = f"/v1/dashboards/{dash_id}"
+    for caller in (ana, kit["vic"]):  # members of the workspace read it
+        assert (await caller.get(base)).status_code == 200
+        assert (await caller.get(f"{base}/readouts")).status_code == 200
+    r = await ana.post(f"{base}/whatif:evaluate", json={"multipliers": {"tv": 0.8}})
+    assert r.status_code == 200, r.text
+    # the queued baseline is scored with the version's uploaded code again (D9): its pins
+    # go through the mount gate (this test's pin names no stored version, so the gate
+    # refuses it: fail closed), not the pre-v0.19 "dashboards do not run it" refusal
+    await DashboardLoop(ctx).submit_queued()
+    async with ctx.db.session() as s:
+        row = await s.get(m.DashboardReadout, (dash_id, 1))
+        assert row is not None and row.problem is not None
+        assert row.problem["code"] == "PLUGIN_UNAVAILABLE", row.problem
+        assert PIN["plugin_version_id"] in row.problem["detail"]
+    # nothing leaves the workspace
+    _refused(await _share(kit, dash_id))
+    cleo_id = kit["users"]["cleo"].id
+    _refused(await ana.put(f"{base}/grants/{cleo_id}"))
+    async with ctx.db.session() as s:
+        for table in (m.DashboardShare, m.DashboardGrant):
+            n = await s.execute(
+                select(func.count()).select_from(table).where(table.dashboard_id == dash_id)
+            )
+            assert n.scalar_one() == 0, table
+    assert (await kit["cleo"].get(base)).status_code == 404  # no grant: not even listed
+    listed = (await kit["cleo"].get("/v1/dashboards")).json()["items"]
+    assert dash_id not in [d["id"] for d in listed]
+
+
+async def test_republishing_on_an_uploaded_code_version_ends_existing_links_and_grants(
+    ctx: ServerContext, client: httpx.AsyncClient, kit: dict[str, Any]
+) -> None:
+    """A built-in dashboard with a share link and a client grant is republished (through the
+    API, a new revision) after its version turned out to have run an uploaded step: the
+    publish succeeds, and the link and the client portal answer the plain refusal from then
+    on while the analysts keep their view."""
+    token = (await _share(kit)).json()["token"]
+    ana: Caller = kit["ana"]
+    base = f"/v1/dashboards/{kit['dash_id']}"
+    first = (await ana.get(base)).json()["published_revision"]
+    await _pin_version(ctx, kit["model"]["mv_id"])
+    r = await ana.post(f"{base}:publish")
+    assert r.status_code == 200, r.text
+    assert r.json()["published_revision"] != first
+    _refused(await _open(client, token))
+    _refused(await kit["cleo"].get(base))
+    _refused(await kit["cleo"].post(f"{base}/whatif:evaluate", json={"multipliers": {"tv": 0.8}}))
+    assert (await kit["cleo"].get("/v1/dashboards")).json()["items"] == []
+    assert (await kit["vic"].get(base)).status_code == 200
+
+
+async def test_a_readout_of_a_pinned_version_materialises_inside_the_workspace(
+    ctx: ServerContext, client: httpx.AsyncClient, kit: dict[str, Any]
+) -> None:
+    """L-F1: the score runs of a version fitted with uploaded code mount that code again
+    (D9), so they are untrusted by design. Their readouts materialise for the analysts and
+    stay out of every shared and client read (D16)."""
+    from mapi_server_testkit.plots import complete_run
+    from test_dashboard_readouts import SUMMARY
+
+    token = (await _share(kit)).json()["token"]
+    loop = DashboardLoop(ctx)
+    assert await loop.submit_queued() == 1
+    async with ctx.db.session() as s:
+        row = await s.get(m.DashboardReadout, (kit["dash_id"], 1))
+        assert row is not None
+        run_id = row.run_ids[0]
+    await complete_run(
+        ctx, run_id, add={"summary.json": (json.dumps(SUMMARY).encode(), "application/json")}
+    )
+    await _pin_version(ctx, kit["model"]["mv_id"])
+    async with ctx.db.session() as s:
+        await s.execute(
+            update(m.Run).where(m.Run.id == run_id).values(untrusted_code=True, overlays=[PIN])
+        )
+    await loop.materialise()
+    async with ctx.db.session() as s:
+        row = await s.get(m.DashboardReadout, (kit["dash_id"], 1))
+        assert row is not None
+        assert row.status != "failed", row.problem
+    r = await kit["ana"].get(f"/v1/dashboards/{kit['dash_id']}/readouts/1")
+    assert r.status_code == 200, r.text
+    _refused(await _open(client, token))
+    _refused(await kit["cleo"].get(f"/v1/dashboards/{kit['dash_id']}/readouts/1"))

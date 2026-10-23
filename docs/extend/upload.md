@@ -192,6 +192,9 @@ runs that use it now. Withdrawing needs a sign-in (`mapi login`); API tokens can
 
 - **No share links, client portals or embeds.** A dashboard, chart or model version that
   used uploaded code can't be shared outside the workspace (`UPLOADED_CODE_NOT_SHAREABLE`).
+  You can still publish an internal dashboard on such a model version: your team reads it
+  and runs its what-ifs (they use the same uploaded code again). Share links, client grants
+  and embeds of it are refused.
 - **Not in Help me choose.** Your entries never rank among the built-ins. You pick them
   yourself.
 - **Not across workspaces.** Another workspace never sees your upload.

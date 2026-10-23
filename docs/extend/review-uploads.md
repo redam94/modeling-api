@@ -152,7 +152,8 @@ After a withdrawal:
 - The version is not in the catalog of anybody, at once.
 - Existing results stay readable. A refit, a score, an endpoint call or a dashboard refresh
   that needs the code stops with `PLUGIN_UNAVAILABLE` and the name of the plugin.
-- The platform keeps the file for 30 days, then deletes it. The row and the audit log stay.
+- The platform keeps the file for 30 days (the operator setting `MAPI_PLUGIN_RETENTION_DAYS`, counted
+  from the withdrawal), then deletes it. The row and the audit log stay.
 
 ```python
 --8<-- "upload_decision.py:yank"

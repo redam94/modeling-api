@@ -63,7 +63,7 @@ from mapi_server.services.bundles import verified_bundle_object
 from mapi_server.services.dashboards.access import load_dashboard
 from mapi_server.services.endpoints import model_ref_of, snapshot_for
 from mapi_server.services.runs import now
-from mapi_server.services.sharing import ran_uploaded_code
+from mapi_server.services.sharing import refused_on_dashboards, require_shareable
 
 __all__ = [
     "AnySpec",
@@ -380,7 +380,7 @@ async def _check_version(
 ) -> None:
     if mv.status != "ready":
         issues.append(_issue(ErrorCode.NOT_READY, "/source", f"model version {mv.id} is not ready"))
-    if ran_uploaded_code(mv):
+    if refused_on_dashboards(mv):
         issues.append(
             _issue(
                 ErrorCode.CAPABILITY_UNSUPPORTED,
@@ -738,6 +738,9 @@ async def put_grant(
     row = await load_dashboard(session, ctx, dashboard_id, for_update=True)
     if row.status == "archived":
         raise Conflict("the dashboard is archived")
+    # what a client would see may not come from uploaded code (D16); the client reads
+    # refuse it again, so a grant made before (or a later refresh) never shows it
+    await require_shareable(session, dashboard=row)
     member = await _membership(session, ctx, user_id)
     if member is None:
         raise NotFoundError("member", user_id)

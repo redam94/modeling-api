@@ -146,6 +146,15 @@ the shim (`container:mapi-gcs-shim`). An internal Docker network that holds only
 also works, if `MAPI_GCS_ENDPOINT` names the shim on that network. With `none`, the runner
 cannot get its bootstrap object. Thus the worker does not start with `none`.
 
+!!! warning "Uploaded code and the shared network"
+    With `container:mapi-gcs-shim` (or any network that is not internal), run containers
+    have the internet egress of that network. For uploaded plugins (v0.19) this means that
+    uploaded code can reach the internet. Use this only on a developer computer. Beyond one,
+    use an internal network that holds only the shim with `MAPI_DOCKER_NETWORK_ISOLATED=true`
+    (the steps below), or gVisor or Cloud Run Jobs with egress enforced, or set
+    `MAPI_PLUGINS_ENABLED=false`. The server logs a warning at start-up in this case. See
+    [Uploaded code](uploaded-code.md#where-uploaded-code-can-run).
+
 **docker-gvisor for verified and public tenants.** Shared tiers need an executor with egress
 and DNS enforced. You cannot use `none`. Thus, do these steps:
 

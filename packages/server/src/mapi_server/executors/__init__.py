@@ -197,6 +197,32 @@ def build_cloudrun_executor(
     )
 
 
+def _warn_upload_egress(settings: Settings) -> None:
+    """Live finding F1: on the docker executor, run containers share
+    ``MAPI_DOCKER_NETWORK`` (in compose, the GCS shim's network namespace, which routes to
+    the internet). With uploads on, that is uploaded code with internet egress: fine on a
+    developer machine, not beyond one. Warn at start-up unless the network is declared an
+    isolated internal network (``MAPI_DOCKER_NETWORK_ISOLATED``) or is ``none``."""
+    if (
+        not settings.plugins_enabled
+        or settings.dev_allow_local_untrusted
+        or settings.docker_network_isolated
+        or settings.docker_network == "none"
+    ):
+        return
+    log.warning(
+        "%s executor with uploaded plugins enabled: run containers use MAPI_DOCKER_NETWORK=%r, "
+        "which is not declared isolated, so uploaded code can reach the internet from its "
+        "runs. That is acceptable on a developer machine only. Elsewhere, put the GCS shim "
+        "alone on an internal network (docker network create --internal), set "
+        "MAPI_DOCKER_NETWORK to it and MAPI_DOCKER_NETWORK_ISOLATED=true, or run uploads on "
+        "docker-gvisor or Cloud Run Jobs with egress enforced; or set "
+        "MAPI_PLUGINS_ENABLED=false (docs/operations/uploaded-code.md)",
+        settings.executor.value,
+        settings.docker_network,
+    )
+
+
 def build_executor(settings: Settings) -> Executor:
     """The executor selected by ``MAPI_EXECUTOR``."""
     if settings.executor is ExecutorName.CLOUDRUN_JOBS:
@@ -246,6 +272,7 @@ def build_executor(settings: Settings) -> Executor:
             "use an internal network (docker network create --internal) that holds only the "
             "GCS shim"
         )
+    _warn_upload_egress(settings)
     return DockerExecutor(
         image=settings.docker_image,
         images=settings.docker_images,

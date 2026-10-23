@@ -88,6 +88,34 @@ def test_build_executor_passes_the_flag_and_warns(
     assert any("MAPI_DEV_ALLOW_LOCAL_UNTRUSTED" in r.getMessage() for r in caplog.records)
 
 
+@pytest.mark.parametrize(
+    ("kw", "warns"),
+    [
+        ({}, True),  # compose: the shim's namespace routes out
+        ({"executor": ExecutorName.DOCKER_GVISOR}, True),  # gVisor does not stop egress
+        ({"docker_network": "mapi-sandbox", "docker_network_isolated": True}, False),
+        ({"plugins_enabled": False}, False),
+    ],
+)
+def test_docker_with_uploads_on_a_shared_network_warns_about_egress(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, kw: dict[str, object], warns: bool
+) -> None:
+    """Live finding F1: uploaded code on the docker executor has the run network's internet
+    egress unless the network is declared isolated; the server says so at start-up."""
+    settings = _settings(
+        tmp_path,
+        **{"executor": ExecutorName.DOCKER, "docker_network": "container:mapi-gcs-shim", **kw},
+    )
+    with caplog.at_level("WARNING"):
+        build_executor(settings)
+    found = [
+        r.getMessage() for r in caplog.records if "MAPI_DOCKER_NETWORK_ISOLATED" in r.getMessage()
+    ]
+    assert bool(found) is warns, found
+    if warns:
+        assert "reach the internet" in found[0] and "developer machine" in found[0]
+
+
 def test_plugin_settings_defaults_match_the_plan(tmp_path: Path) -> None:
     s = _settings(tmp_path)
     assert s.plugins_enabled

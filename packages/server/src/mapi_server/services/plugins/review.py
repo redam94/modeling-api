@@ -17,16 +17,18 @@ the state); ``security`` also cancels the queued and running runs pinned to it.
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Sequence
 from datetime import timedelta
 from typing import Final, Literal
 
 from mapi_spec.api import new_id
-from mapi_spec.audit import AuditAction, AuditOutcome
+from mapi_spec.audit import AuditAction, AuditOutcome, make_audit_event
 from mapi_spec.errors import ErrorCode, Issue, MapiError
 from mapi_spec.governance import check_approver
-from mapi_spec.plugins import PluginDecision, PluginYank
+from mapi_spec.plugins import MOUNTABLE_STATES, PluginDecision, PluginYank
 from mapi_spec.run import Actor, RunState, RunTrigger
-from mapi_spec.tenancy import Action, ResourceKind
+from mapi_spec.tenancy import Action, PrincipalKind, ResourceKind
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +42,23 @@ from mapi_server.services.plugins.store import load_version, set_state
 from mapi_server.services.plugins.uploaders import caller_id, is_tenant_admin, refuse_tokens
 from mapi_server.services.runs import apply_transition, now
 
-__all__ = ["cancel_pinned_runs", "decide", "request_approval", "yank"]
+__all__ = [
+    "INTEGRITY_YANK_NOTE",
+    "cancel_pinned_runs",
+    "decide",
+    "request_approval",
+    "withdraw_for_integrity",
+    "yank",
+]
+
+log = logging.getLogger(__name__)
+
+INTEGRITY_YANK_NOTE: Final = (
+    "Withdrawn by the platform: the stored copy of this version no longer matches the file "
+    "that was checked (it was replaced or removed in storage). Upload the version again "
+    "under a new version number."
+)
+"""The note of an automatic ``security`` withdrawal (platform text, never uploaded text)."""
 
 _SKIP_CANCEL = frozenset(
     {s.value for s in RunState if s.terminal}
@@ -401,3 +419,81 @@ async def yank(
         session, ctx, version, "plugin.version.yanked", to="admins_and_uploader"
     )
     return version
+
+
+async def withdraw_for_integrity(
+    session: AsyncSession,
+    ctx: ServerContext,
+    *,
+    tenant_id: str,
+    version_ids: Sequence[str],
+    actor_id: str,
+    run_id: str,
+) -> list[str]:
+    """Withdraw (reason ``security``) every version of ``version_ids`` in ``tenant_id``
+    whose stored copy the control plane found replaced or removed (F2): the same effects as
+    an admin's security yank (runs pinned to it are cancelled, an audit event, mail and a
+    webhook to the uploader and every tenant admin, none of it with uploaded text), done by
+    the service ``actor_id`` while ending ``run_id``. Versions that are no longer mountable
+    are left alone. Returns the ids withdrawn."""
+    versions = (
+        await session.execute(
+            select(m.PluginVersion)
+            .where(m.PluginVersion.tenant_id == tenant_id, m.PluginVersion.id.in_(version_ids))
+            .order_by(m.PluginVersion.id)
+            .with_for_update()
+        )
+    ).scalars()
+    done: list[str] = []
+    ts = now()
+    for version in list(versions):
+        if version.state not in MOUNTABLE_STATES:
+            continue
+        set_state(
+            version,
+            "yanked",
+            now=ts,
+            retention=timedelta(days=int(ctx.settings.plugin_retention_days)),
+        )
+        version.yanked_by = None
+        version.yank_reason = "security"
+        version.yank_note = INTEGRITY_YANK_NOTE
+        await session.flush()
+        cancelled = await cancel_pinned_runs(session, version.id)
+        await add_audit(
+            session,
+            [
+                make_audit_event(
+                    action=AuditAction.PLUGIN_YANK,
+                    resource_kind=ResourceKind.PLUGIN,
+                    outcome=AuditOutcome.SUCCESS,
+                    ts=ts,
+                    fingerprint_key=b"",  # no client data to fingerprint
+                    tenant_id=version.tenant_id,
+                    project_id=version.project_id,
+                    actor_kind=PrincipalKind.SERVICE,
+                    actor_id=actor_id,
+                    resource_id=version.id,
+                    details={
+                        "plugin_id": version.plugin_id,
+                        "plugin_version_id": version.id,
+                        "reason": "security",
+                        "cause": "overlay_integrity",
+                        "run_id": run_id,
+                        "upload_sha256": version.upload_sha256,
+                        "cancelled_runs": len(cancelled),
+                    },
+                )
+            ],
+        )
+        await notify_plugin_event(
+            session, ctx, version, "plugin.version.yanked", to="admins_and_uploader"
+        )
+        log.warning(
+            "plugin version %s withdrawn (security): its stored copy does not match the "
+            "checked file (run %s)",
+            version.id,
+            run_id,
+        )
+        done.append(version.id)
+    return done

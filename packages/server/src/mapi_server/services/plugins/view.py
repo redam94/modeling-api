@@ -132,8 +132,9 @@ class CatalogView:
             if vv is None:
                 raise MapiError(
                     f"The uploaded plugin {ns} is not available to you. It is not approved "
-                    "for the workspace, it is someone else's private upload, or it was "
-                    "withdrawn.",
+                    "for the workspace, it is someone else's private upload, it was "
+                    "withdrawn, or a tenant admin turned off the use of uploads before "
+                    "approval (Settings › Workspace › Uploaded code).",
                     code=ErrorCode.PLUGIN_UNAVAILABLE,
                 )
             pins.append(OverlayPin(plugin_version_id=vv.version_id, namespace=ns, sha256=vv.sha256))

@@ -94,6 +94,7 @@ __all__ = [
     "embed_view",
     "load_saved_plot",
     "ran_uploaded_code",
+    "refused_on_dashboards",
     "render_input_key",
     "require_shareable",
     "resolve_render_request",
@@ -150,6 +151,18 @@ def ran_uploaded_code(mv: m.ModelVersion | None) -> bool:
     the server decides from the version's lineage (``overlays``, written by the finalizer
     from ``runs.overlays``, or the legacy ``overlay_hash``), never from the plot."""
     return mv is not None and lineage_has_uploaded_code(mv.lineage)
+
+
+def refused_on_dashboards(mv: m.ModelVersion | None) -> bool:
+    """May ``mv`` not back a dashboard at all (publish, inputs, readouts)?
+
+    Only a version whose lineage holds the legacy ``overlay_hash`` and no v0.19 ``overlays``
+    pins keeps the v0.16 refusal (``CAPABILITY_UNSUPPORTED``). A version fitted with
+    uploaded code under v0.19 records its pins, so its runs mount exactly that code again
+    (plan D9: dashboard what-ifs and refreshes inherit ``lineage.overlays``), and an internal
+    dashboard on it is allowed; what leaves the workspace (share links, client grants and
+    reads, embeds) is refused by :func:`require_shareable` (D16)."""
+    return ran_uploaded_code(mv) and not (mv is not None and _pinned(mv.lineage))
 
 
 async def uploaded_code_versions(session: AsyncSession, ids: Iterable[str | None]) -> set[str]:

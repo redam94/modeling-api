@@ -81,6 +81,10 @@ async def test_a_client_cannot_read_or_run_a_dashboard_made_with_uploaded_code(
         mv = await s.get(m.ModelVersion, kit["model"]["mv_id"])
         assert mv is not None
         mv.lineage = {**(mv.lineage or {}), "overlays": [PIN]}
+    # an analyst may publish it on that version (an internal dashboard, plan D9/§6 item 6):
+    # a real published revision of a version that ran uploaded code
+    r = await kit["ana"].post(f"{base}:publish")
+    assert r.status_code == 200, r.text
     for r in (
         await cleo.get(base),
         await cleo.get(f"{base}/readouts"),

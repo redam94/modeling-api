@@ -439,6 +439,8 @@ def test_a_view_needs_no_database_to_answer_pins() -> None:
     with pytest.raises(MapiError) as err:
         view.pins_for([f"{NS_B}.winsorize"])
     assert err.value.code is ErrorCode.PLUGIN_UNAVAILABLE
+    # live L-F5: the refusal names the workspace setting that can also hide an upload
+    assert "Settings › Workspace › Uploaded code" in err.value.detail
 
 
 # ========================================================================== HTTP routes

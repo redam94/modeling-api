@@ -90,7 +90,13 @@ from mapi_server.services.quotas import (
     tenant_policy,
 )
 from mapi_server.services.runs import append_event, apply_transition, now
-from mapi_server.services.runspec import build_runspec, resolve_overlays, run_pins
+from mapi_server.services.runspec import (
+    OverlayIntegrityError,
+    build_runspec,
+    resolve_overlays,
+    run_pins,
+    verify_overlay_objects,
+)
 from mapi_server.settings import Profile
 
 __all__ = ["DEV_MODE_ISOLATION", "Dispatcher", "TokenBucket"]
@@ -729,6 +735,9 @@ class Dispatcher:
                     overlays = await resolve_overlays(
                         session, run, plugins_bucket=ctx.buckets.plugins
                     )
+                # the pinned generation must still exist as checked (F2): a replaced or
+                # deleted object is tampering, not an outage
+                await verify_overlay_objects(ctx.store, overlays)
             runspec = await build_runspec(
                 ctx.store, run=run, attempt=att, runs_bucket=ctx.buckets.runs, overlays=overlays
             )
@@ -854,6 +863,31 @@ class Dispatcher:
                 return
             detail = "the executor did not accept the execution"
             code = ErrorCode.INFRA_ERROR
+            if isinstance(error, OverlayIntegrityError):
+                # no URLs were minted and nothing ran; the approved bytes are gone for good
+                log.error("run %s/%s: %s", run_id, attempt_no, error.detail)
+                await apply_transition(
+                    session,
+                    run,
+                    RunTrigger.FAIL_INTEGRITY,
+                    Actor.DISPATCHER,
+                    problem=Problem.from_code(ErrorCode.INTEGRITY_FAILURE, error.detail[:2000]),
+                )
+                from mapi_server.services.plugins.review import withdraw_for_integrity
+
+                await withdraw_for_integrity(
+                    session,
+                    ctx,
+                    tenant_id=run.tenant_id,
+                    version_ids=[p.plugin_version_id for p in error.pins],
+                    actor_id="svc_dispatcher",
+                    run_id=run.id,
+                )
+                if run.kind in _PLUGIN_KINDS:
+                    from mapi_server.services.plugins.finalize import plugin_run_ended
+
+                    await plugin_run_ended(session, ctx, run)
+                return
             if isinstance(error, BundleIntegrityError):
                 # no URLs were minted; a bundle that fails verification never will verify
                 detail = f"the model bundle failed verification: {error.detail}"

@@ -395,7 +395,12 @@ async def test_layout_2_tools_equal_the_route_results(
         mode="json"
     )
     assert batch["summary"] == (await snap(seqs["batch"]))["batch"]
-    assert "csv" not in str(batch).lower() and "http" not in str(batch)
+    # Random identifiers (e.g. ``run_id``) can spell "csv" or "http" by chance; leave them out.
+    scrubbed = {
+        **batch,
+        "readout": {k: v for k, v in batch["readout"].items() if not k.endswith("id")},
+    }
+    assert "csv" not in str(scrubbed).lower() and "http" not in str(scrubbed)
 
 
 async def test_compare_readouts_gives_panel_deltas(

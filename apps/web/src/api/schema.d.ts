@@ -30761,7 +30761,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Problem: FORBIDDEN */
+            /** @description Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE */
             403: {
                 headers: {
                     [name: string]: unknown;

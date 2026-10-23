@@ -51076,6 +51076,17 @@
                       "title": "Not allowed",
                       "type": "urn:mapi:error:FORBIDDEN"
                     }
+                  },
+                  "UPLOADED_CODE_NOT_SHAREABLE": {
+                    "summary": "Results made with uploaded code cannot be shared outside the workspace",
+                    "value": {
+                      "code": "UPLOADED_CODE_NOT_SHAREABLE",
+                      "detail": "Results made with uploaded code cannot be shared outside the workspace",
+                      "errors": [],
+                      "status": 403,
+                      "title": "Results made with uploaded code cannot be shared outside the workspace",
+                      "type": "urn:mapi:error:UPLOADED_CODE_NOT_SHAREABLE"
+                    }
                   }
                 },
                 "schema": {
@@ -51083,7 +51094,7 @@
                 }
               }
             },
-            "description": "Problem: FORBIDDEN"
+            "description": "Problem: FORBIDDEN, UPLOADED_CODE_NOT_SHAREABLE"
           },
           "404": {
             "content": {

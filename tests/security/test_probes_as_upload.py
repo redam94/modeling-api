@@ -21,9 +21,9 @@ review by a second admin. Then it checks that
   substitution) - the supervisor's sha256 check refuses the overlay (``INTEGRITY_FAILURE``)
   and the original bytes make the same run succeed again; (b) a replacement through the
   storage API (a new generation) - the generation-pinned signed GET no longer resolves, the
-  run fails before a container starts and stays failed even with the same bytes put back
-  (it is reported as ``INFRA_ERROR``: recorded as an expected failure, see
-  :func:`test_replaced_object_is_reported_as_an_integrity_failure`).
+  run fails before a container starts with ``INTEGRITY_FAILURE`` (class ``integrity``), the
+  platform withdraws the version (reason ``security``) and the uploader and tenant admins are
+  mailed; a later fit of it is refused even with the same bytes put back.
 
 **Re-packaging is a rename only.** The wheel is built from the files in ``security/plugin/src``
 and ``security/src/mapi_security`` (outcomes and probes): the import paths become
@@ -424,8 +424,12 @@ def ensure_dataset(api: httpx.Client) -> str:
     return str(ver["ref"])
 
 
-def fit(api: httpx.Client, dataset_ref: str, model_ref: str) -> dict[str, Any]:
-    """Create a spec that fits ``model_ref`` and run it to the end; the run."""
+def fit(
+    api: httpx.Client, dataset_ref: str, model_ref: str, *, refusable: bool = False
+) -> dict[str, Any]:
+    """Create a spec that fits ``model_ref`` and run it to the end; the run. With
+    ``refusable``, a refusal of the spec or of the run is returned as ``{"refused": status,
+    "problem": body}`` instead of raising."""
     yaml = (
         "apiVersion: mapi/v1\n"
         "kind: ModelSpec\n"
@@ -440,14 +444,17 @@ def fit(api: httpx.Client, dataset_ref: str, model_ref: str) -> dict[str, Any]:
         f"  use: {model_ref}\n"
         "  fit: {mode: train_only, seed: 7}\n"
     )
-    spec = _ok(api.post("/v1/specs", json={"yaml": yaml, "message": "probes as upload"}), 201)
-    run = _ok(
-        api.post(
-            "/v1/runs",
-            json={"kind": "fit", "spec_id": spec["id"], "revision": spec["latest_revision"]},
-        ),
-        201,
+    made = api.post("/v1/specs", json={"yaml": yaml, "message": "probes as upload"})
+    if refusable and made.status_code >= 400:
+        return {"refused": made.status_code, "problem": made.json()}
+    spec = _ok(made, 201)
+    started = api.post(
+        "/v1/runs",
+        json={"kind": "fit", "spec_id": spec["id"], "revision": spec["latest_revision"]},
     )
+    if refusable and started.status_code >= 400:
+        return {"refused": started.status_code, "problem": started.json()}
+    run = _ok(started, 201)
     deadline = time.monotonic() + 900
     while run["state"] not in _RUN_TERMINAL:
         assert time.monotonic() < deadline, f"run {run['id']} still {run['state']}"
@@ -606,6 +613,7 @@ class Scenario:
     replace_logs: list[dict[str, Any]] = field(default_factory=list)
     replace_containers: list[dict[str, Any]] = field(default_factory=list)
     after_replace_run: dict[str, Any] = field(default_factory=dict)
+    replaced_version: dict[str, Any] = field(default_factory=dict)
     report: dict[str, Any] = field(default_factory=dict)
 
 
@@ -675,7 +683,8 @@ def scenario(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Scenario]:
         sc.replace_containers = containers_of(sc.replace_run["id"])
     finally:
         asyncio.run(_replace(key, original))  # same bytes again, but yet another generation
-    sc.after_replace_run = fit(api, sc.dataset, _model_ref(plugin, v2))
+    sc.replaced_version = _ok(api.get(f"/v1/plugins/{pid}/versions/{v2['id']}"), 200)
+    sc.after_replace_run = fit(api, sc.dataset, _model_ref(plugin, v2), refusable=True)
 
     def brief(run: dict[str, Any]) -> dict[str, Any]:
         return {k: run.get(k) for k in ("id", "state", "failure_class", "problem")}
@@ -695,7 +704,11 @@ def scenario(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Scenario]:
         "restored_run": brief(sc.restored_run),
         "replace_run": brief(sc.replace_run),
         "replace_containers": len(sc.replace_containers),
-        "after_replace_run": brief(sc.after_replace_run),
+        "after_replace_run": brief(sc.after_replace_run)
+        | {"refused": sc.after_replace_run.get("refused")},
+        "replaced_version": {
+            k: sc.replaced_version.get(k) for k in ("state", "yank_reason", "yank_note")
+        },
     }
     (tmp / "report.json").write_text(json.dumps(sc.report, indent=2, default=str))
     sys.stderr.write("\nprobes-as-upload report: " + json.dumps(sc.report, default=str) + "\n")
@@ -769,10 +782,10 @@ def test_overlay_swap_after_approval_is_an_integrity_failure(scenario: Scenario)
     assert sc.tamper_run["state"] == "failed", sc.tamper_run
     problem = sc.tamper_run.get("problem") or {}
     assert problem.get("code") == "INTEGRITY_FAILURE", problem
-    # the supervisor reports failure_class=integrity; the reconciler has no live ->
-    # fail_integrity edge and records it as infra with the INTEGRITY_FAILURE code
-    # (reconciler.py `_problem`), so either class is accepted here
-    assert sc.tamper_run["failure_class"] in ("integrity", "infra"), sc.tamper_run
+    # F3: the supervisor's exit 13 is class integrity, and the detail says what happened
+    assert sc.tamper_run["failure_class"] == "integrity", sc.tamper_run
+    assert "did not match the hash (sha256)" in str(problem.get("detail")), problem
+    assert "CRC32C" not in str(problem.get("detail")), problem
     assert not _ran_upload_code(sc.tamper_logs)  # refused before any uploaded code ran
     # operator-side evidence: the supervisor's own reason, in the run container's log
     supervisor_log = "\n".join(
@@ -787,22 +800,27 @@ def test_overlay_swap_after_approval_is_an_integrity_failure(scenario: Scenario)
 
 
 def test_replaced_object_fails_closed_before_dispatch(scenario: Scenario) -> None:
-    """A new generation of the stored wheel: the generation-pinned signed GET no longer
-    resolves, the run fails before a container starts, and putting the same bytes back
-    does not revive it (the inspected generation is gone; a new push is needed)."""
+    """A new generation of the stored wheel: the pinned generation no longer exists, the
+    run fails before a container starts, and putting the same bytes back does not revive
+    the version (the inspected generation is gone, and the version was withdrawn; a new
+    push is needed)."""
     sc = scenario
     assert sc.replace_run["state"] == "failed", sc.replace_run
     assert sc.replace_containers == []
     assert not _ran_upload_code(sc.replace_logs)
-    assert sc.after_replace_run["state"] == "failed", sc.after_replace_run
+    after = sc.after_replace_run
+    assert after.get("refused") in (409, 422) or after.get("state") == "failed", after
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="v0.19 live finding: a replaced (new-generation) overlay object fails the run with "
-    "INFRA_ERROR ('the executor did not accept the execution: 404 No such object ...'), not "
-    "INTEGRITY_FAILURE (plans/v019-live.md, Runtime corpus)",
-)
 def test_replaced_object_is_reported_as_an_integrity_failure(scenario: Scenario) -> None:
-    problem = scenario.replace_run.get("problem") or {}
+    """F2: tampering, not an outage. The run fails ``INTEGRITY_FAILURE`` with class
+    ``integrity`` and a plain reason, and the platform withdraws the version for safety
+    (``security``; the uploader and the tenant admins are mailed, without uploaded text)."""
+    run = scenario.replace_run
+    problem = run.get("problem") or {}
     assert problem.get("code") == "INTEGRITY_FAILURE", problem
+    assert run.get("failure_class") == "integrity", run
+    assert "replaced or removed" in str(problem.get("detail")), problem
+    version = scenario.replaced_version
+    assert version.get("state") == "yanked", version
+    assert version.get("yank_reason") == "security", version

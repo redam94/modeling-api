@@ -1021,7 +1021,9 @@ class Settings(BaseSettings):
         30,
         ge=0,
         description="How long the objects of refused, failed, rejected and withdrawn versions "
-        "are kept before the purge sweep deletes them (the rows stay)",
+        "are kept before the purge sweep deletes them (the rows stay). Applied when a version "
+        "fails or is withdrawn: its purge date is stored then, and a later change does not "
+        "move it",
     )
     plugin_approve_max_auth_age_s: int = Field(
         900,

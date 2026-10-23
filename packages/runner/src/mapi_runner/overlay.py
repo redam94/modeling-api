@@ -19,7 +19,10 @@ minted for this run's tenant only. For each mount the supervisor
 Nothing here imports, compiles or executes anything from the archive: ``zipfile`` reads the
 central directory and streams member bytes. Transport failures (connection refused, HTTP
 errors, a timeout) raise :class:`OSError` so the supervisor reports an infrastructure failure
-the platform may retry.
+the platform may retry. The exceptions are the answers that say the pinned object itself is
+gone: ``404``/``410`` (no such object at the pinned generation: it was replaced or deleted)
+and ``412`` (the generation precondition failed). They raise :class:`OverlayError`
+(``INTEGRITY_FAILURE``): no retry can bring the approved bytes back.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ import os
 import shutil
 import stat
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Sequence
@@ -54,6 +58,8 @@ _CHUNK: Final = 256 * 1024
 _FILE_MODE: Final = 0o444
 _DIR_MODE: Final = 0o555
 _ALLOWED_METHODS: Final = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
+_GONE_STATUSES: Final = frozenset({404, 410, 412})
+"""HTTP answers that mean the pinned generation of the wheel no longer exists."""
 
 
 class OverlayError(Exception):
@@ -114,7 +120,8 @@ def fetch_overlay(
     :class:`~mapi_spec.plugins.ArchiveLimits`) and written only after its size equals
     ``mount.size`` and its sha256 equals ``mount.pin.sha256``; anything else raises
     :class:`OverlayError` (``INTEGRITY_FAILURE``) and nothing is written. ``timeout_s`` bounds
-    the whole download. Transport errors raise :class:`OSError`.
+    the whole download. Transport errors raise :class:`OSError`; an answer saying the
+    pinned generation is gone (``404``/``410``/``412``) is ``INTEGRITY_FAILURE`` too.
     """
     cap = ArchiveLimits().max_bytes if max_bytes is None else max_bytes
     expected = _hex(mount.pin.sha256)
@@ -131,7 +138,18 @@ def fetch_overlay(
     parts: list[bytes] = []
     got = 0
     request = urllib.request.Request(url, method="GET")
-    with _opener().open(request, timeout=max(timeout_s, 0.001)) as resp:
+    try:
+        resp_cm = _opener().open(request, timeout=max(timeout_s, 0.001))
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        if exc.code in _GONE_STATUSES:
+            raise OverlayError(
+                "the stored copy of the uploaded wheel is gone or was replaced "
+                f"(HTTP {exc.code} for the pinned generation)",
+                code="INTEGRITY_FAILURE",
+            ) from None
+        raise
+    with resp_cm as resp:
         if getattr(resp, "status", 200) != 200:  # 206 or another 2xx: not the whole object
             raise OSError(f"the overlay download answered HTTP {resp.status}")
         while True:

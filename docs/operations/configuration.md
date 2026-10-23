@@ -190,7 +190,7 @@ Refer to [Client dashboards](../guides/client-dashboards.md) and
 | `MAPI_PLUGIN_DESCRIBE_TIMEOUT_S` | `600` | The time limit of a `plugin_describe` run |
 | `MAPI_PLUGIN_DATA_CHECK_TIMEOUT_S` | `120` | The time limit of one data test in a `plugin_describe` run |
 | `MAPI_PLUGIN_TICKET_TTL_S` | `900` | The life of an upload ticket (a POST policy) |
-| `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay |
+| `MAPI_PLUGIN_RETENTION_DAYS` | `30` | The days before the purge deletes the files of refused, failed, rejected and withdrawn versions. The rows stay. The server applies it when a version fails or is withdrawn and stores the purge date then: a later change does not move the purge date of earlier versions |
 | `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | `900` | An approval or a rejection needs a sign-in that is not older than this (the ID token's `auth_time`) |
 | `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | `7` | A tenant admin whom the uploader added or promoted fewer days ago than this (directly or through someone they added) cannot approve the uploader's versions |
 

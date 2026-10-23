@@ -97,7 +97,7 @@ from mapi_server.services.endpoints import (
     store_inline_inputs,
 )
 from mapi_server.services.runs import now
-from mapi_server.services.sharing import ran_uploaded_code
+from mapi_server.services.sharing import refused_on_dashboards
 from mapi_server.services.submit import fit_dataset_ref, submit_model_run
 
 __all__ = [
@@ -190,7 +190,7 @@ def _disabled(what: str) -> MapiError:
 def _refuse_unsafe(mv: m.ModelVersion) -> None:
     if mv.status != "ready":
         raise MapiError(f"model version {mv.id} is not ready", code=ErrorCode.NOT_READY)
-    if ran_uploaded_code(mv):
+    if refused_on_dashboards(mv):
         raise MapiError(
             "the model version ran uploaded plugin code; dashboards do not run it",
             code=ErrorCode.CAPABILITY_UNSUPPORTED,

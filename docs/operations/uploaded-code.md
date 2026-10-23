@@ -40,6 +40,29 @@ A run that has no pin for an uploaded id fails with `EXTENSION_UNAVAILABLE`.
 | `docker-gvisor` | Yes | gVisor | Yes, when the network is isolated (egress and DNS enforced) |
 | `cloudrun-jobs` | Yes | microVM | Yes, when `MAPI_CLOUDRUN_EGRESS_ENFORCED` and `MAPI_CLOUDRUN_DNS_ENFORCED` are true |
 
+!!! warning "The `docker` executor gives uploaded code internet access on a shared network"
+    Run containers use the network of `MAPI_DOCKER_NETWORK`. In the compose recipe this is
+    `container:<gcs-shim container>`: the runs share the namespace of the shim, and the shim
+    is on a Docker network that routes to the internet. Uploaded code in a run can then open
+    connections to any host on the internet (the v0.19 live check reached
+    `storage.googleapis.com:443` from an uploaded plugin). The security suite's own container
+    uses `--network none`, so it does not show this.
+
+    This is acceptable on a developer computer only. On any other host, do one of these:
+
+    - Put the shim alone on an internal network (`docker network create --internal
+      mapi-sandbox`, attached to no network that routes out), set
+      `MAPI_DOCKER_NETWORK=mapi-sandbox` and declare it with
+      `MAPI_DOCKER_NETWORK_ISOLATED=true` ([Docker](docker.md)).
+    - Run uploads on `docker-gvisor` with that isolated network, or on Cloud Run Jobs with
+      `MAPI_CLOUDRUN_EGRESS_ENFORCED` and `MAPI_CLOUDRUN_DNS_ENFORCED`.
+    - Turn uploads off (`MAPI_PLUGINS_ENABLED=false`).
+
+    The server writes a warning to the log at start-up when the executor is `docker` or
+    `docker-gvisor`, uploads are on and `MAPI_DOCKER_NETWORK_ISOLATED` is not set (unless
+    `MAPI_DOCKER_NETWORK=none`). The executor also reports `egress_enforced=false` in that
+    case, so shared tiers are never placed on it.
+
 The rule is `mapi_spec.tenancy.untrusted_placement_problem`. The control plane does a check
 of it when it admits a run (409 `UNTRUSTED_PLACEMENT_UNAVAILABLE`) and again when the
 dispatcher places the run (the run fails with the same code). The tier placement rules
@@ -115,7 +138,7 @@ reason `security` (this also cancels its runs) and look at its usage
 | `MAPI_PLUGIN_TICKET_TTL_S` | 900 | Life of an upload ticket |
 | `MAPI_PLUGIN_APPROVE_MAX_AUTH_AGE_S` | 900 | Maximum age of the reviewer's sign-in, from the ID token's `auth_time`. The re-sign-in asks the identity provider for `max_age=0` and `prompt=login`; an identity provider that sends no `auth_time` cannot approve |
 | `MAPI_PLUGIN_APPROVER_MIN_MEMBERSHIP_AGE_DAYS` | 7 | A tenant admin whom the uploader added or promoted more recently (directly or through someone they added) cannot approve |
-| `MAPI_PLUGIN_RETENTION_DAYS` | 30 | Days before the purge deletes refused, failed, rejected and withdrawn files |
+| `MAPI_PLUGIN_RETENTION_DAYS` | 30 | Days before the purge deletes refused, failed, rejected and withdrawn files, counted from the moment the version failed or was withdrawn (the purge date is fixed then; a later change does not move it) |
 
 The [server settings reference](../reference/generated/server-settings.md) lists them all.
 
@@ -143,9 +166,12 @@ The housekeeping sweeps do these tasks:
 
 - **Ticket expiry.** Upload tickets that were not completed expire after
   `MAPI_PLUGIN_TICKET_TTL_S`.
-- **Purge.** After `MAPI_PLUGIN_RETENTION_DAYS`, the sweep deletes the file of each
-  `inspect_failed`, `kit_failed`, `rejected` and `yanked` version, sets `purged_at` and writes
-  the audit row `plugin.purge`. The row stays (state `purged`, "Removed" in the app). A
+- **Purge.** When a version becomes `inspect_failed`, `kit_failed`, `rejected` or `yanked`,
+  the server stores its purge date: that moment plus `MAPI_PLUGIN_RETENTION_DAYS`. After that
+  date, the sweep deletes the file of the version, sets `purged_at` and writes the audit row
+  `plugin.purge`. The purge date is fixed when the version fails or is withdrawn: a change of
+  `MAPI_PLUGIN_RETENTION_DAYS` applies to versions that fail or are withdrawn after the
+  change, not to versions that already have a purge date. The row stays (state `purged`, "Removed" in the app). A
   quarantine file that the 7-day lifecycle deleted before is not an error.
 - **Rekit.** See the next section.
 

@@ -392,6 +392,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
     add(S.DISPATCHING, T.SUBMITTED, S.PROVISIONING, A.DISPATCHER, A.RECONCILER)
     add(S.DISPATCHING, T.INFRA_RETRY, S.QUEUED, A.DISPATCHER, A.RECONCILER, new_attempt=True)
     add(S.DISPATCHING, T.FAIL_INFRA, S.FAILED, A.DISPATCHER, A.RECONCILER)
+    # v0.19: a pinned overlay object that no longer exists at its generation (replaced or
+    # deleted after the check) is found before any URL is minted
+    add(S.DISPATCHING, T.FAIL_INTEGRITY, S.FAILED, A.DISPATCHER)
 
     for live in (S.PROVISIONING, S.RUNNING, S.STALLED):
         add(live, T.EVENT, S.RUNNING, A.EVENTS)
@@ -399,6 +402,9 @@ def _build_table() -> dict[tuple[RunState, RunTrigger], TransitionRule]:
         add(live, T.INFRA_RETRY, S.QUEUED, A.RECONCILER, new_attempt=True)
         for trig in _EXECUTION_FAILURES:
             add(live, trig, S.FAILED, A.RECONCILER)
+        # the supervisor refused an input or an overlay whose bytes are not the pinned
+        # ones (exit 13 INTEGRITY_ERROR, set by the supervisor, never by the worker)
+        add(live, T.FAIL_INTEGRITY, S.FAILED, A.RECONCILER)
     add(S.RUNNING, T.SILENCE, S.STALLED, A.RECONCILER)
     add(S.STALLED, T.SILENCE, S.STALLED, A.RECONCILER)
 

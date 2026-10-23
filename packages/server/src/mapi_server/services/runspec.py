@@ -44,6 +44,7 @@ from mapi_spec.run import (
 )
 from mapi_spec.storage import (
     MAX_SIGNED_URL_TTL,
+    NotFound,
     ObjectStore,
     PostPolicy,
     SignedGet,
@@ -64,6 +65,7 @@ __all__ = [
     "EMPTY_CATALOG_DIGEST",
     "MANIFEST_MAX_BYTES",
     "OVERLAY_URL_MARGIN",
+    "OverlayIntegrityError",
     "OverlayObject",
     "StoredRef",
     "build_runspec",
@@ -72,6 +74,7 @@ __all__ = [
     "resolve_overlays",
     "run_pins",
     "signed_links_ttl",
+    "verify_overlay_objects",
 ]
 
 MANIFEST_MAX_BYTES = 4 * 1024 * 1024
@@ -208,6 +211,44 @@ async def resolve_overlays(
             )
         )
     return out
+
+
+class OverlayIntegrityError(MapiError):
+    """The stored copy of a pinned upload is not the one the platform checked: the object
+    is gone at its pinned generation (replaced through the storage API or deleted) or its
+    size differs. ``INTEGRITY_FAILURE``; ``pins`` are the versions affected. Retrying cannot
+    help, and the versions must be withdrawn (:func:`mapi_server.services.plugins.review.
+    withdraw_for_integrity`)."""
+
+    default_code = ErrorCode.INTEGRITY_FAILURE
+
+    def __init__(self, pins: Sequence[OverlayPin]) -> None:
+        names = ", ".join(sorted({p.namespace for p in pins}))
+        super().__init__(
+            f"The uploaded code of this run ({names}) no longer matches the file that was "
+            "checked and approved: its stored copy was replaced or removed. Nothing of it "
+            "ran, and the platform withdrew the version for safety.",
+            code=ErrorCode.INTEGRITY_FAILURE,
+        )
+        self.pins: list[OverlayPin] = list(pins)
+
+
+async def verify_overlay_objects(store: ObjectStore, overlays: Sequence[OverlayObject]) -> None:
+    """Check that every overlay object still exists **at its pinned generation** with the
+    size the platform recorded (metadata only; the supervisor checks the sha256 of the
+    bytes). Raises :class:`OverlayIntegrityError` naming every pin that fails; other
+    storage errors (unavailable, throttled) propagate unchanged, so they stay retryable."""
+    bad: list[OverlayPin] = []
+    for obj in overlays:
+        try:
+            meta = await store.stat(obj.bucket, obj.name, generation=obj.generation)
+        except NotFound:
+            bad.append(obj.pin)
+            continue
+        if meta.generation != obj.generation or meta.size != obj.size:
+            bad.append(obj.pin)
+    if bad:
+        raise OverlayIntegrityError(bad)
 
 
 def _io_name(rel: str, i: int) -> str:

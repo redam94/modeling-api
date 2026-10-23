@@ -4674,7 +4674,7 @@ V016_ENDPOINTS: Final[tuple[EndpointDecl, ...]] = (
     EndpointDecl(
         "PUT", _DSH + "/grants/{user_id}", "put_dashboard_grant",
         "Grant the dashboard to a member of the project (idempotent)", "DashboardGrant", 200,
-        errors=(*_NF, _E.CONFLICT), headers=_PH,
+        errors=(*_NF, _E.CONFLICT, _UC), headers=_PH,
     ),
     EndpointDecl(
         "DELETE", _DSH + "/grants/{user_id}", "delete_dashboard_grant",

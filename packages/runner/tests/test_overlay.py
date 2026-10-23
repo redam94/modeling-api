@@ -275,6 +275,25 @@ def test_a_transport_error_is_an_os_error(gcs: ShimGcs, tmp_path: Path) -> None:
     assert files_under(tmp_path / "dl") == []
 
 
+def test_a_wheel_gone_from_storage_is_an_integrity_failure(gcs: ShimGcs, tmp_path: Path) -> None:
+    """F2: the pinned generation was replaced or deleted after the check. The signed GET
+    answers 404; that is not a transport error the platform may retry but an integrity
+    failure (the approved bytes are gone), and nothing is written."""
+    mount = _mount(gcs, zip_bytes(GOOD))
+    gcs.delete(gcs.buckets.data, f"t/default/plugins/plg_x/{PVID}.whl")
+    with pytest.raises(OverlayError) as err:
+        fetch_overlay(mount, tmp_path / "dl", timeout_s=30)
+    assert err.value.code == "INTEGRITY_FAILURE"
+    assert "gone or was replaced" in str(err.value)
+    assert files_under(tmp_path / "dl") == []
+    # replaced through the storage API: a new generation, the pinned one is gone
+    mount = _mount(gcs, zip_bytes(GOOD))
+    gcs.put(gcs.buckets.data, f"t/default/plugins/plg_x/{PVID}.whl", zip_bytes(GOOD), "x/y")
+    with pytest.raises(OverlayError) as err:
+        fetch_overlay(mount, tmp_path / "dl2", timeout_s=30)
+    assert err.value.code == "INTEGRITY_FAILURE"
+
+
 def test_the_supervisor_and_the_overlay_module_import_no_plugin_code() -> None:
     """Mounting uploads adds nothing to the supervisor's imports: no SDK, no workflows
     runtime, no array library, no plugin package."""

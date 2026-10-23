@@ -1499,9 +1499,13 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
         return _Material(problem=Problem.from_code(ErrorCode.NOT_FOUND, "the revision is gone"))
     any_spec = parse_dashboard_spec(rev.spec)
     mv = await session.get(m.ModelVersion, row.model_version_id)
-    from mapi_server.services.sharing import ran_uploaded_code, runs_used_uploaded_code
+    from mapi_server.services.sharing import (
+        refused_on_dashboards,
+        runs_used_uploaded_code,
+        uses_uploaded_code,
+    )
 
-    if ran_uploaded_code(mv):  # defence in depth: every path that appends one refuses it
+    if refused_on_dashboards(mv):  # defence in depth: every path that appends one refuses it
         return _Material(
             problem=Problem.from_code(
                 ErrorCode.CAPABILITY_UNSUPPORTED,
@@ -1509,7 +1513,12 @@ async def _build(ctx: ServerContext, session: AsyncSession, row: m.DashboardRead
                 "fitted with platform plugins",
             )
         )
-    if await runs_used_uploaded_code(session, row.run_ids):
+    # a version fitted with uploaded code (v0.19 pins) is scored with that code again, so
+    # its readouts' runs are untrusted by design: they stay in the workspace (the shared
+    # and client reads refuse them, D16). Uploaded code the version does not record is
+    # refused here.
+    pinned = mv is not None and uses_uploaded_code(lineage=mv.lineage)
+    if not pinned and await runs_used_uploaded_code(session, row.run_ids):
         return _Material(
             problem=Problem.from_code(
                 ErrorCode.UPLOADED_CODE_NOT_SHAREABLE,
